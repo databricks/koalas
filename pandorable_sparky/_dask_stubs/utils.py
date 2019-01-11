@@ -2,8 +2,6 @@
 import functools
 from .compatibility import get_named_args
 
-
-
 _method_cache = {}
 
 
@@ -112,6 +110,7 @@ def derived_from(original_klass, version=None, ua_args=[]):
                 raise NotImplementedError(msg)
             return wrapped
     return wrapper
+
 
 def _skip_doctest(line):
     # NumPy docstring contains cursor and comment only example

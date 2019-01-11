@@ -12,8 +12,7 @@ class PandasLikeGroupBy(object):
         # a single element (string) to select a single col (and return a series)
         # a list of cols / strings for all the returns (and return a DF)
         self._cols = cols
-        self._schema = _current_schema(df, cols) # type: StructType
-
+        self._schema = _current_schema(df, cols)  # type: StructType
 
     def __getitem__(self, key):
         # TODO: handle deeper cases. Right now, it will break with nested columns.
@@ -49,6 +48,7 @@ class PandasLikeGroupBy(object):
     def _return_df(self):
         return self._cols is None or isinstance(self._cols, list)
 
+
 def _current_schema(df, cols):
     if not cols:
         return df.schema
@@ -57,4 +57,3 @@ def _current_schema(df, cols):
     else:
         col = cols
         return df.select(col).schema
-

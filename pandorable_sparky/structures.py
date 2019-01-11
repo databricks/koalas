@@ -42,7 +42,8 @@ class PandasLikeSeries(_Frame):
         else:
             fnames = self.schema.fieldNames()
             if name not in fnames:
-                raise AttributeError("Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
+                raise AttributeError(
+                    "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
             return anchor_wrap(self, self._spark_getField(name))
 
     @property
@@ -70,7 +71,6 @@ class PandasLikeSeries(_Frame):
         # Pandas wants a series/array-like object
         return _col(self.to_dataframe().unique())
 
-
     def _pandas_anchor(self) -> DataFrame:
         """
         The anchoring dataframe for this column (if any).
@@ -97,7 +97,7 @@ class PandasLikeSeries(_Frame):
         return anchor_wrap(self, self.getField(item))
 
     def __invert__(self):
-        return self.cast("boolean") == False
+        return self.cast("boolean") == False  # noqa: disable=E712
 
     def __str__(self):
         return self._pandas_orig_repr()
@@ -110,7 +110,6 @@ class PandasLikeSeries(_Frame):
     def _pandas_orig_repr(self):
         # TODO: figure out how to reuse the original one.
         return 'Column<%s>' % self._jc.toString().encode('utf8')
-
 
 
 class PandasLikeDataFrame(_Frame):
@@ -148,14 +147,11 @@ class PandasLikeDataFrame(_Frame):
         renamed = _rename(self, names)
         _reassign_jdf(self, renamed)
 
-
     def count(self):
         return self._spark_count()
 
-
     def unique(self):
         return DataFrame(self._jdf.distinct(), self.sql_ctx)
-
 
     @derived_from(pd.DataFrame)
     def drop(self, labels, axis=0, errors='raise'):
@@ -165,9 +161,8 @@ class PandasLikeDataFrame(_Frame):
                 return self._spark_drop(*labels)
             else:
                 return self._spark_drop(labels)
-            #return self.map_partitions(M.drop, labels, axis=axis, errors=errors)
+            # return self.map_partitions(M.drop, labels, axis=axis, errors=errors)
         raise NotImplementedError("Drop currently only works for axis=1")
-
 
     @derived_from(pd.DataFrame)
     def get(self, key, default=None):
@@ -200,7 +195,7 @@ class PandasLikeDataFrame(_Frame):
         return len(self), len(self.columns)
 
     def _pd_getitem(self, key):
-        #print("__getitem__:key", key, type(key))
+        # print("__getitem__:key", key, type(key))
         if key is None:
             raise KeyError("none key")
         if isinstance(key, string_types):
@@ -222,7 +217,6 @@ class PandasLikeDataFrame(_Frame):
             return anchor_wrap(self, self._spark_getitem(bcol))
         raise NotImplementedError(key)
 
-
     def __getitem__(self, key):
         return anchor_wrap(self, self._pd_getitem(key))
 
@@ -231,7 +225,8 @@ class PandasLikeDataFrame(_Frame):
         # This is too expensive in Spark.
         # Are we assigning against a column?
         if isinstance(value, Column):
-            assert value._pandas_anchor() is self, "Cannot combine column argument because it comes from a different dataframe"
+            assert value._pandas_anchor() is self,\
+                "Cannot combine column argument because it comes from a different dataframe"
         if isinstance(key, (tuple, list)):
             assert isinstance(value.schema, StructType)
             field_names = value.schema.fieldNames()
@@ -271,8 +266,9 @@ def _reassign_jdf(target_df: DataFrame, new_df: DataFrame):
     target_df._schema = None
     target_df._lazy_rdd = None
 
+
 def _rename(frame, names):
-    #assert isinstance(frame, _Frame) # TODO: injection does not fix hierarchy
+    # assert isinstance(frame, _Frame) # TODO: injection does not fix hierarchy
     if isinstance(frame, Column):
         assert isinstance(frame.schema, StructType)
     old_names = frame.schema.fieldNames()
@@ -295,9 +291,11 @@ def _reduce_spark(col_or_df, sfun):
         df0 = df.select(sfun("*"))
     return _unpack_scalar(df0)
 
+
 def _unpack_scalar(df):
     """
-    Takes a dataframe that is supposed to contain a single row with a single scalar value, and returns this value.
+    Takes a dataframe that is supposed to contain a single row with a single scalar value,
+    and returns this value.
     """
     l = df.head(2).collect()
     assert len(l) == 1, (df, l)
@@ -324,6 +322,7 @@ def anchor_wrap(df, col):
             ref = df
         col._spark_ref_dataframe = ref
     return col
+
 
 def _col(df):
     assert isinstance(df, (DataFrame, pd.DataFrame)), type(df)

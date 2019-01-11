@@ -13,6 +13,7 @@ logger = logging.getLogger('spark')
 
 _TOUCHED_TEST = "_pandas_updated"
 
+
 def patch_spark():
     """
     This function monkey patches Spark to make PySpark's behavior similar to Pandas.
@@ -21,11 +22,12 @@ def patch_spark():
 
     Once this function is called, the behavior cannot be reverted.
     """
-    # Directly patching the base does not work because DataFrame inherits from object (known python limitation)
-    #NormalDF = pyspark.sql.dataframe.DataFrame
-    #PatchedDF = type("DataFrame0", (PandasLikeDataFrame, object), dict(NormalDF.__dict__))
-    #pyspark.sql.dataframe.DataFrame = PatchedDF
-    #pyspark.sql.DataFrame = PatchedDF
+    # Directly patching the base does not work because DataFrame inherits from object
+    # (known python limitation)
+    # NormalDF = pyspark.sql.dataframe.DataFrame
+    # PatchedDF = type("DataFrame0", (PandasLikeDataFrame, object), dict(NormalDF.__dict__))
+    # pyspark.sql.dataframe.DataFrame = PatchedDF
+    # pyspark.sql.DataFrame = PatchedDF
 
     # Just going to update the dictionary
     _inject(df.DataFrame, PandasLikeDataFrame)
@@ -45,12 +47,13 @@ def patch_spark():
 @decorator
 def wrap_column_function(f, *args, **kwargs):
     # Call the function first
-    #print("wrap_column_function:calling {} on args={}, kwargs={}".format(f, args, kwargs))
+    # print("wrap_column_function:calling {} on args={}, kwargs={}".format(f, args, kwargs))
     res = f(*args, **kwargs)
     if isinstance(res, col.Column):
-        #print("res is a column")
+        # print("res is a column")
         # Need to track where this column is coming from
         all_inputs = list(args) + list(kwargs.values())
+
         def ref_df(x):
             if isinstance(x, df.DataFrame):
                 return x
@@ -61,9 +64,9 @@ def wrap_column_function(f, *args, **kwargs):
                     logger.warning("Found a column without reference: {}".format(str(x)))
             return None
         all_col_inputs = [ref_df(c) for c in all_inputs]
-        #print("wrap_column_function:all_col_inputs", all_col_inputs)
-        all_df_inputs = list(dict([(id(f),f) for f in all_col_inputs if f]).items())
-        #print("wrap_column_function:all_df_inputs", all_df_inputs)
+        # print("wrap_column_function:all_col_inputs", all_col_inputs)
+        all_df_inputs = list(dict([(id(f), f) for f in all_col_inputs if f]).items())
+        # print("wrap_column_function:all_df_inputs", all_df_inputs)
         if len(all_df_inputs) > 1:
             logger.warning("Too many anchors to conclude")
         elif not all_df_inputs:
