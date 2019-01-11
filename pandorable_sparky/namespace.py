@@ -8,8 +8,11 @@ from .typing import Col, pandas_wrap
 from pyspark.sql import Column
 from .structures import anchor_wrap
 
+
 def default_session():
-    return pyspark.sql.SparkSession.builder.master("master").appName("pandorable_spark").getOrCreate()
+    return pyspark.sql.SparkSession.builder.master("master").appName("pandorable_spark") \
+        .getOrCreate()
+
 
 def read_csv(path, header='infer'):
     b = default_session().read.format("csv").option("inferSchema", "true")
@@ -20,6 +23,7 @@ def read_csv(path, header='infer'):
     else:
         raise ValueError("Unknown header argument {}".format(header))
     return b.load(path)
+
 
 def to_datetime(arg, errors='raise', format=None):
     if isinstance(arg, Column):
@@ -34,12 +38,13 @@ def to_datetime(arg, errors='raise', format=None):
         )
 
 
-#@pandas_wrap(return_col=np.datetime64)
+# @pandas_wrap(return_col=np.datetime64)
 @pandas_wrap
 def _to_datetime1(arg, errors, format) -> Col[np.datetime64]:
     return pd.to_datetime(arg, errors=errors, format=format).astype(np.datetime64)
 
-#@pandas_wrap(return_col=np.datetime64)
+
+# @pandas_wrap(return_col=np.datetime64)
 @pandas_wrap
 def _to_datetime2(arg_year=None, arg_month=None, arg_day=None,
                   errors=None, format=None) -> Col[np.datetime64]:
@@ -48,4 +53,3 @@ def _to_datetime2(arg_year=None, arg_month=None, arg_day=None,
         if arg[key] is None:
             del arg[key]
     return pd.to_datetime(arg, errors=errors, format=format).astype(np.datetime64)
-

@@ -12,6 +12,7 @@ from .structures import Column
 
 T = typing.TypeVar("T")
 
+
 class Col(typing.Generic[T]):
     def is_col(self):
         return self
@@ -20,24 +21,31 @@ class Col(typing.Generic[T]):
 class _Column(object):
     def __init__(self, inner):
         self.inner = inner
+
     def __repr__(self):
         return "_ColumnType[{}]".format(self.inner)
+
 
 class _DataFrame(object):
     def __repr__(self):
         return "_DataFrameType"
 
+
 class _Regular(object):
     def __init__(self, tpe):
         self.type = tpe
+
     def __repr__(self):
         return "_RegularType[{}]".format(self.type)
+
 
 class _Unknown(object):
     def __init__(self, tpe):
         self.type = tpe
+
     def __repr__(self):
         return "_UnknownType"
+
 
 X = typing.Union[_Column, _DataFrame, _Regular, _Unknown]
 
@@ -45,8 +53,10 @@ X = typing.Union[_Column, _DataFrame, _Regular, _Unknown]
 def _is_col(tpe):
     return hasattr(tpe, "is_col")
 
+
 def _get_col_inner(tpe):
     return tpe.__args__[0]
+
 
 def _to_stype(tpe) -> X:
     if _is_col(tpe):
@@ -69,7 +79,9 @@ def _build_type_dict():
     pairs = [(other_type, spark_type) for (spark_type, l) in base.items() for other_type in l]
     return dict(pairs)
 
+
 _known_types = _build_type_dict()
+
 
 def as_spark_type(tpe):
     """
@@ -85,6 +97,7 @@ def as_spark_type(tpe):
     """
     return _known_types.get(tpe, None)
 
+
 def _check_compatible(arg, sig_arg: X):
     if isinstance(sig_arg, _Unknown):
         return arg
@@ -95,7 +108,8 @@ def _check_compatible(arg, sig_arg: X):
                              "type {} for this argument".format(arg, t, sig_arg))
     if isinstance(sig_arg, _Column):
         if not isinstance(arg, Column):
-            raise ValueError("Expected a column argument, but got argument of type {} instead".format(type(arg)))
+            raise ValueError(
+                "Expected a column argument, but got argument of type {} instead".format(type(arg)))
         s = arg.schema
         if s != sig_arg.inner:
             raise ValueError("Passing an argument {} of type {}, but the function only accepts "
@@ -115,10 +129,10 @@ def make_fun(f, *args, **kwargs):
     :param kwargs:
     :return:
     """
-    sig_args = f.sig_args # type: typing.List[X]
+    sig_args = f.sig_args  # type: typing.List[X]
     final_args = []
     col_indexes = []
-    frozen_args = [] # None for columns or the value for non-columns
+    frozen_args = []  # None for columns or the value for non-columns
     for (idx, (arg, sig_arg)) in enumerate(zip(args, sig_args)):
         arg2 = _check_compatible(arg, sig_arg)
         if isinstance(arg2, (Column,)):
@@ -130,10 +144,10 @@ def make_fun(f, *args, **kwargs):
     print("final_args", final_args)
     print("col_indexs", col_indexes)
     print("frozen_args", frozen_args)
-    sig_kwargs = f.sig_kwargs # type: typing.Dict[str, X]
+    sig_kwargs = f.sig_kwargs  # type: typing.Dict[str, X]
     final_kwargs = {}
     col_keys = []
-    frozen_kwargs = {} # Value is none for kwargs that are columns, and the value otherwise
+    frozen_kwargs = {}  # Value is none for kwargs that are columns, and the value otherwise
     for (key, arg) in kwargs:
         sig_arg = sig_kwargs[key]
         arg2 = _check_compatible(arg, sig_arg)
@@ -157,10 +171,12 @@ def make_fun(f, *args, **kwargs):
     # Spark UDFs do not handle extra data that is not a column.
     # We build a new UDF that only takes arguments from columns, the rest is
     # sent inside the closure into the function.
-    all_indexes = col_indexes + col_keys # type: typing.Union[str, int]
+    all_indexes = col_indexes + col_keys  # type: typing.Union[str, int]
     print("all_indexes", all_indexes)
+
     def clean_fun(*args2):
-        assert len(args2) == len(all_indexes), "Missing some inputs:{}!={}".format(all_indexes, [str(c) for c in args2])
+        assert len(args2) == len(all_indexes),\
+            "Missing some inputs:{}!={}".format(all_indexes, [str(c) for c in args2])
         full_args = list(frozen_args)
         full_kwargs = dict(frozen_kwargs)
         print("full_kwargs", full_kwargs)
@@ -173,7 +189,7 @@ def make_fun(f, *args, **kwargs):
                 full_kwargs[idx] = arg
         return f(*full_args, **full_kwargs)
     udf = pandas_udf(clean_fun, returnType=spark_ret_type)
-    wrapped_udf = udf #udf #_wrap_callable(udf)
+    wrapped_udf = udf  # udf #_wrap_callable(udf)
     col_args = []
     for idx in col_indexes:
         col_args.append(final_args[idx])
@@ -187,6 +203,7 @@ def make_fun(f, *args, **kwargs):
 
 def _wrap_callable(obj):
     f0 = obj.__call__
+
     def f(*args, **kwargs):
         print("xxxx")
         return f0(*args, **kwargs)
@@ -195,14 +212,15 @@ def _wrap_callable(obj):
 
 
 def pandas_wrap(f, return_col=None):
-    print("pandas_wrap:f=",f)
+    print("pandas_wrap:f=", f)
     # Extract the signature arguments from this function.
     spec = getfullargspec(f)
     rtype = None
     return_sig = spec.annotations.get("return", None)
     if not (return_col or return_sig):
-        raise ValueError("Missing type information. It should either be provided as an argument to pandas_wrap,"
-                         "or as a python typing hint")
+        raise ValueError(
+            "Missing type information. It should either be provided as an argument to pandas_wrap,"
+            "or as a python typing hint")
     if return_col is not None:
         rtype = _to_stype(return_col)
     if return_sig is not None:

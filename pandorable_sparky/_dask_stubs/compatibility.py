@@ -2,6 +2,7 @@ import inspect
 
 string_types = (str,)
 
+
 def get_named_args(func):
     """Get all non ``*args/**kwargs`` arguments for a function"""
     s = inspect.signature(func)
