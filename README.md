@@ -1,3 +1,5 @@
+![](https://api.travis-ci.com/databricks/spark-pandas.svg)
+
 # spark-pandas
 Spark is cute. Sparky is _pandorable_.
 
