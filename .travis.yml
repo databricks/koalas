@@ -44,7 +44,7 @@ install:
   - conda info -a
 
   # Replace dep1 dep2 ... with your dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION nose==1.3.7 flake8=3.6.0 pandas==$PANDAS_VERSION pyarrow=$PYARROW_VERSION
+  - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION nose==1.3.7 flake8=3.6.0 pandas==$PANDAS_VERSION pyarrow=$PYARROW_VERSION decorator
   - source activate test-environment
 
 before_script:
