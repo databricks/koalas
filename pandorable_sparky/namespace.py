@@ -6,12 +6,10 @@ import numpy as np
 import pandas as pd
 from .typing import Col, pandas_wrap
 from pyspark.sql import Column
-from .structures import anchor_wrap
 
 
 def default_session():
-    return pyspark.sql.SparkSession.builder.master("master").appName("pandorable_spark") \
-        .getOrCreate()
+    return pyspark.sql.SparkSession.builder.getOrCreate()
 
 
 def read_csv(path, header='infer'):
@@ -23,6 +21,13 @@ def read_csv(path, header='infer'):
     else:
         raise ValueError("Unknown header argument {}".format(header))
     return b.load(path)
+
+
+def read_parquet(path, columns=None, **kwargs):
+    df = default_session().read.format("parquet").options(**kwargs).load(path)
+    if columns is not None:
+        df.columns = columns
+    return df
 
 
 def to_datetime(arg, errors='raise', format=None):
