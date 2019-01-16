@@ -1,4 +1,6 @@
+import shutil
 import sys
+import tempfile
 import unittest
 from contextlib import contextmanager
 
@@ -143,3 +145,15 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
                "\n\nExpected:\n%s\n%s" % (expected, expected.dtypes) +
                "\n\nResult:\n%s\n%s" % (result, result.dtypes))
         self.assertTrue(expected.equals(result), msg=msg)
+
+
+class TestUtils(object):
+
+    @contextmanager
+    def temp_dir(self):
+        tmp = tempfile.mkdtemp()
+        shutil.rmtree(tmp)
+        try:
+            yield tmp
+        finally:
+            shutil.rmtree(tmp)
