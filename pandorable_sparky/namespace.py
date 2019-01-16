@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from .typing import Col, pandas_wrap
 from pyspark.sql import Column
+from pyspark.sql.types import StructType
 
 
 def default_session():
@@ -23,10 +24,18 @@ def read_csv(path, header='infer'):
     return b.load(path)
 
 
-def read_parquet(path, columns=None, **kwargs):
-    df = default_session().read.format("parquet").options(**kwargs).load(path)
-    if columns is not None:
-        df.columns = columns
+def read_parquet(path, columns=None):
+    if columns is None or (isinstance(columns, (list, tuple)) and len(columns) > 0):
+        df = default_session().read.parquet(path)
+        if columns is not None:
+            fields = [field.name for field in df.schema]
+            cols = [col for col in columns if col in fields]
+            if len(cols) > 0:
+                df = df.select(cols)
+            else:
+                df = default_session().createDataFrame([], schema=StructType())
+    else:
+        df = default_session().createDataFrame([], schema=StructType())
     return df
 
 
