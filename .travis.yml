@@ -20,7 +20,7 @@ matrix:
       env:
         - SPARK_VERSION=2.4.0
         - PANDAS_VERSION=0.23.4
-        - PYARROW_VERSION=0.8.0
+        - PYARROW_VERSION=0.10.0
 
 before_install:
  - ./bin/download_travis_dependencies.sh
