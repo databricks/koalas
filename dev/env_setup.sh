@@ -12,3 +12,6 @@ for lib in "$SPARK_HOME/python/lib"/*zip ; do
 done
 
 export PYTHONPATH=$PYTHONPATH:$SPARK_HOME/python:$LIBS:.
+
+# Use the miniconda environment:
+export PYTHONPATH=$PYTHONPATH:$(python -c 'import site; print(site.getsitepackages()[0])')
