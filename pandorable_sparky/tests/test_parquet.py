@@ -17,20 +17,20 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
                 'i64': np.arange(1000, dtype=np.int64),
                 'f': np.arange(1000, dtype=np.float64),
                 'bhello': np.random.choice(['hello', 'yo', 'people'], size=1000).astype("O")})
-            self.spark.createDataFrame(data).coalesce(1).write.parquet(tmp)
+            self.spark.createDataFrame(data, 'i32 int, i64 long, f double, bhello string') \
+                .coalesce(1).write.parquet(tmp)
 
-            def check(columns):
-                expected = pd.read_parquet(tmp, columns=columns)
+            def check(columns, expected):
                 actual = pyspark.read_parquet(tmp, columns=columns)
                 self.assertPandasEqual(expected, actual.toPandas())
 
-            check(None)
-            check(['i32', 'i64'])
-            check(('i32', 'i64'))
-            check(['a', 'b', 'i32', 'i64'])
-            check([])
-            check(['a'])
-            check('i32')
+            check(None, data)
+            check(['i32', 'i64'], data[['i32', 'i64']])
+            check(('i32', 'i64'), data[['i32', 'i64']])
+            check(['a', 'b', 'i32', 'i64'], data[['i32', 'i64']])
+            check([], pd.DataFrame([]))
+            check(['a'], pd.DataFrame([]))
+            check('i32', pd.DataFrame([]))
 
 
 if __name__ == "__main__":
