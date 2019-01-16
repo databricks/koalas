@@ -1,3 +1,4 @@
+from distutils.version import LooseVersion
 import unittest
 
 import numpy as np
@@ -22,6 +23,8 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
                 .coalesce(1).write.parquet(tmp)
 
             def check(columns, expected):
+                if LooseVersion("0.21.1") <= LooseVersion(pd.__version__):
+                    expected = pd.read_parquet(tmp, columns=columns)
                 actual = pyspark.read_parquet(tmp, columns=columns)
                 self.assertPandasEqual(expected, actual.toPandas())
 
