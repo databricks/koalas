@@ -17,6 +17,7 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
                 'i64': np.arange(1000, dtype=np.int64),
                 'f': np.arange(1000, dtype=np.float64),
                 'bhello': np.random.choice(['hello', 'yo', 'people'], size=1000).astype("O")})
+            data = data[['i32', 'i64', 'f', 'bhello']]
             self.spark.createDataFrame(data, 'i32 int, i64 long, f double, bhello string') \
                 .coalesce(1).write.parquet(tmp)
 
@@ -26,6 +27,7 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
 
             check(None, data)
             check(['i32', 'i64'], data[['i32', 'i64']])
+            check(['i64', 'i32'], data[['i64', 'i32']])
             check(('i32', 'i64'), data[['i32', 'i64']])
             check(['a', 'b', 'i32', 'i64'], data[['i32', 'i64']])
             check([], pd.DataFrame([]))
