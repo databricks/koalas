@@ -133,6 +133,8 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
         super(ReusedSQLTestCase, cls).setUpClass()
         cls.spark = SparkSession(cls.sc)
 
+        cls.spark.conf.set('spark.sql.execution.arrow.enabled', True)
+
     @classmethod
     def tearDownClass(cls):
         super(ReusedSQLTestCase, cls).tearDownClass()
