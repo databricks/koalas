@@ -41,6 +41,7 @@ def patch_spark():
     _wrap_functions()
     # Inject a few useful functions.
     pyspark.read_csv = namespace.read_csv
+    pyspark.read_parquet = namespace.read_parquet
     pyspark.to_datetime = namespace.to_datetime
 
 
