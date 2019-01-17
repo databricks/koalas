@@ -36,7 +36,7 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
             check([], pd.DataFrame([]))
             check(['a'], pd.DataFrame([]))
             check('i32', pd.DataFrame([]))
-            check('float', pd.DataFrame(['f']))
+            check('float', data[['f']])
 
 
 if __name__ == "__main__":
