@@ -25,7 +25,9 @@ def read_csv(path, header='infer'):
 
 
 def read_parquet(path, columns=None):
-    if columns is None or (isinstance(columns, (list, tuple)) and len(columns) > 0):
+    if columns is not None:
+        columns = list(columns)
+    if columns is None or len(columns) > 0:
         df = default_session().read.parquet(path)
         if columns is not None:
             fields = [field.name for field in df.schema]
