@@ -34,6 +34,11 @@ def read_csv(path, header='infer', names=None, usecols=None,
         else:
             raise ValueError("Unknown header argument {}".format(header))
 
+        if comment is not None:
+            if not isinstance(comment, basestring) or len(comment) != 1:
+                raise ValueError("Only length-1 comment characters supported")
+            reader.option("comment", comment)
+
         df = reader.csv(path)
 
         if header is None:

@@ -34,6 +34,18 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             Edith,600
             """)
 
+    @property
+    def csv_text_with_comments(self):
+        return normalize_text(
+            """
+            # header
+            %s
+            # comment
+            Alice,400
+            Edith,600
+            # footer
+            """ % self.csv_text)
+
     @contextmanager
     def csv_file(self, csv):
         with self.temp_file() as tmp:
@@ -75,6 +87,21 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
                                    lambda: pyspark.read_csv(fn, usecols=[1, 3]))
             self.assertRaisesRegex(ValueError, 'Usecols do not match.*col',
                                    lambda: pyspark.read_csv(fn, usecols=['amount', 'col']))
+
+    def test_read_csv_with_comment(self):
+        with self.csv_file(self.csv_text_with_comments) as fn:
+            expected = pd.read_csv(fn, comment='#')
+            actual = pyspark.read_csv(fn, comment='#')
+            self.assertPandasAlmostEqual(expected, actual.toPandas())
+
+            self.assertRaisesRegex(ValueError, 'Only length-1 comment characters supported',
+                                   lambda: pyspark.read_csv(fn, comment='').show())
+            self.assertRaisesRegex(ValueError, 'Only length-1 comment characters supported',
+                                   lambda: pyspark.read_csv(fn, comment='##').show())
+            self.assertRaisesRegex(ValueError, 'Only length-1 comment characters supported',
+                                   lambda: pyspark.read_csv(fn, comment=1))
+            self.assertRaisesRegex(ValueError, 'Only length-1 comment characters supported',
+                                   lambda: pyspark.read_csv(fn, comment=[1]))
 
 
 if __name__ == "__main__":
