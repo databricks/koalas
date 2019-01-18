@@ -1,6 +1,8 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
+import sys
+
 import pyspark.sql
 import numpy as np
 import pandas as pd
@@ -8,20 +10,69 @@ from .typing import Col, pandas_wrap
 from pyspark.sql import Column
 from pyspark.sql.types import StructType
 
+if sys.version > '3':
+    basestring = unicode = str
+
 
 def default_session():
     return pyspark.sql.SparkSession.builder.getOrCreate()
 
 
-def read_csv(path, header='infer'):
-    b = default_session().read.format("csv").option("inferSchema", "true")
-    if header == 'infer':
-        b = b.option("header", "true")
-    elif header == 0:
-        pass
+def read_csv(path, header='infer', names=None, usecols=None,
+             mangle_dupe_cols=True, parse_dates=False, comment=None):
+    if usecols is not None and not callable(usecols):
+        usecols = list(usecols)
+    if usecols is None or callable(usecols) or len(usecols) > 0:
+        reader = default_session().read.option("inferSchema", "true")
+
+        if header == 'infer':
+            header = 0 if names is None else None
+        if header == 0:
+            reader.option("header", True)
+        elif header is None:
+            reader.option("header", False)
+        else:
+            raise ValueError("Unknown header argument {}".format(header))
+
+        df = reader.csv(path)
+
+        if header is None:
+            df = df.selectExpr(*["`%s` as `%s`" % (field.name, i)
+                                 for i, field in enumerate(df.schema)])
+        if names is not None:
+            names = list(names)
+            if len(set(names)) != len(names):
+                raise ValueError('Found non-unique column index')
+            if len(names) != len(df.schema):
+                raise ValueError('Names do not match the number of columns: %d' % len(names))
+            df = df.selectExpr(*["`%s` as `%s`" % (field.name, name)
+                                 for field, name in zip(df.schema, names)])
+
+        if usecols is not None:
+            if callable(usecols):
+                cols = [field.name for field in df.schema if usecols(field.name)]
+                missing = []
+            elif all(isinstance(col, int) for col in usecols):
+                cols = [field.name for i, field in enumerate(df.schema) if i in usecols]
+                missing = [col for col in usecols
+                           if col >= len(df.schema) or df.schema[col].name not in cols]
+            elif all(isinstance(col, basestring) for col in usecols):
+                cols = [field.name for field in df.schema if field.name in usecols]
+                missing = [col for col in usecols if col not in cols]
+            else:
+                raise ValueError("'usecols' must either be list-like of all strings, "
+                                 "all unicode, all integers or a callable.")
+            if len(missing) > 0:
+                raise ValueError('Usecols do not match columns, columns expected but not found: %s'
+                                 % missing)
+
+            if len(cols) > 0:
+                df = df.select(cols)
+            else:
+                df = default_session().createDataFrame([], schema=StructType())
     else:
-        raise ValueError("Unknown header argument {}".format(header))
-    return b.load(path)
+        df = default_session().createDataFrame([], schema=StructType())
+    return df
 
 
 def read_parquet(path, columns=None):
