@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from distutils.version import LooseVersion
 import unittest
 
 import pandas as pd
@@ -70,11 +71,13 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             check(usecols=[1, 0])
             check(usecols=['amount'])
             check(usecols=['amount', 'name'])
-            check(usecols=lambda x: x == 'amount')
+            if LooseVersion("0.20.0") <= LooseVersion(pd.__version__):
+                check(usecols=lambda x: x == 'amount')
             check(usecols=[])
             check(usecols=[1, 1])
             check(usecols=['amount', 'amount'])
-            check(usecols=lambda x: x == 'a')
+            if LooseVersion("0.20.0") <= LooseVersion(pd.__version__):
+                check(usecols=lambda x: x == 'a')
             check(names=['n', 'a'], usecols=['a'])
 
             self.assertRaisesRegex(ValueError, 'non-unique',
