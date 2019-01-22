@@ -1,3 +1,4 @@
+import functools
 import shutil
 import sys
 import tempfile
@@ -146,14 +147,59 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
                "\n\nResult:\n%s\n%s" % (result, result.dtypes))
         self.assertTrue(expected.equals(result), msg=msg)
 
+    def assertPandasAlmostEqual(self, expected, result):
+        msg = ("DataFrames are not equal: " +
+               "\n\nExpected:\n%s\n%s" % (expected, expected.dtypes) +
+               "\n\nResult:\n%s\n%s" % (result, result.dtypes))
+        self.assertEqual(expected.shape, result.shape, msg=msg)
+        for ecol, rcol in zip(expected.columns, result.columns):
+            self.assertEqual(str(ecol), str(rcol), msg=msg)
+            for eval, rval in zip(expected[ecol], result[rcol]):
+                self.assertAlmostEqual(eval, rval, msg=msg)
+
 
 class TestUtils(object):
 
     @contextmanager
     def temp_dir(self):
         tmp = tempfile.mkdtemp()
-        shutil.rmtree(tmp)
         try:
             yield tmp
         finally:
             shutil.rmtree(tmp)
+
+    @contextmanager
+    def temp_file(self):
+        with self.temp_dir() as tmp:
+            yield tempfile.mktemp(dir=tmp)
+
+
+class ComparisonTestBase(ReusedSQLTestCase):
+
+    @property
+    def df(self):
+        return self.spark.createDataFrame(self.pdf)
+
+    @property
+    def pdf(self):
+        return self.df.toPandas()
+
+
+def compare_both(f=None, almost=True):
+
+    if f is None:
+        return functools.partial(compare_both, almost=almost)
+    elif isinstance(f, bool):
+        return functools.partial(compare_both, almost=f)
+
+    def wrapped(self):
+        if almost:
+            compare = self.assertPandasAlmostEqual
+        else:
+            compare = self.assertPandasEqual
+
+        for result_pandas, result_spark in zip(f(self, self.pdf), f(self, self.df)):
+            compare(result_pandas, result_spark.toPandas())
+
+    wrapped.__doc__ = f.__doc__
+    return wrapped

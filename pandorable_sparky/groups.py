@@ -32,6 +32,14 @@ class PandasLikeGroupBy(object):
         except KeyError as e:
             raise AttributeError(e)
 
+    def agg(self, aggs):
+        df = self._groupdata.agg(aggs)
+        if isinstance(aggs, dict):
+            reorder = ['%s(%s)' % (value, key) for key, value in iter(aggs.items())]
+            df = df._spark_select(reorder)
+            df.columns = [key for key in iter(aggs.keys())]
+        return df
+
     def count(self):
         return self._groupdata.count()
 
