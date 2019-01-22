@@ -106,6 +106,14 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             self.assertRaisesRegex(ValueError, 'Only length-1 comment characters supported',
                                    lambda: pyspark.read_csv(fn, comment=[1]))
 
+    def test_read_csv_with_mangle_dupe_cols(self):
+        self.assertRaisesRegex(ValueError, 'mangle_dupe_cols',
+                               lambda: pyspark.read_csv('path', mangle_dupe_cols=False))
+
+    def test_read_csv_with_parse_dates(self):
+        self.assertRaisesRegex(ValueError, 'parse_dates',
+                               lambda: pyspark.read_csv('path', parse_dates=True))
+
 
 if __name__ == "__main__":
     from pandorable_sparky.tests.test_csv import *
