@@ -7,14 +7,17 @@ import pyspark
 from pandorable_sparky.testing.utils import ComparisonTestBase, compare_both
 
 
-class TestETL(ComparisonTestBase):
+class EtlTest(ComparisonTestBase):
 
     @property
     def pdf(self):
         return pd.read_csv('data/sample_stocks.csv')
 
+    def test_etl(self):
+        self._test_etl()
+
     @compare_both
-    def test_etl(self, df):
+    def _test_etl(self, df):
         df1 = df.loc[:, 'Symbol Date Open High Low Close'.split()]
         yield df1
 
