@@ -192,6 +192,7 @@ def compare_both(f=None, almost=True):
     elif isinstance(f, bool):
         return functools.partial(compare_both, almost=f)
 
+    @functools.wraps(f)
     def wrapped(self):
         if almost:
             compare = self.assertPandasAlmostEqual
@@ -201,5 +202,4 @@ def compare_both(f=None, almost=True):
         for result_pandas, result_spark in zip(f(self, self.pdf), f(self, self.df)):
             compare(result_pandas, result_spark.toPandas())
 
-    wrapped.__doc__ = f.__doc__
     return wrapped
