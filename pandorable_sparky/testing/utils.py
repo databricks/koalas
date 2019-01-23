@@ -146,14 +146,28 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
                "\n\nResult:\n%s\n%s" % (result, result.dtypes))
         self.assertTrue(expected.equals(result), msg=msg)
 
+    def assertPandasAlmostEqual(self, expected, result):
+        msg = ("DataFrames are not equal: " +
+               "\n\nExpected:\n%s\n%s" % (expected, expected.dtypes) +
+               "\n\nResult:\n%s\n%s" % (result, result.dtypes))
+        self.assertEqual(expected.shape, result.shape, msg=msg)
+        for ecol, rcol in zip(expected.columns, result.columns):
+            self.assertEqual(str(ecol), str(rcol), msg=msg)
+            for eval, rval in zip(expected[ecol], result[rcol]):
+                self.assertAlmostEqual(eval, rval, msg=msg)
+
 
 class TestUtils(object):
 
     @contextmanager
     def temp_dir(self):
         tmp = tempfile.mkdtemp()
-        shutil.rmtree(tmp)
         try:
             yield tmp
         finally:
             shutil.rmtree(tmp)
+
+    @contextmanager
+    def temp_file(self):
+        with self.temp_dir() as tmp:
+            yield tempfile.mktemp(dir=tmp)

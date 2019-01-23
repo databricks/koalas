@@ -20,7 +20,7 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
                 'bhello': np.random.choice(['hello', 'yo', 'people'], size=1000).astype("O")})
             data = data[['i32', 'i64', 'f', 'bhello']]
             self.spark.createDataFrame(data, 'i32 int, i64 long, f double, bhello string') \
-                .coalesce(1).write.parquet(tmp)
+                .coalesce(1).write.parquet(tmp, mode='overwrite')
 
             def check(columns, expected):
                 if LooseVersion("0.21.1") <= LooseVersion(pd.__version__):
