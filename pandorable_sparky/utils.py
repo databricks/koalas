@@ -121,7 +121,7 @@ def _inject(target_type, inject_type):
     # Inject all the methods from the hierarchy:
     setattr(target_type, "__getattr__", inject_type.__getattr__)
     setattr(target_type, "__getitem__", inject_type.__getitem__)
-    for attr in ["__iter__", "__len__", "__invert__", "__setitem__"]:
+    for attr in ["__iter__", "__len__", "__invert__", "__setitem__", "__dir__"]:
         if hasattr(inject_type, attr):
             setattr(target_type, attr, inject_type.__dict__[attr])
     for t in mro:

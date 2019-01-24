@@ -20,6 +20,9 @@ class _Frame(object):
     def max(self):
         return _reduce_spark(self, F.max)
 
+    def compute(self):
+        return self.toPandas()
+
 
 class PandasLikeSeries(_Frame):
     """
@@ -58,6 +61,23 @@ class PandasLikeSeries(_Frame):
     def shape(self):
         return len(self),
 
+    @property
+    def name(self):
+        return self._jc.toString()
+
+    @name.setter
+    def name(self, name):
+        col = _col(self.to_dataframe().select(self.alias(name)))
+        anchor_wrap(col, self)
+        self._jc = col._jc
+
+    def rename(self, name, inplace=False):
+        if inplace:
+            self.name = name
+            return self
+        else:
+            return _col(self.to_dataframe().select(self.alias(name)))
+
     def to_dataframe(self):
         if hasattr(self, "_spark_ref_dataframe"):
             return self._spark_ref_dataframe.select(self)
@@ -65,7 +85,10 @@ class PandasLikeSeries(_Frame):
         raise ValueError("No reference to a dataframe for column {}".format(n))
 
     def toPandas(self):
-        return self.to_dataframe().toPandas()
+        return _col(self.to_dataframe().toPandas())
+
+    def head(self, n=5):
+        return _col(self.to_dataframe().head(n))
 
     def unique(self):
         # Pandas wants a series/array-like object
@@ -81,7 +104,7 @@ class PandasLikeSeries(_Frame):
     # DANGER: will materialize.
     def __iter__(self):
         print("__iter__", self)
-        return _col(self.toPandas()).__iter__()
+        return self.toPandas().__iter__()
 
     def __len__(self):
         return len(self.to_dataframe())
@@ -103,9 +126,14 @@ class PandasLikeSeries(_Frame):
         return self._pandas_orig_repr()
 
     def __repr__(self):
-        df = self.to_dataframe().head(max_display_count).toPandas()
-        c = df[df.columns[0]]
-        return repr(c)
+        return repr(self.head(max_display_count).toPandas())
+
+    def __dir__(self):
+        if not isinstance(self.schema, StructType):
+            fields = []
+        else:
+            fields = [f for f in self.schema.fieldNames() if ' ' not in f]
+        return super(Column, self).__dir__() + fields
 
     def _pandas_orig_repr(self):
         # TODO: figure out how to reuse the original one.
@@ -246,6 +274,10 @@ class PandasLikeDataFrame(_Frame):
     def __len__(self):
         return self._spark_count()
 
+    def __dir__(self):
+        fields = [f for f in self.schema.fieldNames() if ' ' not in f]
+        return super(DataFrame, self).__dir__() + fields
+
     def _repr_html_(self):
         return self.head(max_display_count).toPandas()._repr_html_()
 
@@ -272,7 +304,10 @@ def _rename(frame, names):
     if isinstance(frame, Column):
         assert isinstance(frame.schema, StructType)
     old_names = frame.schema.fieldNames()
-    assert len(names) == len(old_names)
+    if len(old_names) != len(names):
+        raise ValueError(
+            "Length mismatch: Expected axis has %d elements, new values have %d elements"
+            % (len(old_names), len(names)))
     for (old_name, new_name) in zip(old_names, names):
         frame = frame.withColumnRenamed(old_name, new_name)
     return frame
@@ -321,6 +356,7 @@ def anchor_wrap(df, col):
             assert isinstance(df, DataFrame), type(df)
             ref = df
         col._spark_ref_dataframe = ref
+        col._pandas_schema = None
     return col
 
 
