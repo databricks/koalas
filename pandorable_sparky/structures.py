@@ -21,6 +21,7 @@ class _Frame(object):
         return _reduce_spark(self, F.max)
 
     def compute(self):
+        """Alias of `toPandas()` to mimic dask for easily porting tests."""
         return self.toPandas()
 
 
@@ -70,6 +71,7 @@ class PandasLikeSeries(_Frame):
         col = _col(self.to_dataframe().select(self.alias(name)))
         anchor_wrap(col, self)
         self._jc = col._jc
+        self._pandas_schema = None
 
     def rename(self, name, inplace=False):
         if inplace:
@@ -356,7 +358,6 @@ def anchor_wrap(df, col):
             assert isinstance(df, DataFrame), type(df)
             ref = df
         col._spark_ref_dataframe = ref
-        col._pandas_schema = None
     return col
 
 
