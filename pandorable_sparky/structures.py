@@ -1,10 +1,13 @@
+"""
+Base classes to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
+"""
 import pandas as pd
 import numpy as np
 import pyspark.sql.functions as F
 from pyspark.sql import DataFrame, Column
 from pyspark.sql.types import StructType
 
-from .selection import PandorableSparkyLocator
+from .selection import SparkDataFrameLocator
 from ._dask_stubs.utils import derived_from
 from ._dask_stubs.compatibility import string_types
 
@@ -136,7 +139,7 @@ class PandasLikeDataFrame(_Frame):
 
     @property
     def loc(self):
-        return PandorableSparkyLocator(self)
+        return SparkDataFrameLocator(self)
 
     def copy(self):
         return DataFrame(self._jdf, self.sql_ctx)

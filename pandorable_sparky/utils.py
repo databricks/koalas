@@ -1,3 +1,6 @@
+"""
+Utilities to monkey patch PySpark used in pandorable_sparky.
+"""
 import pyspark.sql.dataframe as df
 import pyspark.sql.column as col
 import pyspark.sql.functions as F

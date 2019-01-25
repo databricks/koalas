@@ -1,3 +1,6 @@
+"""
+A locator for PandasLikeDataFrame.
+"""
 from pyspark.sql import Column, DataFrame
 from pyspark.sql.functions import col
 from pyspark.sql.types import BooleanType
@@ -19,7 +22,7 @@ def _unfold(key):
     about_cols = """Can only select columns either by name or reference or all"""
 
     if (not isinstance(key, tuple)) or (len(key) != 2):
-        raise NotImplementedError("yet")
+        raise NotImplementedError("Only accepts pairs of candidates")
 
     rows, cols = key
     # make cols a 1-tuple of string if a single string
@@ -27,14 +30,16 @@ def _unfold(key):
         cols = (cols,)
     elif isinstance(cols, slice) and cols != slice(None):
         raise PandorableSparkyNotImplementedError(
-            description=about_cols, pandas_source="loc", spark_target="select, where, withColumn")
+            description=about_cols,
+            pandas_source="loc",
+            spark_target_function="select, where, withColumn")
     elif isinstance(cols, slice) and cols == slice(None):
         cols = ("*",)
 
     return rows, cols
 
 
-class PandorableSparkyLocator(object):
+class SparkDataFrameLocator(object):
 
     def __init__(self, df):
         self.df = df
@@ -49,7 +54,7 @@ class PandorableSparkyLocator(object):
             raise PandorableSparkyNotImplementedError(
                 description=about_rows,
                 pandas_source=".loc[..., ...]",
-                spark_target="select, where")
+                spark_target_function="select, where")
         elif isinstance(rows, slice) and rows == slice(None):
             df = self.df
         else:   # not isinstance(rows, slice):
@@ -61,13 +66,13 @@ class PandorableSparkyLocator(object):
                 raise PandorableSparkyNotImplementedError(
                     description=about_rows,
                     pandas_source=".loc[..., ...]",
-                    spark_target="select, where")
+                    spark_target_function="select, where")
         return df._spark_select([_make_col(c) for c in cols])
 
     def __setitem__(self, key, value):
 
         if (not isinstance(key, tuple)) or (len(key) != 2):
-            raise NotImplementedError("yet")
+            raise NotImplementedError("Only accepts pairs of candidates")
 
         rows, cols = key
 
@@ -76,7 +81,7 @@ class PandorableSparkyLocator(object):
                 description="""Can only assign value to the whole dataframe, the row index
                 has to be `slice(None)` or `:`""",
                 pandas_source=".loc[..., ...] = ...",
-                spark_target="withColumn, select")
+                spark_target_function="withColumn, select")
 
         if not isinstance(cols, str):
             raise ValueError("""only column names can be assigned""")
