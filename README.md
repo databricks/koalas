@@ -1,4 +1,4 @@
-![](https://api.travis-ci.com/databricks/spark-pandas.svg)
+[![Build Status](https://travis-ci.com/databricks/spark-pandas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/spark-pandas)
 
 # spark-pandas
 Spark is cute. Sparky is _pandorable_.
