@@ -40,6 +40,12 @@ def _unfold(key):
 
 
 class SparkDataFrameLocator(object):
+    """
+    A locator to slice a group of rows and columns by conditional and label(s).
+
+    Allowed inputs are a slice with all indices or conditional for rows, and string(s) or
+    :class:`Column`(s) for cols.
+    """
 
     def __init__(self, df):
         self.df = df
