@@ -16,7 +16,7 @@ def code_change_hint(pandas_function, spark_target_function):
         return "Checkout the spark user guide to find a relevant function"
 
 
-class PandorableSparkyNotImplementedError(NotImplementedError):
+class SparkPandasNotImplementedError(NotImplementedError):
 
     def __init__(self, pandas_function=None, spark_target_function=None, description=""):
         self.pandas_source = pandas_function
@@ -26,4 +26,4 @@ class PandorableSparkyNotImplementedError(NotImplementedError):
             description += " " + hint
         else:
             description = hint
-        super(PandorableSparkyNotImplementedError, self).__init__(description)
+        super(SparkPandasNotImplementedError, self).__init__(description)

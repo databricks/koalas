@@ -5,7 +5,7 @@ from pyspark.sql import Column, DataFrame
 from pyspark.sql.functions import col
 from pyspark.sql.types import BooleanType
 
-from .exceptions import PandorableSparkyNotImplementedError
+from .exceptions import SparkPandasNotImplementedError
 
 
 def _make_col(c):
@@ -14,7 +14,7 @@ def _make_col(c):
     elif isinstance(c, str):
         return col(c)
     else:
-        raise PandorableSparkyNotImplementedError(
+        raise SparkPandasNotImplementedError(
             description="Can only convert a string to a column type")
 
 
@@ -29,7 +29,7 @@ def _unfold(key):
     if isinstance(cols, (str, Column)):
         cols = (cols,)
     elif isinstance(cols, slice) and cols != slice(None):
-        raise PandorableSparkyNotImplementedError(
+        raise SparkPandasNotImplementedError(
             description=about_cols,
             pandas_source="loc",
             spark_target_function="select, where, withColumn")
@@ -57,7 +57,7 @@ class SparkDataFrameLocator(object):
         rows, cols = _unfold(key)
 
         if isinstance(rows, slice) and rows != slice(None):
-            raise PandorableSparkyNotImplementedError(
+            raise SparkPandasNotImplementedError(
                 description=about_rows,
                 pandas_source=".loc[..., ...]",
                 spark_target_function="select, where")
@@ -69,7 +69,7 @@ class SparkDataFrameLocator(object):
                                   BooleanType)
                 df = self.df._spark_where(rows)
             except Exception as e:
-                raise PandorableSparkyNotImplementedError(
+                raise SparkPandasNotImplementedError(
                     description=about_rows,
                     pandas_source=".loc[..., ...]",
                     spark_target_function="select, where")
@@ -83,7 +83,7 @@ class SparkDataFrameLocator(object):
         rows, cols = key
 
         if (not isinstance(rows, slice)) or (rows != slice(None)):
-            raise PandorableSparkyNotImplementedError(
+            raise SparkPandasNotImplementedError(
                 description="""Can only assign value to the whole dataframe, the row index
                 has to be `slice(None)` or `:`""",
                 pandas_source=".loc[..., ...] = ...",
