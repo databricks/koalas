@@ -4,8 +4,9 @@ import tempfile
 import unittest
 from contextlib import contextmanager
 
+import pandas as pd
 from pyspark import SparkConf, SparkContext
-from pyspark.sql import SparkSession
+from pyspark.sql import Column, DataFrame, SparkSession
 
 
 class PySparkTestCase(unittest.TestCase):
@@ -140,21 +141,64 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
         super(ReusedSQLTestCase, cls).tearDownClass()
         cls.spark.stop()
 
-    def assertPandasEqual(self, expected, result):
-        msg = ("DataFrames are not equal: " +
-               "\n\nExpected:\n%s\n%s" % (expected, expected.dtypes) +
-               "\n\nResult:\n%s\n%s" % (result, result.dtypes))
-        self.assertTrue(expected.equals(result), msg=msg)
+    def assertPandasEqual(self, left, right):
+        if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
+            msg = ("DataFrames are not equal: " +
+                   "\n\nLeft:\n%s\n%s" % (left, left.dtypes) +
+                   "\n\nRight:\n%s\n%s" % (right, right.dtypes))
+            self.assertTrue(left.equals(right), msg=msg)
+        elif isinstance(left, pd.Series) and isinstance(left, pd.Series):
+            msg = ("Series are not equal: " +
+                   "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
+                   "\n\nRight:\n%s\n%s" % (right, right.dtype))
+            self.assertTrue((left == right).all(), msg=msg)
+        elif isinstance(left, pd.Index) and isinstance(left, pd.Index):
+            msg = ("Indices are not equal: " +
+                   "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
+                   "\n\nRight:\n%s\n%s" % (right, right.dtype))
+            self.assertTrue((left == right).all(), msg=msg)
+        else:
+            raise ValueError("Unexpected values: (%s, %s)" % (left, right))
 
-    def assertPandasAlmostEqual(self, expected, result):
-        msg = ("DataFrames are not equal: " +
-               "\n\nExpected:\n%s\n%s" % (expected, expected.dtypes) +
-               "\n\nResult:\n%s\n%s" % (result, result.dtypes))
-        self.assertEqual(expected.shape, result.shape, msg=msg)
-        for ecol, rcol in zip(expected.columns, result.columns):
-            self.assertEqual(str(ecol), str(rcol), msg=msg)
-            for eval, rval in zip(expected[ecol], result[rcol]):
-                self.assertAlmostEqual(eval, rval, msg=msg)
+    def assertPandasAlmostEqual(self, left, right):
+        if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
+            msg = ("DataFrames are not almost equal: " +
+                   "\n\nLeft:\n%s\n%s" % (left, left.dtypes) +
+                   "\n\nRight:\n%s\n%s" % (right, right.dtypes))
+            self.assertEqual(left.shape, right.shape, msg=msg)
+            for lcol, rcol in zip(left.columns, right.columns):
+                self.assertEqual(str(lcol), str(rcol), msg=msg)
+                for lval, rval in zip(left[lcol], right[rcol]):
+                    self.assertAlmostEqual(lval, rval, msg=msg)
+        elif isinstance(left, pd.Series) and isinstance(left, pd.Series):
+            msg = ("Series are not almost equal: " +
+                   "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
+                   "\n\nRight:\n%s\n%s" % (right, right.dtype))
+            for lval, rval in zip(left, right):
+                self.assertAlmostEqual(lval, rval, msg=msg)
+        elif isinstance(left, pd.Index) and isinstance(left, pd.Index):
+            msg = ("Indices are not almost equal: " +
+                   "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
+                   "\n\nRight:\n%s\n%s" % (right, right.dtype))
+            for lval, rval in zip(left, right):
+                self.assertAlmostEqual(lval, rval, msg=msg)
+        else:
+            raise ValueError("Unexpected values: (%s, %s)" % (left, right))
+
+    def assert_eq(self, left, right):
+        lpdf = self._to_pandas(left)
+        rpdf = self._to_pandas(right)
+        if isinstance(lpdf, (pd.DataFrame, pd.Series, pd.Index)):
+            self.assertPandasEqual(lpdf, rpdf)
+        else:
+            self.assertEqual(lpdf, rpdf)
+
+    @staticmethod
+    def _to_pandas(df):
+        if isinstance(df, (DataFrame, Column)):
+            return df.toPandas()
+        else:
+            return df
 
 
 class TestUtils(object):
