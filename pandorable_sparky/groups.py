@@ -1,3 +1,11 @@
+"""
+A wrapper for GroupedData to behave similar to pandas.
+"""
+import sys
+
+if sys.version > '3':
+    basestring = unicode = str
+
 
 class PandasLikeGroupBy(object):
     """
@@ -31,6 +39,30 @@ class PandasLikeGroupBy(object):
             return self[key]
         except KeyError as e:
             raise AttributeError(e)
+
+    def aggregate(self, func_or_funcs, *args, **kwargs):
+        """Compute aggregates and returns the result as a :class:`DataFrame`.
+
+        The available aggregate functions can be built-in aggregation functions, such as `avg`,
+        `max`, `min`, `sum`, `count`.
+
+        :param func_or_funcs: a dict mapping from column name (string) to aggregate functions
+                              (string).
+        """
+        if not isinstance(func_or_funcs, dict) or \
+            not all(isinstance(key, basestring) and isinstance(value, basestring)
+                    for key, value in func_or_funcs.items()):
+            raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
+                             "functions (string).")
+        df = self._groupdata.agg(func_or_funcs)
+
+        reorder = ['%s(%s)' % (value, key) for key, value in iter(func_or_funcs.items())]
+        df = df._spark_select(reorder)
+        df.columns = [key for key in iter(func_or_funcs.keys())]
+
+        return df
+
+    agg = aggregate
 
     def count(self):
         return self._groupdata.count()

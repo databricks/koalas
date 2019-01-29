@@ -1,3 +1,4 @@
+import functools
 import shutil
 import sys
 import tempfile
@@ -215,3 +216,34 @@ class TestUtils(object):
     def temp_file(self):
         with self.temp_dir() as tmp:
             yield tempfile.mktemp(dir=tmp)
+
+
+class ComparisonTestBase(ReusedSQLTestCase):
+
+    @property
+    def df(self):
+        return self.spark.createDataFrame(self.pdf)
+
+    @property
+    def pdf(self):
+        return self.df.toPandas()
+
+
+def compare_both(f=None, almost=True):
+
+    if f is None:
+        return functools.partial(compare_both, almost=almost)
+    elif isinstance(f, bool):
+        return functools.partial(compare_both, almost=f)
+
+    @functools.wraps(f)
+    def wrapped(self):
+        if almost:
+            compare = self.assertPandasAlmostEqual
+        else:
+            compare = self.assertPandasEqual
+
+        for result_pandas, result_spark in zip(f(self, self.pdf), f(self, self.df)):
+            compare(result_pandas, result_spark.toPandas())
+
+    return wrapped

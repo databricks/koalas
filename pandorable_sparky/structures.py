@@ -1,9 +1,13 @@
+"""
+Base classes to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
+"""
 import pandas as pd
 import numpy as np
 import pyspark.sql.functions as F
 from pyspark.sql import DataFrame, Column
 from pyspark.sql.types import StructType
 
+from .selection import SparkDataFrameLocator
 from ._dask_stubs.utils import derived_from
 from ._dask_stubs.compatibility import string_types
 
@@ -163,6 +167,13 @@ class PandasLikeDataFrame(_Frame):
             df = df.withColumn(name, c)
         return df
 
+    @property
+    def loc(self):
+        return SparkDataFrameLocator(self)
+
+    def copy(self):
+        return DataFrame(self._jdf, self.sql_ctx)
+
     def head(self, n=5):
         l = self.take(n)
         df0 = self.sql_ctx.createDataFrame(l, schema=self.schema)
@@ -201,8 +212,11 @@ class PandasLikeDataFrame(_Frame):
         except (KeyError, ValueError, IndexError):
             return default
 
-    def groupby(self, *cols):
-        gp = self._spark_groupby(*cols)
+    def sort_values(self, by):
+        return self._spark_sort(by)
+
+    def groupby(self, by):
+        gp = self._spark_groupby(by)
         from .groups import PandasLikeGroupBy
         return PandasLikeGroupBy(self, gp, None)
 
