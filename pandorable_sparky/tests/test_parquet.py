@@ -25,7 +25,7 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
             def check(columns, expected):
                 if LooseVersion("0.21.1") <= LooseVersion(pd.__version__):
                     expected = pd.read_parquet(tmp, columns=columns)
-                actual = pyspark.read_parquet(tmp, columns=columns)
+                actual = self.spark.read_parquet(tmp, columns=columns)
                 self.assertPandasEqual(expected, actual.toPandas())
 
             check(None, data)
@@ -37,6 +37,11 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
             check(['a'], pd.DataFrame([]))
             check('i32', pd.DataFrame([]))
             check('float', data[['f']])
+
+            # check with pyspark patch.
+            expected = pd.read_parquet(tmp)
+            actual = pyspark.read_parquet(tmp)
+            self.assertPandasEqual(expected, actual.toPandas())
 
 
 if __name__ == "__main__":

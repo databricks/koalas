@@ -1,9 +1,7 @@
 """
 Utilities to monkey patch PySpark used in pandorable_sparky.
 """
-import pyspark.sql.dataframe as df
-import pyspark.sql.column as col
-import pyspark.sql.functions as F
+from pyspark.sql import session, dataframe as df, column as col, functions as F
 import pyspark
 from decorator import decorator
 import types
@@ -43,6 +41,8 @@ def patch_spark():
     # Wrap all the functions in the standard libraries
     _wrap_functions()
     # Inject a few useful functions.
+    session.SparkSession.read_csv = SparkSessionPatches.read_csv
+    session.SparkSession.read_parquet = SparkSessionPatches.read_parquet
     pyspark.read_csv = namespace.read_csv
     pyspark.read_parquet = namespace.read_parquet
     pyspark.to_datetime = namespace.to_datetime
