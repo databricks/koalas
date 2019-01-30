@@ -39,7 +39,10 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
             check('float', data[['f']])
 
             # check with pyspark patch.
-            expected = pd.read_parquet(tmp)
+            if LooseVersion("0.21.1") <= LooseVersion(pd.__version__):
+                expected = pd.read_parquet(tmp)
+            else:
+                expected = data
             actual = pyspark.read_parquet(tmp)
             self.assertPandasEqual(expected, actual.toPandas())
 
