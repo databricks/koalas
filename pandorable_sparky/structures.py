@@ -9,6 +9,7 @@ import pyspark.sql.functions as F
 from pyspark.sql import DataFrame, Column
 from pyspark.sql.types import StructType
 
+from . import namespace
 from .selection import SparkDataFrameLocator
 from ._dask_stubs.utils import derived_from
 from ._dask_stubs.compatibility import string_types
@@ -29,33 +30,6 @@ class SparkSessionPatches(object):
 
     def read_csv(self, path, header='infer', names=None, usecols=None,
                  mangle_dupe_cols=True, parse_dates=False, comment=None):
-        """Read CSV (comma-separated) file into DataFrame.
-
-        :param path: The path string storing the CSV file to be read.
-        :param header: Whether to to use as the column names, and the start of the data.
-                       Default behavior is to infer the column names: if no names are passed
-                       the behavior is identical to `header=0` and column names are inferred from
-                       the first line of the file, if column names are passed explicitly then
-                       the behavior is identical to `header=None`. Explicitly pass `header=0` to be
-                       able to replace existing names
-        :param names: List of column names to use. If file contains no header row, then you should
-                      explicitly pass `header=None`. Duplicates in this list will cause an error to
-                      be issued.
-        :param usecols: Return a subset of the columns. If list-like, all elements must either be
-                        positional (i.e. integer indices into the document columns) or strings that
-                        correspond to column names provided either by the user in names or inferred
-                        from the document header row(s).
-                        If callable, the callable function will be evaluated against the column
-                        names, returning names where the callable function evaluates to `True`.
-        :param mangle_dupe_cols: Duplicate columns will be specified as 'X0', 'X1', ... 'XN', rather
-                                 than 'X' ... 'X'. Passing in False will cause data to be
-                                 overwritten if there are duplicate names in the columns.
-                                 Currently only `True` is allowed.
-        :param parse_dates: boolean or list of ints or names or list of lists or dict, default
-                            `False`. Currently only `False` is allowed.
-        :param comment: Indicates the line should not be parsed.
-        :return: :class:`DataFrame`
-        """
         if mangle_dupe_cols is not True:
             raise ValueError("mangle_dupe_cols can only be `True`: %s" % mangle_dupe_cols)
         if parse_dates is not False:
@@ -120,13 +94,9 @@ class SparkSessionPatches(object):
             df = self.createDataFrame([], schema=StructType())
         return df
 
-    def read_parquet(self, path, columns=None):
-        """Load a parquet object from the file path, returning a DataFrame.
+    read_csv.__doc__ = namespace.read_csv.__doc__
 
-        :param path: File path
-        :param columns: If not None, only these columns will be read from the file.
-        :return: :class:`DataFrame`
-        """
+    def read_parquet(self, path, columns=None):
         if columns is not None:
             columns = list(columns)
         if columns is None or len(columns) > 0:
@@ -141,6 +111,8 @@ class SparkSessionPatches(object):
         else:
             df = self.createDataFrame([], schema=StructType())
         return df
+
+    read_parquet.__doc__ = namespace.read_parquet.__doc__
 
 
 class _Frame(object):
