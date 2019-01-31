@@ -3,6 +3,8 @@ A wrapper for GroupedData to behave similar to pandas.
 """
 import sys
 
+from pyspark.sql.types import StructType
+
 if sys.version > '3':
     basestring = unicode = str
 
