@@ -3,8 +3,8 @@ from distutils.version import LooseVersion
 import unittest
 
 import pandas as pd
-import pandorable_sparky
 import pyspark
+import pandorable_sparky
 
 from pandorable_sparky.testing.utils import ReusedSQLTestCase, TestUtils
 
@@ -59,7 +59,7 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
 
             def check(header='infer', names=None, usecols=None):
                 expected = pd.read_csv(fn, header=header, names=names, usecols=usecols)
-                actual = pyspark.read_csv(fn, header=header, names=names, usecols=usecols)
+                actual = self.spark.read_csv(fn, header=header, names=names, usecols=usecols)
                 self.assertPandasAlmostEqual(expected, actual.toPandas())
 
             check()
@@ -80,39 +80,44 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
                 check(usecols=lambda x: x == 'a')
             check(names=['n', 'a'], usecols=['a'])
 
+            # check with pyspark patch.
+            expected = pd.read_csv(fn)
+            actual = pyspark.read_csv(fn)
+            self.assertPandasAlmostEqual(expected, actual.toPandas())
+
             self.assertRaisesRegex(ValueError, 'non-unique',
-                                   lambda: pyspark.read_csv(fn, names=['n', 'n']))
+                                   lambda: self.spark.read_csv(fn, names=['n', 'n']))
             self.assertRaisesRegex(ValueError, 'Names do not match.*3',
-                                   lambda: pyspark.read_csv(fn, names=['n', 'a', 'b']))
+                                   lambda: self.spark.read_csv(fn, names=['n', 'a', 'b']))
             self.assertRaisesRegex(ValueError, 'Names do not match.*3',
-                                   lambda: pyspark.read_csv(fn, header=0, names=['n', 'a', 'b']))
+                                   lambda: self.spark.read_csv(fn, header=0, names=['n', 'a', 'b']))
             self.assertRaisesRegex(ValueError, 'Usecols do not match.*3',
-                                   lambda: pyspark.read_csv(fn, usecols=[1, 3]))
+                                   lambda: self.spark.read_csv(fn, usecols=[1, 3]))
             self.assertRaisesRegex(ValueError, 'Usecols do not match.*col',
-                                   lambda: pyspark.read_csv(fn, usecols=['amount', 'col']))
+                                   lambda: self.spark.read_csv(fn, usecols=['amount', 'col']))
 
     def test_read_csv_with_comment(self):
         with self.csv_file(self.csv_text_with_comments) as fn:
             expected = pd.read_csv(fn, comment='#')
-            actual = pyspark.read_csv(fn, comment='#')
+            actual = self.spark.read_csv(fn, comment='#')
             self.assertPandasAlmostEqual(expected, actual.toPandas())
 
             self.assertRaisesRegex(ValueError, 'Only length-1 comment characters supported',
-                                   lambda: pyspark.read_csv(fn, comment='').show())
+                                   lambda: self.spark.read_csv(fn, comment='').show())
             self.assertRaisesRegex(ValueError, 'Only length-1 comment characters supported',
-                                   lambda: pyspark.read_csv(fn, comment='##').show())
+                                   lambda: self.spark.read_csv(fn, comment='##').show())
             self.assertRaisesRegex(ValueError, 'Only length-1 comment characters supported',
-                                   lambda: pyspark.read_csv(fn, comment=1))
+                                   lambda: self.spark.read_csv(fn, comment=1))
             self.assertRaisesRegex(ValueError, 'Only length-1 comment characters supported',
-                                   lambda: pyspark.read_csv(fn, comment=[1]))
+                                   lambda: self.spark.read_csv(fn, comment=[1]))
 
     def test_read_csv_with_mangle_dupe_cols(self):
         self.assertRaisesRegex(ValueError, 'mangle_dupe_cols',
-                               lambda: pyspark.read_csv('path', mangle_dupe_cols=False))
+                               lambda: self.spark.read_csv('path', mangle_dupe_cols=False))
 
     def test_read_csv_with_parse_dates(self):
         self.assertRaisesRegex(ValueError, 'parse_dates',
-                               lambda: pyspark.read_csv('path', parse_dates=True))
+                               lambda: self.spark.read_csv('path', parse_dates=True))
 
 
 if __name__ == "__main__":

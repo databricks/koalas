@@ -1,19 +1,118 @@
 """
 Base classes to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
+import sys
+
 import pandas as pd
 import numpy as np
 import pyspark.sql.functions as F
 from pyspark.sql import DataFrame, Column
 from pyspark.sql.types import StructType
 
+from . import namespace
 from .selection import SparkDataFrameLocator
 from ._dask_stubs.utils import derived_from
 from ._dask_stubs.compatibility import string_types
 
-__all__ = ['PandasLikeSeries', 'PandasLikeDataFrame', 'anchor_wrap']
+if sys.version > '3':
+    basestring = unicode = str
+
+
+__all__ = ['PandasLikeSeries', 'PandasLikeDataFrame', 'SparkSessionPatches', 'anchor_wrap']
 
 max_display_count = 1000
+
+
+class SparkSessionPatches(object):
+    """
+    Methods for :class:`SparkSession`.
+    """
+
+    def read_csv(self, path, header='infer', names=None, usecols=None,
+                 mangle_dupe_cols=True, parse_dates=False, comment=None):
+        if mangle_dupe_cols is not True:
+            raise ValueError("mangle_dupe_cols can only be `True`: %s" % mangle_dupe_cols)
+        if parse_dates is not False:
+            raise ValueError("parse_dates can only be `False`: %s" % parse_dates)
+
+        if usecols is not None and not callable(usecols):
+            usecols = list(usecols)
+        if usecols is None or callable(usecols) or len(usecols) > 0:
+            reader = self.read.option("inferSchema", "true")
+
+            if header == 'infer':
+                header = 0 if names is None else None
+            if header == 0:
+                reader.option("header", True)
+            elif header is None:
+                reader.option("header", False)
+            else:
+                raise ValueError("Unknown header argument {}".format(header))
+
+            if comment is not None:
+                if not isinstance(comment, basestring) or len(comment) != 1:
+                    raise ValueError("Only length-1 comment characters supported")
+                reader.option("comment", comment)
+
+            df = reader.csv(path)
+
+            if header is None:
+                df = df.selectExpr(*["`%s` as `%s`" % (field.name, i)
+                                     for i, field in enumerate(df.schema)])
+            if names is not None:
+                names = list(names)
+                if len(set(names)) != len(names):
+                    raise ValueError('Found non-unique column index')
+                if len(names) != len(df.schema):
+                    raise ValueError('Names do not match the number of columns: %d' % len(names))
+                df = df.selectExpr(*["`%s` as `%s`" % (field.name, name)
+                                     for field, name in zip(df.schema, names)])
+
+            if usecols is not None:
+                if callable(usecols):
+                    cols = [field.name for field in df.schema if usecols(field.name)]
+                    missing = []
+                elif all(isinstance(col, int) for col in usecols):
+                    cols = [field.name for i, field in enumerate(df.schema) if i in usecols]
+                    missing = [col for col in usecols
+                               if col >= len(df.schema) or df.schema[col].name not in cols]
+                elif all(isinstance(col, basestring) for col in usecols):
+                    cols = [field.name for field in df.schema if field.name in usecols]
+                    missing = [col for col in usecols if col not in cols]
+                else:
+                    raise ValueError("'usecols' must either be list-like of all strings, "
+                                     "all unicode, all integers or a callable.")
+                if len(missing) > 0:
+                    raise ValueError('Usecols do not match columns, columns expected but not '
+                                     'found: %s' % missing)
+
+                if len(cols) > 0:
+                    df = df.select(cols)
+                else:
+                    df = self.createDataFrame([], schema=StructType())
+        else:
+            df = self.createDataFrame([], schema=StructType())
+        return df
+
+    read_csv.__doc__ = namespace.read_csv.__doc__
+
+    def read_parquet(self, path, columns=None):
+        if columns is not None:
+            columns = list(columns)
+        if columns is None or len(columns) > 0:
+            df = self.read.parquet(path)
+            if columns is not None:
+                fields = [field.name for field in df.schema]
+                cols = [col for col in columns if col in fields]
+                if len(cols) > 0:
+                    df = df.select(cols)
+                else:
+                    df = self.createDataFrame([], schema=StructType())
+        else:
+            df = self.createDataFrame([], schema=StructType())
+        return df
+
+    read_parquet.__doc__ = namespace.read_parquet.__doc__
 
 
 class _Frame(object):
