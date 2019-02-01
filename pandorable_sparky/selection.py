@@ -73,7 +73,10 @@ class SparkDataFrameLocator(object):
                     description=about_rows,
                     pandas_source=".loc[..., ...]",
                     spark_target_function="select, where")
-        return df._spark_select([_make_col(c) for c in cols])
+        columns = [_make_col(c) for c in cols]
+        df = df._spark_select(self.df._metadata._index_columns + columns)
+        df._metadata = self.df._metadata.copy(columns=[col.name for col in columns])
+        return df
 
     def __setitem__(self, key, value):
 
@@ -93,13 +96,10 @@ class SparkDataFrameLocator(object):
             raise ValueError("""only column names can be assigned""")
 
         if isinstance(value, Column):
-            df = self.df._spark_withColumn(cols, value)
+            self.df[cols] = value
         elif isinstance(value, DataFrame) and len(value.columns) == 1:
-            df = self.df._spark_withColumn(cols, col(value.columns[0]))
+            self.df[cols] = col(value.columns[0])
         elif isinstance(value, DataFrame) and len(value.columns) != 1:
             raise ValueError("Only a dataframe with one column can be assigned")
         else:
             raise ValueError("Only a column or dataframe with single column can be assigned")
-
-        from .structures import _reassign_jdf
-        _reassign_jdf(self.df, df)

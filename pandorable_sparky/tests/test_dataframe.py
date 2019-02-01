@@ -12,24 +12,22 @@ from pandorable_sparky.testing.utils import ReusedSQLTestCase, TestUtils
 class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
     @property
-    def df(self):
-        return self.spark.createDataFrame(zip(
-            [1, 2, 3, 4, 5, 6, 7, 8, 9],
-            [4, 5, 6, 3, 2, 1, 0, 0, 0]
-        ), schema='a int, b int')
+    def full(self):
+        return pd.DataFrame({
+            'a': [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            'b': [4, 5, 6, 3, 2, 1, 0, 0, 0],
+        }, index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
 
     @property
-    def full(self):
-        pdf = self.df.toPandas()
-        # TODO: pdf.index = [0, 1, 3, 5, 6, 8, 9, 9, 9]
-        return pdf
+    def df(self):
+        return self.spark.from_pandas(self.full)
 
     def test_Dataframe(self):
         d = self.df
         full = self.full
 
         expected = pd.Series([2, 3, 4, 5, 6, 7, 8, 9, 10],
-                             # TODO: index=[0, 1, 3, 5, 6, 8, 9, 9, 9],
+                             index=[0, 1, 3, 5, 6, 8, 9, 9, 9],
                              name='(a + 1)')  # TODO: name='a'
 
         self.assert_eq(d['a'] + 1, expected)
@@ -42,8 +40,6 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         # TODO: assert d.b.mean().compute() == full.b.mean()
         # TODO: assert np.allclose(d.b.var().compute(), full.b.var())
         # TODO: assert np.allclose(d.b.std().compute(), full.b.std())
-
-        # TODO: assert d.index._name == d.index._name  # this is deterministic
 
         assert repr(d)
 
@@ -83,7 +79,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
                      pd.DataFrame(np.random.randn(10, 5),
                                   index=pd.date_range('2011-01-01', freq='D',
                                                       periods=10))]:
-            ddf = self.spark.createDataFrame(case)
+            ddf = self.spark.from_pandas(case)
             self.assert_eq(ddf.index, case.index)
 
     def test_attributes(self):
@@ -93,9 +89,9 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assertNotIn('foo', dir(d))
         self.assertRaises(AttributeError, lambda: d.foo)
 
-        df = self.spark.createDataFrame(pd.DataFrame({'a b c': [1, 2, 3]}))
+        df = self.spark.from_pandas(pd.DataFrame({'a b c': [1, 2, 3]}))
         self.assertNotIn('a b c', dir(df))
-        df = self.spark.createDataFrame(pd.DataFrame({'a': [1, 2], 5: [1, 2]}))
+        df = self.spark.from_pandas(pd.DataFrame({'a': [1, 2], 5: [1, 2]}))
         self.assertIn('a', dir(df))
         self.assertNotIn(5, dir(df))
 
@@ -116,13 +112,13 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
         idx = pd.Index([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], name='x')
         df = pd.DataFrame(np.random.randn(10, 5), idx)
-        ddf = self.spark.createDataFrame(df)
+        ddf = self.spark.from_pandas(df)
         self.assertEqual(ddf.index.name, 'x')
 
     def test_rename_columns(self):
         df = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7],
                            'b': [7, 6, 5, 4, 3, 2, 1]})
-        ddf = self.spark.createDataFrame(df)
+        ddf = self.spark.from_pandas(df)
 
         ddf.columns = ['x', 'y']
         df.columns = ['x', 'y']
@@ -135,7 +131,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
         # Multi-index columns
         df = pd.DataFrame({('A', '0'): [1, 2, 2, 3], ('B', 1): [1, 2, 3, 4]})
-        ddf = self.spark.createDataFrame(df)
+        ddf = self.spark.from_pandas(df)
 
         df.columns = ['x', 'y']
         ddf.columns = ['x', 'y']
@@ -144,7 +140,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
     def test_rename_series(self):
         s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-        ds = self.spark.createDataFrame(pd.DataFrame(s)).x
+        ds = self.spark.from_pandas(pd.DataFrame(s)).x
 
         s.name = 'renamed'
         ds.name = 'renamed'
@@ -162,7 +158,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
     def test_rename_series_method(self):
         # Series name
         s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-        ds = self.spark.createDataFrame(pd.DataFrame(s)).x
+        ds = self.spark.from_pandas(pd.DataFrame(s)).x
 
         self.assert_eq(ds.rename('y'), s.rename('y'))
         self.assertEqual(ds.name, 'x')  # no mutation
@@ -175,7 +171,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
         # Series index
         s = pd.Series(['a', 'b', 'c', 'd', 'e', 'f', 'g'], name='x')
-        ds = self.spark.createDataFrame(pd.DataFrame(s)).x
+        ds = self.spark.from_pandas(pd.DataFrame(s)).x
 
         # TODOD: index
         # res = ds.rename(lambda x: x ** 2)

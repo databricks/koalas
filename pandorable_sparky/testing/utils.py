@@ -222,7 +222,7 @@ class ComparisonTestBase(ReusedSQLTestCase):
 
     @property
     def df(self):
-        return self.spark.createDataFrame(self.pdf)
+        return self.spark.from_pandas(self.pdf)
 
     @property
     def pdf(self):
