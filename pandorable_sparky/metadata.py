@@ -39,14 +39,15 @@ class Metadata(object):
 
     @property
     def all_columns(self):
-        return self._index_columns + self._columns
+        index_columns = self._index_columns
+        return index_columns + [column for column in self._columns if column not in index_columns]
 
     def copy(self, columns=None, index_info=None):
         if columns is None:
             columns = self._columns
         if index_info is None:
             index_info = self._index_info
-        return Metadata(columns=columns, index_info=index_info)
+        return Metadata(columns=columns.copy(), index_info=index_info.copy())
 
     @staticmethod
     def from_pandas(pdf):

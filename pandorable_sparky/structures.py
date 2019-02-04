@@ -284,11 +284,133 @@ class PandasLikeDataFrame(_Frame):
     def _metadata(self, metadata):
         self._pandas_metadata = metadata
 
+    def set_index(self, keys, drop=True, append=False, inplace=False):
+        """Set the DataFrame index (row labels) using one or more existing columns. By default
+        yields a new object.
+
+        :param keys: column label or list of column labels / arrays
+        :param drop: boolean, default True
+                     Delete columns to be used as the new index
+        :param append: boolean, default False
+                       Whether to append columns to existing index
+        :param inplace: boolean, default False
+                        Modify the DataFrame in place (do not create a new object)
+        :return: :class:`DataFrame`
+        """
+        if isinstance(keys, basestring):
+            keys = [keys]
+        else:
+            keys = list(keys)
+        for key in keys:
+            if key not in self.columns:
+                raise KeyError(key)
+
+        if drop:
+            columns = [column for column in self._metadata.columns if column not in keys]
+        else:
+            columns = self._metadata.columns
+        if append:
+            index_info = self._metadata.index_info + [(column, column) for column in keys]
+        else:
+            index_info = [(column, column) for column in keys]
+
+        metadata = self._metadata.copy(columns=columns, index_info=index_info)
+        if inplace:
+            self._metadata = metadata
+        else:
+            df = self.copy()
+            df._metadata = metadata
+            return df
+
+    def reset_index(self, level=None, drop=False, inplace=False):
+        """For DataFrame with multi-level index, return new DataFrame with labeling information in
+        the columns under the index names, defaulting to 'level_0', 'level_1', etc. if any are None.
+        For a standard index, the index name will be used (if set), otherwise a default 'index' or
+        'level_0' (if 'index' is already taken) will be used.
+
+        :param level: int, str, tuple, or list, default None
+                      Only remove the given levels from the index. Removes all levels by default
+        :param drop: boolean, default False
+                     Do not try to insert index into dataframe columns. This resets the index to the
+                     default integer index.
+        :param inplace: boolean, default False
+                        Modify the DataFrame in place (do not create a new object)
+        :return: :class:`DataFrame`
+        """
+        if len(self._metadata.index_info) == 0:
+            raise NotImplementedError('Can\'t reset index because there is no index.')
+
+        multiIndex = len(self._metadata.index_info) > 1
+        if multiIndex:
+            rename = lambda i: 'level_{}'.format(i)
+        else:
+            rename = lambda i: \
+                'index' if 'index' not in self._metadata.columns else 'level_{}'.fomat(i)
+
+        if level is None:
+            index_columns = [(column, name if name is not None else rename(i))
+                             for i, (column, name) in enumerate(self._metadata.index_info)]
+            index_info = []
+        else:
+            if isinstance(level, (int, basestring)):
+                level = [level]
+            level = list(level)
+
+            if all(isinstance(l, int) for l in level):
+                for l in level:
+                    if l >= len(self._metadata.index_info):
+                        raise IndexError('Too many levels: Index has only {} level, not {}'
+                                         .format(len(self._metadata.index_info), l + 1))
+                idx = level
+            elif all(isinstance(l, basestring) for l in level):
+                idx = []
+                for l in level:
+                    try:
+                        i = self._metadata._index_columns.index(l)
+                        idx.append(i)
+                    except ValueError:
+                        if multiIndex:
+                            raise KeyError('Level unknown not found')
+                        else:
+                            raise KeyError('Level unknown must be same as name ({})'
+                                           .format(self._metadata._index_columns[0]))
+            else:
+                raise ValueError('Level should be all int or all string.')
+            idx.sort()
+
+            index_columns = []
+            index_info = self._metadata.index_info.copy()
+            for i in idx:
+                info = self._metadata.index_info[i]
+                index_columns.append((info[0], info[1] if info[1] is not None else rename(info[1])))
+                index_info.remove(info)
+
+        if drop:
+            index_columns = []
+
+        metadata = self._metadata.copy(
+            columns=[column for column, _ in index_columns] + self._metadata.columns,
+            index_info=index_info)
+        columns = [name for _, name in index_columns] + self._metadata.columns
+        if inplace:
+            self._metadata = metadata
+            self.columns = columns
+        else:
+            df = self.copy()
+            df._metadata = metadata
+            df.columns = columns
+            return df
+
     @derived_from(DataFrame)
     def toPandas(self):
-        pdf = self._spark_toPandas()
-        if len(self._metadata.index_info):
-            pdf = pdf.set_index(self._metadata._index_columns)
+        pdf = self._spark_select(self._metadata.all_columns)._spark_toPandas()
+        if len(self._metadata.index_info) > 0:
+            append = False
+            for index_column in self._metadata._index_columns:
+                drop = index_column not in self._metadata.columns
+                pdf = pdf.set_index(index_column, drop=drop, append=append)
+                append = True
+            pdf = pdf[self._metadata.columns]
         index_names = self._metadata._index_names
         if len(index_names) > 0:
             if isinstance(pdf.index, pd.MultiIndex):
