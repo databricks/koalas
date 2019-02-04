@@ -203,6 +203,28 @@ class PandasLikeSeries(_Frame):
             self._pandas_metadata = ref._metadata.copy(columns=[self.name])
         return self._pandas_metadata
 
+    @derived_from(pd.Series)
+    def reset_index(self, level=None, drop=False, name=None, inplace=False):
+        if inplace and not drop:
+            raise TypeError('Cannot reset_index inplace on a Series to create a DataFrame')
+
+        if name is not None:
+            df = self.rename(name).to_dataframe()
+        else:
+            df = self.to_dataframe()
+        df = df.reset_index(level=level, drop=drop)
+        if drop:
+            col = _col(df)
+            if inplace:
+                anchor_wrap(col, self)
+                self._jc = col._jc
+                self._pandas_schema = None
+                self._pandas_metadata = None
+            else:
+                return col
+        else:
+            return df
+
     def to_dataframe(self):
         ref = self._pandas_anchor
         df = ref._spark_select(self._metadata._index_columns + [self])

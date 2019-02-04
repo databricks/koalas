@@ -61,6 +61,21 @@ class BasicIndexingTest(ComparisonTestBase):
         df3.reset_index(inplace=True)
         yield df3
 
+        yield df1.sale.reset_index()
+        yield df1.sale.reset_index(level=0)
+        yield df2.sale.reset_index(level=[1, 0])
+        yield df1.sale.reset_index(drop=True)
+        yield df1.sale.reset_index(name='s')
+        yield df1.sale.reset_index(name='s', drop=True)
+
+        s = df1.sale
+        self.assertRaisesRegex(TypeError,
+                               'Cannot reset_index inplace on a Series to create a DataFrame',
+                               lambda: s.reset_index(inplace=True))
+        s.reset_index(drop=True, inplace=True)
+        yield s
+        yield df1
+
     def test_limitations(self):
         df = self.df.set_index('month')
 
