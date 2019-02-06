@@ -100,10 +100,13 @@ class SparkDataFrameLocator(object):
 
                 index_column = self.df._index_columns[0]
                 cond = []
+                from pyspark.sql.functions import _spark_lit
                 if start is not None:
-                    cond.append(index_column >= start)
+                    cond.append(index_column >=
+                                _spark_lit(start)._spark_cast(index_column.schema[0].dataType))
                 if stop is not None:
-                    cond.append(index_column <= stop)
+                    cond.append(index_column <=
+                                _spark_lit(stop)._spark_cast(index_column.schema[0].dataType))
 
                 if len(cond) > 0:
                     df = df._spark_where(reduce(lambda x, y: x & y, cond))
