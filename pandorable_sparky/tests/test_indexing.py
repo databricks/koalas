@@ -96,7 +96,7 @@ class IndexingTest(ReusedSQLTestCase):
         return pd.DataFrame({
             'a': [1, 2, 3, 4, 5, 6, 7, 8, 9],
             'b': [4, 5, 6, 3, 2, 1, 0, 0, 0]
-        }, index=[-1, 1, 3, 5, 6, 8, 9, 9, 9])
+        }, index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
 
     @property
     def df(self):
@@ -110,7 +110,7 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(d.loc[3:8], full.loc[3:8])
         self.assert_eq(d.loc[:8], full.loc[:8])
         self.assert_eq(d.loc[3:], full.loc[3:])
-        # TODO?: self.assert_eq(d.loc[[5]], full.loc[[5]])
+        self.assert_eq(d.loc[[5]], full.loc[[5]])
 
         # TODO?: self.assert_eq(d.loc[[3, 4, 1, 8]], full.loc[[3, 4, 1, 8]])
         # TODO?: self.assert_eq(d.loc[[3, 4, 1, 9]], full.loc[[3, 4, 1, 9]])
@@ -120,14 +120,14 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(d.a.loc[3:8], full.a.loc[3:8])
         self.assert_eq(d.a.loc[:8], full.a.loc[:8])
         self.assert_eq(d.a.loc[3:], full.a.loc[3:])
-        # TODO?: self.assert_eq(d.a.loc[[5]], full.a.loc[[5]])
+        self.assert_eq(d.a.loc[[5]], full.a.loc[[5]])
 
         # TODO?: self.assert_eq(d.a.loc[[3, 4, 1, 8]], full.a.loc[[3, 4, 1, 8]])
         # TODO?: self.assert_eq(d.a.loc[[3, 4, 1, 9]], full.a.loc[[3, 4, 1, 9]])
         # TODO?: self.assert_eq(d.a.loc[np.array([3, 4, 1, 9])], full.a.loc[np.array([3, 4, 1, 9])])
 
-        # TODO?: self.assert_eq(d.a.loc[[]], full.a.loc[[]])
-        # TODO?: self.assert_eq(d.a.loc[np.array([])], full.a.loc[np.array([])])
+        self.assert_eq(d.a.loc[[]], full.a.loc[[]])
+        self.assert_eq(d.a.loc[np.array([])], full.a.loc[np.array([])])
 
         self.assert_eq(d.loc[1000:], full.loc[1000:])
         self.assert_eq(d.loc[-2000:-1000], full.loc[-2000:-1000])

@@ -92,16 +92,11 @@ class SparkDataFrameLocator(object):
         elif isinstance(rows, basestring):
             raiseNotImplemented()
         elif isinstance(rows, slice):
+            if rows.step is not None:
+                raiseNotImplemented()
             if len(self.df._index_columns) == 1:
                 start = rows.start
                 stop = rows.stop
-                step = rows.step
-                if step is None:
-                    step = 1
-                elif step == 0:
-                    raise ValueError('slice step cannot be zero')
-                elif step < 0:
-                    start, stop, step = stop, start, -step
 
                 index_column = self.df._index_columns[0]
                 cond = []
@@ -109,8 +104,6 @@ class SparkDataFrameLocator(object):
                     cond.append(index_column >= start)
                 if stop is not None:
                     cond.append(index_column <= stop)
-                if step != 1:
-                    cond.append((index_column - start) % step == 0)
 
                 if len(cond) > 0:
                     df = df._spark_where(reduce(lambda x, y: x & y, cond))
@@ -119,9 +112,15 @@ class SparkDataFrameLocator(object):
         else:
             try:
                 rows = list(rows)
+                if len(rows) == 0:
+                    from pyspark.sql.functions import _spark_lit
+                    df = df._spark_where(_spark_lit(False))
                 if len(self.df._index_columns) == 1:
                     index_column = self.df._index_columns[0]
-                    df = df._spark_where(index_column.isin(rows))
+                    if len(rows) == 1:
+                        df = df._spark_where(index_column == rows[0])
+                    else:
+                        df = df._spark_where(index_column.isin(rows))
                 else:
                     raiseNotImplemented()
             except Exception:
