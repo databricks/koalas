@@ -10,6 +10,9 @@ if sys.version > '3':
 
 
 class Metadata(object):
+    """
+    Manages column names and index information
+    """
 
     def __init__(self, columns, index_info=[]):
         assert all(isinstance(col, basestring) for col in columns)

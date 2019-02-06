@@ -148,12 +148,12 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
                    "\n\nLeft:\n%s\n%s" % (left, left.dtypes) +
                    "\n\nRight:\n%s\n%s" % (right, right.dtypes))
             self.assertTrue(left.equals(right), msg=msg)
-        elif isinstance(left, pd.Series) and isinstance(left, pd.Series):
+        elif isinstance(left, pd.Series) and isinstance(right, pd.Series):
             msg = ("Series are not equal: " +
                    "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
                    "\n\nRight:\n%s\n%s" % (right, right.dtype))
             self.assertTrue((left == right).all(), msg=msg)
-        elif isinstance(left, pd.Index) and isinstance(left, pd.Index):
+        elif isinstance(left, pd.Index) and isinstance(right, pd.Index):
             msg = ("Indices are not equal: " +
                    "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
                    "\n\nRight:\n%s\n%s" % (right, right.dtype))

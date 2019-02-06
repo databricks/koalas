@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 import pyspark.sql.functions as F
 from pyspark.sql import DataFrame, Column
-from pyspark.sql.types import StructType
+from pyspark.sql.types import StructType, to_arrow_type
 
 from . import namespace
 from .metadata import Metadata
@@ -225,6 +225,10 @@ class PandasLikeSeries(_Frame):
         else:
             return df
 
+    @property
+    def loc(self):
+        return SparkDataFrameLocator(self)
+
     def to_dataframe(self):
         ref = self._pandas_anchor
         df = ref._spark_select(self._metadata._index_columns + [self])
@@ -305,6 +309,11 @@ class PandasLikeDataFrame(_Frame):
     @_metadata.setter
     def _metadata(self, metadata):
         self._pandas_metadata = metadata
+
+    @property
+    def _index_columns(self):
+        return [anchor_wrap(self, self._spark_getitem(column))
+                for column in self._metadata._index_columns]
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns. By default
@@ -425,7 +434,12 @@ class PandasLikeDataFrame(_Frame):
 
     @derived_from(DataFrame)
     def toPandas(self):
-        pdf = self._spark_select(self._metadata.all_columns)._spark_toPandas()
+        df = self._spark_select(self._metadata.all_columns)
+        pdf = df._spark_toPandas()
+        if len(pdf) == 0 and len(df.schema) > 0:
+            # TODO: push to OSS
+            pdf = pdf.astype({field.name: to_arrow_type(field.dataType).to_pandas_dtype()
+                              for field in df.schema})
         if len(self._metadata.index_info) > 0:
             append = False
             for index_column in self._metadata._index_columns:

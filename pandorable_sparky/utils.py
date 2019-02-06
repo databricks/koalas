@@ -103,6 +103,7 @@ def _wrap_functions():
         if isinstance(oldfun, types.FunctionType):
             fun = wrap_column_function(oldfun)
             setattr(F, fname, fun)
+            setattr(F, '_spark_' + fname, oldfun)
     setattr(F, _TOUCHED_TEST, "")
 
 

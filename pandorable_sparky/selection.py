@@ -1,40 +1,57 @@
 """
 A locator for PandasLikeDataFrame.
 """
+import sys
+from functools import reduce
+
 from pyspark.sql import Column, DataFrame
-from pyspark.sql.functions import col
 from pyspark.sql.types import BooleanType
 
-from .exceptions import SparkPandasNotImplementedError
+from .exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
+
+if sys.version > '3':
+    basestring = unicode = str
 
 
 def _make_col(c):
     if isinstance(c, Column):
         return c
     elif isinstance(c, str):
-        return col(c)
+        from pyspark.sql.functions import _spark_col
+        return _spark_col(c)
     else:
         raise SparkPandasNotImplementedError(
             description="Can only convert a string to a column type")
 
 
-def _unfold(key):
+def _unfold(key, col):
     about_cols = """Can only select columns either by name or reference or all"""
 
-    if (not isinstance(key, tuple)) or (len(key) != 2):
-        raise NotImplementedError("Only accepts pairs of candidates")
+    if col is not None:
+        if isinstance(key, tuple):
+            if len(key) > 1:
+                raise SparkPandasIndexingError('Too many indexers')
+            key = key[0]
+        rows = key
+        cols = col
+    elif isinstance(key, tuple):
+        if len(key) != 2:
+            raise SparkPandasIndexingError("Only accepts pairs of candidates")
+        rows, cols = key
 
-    rows, cols = key
-    # make cols a 1-tuple of string if a single string
-    if isinstance(cols, (str, Column)):
-        cols = (cols,)
-    elif isinstance(cols, slice) and cols != slice(None):
-        raise SparkPandasNotImplementedError(
-            description=about_cols,
-            pandas_source="loc",
-            spark_target_function="select, where, withColumn")
-    elif isinstance(cols, slice) and cols == slice(None):
-        cols = ("*",)
+        # make cols a 1-tuple of string if a single string
+        if isinstance(cols, (str, Column)):
+            cols = _make_col(cols)
+        elif isinstance(cols, slice) and cols != slice(None):
+            raise SparkPandasNotImplementedError(
+                description=about_cols,
+                pandas_function="loc",
+                spark_target_function="select, where, withColumn")
+        elif isinstance(cols, slice) and cols == slice(None):
+            cols = None
+    else:
+        rows = key
+        cols = None
 
     return rows, cols
 
@@ -47,36 +64,81 @@ class SparkDataFrameLocator(object):
     :class:`Column`(s) for cols.
     """
 
-    def __init__(self, df):
-        self.df = df
+    def __init__(self, df_or_col):
+        assert isinstance(df_or_col, (DataFrame, Column)), \
+            'unexpected argument: {}'.format(df_or_col)
+        if isinstance(df_or_col, DataFrame):
+            self.df = df_or_col
+            self.col = None
+        else:
+            self.df = df_or_col._pandas_anchor
+            self.col = df_or_col
 
     def __getitem__(self, key):
 
-        about_rows = """Can only slice with all indices or a column that evaluates to Boolean"""
-
-        rows, cols = _unfold(key)
-
-        if isinstance(rows, slice) and rows != slice(None):
+        def raiseNotImplemented():
+            about_rows = """Can only slice with all indices or a column that evaluates to Boolean"""
             raise SparkPandasNotImplementedError(
                 description=about_rows,
-                pandas_source=".loc[..., ...]",
+                pandas_function=".loc[..., ...]",
                 spark_target_function="select, where")
-        elif isinstance(rows, slice) and rows == slice(None):
-            df = self.df
-        else:   # not isinstance(rows, slice):
+
+        rows, cols = _unfold(key, self.col)
+
+        df = self.df
+        if isinstance(rows, Column):
+            assert isinstance(self.df._spark_select(rows).schema.fields[0].dataType, BooleanType)
+            df = df._spark_where(rows)
+        elif isinstance(rows, basestring):
+            raiseNotImplemented()
+        elif isinstance(rows, slice):
+            if len(self.df._index_columns) == 1:
+                start = rows.start
+                stop = rows.stop
+                step = rows.step
+                if step is None:
+                    step = 1
+                elif step == 0:
+                    raise ValueError('slice step cannot be zero')
+                elif step < 0:
+                    start, stop, step = stop, start, -step
+
+                index_column = self.df._index_columns[0]
+                cond = []
+                if start is not None:
+                    cond.append(index_column >= start)
+                if stop is not None:
+                    cond.append(index_column <= stop)
+                if step != 1:
+                    cond.append((index_column - start) % step == 0)
+
+                if len(cond) > 0:
+                    df = df._spark_where(reduce(lambda x, y: x & y, cond))
+            else:
+                raiseNotImplemented()
+        else:
             try:
-                assert isinstance(self.df._spark_select(rows).schema.fields[0].dataType,
-                                  BooleanType)
-                df = self.df._spark_where(rows)
-            except Exception as e:
-                raise SparkPandasNotImplementedError(
-                    description=about_rows,
-                    pandas_source=".loc[..., ...]",
-                    spark_target_function="select, where")
-        columns = [_make_col(c) for c in cols]
+                rows = list(rows)
+                if len(self.df._index_columns) == 1:
+                    index_column = self.df._index_columns[0]
+                    df = df._spark_where(index_column.isin(rows))
+                else:
+                    raiseNotImplemented()
+            except Exception:
+                raiseNotImplemented()
+        if cols is None:
+            columns = [_make_col(c) for c in self.df._metadata.columns]
+        elif isinstance(cols, Column):
+            columns = [cols]
+        else:
+            columns = [_make_col(c) for c in cols]
         df = df._spark_select(self.df._metadata._index_columns + columns)
         df._metadata = self.df._metadata.copy(columns=[col.name for col in columns])
-        return df
+        if cols is not None and isinstance(cols, Column):
+            from .structures import _col
+            return _col(df)
+        else:
+            return df
 
     def __setitem__(self, key, value):
 
@@ -89,7 +151,7 @@ class SparkDataFrameLocator(object):
             raise SparkPandasNotImplementedError(
                 description="""Can only assign value to the whole dataframe, the row index
                 has to be `slice(None)` or `:`""",
-                pandas_source=".loc[..., ...] = ...",
+                pandas_function=".loc[..., ...] = ...",
                 spark_target_function="withColumn, select")
 
         if not isinstance(cols, str):
@@ -98,7 +160,8 @@ class SparkDataFrameLocator(object):
         if isinstance(value, Column):
             self.df[cols] = value
         elif isinstance(value, DataFrame) and len(value.columns) == 1:
-            self.df[cols] = col(value.columns[0])
+            from pyspark.sql.functions import _spark_col
+            self.df[cols] = _spark_col(value.columns[0])
         elif isinstance(value, DataFrame) and len(value.columns) != 1:
             raise ValueError("Only a dataframe with one column can be assigned")
         else:
