@@ -8,6 +8,7 @@ import numpy as np
 import pyspark.sql.functions as F
 from pyspark.sql import DataFrame, Column
 from pyspark.sql.types import StructType, to_arrow_type
+from pyspark.sql.utils import AnalysisException
 
 from . import namespace
 from .metadata import Metadata
@@ -568,14 +569,19 @@ class PandasLikeDataFrame(_Frame):
         if key is None:
             raise KeyError("none key")
         if isinstance(key, string_types):
-            return self._spark_getattr(key)
+            try:
+                return self._spark_getitem(key)
+            except AnalysisException:
+                raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, string_types)):
             raise NotImplementedError(key)
         elif isinstance(key, slice):
             return self.loc[key]
 
-        if isinstance(key, (pd.Series, np.ndarray, pd.Index, list)):
+        if isinstance(key, (pd.Series, np.ndarray, pd.Index)):
             raise NotImplementedError(key)
+        if isinstance(key, list):
+            return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
             return self._spark_getitem(key)

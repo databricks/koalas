@@ -6,6 +6,7 @@ from functools import reduce
 
 from pyspark.sql import Column, DataFrame
 from pyspark.sql.types import BooleanType
+from pyspark.sql.utils import AnalysisException
 
 from .exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 
@@ -134,7 +135,11 @@ class SparkDataFrameLocator(object):
             columns = [cols]
         else:
             columns = [_make_col(c) for c in cols]
-        df = df._spark_select(self.df._metadata._index_columns + columns)
+        try:
+            df = df._spark_select(self.df._metadata._index_columns + columns)
+        except AnalysisException:
+            raise KeyError('[{}] don\'t exist in columns'
+                           .format([col.name for col in columns]))
         df._metadata = self.df._metadata.copy(columns=[col.name for col in columns])
         if cols is not None and isinstance(cols, Column):
             from .structures import _col

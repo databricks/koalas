@@ -213,6 +213,148 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(ddf.loc[ddf.B > 0, 'B'], df.loc[df.B > 0, 'B'])
         # TODO?: self.assert_eq(ddf.loc[ddf.B > 0, ['A', 'C']], df.loc[df.B > 0, ['A', 'C']])
 
+    def test_getitem(self):
+        df = pd.DataFrame({'A': [1, 2, 3, 4, 5, 6, 7, 8, 9],
+                           'B': [9, 8, 7, 6, 5, 4, 3, 2, 1],
+                           'C': [True, False, True] * 3},
+                          columns=list('ABC'))
+        ddf = self.spark.from_pandas(df)
+        self.assert_eq(ddf['A'], df['A'])
+
+        self.assert_eq(ddf[['A', 'B']], df[['A', 'B']])
+
+        self.assert_eq(ddf[ddf.C], df[df.C])
+
+        self.assertRaises(KeyError, lambda: ddf['X'])
+        self.assertRaises(KeyError, lambda: ddf[['A', 'X']])
+        self.assertRaises(AttributeError, lambda: ddf.X)
+
+        # not str/unicode
+        # TODO?: df = pd.DataFrame(np.random.randn(10, 5))
+        # TODO?: ddf = self.spark.from_pandas(df)
+        # TODO?: self.assert_eq(ddf[0], df[0])
+        # TODO?: self.assert_eq(ddf[[1, 2]], df[[1, 2]])
+
+        # TODO?: self.assertRaises(KeyError, lambda: df[8])
+        # TODO?: self.assertRaises(KeyError, lambda: df[[1, 8]])
+
+    def test_getitem_slice(self):
+        df = pd.DataFrame({'A': [1, 2, 3, 4, 5, 6, 7, 8, 9],
+                           'B': [9, 8, 7, 6, 5, 4, 3, 2, 1],
+                           'C': [True, False, True] * 3},
+                          index=list('abcdefghi'))
+        ddf = self.spark.from_pandas(df)
+        self.assert_eq(ddf['a':'e'], df['a':'e'])
+        self.assert_eq(ddf['a':'b'], df['a':'b'])
+        self.assert_eq(ddf['f':], df['f':])
+
+    def test_loc_on_numpy_datetimes(self):
+        df = pd.DataFrame({'x': [1, 2, 3]},
+                          index=list(map(np.datetime64, ['2014', '2015', '2016'])))
+        a = self.spark.from_pandas(df)
+
+        self.assert_eq(a.loc['2014': '2015'], a.loc['2014': '2015'])
+
+    def test_loc_on_pandas_datetimes(self):
+        df = pd.DataFrame({'x': [1, 2, 3]},
+                          index=list(map(pd.Timestamp, ['2014', '2015', '2016'])))
+        a = self.spark.from_pandas(df)
+
+        self.assert_eq(a.loc['2014': '2015'], a.loc['2014': '2015'])
+
+    @unittest.skip('TODO?: the behavior of slice for datetime')
+    def test_loc_datetime_no_freq(self):
+        datetime_index = pd.date_range('2016-01-01', '2016-01-31', freq='12h')
+        datetime_index.freq = None  # FORGET FREQUENCY
+        df = pd.DataFrame({'num': range(len(datetime_index))}, index=datetime_index)
+        ddf = self.spark.from_pandas(df)
+
+        slice_ = slice('2016-01-03', '2016-01-05')
+        result = ddf.loc[slice_, :]
+        expected = df.loc[slice_, :]
+        self.assert_eq(result, expected)
+
+    @unittest.skip('TODO?: the behavior of slice for datetime')
+    def test_loc_timestamp_str(self):
+        df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
+                          index=pd.date_range('2011-01-01', freq='H', periods=100))
+        ddf = self.spark.from_pandas(df)
+
+        # partial string slice
+        # TODO?: self.assert_eq(df.loc['2011-01-02'],
+        # TODO?:                ddf.loc['2011-01-02'])
+        self.assert_eq(df.loc['2011-01-02':'2011-01-05'],
+                       ddf.loc['2011-01-02':'2011-01-05'])
+
+        # series
+        # TODO?: self.assert_eq(df.A.loc['2011-01-02'],
+        # TODO?:                ddf.A.loc['2011-01-02'])
+        self.assert_eq(df.A.loc['2011-01-02':'2011-01-05'],
+                       ddf.A.loc['2011-01-02':'2011-01-05'])
+
+        df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
+                          index=pd.date_range('2011-01-01', freq='M', periods=100))
+        ddf = self.spark.from_pandas(df)
+        # TODO?: self.assert_eq(df.loc['2011-01'], ddf.loc['2011-01'])
+        # TODO?: self.assert_eq(df.loc['2011'], ddf.loc['2011'])
+
+        self.assert_eq(df.loc['2011-01':'2012-05'], ddf.loc['2011-01':'2012-05'])
+        self.assert_eq(df.loc['2011':'2015'], ddf.loc['2011':'2015'])
+
+        # series
+        # TODO?: self.assert_eq(df.B.loc['2011-01'], ddf.B.loc['2011-01'])
+        # TODO?: self.assert_eq(df.B.loc['2011'], ddf.B.loc['2011'])
+
+        self.assert_eq(df.B.loc['2011-01':'2012-05'], ddf.B.loc['2011-01':'2012-05'])
+        self.assert_eq(df.B.loc['2011':'2015'], ddf.B.loc['2011':'2015'])
+
+    @unittest.skip('TODO?: the behavior of slice for datetime')
+    def test_getitem_timestamp_str(self):
+        df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
+                          index=pd.date_range('2011-01-01', freq='H', periods=100))
+        ddf = self.spark.from_pandas(df)
+
+        # partial string slice
+        # TODO?: self.assert_eq(df['2011-01-02'],
+        # TODO?:                ddf['2011-01-02'])
+        self.assert_eq(df['2011-01-02':'2011-01-05'],
+                       ddf['2011-01-02':'2011-01-05'])
+
+        df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
+                          index=pd.date_range('2011-01-01', freq='M', periods=100))
+        ddf = self.spark.from_pandas(df)
+
+        # TODO?: self.assert_eq(df['2011-01'], ddf['2011-01'])
+        # TODO?: self.assert_eq(df['2011'], ddf['2011'])
+
+        self.assert_eq(df['2011-01':'2012-05'], ddf['2011-01':'2012-05'])
+        self.assert_eq(df['2011':'2015'], ddf['2011':'2015'])
+
+    @unittest.skip('TODO?: period index can\'t convert to DataFrame correctly')
+    def test_getitem_period_str(self):
+        df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
+                          index=pd.period_range('2011-01-01', freq='H', periods=100))
+        ddf = self.spark.from_pandas(df)
+
+        ddf.printSchema()
+        ddf.show()
+
+        # partial string slice
+        # TODO?: self.assert_eq(df['2011-01-02'],
+        # TODO?:                ddf['2011-01-02'])
+        self.assert_eq(df['2011-01-02':'2011-01-05'],
+                       ddf['2011-01-02':'2011-01-05'])
+
+        df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
+                          index=pd.period_range('2011-01-01', freq='M', periods=100))
+        ddf = self.spark.from_pandas(df)
+
+        # TODO?: self.assert_eq(df['2011-01'], ddf['2011-01'])
+        # TODO?: self.assert_eq(df['2011'], ddf['2011'])
+
+        self.assert_eq(df['2011-01':'2012-05'], ddf['2011-01':'2012-05'])
+        self.assert_eq(df['2011':'2015'], ddf['2011':'2015'])
+
 
 if __name__ == "__main__":
     from pandorable_sparky.tests.test_indexing import *
