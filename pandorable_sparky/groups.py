@@ -5,8 +5,7 @@ import sys
 
 from pyspark.sql.types import StructType
 
-if sys.version > '3':
-    basestring = unicode = str
+from ._dask_stubs.compatibility import string_types
 
 
 class PandasLikeGroupBy(object):
@@ -52,7 +51,7 @@ class PandasLikeGroupBy(object):
                               (string).
         """
         if not isinstance(func_or_funcs, dict) or \
-            not all(isinstance(key, basestring) and isinstance(value, basestring)
+            not all(isinstance(key, string_types) and isinstance(value, string_types)
                     for key, value in func_or_funcs.items()):
             raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
                              "functions (string).")

@@ -5,8 +5,7 @@ import sys
 
 import pandas as pd
 
-if sys.version > '3':
-    basestring = unicode = str
+from ._dask_stubs.compatibility import string_types
 
 
 class Metadata(object):
@@ -15,11 +14,11 @@ class Metadata(object):
     """
 
     def __init__(self, columns, index_info=[]):
-        assert all(isinstance(col, basestring) for col in columns)
+        assert all(isinstance(col, string_types) for col in columns)
         assert index_info is not None
         assert all(isinstance(info, tuple) and len(info) == 2
-                   and isinstance(info[0], basestring)
-                   and (info[1] is None or isinstance(info[1], basestring))
+                   and isinstance(info[0], string_types)
+                   and (info[1] is None or isinstance(info[1], string_types))
                    for info in index_info)
         self._columns = columns
         self._index_info = index_info

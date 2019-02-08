@@ -8,10 +8,8 @@ from pyspark.sql import Column, DataFrame
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
+from ._dask_stubs.compatibility import string_types
 from .exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
-
-if sys.version > '3':
-    basestring = unicode = str
 
 
 def _make_col(c):
@@ -90,7 +88,7 @@ class SparkDataFrameLocator(object):
         if isinstance(rows, Column):
             assert isinstance(self.df._spark_select(rows).schema.fields[0].dataType, BooleanType)
             df = df._spark_where(rows)
-        elif isinstance(rows, basestring):
+        elif isinstance(rows, string_types):
             raiseNotImplemented()
         elif isinstance(rows, slice):
             if rows.step is not None:

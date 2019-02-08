@@ -16,9 +16,6 @@ from .selection import SparkDataFrameLocator
 from ._dask_stubs.utils import derived_from
 from ._dask_stubs.compatibility import string_types
 
-if sys.version > '3':
-    basestring = unicode = str
-
 
 __all__ = ['PandasLikeSeries', 'PandasLikeDataFrame', 'SparkSessionPatches', 'anchor_wrap']
 
@@ -62,7 +59,7 @@ class SparkSessionPatches(object):
                 raise ValueError("Unknown header argument {}".format(header))
 
             if comment is not None:
-                if not isinstance(comment, basestring) or len(comment) != 1:
+                if not isinstance(comment, string_types) or len(comment) != 1:
                     raise ValueError("Only length-1 comment characters supported")
                 reader.option("comment", comment)
 
@@ -88,7 +85,7 @@ class SparkSessionPatches(object):
                     cols = [field.name for i, field in enumerate(df.schema) if i in usecols]
                     missing = [col for col in usecols
                                if col >= len(df.schema) or df.schema[col].name not in cols]
-                elif all(isinstance(col, basestring) for col in usecols):
+                elif all(isinstance(col, string_types) for col in usecols):
                     cols = [field.name for field in df.schema if field.name in usecols]
                     missing = [col for col in usecols if col not in cols]
                 else:
@@ -329,7 +326,7 @@ class PandasLikeDataFrame(_Frame):
                         Modify the DataFrame in place (do not create a new object)
         :return: :class:`DataFrame`
         """
-        if isinstance(keys, basestring):
+        if isinstance(keys, string_types):
             keys = [keys]
         else:
             keys = list(keys)
@@ -384,7 +381,7 @@ class PandasLikeDataFrame(_Frame):
                              for i, (column, name) in enumerate(self._metadata.index_info)]
             index_info = []
         else:
-            if isinstance(level, (int, basestring)):
+            if isinstance(level, (int, string_types)):
                 level = [level]
             level = list(level)
 
@@ -394,7 +391,7 @@ class PandasLikeDataFrame(_Frame):
                         raise IndexError('Too many levels: Index has only {} level, not {}'
                                          .format(len(self._metadata.index_info), l + 1))
                 idx = level
-            elif all(isinstance(l, basestring) for l in level):
+            elif all(isinstance(l, string_types) for l in level):
                 idx = []
                 for l in level:
                     try:
