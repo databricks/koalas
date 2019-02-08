@@ -69,16 +69,14 @@ def to_datetime(arg, errors='raise', format=None):
         )
 
 
-# @pandas_wrap(return_col=np.datetime64)
-@pandas_wrap
-def _to_datetime1(arg, errors, format) -> Col[np.datetime64]:
+@pandas_wrap(return_col=np.datetime64)
+def _to_datetime1(arg, errors, format):  # type: (...) -> Col[np.datetime64]
     return pd.to_datetime(arg, errors=errors, format=format).astype(np.datetime64)
 
 
-# @pandas_wrap(return_col=np.datetime64)
-@pandas_wrap
-def _to_datetime2(arg_year=None, arg_month=None, arg_day=None,
-                  errors=None, format=None) -> Col[np.datetime64]:
+@pandas_wrap(return_col=np.datetime64)
+def _to_datetime2(arg_year=None, arg_month=None, arg_day=None, errors=None, format=None):
+    # type: (...) -> Col[np.datetime64]
     arg = dict(year=arg_year, month=arg_month, day=arg_day)
     for key in arg:
         if arg[key] is None:

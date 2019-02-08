@@ -21,6 +21,9 @@ class PySparkTestCase(unittest.TestCase):
         self.sc.stop()
         sys.path = self._old_sys_path
 
+    if sys.version < '3':
+        assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
+
 
 class ReusedPySparkTestCase(unittest.TestCase):
 
@@ -38,6 +41,9 @@ class ReusedPySparkTestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.sc.stop()
+
+    if sys.version < '3':
+        assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
 
 
 class SQLTestUtils(object):

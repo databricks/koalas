@@ -15,6 +15,13 @@ logger = logging.getLogger('spark')
 _TOUCHED_TEST = "_pandas_updated"
 
 
+def _unbind_method(f):
+    if isinstance(f, types.MethodType):
+        return f.__func__
+    else:
+        return f
+
+
 def patch_spark():
     """
     This function monkey patches Spark to make PySpark's behavior similar to Pandas.
@@ -34,18 +41,18 @@ def patch_spark():
     _inject(df.DataFrame, PandasLikeDataFrame)
     _inject(df.Column, PandasLikeSeries)
     # Override in all cases these methods to prevent any dispatching.
-    df.Column.__repr__ = PandasLikeSeries.__repr__
-    df.Column.__str__ = PandasLikeSeries.__str__
+    df.Column.__repr__ = _unbind_method(PandasLikeSeries.__repr__)
+    df.Column.__str__ = _unbind_method(PandasLikeSeries.__str__)
     # Replace the creation of the operators in columns
     _wrap_operators()
     # Wrap all the functions in the standard libraries
     _wrap_functions()
     # Inject a few useful functions.
-    session.SparkSession.read_csv = SparkSessionPatches.read_csv
-    session.SparkSession.read_parquet = SparkSessionPatches.read_parquet
-    pyspark.read_csv = namespace.read_csv
-    pyspark.read_parquet = namespace.read_parquet
-    pyspark.to_datetime = namespace.to_datetime
+    session.SparkSession.read_csv = _unbind_method(SparkSessionPatches.read_csv)
+    session.SparkSession.read_parquet = _unbind_method(SparkSessionPatches.read_parquet)
+    pyspark.read_csv = _unbind_method(namespace.read_csv)
+    pyspark.read_parquet = _unbind_method(namespace.read_parquet)
+    pyspark.to_datetime = _unbind_method(namespace.to_datetime)
 
 
 @decorator
@@ -88,7 +95,7 @@ def _wrap_operators():
         return
     for attr in attrs:
         oldfun = getattr(col.Column, attr)
-        fun = wrap_column_function(oldfun)
+        fun = wrap_column_function(_unbind_method(oldfun))
         setattr(col.Column, attr, fun)
     setattr(col.Column, _TOUCHED_TEST, "")
 
@@ -102,7 +109,7 @@ def _wrap_functions():
             continue
         oldfun = getattr(F, fname)
         if isinstance(oldfun, types.FunctionType):
-            fun = wrap_column_function(oldfun)
+            fun = wrap_column_function(_unbind_method(oldfun))
             setattr(F, fname, fun)
     setattr(F, _TOUCHED_TEST, "")
 
@@ -122,11 +129,11 @@ def _inject(target_type, inject_type):
         setattr(target_type, "_spark_" + key, fun)
 
     # Inject all the methods from the hierarchy:
-    setattr(target_type, "__getattr__", inject_type.__getattr__)
-    setattr(target_type, "__getitem__", inject_type.__getitem__)
+    setattr(target_type, "__getattr__", _unbind_method(inject_type.__getattr__))
+    setattr(target_type, "__getitem__", _unbind_method(inject_type.__getitem__))
     for attr in ["__iter__", "__len__", "__invert__", "__setitem__", "__dir__"]:
         if hasattr(inject_type, attr):
-            setattr(target_type, attr, inject_type.__dict__[attr])
+            setattr(target_type, attr, _unbind_method(inject_type.__dict__[attr]))
     for t in mro:
         if t == object:
             continue
@@ -134,4 +141,4 @@ def _inject(target_type, inject_type):
             # Skip the system attributes
             if key.startswith("__") or key.startswith("_spark_"):
                 continue
-            setattr(target_type, key, fun)
+            setattr(target_type, key, _unbind_method(fun))

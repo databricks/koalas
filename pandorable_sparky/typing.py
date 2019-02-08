@@ -1,7 +1,11 @@
 """
 Utilities to deal with types. This is mostly focused on python3.
 """
+from __future__ import absolute_import
+
+import functools
 import typing
+
 from decorator import decorate
 from decorator import getfullargspec
 import numpy as np
@@ -58,7 +62,7 @@ def _get_col_inner(tpe):
     return tpe.__args__[0]
 
 
-def _to_stype(tpe) -> X:
+def _to_stype(tpe):  # type: (...) -> X
     if _is_col(tpe):
         inner = as_spark_type(_get_col_inner(tpe))
         return _Column(inner)
@@ -98,7 +102,7 @@ def as_spark_type(tpe):
     return _known_types.get(tpe, None)
 
 
-def _check_compatible(arg, sig_arg: X):
+def _check_compatible(arg, sig_arg):  # type: (..., X) -> None
     if isinstance(sig_arg, _Unknown):
         return arg
     if isinstance(sig_arg, _Regular):
@@ -211,7 +215,13 @@ def _wrap_callable(obj):
     return obj
 
 
-def pandas_wrap(f, return_col=None):
+def pandas_wrap(f=None, return_col=None):
+
+    if f is None:
+        return functools.partial(pandas_wrap, return_col=return_col)
+    elif isinstance(f, type):
+        return functools.partial(pandas_wrap, return_col=f)
+
     print("pandas_wrap:f=", f)
     # Extract the signature arguments from this function.
     spec = getfullargspec(f)

@@ -127,6 +127,43 @@ class _Frame(object):
         """Alias of `toPandas()` to mimic dask for easily porting tests."""
         return self.toPandas()
 
+    def _super_dir_(self):
+        # https://stackoverflow.com/questions/15507848/what-is-the-correct-way-to-override-the-dir-method/15529247
+        if hasattr(super(type(self), self), '__dir__'):
+            return super(type(self), self).__dir__()
+        else:
+            # code is based on
+            # http://www.quora.com/How-dir-is-implemented-Is-there-any-PEP-related-to-that
+            def get_attrs(obj):
+                import types
+                if not hasattr(obj, '__dict__'):
+                    return []  # slots only
+                if not isinstance(obj.__dict__, (dict, types.DictProxyType)):
+                    raise TypeError("%s.__dict__ is not a dictionary"
+                                    "" % obj.__name__)
+                return obj.__dict__.keys()
+
+            def dir2(obj):
+                attrs = set()
+                if not hasattr(obj, '__bases__'):
+                    # obj is an instance
+                    if not hasattr(obj, '__class__'):
+                        # slots
+                        return sorted(get_attrs(obj))
+                    klass = obj.__class__
+                    attrs.update(get_attrs(klass))
+                else:
+                    # obj is a class
+                    klass = obj
+
+                for cls in klass.__bases__:
+                    attrs.update(get_attrs(cls))
+                    attrs.update(dir2(cls))
+                attrs.update(get_attrs(obj))
+                return list(attrs)
+
+            return dir2(self)
+
 
 class PandasLikeSeries(_Frame):
     """
@@ -199,7 +236,7 @@ class PandasLikeSeries(_Frame):
         # Pandas wants a series/array-like object
         return _col(self.to_dataframe().unique())
 
-    def _pandas_anchor(self) -> DataFrame:
+    def _pandas_anchor(self):  # type: () -> DataFrame
         """
         The anchoring dataframe for this column (if any).
         :return:
@@ -238,7 +275,11 @@ class PandasLikeSeries(_Frame):
             fields = []
         else:
             fields = [f for f in self.schema.fieldNames() if ' ' not in f]
-        return super(Column, self).__dir__() + fields
+
+        if len(fields) == 0:
+            return self._super_dir_()
+        else:
+            return sorted(set(self._super_dir_() + fields))
 
     def _pandas_orig_repr(self):
         # TODO: figure out how to reuse the original one.
@@ -391,7 +432,11 @@ class PandasLikeDataFrame(_Frame):
 
     def __dir__(self):
         fields = [f for f in self.schema.fieldNames() if ' ' not in f]
-        return super(DataFrame, self).__dir__() + fields
+
+        if len(fields) == 0:
+            return self._super_dir_()
+        else:
+            return sorted(set(self._super_dir_() + fields))
 
     def _repr_html_(self):
         return self.head(max_display_count).toPandas()._repr_html_()
@@ -404,7 +449,8 @@ class PandasLikeDataFrame(_Frame):
         return {None: 0, 'index': 0, 'columns': 1}.get(axis, axis)
 
 
-def _reassign_jdf(target_df: DataFrame, new_df: DataFrame):
+def _reassign_jdf(target_df, new_df):
+    # type: (DataFrame, DataFrame) -> None
     """
     Reassigns the java df contont of a dataframe.
     """
