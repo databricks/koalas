@@ -30,7 +30,7 @@ class SparkSessionPatches(object):
     def from_pandas(self, pdf):
         metadata = Metadata.from_pandas(pdf)
         reset_index = pdf.reset_index()
-        reset_index.columns = metadata.all_columns
+        reset_index.columns = metadata.all_fields
         df = self.createDataFrame(reset_index)
         df._metadata = metadata
         return df
@@ -143,6 +143,14 @@ class PandasLikeSeries(_Frame):
     """
 
     def __init__(self):
+        """ Define additional private fields.
+
+        * ``_pandas_metadata``: The metadata which stores column fields, and index fields and names.
+        * ``_spark_ref_dataframe``: The reference to DataFraem anchored to this Column.
+        * ``_pandas_schema``: The schema when representing this Column as a DataFrame.
+        """
+        self._pandas_metadata = None
+        self._spark_ref_dataframe = None
         self._pandas_schema = None
 
     def astype(self, tpe):
@@ -181,7 +189,7 @@ class PandasLikeSeries(_Frame):
         self.rename(name, inplace=True)
 
     def rename(self, name, inplace=False):
-        df = self.to_dataframe()._spark_select(self._metadata.index_columns +
+        df = self.to_dataframe()._spark_select(self._metadata.index_fields +
                                                [self._spark_alias(name)])
         df._metadata = self._metadata.copy(column_fields=[name])
         col = _col(df)
@@ -229,7 +237,7 @@ class PandasLikeSeries(_Frame):
 
     def to_dataframe(self):
         ref = self._pandas_anchor
-        df = ref._spark_select(self._metadata.index_columns + [self])
+        df = ref._spark_select(self._metadata.index_fields + [self])
         df._metadata = self._metadata.copy()
         return df
 
@@ -298,6 +306,13 @@ class PandasLikeDataFrame(_Frame):
     Methods that are relevant to dataframes.
     """
 
+    def __init__(self):
+        """ Define additional private fields.
+
+        * ``_pandas_metadata``: The metadata which stores column fields, and index fields and names.
+        """
+        self._pandas_metadata = None
+
     @property
     def _metadata(self):
         if not hasattr(self, '_pandas_metadata') or self._pandas_metadata is None:
@@ -310,8 +325,8 @@ class PandasLikeDataFrame(_Frame):
 
     @property
     def _index_columns(self):
-        return [anchor_wrap(self, self._spark_getitem(column))
-                for column in self._metadata.index_columns]
+        return [anchor_wrap(self, self._spark_getitem(field))
+                for field in self._metadata.index_fields]
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns. By default
@@ -395,14 +410,14 @@ class PandasLikeDataFrame(_Frame):
                 idx = []
                 for l in level:
                     try:
-                        i = self._metadata.index_columns.index(l)
+                        i = self._metadata.index_fields.index(l)
                         idx.append(i)
                     except ValueError:
                         if multi_index:
                             raise KeyError('Level unknown not found')
                         else:
                             raise KeyError('Level unknown must be same as name ({})'
-                                           .format(self._metadata.index_columns[0]))
+                                           .format(self._metadata.index_fields[0]))
             else:
                 raise ValueError('Level should be all int or all string.')
             idx.sort()
@@ -434,7 +449,7 @@ class PandasLikeDataFrame(_Frame):
 
     @derived_from(DataFrame)
     def toPandas(self):
-        df = self._spark_select(self._metadata.all_columns)
+        df = self._spark_select(self._metadata.all_fields)
         pdf = df._spark_toPandas()
         if len(pdf) == 0 and len(df.schema) > 0:
             # TODO: push to OSS
@@ -442,9 +457,9 @@ class PandasLikeDataFrame(_Frame):
                               for field in df.schema})
         if len(self._metadata.index_info) > 0:
             append = False
-            for index_column in self._metadata.index_columns:
-                drop = index_column not in self._metadata.column_fields
-                pdf = pdf.set_index(index_column, drop=drop, append=append)
+            for index_field in self._metadata.index_fields:
+                drop = index_field not in self._metadata.column_fields
+                pdf = pdf.set_index(index_field, drop=drop, append=append)
                 append = True
             pdf = pdf[self._metadata.column_fields]
         index_names = self._metadata.index_names

@@ -23,6 +23,12 @@ def _make_col(c):
 
 
 def _unfold(key, col):
+    """ Return row selection and column selection pair.
+
+    If col parameter is not None, the key should be row selection and the column selection will be
+    the col parameter itself. Otherwise check the key contains column selection, and the selection
+    is acceptable.
+    """
     if col is not None:
         if isinstance(key, tuple):
             if len(key) > 1:
@@ -67,6 +73,8 @@ class SparkDataFrameLocator(object):
             self.df = df_or_col
             self.col = None
         else:
+            # If df_or_col is Column, store both the DataFrame anchored to the Column and
+            # the Column itself.
             self.df = df_or_col._pandas_anchor
             self.col = df_or_col
 
@@ -117,7 +125,7 @@ class SparkDataFrameLocator(object):
                 raiseNotImplemented("Cannot use a scalar value for row selection with Spark.")
             if len(rows_sel) == 0:
                 df = df._spark_where(_spark_lit(False))
-            if len(self.df._index_columns) == 1:
+            elif len(self.df._index_columns) == 1:
                 index_column = self.df._index_columns[0]
                 index_data_type = index_column.schema[0].dataType
                 if len(rows_sel) == 1:
@@ -129,13 +137,13 @@ class SparkDataFrameLocator(object):
             else:
                 raiseNotImplemented("Cannot select with MultiIndex with Spark.")
         if cols_sel is None:
-            columns = [_make_col(c) for c in self.df._metadata._column_fields]
+            columns = [_make_col(c) for c in self.df._metadata.column_fields]
         elif isinstance(cols_sel, Column):
             columns = [cols_sel]
         else:
             columns = [_make_col(c) for c in cols_sel]
         try:
-            df = df._spark_select(self.df._metadata.index_columns + columns)
+            df = df._spark_select(self.df._metadata.index_fields + columns)
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col.name for col in columns]))
