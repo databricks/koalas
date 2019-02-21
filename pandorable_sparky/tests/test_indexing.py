@@ -253,14 +253,14 @@ class IndexingTest(ReusedSQLTestCase):
                           index=list(map(np.datetime64, ['2014', '2015', '2016'])))
         a = self.spark.from_pandas(df)
 
-        self.assert_eq(a.loc['2014': '2015'], a.loc['2014': '2015'])
+        self.assert_eq(a.loc['2014':'2015'], df.loc['2014':'2015'])
 
     def test_loc_on_pandas_datetimes(self):
         df = pd.DataFrame({'x': [1, 2, 3]},
                           index=list(map(pd.Timestamp, ['2014', '2015', '2016'])))
         a = self.spark.from_pandas(df)
 
-        self.assert_eq(a.loc['2014': '2015'], a.loc['2014': '2015'])
+        self.assert_eq(a.loc['2014':'2015'], df.loc['2014':'2015'])
 
     @unittest.skip('TODO?: the behavior of slice for datetime')
     def test_loc_datetime_no_freq(self):
@@ -335,9 +335,6 @@ class IndexingTest(ReusedSQLTestCase):
         df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                           index=pd.period_range('2011-01-01', freq='H', periods=100))
         ddf = self.spark.from_pandas(df)
-
-        ddf.printSchema()
-        ddf.show()
 
         # partial string slice
         # TODO?: self.assert_eq(df['2011-01-02'],
