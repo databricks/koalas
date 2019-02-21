@@ -1,8 +1,6 @@
 """
 Base classes to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
-import sys
-
 import pandas as pd
 import numpy as np
 import pyspark.sql.functions as F
