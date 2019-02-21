@@ -13,7 +13,13 @@ def default_session():
 
 
 def from_pandas(pdf):
-    """Create DataFrame from pandas DataFrame."""
+    """Create DataFrame from pandas DataFrame.
+
+    This is similar to `DataFrame.createDataFrame()` with pandas DataFrame, but this also picks
+    the index in the given pandas DataFrame.
+
+    :param pdf: :class:`pandas.DataFrame`
+    """
     return default_session().from_pandas(pdf)
 
 
