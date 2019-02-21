@@ -1,7 +1,6 @@
 """
 A locator for PandasLikeDataFrame.
 """
-import sys
 from functools import reduce
 
 from pyspark.sql import Column, DataFrame
@@ -128,17 +127,17 @@ class SparkDataFrameLocator(object):
             except Exception:
                 raiseNotImplemented()
         if cols is None:
-            columns = [_make_col(c) for c in self.df._metadata.columns]
+            columns = [_make_col(c) for c in self.df._metadata._column_fields]
         elif isinstance(cols, Column):
             columns = [cols]
         else:
             columns = [_make_col(c) for c in cols]
         try:
-            df = df._spark_select(self.df._metadata._index_columns + columns)
+            df = df._spark_select(self.df._metadata.index_columns + columns)
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col.name for col in columns]))
-        df._metadata = self.df._metadata.copy(columns=[col.name for col in columns])
+        df._metadata = self.df._metadata.copy(column_fields=[col.name for col in columns])
         if cols is not None and isinstance(cols, Column):
             from .structures import _col
             return _col(df)

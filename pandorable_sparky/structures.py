@@ -181,9 +181,9 @@ class PandasLikeSeries(_Frame):
         self.rename(name, inplace=True)
 
     def rename(self, name, inplace=False):
-        df = self.to_dataframe()._spark_select(self._metadata._index_columns +
+        df = self.to_dataframe()._spark_select(self._metadata.index_columns +
                                                [self._spark_alias(name)])
-        df._metadata = self._metadata.copy(columns=[name])
+        df._metadata = self._metadata.copy(column_fields=[name])
         col = _col(df)
         if inplace:
             anchor_wrap(col, self)
@@ -198,7 +198,7 @@ class PandasLikeSeries(_Frame):
     def _metadata(self):
         if not hasattr(self, '_pandas_metadata') or self._pandas_metadata is None:
             ref = self._pandas_anchor
-            self._pandas_metadata = ref._metadata.copy(columns=[self.name])
+            self._pandas_metadata = ref._metadata.copy(column_fields=[self.name])
         return self._pandas_metadata
 
     @derived_from(pd.Series)
@@ -229,7 +229,7 @@ class PandasLikeSeries(_Frame):
 
     def to_dataframe(self):
         ref = self._pandas_anchor
-        df = ref._spark_select(self._metadata._index_columns + [self])
+        df = ref._spark_select(self._metadata.index_columns + [self])
         df._metadata = self._metadata.copy()
         return df
 
@@ -301,7 +301,7 @@ class PandasLikeDataFrame(_Frame):
     @property
     def _metadata(self):
         if not hasattr(self, '_pandas_metadata') or self._pandas_metadata is None:
-            self._pandas_metadata = Metadata(columns=self.schema.fieldNames())
+            self._pandas_metadata = Metadata(column_fields=self.schema.fieldNames())
         return self._pandas_metadata
 
     @_metadata.setter
@@ -311,7 +311,7 @@ class PandasLikeDataFrame(_Frame):
     @property
     def _index_columns(self):
         return [anchor_wrap(self, self._spark_getitem(column))
-                for column in self._metadata._index_columns]
+                for column in self._metadata.index_columns]
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns. By default
@@ -335,15 +335,15 @@ class PandasLikeDataFrame(_Frame):
                 raise KeyError(key)
 
         if drop:
-            columns = [column for column in self._metadata.columns if column not in keys]
+            columns = [column for column in self._metadata.column_fields if column not in keys]
         else:
-            columns = self._metadata.columns
+            columns = self._metadata.column_fields
         if append:
             index_info = self._metadata.index_info + [(column, column) for column in keys]
         else:
             index_info = [(column, column) for column in keys]
 
-        metadata = self._metadata.copy(columns=columns, index_info=index_info)
+        metadata = self._metadata.copy(column_fields=columns, index_info=index_info)
         if inplace:
             self._metadata = metadata
         else:
@@ -369,12 +369,12 @@ class PandasLikeDataFrame(_Frame):
         if len(self._metadata.index_info) == 0:
             raise NotImplementedError('Can\'t reset index because there is no index.')
 
-        multiIndex = len(self._metadata.index_info) > 1
-        if multiIndex:
+        multi_index = len(self._metadata.index_info) > 1
+        if multi_index:
             rename = lambda i: 'level_{}'.format(i)
         else:
             rename = lambda i: \
-                'index' if 'index' not in self._metadata.columns else 'level_{}'.fomat(i)
+                'index' if 'index' not in self._metadata.column_fields else 'level_{}'.fomat(i)
 
         if level is None:
             index_columns = [(column, name if name is not None else rename(i))
@@ -395,14 +395,14 @@ class PandasLikeDataFrame(_Frame):
                 idx = []
                 for l in level:
                     try:
-                        i = self._metadata._index_columns.index(l)
+                        i = self._metadata.index_columns.index(l)
                         idx.append(i)
                     except ValueError:
-                        if multiIndex:
+                        if multi_index:
                             raise KeyError('Level unknown not found')
                         else:
                             raise KeyError('Level unknown must be same as name ({})'
-                                           .format(self._metadata._index_columns[0]))
+                                           .format(self._metadata.index_columns[0]))
             else:
                 raise ValueError('Level should be all int or all string.')
             idx.sort()
@@ -411,16 +411,18 @@ class PandasLikeDataFrame(_Frame):
             index_info = self._metadata.index_info.copy()
             for i in idx:
                 info = self._metadata.index_info[i]
-                index_columns.append((info[0], info[1] if info[1] is not None else rename(info[1])))
+                column_field, index_name = info
+                index_columns.append((column_field,
+                                      index_name if index_name is not None else rename(index_name)))
                 index_info.remove(info)
 
         if drop:
             index_columns = []
 
         metadata = self._metadata.copy(
-            columns=[column for column, _ in index_columns] + self._metadata.columns,
+            column_fields=[column for column, _ in index_columns] + self._metadata.column_fields,
             index_info=index_info)
-        columns = [name for _, name in index_columns] + self._metadata.columns
+        columns = [name for _, name in index_columns] + self._metadata.column_fields
         if inplace:
             self._metadata = metadata
             self.columns = columns
@@ -440,12 +442,12 @@ class PandasLikeDataFrame(_Frame):
                               for field in df.schema})
         if len(self._metadata.index_info) > 0:
             append = False
-            for index_column in self._metadata._index_columns:
-                drop = index_column not in self._metadata.columns
+            for index_column in self._metadata.index_columns:
+                drop = index_column not in self._metadata.column_fields
                 pdf = pdf.set_index(index_column, drop=drop, append=append)
                 append = True
-            pdf = pdf[self._metadata.columns]
-        index_names = self._metadata._index_names
+            pdf = pdf[self._metadata.column_fields]
+        index_names = self._metadata.index_names
         if len(index_names) > 0:
             if isinstance(pdf.index, pd.MultiIndex):
                 pdf.index.names = index_names
@@ -468,8 +470,8 @@ class PandasLikeDataFrame(_Frame):
         for (name, c) in pairs:
             df = df._spark_withColumn(name, c)
         df._metadata = self._metadata.copy(
-            columns=(self._metadata.columns +
-                     [name for name, _ in pairs if name not in self._metadata.columns]))
+            column_fields=(self._metadata.column_fields +
+                           [name for name, _ in pairs if name not in self._metadata.column_fields]))
         return df
 
     @property
@@ -488,11 +490,11 @@ class PandasLikeDataFrame(_Frame):
 
     @property
     def columns(self):
-        return pd.Index(self._metadata.columns)
+        return pd.Index(self._metadata.column_fields)
 
     @columns.setter
     def columns(self, names):
-        old_names = self._metadata.columns
+        old_names = self._metadata.column_fields
         if len(old_names) != len(names):
             raise ValueError(
                 "Length mismatch: Expected axis has %d elements, new values have %d elements"
@@ -500,7 +502,7 @@ class PandasLikeDataFrame(_Frame):
         df = self
         for (old_name, new_name) in zip(old_names, names):
             df = df._spark_withColumnRenamed(old_name, new_name)
-        df._metadata = self._metadata.copy(columns=names)
+        df._metadata = self._metadata.copy(column_fields=names)
 
         _reassign_jdf(self, df)
 
@@ -517,11 +519,13 @@ class PandasLikeDataFrame(_Frame):
             if isinstance(labels, list):
                 df = self._spark_drop(*labels)
                 df._metadata = self._metadata.copy(
-                    columns=[column for column in self._metadata.columns if column not in labels])
+                    column_fields=[column for column in self._metadata.column_fields
+                                   if column not in labels])
             else:
                 df = self._spark_drop(labels)
                 df._metadata = self._metadata.copy(
-                    columns=[column for column in self._metadata.columns if column != labels])
+                    column_fields=[column for column in self._metadata.column_fields
+                                   if column != labels])
             return df
             # return self.map_partitions(M.drop, labels, axis=axis, errors=errors)
         raise NotImplementedError("Drop currently only works for axis=1")
