@@ -41,10 +41,9 @@ def patch_spark():
     # Wrap all the functions in the standard libraries
     _wrap_functions()
     # Inject a few useful functions.
-    session.SparkSession.read_csv = SparkSessionPatches.read_csv
-    session.SparkSession.read_parquet = SparkSessionPatches.read_parquet
-    pyspark.read_csv = namespace.read_csv
-    pyspark.read_parquet = namespace.read_parquet
+    for func in ['from_pandas', 'read_csv', 'read_parquet']:
+        setattr(session.SparkSession, func, getattr(SparkSessionPatches, func))
+        setattr(pyspark, func, getattr(namespace, func))
     pyspark.to_datetime = namespace.to_datetime
 
 
@@ -104,6 +103,7 @@ def _wrap_functions():
         if isinstance(oldfun, types.FunctionType):
             fun = wrap_column_function(oldfun)
             setattr(F, fname, fun)
+            setattr(F, '_spark_' + fname, oldfun)
     setattr(F, _TOUCHED_TEST, "")
 
 

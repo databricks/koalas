@@ -3,6 +3,10 @@ Exceptions/Errors used in pandorable_sparky.
 """
 
 
+class SparkPandasIndexingError(Exception):
+    pass
+
+
 def code_change_hint(pandas_function, spark_target_function):
     if pandas_function is not None and spark_target_function is not None:
         return "You are trying to use pandas function {}, use spark function {}" \
