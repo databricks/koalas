@@ -69,7 +69,7 @@ class Metadata(object):
                               for i in range(len(index.levels))]
             else:
                 index_info = [('__index_level_{}__'.format(i) if name is None else name, name)
-                              for name, i in enumerate(index.names)]
+                              for i, name in enumerate(index.names)]
         else:
             index_info = [(index.name
                           if index.name is not None else '__index_level_0__', index.name)]

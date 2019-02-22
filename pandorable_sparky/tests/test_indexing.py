@@ -26,6 +26,7 @@ class BasicIndexingTest(ComparisonTestBase):
 
         yield df.set_index('month', drop=False)
         yield df.set_index('month', append=True)
+        yield df.set_index(['year', 'month'])
         yield df.set_index(['year', 'month'], drop=False)
         yield df.set_index(['year', 'month'], append=True)
 
@@ -79,6 +80,15 @@ class BasicIndexingTest(ComparisonTestBase):
         s.reset_index(drop=True, inplace=True)
         yield s
         yield df1
+
+    def test_from_pandas_with_explicit_index(self):
+        pdf = self.pdf
+
+        df1 = self.spark.from_pandas(pdf.set_index('month'))
+        self.assertPandasEqual(df1.toPandas(), pdf.set_index('month'))
+
+        df2 = self.spark.from_pandas(pdf.set_index(['year', 'month']))
+        self.assertPandasEqual(df2.toPandas(), pdf.set_index(['year', 'month']))
 
     def test_limitations(self):
         df = self.df.set_index('month')
