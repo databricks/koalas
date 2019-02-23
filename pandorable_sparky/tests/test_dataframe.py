@@ -192,7 +192,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         df = pd.DataFrame({'year': [2015, 2016],
                            'month': [2, 3],
                            'day': [4, 5]})
-        ddf = self.spark.from_pandas(df, npartitions=2)
+        ddf = self.spark.from_pandas(df)
 
         self.assert_eq(pd.to_datetime(df), self.spark.to_datetime(ddf))
 
