@@ -194,13 +194,13 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
                            'day': [4, 5]})
         ddf = self.spark.from_pandas(df)
 
-        self.assert_eq(pd.to_datetime(df), self.spark.to_datetime(ddf))
+        self.assert_eq(pd.to_datetime(df), pyspark.to_datetime(ddf))
 
         s = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
         ds = self.spark.from_pandas(s, npartitions=10)
 
         self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
-                       self.spark.to_datetime(ds, infer_datetime_format=True))
+                       pyspark.to_datetime(ds, infer_datetime_format=True))
 
 
 if __name__ == "__main__":
