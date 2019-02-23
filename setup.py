@@ -8,7 +8,7 @@ setup(
         'pyspark>=2.4.0',
         'pandas>=0.23',
         'decorator',
-        'pyarrow>=0.8,<0.9'], # 'pyarrow>=0.11.1'
+        'pyarrow>=0.8,<0.9'],  # 'pyarrow>=0.11.1'
     author="Timothy Hunter",
     author_email="tim@databricks.com",
     license='Apache 2.0',
