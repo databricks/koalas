@@ -91,7 +91,7 @@ def _to_datetime1(arg, errors, format, infer_datetime_format) -> Col[np.datetime
         arg,
         errors=errors,
         format=format,
-        infer_datetime_format=infer_datetime_format).astype(np.datetime64)
+        infer_datetime_format=infer_datetime_format)
 
 
 # @pandas_wrap(return_col=np.datetime64)
@@ -106,4 +106,4 @@ def _to_datetime2(arg_year, arg_month, arg_day,
         arg,
         errors=errors,
         format=format,
-        infer_datetime_format=infer_datetime_format).astype(np.datetime64)
+        infer_datetime_format=infer_datetime_format)
