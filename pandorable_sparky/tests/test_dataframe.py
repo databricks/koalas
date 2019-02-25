@@ -197,7 +197,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pd.to_datetime(df), pyspark.to_datetime(ddf))
 
         s = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
-        ds = self.spark.from_pandas(s, npartitions=10)
+        ds = self.spark.from_pandas(pd.DataFrame({'s': s}))['s']
 
         self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
                        pyspark.to_datetime(ds, infer_datetime_format=True))
