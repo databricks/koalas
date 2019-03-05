@@ -188,6 +188,20 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(ds, s)
 
+    def test_to_datetime(self):
+        df = pd.DataFrame({'year': [2015, 2016],
+                           'month': [2, 3],
+                           'day': [4, 5]})
+        ddf = self.spark.from_pandas(df)
+
+        self.assert_eq(pd.to_datetime(df), pyspark.to_datetime(ddf))
+
+        s = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
+        ds = self.spark.from_pandas(pd.DataFrame({'s': s}))['s']
+
+        self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
+                       pyspark.to_datetime(ds, infer_datetime_format=True))
+
 
 if __name__ == "__main__":
     from pandorable_sparky.tests.test_dataframe import *
