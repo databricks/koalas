@@ -260,17 +260,11 @@ class PandasLikeSeries(_Frame):
         n = self._pandas_orig_repr()
         raise ValueError("No reference to a dataframe for column {}".format(n))
 
-    # DANGER: will materialize.
-    def __iter__(self):
-        print("__iter__", self)
-        return self.toPandas().__iter__()
-
     def __len__(self):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
         res = anchor_wrap(self, self._spark_getitem(key))
-        print("series:getitem:", key, self.schema, res)
         return res
 
     def __getattr__(self, item):
@@ -579,7 +573,6 @@ class PandasLikeDataFrame(_Frame):
         return len(self), len(self.columns)
 
     def _pd_getitem(self, key):
-        # print("__getitem__:key", key, type(key))
         if key is None:
             raise KeyError("none key")
         if isinstance(key, string_types):
@@ -634,7 +627,6 @@ class PandasLikeDataFrame(_Frame):
         return anchor_wrap(self, self._spark_getattr(key))
 
     def __iter__(self):
-        print("df__iter__", self)
         return self.toPandas().__iter__()
 
     def __len__(self):

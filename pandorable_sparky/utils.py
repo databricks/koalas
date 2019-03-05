@@ -50,10 +50,8 @@ def patch_spark():
 @decorator
 def wrap_column_function(f, *args, **kwargs):
     # Call the function first
-    # print("wrap_column_function:calling {} on args={}, kwargs={}".format(f, args, kwargs))
     res = f(*args, **kwargs)
     if isinstance(res, col.Column):
-        # print("res is a column")
         # Need to track where this column is coming from
         all_inputs = list(args) + list(kwargs.values())
 
@@ -67,9 +65,7 @@ def wrap_column_function(f, *args, **kwargs):
                     logger.warning("Found a column without reference: {}".format(str(x)))
             return None
         all_col_inputs = [ref_df(c) for c in all_inputs]
-        # print("wrap_column_function:all_col_inputs", all_col_inputs)
         all_df_inputs = list(dict([(id(f), f) for f in all_col_inputs if f]).items())
-        # print("wrap_column_function:all_df_inputs", all_df_inputs)
         if len(all_df_inputs) > 1:
             logger.warning("Too many anchors to conclude")
         elif not all_df_inputs:
@@ -111,7 +107,6 @@ def _inject(target_type, inject_type):
     # Make sure to resolve the base classes too.
     mro = list(inject_type.__mro__)
     mro.reverse()
-    print(mro)
     # Keep a duplicate of all the existing methods:
     setattr(target_type, "_spark_getattr", target_type.__getattr__)
     setattr(target_type, "_spark_getitem", target_type.__getitem__)
