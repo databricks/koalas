@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-
-#
-# Copyright (C) 2019 Databricks, Inc.
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -18,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 # define test binaries + versions
 PYDOCSTYLE_BUILD="pydocstyle"
 MINIMUM_PYDOCSTYLE="3.0.0"
