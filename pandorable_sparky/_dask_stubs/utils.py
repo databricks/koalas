@@ -1,4 +1,3 @@
-
 import functools
 from .compatibility import get_named_args
 
