@@ -24,7 +24,7 @@ import pyspark
 import numpy as np
 import pandas as pd
 from .typing import Col, pandas_wrap
-from pyspark.sql import Column
+from pyspark.sql import Column, DataFrame
 
 
 def default_session():
@@ -86,31 +86,43 @@ def read_parquet(path, columns=None):
     return default_session().read_parquet(path=path, columns=columns)
 
 
-def to_datetime(arg, errors='raise', format=None):
+def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
     if isinstance(arg, Column):
-        return _to_datetime1(arg, errors=errors, format=format)
-    if isinstance(arg, dict):
+        return _to_datetime1(
+            arg,
+            errors=errors,
+            format=format,
+            infer_datetime_format=infer_datetime_format)
+    if isinstance(arg, (dict, DataFrame)):
         return _to_datetime2(
             arg_year=arg['year'],
             arg_month=arg['month'],
             arg_day=arg['day'],
             errors=errors,
-            format=format
-        )
+            format=format,
+            infer_datetime_format=infer_datetime_format)
 
 
 # @pandas_wrap(return_col=np.datetime64)
 @pandas_wrap
-def _to_datetime1(arg, errors, format) -> Col[np.datetime64]:
-    return pd.to_datetime(arg, errors=errors, format=format).astype(np.datetime64)
+def _to_datetime1(arg, errors, format, infer_datetime_format) -> Col[np.datetime64]:
+    return pd.to_datetime(
+        arg,
+        errors=errors,
+        format=format,
+        infer_datetime_format=infer_datetime_format)
 
 
 # @pandas_wrap(return_col=np.datetime64)
 @pandas_wrap
-def _to_datetime2(arg_year=None, arg_month=None, arg_day=None,
-                  errors=None, format=None) -> Col[np.datetime64]:
+def _to_datetime2(arg_year, arg_month, arg_day,
+                  errors, format, infer_datetime_format) -> Col[np.datetime64]:
     arg = dict(year=arg_year, month=arg_month, day=arg_day)
     for key in arg:
         if arg[key] is None:
             del arg[key]
-    return pd.to_datetime(arg, errors=errors, format=format).astype(np.datetime64)
+    return pd.to_datetime(
+        arg,
+        errors=errors,
+        format=format,
+        infer_datetime_format=infer_datetime_format)
