@@ -217,4 +217,4 @@ dev/tox.ini
 BSD 3-Clause
 ------------
 
-pandorable_sparky/_dask_stubs/*.py
+databricks/koala/_dask_stubs/*.py

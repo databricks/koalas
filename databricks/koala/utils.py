@@ -15,7 +15,7 @@
 #
 
 """
-Utilities to monkey patch PySpark used in pandorable_sparky.
+Utilities to monkey patch PySpark used in databricks-koala.
 """
 from pyspark.sql import session, dataframe as df, column as col, functions as F
 import pyspark

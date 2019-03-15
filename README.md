@@ -17,7 +17,7 @@ Requirements:
 How to use:
 
 ```py
-import pandorable_spark
+import databricks.koala
 ```
 
 That's it. Now you have turned all the Spark Dataframes 
@@ -38,6 +38,3 @@ df.columns = ['x', 'y', 'z1']
 # Do some operations in place:
 df['x2'] = df.x * df.x
 ```
- 
-
-

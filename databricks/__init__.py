@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 #
 # Copyright (C) 2019 Databricks, Inc.
 #
@@ -16,19 +14,5 @@
 # limitations under the License.
 #
 
-from setuptools import setup
-
-setup(
-    name='databricks-koala',
-    version='0.0.5',
-    packages=['databricks.koala', 'databricks.koala._dask_stubs'],
-    install_requires=[
-        'pyspark>=2.4.0',
-        'pandas>=0.23',
-        'decorator',
-        'pyarrow>=0.10,<0.11'],  # See https://github.com/databricks/spark-pandas/issues/26
-    author="Timothy Hunter",
-    author_email="tim@databricks.com",
-    license='http://www.apache.org/licenses/LICENSE-2.0',
-    long_description=open('README.md').read(),
-)
+# https://packaging.python.org/guides/packaging-namespace-packages/#pkgutil-style-namespace-packages
+__path__ = __import__('pkgutil').extend_path(__path__, __name__)
