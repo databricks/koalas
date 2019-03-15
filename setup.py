@@ -21,7 +21,7 @@ from setuptools import setup
 setup(
     name='databricks-koala',
     version='0.0.5',
-    packages=['databricks.koala', 'databricks.koala._dask_stubs'],
+    packages=['databricks', 'databricks.koala', 'databricks.koala._dask_stubs'],
     install_requires=[
         'pyspark>=2.4.0',
         'pandas>=0.23',
