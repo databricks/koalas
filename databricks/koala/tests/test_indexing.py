@@ -19,12 +19,9 @@ import unittest
 
 import numpy as np
 import pandas as pd
-import pandorable_sparky
-import pyspark
-from pyspark.sql import Column, DataFrame
 
-from pandorable_sparky.exceptions import SparkPandasIndexingError
-from pandorable_sparky.testing.utils import ComparisonTestBase, ReusedSQLTestCase, compare_both
+from databricks.koala.exceptions import SparkPandasIndexingError
+from databricks.koala.testing.utils import ComparisonTestBase, ReusedSQLTestCase, compare_both
 
 
 class BasicIndexingTest(ComparisonTestBase):
@@ -380,8 +377,6 @@ class IndexingTest(ReusedSQLTestCase):
 
 
 if __name__ == "__main__":
-    from pandorable_sparky.tests.test_indexing import *
-
     try:
         import xmlrunner
         testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')

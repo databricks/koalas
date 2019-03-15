@@ -19,10 +19,9 @@ import unittest
 
 import numpy as np
 import pandas as pd
-import pandorable_sparky
 import pyspark
 
-from pandorable_sparky.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koala.testing.utils import ReusedSQLTestCase, TestUtils
 
 
 class ParquetTest(ReusedSQLTestCase, TestUtils):
@@ -64,8 +63,6 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
 
 
 if __name__ == "__main__":
-    from pandorable_sparky.tests.test_parquet import *
-
     try:
         import xmlrunner
         testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')

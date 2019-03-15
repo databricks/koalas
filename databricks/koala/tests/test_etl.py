@@ -17,10 +17,8 @@
 import unittest
 
 import pandas as pd
-import pandorable_sparky
-import pyspark
 
-from pandorable_sparky.testing.utils import ComparisonTestBase, compare_both
+from databricks.koala.testing.utils import ComparisonTestBase, compare_both
 
 
 class EtlTest(ComparisonTestBase):
@@ -64,8 +62,6 @@ class EtlTest(ComparisonTestBase):
 
 
 if __name__ == "__main__":
-    from pandorable_sparky.tests.test_etl import *
-
     try:
         import xmlrunner
         testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')

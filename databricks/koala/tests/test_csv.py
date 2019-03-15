@@ -20,9 +20,8 @@ import unittest
 
 import pandas as pd
 import pyspark
-import pandorable_sparky
 
-from pandorable_sparky.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koala.testing.utils import ReusedSQLTestCase, TestUtils
 
 
 def normalize_text(s):
@@ -137,8 +136,6 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
 
 
 if __name__ == "__main__":
-    from pandorable_sparky.tests.test_csv import *
-
     try:
         import xmlrunner
         testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
