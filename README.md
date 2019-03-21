@@ -41,7 +41,7 @@ Pending publication on the PyPI repository, a compiled package can be installed 
 this URL:
 
 ```bash
-pip install https://s3-us-west-2.amazonaws.com/databricks-tjhunter/pandorable_sparky/pandorable_sparky-0.0.5-py3-none-any.whl
+pip install https://s3-us-west-2.amazonaws.com/databricks-tjhunter/koala/databricks_koala-0.0.5-py3-none-any.whl
 ```
 
 ## License
