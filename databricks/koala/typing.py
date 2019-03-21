@@ -157,9 +157,6 @@ def make_fun(f, *args, **kwargs):
         else:
             frozen_args.append(arg2)
         final_args.append(arg2)
-    print("final_args", final_args)
-    print("col_indexs", col_indexes)
-    print("frozen_args", frozen_args)
     sig_kwargs = f.sig_kwargs  # type: typing.Dict[str, X]
     final_kwargs = {}
     col_keys = []
@@ -173,7 +170,6 @@ def make_fun(f, *args, **kwargs):
             frozen_kwargs[key] = None
         else:
             frozen_kwargs[key] = arg2
-    print("col_keys", col_keys)
     if not col_keys and not col_indexes:
         # No argument is related to spark
         # The function is just called through without other considerations.
@@ -188,15 +184,12 @@ def make_fun(f, *args, **kwargs):
     # We build a new UDF that only takes arguments from columns, the rest is
     # sent inside the closure into the function.
     all_indexes = col_indexes + col_keys  # type: typing.Union[str, int]
-    print("all_indexes", all_indexes)
 
     def clean_fun(*args2):
         assert len(args2) == len(all_indexes),\
             "Missing some inputs:{}!={}".format(all_indexes, [str(c) for c in args2])
         full_args = list(frozen_args)
         full_kwargs = dict(frozen_kwargs)
-        print("full_kwargs", full_kwargs)
-        print("full_args", full_args)
         for (arg, idx) in zip(args2, all_indexes):
             if isinstance(idx, int):
                 full_args[idx] = arg
@@ -221,14 +214,12 @@ def _wrap_callable(obj):
     f0 = obj.__call__
 
     def f(*args, **kwargs):
-        print("xxxx")
         return f0(*args, **kwargs)
     obj.__call__ = f
     return obj
 
 
 def pandas_wrap(f, return_col=None):
-    print("pandas_wrap:f=", f)
     # Extract the signature arguments from this function.
     spec = getfullargspec(f)
     rtype = None
@@ -256,7 +247,4 @@ def pandas_wrap(f, return_col=None):
     f.sig_return = rtype
     f.sig_args = sig_args
     f.sig_kwargs = sig_kwargs
-    print("sig_return", rtype)
-    print("sig_args", sig_args)
-    print("sig_kwargs", sig_kwargs)
     return decorate(f, make_fun)
