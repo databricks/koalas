@@ -78,7 +78,7 @@ def wrap_column_function(f, *args, **kwargs):
                 if hasattr(x, "_spark_ref_dataframe"):
                     return x._spark_ref_dataframe
                 else:
-                    logger.warning("Found a column without reference: {}".format(str(x)))
+                    logger.debug("Found a column without reference: {}".format(str(x)))
             return None
         all_col_inputs = [ref_df(c) for c in all_inputs]
         all_df_inputs = list(dict([(id(f), f) for f in all_col_inputs if f]).items())
