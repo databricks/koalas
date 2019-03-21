@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 #
 # Copyright (C) 2019 Databricks, Inc.
 #
@@ -16,16 +14,5 @@
 # limitations under the License.
 #
 
-# Sets up enviornment from test. Should be sourced in other scripts.
-
-if [ -z "$SPARK_HOME" ]; then
-    echo 'You need to set $SPARK_HOME to run these tests.' >&2
-    exit 1
-fi
-
-LIBS=""
-for lib in "$SPARK_HOME/python/lib"/*zip ; do
-  LIBS=$LIBS:$lib
-done
-
-export PYTHONPATH=$PYTHONPATH:$SPARK_HOME/python:$LIBS:.
+# https://packaging.python.org/guides/packaging-namespace-packages/#pkgutil-style-namespace-packages
+__path__ = __import__('pkgutil').extend_path(__path__, __name__)

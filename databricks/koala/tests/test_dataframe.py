@@ -1,12 +1,27 @@
+#
+# Copyright (C) 2019 Databricks, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import unittest
 
 import numpy as np
 import pandas as pd
-import pandorable_sparky
 import pyspark
-from pyspark.sql import Column, DataFrame
+from pyspark.sql import Column
 
-from pandorable_sparky.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koala.testing.utils import ReusedSQLTestCase, TestUtils
 
 
 class DataFrameTest(ReusedSQLTestCase, TestUtils):
@@ -188,10 +203,22 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(ds, s)
 
+    def test_to_datetime(self):
+        df = pd.DataFrame({'year': [2015, 2016],
+                           'month': [2, 3],
+                           'day': [4, 5]})
+        ddf = self.spark.from_pandas(df)
+
+        self.assert_eq(pd.to_datetime(df), pyspark.to_datetime(ddf))
+
+        s = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
+        ds = self.spark.from_pandas(pd.DataFrame({'s': s}))['s']
+
+        self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
+                       pyspark.to_datetime(ds, infer_datetime_format=True))
+
 
 if __name__ == "__main__":
-    from pandorable_sparky.tests.test_dataframe import *
-
     try:
         import xmlrunner
         testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')

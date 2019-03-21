@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 #
 # Copyright (C) 2019 Databricks, Inc.
 #
@@ -15,17 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from .utils import *
+from .namespace import *
+from .typing import Col, pandas_wrap
 
-# Sets up enviornment from test. Should be sourced in other scripts.
+__all__ = ['patch_spark', 'read_csv', 'Col', 'pandas_wrap']
 
-if [ -z "$SPARK_HOME" ]; then
-    echo 'You need to set $SPARK_HOME to run these tests.' >&2
-    exit 1
-fi
 
-LIBS=""
-for lib in "$SPARK_HOME/python/lib"/*zip ; do
-  LIBS=$LIBS:$lib
-done
+def _auto_patch():
+    import os
+    import logging
+    # Autopatching is on by default.
+    x = os.getenv("SPARK_PANDAS_AUTOPATCH", "true")
+    if x.lower() in ("true", "1", "enabled"):
+        logger = logging.getLogger('spark')
+        logger.info("Patching spark automatically. You can disable it by setting "
+                    "SPARK_PANDAS_AUTOPATCH=false in your environment")
+        patch_spark()
 
-export PYTHONPATH=$PYTHONPATH:$SPARK_HOME/python:$LIBS:.
+_auto_patch()

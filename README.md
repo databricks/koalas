@@ -1,13 +1,12 @@
 [![Build Status](https://travis-ci.com/databricks/spark-pandas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/spark-pandas)
 
 # spark-pandas
-Spark is cute. Sparky is _pandorable_.
+Spark is cute.
 
 Pandas dataframe APIs on Apache Spark
 
 This package modifies PySpark's dataframe API to 
-make it compliant (mostly) with the Pandas API (i.e. 
-more pandorable).
+make it compliant (mostly) with the Pandas API.
 
 Requirements:
  - spark 2.4 (at least 2.3+ if you want to use UDFs)
@@ -17,7 +16,7 @@ Requirements:
 How to use:
 
 ```py
-import pandorable_spark
+import databricks.koala
 ```
 
 That's it. Now you have turned all the Spark Dataframes 
@@ -38,6 +37,3 @@ df.columns = ['x', 'y', 'z1']
 # Do some operations in place:
 df['x2'] = df.x * df.x
 ```
- 
-
-
