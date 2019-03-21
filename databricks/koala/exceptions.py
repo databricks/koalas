@@ -15,7 +15,7 @@
 #
 
 """
-Exceptions/Errors used in pandorable_sparky.
+Exceptions/Errors used in databricks-koala.
 """
 
 

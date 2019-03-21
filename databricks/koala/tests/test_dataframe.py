@@ -18,11 +18,10 @@ import unittest
 
 import numpy as np
 import pandas as pd
-import pandorable_sparky
 import pyspark
-from pyspark.sql import Column, DataFrame
+from pyspark.sql import Column
 
-from pandorable_sparky.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koala.testing.utils import ReusedSQLTestCase, TestUtils
 
 
 class DataFrameTest(ReusedSQLTestCase, TestUtils):
@@ -220,8 +219,6 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
 
 if __name__ == "__main__":
-    from pandorable_sparky.tests.test_dataframe import *
-
     try:
         import xmlrunner
         testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
