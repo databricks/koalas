@@ -44,6 +44,13 @@ this URL:
 pip install https://s3-us-west-2.amazonaws.com/databricks-tjhunter/pandorable_sparky/pandorable_sparky-0.0.5-py3-none-any.whl
 ```
 
+## License
+
+The license of the Koala project is Apache 2.0. See the `LICENSE` file for more details.
+
+Some files have been adapted from the Dask project, under the terms of the Apache 2.0 license
+and the Dask license. See the file `licenses/LICENSE-dask.txt` for more details.
+
 ## What is available
 
 Pandas has a very extensive API and currently Koala only supports a subset of the Pandas API.
