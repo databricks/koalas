@@ -2,15 +2,14 @@
 
 # Koala: Pandas APIs on Apache Spark
 
-This package modifies PySpark's DataFrame API to 
+This package augments PySpark's DataFrame API to 
 make it compliant (mostly) with the Pandas API.
 
 Pandas is the de facto standard (single-node) dataframe implementation in Python, while
-Apache Spark is de facto standard for big data processing. Recently, we have seen a surge
-of data scientists that want to leverage Spark for data that doesn't necessarily fit on a
-laptop, or on production data that they can't download to a laptop. This packages reduces
-the learning curve required to use Spark, for data scientists that are already familiar
-with Pandas.
+Apache Spark is the de facto standard for big data processing. This package helps you in two ways:
+ - it allows you to keep a single codebase that works both with Pandas (tests, smaller datasets) and with Spark (distributed datasets)
+ - it makes you immediately productive with Spark if you already know Pandas.
+
 
 ## Dependencies
 
@@ -96,4 +95,4 @@ by simply wrapping the existing Pandas function.
  2. Wrap your function and submit it as a pull request
  
 If the function already has the same name in Apache Spark and if the results differ, the 
-general policy is to follow the Behaviour of Spark and to document the changes.
+general policy is to follow the behaviour of Spark and to document the changes.
