@@ -41,12 +41,12 @@ Example:
 
 ```py
 import pandas as pd
-pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'],'z':['a','b','b']})
+pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
 
-df = spark.createDataFrame(pdf)
+df = spark.from_pandas(pdf)
+
 # Rename the columns
 df.columns = ['x', 'y', 'z1']
-
 
 # Do some operations in place:
 df['x2'] = df.x * df.x
