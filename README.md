@@ -2,22 +2,40 @@
 
 # Koala: Pandas APIs on Apache Spark
 
-This package modifies PySpark's dataframe API to 
+This package modifies PySpark's DataFrame API to 
 make it compliant (mostly) with the Pandas API.
 
-Requirements:
- - Spark 2.4. Some older versions of Spark may work too but they are not supported.
- - a recent version of Pandas. It is officially developed against 0.23+ but some other versions may work too.
+Pandas is the de facto standard (single-node) dataframe implementation in Python, while
+Apache Spark is de facto standard for big data processing. Recently, we have seen a surge
+of data scientists that want to leverage Spark for data that doesn't necessarily fit on a
+laptop, or on production data that they can't download to a laptop. This packages reduces
+the learning curve required to use Spark, for data scientists that are already familiar
+with Pandas.
+
+## Dependencies
+
+ - Spark 2.4. Some older versions of Spark may work too but they are not officially supported.
+ - A recent version of Pandas. It is officially developed against 0.23+ but some other versions may work too.
  - Python 3.5+ if you want to use type hints in UDFs. Work is ongoing to also support Python 2.
 
-How to use:
+
+## How to install & use
+
+Pending publication on the PyPI repository, a compiled package can be installed by using
+this URL:
+
+```bash
+pip install https://s3-us-west-2.amazonaws.com/databricks-tjhunter/koala/databricks_koala-0.0.5-py3-none-any.whl
+```
+
+After installing the package, you can import the package:
 
 ```py
 import databricks.koala
 ```
 
 That's it. Now you have turned all the Spark Dataframes 
-that will be created from now on into compliant Pandas 
+that will be created from now on into API-compliant Pandas 
 dataframes.
 
 Example:
@@ -35,14 +53,6 @@ df.columns = ['x', 'y', 'z1']
 df['x2'] = df.x * df.x
 ```
 
-## How to use
-
-Pending publication on the PyPI repository, a compiled package can be installed by using
-this URL:
-
-```bash
-pip install https://s3-us-west-2.amazonaws.com/databricks-tjhunter/koala/databricks_koala-0.0.5-py3-none-any.whl
-```
 
 ## License
 
