@@ -70,8 +70,8 @@ https://docs.google.com/spreadsheets/d/1GwBvGsqZAFFAD5PPc_lffDEXith353E1Y7UV6ZAA
 
 ## Current status
 
-This project is a technology preview that is meant to show the current available that is
-available. In this preview, you should expect the following differences:
+This project is currently in beta and is rapidly evolving.
+You should expect the following differences:
 
  - some functions may be missing (see the [What is available](#what-is-available) section)
 
