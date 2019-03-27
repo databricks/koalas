@@ -249,6 +249,10 @@ class PandasLikeSeries(_Frame):
     def loc(self):
         return SparkDataFrameLocator(self)
 
+    def corr(self, other, method=None):
+        df = self._pandas_anchor
+        return df._spark_corr(self.name, other.name, method=None)
+
     def to_dataframe(self):
         ref = self._pandas_anchor
         df = ref._spark_select(self._metadata.index_fields + [self])
@@ -559,6 +563,15 @@ class PandasLikeDataFrame(_Frame):
             return anchor_wrap(self, self._pd_getitem(key))
         except (KeyError, ValueError, IndexError):
             return default
+
+    def corr(self, col1=None, col2=None, method=None):
+        if col1 is None and col2 is None:
+            from pyspark.mllib.stat import Statistics
+            colnames = list(self.columns)
+            corr_values = Statistics.corr(self._spark_select(colnames).rdd.map(list), method=method)
+            return pd.DataFrame(corr_values, columns=colnames, index=colnames)
+        else:
+            return self._spark_corr(col1, col2, method=method)
 
     def sort_values(self, by):
         df = self._spark_sort(by)

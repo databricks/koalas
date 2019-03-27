@@ -217,6 +217,24 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
                        pyspark.to_datetime(ds, infer_datetime_format=True))
 
+    def test_corr(self):
+        # DataFrame
+        df = pd.DataFrame({'A': [1, 2, 3, 4, 5],
+                           'B': [5, 4, 3, 2, 1]})
+        ddf = self.spark.from_pandas(df)
+
+        res = ddf.corr()
+        sol = df.corr()
+        self.assertPandasAlmostEqual(res, sol)
+
+        # Test spark compatibility
+        ddf.corr('A', 'B')
+
+        # Series
+        res = ddf.A.corr(ddf.B)
+        sol = df.A.corr(df.B)
+        self.assertAlmostEqual(res, sol)
+
 
 if __name__ == "__main__":
     try:
