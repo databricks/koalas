@@ -130,6 +130,31 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         ddf = self.spark.from_pandas(df)
         self.assertEqual(ddf.index.name, 'x')
 
+    def test_rename(self):
+        df = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7],
+                           'b': [7, 6, 5, 4, 3, 2, 1]})
+        ddf = self.spark.from_pandas(df)
+
+        ddf2 = ddf.rename(columns={'a': 'x'})
+        df2 = df.rename(columns={'a': 'x'})
+        self.assert_eq(ddf2.columns, pd.Index(['x', 'b']))
+        self.assert_eq(ddf2, df2)
+
+        if pd.__version__ > '0.21':
+            ddf2 = ddf.rename({'a': 'x'}, axis='columns')
+            df2 = df.rename({'a': 'x'}, axis='columns')
+            self.assert_eq(ddf2.columns, pd.Index(['x', 'b']))
+            self.assert_eq(ddf2, df2)
+
+        ddf2 = ddf.rename(columns=(lambda x: 'x' if x == 'a' else x))
+        df2 = df.rename(columns=(lambda x: 'x' if x == 'a' else x))
+        self.assert_eq(ddf2.columns, pd.Index(['x', 'b']))
+        self.assert_eq(ddf2, df2)
+
+        msg = "Cannot specify both 'axis' and any of 'index' or 'columns'"
+        with self.assertRaisesRegex(TypeError, msg):
+            ddf.rename(columns={'x': 'a'}, axis='columns')
+
     def test_rename_columns(self):
         df = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7],
                            'b': [7, 6, 5, 4, 3, 2, 1]})

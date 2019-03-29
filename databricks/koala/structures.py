@@ -511,6 +511,65 @@ class PandasLikeDataFrame(_Frame):
         df._metadata = self._metadata.copy()
         return df
 
+    def rename(self, mapper=None, index=None, columns=None, axis=None, inplace=False,
+               level=None):
+        """
+        Alter axes labels.
+
+        Function / dict values must be unique (1-to-1). Labels not contained in
+        a dict / Series will be left as-is. Extra labels listed don't throw an
+        error.
+
+        :param mapper: dict-like or function, optional
+                       dict-like or function transformations to apply to the axis given by `axis`.
+        :param index: dict-like or function, optional
+                      dict-like or function transformations to apply to the `index` axis.
+        :param columns: dict-like or function, optional
+                        dict-like or function transformations to apply to the `columns` axis.
+        :param axis: int or str, optional
+                     Axis to target with ``mapper``. Can be either the axis name ('index',
+                     'columns') or number (0, 1). The default is 'index'.
+        :param inplace: boolean, default False
+                        Whether to return a new DataFrame.
+        :return: :class: `DataFrame` if inplace=False else None
+
+        Examples
+        --------
+        >>> df = spark.createDataFrame([ [1, 2, 3], [4, 5, 6] ], ['A', 'B', 'C'])
+        >>> df.rename(columns={"A": "a", "B": "b"})
+        DataFrame[a: bigint, C: bigint, C: bigint]
+        >>> df.rename(str.lower, axis='columns')
+        DataFrame[a: bigint, b: bigint, c: bigint]
+        >>> df.rename({'A': 'a'}, axis='columns', inplace=True)
+        >>> df
+        DataFrame[a: bigint, B: bigint, C: bigint]
+        """
+        if axis is not None and (index is not None or columns is not None):
+            # Raise same error as pandas if invalid combination of args provided
+            raise TypeError("Cannot specify both 'axis' and any of 'index' or 'columns'.")
+        if mapper is not None and axis is not None:
+            axis = self._validate_axis(axis)
+            if axis == 0:
+                index = mapper
+            elif axis == 1:
+                columns = mapper
+            else:
+                raise ValueError('No axis named %s for object type %s' % (axis, type(self)))
+
+        df = self if inplace else self.copy()
+        if columns is not None:
+            if isinstance(columns, dict):
+                columns_dict = columns
+                columns = lambda x: columns_dict.get(x, x)
+            if not callable(columns):
+                raise TypeError("'%s' object is not callable" % type(columns))
+            df.columns = [columns(i) for i in self.columns]
+        if index is not None:
+            raise NotImplementedError('`index` is not implemented')
+
+        if not inplace:
+            return df
+
     @property
     def columns(self):
         return pd.Index(self._metadata.column_fields)
