@@ -588,6 +588,24 @@ class PandasLikeDataFrame(_Frame):
     def shape(self):
         return len(self), len(self.columns)
 
+    def sample(self, n=None, frac=None, replace=False, random_state=None):
+        if n is not None and frac is not None:
+            raise ValueError("Please enter a value for `frac` OR `n`, not both")
+        if frac is None and n is None:
+            n = 1
+        if n is not None:
+            if n < 0:
+                return ValueError("A negative number of rows requested. "
+                                  "Please provide positive value.")
+            elif n == 0:  # n=0 is valid in pandas, and is simple to do
+                return self.head(0)
+            frac = min(1.0, float(n) / self.count())
+        if random_state is not None and not isinstance(random_state, int):
+            raise NotImplementedError("Only integer values for `random_state` are supported")
+        df = self._spark_sample(withReplacement=replace, fraction=frac, seed=random_state)
+        df._metadata = self._metadata.copy()
+        return df
+
     def _pd_getitem(self, key):
         if key is None:
             raise KeyError("none key")
