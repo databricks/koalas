@@ -18,6 +18,7 @@
 
 from setuptools import setup
 
+
 install_requires = [
     'pandas>=0.23',
     'decorator',
