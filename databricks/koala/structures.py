@@ -588,6 +588,54 @@ class PandasLikeDataFrame(_Frame):
     def shape(self):
         return len(self), len(self.columns)
 
+    def to_csv(self, path_or_buf, sep=',', na_rep='', columns=None, header=True,
+               index=True, mode=None, encoding=None, compression='infer',
+               quoting=None, quotechar='"', date_format=None,
+               doublequote=False, escapechar=None):
+        import csv
+        if not isinstance(path_or_buf, str):
+            raise NotImplementedError('Only paths is supported for `path_or_buf`')
+        if isinstance(path_or_buf, str) and compression == 'infer':
+            extension_mapper = {'.gz': 'gzip', '.bz2': 'bz2', '.zip': 'zip', '.xz': 'xz'}
+            for ext, comp in extension_mapper.values():
+                if path_or_buf.rstrip('/').endswith(ext):
+                    compression = comp
+                    break
+
+        df = self.copy()
+        if index is False:
+            df = df.reset_index(drop=True)
+        if isinstance(header, list):
+            df.columns = header
+        elif columns:
+            df.columns = list(columns)
+
+        mode_mapper = {
+            'w': 'overwrite',
+            'a': 'append',
+        }
+        compression_mapper = {
+            # 'gzip': 'gzip',
+            'bz2': 'bzip2',
+        }
+
+        # Default quoting value is csv.QUOTE_MINIMAL
+        escapeQuotes, quoteAll = True, False
+        if quoting == csv.QUOTE_NONE:
+            escapeQuotes, quoteAll = False, False
+        elif quoting == csv.QUOTE_ALL:
+            escapeQuotes, quoteAll = True, True
+        elif quoting == csv.QUOTE_NONNUMERIC:
+            raise NotImplementedError('quoting=QUOTE_NONNUMERIC has not been implemented')
+
+        df._spark_write.csv(
+            path_or_buf, mode=mode_mapper.get(mode, mode), sep=sep,
+            compression=compression_mapper.get(compression, compression),
+            quote=quotechar, escape=escapechar, header=bool(header),
+            nullValue=na_rep, escapeQuotes=escapeQuotes, quoteAll=quoteAll,
+            dateFormat=date_format, timestampFormat=date_format,
+            encoding=encoding, emptyValue=na_rep)
+
     def _pd_getitem(self, key):
         if key is None:
             raise KeyError("none key")
