@@ -283,6 +283,9 @@ class PandasLikeSeries(_Frame):
         # Pandas wants a series/array-like object
         return _col(self.to_dataframe().unique())
 
+    def count(self):
+        return self._reduce_for_stat_function(F.count)
+
     def _reduce_for_stat_function(self, sfun):
         return _unpack_scalar(self._spark_ref_dataframe._spark_select(sfun(self)))
 
