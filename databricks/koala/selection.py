@@ -114,7 +114,12 @@ class SparkDataFrameLocator(object):
         elif isinstance(rows_sel, slice):
             if rows_sel.step is not None:
                 raiseNotImplemented("Cannot use step with Spark.")
-            if len(self.df._index_columns) == 1:
+            if rows_sel == slice(None):
+                # If slice is None - select everything, so nothing to do
+                pass
+            elif len(self.df._index_columns) == 0:
+                raiseNotImplemented("Cannot use slice for Spark if no index provided.")
+            elif len(self.df._index_columns) == 1:
                 start = rows_sel.start
                 stop = rows_sel.stop
 
