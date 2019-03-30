@@ -144,7 +144,7 @@ class _Frame(object):
     """
 
     def max(self):
-        return _reduce_spark(self, F.max)
+        return self._reduce_for_stat_function(F.max)
 
     def compute(self):
         """Alias of `toPandas()` to mimic dask for easily porting tests."""
@@ -265,6 +265,9 @@ class PandasLikeSeries(_Frame):
         # Pandas wants a series/array-like object
         return _col(self.to_dataframe().unique())
 
+    def _reduce_for_stat_function(self, sfun):
+        return _unpack_scalar(self._spark_ref_dataframe._spark_select(sfun(self)))
+
     @property
     def _pandas_anchor(self) -> DataFrame:
         """
@@ -335,6 +338,14 @@ class PandasLikeDataFrame(_Frame):
     def _index_columns(self):
         return [anchor_wrap(self, self._spark_getitem(field))
                 for field in self._metadata.index_fields]
+
+    def _reduce_for_stat_function(self, sfun):
+        df = self._spark_select([sfun(self[col]).alias(col) for col in self.columns])
+        pdf = df.toPandas()
+        assert len(pdf) == 1, (df, pdf)
+        row = pdf.iloc[0]
+        row.name = None
+        return row  # Return first row as a Series
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns. By default
@@ -672,20 +683,6 @@ def _reassign_jdf(target_df: DataFrame, new_df: DataFrame):
     # Reset the cached variables
     target_df._schema = None
     target_df._lazy_rdd = None
-
-
-def _reduce_spark(col_or_df, sfun):
-    """
-    Performs a reduction on a dataframe, the function being a known sql function.
-    """
-    if isinstance(col_or_df, Column):
-        col = col_or_df
-        df0 = col._spark_ref_dataframe._spark_select(sfun(col))
-    else:
-        assert isinstance(col_or_df, DataFrame)
-        df = col_or_df
-        df0 = df._spark_select(sfun("*"))
-    return _unpack_scalar(df0)
 
 
 def _unpack_scalar(df):

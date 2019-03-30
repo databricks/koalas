@@ -203,6 +203,15 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(ds, s)
 
+    def test_max(self):
+        df = pd.DataFrame({'A': [1, 2, 3, 4],
+                           'B': [1.0, 2.1, 3, 4],
+                           'C': ['a', 'b', 'c', 'd']})
+        ddf = self.spark.from_pandas(df)
+
+        self.assertEqual(ddf.A.max(), df.A.max())
+        self.assert_eq(ddf.max(), df.max())
+
     def test_to_datetime(self):
         df = pd.DataFrame({'year': [2015, 2016],
                            'month': [2, 3],
