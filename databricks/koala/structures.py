@@ -570,6 +570,10 @@ class PandasLikeDataFrame(_Frame):
         from .groups import PandasLikeGroupBy
         return PandasLikeGroupBy(self, gp, None)
 
+    @property
+    def values(self):
+        return self.toPandas().values
+
     @derived_from(pd.DataFrame)
     def pipe(self, func, *args, **kwargs):
         # Taken from pandas:
