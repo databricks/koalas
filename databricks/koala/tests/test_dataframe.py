@@ -203,14 +203,23 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(ds, s)
 
-    def test_max(self):
+    def test_stat_functions(self):
         df = pd.DataFrame({'A': [1, 2, 3, 4],
                            'B': [1.0, 2.1, 3, 4],
                            'C': ['a', 'b', 'c', 'd']})
         ddf = self.spark.from_pandas(df)
 
-        self.assertEqual(ddf.A.max(), df.A.max())
-        self.assert_eq(ddf.max(), df.max())
+        functions = ['max', 'min', 'mean', 'sum']
+        for funcname in functions:
+            self.assertEqual(getattr(ddf.A, funcname)(), getattr(df.A, funcname)())
+            self.assert_eq(getattr(ddf, funcname)(), getattr(df, funcname)())
+
+        # NOTE: To test skew and kurt, just make sure they run.
+        #       The numbers are different in spark and pandas.
+        functions = ['skew', 'kurt']
+        for funcname in functions:
+            getattr(ddf.A, funcname)()
+            getattr(ddf.select('A', 'B'), funcname)()
 
     def test_to_datetime(self):
         df = pd.DataFrame({'year': [2015, 2016],

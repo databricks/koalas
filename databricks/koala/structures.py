@@ -143,6 +143,24 @@ class _Frame(object):
     The base class for both dataframes and series.
     """
 
+    def mean(self):
+        return self._reduce_for_stat_function(F.mean)
+
+    def sum(self):
+        return self._reduce_for_stat_function(F.sum)
+
+    def skew(self):
+        return self._reduce_for_stat_function(F.skewness)
+
+    def kurtosis(self):
+        return self._reduce_for_stat_function(F.kurtosis)
+
+    def kurt(self, *args, **kwargs):
+        return self.kurtosis(*args, **kwargs)
+
+    def min(self):
+        return self._reduce_for_stat_function(F.min)
+
     def max(self):
         return self._reduce_for_stat_function(F.max)
 
