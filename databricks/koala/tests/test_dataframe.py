@@ -217,6 +217,17 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
                        pyspark.to_datetime(ds, infer_datetime_format=True))
 
+    def test_abs(self):
+        df = pd.DataFrame({'A': [1, -2, 3, -4, 5],
+                           'B': [1., -2, 3, -4, 5],
+                           'C': [-6., -7, -8, -9, 10],
+                           'D': ['a', 'b', 'c', 'd', 'e']})
+        ddf = self.spark.from_pandas(df)
+        self.assert_eq(ddf.A.abs(), df.A.abs())
+        self.assert_eq(ddf.B.abs(), df.B.abs())
+        self.assert_eq(ddf.select('B', 'C').abs(), df[['B', 'C']].abs())
+        # self.assert_eq(ddf.select('A', 'B').abs(), df[['A', 'B']].abs())
+
 
 if __name__ == "__main__":
     try:
