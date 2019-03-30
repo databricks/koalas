@@ -217,6 +217,35 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
                        pyspark.to_datetime(ds, infer_datetime_format=True))
 
+    def test_sort_values(self):
+        df = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
+                           'b': [7, 6, 5, 4, 3, 2, 1]})
+        ddf = self.spark.from_pandas(df)
+
+        ddf2 = ddf.sort_values('b')
+        df2 = df.sort_values('b')
+        self.assert_eq(ddf2, df2)
+
+        ddf2 = ddf.sort_values(['b', 'a'])
+        df2 = df.sort_values(['b', 'a'])
+        self.assert_eq(ddf2, df2)
+
+        ddf2 = ddf.sort_values(['b', 'a'], ascending=[False, True])
+        df2 = df.sort_values(['b', 'a'], ascending=[False, True])
+        self.assert_eq(ddf2, df2)
+
+        self.assertRaises(ValueError, lambda: ddf.sort_values(['b', 'a'], ascending=[False]))
+
+        ddf2 = ddf.sort_values(['b', 'a'], na_position='first')
+        df2 = df.sort_values(['b', 'a'], na_position='first')
+        self.assert_eq(ddf2, df2)
+
+        self.assertRaises(ValueError, lambda: ddf.sort_values(['b', 'a'], na_position='invalid'))
+
+        ddf.sort_values('b', inplace=True)
+        df.sort_values('b', inplace=True)
+        self.assert_eq(ddf, df)
+
 
 if __name__ == "__main__":
     try:

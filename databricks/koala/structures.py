@@ -560,10 +560,77 @@ class PandasLikeDataFrame(_Frame):
         except (KeyError, ValueError, IndexError):
             return default
 
-    def sort_values(self, by):
-        df = self._spark_sort(by)
-        df._metadata = self._metadata
-        return df
+    def sort_values(self, by, ascending=True, inplace=False, na_position='last'):
+        """
+        Sort by the values
+        :param by: str or list of str
+                   Name or list of names to sort by.
+        :param ascending: bool or list of bool, default True
+                          Sort ascending vs. descending. Specify list for multiple sort orders.
+                          If this is a list of bools, must match the length of the `by`.
+        :param inplace: bool, default False
+                        If True, perform operation in-place.
+        :param na_position: {'first', 'last'}, default 'last'
+                            `first` puts nulls at the beginning, `last` puts nulls at the end.
+        :return: :class: `DataFrame` if inplace=True
+
+        >>> df = spark.createDataFrame(
+        ...     [ ['A', 2, 0],
+        ...       ['B', 9, 9],
+        ...       [None, 8, 4] ],
+        ...     ['col1', 'col2', 'col3']
+        ... )
+        >>> df.sort_values('col1').show()
+        +----+----+----+
+        |col1|col2|col3|
+        +----+----+----+
+        |null|   8|   4|
+        |   A|   2|   0|
+        |   B|   9|   9|
+        +----+----+----+
+        >>> df.sort_values('col1', ascending=False).show()
+        +----+----+----+
+        |col1|col2|col3|
+        +----+----+----+
+        |   B|   9|   9|
+        |   A|   2|   0|
+        |null|   8|   4|
+        +----+----+----+
+        >>> df.sort_values('col1', na_position='last').show()
+        +----+----+----+
+        |col1|col2|col3|
+        +----+----+----+
+        |null|   8|   4|
+        |   A|   2|   0|
+        |   B|   9|   9|
+        +----+----+----+
+
+        """
+        if isinstance(by, str):
+            by = [by]
+        if isinstance(ascending, bool):
+            ascending = [ascending] * len(by)
+        if len(ascending) != len(by):
+            raise ValueError('Length of ascending ({}) != length of by ({})'
+                             .format(len(ascending), len(by)))
+        if na_position not in ('first', 'last'):
+            raise ValueError("invalid na_position: '{}'".format(na_position))
+
+        # Mapper: Get a spark column function for (ascending, na_position) combination
+        # Note: Use the Series.asc() version instead of F.asc(Series) as the anchor is needed
+        mapper = {
+            (True, 'first'): lambda x: x.asc_nulls_first(),
+            (True, 'last'): lambda x: x.asc_nulls_last(),
+            (False, 'first'): lambda x: x.desc_nulls_first(),
+            (False, 'last'): lambda x: x.desc_nulls_last(),
+        }
+        df = self._spark_orderBy([
+            mapper[(asc, na_position)](self[colname]) for colname, asc in zip(by, ascending)])
+        df._metadata = self._metadata.copy()
+        if inplace:
+            _reassign_jdf(self, df)
+        else:
+            return df
 
     def groupby(self, by):
         gp = self._spark_groupby(by)
