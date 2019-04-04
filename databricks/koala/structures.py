@@ -29,7 +29,7 @@ from .metadata import Metadata
 from .selection import SparkDataFrameLocator
 from ._dask_stubs.utils import derived_from
 from ._dask_stubs.compatibility import string_types
-
+from .ml import corr
 
 __all__ = ['PandasLikeSeries', 'PandasLikeDataFrame', 'SparkSessionPatches', 'anchor_wrap']
 
@@ -194,6 +194,10 @@ class PandasLikeSeries(_Frame):
     def shape(self):
         return len(self),
 
+    def count(self):
+        # TODO: should filter NaNs
+        return len(self.to_dataframe())
+
     @property
     def name(self):
         return self._jc.toString()
@@ -244,6 +248,9 @@ class PandasLikeSeries(_Frame):
                 return col
         else:
             return df
+
+    def replace(self, to_replace=None, value=None, inplace=False, limit=None, regex=False, method='pad'):
+        return self
 
     @property
     def loc(self):
@@ -335,6 +342,31 @@ class PandasLikeDataFrame(_Frame):
     def _index_columns(self):
         return [anchor_wrap(self, self._spark_getitem(field))
                 for field in self._metadata.index_fields]
+
+    @derived_from(pd.DataFrame)
+    def iteritems(self):
+        cols = list(self.columns)
+        return list((col_name, self[col_name]) for col_name in cols)
+
+    def corr(self, col1=None, col2=None, method=None):
+        if col1 is None and col2 is None:
+            return corr(self, method)
+        assert col1 is not None and col2 is not None
+        return self._spark_corr(col1, col2, method)
+
+    def memory_usage(self, index=True):
+        # TODO
+        base_data = [1 for _ in self.columns]
+        base_names = list(self.columns)
+        if index:
+            # The index is virtual and does not allocate more memory
+            base_data.insert(0, 0)
+            base_names.insert(0, "Index")
+        return pd.DataFrame(base_data, index=pd.Index(base_names)).iloc[::, 0]
+
+    @derived_from(pd.DataFrame)
+    def to_html(self, index=True, classes=None):
+        return self.toPandas().to_html(index=index, classes=classes)
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns. By default
