@@ -23,7 +23,7 @@ import pandas as pd
 import numpy as np
 import pyspark.sql.functions as F
 from pyspark.sql import DataFrame, Column
-from pyspark.sql.types import StructType, to_arrow_type
+from pyspark.sql.types import FloatType, DoubleType, StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
 from . import namespace
@@ -284,7 +284,11 @@ class PandasLikeSeries(_Frame):
             raise NotImplementedError("value_counts currently does not support bins")
 
         if dropna:
-            df_dropna = self.to_dataframe().filter(self._spark_isNotNull())
+            if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
+                pred = ~(self._spark_isNull() | F._spark_isnan(self))
+            else:
+                pred = self._spark_isNotNull()
+            df_dropna = self.to_dataframe()._spark_filter(pred)
         else:
             df_dropna = self.to_dataframe()
         df = df_dropna._spark_groupby(self).count()
@@ -295,7 +299,7 @@ class PandasLikeSeries(_Frame):
                 df = df._spark_orderBy(F._spark_col('count')._spark_desc())
 
         if normalize:
-            sum = df_dropna.count()
+            sum = df_dropna._spark_count()
             df = df._spark_withColumn('count', F._spark_col('count') / F._spark_lit(sum))
 
         return _col(df.set_index([self.name]))
@@ -556,10 +560,14 @@ class PandasLikeDataFrame(_Frame):
             else:
                 columns = list(self.columns)
 
+            def pred(c):
+                if isinstance(self.schema[c].dataType, (FloatType, DoubleType)):
+                    return ~(F._spark_col(c)._spark_isNull() | F._spark_isnan(F._spark_col(c)))
+                else:
+                    return F._spark_col(c)._spark_isNotNull()
+
             cnt = reduce(lambda x, y: x + y,
-                         [F._spark_when(F._spark_col(column)._spark_isNotNull(), 1)
-                          ._spark_otherwise(0)
-                          for column in columns],
+                         [F._spark_when(pred(column), 1)._spark_otherwise(0) for column in columns],
                          F._spark_lit(0))
             if thresh is not None:
                 pred = cnt >= F._spark_lit(int(thresh))
