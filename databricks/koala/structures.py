@@ -148,6 +148,15 @@ class _Frame(object):
     def max(self):
         return _reduce_spark(self, F.max)
 
+    @derived_from(pd.DataFrame)
+    def abs(self):
+        """
+        Return a Series/DataFrame with absolute numeric value of each element.
+
+        :return: :class:`Series` or :class:`DataFrame` with the absolute value of each element.
+        """
+        return _spark_col_apply(self, F.abs)
+
     def compute(self):
         """Alias of `toPandas()` to mimic dask for easily porting tests."""
         return self.toPandas()
@@ -727,6 +736,18 @@ def _reassign_jdf(target_df: DataFrame, new_df: DataFrame):
     # Reset the cached variables
     target_df._schema = None
     target_df._lazy_rdd = None
+
+
+def _spark_col_apply(col_or_df, sfun):
+    """
+    Performs a function to all cells on a dataframe, the function being a known sql function.
+    """
+    if isinstance(col_or_df, Column):
+        return sfun(col_or_df)
+    assert isinstance(col_or_df, DataFrame)
+    df = col_or_df
+    df = df._spark_select([sfun(df[col]).alias(col) for col in df.columns])
+    return df
 
 
 def _reduce_spark(col_or_df, sfun):
