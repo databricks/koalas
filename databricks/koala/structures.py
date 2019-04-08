@@ -17,6 +17,8 @@
 """
 Base classes to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
+from functools import reduce
+
 import pandas as pd
 import numpy as np
 import pyspark.sql.functions as F
@@ -257,6 +259,17 @@ class PandasLikeSeries(_Frame):
 
     def toPandas(self):
         return _col(self.to_dataframe().toPandas())
+
+    @derived_from(pd.Series)
+    def dropna(self, axis=0, inplace=False, **kwargs):
+        col = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
+        if inplace:
+            anchor_wrap(col, self)
+            self._jc = col._jc
+            self._pandas_schema = None
+            self._pandas_metadata = None
+        else:
+            return col
 
     def head(self, n=5):
         return _col(self.to_dataframe().head(n))
@@ -505,6 +518,48 @@ class PandasLikeDataFrame(_Frame):
         df = DataFrame(self._jdf, self.sql_ctx)
         df._metadata = self._metadata.copy()
         return df
+
+    @derived_from(pd.DataFrame)
+    def dropna(self, axis=0, how='any', thresh=None, subset=None, inplace=False):
+        if axis == 0 or axis == 'index':
+            if subset is not None:
+                if isinstance(subset, string_types):
+                    columns = [subset]
+                else:
+                    columns = list(subset)
+                invalids = [column for column in columns
+                            if column not in self._metadata.column_fields]
+                if len(invalids) > 0:
+                    raise KeyError(invalids)
+            else:
+                columns = list(self.columns)
+
+            cnt = reduce(lambda x, y: x + y,
+                         [F._spark_when(F._spark_col(column)._spark_isNotNull(), 1)
+                          ._spark_otherwise(0)
+                          for column in columns],
+                         F._spark_lit(0))
+            if thresh is not None:
+                pred = cnt >= F._spark_lit(int(thresh))
+            elif how == 'any':
+                pred = cnt == F._spark_lit(len(columns))
+            elif how == 'all':
+                pred = cnt > F._spark_lit(0)
+            else:
+                if how is not None:
+                    raise ValueError('invalid how option: {h}'.format(h=how))
+                else:
+                    raise TypeError('must specify how or thresh')
+
+            df = self._spark_filter(pred)
+            df._metadata = self._metadata.copy()
+            if inplace:
+                _reassign_jdf(self, df)
+            else:
+                return df
+
+        else:
+            raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
 
     def head(self, n=5):
         df = self._spark_limit(n)
