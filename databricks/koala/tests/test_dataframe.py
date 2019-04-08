@@ -50,13 +50,20 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(d.columns, pd.Index(['a', 'b']))
 
         self.assert_eq(d[d['b'] > 2], full[full['b'] > 2])
-        # TODO: self.assert_eq(d[['a', 'b']], full[['a', 'b']])
+        self.assert_eq(d[['a', 'b']], full[['a', 'b']])
         self.assert_eq(d.a, full.a)
         # TODO: assert d.b.mean().compute() == full.b.mean()
         # TODO: assert np.allclose(d.b.var().compute(), full.b.var())
         # TODO: assert np.allclose(d.b.std().compute(), full.b.std())
 
         assert repr(d)
+
+        df = pd.DataFrame({
+            'a': [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            'b': [4, 5, 6, 3, 2, 1, 0, 0, 0],
+        })
+        ddf = self.spark.createDataFrame(df)
+        self.assert_eq(df[['a', 'b']], ddf[['a', 'b']])
 
     def test_head_tail(self):
         d = self.df
