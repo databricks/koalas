@@ -278,6 +278,28 @@ class PandasLikeSeries(_Frame):
         # Pandas wants a series/array-like object
         return _col(self.to_dataframe().unique())
 
+    @derived_from(pd.Series)
+    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+        if bins is not None:
+            raise NotImplementedError("value_counts currently does not support bins")
+
+        if dropna:
+            df_dropna = self.to_dataframe().filter(self._spark_isNotNull())
+        else:
+            df_dropna = self.to_dataframe()
+        df = df_dropna._spark_groupby(self).count()
+        if sort:
+            if ascending:
+                df = df._spark_orderBy(F._spark_col('count'))
+            else:
+                df = df._spark_orderBy(F._spark_col('count')._spark_desc())
+
+        if normalize:
+            sum = df_dropna.count()
+            df = df._spark_withColumn('count', F._spark_col('count') / F._spark_lit(sum))
+
+        return _col(df.set_index([self.name]))
+
     @property
     def _pandas_anchor(self) -> DataFrame:
         """
