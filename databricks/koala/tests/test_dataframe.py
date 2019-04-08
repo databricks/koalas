@@ -203,6 +203,43 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(ds, s)
 
+    def test_dropna(self):
+        df = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
+                           'y': [1, 2, np.nan, 4, np.nan, np.nan],
+                           'z': [1, 2, 3, 4, np.nan, np.nan]},
+                          index=[10, 20, 30, 40, 50, 60])
+        ddf = self.spark.from_pandas(df)
+
+        self.assert_eq(ddf.x.dropna(), df.x.dropna())
+        self.assert_eq(ddf.y.dropna(), df.y.dropna())
+        self.assert_eq(ddf.z.dropna(), df.z.dropna())
+
+        self.assert_eq(ddf.dropna(), df.dropna())
+        self.assert_eq(ddf.dropna(how='all'), df.dropna(how='all'))
+        self.assert_eq(ddf.dropna(subset=['x']), df.dropna(subset=['x']))
+        self.assert_eq(ddf.dropna(subset=['y', 'z']), df.dropna(subset=['y', 'z']))
+        self.assert_eq(ddf.dropna(subset=['y', 'z'], how='all'),
+                       df.dropna(subset=['y', 'z'], how='all'))
+
+        self.assert_eq(ddf.dropna(thresh=2), df.dropna(thresh=2))
+        self.assert_eq(ddf.dropna(thresh=1, subset=['y', 'z']),
+                       df.dropna(thresh=1, subset=['y', 'z']))
+
+        ddf2 = ddf.copy()
+        x = ddf2.x
+        x.dropna(inplace=True)
+        self.assert_eq(x, df.x.dropna())
+        ddf2.dropna(inplace=True)
+        self.assert_eq(ddf2, df.dropna())
+
+        msg = "dropna currently only works for axis=0 or axis='index'"
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            ddf.dropna(axis=1)
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            ddf.dropna(axis='column')
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            ddf.dropna(axis='foo')
+
     def test_to_datetime(self):
         df = pd.DataFrame({'year': [2015, 2016],
                            'month': [2, 3],
