@@ -276,16 +276,20 @@ class PandasLikeSeries(_Frame):
     def toPandas(self):
         return _col(self.to_dataframe().toPandas())
 
-    def isna(self):
+    @derived_from(pd.Series)
+    def isnull(self):
         if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
-            return self.isNull() | F.isnan(self)
+            return anchor_wrap(self, self._spark_isNull() | F._spark_isnan(self))
         else:
-            return self.isNull()
+            return anchor_wrap(self, self._spark_isNull())
 
-    isnull = isna
+    isna = isnull
 
-    def notna(self):
-        return ~self.isna()
+    @derived_from(pd.Series)
+    def notnull(self):
+        return ~self.isnull()
+
+    notna = notnull
 
     @derived_from(pd.Series)
     def dropna(self, axis=0, inplace=False, **kwargs):
@@ -351,7 +355,7 @@ class PandasLikeSeries(_Frame):
         return anchor_wrap(self, self.getField(item))
 
     def __invert__(self):
-        return self.cast("boolean") == False  # noqa: disable=E712
+        return anchor_wrap(self, self._spark_cast("boolean") == F._spark_lit(False))
 
     def __str__(self):
         return self._pandas_orig_repr()
@@ -541,6 +545,24 @@ class PandasLikeDataFrame(_Frame):
             df._metadata = metadata
             df.columns = columns
             return df
+
+    @derived_from(pd.DataFrame)
+    def isnull(self):
+        df = self.copy()
+        for name, col in df.iteritems():
+            df[name] = col.isnull()
+        return df
+
+    isna = isnull
+
+    @derived_from(pd.DataFrame)
+    def notnull(self):
+        df = self.copy()
+        for name, col in df.iteritems():
+            df[name] = col.notnull()
+        return df
+
+    notna = notnull
 
     @derived_from(DataFrame)
     def toPandas(self):
