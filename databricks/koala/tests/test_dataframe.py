@@ -265,6 +265,16 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
                                     "value_counts currently does not support bins"):
             ddf.x.value_counts(bins=3)
 
+    def test_isnull(self):
+        df = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
+                          index=[10, 20, 30, 40, 50, 60])
+        a = self.spark.from_pandas(df)
+
+        self.assert_eq(a.x.notnull(), df.x.notnull())
+        self.assert_eq(a.x.isnull(), df.x.isnull())
+        self.assert_eq(a.notnull(), df.notnull())
+        self.assert_eq(a.isnull(), df.isnull())
+
     def test_to_datetime(self):
         df = pd.DataFrame({'year': [2015, 2016],
                            'month': [2, 3],
