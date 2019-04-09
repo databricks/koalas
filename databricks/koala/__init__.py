@@ -13,6 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+
+def assert_pyspark_version():
+    import logging
+    pyspark_ver = None
+    try:
+        import pyspark
+    except ImportError as err:
+        raise ImportError('Unable to import pyspark - consider doing a pip install with [spark] '
+                          'extra to install pyspark with pip')
+    else:
+        pyspark_ver = getattr(pyspark, '__version__')
+        if pyspark_ver is None or pyspark_ver < '2.4':
+            logging.warn('Found pyspark version "{}" installed. pyspark>=2.4.0 is recommended.'
+                         .format(pyspark_ver if pyspark_ver is not None else '<unknown version>'))
+
+
+assert_pyspark_version()
+
 from .utils import *
 from .namespace import *
 from .typing import Col, pandas_wrap

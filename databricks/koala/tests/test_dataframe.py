@@ -50,13 +50,20 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(d.columns, pd.Index(['a', 'b']))
 
         self.assert_eq(d[d['b'] > 2], full[full['b'] > 2])
-        # TODO: self.assert_eq(d[['a', 'b']], full[['a', 'b']])
+        self.assert_eq(d[['a', 'b']], full[['a', 'b']])
         self.assert_eq(d.a, full.a)
         # TODO: assert d.b.mean().compute() == full.b.mean()
         # TODO: assert np.allclose(d.b.var().compute(), full.b.var())
         # TODO: assert np.allclose(d.b.std().compute(), full.b.std())
 
         assert repr(d)
+
+        df = pd.DataFrame({
+            'a': [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            'b': [4, 5, 6, 3, 2, 1, 0, 0, 0],
+        })
+        ddf = self.spark.createDataFrame(df)
+        self.assert_eq(df[['a', 'b']], ddf[['a', 'b']])
 
     def test_head_tail(self):
         d = self.df
@@ -203,6 +210,61 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(ds, s)
 
+    def test_dropna(self):
+        df = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
+                           'y': [1, 2, np.nan, 4, np.nan, np.nan],
+                           'z': [1, 2, 3, 4, np.nan, np.nan]},
+                          index=[10, 20, 30, 40, 50, 60])
+        ddf = self.spark.from_pandas(df)
+
+        self.assert_eq(ddf.x.dropna(), df.x.dropna())
+        self.assert_eq(ddf.y.dropna(), df.y.dropna())
+        self.assert_eq(ddf.z.dropna(), df.z.dropna())
+
+        self.assert_eq(ddf.dropna(), df.dropna())
+        self.assert_eq(ddf.dropna(how='all'), df.dropna(how='all'))
+        self.assert_eq(ddf.dropna(subset=['x']), df.dropna(subset=['x']))
+        self.assert_eq(ddf.dropna(subset=['y', 'z']), df.dropna(subset=['y', 'z']))
+        self.assert_eq(ddf.dropna(subset=['y', 'z'], how='all'),
+                       df.dropna(subset=['y', 'z'], how='all'))
+
+        self.assert_eq(ddf.dropna(thresh=2), df.dropna(thresh=2))
+        self.assert_eq(ddf.dropna(thresh=1, subset=['y', 'z']),
+                       df.dropna(thresh=1, subset=['y', 'z']))
+
+        ddf2 = ddf.copy()
+        x = ddf2.x
+        x.dropna(inplace=True)
+        self.assert_eq(x, df.x.dropna())
+        ddf2.dropna(inplace=True)
+        self.assert_eq(ddf2, df.dropna())
+
+        msg = "dropna currently only works for axis=0 or axis='index'"
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            ddf.dropna(axis=1)
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            ddf.dropna(axis='column')
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            ddf.dropna(axis='foo')
+
+    def test_value_counts(self):
+        df = pd.DataFrame({'x': [1, 2, 1, 3, 3, np.nan, 1, 4]})
+        ddf = self.spark.from_pandas(df)
+
+        self.assertPandasAlmostEqual(ddf.x.value_counts().toPandas(), df.x.value_counts())
+        self.assertPandasAlmostEqual(ddf.x.value_counts(normalize=True).toPandas(),
+                                     df.x.value_counts(normalize=True))
+        self.assertPandasAlmostEqual(ddf.x.value_counts(ascending=True).toPandas(),
+                                     df.x.value_counts(ascending=True))
+        self.assertPandasAlmostEqual(ddf.x.value_counts(normalize=True, dropna=False).toPandas(),
+                                     df.x.value_counts(normalize=True, dropna=False))
+        self.assertPandasAlmostEqual(ddf.x.value_counts(ascending=True, dropna=False).toPandas(),
+                                     df.x.value_counts(ascending=True, dropna=False))
+
+        with self.assertRaisesRegex(NotImplementedError,
+                                    "value_counts currently does not support bins"):
+            ddf.x.value_counts(bins=3)
+
     def test_to_datetime(self):
         df = pd.DataFrame({'year': [2015, 2016],
                            'month': [2, 3],
@@ -216,6 +278,17 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
                        pyspark.to_datetime(ds, infer_datetime_format=True))
+
+    def test_abs(self):
+        df = pd.DataFrame({'A': [1, -2, 3, -4, 5],
+                           'B': [1., -2, 3, -4, 5],
+                           'C': [-6., -7, -8, -9, 10],
+                           'D': ['a', 'b', 'c', 'd', 'e']})
+        ddf = self.spark.from_pandas(df)
+        self.assert_eq(ddf.A.abs(), df.A.abs())
+        self.assert_eq(ddf.B.abs(), df.B.abs())
+        self.assert_eq(ddf.select('B', 'C').abs(), df[['B', 'C']].abs())
+        # self.assert_eq(ddf.select('A', 'B').abs(), df[['A', 'B']].abs())
 
 
 if __name__ == "__main__":

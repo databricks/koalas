@@ -17,11 +17,13 @@
 """
 Base classes to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
+from functools import reduce
+
 import pandas as pd
 import numpy as np
 import pyspark.sql.functions as F
 from pyspark.sql import DataFrame, Column
-from pyspark.sql.types import StructType, to_arrow_type
+from pyspark.sql.types import FloatType, DoubleType, StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
 from . import namespace
@@ -146,6 +148,15 @@ class _Frame(object):
     def max(self):
         return _reduce_spark(self, F.max)
 
+    @derived_from(pd.DataFrame)
+    def abs(self):
+        """
+        Return a Series/DataFrame with absolute numeric value of each element.
+
+        :return: :class:`Series` or :class:`DataFrame` with the absolute value of each element.
+        """
+        return _spark_col_apply(self, F.abs)
+
     def compute(self):
         """Alias of `toPandas()` to mimic dask for easily porting tests."""
         return self.toPandas()
@@ -265,12 +276,56 @@ class PandasLikeSeries(_Frame):
     def toPandas(self):
         return _col(self.to_dataframe().toPandas())
 
+    def isna(self):
+        if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
+            return self.isNull() | F.isnan(self)
+        else:
+            return self.isNull()
+
+    isnull = isna
+
+    def notna(self):
+        return ~self.isna()
+
+    @derived_from(pd.Series)
+    def dropna(self, axis=0, inplace=False, **kwargs):
+        col = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
+        if inplace:
+            anchor_wrap(col, self)
+            self._jc = col._jc
+            self._pandas_schema = None
+            self._pandas_metadata = None
+        else:
+            return col
+
     def head(self, n=5):
         return _col(self.to_dataframe().head(n))
 
     def unique(self):
         # Pandas wants a series/array-like object
         return _col(self.to_dataframe().unique())
+
+    @derived_from(pd.Series)
+    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+        if bins is not None:
+            raise NotImplementedError("value_counts currently does not support bins")
+
+        if dropna:
+            df_dropna = self.to_dataframe()._spark_filter(self.notna())
+        else:
+            df_dropna = self.to_dataframe()
+        df = df_dropna._spark_groupby(self).count()
+        if sort:
+            if ascending:
+                df = df._spark_orderBy(F._spark_col('count'))
+            else:
+                df = df._spark_orderBy(F._spark_col('count')._spark_desc())
+
+        if normalize:
+            sum = df_dropna._spark_count()
+            df = df._spark_withColumn('count', F._spark_col('count') / F._spark_lit(sum))
+
+        return _col(df.set_index([self.name]))
 
     @property
     def _pandas_anchor(self) -> DataFrame:
@@ -538,6 +593,47 @@ class PandasLikeDataFrame(_Frame):
         df._metadata = self._metadata.copy()
         return df
 
+    @derived_from(pd.DataFrame)
+    def dropna(self, axis=0, how='any', thresh=None, subset=None, inplace=False):
+        if axis == 0 or axis == 'index':
+            if subset is not None:
+                if isinstance(subset, string_types):
+                    columns = [subset]
+                else:
+                    columns = list(subset)
+                invalids = [column for column in columns
+                            if column not in self._metadata.column_fields]
+                if len(invalids) > 0:
+                    raise KeyError(invalids)
+            else:
+                columns = list(self.columns)
+
+            cnt = reduce(lambda x, y: x + y,
+                         [F._spark_when(self[column].notna(), 1)._spark_otherwise(0)
+                          for column in columns],
+                         F._spark_lit(0))
+            if thresh is not None:
+                pred = cnt >= F._spark_lit(int(thresh))
+            elif how == 'any':
+                pred = cnt == F._spark_lit(len(columns))
+            elif how == 'all':
+                pred = cnt > F._spark_lit(0)
+            else:
+                if how is not None:
+                    raise ValueError('invalid how option: {h}'.format(h=how))
+                else:
+                    raise TypeError('must specify how or thresh')
+
+            df = self._spark_filter(pred)
+            df._metadata = self._metadata.copy()
+            if inplace:
+                _reassign_jdf(self, df)
+            else:
+                return df
+
+        else:
+            raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
+
     def head(self, n=5):
         df = self._spark_limit(n)
         df._metadata = self._metadata.copy()
@@ -704,6 +800,18 @@ def _reassign_jdf(target_df: DataFrame, new_df: DataFrame):
     # Reset the cached variables
     target_df._schema = None
     target_df._lazy_rdd = None
+
+
+def _spark_col_apply(col_or_df, sfun):
+    """
+    Performs a function to all cells on a dataframe, the function being a known sql function.
+    """
+    if isinstance(col_or_df, Column):
+        return sfun(col_or_df)
+    assert isinstance(col_or_df, DataFrame)
+    df = col_or_df
+    df = df._spark_select([sfun(df[col]).alias(col) for col in df.columns])
+    return df
 
 
 def _reduce_spark(col_or_df, sfun):
