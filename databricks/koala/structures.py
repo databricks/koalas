@@ -38,6 +38,7 @@ __all__ = ['PandasLikeSeries', 'PandasLikeDataFrame', 'SparkSessionPatches', 'an
 max_display_count = 1000
 
 
+
 class SparkSessionPatches(object):
     """
     Methods for :class:`SparkSession`.
@@ -148,6 +149,8 @@ class _Frame(object):
     def max(self):
         return _reduce_spark(self, F.max)
 
+
+
     @derived_from(pd.DataFrame)
     def abs(self):
         """
@@ -177,6 +180,54 @@ class PandasLikeSeries(_Frame):
         self._pandas_metadata = None
         self._spark_ref_dataframe = None
         self._pandas_schema = None
+        # Trick to handle numpy / pd.isnull
+        #self._typ = self.dtype
+
+    def sum(self):
+        return _reduce_spark(self, F.sum)
+
+    def mean(self):
+        return _reduce_spark(self, F.mean)
+
+    def skew(self):
+        return _reduce_spark(self, F.skewness)
+
+    def kurtosis(self):
+        return _reduce_spark(self, F.kurtosis)
+
+    def kurt(self, *args, **kwargs):
+        return 0.0
+
+    def min(self):
+        return _reduce_spark(self, F.min)
+
+    # TODO
+
+    def std(self):
+        return 0.0
+
+    def var(self):
+        return 0.0
+
+    def quantile(self, percentile):
+        return 0
+
+    def mad(self):
+        return 0.0
+
+    def plot(self, *args, **kwargs):
+        pc = self.toPandas()
+        return pc.plot(*args, **kwargs)
+
+    def mode(self):
+        vc = self.value_counts().reset_index()
+        m = vc[self.name].max()
+        return _col(vc.where(vc[self.name] == m).select("index")).toPandas()
+
+    @property
+    def dtype(self):
+        from .typing import as_python_type
+        return as_python_type(self.schema.fields[-1].dataType)
 
     def astype(self, tpe):
         from .typing import as_spark_type
@@ -195,6 +246,10 @@ class PandasLikeSeries(_Frame):
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
             return anchor_wrap(self, self._spark_getField(name))
 
+    # TODO: automate the process here
+    def alias(self, name):
+        return self.rename(name)
+
     @property
     def schema(self):
         if not hasattr(self, '_pandas_schema') or self._pandas_schema is None:
@@ -211,31 +266,38 @@ class PandasLikeSeries(_Frame):
 
     @property
     def name(self):
-        return self._jc.toString()
+        # The name of the java column is not fully qualified.
+        # We can do better here and directly get the name, which is necessary to be correct with rename and alias.
+        df = self.to_dataframe()
+        return df._metadata.column_fields[0]
+        #return self._jc.toString()
 
     @name.setter
     def name(self, name):
         self.rename(name, inplace=True)
 
     def rename(self, name, inplace=False):
-        df = self.to_dataframe()._spark_select(self._metadata.index_fields +
-                                               [self._spark_alias(name)])
-        df._metadata = self._metadata.copy(column_fields=[name])
-        col = _col(df)
-        if inplace:
-            anchor_wrap(col, self)
-            self._jc = col._jc
-            self._pandas_schema = None
-            self._pandas_metadata = None
-            return self
-        else:
-            return col
+        assert(not inplace)
+        return anchor_wrap(self, self._spark_alias(name))
+        # df = self.to_dataframe()._spark_select(self._metadata.index_fields +
+        #                                        [self._spark_alias(name)])
+        # df._metadata = self._metadata.copy(column_fields=[name])
+        # col = _col(df)
+        # if inplace:
+        #     anchor_wrap(col, self)
+        #     self._jc = col._jc
+        #     self._pandas_schema = None
+        #     self._pandas_metadata = None
+        #     return self
+        # else:
+        #     return col
 
     @property
     def _metadata(self):
         if not hasattr(self, '_pandas_metadata') or self._pandas_metadata is None:
             ref = self._pandas_anchor
-            self._pandas_metadata = ref._metadata.copy(column_fields=[self.name])
+            name = _fully_qualified_colname(self)
+            self._pandas_metadata = ref._metadata.copy(column_fields=[name])
         return self._pandas_metadata
 
     @derived_from(pd.Series)
@@ -270,8 +332,13 @@ class PandasLikeSeries(_Frame):
     def to_dataframe(self):
         ref = self._pandas_anchor
         df = ref._spark_select(self._metadata.index_fields + [self])
-        df._metadata = self._metadata.copy()
+        # The last name will have been fully resolved, use this one instead.
+        name = _fully_qualified_colname(self)
+        df._pandas_metadata = self._metadata.copy(column_fields=[name])
         return df
+
+    def to_dense(self):
+        return self.toPandas().to_dense()
 
     def toPandas(self):
         return _col(self.to_dataframe().toPandas())
@@ -287,7 +354,7 @@ class PandasLikeSeries(_Frame):
 
     @derived_from(pd.Series)
     def notnull(self):
-        return ~self.isnull()
+        return anchor_wrap(self, ~self.isnull())
 
     notna = notnull
 
@@ -319,6 +386,8 @@ class PandasLikeSeries(_Frame):
         else:
             df_dropna = self.to_dataframe()
         df = df_dropna._spark_groupby(self).count()
+        # This is the pandas convention for names
+        df.columns = ["index", self.name]
         if sort:
             if ascending:
                 df = df._spark_orderBy(F._spark_col('count'))
@@ -355,7 +424,7 @@ class PandasLikeSeries(_Frame):
         return anchor_wrap(self, self.getField(item))
 
     def __invert__(self):
-        return anchor_wrap(self, self._spark_cast("boolean") == F._spark_lit(False))
+        return anchor_wrap(self, self.astype(bool) == F._spark_lit(False))
 
     def __str__(self):
         return self._pandas_orig_repr()
@@ -703,6 +772,10 @@ class PandasLikeDataFrame(_Frame):
             # return self.map_partitions(M.drop, labels, axis=axis, errors=errors)
         raise NotImplementedError("Drop currently only works for axis=1")
 
+    def duplicated(self, subset=None):
+        # TODO: implementation is wrong
+        return anchor_wrap(self, self[self.columns[0]].isnull().astype(int))
+
     @derived_from(pd.DataFrame)
     def get(self, key, default=None):
         try:
@@ -813,6 +886,17 @@ class PandasLikeDataFrame(_Frame):
         return {None: 0, 'index': 0, 'columns': 1}.get(axis, axis)
 
 
+def _fully_qualified_colname(col):
+    """
+    Resolves the name of a column through a select.
+    """
+    ref = col._pandas_anchor
+    df = ref._spark_select([col])
+    # The last name will have been fully resolved, use this one instead.
+    name = df._spark_schema.fields[-1].name
+    return name
+
+
 def _reassign_jdf(target_df: DataFrame, new_df: DataFrame):
     """
     Reassigns the java df contont of a dataframe.
@@ -885,3 +969,4 @@ def anchor_wrap(df, col):
 def _col(df):
     assert isinstance(df, (DataFrame, pd.DataFrame)), type(df)
     return df[df.columns[0]]
+
