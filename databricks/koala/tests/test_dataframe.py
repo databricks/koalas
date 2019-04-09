@@ -247,6 +247,24 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(NotImplementedError, msg):
             ddf.dropna(axis='foo')
 
+    def test_value_counts(self):
+        df = pd.DataFrame({'x': [1, 2, 1, 3, 3, np.nan, 1, 4]})
+        ddf = self.spark.from_pandas(df)
+
+        self.assertPandasAlmostEqual(ddf.x.value_counts().toPandas(), df.x.value_counts())
+        self.assertPandasAlmostEqual(ddf.x.value_counts(normalize=True).toPandas(),
+                                     df.x.value_counts(normalize=True))
+        self.assertPandasAlmostEqual(ddf.x.value_counts(ascending=True).toPandas(),
+                                     df.x.value_counts(ascending=True))
+        self.assertPandasAlmostEqual(ddf.x.value_counts(normalize=True, dropna=False).toPandas(),
+                                     df.x.value_counts(normalize=True, dropna=False))
+        self.assertPandasAlmostEqual(ddf.x.value_counts(ascending=True, dropna=False).toPandas(),
+                                     df.x.value_counts(ascending=True, dropna=False))
+
+        with self.assertRaisesRegex(NotImplementedError,
+                                    "value_counts currently does not support bins"):
+            ddf.x.value_counts(bins=3)
+
     def test_to_datetime(self):
         df = pd.DataFrame({'year': [2015, 2016],
                            'month': [2, 3],

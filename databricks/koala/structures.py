@@ -23,7 +23,7 @@ import pandas as pd
 import numpy as np
 import pyspark.sql.functions as F
 from pyspark.sql import DataFrame, Column
-from pyspark.sql.types import StructType, to_arrow_type
+from pyspark.sql.types import FloatType, DoubleType, StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
 from . import namespace
@@ -269,6 +269,17 @@ class PandasLikeSeries(_Frame):
     def toPandas(self):
         return _col(self.to_dataframe().toPandas())
 
+    def isna(self):
+        if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
+            return self.isNull() | F.isnan(self)
+        else:
+            return self.isNull()
+
+    isnull = isna
+
+    def notna(self):
+        return ~self.isna()
+
     @derived_from(pd.Series)
     def dropna(self, axis=0, inplace=False, **kwargs):
         col = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
@@ -286,6 +297,28 @@ class PandasLikeSeries(_Frame):
     def unique(self):
         # Pandas wants a series/array-like object
         return _col(self.to_dataframe().unique())
+
+    @derived_from(pd.Series)
+    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+        if bins is not None:
+            raise NotImplementedError("value_counts currently does not support bins")
+
+        if dropna:
+            df_dropna = self.to_dataframe()._spark_filter(self.notna())
+        else:
+            df_dropna = self.to_dataframe()
+        df = df_dropna._spark_groupby(self).count()
+        if sort:
+            if ascending:
+                df = df._spark_orderBy(F._spark_col('count'))
+            else:
+                df = df._spark_orderBy(F._spark_col('count')._spark_desc())
+
+        if normalize:
+            sum = df_dropna._spark_count()
+            df = df._spark_withColumn('count', F._spark_col('count') / F._spark_lit(sum))
+
+        return _col(df.set_index([self.name]))
 
     @property
     def _pandas_anchor(self) -> DataFrame:
@@ -544,8 +577,7 @@ class PandasLikeDataFrame(_Frame):
                 columns = list(self.columns)
 
             cnt = reduce(lambda x, y: x + y,
-                         [F._spark_when(F._spark_col(column)._spark_isNotNull(), 1)
-                          ._spark_otherwise(0)
+                         [F._spark_when(self[column].notna(), 1)._spark_otherwise(0)
                           for column in columns],
                          F._spark_lit(0))
             if thresh is not None:
