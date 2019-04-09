@@ -260,7 +260,6 @@ class PandasLikeSeries(_Frame):
     def toPandas(self):
         return _col(self.to_dataframe().toPandas())
 
-    @derived_from(pd.Series)
     def isna(self):
         if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
             return self.isNull() | F.isnan(self)
@@ -269,7 +268,6 @@ class PandasLikeSeries(_Frame):
 
     isnull = isna
 
-    @derived_from(pd.Series)
     def notna(self):
         return ~self.isna()
 
