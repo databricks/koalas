@@ -261,6 +261,19 @@ class PandasLikeSeries(_Frame):
         return _col(self.to_dataframe().toPandas())
 
     @derived_from(pd.Series)
+    def isna(self):
+        if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
+            return self.isNull() | F.isnan(self)
+        else:
+            return self.isNull()
+
+    isnull = isna
+
+    @derived_from(pd.Series)
+    def notna(self):
+        return ~self.isna()
+
+    @derived_from(pd.Series)
     def dropna(self, axis=0, inplace=False, **kwargs):
         col = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
@@ -284,11 +297,7 @@ class PandasLikeSeries(_Frame):
             raise NotImplementedError("value_counts currently does not support bins")
 
         if dropna:
-            if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
-                pred = ~(self._spark_isNull() | F._spark_isnan(self))
-            else:
-                pred = self._spark_isNotNull()
-            df_dropna = self.to_dataframe()._spark_filter(pred)
+            df_dropna = self.to_dataframe()._spark_filter(self.notna())
         else:
             df_dropna = self.to_dataframe()
         df = df_dropna._spark_groupby(self).count()
@@ -560,14 +569,9 @@ class PandasLikeDataFrame(_Frame):
             else:
                 columns = list(self.columns)
 
-            def pred(c):
-                if isinstance(self.schema[c].dataType, (FloatType, DoubleType)):
-                    return ~(F._spark_col(c)._spark_isNull() | F._spark_isnan(F._spark_col(c)))
-                else:
-                    return F._spark_col(c)._spark_isNotNull()
-
             cnt = reduce(lambda x, y: x + y,
-                         [F._spark_when(pred(column), 1)._spark_otherwise(0) for column in columns],
+                         [F._spark_when(self[column].notna(), 1)._spark_otherwise(0)
+                          for column in columns],
                          F._spark_lit(0))
             if thresh is not None:
                 pred = cnt >= F._spark_lit(int(thresh))
