@@ -162,14 +162,11 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
             .format(len(prefix), len(columns)))
 
     all_values = df._spark_agg(*[F._spark_collect_set(F._spark_col(column)).alias(column)
-                                 for column in columns]) \
-        .select(*[F._spark_array_sort(column).alias(column) for column in columns]) \
-        .collect()[0]
+                                 for column in columns]).collect()[0]
     for i, column in enumerate(columns):
+        values = sorted(all_values[column])
         if drop_first:
-            values = all_values[column][1:]
-        else:
-            values = all_values[column]
+            values = values[1:]
 
         def column_name(value):
             if prefix is None:
