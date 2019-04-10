@@ -61,6 +61,7 @@ def patch_spark():
         setattr(session.SparkSession, func, getattr(SparkSessionPatches, func))
         setattr(pyspark, func, getattr(namespace, func))
     pyspark.to_datetime = namespace.to_datetime
+    pyspark.get_dummies = namespace.get_dummies
 
 
 @decorator
@@ -85,7 +86,7 @@ def wrap_column_function(f, *args, **kwargs):
         if len(all_df_inputs) > 1:
             logger.warning("Too many anchors to conclude")
         elif not all_df_inputs:
-            logger.warning("Could not find anchors")
+            logger.debug("Could not find anchors")
         else:
             (_, df_ref) = all_df_inputs[0]
             res._spark_ref_dataframe = df_ref
@@ -94,7 +95,7 @@ def wrap_column_function(f, *args, **kwargs):
 
 def _wrap_operators():
     attrs = ["__neg__", "__add__", "__sub__", "__mul__", "__div__", "__truediv__", "__mod__",
-             "__eq__", "__ne__", "__lt__", "__le__", "__ge__", "__gt__"]
+             "__eq__", "__ne__", "__lt__", "__le__", "__ge__", "__gt__", "__and__", "__or__"]
     if hasattr(col.Column, _TOUCHED_TEST):
         return
     for attr in attrs:

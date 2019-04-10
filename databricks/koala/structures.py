@@ -44,6 +44,8 @@ class SparkSessionPatches(object):
     """
 
     def from_pandas(self, pdf):
+        if isinstance(pdf, pd.Series):
+            return _col(self.from_pandas(pd.DataFrame(pdf)))
         metadata = Metadata.from_pandas(pdf)
         reset_index = pdf.reset_index()
         reset_index.columns = metadata.all_fields
@@ -539,7 +541,7 @@ class PandasLikeDataFrame(_Frame):
 
     @derived_from(DataFrame)
     def toPandas(self):
-        df = self._spark_select(self._metadata.all_fields)
+        df = self._spark_select(['`{}`'.format(name) for name in self._metadata.all_fields])
         pdf = df._spark_toPandas()
         if len(pdf) == 0 and len(df.schema) > 0:
             # TODO: push to OSS

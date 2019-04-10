@@ -20,8 +20,11 @@ Wrappers around spark that correspond to common pandas functions.
 import pyspark
 import numpy as np
 import pandas as pd
+from ._dask_stubs.compatibility import string_types
+from ._dask_stubs.utils import derived_from
 from .typing import Col, pandas_wrap
-from pyspark.sql import Column, DataFrame
+from pyspark.sql import Column, DataFrame, functions as F
+from pyspark.sql.types import NumericType
 
 
 def default_session():
@@ -123,3 +126,62 @@ def _to_datetime2(arg_year, arg_month, arg_day,
         errors=errors,
         format=format,
         infer_datetime_format=infer_datetime_format)
+
+
+@derived_from(pd)
+def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None, sparse=False,
+                drop_first=False, dtype=None):
+    if sparse is not False:
+        raise NotImplementedError("get_dummies currently does not support sparse")
+
+    if isinstance(columns, string_types):
+        columns = [columns]
+    if dtype is None:
+        dtype = 'byte'
+
+    if isinstance(data, Column):
+        if prefix is not None:
+            prefix = [str(prefix)]
+        columns = [data.name]
+        df = data.to_dataframe()
+        remaining_columns = []
+    else:
+        if isinstance(prefix, string_types):
+            raise ValueError("get_dummies currently does not support prefix as string types")
+        df = data.copy()
+        if columns is None:
+            columns = [column for column in df.columns
+                       if not isinstance(data.schema[column].dataType, NumericType)]
+        if prefix is None:
+            prefix = columns
+        remaining_columns = [df[column] for column in df.columns if column not in columns]
+
+    if prefix is not None and len(columns) != len(prefix):
+        raise ValueError(
+            "Length of 'prefix' ({}) did not match the length of the columns being encoded ({})."
+            .format(len(prefix), len(columns)))
+
+    all_values = df._spark_agg(*[F._spark_collect_set(F._spark_col(column)).alias(column)
+                                 for column in columns]) \
+        .select(*[F._spark_array_sort(column).alias(column) for column in columns]) \
+        .collect()[0]
+    for i, column in enumerate(columns):
+        if drop_first:
+            values = all_values[column][1:]
+        else:
+            values = all_values[column]
+
+        def column_name(value):
+            if prefix is None:
+                return str(value)
+            else:
+                return '{}{}{}'.format(prefix[i], prefix_sep, value)
+
+        for value in values:
+            remaining_columns.append((df[column].notnull() & (df[column] == value))
+                                     .astype(dtype)
+                                     .alias(column_name(value)))
+        if dummy_na:
+            remaining_columns.append(df[column].isnull().astype(dtype).alias(column_name('nan')))
+
+    return df[remaining_columns]
