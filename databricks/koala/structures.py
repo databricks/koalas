@@ -200,6 +200,10 @@ class PandasLikeSeries(_Frame):
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
             return anchor_wrap(self, self._spark_getField(name))
 
+    # TODO: automate the process here
+    def alias(self, name):
+        return self.rename(name)
+
     @property
     def schema(self):
         if not hasattr(self, '_pandas_schema') or self._pandas_schema is None:
