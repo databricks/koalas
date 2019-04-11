@@ -26,7 +26,6 @@ from pyspark.sql import DataFrame, Column
 from pyspark.sql.types import FloatType, DoubleType, StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
-from . import namespace
 from .metadata import Metadata
 from .selection import SparkDataFrameLocator
 from ._dask_stubs.utils import derived_from
@@ -45,6 +44,8 @@ class SparkSessionPatches(object):
     """
 
     def from_pandas(self, pdf):
+        if isinstance(pdf, pd.Series):
+            return _col(self.from_pandas(pd.DataFrame(pdf)))
         metadata = Metadata.from_pandas(pdf)
         reset_index = pdf.reset_index()
         reset_index.columns = metadata.all_fields
@@ -123,8 +124,6 @@ class SparkSessionPatches(object):
             df = self.createDataFrame([], schema=StructType())
         return df
 
-    read_csv.__doc__ = namespace.read_csv.__doc__
-
     def read_parquet(self, path, columns=None):
         if columns is not None:
             columns = list(columns)
@@ -140,8 +139,6 @@ class SparkSessionPatches(object):
         else:
             df = self.createDataFrame([], schema=StructType())
         return df
-
-    read_parquet.__doc__ = namespace.read_parquet.__doc__
 
 
 class _Frame(object):
@@ -647,7 +644,7 @@ class PandasLikeDataFrame(_Frame):
 
     @derived_from(DataFrame)
     def toPandas(self):
-        df = self._spark_select(self._metadata.all_fields)
+        df = self._spark_select(['`{}`'.format(name) for name in self._metadata.all_fields])
         pdf = df._spark_toPandas()
         if len(pdf) == 0 and len(df.schema) > 0:
             # TODO: push to OSS
@@ -957,6 +954,20 @@ def _unpack_scalar(df):
     l2 = list(row.asDict().values())
     assert len(l2) == 1, (row, l2)
     return l2[0]
+
+
+def _reduce_spark_multi(df, aggs):
+    """
+    Performs a reduction on a dataframe, the functions being known sql aggregate functions.
+    """
+    assert(df, DataFrame)
+    df0 = df._spark_agg(*aggs)
+    l = df0.head(2).collect()
+    assert len(l) == 1, (df, l)
+    row = l[0]
+    l2 = list(row)
+    assert len(l2) == len(aggs), (row, l2)
+    return l2
 
 
 def anchor_wrap(df, col):
