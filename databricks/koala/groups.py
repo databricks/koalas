@@ -17,8 +17,6 @@
 """
 A wrapper for GroupedData to behave similar to pandas.
 """
-import sys
-
 from pyspark.sql.types import StructType
 
 from ._dask_stubs.compatibility import string_types
