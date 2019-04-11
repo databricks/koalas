@@ -195,6 +195,10 @@ class PandasLikeSeries(_Frame):
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
             return anchor_wrap(self, self._spark_getField(name))
 
+    # TODO: automate the process here
+    def alias(self, name):
+        return self.rename(name)
+
     @property
     def schema(self):
         if not hasattr(self, '_pandas_schema') or self._pandas_schema is None:
@@ -207,31 +211,26 @@ class PandasLikeSeries(_Frame):
 
     @property
     def name(self):
-        return self._jc.toString()
+        return self._metadata.column_fields[0]
 
     @name.setter
     def name(self, name):
         self.rename(name, inplace=True)
 
     def rename(self, name, inplace=False):
-        df = self.to_dataframe()._spark_select(self._metadata.index_fields +
-                                               [self._spark_alias(name)])
-        df._metadata = self._metadata.copy(column_fields=[name])
-        col = _col(df)
+        col = self._spark_alias(name)
         if inplace:
-            anchor_wrap(col, self)
             self._jc = col._jc
             self._pandas_schema = None
             self._pandas_metadata = None
             return self
         else:
-            return col
+            return anchor_wrap(self, col)
 
     @property
     def _metadata(self):
         if not hasattr(self, '_pandas_metadata') or self._pandas_metadata is None:
-            ref = self._pandas_anchor
-            self._pandas_metadata = ref._metadata.copy(column_fields=[self.name])
+            self._pandas_metadata = self.to_dataframe()._metadata
         return self._pandas_metadata
 
     @derived_from(pd.Series)
@@ -262,8 +261,8 @@ class PandasLikeSeries(_Frame):
 
     def to_dataframe(self):
         ref = self._pandas_anchor
-        df = ref._spark_select(self._metadata.index_fields + [self])
-        df._metadata = self._metadata.copy()
+        df = ref._spark_select(ref._metadata.index_fields + [self])
+        df._metadata = ref._metadata.copy(column_fields=df._metadata.column_fields[-1:])
         return df
 
     def toPandas(self):
