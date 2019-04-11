@@ -23,7 +23,7 @@ from decorator import decorator
 import types
 import logging
 
-from .structures import *
+from .structures import PandasLikeDataFrame, PandasLikeSeries, SparkSessionPatches
 from . import namespace
 
 logger = logging.getLogger('spark')
@@ -81,11 +81,11 @@ def wrap_column_function(f, *args, **kwargs):
                     logger.debug("Found a column without reference: {}".format(str(x)))
             return None
         all_col_inputs = [ref_df(c) for c in all_inputs]
-        all_df_inputs = list(dict([(id(f), f) for f in all_col_inputs if f]).items())
+        all_df_inputs = list(dict([(id(f), f) for f in all_col_inputs if f is not None]).items())
         if len(all_df_inputs) > 1:
             logger.warning("Too many anchors to conclude")
         elif not all_df_inputs:
-            logger.warning("Could not find anchors")
+            logger.debug("Could not find anchors")
         else:
             (_, df_ref) = all_df_inputs[0]
             res._spark_ref_dataframe = df_ref
