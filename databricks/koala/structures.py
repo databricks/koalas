@@ -26,7 +26,6 @@ from pyspark.sql import DataFrame, Column
 from pyspark.sql.types import FloatType, DoubleType, StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
-from . import namespace
 from .metadata import Metadata
 from .selection import SparkDataFrameLocator
 from ._dask_stubs.utils import derived_from
@@ -52,8 +51,6 @@ class SparkSessionPatches(object):
         df = self.createDataFrame(reset_index)
         df._metadata = metadata
         return df
-
-    from_pandas.__doc__ = namespace.from_pandas.__doc__
 
     def read_csv(self, path, header='infer', names=None, usecols=None,
                  mangle_dupe_cols=True, parse_dates=False, comment=None):
@@ -121,8 +118,6 @@ class SparkSessionPatches(object):
             df = self.createDataFrame([], schema=StructType())
         return df
 
-    read_csv.__doc__ = namespace.read_csv.__doc__
-
     def read_parquet(self, path, columns=None):
         if columns is not None:
             columns = list(columns)
@@ -138,8 +133,6 @@ class SparkSessionPatches(object):
         else:
             df = self.createDataFrame([], schema=StructType())
         return df
-
-    read_parquet.__doc__ = namespace.read_parquet.__doc__
 
 
 class _Frame(object):
@@ -844,6 +837,20 @@ def _unpack_scalar(df):
     l2 = list(row.asDict().values())
     assert len(l2) == 1, (row, l2)
     return l2[0]
+
+
+def _reduce_spark_multi(df, aggs):
+    """
+    Performs a reduction on a dataframe, the functions being known sql aggregate functions.
+    """
+    assert(df, DataFrame)
+    df0 = df._spark_agg(*aggs)
+    l = df0.head(2).collect()
+    assert len(l) == 1, (df, l)
+    row = l[0]
+    l2 = list(row)
+    assert len(l2) == len(aggs), (row, l2)
+    return l2
 
 
 def anchor_wrap(df, col):

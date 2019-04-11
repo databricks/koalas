@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+import datetime
+from decimal import Decimal
 from distutils.version import LooseVersion
 import unittest
 
@@ -62,6 +64,51 @@ class ReshapeTest(ReusedSQLTestCase):
 
         exp = pd.get_dummies(df, columns=['b'])
         res = pyspark.get_dummies(ddf, columns=['b'])
+        self.assertPandasAlmostEqual(res.toPandas(), exp)
+
+    def test_get_dummies_date_datetime(self):
+        df = pd.DataFrame({'d': [datetime.date(2019, 1, 1),
+                                 datetime.date(2019, 1, 2),
+                                 datetime.date(2019, 1, 1)],
+                           'dt': [datetime.datetime(2019, 1, 1, 0, 0, 0),
+                                  datetime.datetime(2019, 1, 1, 0, 0, 1),
+                                  datetime.datetime(2019, 1, 1, 0, 0, 0)]})
+        ddf = self.spark.from_pandas(df)
+
+        exp = pd.get_dummies(df)
+        res = pyspark.get_dummies(ddf)
+        self.assertPandasAlmostEqual(res.toPandas(), exp)
+
+        exp = pd.get_dummies(df.d)
+        res = pyspark.get_dummies(ddf.d)
+        self.assertPandasAlmostEqual(res.toPandas(), exp)
+
+        exp = pd.get_dummies(df.dt)
+        res = pyspark.get_dummies(ddf.dt)
+        self.assertPandasAlmostEqual(res.toPandas(), exp)
+
+    def test_get_dummies_boolean(self):
+        df = pd.DataFrame({'b': [True, False, True]})
+        ddf = self.spark.from_pandas(df)
+
+        exp = pd.get_dummies(df)
+        res = pyspark.get_dummies(ddf)
+        self.assertPandasAlmostEqual(res.toPandas(), exp)
+
+        exp = pd.get_dummies(df.b)
+        res = pyspark.get_dummies(ddf.b)
+        self.assertPandasAlmostEqual(res.toPandas(), exp)
+
+    def test_get_dummies_decimal(self):
+        df = pd.DataFrame({'d': [Decimal(1.0), Decimal(2.0), Decimal(1)]})
+        ddf = self.spark.from_pandas(df)
+
+        exp = pd.get_dummies(df)
+        res = pyspark.get_dummies(ddf)
+        self.assertPandasAlmostEqual(res.toPandas(), exp)
+
+        exp = pd.get_dummies(df.d)
+        res = pyspark.get_dummies(ddf.d)
         self.assertPandasAlmostEqual(res.toPandas(), exp)
 
     def test_get_dummies_kwargs(self):
