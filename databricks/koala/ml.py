@@ -16,6 +16,7 @@
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.stat import Correlation
 import pandas as pd
+import numpy as np
 
 
 def corr(df, method='pearson'):
@@ -27,6 +28,7 @@ def corr(df, method='pearson'):
     :param method:
     :return:
     """
+    print("corr:", df.schema)
     assert method in ('pearson', 'kendall', 'spearman'), method
     ndf, fields = to_numeric_df(df)
     corr = Correlation.corr(ndf, "_1", method)
@@ -47,9 +49,11 @@ def to_numeric_df(df):
     :param df:
     :return: a pair of dataframe, list of strings (the name of the columns that were converted to numerical types)
     """
-    accepted_types = ["double", "int", "float"]
+    accepted_types = ["double", "integer", "float"]
+    print([f.name for f in df.schema.fields if f.dataType.typeName() in accepted_types])
     numeric_fields = [f.name for f in df.schema.fields if f.dataType.typeName() in accepted_types]
-    numeric_df = df.select(*numeric_fields)
+    numeric_df = df.select(*numeric_fields).dropna()
+    print("to_numeric_df:numeric_df", numeric_df.schema)
     va = VectorAssembler(inputCols=numeric_fields, outputCol="_1")
     v = va.transform(numeric_df).select("_1")
     return v, numeric_fields

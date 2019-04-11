@@ -39,7 +39,7 @@ def from_pandas(pdf):
     return default_session().from_pandas(pdf)
 
 
-def read_csv(path, header='infer', names=None, usecols=None,
+def read_csv(path, delimiter=None, header='infer', names=None, usecols=None,
              mangle_dupe_cols=True, parse_dates=False, comment=None):
     """Read CSV (comma-separated) file into DataFrame.
 
@@ -68,7 +68,7 @@ def read_csv(path, header='infer', names=None, usecols=None,
     :param comment: Indicates the line should not be parsed.
     :return: :class:`DataFrame`
     """
-    return default_session().read_csv(path=path, header=header, names=names, usecols=usecols,
+    return default_session().read_csv(path=path, delimiter=delimiter, header=header, names=names, usecols=usecols,
                                       mangle_dupe_cols=mangle_dupe_cols, parse_dates=parse_dates,
                                       comment=comment)
 

@@ -54,7 +54,7 @@ class SparkSessionPatches(object):
 
     from_pandas.__doc__ = namespace.from_pandas.__doc__
 
-    def read_csv(self, path, header='infer', names=None, usecols=None,
+    def read_csv(self, path, delimiter=None, header='infer', names=None, usecols=None,
                  mangle_dupe_cols=True, parse_dates=False, comment=None):
         if mangle_dupe_cols is not True:
             raise ValueError("mangle_dupe_cols can only be `True`: %s" % mangle_dupe_cols)
@@ -65,6 +65,9 @@ class SparkSessionPatches(object):
             usecols = list(usecols)
         if usecols is None or callable(usecols) or len(usecols) > 0:
             reader = self.read.option("inferSchema", "true")
+
+            if delimiter:
+                reader.option("delimiter", delimiter)
 
             if header == 'infer':
                 header = 0 if names is None else None
@@ -187,6 +190,8 @@ class PandasLikeSeries(_Frame):
         return _reduce_spark(self, F.sum)
 
     def mean(self):
+        if self.dtype == bool:
+            return self.astype(int).mean()
         return _reduce_spark(self, F.mean)
 
     def skew(self):
@@ -420,6 +425,8 @@ class PandasLikeSeries(_Frame):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
+        if isinstance(key, int):
+            return self.head(key+1).to_dense()[key]
         return anchor_wrap(self, self._spark_getitem(key))
 
     def __getattr__(self, item):
@@ -554,7 +561,8 @@ class PandasLikeDataFrame(_Frame):
         :return: :class:`DataFrame`
         """
         if len(self._metadata.index_info) == 0:
-            raise NotImplementedError('Can\'t reset index because there is no index.')
+            return self
+            #raise NotImplementedError('Can\'t reset index because there is no index.')
 
         multi_index = len(self._metadata.index_info) > 1
         if multi_index:
