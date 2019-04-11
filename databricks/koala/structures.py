@@ -229,6 +229,11 @@ class PandasLikeSeries(_Frame):
         from .typing import as_python_type
         return as_python_type(self.schema.fields[-1].dataType)
 
+    @property
+    def dtype(self):
+        from .typing import as_python_type
+        return as_python_type(self.schema.fields[-1].dataType)
+
     def astype(self, tpe):
         from .typing import as_spark_type
         spark_type = as_spark_type(tpe)
@@ -415,8 +420,7 @@ class PandasLikeSeries(_Frame):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        res = anchor_wrap(self, self._spark_getitem(key))
-        return res
+        return anchor_wrap(self, self._spark_getitem(key))
 
     def __getattr__(self, item):
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
