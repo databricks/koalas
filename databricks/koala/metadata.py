@@ -17,8 +17,6 @@
 """
 A metadata to manage indexes.
 """
-import sys
-
 import pandas as pd
 
 from ._dask_stubs.compatibility import string_types
