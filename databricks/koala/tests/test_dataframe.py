@@ -65,6 +65,8 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         ddf = self.spark.createDataFrame(df)
         self.assert_eq(df[['a', 'b']], ddf[['a', 'b']])
 
+        self.assertEqual(ddf.a.notnull().alias("x").name, "x")
+
     def test_head_tail(self):
         d = self.df
         full = self.full
