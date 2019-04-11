@@ -164,11 +164,12 @@ class SparkDataFrameLocator(object):
         else:
             columns = [_make_col(c) for c in cols_sel]
         try:
-            df = df._spark_select(self.df._metadata.index_fields + columns) \
-                .set_index(self.df._metadata.index_fields)
+            df = df._spark_select(self.df._metadata.index_fields + columns)
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col.name for col in columns]))
+        df._metadata = self.df._metadata.copy(
+            column_fields=df._metadata.column_fields[-len(columns):])
         if cols_sel is not None and isinstance(cols_sel, Column):
             from .structures import _col
             return _col(df)
