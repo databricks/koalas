@@ -23,7 +23,7 @@ from decorator import decorator
 import types
 import logging
 
-from .structures import *
+from .structures import PandasLikeDataFrame, PandasLikeSeries, SparkSessionPatches
 from . import namespace
 
 logger = logging.getLogger('spark')
