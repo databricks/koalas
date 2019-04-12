@@ -269,6 +269,12 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
                                     "value_counts currently does not support bins"):
             ddf.x.value_counts(bins=3)
 
+        s = df.x
+        s.name = 'index'
+        ds = ddf.x
+        ds.name = 'index'
+        self.assertPandasAlmostEqual(ds.value_counts().toPandas(), s.value_counts())
+
     def test_isnull(self):
         df = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
                           index=[10, 20, 30, 40, 50, 60])
