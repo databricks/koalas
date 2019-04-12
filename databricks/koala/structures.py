@@ -53,8 +53,6 @@ class SparkSessionPatches(object):
         df._metadata = metadata
         return df
 
-    #from_pandas.__doc__ = namespace.from_pandas.__doc__
-
     def read_csv(self, path, delimiter=None, header='infer', names=None, usecols=None,
                  mangle_dupe_cols=True, parse_dates=False, comment=None):
         if mangle_dupe_cols is not True:

@@ -45,7 +45,14 @@ def from_pandas(pdf):
     return default_session().from_pandas(pdf)
 
 
+<<<<<<< HEAD
 def read_csv(path, delimiter=None, header='infer', names=None, usecols=None,
+=======
+SparkSessionPatches.from_pandas.__doc__ = from_pandas.__doc__
+
+
+def read_csv(path, header='infer', names=None, usecols=None,
+>>>>>>> upstream/master
              mangle_dupe_cols=True, parse_dates=False, comment=None):
     """Read CSV (comma-separated) file into DataFrame.
 
