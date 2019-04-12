@@ -239,8 +239,7 @@ class PandasLikeSeries(_Frame):
             self._pandas_metadata = ref._metadata.copy(column_fields=[self.name])
         return self._pandas_metadata
 
-    @_metadata.setter
-    def _metadata(self, metadata):
+    def _set_metadata(self, metadata):
         self._pandas_metadata = metadata
 
     @property
@@ -249,6 +248,8 @@ class PandasLikeSeries(_Frame):
 
         Currently supported only when the DataFrame has a single index.
         """
+        if len(self._metadata.index_info) != 1:
+            raise KeyError('Currently supported only when the Column has a single index.')
         return self._pandas_anchor.index
 
     @derived_from(pd.Series)
@@ -429,7 +430,7 @@ class PandasLikeDataFrame(_Frame):
         if len(self._metadata.index_info) != 1:
             raise KeyError('Currently supported only when the DataFrame has a single index.')
         col = self._index_columns[0]
-        col._metadata = col._metadata.copy(index_info=[])
+        col._set_metadata(col._metadata.copy(index_info=[]))
         return col
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
