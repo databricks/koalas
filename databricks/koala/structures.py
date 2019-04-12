@@ -327,7 +327,9 @@ class PandasLikeSeries(_Frame):
             sum = df_dropna._spark_count()
             df = df._spark_withColumn('count', F._spark_col('count') / F._spark_lit(sum))
 
-        return _col(df.set_index([self.name]))
+        df.columns = ['index', self.name]
+        df._metadata = Metadata(column_fields=[self.name], index_info=[('index', None)])
+        return _col(df)
 
     @property
     def _pandas_anchor(self) -> DataFrame:
@@ -653,9 +655,9 @@ class PandasLikeDataFrame(_Frame):
             raise ValueError(
                 "Length mismatch: Expected axis has %d elements, new values have %d elements"
                 % (len(old_names), len(names)))
-        df = self
-        for (old_name, new_name) in zip(old_names, names):
-            df = df._spark_withColumnRenamed(old_name, new_name)
+        df = self._spark_select(self._metadata.index_fields +
+                                [self[old_name]._spark_alias(new_name)
+                                 for (old_name, new_name) in zip(old_names, names)])
         df._metadata = self._metadata.copy(column_fields=names)
 
         _reassign_jdf(self, df)
