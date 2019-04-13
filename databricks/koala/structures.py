@@ -327,9 +327,9 @@ class PandasLikeSeries(_Frame):
             sum = df_dropna._spark_count()
             df = df._spark_withColumn('count', F._spark_col('count') / F._spark_lit(sum))
 
-        hidden_name = 'index' if self.name != 'index' else 'level_0'
-        df.columns = [hidden_name, self.name]
-        df._metadata = Metadata(column_fields=[self.name], index_info=[(hidden_name, None)])
+        index_name = 'index' if self.name != 'index' else 'level_0'
+        df.columns = [index_name, self.name]
+        df._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
         return _col(df)
 
     @property
