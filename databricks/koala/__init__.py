@@ -15,6 +15,9 @@
 #
 
 
+from .utils import *
+from .namespace import *
+from .typing import Col, pandas_wrap
 def assert_pyspark_version():
     import logging
     pyspark_ver = None
@@ -33,9 +36,6 @@ def assert_pyspark_version():
 
 assert_pyspark_version()
 
-from .utils import *
-from .namespace import *
-from .typing import Col, pandas_wrap
 
 __all__ = ['patch_spark', 'read_csv', 'Col', 'pandas_wrap']
 
