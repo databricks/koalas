@@ -167,7 +167,7 @@ class SparkDataFrameLocator(object):
             df = df._spark_select(self.df._metadata.index_fields + columns)
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
-                           .format([col.name for col in columns]))
+                           .format([col._jc.toString() for col in columns]))
         df._metadata = self.df._metadata.copy(
             column_fields=df._metadata.column_fields[-len(columns):])
         if cols_sel is not None and isinstance(cols_sel, Column):

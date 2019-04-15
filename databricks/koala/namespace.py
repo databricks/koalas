@@ -159,7 +159,8 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
             "Length of 'prefix' ({}) did not match the length of the columns being encoded ({})."
             .format(len(prefix), len(columns)))
 
-    all_values = _reduce_spark_multi(df, [F._spark_collect_set(F._spark_col(column)).alias(column)
+    all_values = _reduce_spark_multi(df, [F._spark_collect_set(F._spark_col(column))
+                                          ._spark_alias(column)
                                           for column in columns])
     for i, column in enumerate(columns):
         values = sorted(all_values[i])
