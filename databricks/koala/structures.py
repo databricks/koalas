@@ -868,7 +868,7 @@ def _reduce_spark_multi(df, aggs):
     """
     Performs a reduction on a dataframe, the functions being known sql aggregate functions.
     """
-    assert(df, DataFrame)
+    assert isinstance(df, DataFrame)
     df0 = df._spark_agg(*aggs)
     l = df0.head(2).collect()
     assert len(l) == 1, (df, l)
