@@ -249,11 +249,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         df = pd.DataFrame({'x': [1, 2, 1, 3, 3, np.nan, 1, 4]})
         ddf = self.spark.from_pandas(df)
 
-        exp = df.x.value_counts()
-        res = ddf.x.value_counts()
-        self.assertEqual(res.name, exp.name)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
-
+        self.assertPandasAlmostEqual(ddf.x.value_counts().toPandas(), df.x.value_counts())
         self.assertPandasAlmostEqual(ddf.x.value_counts(normalize=True).toPandas(),
                                      df.x.value_counts(normalize=True))
         self.assertPandasAlmostEqual(ddf.x.value_counts(ascending=True).toPandas(),
@@ -266,12 +262,6 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(NotImplementedError,
                                     "value_counts currently does not support bins"):
             ddf.x.value_counts(bins=3)
-
-        s = df.x
-        s.name = 'index'
-        ds = ddf.x
-        ds.name = 'index'
-        self.assertPandasAlmostEqual(ds.value_counts().toPandas(), s.value_counts())
 
     def test_isnull(self):
         df = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
