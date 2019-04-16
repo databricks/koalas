@@ -320,9 +320,9 @@ class PandasLikeSeries(_Frame):
             raise NotImplementedError("value_counts currently does not support bins")
 
         if dropna:
-            df_dropna = self.to_dataframe()._spark_filter(self.notna())
+            df_dropna = self._pandas_anchor._spark_filter(self.notna())
         else:
-            df_dropna = self.to_dataframe()
+            df_dropna = self._pandas_anchor
         df = df_dropna._spark_groupby(self).count()
         if sort:
             if ascending:
