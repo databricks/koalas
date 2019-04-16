@@ -251,6 +251,10 @@ class PandasLikeSeries(_Frame):
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
             return anchor_wrap(self, self._spark_getField(name))
 
+    # TODO: automate the process here
+    def alias(self, name):
+        return self.rename(name)
+
     @property
     def schema(self):
         if not hasattr(self, '_pandas_schema') or self._pandas_schema is None:
@@ -267,39 +271,40 @@ class PandasLikeSeries(_Frame):
 
     @property
     def name(self):
-        # The name of the java column is not fully qualified.
-        # We can do better here and directly get the name, which is necessary to be correct with rename and alias.
-        df = self.to_dataframe()
-        return df._metadata.column_fields[0]
-        #return self._jc.toString()
+        return self._metadata.column_fields[0]
 
     @name.setter
     def name(self, name):
         self.rename(name, inplace=True)
 
     def rename(self, name, inplace=False):
-        assert(not inplace)
-        return anchor_wrap(self, self._spark_alias(name))
-        # df = self.to_dataframe()._spark_select(self._metadata.index_fields +
-        #                                        [self._spark_alias(name)])
-        # df._metadata = self._metadata.copy(column_fields=[name])
-        # col = _col(df)
-        # if inplace:
-        #     anchor_wrap(col, self)
-        #     self._jc = col._jc
-        #     self._pandas_schema = None
-        #     self._pandas_metadata = None
-        #     return self
-        # else:
-        #     return col
+        col = self._spark_alias(name)
+        if inplace:
+            self._jc = col._jc
+            self._pandas_schema = None
+            self._pandas_metadata = None
+            return self
+        else:
+            return anchor_wrap(self, col)
 
     @property
     def _metadata(self):
         if not hasattr(self, '_pandas_metadata') or self._pandas_metadata is None:
-            ref = self._pandas_anchor
-            name = _fully_qualified_colname(self)
-            self._pandas_metadata = ref._metadata.copy(column_fields=[name])
+            self._pandas_metadata = self.to_dataframe()._metadata
         return self._pandas_metadata
+
+    def _set_metadata(self, metadata):
+        self._pandas_metadata = metadata
+
+    @property
+    def index(self):
+        """The index (axis labels) Column of the Series.
+
+        Currently supported only when the DataFrame has a single index.
+        """
+        if len(self._metadata.index_info) != 1:
+            raise KeyError('Currently supported only when the Column has a single index.')
+        return self._pandas_anchor.index
 
     @derived_from(pd.Series)
     def reset_index(self, level=None, drop=False, name=None, inplace=False):
@@ -332,10 +337,15 @@ class PandasLikeSeries(_Frame):
 
     def to_dataframe(self):
         ref = self._pandas_anchor
+<<<<<<< HEAD
         df = ref._spark_select(self._metadata.index_fields + [self])
         # The last name will have been fully resolved, use this one instead.
         name = _fully_qualified_colname(self)
         df._pandas_metadata = self._metadata.copy(column_fields=[name])
+=======
+        df = ref._spark_select(ref._metadata.index_fields + [self])
+        df._metadata = ref._metadata.copy(column_fields=df._metadata.column_fields[-1:])
+>>>>>>> upstream/master
         return df
 
     def to_dense(self):
@@ -383,9 +393,9 @@ class PandasLikeSeries(_Frame):
             raise NotImplementedError("value_counts currently does not support bins")
 
         if dropna:
-            df_dropna = self.to_dataframe()._spark_filter(self.notna())
+            df_dropna = self._pandas_anchor._spark_filter(self.notna())
         else:
-            df_dropna = self.to_dataframe()
+            df_dropna = self._pandas_anchor
         df = df_dropna._spark_groupby(self).count()
         # This is the pandas convention for names
         df.columns = ["index", self.name]
@@ -399,7 +409,10 @@ class PandasLikeSeries(_Frame):
             sum = df_dropna._spark_count()
             df = df._spark_withColumn('count', F._spark_col('count') / F._spark_lit(sum))
 
-        return _col(df.set_index([self.name]))
+        index_name = 'index' if self.name != 'index' else 'level_0'
+        df.columns = [index_name, self.name]
+        df._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
+        return _col(df)
 
     @property
     def _pandas_anchor(self) -> DataFrame:
@@ -497,6 +510,18 @@ class PandasLikeDataFrame(_Frame):
     @derived_from(pd.DataFrame)
     def to_html(self, index=True, classes=None):
         return self.toPandas().to_html(index=index, classes=classes)
+
+    @property
+    def index(self):
+        """The index (row labels) Column of the DataFrame.
+
+        Currently supported only when the DataFrame has a single index.
+        """
+        if len(self._metadata.index_info) != 1:
+            raise KeyError('Currently supported only when the DataFrame has a single index.')
+        col = self._index_columns[0]
+        col._set_metadata(col._metadata.copy(index_info=[]))
+        return col
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns. By default
@@ -744,9 +769,9 @@ class PandasLikeDataFrame(_Frame):
             raise ValueError(
                 "Length mismatch: Expected axis has %d elements, new values have %d elements"
                 % (len(old_names), len(names)))
-        df = self
-        for (old_name, new_name) in zip(old_names, names):
-            df = df._spark_withColumnRenamed(old_name, new_name)
+        df = self._spark_select(self._metadata.index_fields +
+                                [self[old_name]._spark_alias(new_name)
+                                 for (old_name, new_name) in zip(old_names, names)])
         df._metadata = self._metadata.copy(column_fields=names)
 
         _reassign_jdf(self, df)
@@ -954,7 +979,7 @@ def _reduce_spark_multi(df, aggs):
     """
     Performs a reduction on a dataframe, the functions being known sql aggregate functions.
     """
-    assert(df, DataFrame)
+    assert isinstance(df, DataFrame)
     df0 = df._spark_agg(*aggs)
     l = df0.head(2).collect()
     assert len(l) == 1, (df, l)

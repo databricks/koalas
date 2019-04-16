@@ -65,6 +65,8 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         ddf = self.spark.createDataFrame(df)
         self.assert_eq(df[['a', 'b']], ddf[['a', 'b']])
 
+        self.assertEqual(ddf.a.notnull().alias("x").name, "x")
+
     def test_head_tail(self):
         d = self.df
         full = self.full
@@ -79,13 +81,12 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         # TODO: self.assert_eq(d['a'].tail(2), full['a'].tail(2))
         # TODO: self.assert_eq(d['a'].tail(3), full['a'].tail(3))
 
-    @unittest.skip('TODO: support index')
     def test_index_head(self):
         d = self.df
         full = self.full
 
-        self.assert_eq(d.index[:2], full.index[:2])
-        self.assert_eq(d.index[:3], full.index[:3])
+        self.assert_eq(list(d.index.head(2).toPandas()), list(full.index[:2]))
+        self.assert_eq(list(d.index.head(3).toPandas()), list(full.index[:3]))
 
     def test_Series(self):
         d = self.df
@@ -95,14 +96,13 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assertTrue(isinstance(d.a + 1, Column))
         # TODO: self.assert_eq(d + 1, full + 1)
 
-    @unittest.skip('TODO: support index')
     def test_Index(self):
         for case in [pd.DataFrame(np.random.randn(10, 5), index=list('abcdefghij')),
                      pd.DataFrame(np.random.randn(10, 5),
                                   index=pd.date_range('2011-01-01', freq='D',
                                                       periods=10))]:
             ddf = self.spark.from_pandas(case)
-            self.assert_eq(ddf.index, case.index)
+            self.assert_eq(list(ddf.index.toPandas()), list(case.index))
 
     def test_attributes(self):
         d = self.df
@@ -126,11 +126,10 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual((d['a'] + 1).name, '(a + 1)')  # TODO: 'a'
         self.assertEqual((d['a'] + d['b']).name, '(a + b)')  # TODO: None
 
-    @unittest.skip('TODO: support index')
     def test_index_names(self):
         d = self.df
 
-        self.assertIsNone(d.index.name)
+        # TODO?: self.assertIsNone(d.index.name)
 
         idx = pd.Index([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], name='x')
         df = pd.DataFrame(np.random.randn(10, 5), idx)
@@ -169,13 +168,12 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(ds.name, 'renamed')
         self.assert_eq(ds, s)
 
-        # TODO: index
-        # ind = s.index
-        # dind = ds.index
-        # ind.name = 'renamed'
-        # dind.name = 'renamed'
-        # self.assertEqual(ind.name, 'renamed')
-        # self.assert_eq(dind, ind)
+        ind = s.index
+        dind = ds.index
+        ind.name = 'renamed'
+        dind.name = 'renamed'
+        self.assertEqual(ind.name, 'renamed')
+        self.assert_eq(list(dind.toPandas()), list(ind))
 
     def test_rename_series_method(self):
         # Series name
@@ -195,7 +193,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         s = pd.Series(['a', 'b', 'c', 'd', 'e', 'f', 'g'], name='x')
         ds = self.spark.from_pandas(pd.DataFrame(s)).x
 
-        # TODOD: index
+        # TODO: index
         # res = ds.rename(lambda x: x ** 2)
         # self.assert_eq(res, s.rename(lambda x: x ** 2))
 
@@ -251,7 +249,11 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         df = pd.DataFrame({'x': [1, 2, 1, 3, 3, np.nan, 1, 4]})
         ddf = self.spark.from_pandas(df)
 
-        self.assertPandasAlmostEqual(ddf.x.value_counts().toPandas(), df.x.value_counts())
+        exp = df.x.value_counts()
+        res = ddf.x.value_counts()
+        self.assertEqual(res.name, exp.name)
+        self.assertPandasAlmostEqual(res.toPandas(), exp)
+
         self.assertPandasAlmostEqual(ddf.x.value_counts(normalize=True).toPandas(),
                                      df.x.value_counts(normalize=True))
         self.assertPandasAlmostEqual(ddf.x.value_counts(ascending=True).toPandas(),
@@ -264,6 +266,12 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(NotImplementedError,
                                     "value_counts currently does not support bins"):
             ddf.x.value_counts(bins=3)
+
+        s = df.x
+        s.name = 'index'
+        ds = ddf.x
+        ds.name = 'index'
+        self.assertPandasAlmostEqual(ds.value_counts().toPandas(), s.value_counts())
 
     def test_isnull(self):
         df = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
