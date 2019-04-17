@@ -30,7 +30,17 @@ class _Frame(object):
     The base class for both dataframes and series.
     """
 
-    def max(self):
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
+    def max(self, axis=None, skipna=None, level=None, numeric_only=None, **kwargs):
+        if axis is not None:
+            raise NotImplementedError("max currently does not support axis")
+        if skipna is not None:
+            raise NotImplementedError("max currently does not support skipna")
+        if level is not None:
+            raise NotImplementedError("max currently does not support level")
+        if numeric_only is not None:
+            raise NotImplementedError("max currently does not support numeric_only")
+
         return _reduce_spark(self, F.max)
 
     @derived_from(pd.DataFrame)

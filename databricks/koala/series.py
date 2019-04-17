@@ -49,11 +49,17 @@ class PandasLikeSeries(_Frame, _MissingPandasLikeSeries):
         from .typing import as_python_type
         return as_python_type(self.schema.fields[-1].dataType)
 
-    def astype(self, tpe):
+    @derived_from(pd.Series, ua_args=['copy', 'errors'])
+    def astype(self, dtype, copy=True, errors='raise', **kwargs):
+        if copy is not True:
+            raise NotImplementedError("astype currently does not support copy")
+        if errors != 'raise':
+            raise NotImplementedError("astype currently does not support errors")
+
         from .typing import as_spark_type
-        spark_type = as_spark_type(tpe)
+        spark_type = as_spark_type(dtype)
         if not spark_type:
-            raise ValueError("Type {} not understood".format(tpe))
+            raise ValueError("Type {} not understood".format(dtype))
         return anchor_wrap(self, self._spark_cast(spark_type))
 
     def getField(self, name):
@@ -88,9 +94,12 @@ class PandasLikeSeries(_Frame, _MissingPandasLikeSeries):
     def name(self, name):
         self.rename(name, inplace=True)
 
-    def rename(self, name, inplace=False):
-        col = self._spark_alias(name)
-        if inplace:
+    @derived_from(pd.Series)
+    def rename(self, index=None, **kwargs):
+        if index is None:
+            return self
+        col = self._spark_alias(index)
+        if kwargs.get('inplace', False):
             self._jc = col._jc
             self._pandas_schema = None
             self._pandas_metadata = None

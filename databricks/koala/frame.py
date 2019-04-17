@@ -66,8 +66,18 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
         return list((col_name, self[col_name]) for col_name in cols)
 
     @derived_from(pd.DataFrame)
-    def to_html(self, index=True, classes=None):
-        return self.toPandas().to_html(index=index, classes=classes)
+    def to_html(self, buf=None, columns=None, col_space=None, header=True, index=True,
+                na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
+                justify=None, max_rows=None, max_cols=None, show_dimensions=False, decimal='.',
+                bold_rows=True, classes=None, escape=True, notebook=False, border=None,
+                table_id=None, render_links=False):
+        return self.toPandas().to_html(
+            buf=buf, columns=columns, col_space=col_space, header=header, index=index,
+            na_rep=na_rep, formatters=formatters, float_format=float_format, sparsify=sparsify,
+            index_names=index_names, justify=justify, max_rows=max_rows, max_cols=max_cols,
+            show_dimensions=show_dimensions, decimal=decimal, bold_rows=bold_rows, classes=classes,
+            escape=escape, notebook=notebook, border=border, table_id=table_id,
+            render_links=render_links)
 
     @property
     def index(self):
@@ -81,7 +91,8 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
         col._set_metadata(col._metadata.copy(index_info=[]))
         return col
 
-    def set_index(self, keys, drop=True, append=False, inplace=False):
+    @derived_from(pd.DataFrame, ua_args=['verify_integrity'])
+    def set_index(self, keys, drop=True, append=False, inplace=False, verify_integrity=False):
         """Set the DataFrame index (row labels) using one or more existing columns. By default
         yields a new object.
 
@@ -94,6 +105,9 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
                         Modify the DataFrame in place (do not create a new object)
         :return: :class:`DataFrame`
         """
+        if verify_integrity is not False:
+            raise NotImplementedError("set_index currently does not support verify_integrity")
+
         if isinstance(keys, string_types):
             keys = [keys]
         else:
@@ -119,7 +133,8 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
             df._metadata = metadata
             return df
 
-    def reset_index(self, level=None, drop=False, inplace=False):
+    @derived_from(pd.DataFrame, ua_args=['col_level', 'col_fill'])
+    def reset_index(self, level=None, drop=False, inplace=False, col_level=0, col_fill=''):
         """For DataFrame with multi-level index, return new DataFrame with labeling information in
         the columns under the index names, defaulting to 'level_0', 'level_1', etc. if any are None.
         For a standard index, the index name will be used (if set), otherwise a default 'index' or
@@ -134,6 +149,11 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
                         Modify the DataFrame in place (do not create a new object)
         :return: :class:`DataFrame`
         """
+        if col_level != 0:
+            raise NotImplementedError("reset_index currently does not support col_level")
+        if col_fill != '':
+            raise NotImplementedError("reset_index currently does not support col_fill")
+
         if len(self._metadata.index_info) == 0:
             raise NotImplementedError('Can\'t reset index because there is no index.')
 
@@ -264,7 +284,11 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
     def loc(self):
         return SparkDataFrameLocator(self)
 
-    def copy(self):
+    @derived_from(pd.DataFrame, ua_args=['deep'])
+    def copy(self, deep=True):
+        if deep is not True:
+            raise NotImplementedError("copy currently does not support deep")
+
         df = DataFrame(self._jdf, self.sql_ctx)
         df._metadata = self._metadata.copy()
         return df
@@ -333,14 +357,34 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
 
         _reassign_jdf(self, df)
 
-    def count(self):
+    @derived_from(pd.DataFrame, ua_args=['axis', 'level', 'numeric_only'])
+    def count(self, axis=0, level=None, numeric_only=False):
+        if axis != 0:
+            raise NotImplementedError("count currently does not support axis")
+        if level is not None:
+            raise NotImplementedError("count currently does not support level")
+        if numeric_only is not False:
+            raise NotImplementedError("count currently does not support numeric_only")
+
         return self._spark_count()
 
     def unique(self):
         return DataFrame(self._jdf.distinct(), self.sql_ctx)
 
-    @derived_from(pd.DataFrame)
-    def drop(self, labels, axis=0, errors='raise'):
+    @derived_from(pd.DataFrame, ua_args=['index', 'columns', 'level', 'inplace', 'errors'])
+    def drop(self, labels=None, axis=0, index=None, columns=None, level=None, inplace=False,
+             errors='raise'):
+        if index is not None:
+            raise NotImplementedError("drop currently does not support index")
+        if columns is not None:
+            raise NotImplementedError("drop currently does not support columns")
+        if level is not None:
+            raise NotImplementedError("drop currently does not support level")
+        if inplace is not False:
+            raise NotImplementedError("drop currently does not support inplace")
+        if errors != 'raise':
+            raise NotImplementedError("drop currently does not support errors")
+
         axis = self._validate_axis(axis)
         if axis == 1:
             if isinstance(labels, list):
@@ -364,12 +408,43 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
         except (KeyError, ValueError, IndexError):
             return default
 
-    def sort_values(self, by):
+    @derived_from(pd.DataFrame, ua_args=['axis', 'ascending', 'inplace', 'kind', 'na_position'])
+    def sort_values(self, by, axis=0, ascending=True, inplace=False, kind='quicksort',
+                    na_position='last'):
+        if axis != 0:
+            raise NotImplementedError("sort_values currently does not support axis")
+        if ascending is not True:
+            raise NotImplementedError("sort_values currently does not support ascending")
+        if inplace is not False:
+            raise NotImplementedError("sort_values currently does not support inplace")
+        if kind != 'quicksort':
+            raise NotImplementedError("sort_values currently does not support kind")
+        if na_position != 'last':
+            raise NotImplementedError("sort_values currently does not support na_position")
+
         df = self._spark_sort(by)
         df._metadata = self._metadata
         return df
 
-    def groupby(self, by):
+    @derived_from(pd.DataFrame, ua_args=['axis', 'level', 'as_index', 'sort', 'group_keys',
+                                         'squeeze', 'observed'])
+    def groupby(self, by=None, axis=0, level=None, as_index=True, sort=True, group_keys=True,
+                squeeze=False, observed=False, **kwargs):
+        if axis != 0:
+            raise NotImplementedError("groupby currently does not support axis")
+        if level is not None:
+            raise NotImplementedError("groupby currently does not support level")
+        if as_index is not True:
+            raise NotImplementedError("groupby currently does not support as_index")
+        if sort is not True:
+            raise NotImplementedError("groupby currently does not support sort")
+        if group_keys is not True:
+            raise NotImplementedError("groupby currently does not support group_keys")
+        if squeeze is not False:
+            raise NotImplementedError("groupby currently does not support squeeze")
+        if observed is not False:
+            raise NotImplementedError("groupby currently does not support observed")
+
         gp = self._spark_groupby(by)
         from .groups import PandasLikeGroupBy
         return PandasLikeGroupBy(self, gp, None)
