@@ -142,6 +142,11 @@ class PandasLikeSeries(_Frame):
         else:
             return df
 
+    @derived_from(pd.Series)
+    def replace(self, to_replace=None, value=None, inplace=False, limit=None, regex=False, method='pad'):
+        # TODO
+        return self
+
     @property
     def loc(self):
         return SparkDataFrameLocator(self)
@@ -151,6 +156,9 @@ class PandasLikeSeries(_Frame):
         df = ref._spark_select(ref._metadata.index_fields + [self])
         df._metadata = ref._metadata.copy(column_fields=df._metadata.column_fields[-1:])
         return df
+
+    def to_dense(self):
+        return self.toPandas().to_dense()
 
     def toPandas(self):
         return _col(self.to_dataframe().toPandas())
