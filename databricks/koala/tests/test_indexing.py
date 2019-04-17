@@ -108,8 +108,6 @@ class BasicIndexingTest(ComparisonTestBase):
 
         self.assertRaisesRegex(ValueError, 'Level should be all int or all string.',
                                lambda: df.reset_index([1, 'month']))
-        #self.assertRaisesRegex(NotImplementedError, 'Can\'t reset index because there is no index.',
-        #                       lambda: df.reset_index().reset_index())
 
 
 class IndexingTest(ReusedSQLTestCase):
