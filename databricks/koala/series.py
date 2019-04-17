@@ -22,7 +22,7 @@ from pyspark.sql import Column, DataFrame, functions as F
 from pyspark.sql.types import FloatType, DoubleType, StructType
 
 from ._dask_stubs.utils import derived_from
-from .generic import _Frame, anchor_wrap, max_display_count
+from .generic import _Frame, anchor_wrap, max_display_count, _reduce_spark
 from .metadata import Metadata
 from .selection import SparkDataFrameLocator
 
@@ -78,6 +78,10 @@ class PandasLikeSeries(_Frame):
     @property
     def shape(self):
         return len(self),
+
+    def count(self):
+        # TODO: should filter NaNs
+        return len(self.to_dataframe())
 
     @property
     def name(self):
@@ -208,6 +212,54 @@ class PandasLikeSeries(_Frame):
         df.columns = [index_name, self.name]
         df._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
         return _col(df)
+
+    def sum(self):
+        return _reduce_spark(self, F.sum)
+
+    def mean(self):
+        if self.dtype == bool:
+            return self.astype(int).mean()
+        return _reduce_spark(self, F.mean)
+
+    def skew(self):
+        return _reduce_spark(self, F.skewness)
+
+    def kurtosis(self):
+        return _reduce_spark(self, F.kurtosis)
+
+    def kurt(self, *args, **kwargs):
+        return 0.0
+
+    def min(self):
+        return _reduce_spark(self, F.min)
+
+    # TODO
+
+    def std(self):
+        return 0.0
+
+    def var(self):
+        return 0.0
+
+    def quantile(self, percentile):
+        return 0
+
+    def mad(self):
+        return 0.0
+
+    def plot(self, *args, **kwargs):
+        pc = self.toPandas()
+        return pc.plot(*args, **kwargs)
+
+    def mode(self):
+        vc = self.value_counts().reset_index()
+        m = vc[self.name].max()
+        return _col(vc.where(vc[self.name] == m).select("index")).toPandas()
+
+    @property
+    def dtype(self):
+        from .typing import as_python_type
+        return as_python_type(self.schema.fields[-1].dataType)
 
     @property
     def _pandas_anchor(self) -> DataFrame:

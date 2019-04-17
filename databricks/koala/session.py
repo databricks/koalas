@@ -40,7 +40,7 @@ class SparkSessionPatches(object):
         df._metadata = metadata
         return df
 
-    def read_csv(self, path, header='infer', names=None, usecols=None,
+    def read_csv(self, path, delimiter=None, header='infer', names=None, usecols=None,
                  mangle_dupe_cols=True, parse_dates=False, comment=None):
         if mangle_dupe_cols is not True:
             raise ValueError("mangle_dupe_cols can only be `True`: %s" % mangle_dupe_cols)
@@ -51,6 +51,9 @@ class SparkSessionPatches(object):
             usecols = list(usecols)
         if usecols is None or callable(usecols) or len(usecols) > 0:
             reader = self.read.option("inferSchema", "true")
+
+            if delimiter:
+                reader.option("delimiter", delimiter)
 
             if header == 'infer':
                 header = 0 if names is None else None

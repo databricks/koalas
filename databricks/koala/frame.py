@@ -30,6 +30,7 @@ from ._dask_stubs.utils import derived_from
 from .generic import _Frame, anchor_wrap, max_display_count
 from .metadata import Metadata
 from .selection import SparkDataFrameLocator
+from .ml import corr
 
 
 class PandasLikeDataFrame(_Frame):
@@ -58,6 +59,22 @@ class PandasLikeDataFrame(_Frame):
     def _index_columns(self):
         return [anchor_wrap(self, self._spark_getitem(field))
                 for field in self._metadata.index_fields]
+
+    def corr(self, col1=None, col2=None, method=None):
+        if col1 is None and col2 is None:
+            return corr(self, method)
+        assert col1 is not None and col2 is not None
+        return self._spark_corr(col1, col2, method)
+
+    def memory_usage(self, index=True):
+        # TODO
+        base_data = [1 for _ in self.columns]
+        base_names = list(self.columns)
+        if index:
+            # The index is virtual and does not allocate more memory
+            base_data.insert(0, 0)
+            base_names.insert(0, "Index")
+        return pd.DataFrame(base_data, index=pd.Index(base_names)).iloc[::, 0]
 
     @derived_from(pd.DataFrame)
     def iteritems(self):
@@ -217,6 +234,16 @@ class PandasLikeDataFrame(_Frame):
 
     notna = notnull
 
+    def to_dense(self):
+        """
+        WARNING: converts unconditionnally a Spark dataframe to a pandas dataframe.
+        You can use this method to convert any dataframe to a pandas dataframe.
+
+        TODO: this should be replaced by the array protocol.
+        :return:
+        """
+        return self.toPandas().to_dense()
+
     @derived_from(DataFrame)
     def toPandas(self):
         df = self._spark_select(['`{}`'.format(name) for name in self._metadata.all_fields])
@@ -258,6 +285,10 @@ class PandasLikeDataFrame(_Frame):
             column_fields=(self._metadata.column_fields +
                            [name for name, _ in pairs if name not in self._metadata.column_fields]))
         return df
+
+    def replace(self, to_replace=None, value=None, inplace=False, limit=None, regex=False, method='pad'):
+        # TODO
+        return self
 
     @property
     def loc(self):
@@ -356,6 +387,10 @@ class PandasLikeDataFrame(_Frame):
             # return self.map_partitions(M.drop, labels, axis=axis, errors=errors)
         raise NotImplementedError("Drop currently only works for axis=1")
 
+    def duplicated(self, subset=None):
+        # TODO: implementation is wrong
+        return anchor_wrap(self, self[self.columns[0]].isnull().astype(int))
+
     @derived_from(pd.DataFrame)
     def get(self, key, default=None):
         try:
@@ -421,6 +456,9 @@ class PandasLikeDataFrame(_Frame):
         raise NotImplementedError(key)
 
     def __getitem__(self, key):
+        # TODO: use a select statement instead
+        if isinstance(key, int):
+            return self.head(key+1).to_dense()[key]
         return anchor_wrap(self, self._pd_getitem(key))
 
     def __setitem__(self, key, value):
