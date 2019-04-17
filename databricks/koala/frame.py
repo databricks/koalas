@@ -15,448 +15,21 @@
 #
 
 """
-Base classes to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
+A base class to be monkey-patched to DataFrame to behave similar to pandas DataFrame.
 """
 from functools import reduce
 
-import pandas as pd
 import numpy as np
-import pyspark.sql.functions as F
-from pyspark.sql import DataFrame, Column
-from pyspark.sql.types import FloatType, DoubleType, StructType, to_arrow_type
+import pandas as pd
+from pyspark.sql import Column, DataFrame, functions as F
+from pyspark.sql.types import StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
+from ._dask_stubs.compatibility import string_types
+from ._dask_stubs.utils import derived_from
+from .generic import _Frame, anchor_wrap, max_display_count
 from .metadata import Metadata
 from .selection import SparkDataFrameLocator
-from ._dask_stubs.utils import derived_from
-from ._dask_stubs.compatibility import string_types
-from .ml import corr
-
-__all__ = ['PandasLikeSeries', 'PandasLikeDataFrame', 'SparkSessionPatches', 'anchor_wrap']
-
-max_display_count = 1000
-
-
-
-class SparkSessionPatches(object):
-    """
-    Methods for :class:`SparkSession`.
-    """
-
-    def from_pandas(self, pdf):
-        if isinstance(pdf, pd.Series):
-            return _col(self.from_pandas(pd.DataFrame(pdf)))
-        metadata = Metadata.from_pandas(pdf)
-        reset_index = pdf.reset_index()
-        reset_index.columns = metadata.all_fields
-        df = self.createDataFrame(reset_index)
-        df._metadata = metadata
-        return df
-
-    def read_csv(self, path, delimiter=None, header='infer', names=None, usecols=None,
-                 mangle_dupe_cols=True, parse_dates=False, comment=None):
-        if mangle_dupe_cols is not True:
-            raise ValueError("mangle_dupe_cols can only be `True`: %s" % mangle_dupe_cols)
-        if parse_dates is not False:
-            raise ValueError("parse_dates can only be `False`: %s" % parse_dates)
-
-        if usecols is not None and not callable(usecols):
-            usecols = list(usecols)
-        if usecols is None or callable(usecols) or len(usecols) > 0:
-            reader = self.read.option("inferSchema", "true")
-
-            if delimiter:
-                reader.option("delimiter", delimiter)
-
-            if header == 'infer':
-                header = 0 if names is None else None
-            if header == 0:
-                reader.option("header", True)
-            elif header is None:
-                reader.option("header", False)
-            else:
-                raise ValueError("Unknown header argument {}".format(header))
-
-            if comment is not None:
-                if not isinstance(comment, string_types) or len(comment) != 1:
-                    raise ValueError("Only length-1 comment characters supported")
-                reader.option("comment", comment)
-
-            df = reader.csv(path)
-
-            if header is None:
-                df = df._spark_selectExpr(*["`%s` as `%s`" % (field.name, i)
-                                            for i, field in enumerate(df.schema)])
-            if names is not None:
-                names = list(names)
-                if len(set(names)) != len(names):
-                    raise ValueError('Found non-unique column index')
-                if len(names) != len(df.schema):
-                    raise ValueError('Names do not match the number of columns: %d' % len(names))
-                df = df._spark_selectExpr(*["`%s` as `%s`" % (field.name, name)
-                                            for field, name in zip(df.schema, names)])
-
-            if usecols is not None:
-                if callable(usecols):
-                    cols = [field.name for field in df.schema if usecols(field.name)]
-                    missing = []
-                elif all(isinstance(col, int) for col in usecols):
-                    cols = [field.name for i, field in enumerate(df.schema) if i in usecols]
-                    missing = [col for col in usecols
-                               if col >= len(df.schema) or df.schema[col].name not in cols]
-                elif all(isinstance(col, string_types) for col in usecols):
-                    cols = [field.name for field in df.schema if field.name in usecols]
-                    missing = [col for col in usecols if col not in cols]
-                else:
-                    raise ValueError("'usecols' must either be list-like of all strings, "
-                                     "all unicode, all integers or a callable.")
-                if len(missing) > 0:
-                    raise ValueError('Usecols do not match columns, columns expected but not '
-                                     'found: %s' % missing)
-
-                if len(cols) > 0:
-                    df = df._spark_select(cols)
-                else:
-                    df = self.createDataFrame([], schema=StructType())
-        else:
-            df = self.createDataFrame([], schema=StructType())
-        return df
-
-    def read_parquet(self, path, columns=None):
-        if columns is not None:
-            columns = list(columns)
-        if columns is None or len(columns) > 0:
-            df = self.read.parquet(path)
-            if columns is not None:
-                fields = [field.name for field in df.schema]
-                cols = [col for col in columns if col in fields]
-                if len(cols) > 0:
-                    df = df._spark_select(cols)
-                else:
-                    df = self.createDataFrame([], schema=StructType())
-        else:
-            df = self.createDataFrame([], schema=StructType())
-        return df
-
-
-class _Frame(object):
-    """
-    The base class for both dataframes and series.
-    """
-
-    def max(self):
-        return _reduce_spark(self, F.max)
-
-
-
-    @derived_from(pd.DataFrame)
-    def abs(self):
-        """
-        Return a Series/DataFrame with absolute numeric value of each element.
-
-        :return: :class:`Series` or :class:`DataFrame` with the absolute value of each element.
-        """
-        return _spark_col_apply(self, F.abs)
-
-    def compute(self):
-        """Alias of `toPandas()` to mimic dask for easily porting tests."""
-        return self.toPandas()
-
-
-class PandasLikeSeries(_Frame):
-    """
-    Methods that are appropriate for distributed series.
-    """
-
-    def __init__(self):
-        """ Define additional private fields.
-
-        * ``_pandas_metadata``: The metadata which stores column fields, and index fields and names.
-        * ``_spark_ref_dataframe``: The reference to DataFraem anchored to this Column.
-        * ``_pandas_schema``: The schema when representing this Column as a DataFrame.
-        """
-        self._pandas_metadata = None
-        self._spark_ref_dataframe = None
-        self._pandas_schema = None
-        # Trick to handle numpy / pd.isnull
-        #self._typ = self.dtype
-
-    def sum(self):
-        return _reduce_spark(self, F.sum)
-
-    def mean(self):
-        if self.dtype == bool:
-            return self.astype(int).mean()
-        return _reduce_spark(self, F.mean)
-
-    def skew(self):
-        return _reduce_spark(self, F.skewness)
-
-    def kurtosis(self):
-        return _reduce_spark(self, F.kurtosis)
-
-    def kurt(self, *args, **kwargs):
-        return 0.0
-
-    def min(self):
-        return _reduce_spark(self, F.min)
-
-    # TODO
-
-    def std(self):
-        return 0.0
-
-    def var(self):
-        return 0.0
-
-    def quantile(self, percentile):
-        return 0
-
-    def mad(self):
-        return 0.0
-
-    def plot(self, *args, **kwargs):
-        pc = self.toPandas()
-        return pc.plot(*args, **kwargs)
-
-    def mode(self):
-        vc = self.value_counts().reset_index()
-        m = vc[self.name].max()
-        return _col(vc.where(vc[self.name] == m).select("index")).toPandas()
-
-    @property
-    def dtype(self):
-        from .typing import as_python_type
-        return as_python_type(self.schema.fields[-1].dataType)
-
-    @property
-    def dtype(self):
-        from .typing import as_python_type
-        return as_python_type(self.schema.fields[-1].dataType)
-
-    def astype(self, tpe):
-        from .typing import as_spark_type
-        spark_type = as_spark_type(tpe)
-        if not spark_type:
-            raise ValueError("Type {} not understood".format(tpe))
-        return anchor_wrap(self, self._spark_cast(spark_type))
-
-    def getField(self, name):
-        if not isinstance(self.schema, StructType):
-            raise AttributeError("Not a struct: {}".format(self.schema))
-        else:
-            fnames = self.schema.fieldNames()
-            if name not in fnames:
-                raise AttributeError(
-                    "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
-            return anchor_wrap(self, self._spark_getField(name))
-
-    # TODO: automate the process here
-    def alias(self, name):
-        return self.rename(name)
-
-    @property
-    def schema(self):
-        if not hasattr(self, '_pandas_schema') or self._pandas_schema is None:
-            self._pandas_schema = self.to_dataframe().schema
-        return self._pandas_schema
-
-    @property
-    def shape(self):
-        return len(self),
-
-    def count(self):
-        # TODO: should filter NaNs
-        return len(self.to_dataframe())
-
-    @property
-    def name(self):
-        return self._metadata.column_fields[0]
-
-    @name.setter
-    def name(self, name):
-        self.rename(name, inplace=True)
-
-    def rename(self, name, inplace=False):
-        col = self._spark_alias(name)
-        if inplace:
-            self._jc = col._jc
-            self._pandas_schema = None
-            self._pandas_metadata = None
-            return self
-        else:
-            return anchor_wrap(self, col)
-
-    @property
-    def _metadata(self):
-        if not hasattr(self, '_pandas_metadata') or self._pandas_metadata is None:
-            self._pandas_metadata = self.to_dataframe()._metadata
-        return self._pandas_metadata
-
-    def _set_metadata(self, metadata):
-        self._pandas_metadata = metadata
-
-    @property
-    def index(self):
-        """The index (axis labels) Column of the Series.
-
-        Currently supported only when the DataFrame has a single index.
-        """
-        if len(self._metadata.index_info) != 1:
-            raise KeyError('Currently supported only when the Column has a single index.')
-        return self._pandas_anchor.index
-
-    @derived_from(pd.Series)
-    def reset_index(self, level=None, drop=False, name=None, inplace=False):
-        if inplace and not drop:
-            raise TypeError('Cannot reset_index inplace on a Series to create a DataFrame')
-
-        if name is not None:
-            df = self.rename(name).to_dataframe()
-        else:
-            df = self.to_dataframe()
-        df = df.reset_index(level=level, drop=drop)
-        if drop:
-            col = _col(df)
-            if inplace:
-                anchor_wrap(col, self)
-                self._jc = col._jc
-                self._pandas_schema = None
-                self._pandas_metadata = None
-            else:
-                return col
-        else:
-            return df
-
-    def replace(self, to_replace=None, value=None, inplace=False, limit=None, regex=False, method='pad'):
-        return self
-
-    @property
-    def loc(self):
-        return SparkDataFrameLocator(self)
-
-    def to_dataframe(self):
-        ref = self._pandas_anchor
-<<<<<<< HEAD
-        df = ref._spark_select(self._metadata.index_fields + [self])
-        # The last name will have been fully resolved, use this one instead.
-        name = _fully_qualified_colname(self)
-        df._pandas_metadata = self._metadata.copy(column_fields=[name])
-=======
-        df = ref._spark_select(ref._metadata.index_fields + [self])
-        df._metadata = ref._metadata.copy(column_fields=df._metadata.column_fields[-1:])
->>>>>>> upstream/master
-        return df
-
-    def to_dense(self):
-        return self.toPandas().to_dense()
-
-    def toPandas(self):
-        return _col(self.to_dataframe().toPandas())
-
-    @derived_from(pd.Series)
-    def isnull(self):
-        if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
-            return anchor_wrap(self, self._spark_isNull() | F._spark_isnan(self))
-        else:
-            return anchor_wrap(self, self._spark_isNull())
-
-    isna = isnull
-
-    @derived_from(pd.Series)
-    def notnull(self):
-        return anchor_wrap(self, ~self.isnull())
-
-    notna = notnull
-
-    @derived_from(pd.Series)
-    def dropna(self, axis=0, inplace=False, **kwargs):
-        col = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
-        if inplace:
-            anchor_wrap(col, self)
-            self._jc = col._jc
-            self._pandas_schema = None
-            self._pandas_metadata = None
-        else:
-            return col
-
-    def head(self, n=5):
-        return _col(self.to_dataframe().head(n))
-
-    def unique(self):
-        # Pandas wants a series/array-like object
-        return _col(self.to_dataframe().unique())
-
-    @derived_from(pd.Series)
-    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
-        if bins is not None:
-            raise NotImplementedError("value_counts currently does not support bins")
-
-        if dropna:
-            df_dropna = self._pandas_anchor._spark_filter(self.notna())
-        else:
-            df_dropna = self._pandas_anchor
-        df = df_dropna._spark_groupby(self).count()
-        # This is the pandas convention for names
-        df.columns = ["index", self.name]
-        if sort:
-            if ascending:
-                df = df._spark_orderBy(F._spark_col('count'))
-            else:
-                df = df._spark_orderBy(F._spark_col('count')._spark_desc())
-
-        if normalize:
-            sum = df_dropna._spark_count()
-            df = df._spark_withColumn('count', F._spark_col('count') / F._spark_lit(sum))
-
-        index_name = 'index' if self.name != 'index' else 'level_0'
-        df.columns = [index_name, self.name]
-        df._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
-        return _col(df)
-
-    @property
-    def _pandas_anchor(self) -> DataFrame:
-        """
-        The anchoring dataframe for this column (if any).
-        :return:
-        """
-        if hasattr(self, "_spark_ref_dataframe"):
-            return self._spark_ref_dataframe
-        n = self._pandas_orig_repr()
-        raise ValueError("No reference to a dataframe for column {}".format(n))
-
-    def __len__(self):
-        return len(self.to_dataframe())
-
-    def __getitem__(self, key):
-        if isinstance(key, int):
-            return self.head(key+1).to_dense()[key]
-        return anchor_wrap(self, self._spark_getitem(key))
-
-    def __getattr__(self, item):
-        if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
-            raise AttributeError(item)
-        return anchor_wrap(self, self.getField(item))
-
-    def __invert__(self):
-        return anchor_wrap(self, self.astype(bool) == F._spark_lit(False))
-
-    def __str__(self):
-        return self._pandas_orig_repr()
-
-    def __repr__(self):
-        return repr(self.head(max_display_count).toPandas())
-
-    def __dir__(self):
-        if not isinstance(self.schema, StructType):
-            fields = []
-        else:
-            fields = [f for f in self.schema.fieldNames() if ' ' not in f]
-        return super(Column, self).__dir__() + fields
-
-    def _pandas_orig_repr(self):
-        # TODO: figure out how to reuse the original one.
-        return 'Column<%s>' % self._jc.toString().encode('utf8')
 
 
 class PandasLikeDataFrame(_Frame):
@@ -490,22 +63,6 @@ class PandasLikeDataFrame(_Frame):
     def iteritems(self):
         cols = list(self.columns)
         return list((col_name, self[col_name]) for col_name in cols)
-
-    def corr(self, col1=None, col2=None, method=None):
-        if col1 is None and col2 is None:
-            return corr(self, method)
-        assert col1 is not None and col2 is not None
-        return self._spark_corr(col1, col2, method)
-
-    def memory_usage(self, index=True):
-        # TODO
-        base_data = [1 for _ in self.columns]
-        base_names = list(self.columns)
-        if index:
-            # The index is virtual and does not allocate more memory
-            base_data.insert(0, 0)
-            base_names.insert(0, "Index")
-        return pd.DataFrame(base_data, index=pd.Index(base_names)).iloc[::, 0]
 
     @derived_from(pd.DataFrame)
     def to_html(self, index=True, classes=None):
@@ -577,8 +134,7 @@ class PandasLikeDataFrame(_Frame):
         :return: :class:`DataFrame`
         """
         if len(self._metadata.index_info) == 0:
-            return self
-            #raise NotImplementedError('Can\'t reset index because there is no index.')
+            raise NotImplementedError('Can\'t reset index because there is no index.')
 
         multi_index = len(self._metadata.index_info) > 1
         if multi_index:
@@ -800,10 +356,6 @@ class PandasLikeDataFrame(_Frame):
             # return self.map_partitions(M.drop, labels, axis=axis, errors=errors)
         raise NotImplementedError("Drop currently only works for axis=1")
 
-    def duplicated(self, subset=None):
-        # TODO: implementation is wrong
-        return anchor_wrap(self, self[self.columns[0]].isnull().astype(int))
-
     @derived_from(pd.DataFrame)
     def get(self, key, default=None):
         try:
@@ -876,7 +428,7 @@ class PandasLikeDataFrame(_Frame):
         # This is too expensive in Spark.
         # Are we assigning against a column?
         if isinstance(value, Column):
-            assert value._pandas_anchor is self,\
+            assert value._pandas_anchor is self, \
                 "Cannot combine column argument because it comes from a different dataframe"
         if isinstance(key, (tuple, list)):
             assert isinstance(value.schema, StructType)
@@ -914,17 +466,6 @@ class PandasLikeDataFrame(_Frame):
         return {None: 0, 'index': 0, 'columns': 1}.get(axis, axis)
 
 
-def _fully_qualified_colname(col):
-    """
-    Resolves the name of a column through a select.
-    """
-    ref = col._pandas_anchor
-    df = ref._spark_select([col])
-    # The last name will have been fully resolved, use this one instead.
-    name = df._spark_schema.fields[-1].name
-    return name
-
-
 def _reassign_jdf(target_df: DataFrame, new_df: DataFrame):
     """
     Reassigns the java df contont of a dataframe.
@@ -934,45 +475,6 @@ def _reassign_jdf(target_df: DataFrame, new_df: DataFrame):
     # Reset the cached variables
     target_df._schema = None
     target_df._lazy_rdd = None
-
-
-def _spark_col_apply(col_or_df, sfun):
-    """
-    Performs a function to all cells on a dataframe, the function being a known sql function.
-    """
-    if isinstance(col_or_df, Column):
-        return sfun(col_or_df)
-    assert isinstance(col_or_df, DataFrame)
-    df = col_or_df
-    df = df._spark_select([sfun(df[col]).alias(col) for col in df.columns])
-    return df
-
-
-def _reduce_spark(col_or_df, sfun):
-    """
-    Performs a reduction on a dataframe, the function being a known sql function.
-    """
-    if isinstance(col_or_df, Column):
-        col = col_or_df
-        df0 = col._spark_ref_dataframe._spark_select(sfun(col))
-    else:
-        assert isinstance(col_or_df, DataFrame)
-        df = col_or_df
-        df0 = df._spark_select(sfun("*"))
-    return _unpack_scalar(df0)
-
-
-def _unpack_scalar(df):
-    """
-    Takes a dataframe that is supposed to contain a single row with a single scalar value,
-    and returns this value.
-    """
-    l = df.head(2).collect()
-    assert len(l) == 1, (df, l)
-    row = l[0]
-    l2 = list(row.asDict().values())
-    assert len(l2) == 1, (row, l2)
-    return l2[0]
 
 
 def _reduce_spark_multi(df, aggs):
@@ -987,28 +489,3 @@ def _reduce_spark_multi(df, aggs):
     l2 = list(row)
     assert len(l2) == len(aggs), (row, l2)
     return l2
-
-
-def anchor_wrap(df, col):
-    """
-    Ensures that the column has an anchoring reference to the dataframe.
-
-    This is required to get self-representable columns.
-    :param df: dataframe or column
-    :param col: a column
-    :return: column
-    """
-    if isinstance(col, Column):
-        if isinstance(df, Column):
-            ref = df._pandas_anchor
-        else:
-            assert isinstance(df, DataFrame), type(df)
-            ref = df
-        col._spark_ref_dataframe = ref
-    return col
-
-
-def _col(df):
-    assert isinstance(df, (DataFrame, pd.DataFrame)), type(df)
-    return df[df.columns[0]]
-

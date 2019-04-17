@@ -26,7 +26,8 @@ from pyspark.sql.types import *
 
 from ._dask_stubs.compatibility import string_types
 from ._dask_stubs.utils import derived_from
-from .structures import SparkSessionPatches, _reduce_spark_multi
+from .frame import _reduce_spark_multi
+from .session import SparkSessionPatches
 from .typing import Col, pandas_wrap
 
 

@@ -17,14 +17,15 @@
 """
 Utilities to deal with types. This is mostly focused on python3.
 """
-import typing
 from decorator import decorate
 from decorator import getfullargspec
+import typing
+
 import numpy as np
+from pyspark.sql import Column
 from pyspark.sql.functions import pandas_udf
 import pyspark.sql.types as types
 
-from .structures import Column
 
 T = typing.TypeVar("T")
 
