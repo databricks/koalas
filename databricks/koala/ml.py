@@ -28,7 +28,6 @@ def corr(df, method='pearson'):
     :param method:
     :return:
     """
-    print("corr:", df.schema)
     assert method in ('pearson', 'kendall', 'spearman'), method
     ndf, fields = to_numeric_df(df)
     corr = Correlation.corr(ndf, "_1", method)
@@ -51,10 +50,8 @@ def to_numeric_df(df):
              that were converted to numerical types)
     """
     accepted_types = ["double", "integer", "float"]
-    print([f.name for f in df.schema.fields if f.dataType.typeName() in accepted_types])
     numeric_fields = [f.name for f in df.schema.fields if f.dataType.typeName() in accepted_types]
     numeric_df = df.select(*numeric_fields).dropna()
-    print("to_numeric_df:numeric_df", numeric_df.schema)
     va = VectorAssembler(inputCols=numeric_fields, outputCol="_1")
     v = va.transform(numeric_df).select("_1")
     return v, numeric_fields

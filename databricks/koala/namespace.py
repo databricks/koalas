@@ -78,7 +78,7 @@ def read_csv(path, delimiter=None, header='infer', names=None, usecols=None,
     """
     return default_session().read_csv(path=path, delimiter=delimiter, header=header, names=names,
                                       usecols=usecols, mangle_dupe_cols=mangle_dupe_cols,
-                                      parse_dates=parse_dates, comment=comment)
+                                      parse_dates=parse_dates, comment=comment).cache()
 
 
 SparkSessionPatches.read_csv.__doc__ = read_csv.__doc__
