@@ -151,8 +151,7 @@ class PandasLikeDataFrame(_Frame):
         :return: :class:`DataFrame`
         """
         if len(self._metadata.index_info) == 0:
-            return self # TODO
-            raise NotImplementedError('Can\'t reset index because there is no index.')
+            return self  # TODO
 
         multi_index = len(self._metadata.index_info) > 1
         if multi_index:
@@ -288,7 +287,8 @@ class PandasLikeDataFrame(_Frame):
         return df
 
     @derived_from(pd.DataFrame)
-    def replace(self, to_replace=None, value=None, inplace=False, limit=None, regex=False, method='pad'):
+    def replace(self, to_replace=None, value=None, inplace=False, limit=None,
+                regex=False, method='pad'):
         # TODO
         return self
 

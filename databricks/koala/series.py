@@ -143,7 +143,8 @@ class PandasLikeSeries(_Frame):
             return df
 
     @derived_from(pd.Series)
-    def replace(self, to_replace=None, value=None, inplace=False, limit=None, regex=False, method='pad'):
+    def replace(self, to_replace=None, value=None, inplace=False, limit=None,
+                regex=False, method='pad'):
         # TODO
         return self
 

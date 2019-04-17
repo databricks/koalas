@@ -42,12 +42,13 @@ def corr(df, method='pearson'):
 
 def to_numeric_df(df):
     """
-    Takes a dataframe and turns it into a dataframe containing a single numerical vector of doubles. This dataframe
-    has a single field called '_1'.
+    Takes a dataframe and turns it into a dataframe containing a single numerical
+    vector of doubles. This dataframe has a single field called '_1'.
 
     TODO: index is not preserved currently
     :param df:
-    :return: a pair of dataframe, list of strings (the name of the columns that were converted to numerical types)
+    :return: a pair of dataframe, list of strings (the name of the columns
+             that were converted to numerical types)
     """
     accepted_types = ["double", "integer", "float"]
     print([f.name for f in df.schema.fields if f.dataType.typeName() in accepted_types])

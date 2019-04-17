@@ -76,9 +76,9 @@ def read_csv(path, delimiter=None, header='infer', names=None, usecols=None,
     :param comment: Indicates the line should not be parsed.
     :return: :class:`DataFrame`
     """
-    return default_session().read_csv(path=path, delimiter=delimiter, header=header, names=names, usecols=usecols,
-                                      mangle_dupe_cols=mangle_dupe_cols, parse_dates=parse_dates,
-                                      comment=comment)
+    return default_session().read_csv(path=path, delimiter=delimiter, header=header, names=names,
+                                      usecols=usecols, mangle_dupe_cols=mangle_dupe_cols,
+                                      parse_dates=parse_dates, comment=comment)
 
 
 SparkSessionPatches.read_csv.__doc__ = read_csv.__doc__
