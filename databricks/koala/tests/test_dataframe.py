@@ -305,8 +305,17 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         ddf = self.spark.from_pandas(df)
         self.assert_eq(ddf.A.abs(), df.A.abs())
         self.assert_eq(ddf.B.abs(), df.B.abs())
-        self.assert_eq(ddf.select('B', 'C').abs(), df[['B', 'C']].abs())
+        self.assert_eq(ddf[['B', 'C']].abs(), df[['B', 'C']].abs())
         # self.assert_eq(ddf.select('A', 'B').abs(), df[['A', 'B']].abs())
+
+    def test_missing(self):
+        d = self.df
+
+        with self.assertRaises(NotImplementedError):
+            d.all()
+
+        with self.assertRaises(NotImplementedError):
+            d.a.all()
 
 
 if __name__ == "__main__":

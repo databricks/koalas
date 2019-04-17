@@ -22,12 +22,13 @@ from pyspark.sql import Column, DataFrame, functions as F
 from pyspark.sql.types import FloatType, DoubleType, StructType
 
 from ._dask_stubs.utils import derived_from
+from ._missing.series import _MissingPandasLikeSeries
 from .generic import _Frame, anchor_wrap, max_display_count
 from .metadata import Metadata
 from .selection import SparkDataFrameLocator
 
 
-class PandasLikeSeries(_Frame):
+class PandasLikeSeries(_Frame, _MissingPandasLikeSeries):
     """
     Methods that are appropriate for distributed series.
     """

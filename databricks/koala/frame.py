@@ -27,12 +27,13 @@ from pyspark.sql.utils import AnalysisException
 
 from ._dask_stubs.compatibility import string_types
 from ._dask_stubs.utils import derived_from
+from ._missing.frame import _MissingPandasLikeDataFrame
 from .generic import _Frame, anchor_wrap, max_display_count
 from .metadata import Metadata
 from .selection import SparkDataFrameLocator
 
 
-class PandasLikeDataFrame(_Frame):
+class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
     """
     Methods that are relevant to dataframes.
     """
@@ -415,7 +416,7 @@ class PandasLikeDataFrame(_Frame):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
             bcol = key.cast("boolean")
-            df = self._spark_getitem(bcol)
+            df = self._spark_filter(bcol)
             df._metadata = self._metadata
             return anchor_wrap(self, df)
         raise NotImplementedError(key)
