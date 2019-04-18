@@ -20,7 +20,7 @@ A base class to be monkey-patched to DataFrame/Column to behave similar to panda
 import pandas as pd
 from pyspark.sql import Column, DataFrame, functions as F
 
-from ._dask_stubs.utils import derived_from
+from databricks.koala.dask.utils import derived_from
 
 max_display_count = 1000
 

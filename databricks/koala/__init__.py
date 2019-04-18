@@ -33,9 +33,9 @@ def assert_pyspark_version():
 
 assert_pyspark_version()
 
-from .utils import *
-from .namespace import *
-from .typing import Col, pandas_wrap
+from databricks.koala.utils import *
+from databricks.koala.namespace import *
+from databricks.koala.typing import Col, pandas_wrap
 
 __all__ = ['patch_spark', 'read_csv', 'Col', 'pandas_wrap']
 

@@ -19,7 +19,7 @@ A metadata to manage indexes.
 """
 import pandas as pd
 
-from ._dask_stubs.compatibility import string_types
+from databricks.koala.dask.compatibility import string_types
 
 
 class Metadata(object):
