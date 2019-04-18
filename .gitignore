@@ -36,3 +36,6 @@ __pycache__/
 *.log
 
 .DS_Store
+
+# Sphinx build
+_build

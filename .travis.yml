@@ -14,7 +14,7 @@ matrix:
     - python: "3.5"
       env:
         - SPARK_VERSION=2.3.3
-        - PANDAS_VERSION=0.19.2
+        - PANDAS_VERSION=0.23.0
         - PYARROW_VERSION=0.10.0
     - python: "3.6"
       env:
@@ -44,13 +44,15 @@ install:
   - conda info -a
 
   # Replace dep1 dep2 ... with your dependencies
-  - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION nose==1.3.7 flake8>=3.5.0 pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION decorator
+  - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION nose==1.3.7 pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
   - conda activate test-environment
+  - conda install -c conda-forge --yes -n test-environment --file requirements-dev.txt
 
   - conda list
 
 before_script:
+  - export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
   - ./dev/lint-python
 
 script:
-  - SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7" ./dev/run-tests.sh
+  - ./dev/run-tests.sh
