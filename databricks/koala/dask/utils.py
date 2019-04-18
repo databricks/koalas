@@ -88,7 +88,7 @@ def derived_from(original_klass, version=None, ua_args=[]):
 
             if len(not_supported) > 0:
                 note = ("\n        Notes\n        -----\n"
-                        "        Dask doesn't support the following argument(s).\n\n")
+                        "        Koala doesn't support the following argument(s).\n\n")
                 args = ''.join(['        * {0}\n'.format(a) for a in not_supported])
                 doc = doc + note + args
             doc = skip_doctest(doc)
