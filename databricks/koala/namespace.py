@@ -24,11 +24,11 @@ import pyspark
 from pyspark.sql import Column, DataFrame, functions as F
 from pyspark.sql.types import *
 
-from ._dask_stubs.compatibility import string_types
-from ._dask_stubs.utils import derived_from
-from .frame import _reduce_spark_multi
-from .session import SparkSessionPatches
-from .typing import Col, pandas_wrap
+from databricks.koala.dask.compatibility import string_types
+from databricks.koala.dask.utils import derived_from
+from databricks.koala.frame import _reduce_spark_multi
+from databricks.koala.session import SparkSessionPatches
+from databricks.koala.typing import Col, pandas_wrap
 
 
 def default_session():

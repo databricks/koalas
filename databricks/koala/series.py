@@ -21,11 +21,11 @@ import pandas as pd
 from pyspark.sql import Column, DataFrame, functions as F
 from pyspark.sql.types import FloatType, DoubleType, StructType
 
-from ._dask_stubs.utils import derived_from
-from ._missing.series import _MissingPandasLikeSeries
-from .generic import _Frame, anchor_wrap, max_display_count
-from .metadata import Metadata
-from .selection import SparkDataFrameLocator
+from databricks.koala._missing.series import _MissingPandasLikeSeries
+from databricks.koala.dask.utils import derived_from
+from databricks.koala.generic import _Frame, anchor_wrap, max_display_count
+from databricks.koala.metadata import Metadata
+from databricks.koala.selection import SparkDataFrameLocator
 
 
 class PandasLikeSeries(_Frame, _MissingPandasLikeSeries):
@@ -46,11 +46,11 @@ class PandasLikeSeries(_Frame, _MissingPandasLikeSeries):
 
     @property
     def dtype(self):
-        from .typing import as_python_type
+        from databricks.koala.typing import as_python_type
         return as_python_type(self.schema.fields[-1].dataType)
 
     def astype(self, tpe):
-        from .typing import as_spark_type
+        from databricks.koala.typing import as_spark_type
         spark_type = as_spark_type(tpe)
         if not spark_type:
             raise ValueError("Type {} not understood".format(tpe))

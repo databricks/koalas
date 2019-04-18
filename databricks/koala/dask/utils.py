@@ -1,5 +1,5 @@
 import functools
-from .compatibility import get_named_args
+from databricks.koala.dask.compatibility import get_named_args
 
 _method_cache = {}
 
