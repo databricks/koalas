@@ -104,7 +104,6 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
                         Modify the DataFrame in place (do not create a new object)
         :return: :class:`DataFrame`
         """
-
         if isinstance(keys, string_types):
             keys = [keys]
         else:
