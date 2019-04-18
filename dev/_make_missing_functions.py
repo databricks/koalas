@@ -23,9 +23,21 @@ from databricks.koala.frame import PandasLikeDataFrame
 from databricks.koala.series import PandasLikeSeries
 
 
+INDENT_LEN = 4
+LINE_LEN_LIMIT = 100
+
+
 def inspect_missing_functions(original_type, target_type):
-    missings = []
-    updatings = []
+    """
+    Find functions which exist in original_type but not in target_type,
+    or the signature is modified.
+
+    :return: the tuple of the missing function name and its signature,
+             and the name of the functions the signature of which is different
+             and its original and modified signature.
+    """
+    missing = []
+    modified = []
 
     for name, func in inspect.getmembers(original_type, inspect.isfunction):
         # Skip the private attributes
@@ -39,115 +51,177 @@ def inspect_missing_functions(original_type, target_type):
             if inspect.isfunction(f):
                 target_signature = inspect.signature(f)
                 if str(original_signature) != str(target_signature):
-                    updatings.append((name, original_signature, target_signature))
+                    modified.append((name, original_signature, target_signature))
                 continue
 
-        missings.append((name, original_signature))
+        missing.append((name, original_signature))
 
-    return missings, updatings
+    return missing, modified
 
 
-def format_arguments(name, signature):
-    args_indent = 4 * 2 + len(name) + 1  # 2 tabs and len(name) + '('
-    arguments = ['']
+def format_arguments(arguments, prefix_len, suffix_len):
+    """Format arguments not to break pydocstyle.
+
+    :param arguments: the argument list
+    :param prefix_len: the prefix length when the argument string needs line break
+    :param suffix_len: the suffix length to check the line length exceeds the limit
+    :return: the formatted argument string
+    """
+    lines = ['']
 
     def append_arg(arg):
-        if args_indent + len(arguments[-1]) + len(arg) + 4 > 100:  # 4 = len(', ') + len('):')
-            arguments.append('')
+        if prefix_len + len(lines[-1]) + len(', ') + len(arg) + suffix_len > LINE_LEN_LIMIT:
+            lines.append('')
             append_arg(arg)
         else:
-            if len(arguments[-1]) > 0:
+            if len(lines[-1]) > 0:
                 arg = ', {}'.format(arg)
-            arguments[-1] += arg
+            lines[-1] += arg
+
+    for arg in arguments:
+        append_arg(arg)
+
+    return (',\n' + (' ' * prefix_len)).join(lines)
+
+
+def format_method_arguments(name, signature):
+    """Format the method arguments from its name and signature.
+
+    :return: the formatted argument string
+    """
+    arguments = []
 
     for param in signature.parameters.values():
         if param.default is not inspect.Signature.empty and isinstance(param.default, type):
-            append_arg('{}={}'.format(param.name, param.default.__name__))
+            arguments.append('{}={}'.format(param.name, param.default.__name__))
         elif param.default is not inspect.Signature.empty and repr(param.default) == 'nan':
-            append_arg('{}={}'.format(param.name, 'np.nan'))
+            arguments.append('{}={}'.format(param.name, 'np.nan'))
         else:
-            append_arg(str(param))
+            arguments.append(str(param))
 
-    return (',\n' + (' ' * args_indent)).join(arguments)
+    prefix_len = INDENT_LEN + len('def {}('.format(name))
+    suffix_len = len('):')
+    return format_arguments(arguments, prefix_len, suffix_len)
 
 
-def format_ua_args(original_type, missing_arguments, signature):
-    if len(missing_arguments) == 0:
-        return ''
+def format_derived_from(original_type, unavailable_arguments, signature):
+    """Format `@derived_from` decorator.
 
-    args_indent = 4 + len('@derived_from(pd.{}, ua_args=['.format(original_type.__name__))
-    arguments = ['']
+    :param original_type: the original type to be derived
+    :param unavailable_arguments: the arguments Koala does not support yet
+    :param signature: the method signature
+    :return: the formatted `@derived_from` decorator
+    """
+    if len(unavailable_arguments) == 0:
+        return '@derived_from(pd.{})'.format(original_type.__name__)
 
-    def append_arg(arg):
-        if args_indent + len(arguments[-1]) + len(arg) + 4 > 100:  # 4 = len(', ') + len('])')
-            arguments.append('')
-            append_arg(arg)
-        else:
-            if len(arguments[-1]) > 0:
-                arg = ', {}'.format(arg)
-            arguments[-1] += arg
+    arguments = []
 
-    for arg in missing_arguments:
-        parameter = signature.parameters[arg]
-        if parameter.kind == inspect.Parameter.VAR_POSITIONAL or \
-                parameter.kind == inspect.Parameter.VAR_KEYWORD:
+    for arg in unavailable_arguments:
+        param = signature.parameters[arg]
+        if param.default == inspect.Parameter.empty or \
+                param.kind == inspect.Parameter.VAR_POSITIONAL or \
+                param.kind == inspect.Parameter.VAR_KEYWORD:
             continue
-        append_arg(repr(arg))
+        arguments.append(repr(arg))
 
-    return ', ua_args=[' + (',\n' + (' ' * args_indent)).join(arguments) + ']'
+    prefix = '@derived_from(pd.{}, ua_args=['.format(original_type.__name__)
+    suffix = '])'
+    prefix_len = INDENT_LEN + len(prefix)
+    suffix_len = len(suffix)
+    return '{}{}{}'.format(prefix, format_arguments(arguments, prefix_len, suffix_len), suffix)
 
 
-def format_raise_errors(name, missing_arguments, signature):
+def format_raise_errors(original_type, name, unavailable_arguments, signature):
+    """
+    Format raise error statements for unavailable arguments when specified the different value
+    from the default value.
+
+    :return: the formatted raise error statements
+    """
     raise_errors = ''
 
-    for arg in missing_arguments:
+    for arg in unavailable_arguments:
         param = signature.parameters[arg]
-        if param.kind == inspect.Parameter.VAR_POSITIONAL or \
-           param.kind == inspect.Parameter.VAR_KEYWORD:
+        if param.default == inspect.Parameter.empty or \
+                param.kind == inspect.Parameter.VAR_POSITIONAL or \
+                param.kind == inspect.Parameter.VAR_KEYWORD:
             continue
         if repr(param.default) == 'nan':
-            non_equal = 'not np.isnan({})'.format(arg)
-        elif isinstance(param.default, type) or param.default is None or \
+            not_equal = 'not np.isnan({})'.format(arg)
+        elif isinstance(param.default, type):
+            not_equal = '{} is not {}'.format(arg, param.default.__name__)
+        elif param.default is None or \
                 param.default is True or param.default is False:
-            non_equal = '{} is not {}'.format(arg, repr(param.default))
+            not_equal = '{} is not {}'.format(arg, repr(param.default))
         else:
-            non_equal = '{} != {}'.format(arg, repr(param.default))
+            not_equal = '{} != {}'.format(arg, repr(param.default))
+
+        raise_error_prefix = 'raise PandasNotImplementedError('
+        raise_error_suffix = ')'
+        arguments = format_arguments(
+            arguments=["class_name='pd.{}'".format(original_type.__name__),
+                       "method_name='{}'".format(name),
+                       "arg_name='{}'".format(arg)],
+            prefix_len=(INDENT_LEN * 3 + len(raise_error_prefix)),
+            suffix_len=len(raise_error_suffix))
         raise_errors += ("""
         if {0}:
-            raise NotImplementedError("{1} currently does not support {2}")"""
-                         .format(non_equal, name, arg))
+            {1}{2}{3}""".format(not_equal, raise_error_prefix, arguments, raise_error_suffix))
 
     return raise_errors
 
 
-def _main():
-    for original_type, target_type in [(pd.DataFrame, PandasLikeDataFrame),
-                                       (pd.Series, PandasLikeSeries)]:
-        missings, updatings = inspect_missing_functions(original_type, target_type)
+def make_misssing_function(original_type, name, signature):
+    """Make a missing functions stub.
 
-        print('MISSING: {}'.format(original_type.__name__))
-        for name, signature in missings:
-            arguments = format_arguments(name, signature)
-            print("""
+    :return: the stub definition for the missing function
+    """
+    arguments = format_method_arguments(name, signature)
+    error_argument = format_arguments(
+        arguments=["class_name='pd.{}'".format(original_type.__name__),
+                   "method_name='{}'".format(name)],
+        prefix_len=(8 + len('raise PandasNotImplementedError(')),
+        suffix_len=len(')'))
+
+    return ("""
     def {0}({1}):
         \"""A stub for the equivalent method to `pd.{2}.{0}()`.
 
         The method `pd.{2}.{0}()` is not implemented yet.
         \"""
-        raise NotImplementedError("The method `{0}()` is not implemented yet.")"""
-                  .format(name, arguments, original_type.__name__))
+        raise PandasNotImplementedError({3})"""
+            .format(name, arguments, original_type.__name__, error_argument))
 
-        print('UPDATING: {}'.format(original_type.__name__))
-        for name, original, target in updatings:
-            arguments = format_arguments(name, original)
-            argument_names = set(target.parameters)
-            missing_arguments = [p for p in original.parameters if p not in argument_names]
-            ua_args = format_ua_args(original_type, missing_arguments, original)
-            raise_error = format_raise_errors(name, missing_arguments, original)
 
-            print("""
-    @derived_from(pd.{0}{1})
-    def {2}({3}):{4}""".format(original_type.__name__, ua_args, name, arguments, raise_error))
+def make_modified_function_def(original_type, name, original, target):
+    """Make the modified function definition.
+
+    :return: the definition for the modified function
+    """
+    arguments = format_method_arguments(name, original)
+    argument_names = set(target.parameters)
+    unavailable_arguments = [p for p in original.parameters if p not in argument_names]
+    derived_from = format_derived_from(original_type, unavailable_arguments, original)
+    raise_error = format_raise_errors(original_type, name, unavailable_arguments, original)
+    return ("""
+    {0}
+    def {1}({2}):{3}""".format(derived_from, name, arguments, raise_error))
+
+
+def _main():
+    for original_type, target_type in [(pd.DataFrame, PandasLikeDataFrame),
+                                       (pd.Series, PandasLikeSeries)]:
+        missing, modified = inspect_missing_functions(original_type, target_type)
+
+        print('MISSING functions for {}'.format(original_type.__name__))
+        for name, signature in missing:
+            print(make_misssing_function(original_type, name, signature))
+
+        print()
+        print('MODIFIED functions for {}'.format(original_type.__name__))
+        for name, original, target in modified:
+            print(make_modified_function_def(original_type, name, original, target))
 
 
 if __name__ == '__main__':
