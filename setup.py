@@ -27,7 +27,7 @@ install_requires = [
 
 setup(
     name='databricks-koala',
-    version='0.0.5',
+    version='0.0.6',
     packages=['databricks', 'databricks.koala', 'databricks.koala.dask',
               'databricks.koala.missing'],
     extras_require={
