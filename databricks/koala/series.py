@@ -21,10 +21,10 @@ import pandas as pd
 from pyspark.sql import Column, DataFrame, functions as F
 from pyspark.sql.types import FloatType, DoubleType, StructType
 
-from databricks.koala._missing.series import _MissingPandasLikeSeries
 from databricks.koala.dask.utils import derived_from
 from databricks.koala.generic import _Frame, anchor_wrap, max_display_count
 from databricks.koala.metadata import Metadata
+from databricks.koala.missing.series import _MissingPandasLikeSeries
 from databricks.koala.selection import SparkDataFrameLocator
 
 

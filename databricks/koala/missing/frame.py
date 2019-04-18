@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from ..exceptions import PandasNotImplementedError
+from databricks.koala.exceptions import PandasNotImplementedError
 
 
 class _MissingPandasLikeDataFrame(object):
