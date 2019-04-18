@@ -29,10 +29,11 @@ from databricks.koala.dask.compatibility import string_types
 from databricks.koala.dask.utils import derived_from
 from databricks.koala.generic import _Frame, anchor_wrap, max_display_count
 from databricks.koala.metadata import Metadata
+from databricks.koala.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koala.selection import SparkDataFrameLocator
 
 
-class PandasLikeDataFrame(_Frame):
+class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
     """
     Methods that are relevant to dataframes.
     """
@@ -65,8 +66,18 @@ class PandasLikeDataFrame(_Frame):
         return list((col_name, self[col_name]) for col_name in cols)
 
     @derived_from(pd.DataFrame)
-    def to_html(self, index=True, classes=None):
-        return self.toPandas().to_html(index=index, classes=classes)
+    def to_html(self, buf=None, columns=None, col_space=None, header=True, index=True,
+                na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
+                justify=None, max_rows=None, max_cols=None, show_dimensions=False, decimal='.',
+                bold_rows=True, classes=None, escape=True, notebook=False, border=None,
+                table_id=None, render_links=False):
+        return self.toPandas().to_html(
+            buf=buf, columns=columns, col_space=col_space, header=header, index=index,
+            na_rep=na_rep, formatters=formatters, float_format=float_format, sparsify=sparsify,
+            index_names=index_names, justify=justify, max_rows=max_rows, max_cols=max_cols,
+            show_dimensions=show_dimensions, decimal=decimal, bold_rows=bold_rows, classes=classes,
+            escape=escape, notebook=notebook, border=border, table_id=table_id,
+            render_links=render_links)
 
     @property
     def index(self):
@@ -415,7 +426,7 @@ class PandasLikeDataFrame(_Frame):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
             bcol = key.cast("boolean")
-            df = self._spark_getitem(bcol)
+            df = self._spark_filter(bcol)
             df._metadata = self._metadata
             return anchor_wrap(self, df)
         raise NotImplementedError(key)

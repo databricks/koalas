@@ -47,3 +47,17 @@ class SparkPandasNotImplementedError(NotImplementedError):
         else:
             description = hint
         super(SparkPandasNotImplementedError, self).__init__(description)
+
+
+class PandasNotImplementedError(NotImplementedError):
+
+    def __init__(self, class_name, method_name, arg_name=None):
+        self.class_name = class_name
+        self.method_name = method_name
+        self.arg_name = arg_name
+        if arg_name is None:
+            msg = "The method `{0}.{1}()` does not support `{2}` parameter" \
+                .format(class_name, method_name, arg_name)
+        else:
+            msg = "The method `{0}.{1}()` is not implemented yet.".format(class_name, method_name)
+        super(NotImplementedError, self).__init__(msg)

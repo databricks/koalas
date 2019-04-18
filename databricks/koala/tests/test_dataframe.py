@@ -22,6 +22,7 @@ import pyspark
 from pyspark.sql import Column
 
 from databricks.koala.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koala.exceptions import PandasNotImplementedError
 
 
 class DataFrameTest(ReusedSQLTestCase, TestUtils):
@@ -305,8 +306,17 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         ddf = self.spark.from_pandas(df)
         self.assert_eq(ddf.A.abs(), df.A.abs())
         self.assert_eq(ddf.B.abs(), df.B.abs())
-        self.assert_eq(ddf.select('B', 'C').abs(), df[['B', 'C']].abs())
+        self.assert_eq(ddf[['B', 'C']].abs(), df[['B', 'C']].abs())
         # self.assert_eq(ddf.select('A', 'B').abs(), df[['A', 'B']].abs())
+
+    def test_missing(self):
+        d = self.df
+
+        with self.assertRaisesRegex(PandasNotImplementedError, "DataFrame.*all"):
+            d.all()
+
+        with self.assertRaisesRegex(PandasNotImplementedError, "Series.*all"):
+            d.a.all()
 
 
 if __name__ == "__main__":
