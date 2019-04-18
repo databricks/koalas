@@ -62,8 +62,8 @@ def derived_from(original_klass, version=None, ua_args=[]):
     version : str
         Original package version which supports the wrapped method
     ua_args : list
-        List of keywords which Koala doesn't support. Keywords existing in
-        original but not in Koala will automatically be added.
+        List of keywords which Dask doesn't support. Keywords existing in
+        original but not in Dask will automatically be added.
     """
     def wrapper(method):
         method_name = method.__name__
@@ -88,7 +88,7 @@ def derived_from(original_klass, version=None, ua_args=[]):
 
             if len(not_supported) > 0:
                 note = ("\n        Notes\n        -----\n"
-                        "        Koala doesn't support the following argument(s).\n\n")
+                        "        Dask doesn't support the following argument(s).\n\n")
                 args = ''.join(['        * {0}\n'.format(a) for a in not_supported])
                 doc = doc + note + args
             doc = skip_doctest(doc)
