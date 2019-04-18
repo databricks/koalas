@@ -23,10 +23,10 @@ from decorator import decorator
 import types
 import logging
 
-from .frame import PandasLikeDataFrame
-from .series import PandasLikeSeries
-from .session import SparkSessionPatches
-from . import namespace
+from databricks.koala.frame import PandasLikeDataFrame
+from databricks.koala.series import PandasLikeSeries
+from databricks.koala.session import SparkSessionPatches
+from databricks.koala import namespace
 
 logger = logging.getLogger('spark')
 

@@ -25,11 +25,11 @@ from pyspark.sql import Column, DataFrame, functions as F
 from pyspark.sql.types import StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
-from ._dask_stubs.compatibility import string_types
-from ._dask_stubs.utils import derived_from
-from .generic import _Frame, anchor_wrap, max_display_count
-from .metadata import Metadata
-from .selection import SparkDataFrameLocator
+from databricks.koala.dask.compatibility import string_types
+from databricks.koala.dask.utils import derived_from
+from databricks.koala.generic import _Frame, anchor_wrap, max_display_count
+from databricks.koala.metadata import Metadata
+from databricks.koala.selection import SparkDataFrameLocator
 
 
 class PandasLikeDataFrame(_Frame):
@@ -370,7 +370,7 @@ class PandasLikeDataFrame(_Frame):
 
     def groupby(self, by):
         gp = self._spark_groupby(by)
-        from .groups import PandasLikeGroupBy
+        from databricks.koala.groups import PandasLikeGroupBy
         return PandasLikeGroupBy(self, gp, None)
 
     @derived_from(pd.DataFrame)

@@ -19,7 +19,7 @@ A wrapper for GroupedData to behave similar to pandas.
 """
 from pyspark.sql.types import StructType
 
-from ._dask_stubs.compatibility import string_types
+from databricks.koala.dask.compatibility import string_types
 
 
 class PandasLikeGroupBy(object):

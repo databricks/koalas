@@ -23,8 +23,8 @@ from pyspark.sql import Column, DataFrame
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
-from ._dask_stubs.compatibility import string_types
-from .exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
+from databricks.koala.dask.compatibility import string_types
+from databricks.koala.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 
 
 def _make_col(c):
@@ -171,7 +171,7 @@ class SparkDataFrameLocator(object):
         df._metadata = self.df._metadata.copy(
             column_fields=df._metadata.column_fields[-len(columns):])
         if cols_sel is not None and isinstance(cols_sel, Column):
-            from .series import _col
+            from databricks.koala.series import _col
             return _col(df)
         else:
             return df
