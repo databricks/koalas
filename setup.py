@@ -27,8 +27,14 @@ install_requires = [
 
 setup(
     name='databricks-koala',
+<<<<<<< HEAD
     version='0.0.6a7',
     packages=['databricks', 'databricks.koala', 'databricks.koala.dask'],
+=======
+    version='0.0.6',
+    packages=['databricks', 'databricks.koala', 'databricks.koala.dask',
+              'databricks.koala.missing'],
+>>>>>>> upstream/master
     extras_require={
         'spark': ['pyspark>=2.4.0'],
     },
