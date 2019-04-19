@@ -18,24 +18,46 @@
 
 from setuptools import setup
 
+DESCRIPTION = "Pandas DataFrame API on Apache Spark"
 
-install_requires = [
-    'pandas>=0.23',
-    'decorator',
-    'pyarrow>=0.10,<0.11',  # See https://github.com/databricks/spark-pandas/issues/26
-]
+LONG_DESCRIPTION = """
+Koalas makes data scientists more productive when interacting with big data,
+by augmenting Apache Spark's Python DataFrame API to be compatible with
+Pandas'.
+
+Pandas is the de facto standard (single-node) dataframe implementation in
+Python, while Spark is the de facto standard for big data processing.
+With this package, data scientists can:
+
+- Be immediately productive with Spark, with no learning curve, if one
+  is already familiar with Pandas.
+- Have a single codebase that works both with Pandas (tests, smaller datasets)
+  and with Spark (distributed datasets).
+"""
 
 setup(
-    name='databricks-koalas',
+    name='koalas',
     version='0.0.6',
     packages=['databricks', 'databricks.koalas', 'databricks.koalas.dask',
               'databricks.koalas.missing'],
     extras_require={
         'spark': ['pyspark>=2.4.0'],
     },
-    install_requires=install_requires,
-    author="Timothy Hunter",
-    author_email="tim@databricks.com",
+    python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*',
+    install_requires=[
+        'pandas>=0.23',
+        'decorator',
+        'pyarrow>=0.10,<0.11',  # See https://github.com/databricks/spark-pandas/issues/26
+    ],
+    maintainer="Databricks",
+    maintainer_email="pandas-on-spark@databricks.com",
     license='http://www.apache.org/licenses/LICENSE-2.0',
-    long_description=open('README.md').read(),
+    url="https://github.com/databricks/spark-pandas",
+    project_urls={
+        'Bug Tracker': 'https://github.com/databricks/spark-pandas/issues',
+        # 'Documentation': '',
+        'Source Code': 'https://github.com/databricks/spark-pandas'
+    },
+    description=DESCRIPTION,
+    long_description=LONG_DESCRIPTION,
 )
