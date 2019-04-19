@@ -87,12 +87,5 @@ You should expect the following differences:
 
 ## How to contribute
 
-Are you missing a function from Pandas? No problem! Most functions are very easy to add
-by simply wrapping the existing Pandas function.
+Please see our [contribution guide](CONTRIBUTING.md) for details.
 
- 1. Look at [the list of implemented functions](https://docs.google.com/spreadsheets/d/1GwBvGsqZAFFAD5PPc_lffDEXith353E1Y7UV6ZAAHWA/edit?usp=sharing) to see if a pull request already exists
- 
- 2. Wrap your function and submit it as a pull request
- 
-If the function already has the same name in Apache Spark and if the results differ, the 
-general policy is to follow the behaviour of Spark and to document the changes.
