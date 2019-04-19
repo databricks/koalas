@@ -217,6 +217,7 @@ def _main():
         print('MISSING functions for {}'.format(original_type.__name__))
         for name, signature in missing:
             print(make_misssing_function(original_type, name, signature))
+            # print("""    {0} = unsupported_function('{0}')""".format(name))
 
         print()
         print('MODIFIED functions for {}'.format(original_type.__name__))
