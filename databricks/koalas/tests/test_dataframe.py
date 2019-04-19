@@ -219,6 +219,11 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
             self.assertEqual(getattr(ddf.A, funcname)(), getattr(df.A, funcname)())
             self.assert_eq(getattr(ddf, funcname)(), getattr(df, funcname)())
 
+        functions = ['std', 'var']
+        for funcname in functions:
+            self.assertAlmostEqual(getattr(ddf.A, funcname)(), getattr(df.A, funcname)())
+            self.assertPandasAlmostEqual(getattr(ddf, funcname)(), getattr(df, funcname)())
+
         # NOTE: To test skew and kurt, just make sure they run.
         #       The numbers are different in spark and pandas.
         functions = ['skew', 'kurt']

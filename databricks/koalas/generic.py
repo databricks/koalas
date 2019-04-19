@@ -51,6 +51,12 @@ class _Frame(object):
     def max(self):
         return self._reduce_for_stat_function(F.max)
 
+    def std(self):
+        return self._reduce_for_stat_function(F.stddev)
+
+    def var(self):
+        return self._reduce_for_stat_function(F.variance)
+
     @derived_from(pd.DataFrame)
     def abs(self):
         """
