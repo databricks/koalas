@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import os
 import unittest
 
 import pandas as pd
@@ -25,7 +26,8 @@ class EtlTest(ComparisonTestBase):
 
     @property
     def pdf(self):
-        return pd.read_csv('data/sample_stocks.csv')
+        test_dir = os.path.dirname(os.path.realpath(__file__))
+        return pd.read_csv('%s/../../../data/sample_stocks.csv' % test_dir)
 
     @compare_both
     def test_etl(self, df):
