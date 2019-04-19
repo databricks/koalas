@@ -20,7 +20,10 @@
 
 # The current directory of the script.
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-source $DIR/env_setup.sh
+
+if [ -n "$SPARK_HOME" ]; then
+    source $DIR/env_setup.sh
+fi
 
 FWDIR="$( cd "$DIR"/.. && pwd )"
 cd "$FWDIR"
