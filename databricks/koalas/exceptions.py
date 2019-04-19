@@ -55,7 +55,7 @@ class PandasNotImplementedError(NotImplementedError):
         self.class_name = class_name
         self.method_name = method_name
         self.arg_name = arg_name
-        if arg_name is None:
+        if arg_name is not None:
             msg = "The method `{0}.{1}()` does not support `{2}` parameter" \
                 .format(class_name, method_name, arg_name)
         else:
