@@ -24,7 +24,7 @@ Pending publication on the PyPI repository, a compiled package can be installed 
 this URL:
 
 ```bash
-pip install https://s3-us-west-2.amazonaws.com/databricks-tjhunter/koala/databricks_koala-0.0.5-py3-none-any.whl
+pip install https://github.com/databricks/spark-pandas/releases/download/v0.0.6/databricks_koalas-0.0.6-py3-none-any.whl
 ```
 
 After installing the package, you can import the package:
