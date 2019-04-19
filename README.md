@@ -56,7 +56,7 @@ df['x2'] = df.x * df.x
 This project is currently in beta and is rapidly evolving.
 You should expect the following differences:
 
- - some functions may be missing (see the [What is available](#what-is-available) section)
+ - some functions may be missing (see the [Contributions](#Contributions) section)
 
  - some behaviour may be different, in particular in the treatment of nulls: Pandas uses
    Not a Number (NaN) special constants to indicate missing values, while Spark has a
