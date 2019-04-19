@@ -13,3 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+from databricks.koalas.exceptions import PandasNotImplementedError
+
+
+def _unsupported_function(class_name, method_name):
+
+    def unsupported_function(*args, **kwargs):
+        raise PandasNotImplementedError(class_name=class_name, method_name=method_name)
+
+    unsupported_function.__doc__ = \
+        """A stub for the equivalent method to `{0}.{1}()`.
+
+        The method `{0}.{1}()` is not implemented yet.
+        """.format(class_name, method_name)
+
+    return unsupported_function
