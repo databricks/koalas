@@ -19,8 +19,8 @@ import inspect
 
 import pandas as pd
 
-from databricks.koala.frame import PandasLikeDataFrame
-from databricks.koala.series import PandasLikeSeries
+from databricks.koalas.frame import PandasLikeDataFrame
+from databricks.koalas.series import PandasLikeSeries
 
 
 INDENT_LEN = 4
@@ -108,7 +108,7 @@ def format_derived_from(original_type, unavailable_arguments, signature):
     """Format `@derived_from` decorator.
 
     :param original_type: the original type to be derived
-    :param unavailable_arguments: the arguments Koala does not support yet
+    :param unavailable_arguments: the arguments Koalas does not support yet
     :param signature: the method signature
     :return: the formatted `@derived_from` decorator
     """

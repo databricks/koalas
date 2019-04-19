@@ -25,12 +25,12 @@ from pyspark.sql import Column, DataFrame, functions as F
 from pyspark.sql.types import StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
-from databricks.koala.dask.compatibility import string_types
-from databricks.koala.dask.utils import derived_from
-from databricks.koala.generic import _Frame, anchor_wrap, max_display_count
-from databricks.koala.metadata import Metadata
-from databricks.koala.missing.frame import _MissingPandasLikeDataFrame
-from databricks.koala.selection import SparkDataFrameLocator
+from databricks.koalas.dask.compatibility import string_types
+from databricks.koalas.dask.utils import derived_from
+from databricks.koalas.generic import _Frame, anchor_wrap, max_display_count
+from databricks.koalas.metadata import Metadata
+from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
+from databricks.koalas.selection import SparkDataFrameLocator
 
 
 class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
@@ -381,7 +381,7 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
 
     def groupby(self, by):
         gp = self._spark_groupby(by)
-        from databricks.koala.groups import PandasLikeGroupBy
+        from databricks.koalas.groups import PandasLikeGroupBy
         return PandasLikeGroupBy(self, gp, None)
 
     @derived_from(pd.DataFrame)

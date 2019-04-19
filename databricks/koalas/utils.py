@@ -15,7 +15,7 @@
 #
 
 """
-Utilities to monkey patch PySpark used in databricks-koala.
+Utilities to monkey patch PySpark used in databricks-koalas.
 """
 from pyspark.sql import session, dataframe as df, column as col, functions as F
 import pyspark
@@ -23,10 +23,10 @@ from decorator import decorator
 import types
 import logging
 
-from databricks.koala.frame import PandasLikeDataFrame
-from databricks.koala.series import PandasLikeSeries
-from databricks.koala.session import SparkSessionPatches
-from databricks.koala import namespace
+from databricks.koalas.frame import PandasLikeDataFrame
+from databricks.koalas.series import PandasLikeSeries
+from databricks.koalas.session import SparkSessionPatches
+from databricks.koalas import namespace
 
 logger = logging.getLogger('spark')
 
