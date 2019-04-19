@@ -15,6 +15,12 @@
 # limitations under the License.
 #
 
+"""
+A script to generate the missing function stubs. Before running this,
+make sure you install koalas from the current checkout by running:
+pip install -e .
+"""
+
 import inspect
 
 import pandas as pd
