@@ -15,7 +15,7 @@
 #
 
 """
-Utilities to monkey patch PySpark used in databricks-koala.
+Utilities to monkey patch PySpark used in databricks-koalas.
 """
 from pyspark.sql import session, dataframe as df, column as col, functions as F
 import pyspark
@@ -23,8 +23,10 @@ from decorator import decorator
 import types
 import logging
 
-from .structures import *
-from . import namespace
+from databricks.koalas.frame import PandasLikeDataFrame
+from databricks.koalas.series import PandasLikeSeries
+from databricks.koalas.session import SparkSessionPatches
+from databricks.koalas import namespace
 
 logger = logging.getLogger('spark')
 
@@ -61,6 +63,7 @@ def patch_spark():
         setattr(session.SparkSession, func, getattr(SparkSessionPatches, func))
         setattr(pyspark, func, getattr(namespace, func))
     pyspark.to_datetime = namespace.to_datetime
+    pyspark.get_dummies = namespace.get_dummies
 
 
 @decorator
@@ -81,11 +84,11 @@ def wrap_column_function(f, *args, **kwargs):
                     logger.debug("Found a column without reference: {}".format(str(x)))
             return None
         all_col_inputs = [ref_df(c) for c in all_inputs]
-        all_df_inputs = list(dict([(id(f), f) for f in all_col_inputs if f]).items())
+        all_df_inputs = list(dict([(id(f), f) for f in all_col_inputs if f is not None]).items())
         if len(all_df_inputs) > 1:
             logger.warning("Too many anchors to conclude")
         elif not all_df_inputs:
-            logger.warning("Could not find anchors")
+            logger.debug("Could not find anchors")
         else:
             (_, df_ref) = all_df_inputs[0]
             res._spark_ref_dataframe = df_ref
@@ -94,7 +97,7 @@ def wrap_column_function(f, *args, **kwargs):
 
 def _wrap_operators():
     attrs = ["__neg__", "__add__", "__sub__", "__mul__", "__div__", "__truediv__", "__mod__",
-             "__eq__", "__ne__", "__lt__", "__le__", "__ge__", "__gt__"]
+             "__eq__", "__ne__", "__lt__", "__le__", "__ge__", "__gt__", "__and__", "__or__"]
     if hasattr(col.Column, _TOUCHED_TEST):
         return
     for attr in attrs:

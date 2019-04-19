@@ -17,11 +17,9 @@
 """
 A metadata to manage indexes.
 """
-import sys
-
 import pandas as pd
 
-from ._dask_stubs.compatibility import string_types
+from databricks.koalas.dask.compatibility import string_types
 
 
 class Metadata(object):

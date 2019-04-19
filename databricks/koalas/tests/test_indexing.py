@@ -20,8 +20,8 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from databricks.koala.exceptions import SparkPandasIndexingError
-from databricks.koala.testing.utils import ComparisonTestBase, ReusedSQLTestCase, compare_both
+from databricks.koalas.exceptions import SparkPandasIndexingError
+from databricks.koalas.testing.utils import ComparisonTestBase, ReusedSQLTestCase, compare_both
 
 
 class BasicIndexingTest(ComparisonTestBase):
@@ -134,6 +134,7 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(d.loc[:8], full.loc[:8])
         self.assert_eq(d.loc[3:], full.loc[3:])
         self.assert_eq(d.loc[[5]], full.loc[[5]])
+        self.assert_eq(d.loc[:], full.loc[:])
 
         # TODO?: self.assert_eq(d.loc[[3, 4, 1, 8]], full.loc[[3, 4, 1, 8]])
         # TODO?: self.assert_eq(d.loc[[3, 4, 1, 9]], full.loc[[3, 4, 1, 9]])
@@ -171,6 +172,38 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assert_eq(d.loc[d.a % 2 == 0], full.loc[full.a % 2 == 0])
 
+    def test_loc_noindex(self):
+        d = self.df
+        d = d.reset_index()
+        full = self.full
+        full = full.reset_index()
+
+        self.assert_eq(d[['a']], full[['a']])
+
+        self.assert_eq(d.loc[:], full.loc[:])
+        self.assertRaises(NotImplementedError, lambda: d.loc[5:5])
+
+    def test_loc_multiindex(self):
+        d = self.df
+        d = d.set_index('b', append=True)
+        full = self.full
+        full = full.set_index('b', append=True)
+
+        self.assert_eq(d[['a']], full[['a']])
+
+        self.assert_eq(d.loc[:], full.loc[:])
+        self.assertRaises(NotImplementedError, lambda: d.loc[5:5])
+
+    def test_loc2d_multiindex(self):
+        d = self.df
+        d = d.set_index('b', append=True)
+        full = self.full
+        full = full.set_index('b', append=True)
+
+        self.assert_eq(d.loc[:, :], full.loc[:, :])
+        self.assert_eq(d.loc[:, 'a'], full.loc[:, 'a'])
+        self.assertRaises(NotImplementedError, lambda: d.loc[5:5, 'a'])
+
     def test_loc2d(self):
         d = self.df
         full = self.full
@@ -180,6 +213,7 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(d.loc[[5], 'a'], full.loc[[5], 'a'])
         self.assert_eq(d.loc[5:5, ['a']], full.loc[5:5, ['a']])
         self.assert_eq(d.loc[[5], ['a']], full.loc[[5], ['a']])
+        self.assert_eq(d.loc[:, :], full.loc[:, :])
 
         self.assert_eq(d.loc[3:8, 'a'], full.loc[3:8, 'a'])
         self.assert_eq(d.loc[:8, 'a'], full.loc[:8, 'a'])

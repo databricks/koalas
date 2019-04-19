@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 #
 # Copyright (C) 2019 Databricks, Inc.
 #
@@ -16,21 +14,18 @@
 # limitations under the License.
 #
 
-# Runs both doctests and unit tests by default, otherwise hands arguments over to nose.
+from databricks.koalas.exceptions import PandasNotImplementedError
 
-# The current directory of the script.
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [ -n "$SPARK_HOME" ]; then
-    source $DIR/env_setup.sh
-fi
+def _unsupported_function(class_name, method_name):
 
-FWDIR="$( cd "$DIR"/.. && pwd )"
-cd "$FWDIR"
+    def unsupported_function(*args, **kwargs):
+        raise PandasNotImplementedError(class_name=class_name, method_name=method_name)
 
-if [ "$#" = 0 ]; then
-    ARGS="--nologcapture --all-modules --verbose --with-doctest"
-else
-    ARGS="$@"
-fi
-exec nosetests $ARGS --where "$FWDIR"
+    unsupported_function.__doc__ = \
+        """A stub for the equivalent method to `{0}.{1}()`.
+
+        The method `{0}.{1}()` is not implemented yet.
+        """.format(class_name, method_name)
+
+    return unsupported_function

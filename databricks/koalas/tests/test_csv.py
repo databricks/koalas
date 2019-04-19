@@ -21,7 +21,7 @@ import unittest
 import pandas as pd
 import pyspark
 
-from databricks.koala.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
 def normalize_text(s):

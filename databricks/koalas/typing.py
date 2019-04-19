@@ -17,14 +17,15 @@
 """
 Utilities to deal with types. This is mostly focused on python3.
 """
-import typing
 from decorator import decorate
 from decorator import getfullargspec
+import typing
+
 import numpy as np
+from pyspark.sql import Column
 from pyspark.sql.functions import pandas_udf
 import pyspark.sql.types as types
 
-from .structures import Column
 
 T = typing.TypeVar("T")
 
@@ -85,18 +86,32 @@ def _to_stype(tpe) -> X:
         return _Regular(inner)
 
 
+# First element of the list is the python base type
+_base = {
+    types.StringType(): [str, 'str', 'string'],
+    types.ByteType(): [np.int8, 'int8', 'byte'],
+    types.ShortType(): [np.int16, 'int16', 'short'],
+    types.IntegerType(): [int, 'int', np.int],
+    types.LongType(): [np.int64, 'int64', 'long'],
+    types.FloatType(): [float, 'float', np.float],
+    types.DoubleType(): [np.float64, 'float64', 'double'],
+    types.TimestampType(): [np.datetime64],
+    types.BooleanType(): [bool, 'boolean', 'bool', np.bool],
+}
+
+
 def _build_type_dict():
-    base = {
-        types.StringType(): ['str', str, 'string'],
-        types.IntegerType(): [int, 'int'],
-        types.FloatType(): [float, 'float'],
-        types.TimestampType(): [np.datetime64]
-    }
-    pairs = [(other_type, spark_type) for (spark_type, l) in base.items() for other_type in l]
-    return dict(pairs)
+    return dict([(other_type, spark_type) for (spark_type, l) in _base.items() for other_type in l])
+
+
+def _build_py_type_dict():
+    return dict([(spark_type, l[0]) for (spark_type, l) in _base.items()])
 
 
 _known_types = _build_type_dict()
+
+
+_py_conversions = _build_py_type_dict()
 
 
 def as_spark_type(tpe):
@@ -112,6 +127,10 @@ def as_spark_type(tpe):
     :return:
     """
     return _known_types.get(tpe, None)
+
+
+def as_python_type(spark_tpe):
+    return _py_conversions.get(spark_tpe, None)
 
 
 def _check_compatible(arg, sig_arg: X):

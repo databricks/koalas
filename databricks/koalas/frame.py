@@ -15,325 +15,25 @@
 #
 
 """
-Base classes to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
+A base class to be monkey-patched to DataFrame to behave similar to pandas DataFrame.
 """
-import pandas as pd
+from functools import reduce
+
 import numpy as np
-import pyspark.sql.functions as F
-from pyspark.sql import DataFrame, Column
+import pandas as pd
+from pyspark.sql import Column, DataFrame, functions as F
 from pyspark.sql.types import StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
-from . import namespace
-from .metadata import Metadata
-from .selection import SparkDataFrameLocator
-from ._dask_stubs.utils import derived_from
-from ._dask_stubs.compatibility import string_types
+from databricks.koalas.dask.compatibility import string_types
+from databricks.koalas.dask.utils import derived_from
+from databricks.koalas.generic import _Frame, anchor_wrap, max_display_count
+from databricks.koalas.metadata import Metadata
+from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
+from databricks.koalas.selection import SparkDataFrameLocator
 
 
-__all__ = ['PandasLikeSeries', 'PandasLikeDataFrame', 'SparkSessionPatches', 'anchor_wrap']
-
-max_display_count = 1000
-
-
-class SparkSessionPatches(object):
-    """
-    Methods for :class:`SparkSession`.
-    """
-
-    def from_pandas(self, pdf):
-        metadata = Metadata.from_pandas(pdf)
-        reset_index = pdf.reset_index()
-        reset_index.columns = metadata.all_fields
-        df = self.createDataFrame(reset_index)
-        df._metadata = metadata
-        return df
-
-    from_pandas.__doc__ = namespace.from_pandas.__doc__
-
-    def read_csv(self, path, header='infer', names=None, usecols=None,
-                 mangle_dupe_cols=True, parse_dates=False, comment=None):
-        if mangle_dupe_cols is not True:
-            raise ValueError("mangle_dupe_cols can only be `True`: %s" % mangle_dupe_cols)
-        if parse_dates is not False:
-            raise ValueError("parse_dates can only be `False`: %s" % parse_dates)
-
-        if usecols is not None and not callable(usecols):
-            usecols = list(usecols)
-        if usecols is None or callable(usecols) or len(usecols) > 0:
-            reader = self.read.option("inferSchema", "true")
-
-            if header == 'infer':
-                header = 0 if names is None else None
-            if header == 0:
-                reader.option("header", True)
-            elif header is None:
-                reader.option("header", False)
-            else:
-                raise ValueError("Unknown header argument {}".format(header))
-
-            if comment is not None:
-                if not isinstance(comment, string_types) or len(comment) != 1:
-                    raise ValueError("Only length-1 comment characters supported")
-                reader.option("comment", comment)
-
-            df = reader.csv(path)
-
-            if header is None:
-                df = df._spark_selectExpr(*["`%s` as `%s`" % (field.name, i)
-                                            for i, field in enumerate(df.schema)])
-            if names is not None:
-                names = list(names)
-                if len(set(names)) != len(names):
-                    raise ValueError('Found non-unique column index')
-                if len(names) != len(df.schema):
-                    raise ValueError('Names do not match the number of columns: %d' % len(names))
-                df = df._spark_selectExpr(*["`%s` as `%s`" % (field.name, name)
-                                            for field, name in zip(df.schema, names)])
-
-            if usecols is not None:
-                if callable(usecols):
-                    cols = [field.name for field in df.schema if usecols(field.name)]
-                    missing = []
-                elif all(isinstance(col, int) for col in usecols):
-                    cols = [field.name for i, field in enumerate(df.schema) if i in usecols]
-                    missing = [col for col in usecols
-                               if col >= len(df.schema) or df.schema[col].name not in cols]
-                elif all(isinstance(col, string_types) for col in usecols):
-                    cols = [field.name for field in df.schema if field.name in usecols]
-                    missing = [col for col in usecols if col not in cols]
-                else:
-                    raise ValueError("'usecols' must either be list-like of all strings, "
-                                     "all unicode, all integers or a callable.")
-                if len(missing) > 0:
-                    raise ValueError('Usecols do not match columns, columns expected but not '
-                                     'found: %s' % missing)
-
-                if len(cols) > 0:
-                    df = df._spark_select(cols)
-                else:
-                    df = self.createDataFrame([], schema=StructType())
-        else:
-            df = self.createDataFrame([], schema=StructType())
-        return df
-
-    read_csv.__doc__ = namespace.read_csv.__doc__
-
-    def read_parquet(self, path, columns=None):
-        if columns is not None:
-            columns = list(columns)
-        if columns is None or len(columns) > 0:
-            df = self.read.parquet(path)
-            if columns is not None:
-                fields = [field.name for field in df.schema]
-                cols = [col for col in columns if col in fields]
-                if len(cols) > 0:
-                    df = df._spark_select(cols)
-                else:
-                    df = self.createDataFrame([], schema=StructType())
-        else:
-            df = self.createDataFrame([], schema=StructType())
-        return df
-
-    read_parquet.__doc__ = namespace.read_parquet.__doc__
-
-
-class _Frame(object):
-    """
-    The base class for both dataframes and series.
-    """
-
-    def mean(self):
-        return self._reduce_for_stat_function(F.mean)
-
-    def sum(self):
-        return self._reduce_for_stat_function(F.sum)
-
-    def skew(self):
-        return self._reduce_for_stat_function(F.skewness)
-
-    def kurtosis(self):
-        return self._reduce_for_stat_function(F.kurtosis)
-
-    def kurt(self, *args, **kwargs):
-        return self.kurtosis(*args, **kwargs)
-
-    def min(self):
-        return self._reduce_for_stat_function(F.min)
-
-    def max(self):
-        return self._reduce_for_stat_function(F.max)
-
-    def compute(self):
-        """Alias of `toPandas()` to mimic dask for easily porting tests."""
-        return self.toPandas()
-
-
-class PandasLikeSeries(_Frame):
-    """
-    Methods that are appropriate for distributed series.
-    """
-
-    def __init__(self):
-        """ Define additional private fields.
-
-        * ``_pandas_metadata``: The metadata which stores column fields, and index fields and names.
-        * ``_spark_ref_dataframe``: The reference to DataFraem anchored to this Column.
-        * ``_pandas_schema``: The schema when representing this Column as a DataFrame.
-        """
-        self._pandas_metadata = None
-        self._spark_ref_dataframe = None
-        self._pandas_schema = None
-
-    def astype(self, tpe):
-        from .typing import as_spark_type
-        spark_type = as_spark_type(tpe)
-        if not spark_type:
-            raise ValueError("Type {} not understood".format(tpe))
-        return anchor_wrap(self, self._spark_cast(spark_type))
-
-    def getField(self, name):
-        if not isinstance(self.schema, StructType):
-            raise AttributeError("Not a struct: {}".format(self.schema))
-        else:
-            fnames = self.schema.fieldNames()
-            if name not in fnames:
-                raise AttributeError(
-                    "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
-            return anchor_wrap(self, self._spark_getField(name))
-
-    @property
-    def schema(self):
-        if not hasattr(self, '_pandas_schema') or self._pandas_schema is None:
-            self._pandas_schema = self.to_dataframe().schema
-        return self._pandas_schema
-
-    @property
-    def shape(self):
-        return len(self),
-
-    @property
-    def name(self):
-        return self._jc.toString()
-
-    @name.setter
-    def name(self, name):
-        self.rename(name, inplace=True)
-
-    def rename(self, name, inplace=False):
-        df = self.to_dataframe()._spark_select(self._metadata.index_fields +
-                                               [self._spark_alias(name)])
-        df._metadata = self._metadata.copy(column_fields=[name])
-        col = _col(df)
-        if inplace:
-            anchor_wrap(col, self)
-            self._jc = col._jc
-            self._pandas_schema = None
-            self._pandas_metadata = None
-            return self
-        else:
-            return col
-
-    @property
-    def _metadata(self):
-        if not hasattr(self, '_pandas_metadata') or self._pandas_metadata is None:
-            ref = self._pandas_anchor
-            self._pandas_metadata = ref._metadata.copy(column_fields=[self.name])
-        return self._pandas_metadata
-
-    @derived_from(pd.Series)
-    def reset_index(self, level=None, drop=False, name=None, inplace=False):
-        if inplace and not drop:
-            raise TypeError('Cannot reset_index inplace on a Series to create a DataFrame')
-
-        if name is not None:
-            df = self.rename(name).to_dataframe()
-        else:
-            df = self.to_dataframe()
-        df = df.reset_index(level=level, drop=drop)
-        if drop:
-            col = _col(df)
-            if inplace:
-                anchor_wrap(col, self)
-                self._jc = col._jc
-                self._pandas_schema = None
-                self._pandas_metadata = None
-            else:
-                return col
-        else:
-            return df
-
-    @property
-    def loc(self):
-        return SparkDataFrameLocator(self)
-
-    def to_dataframe(self):
-        ref = self._pandas_anchor
-        df = ref._spark_select(self._metadata.index_fields + [self])
-        df._metadata = self._metadata.copy()
-        return df
-
-    def toPandas(self):
-        return _col(self.to_dataframe().toPandas())
-
-    def head(self, n=5):
-        return _col(self.to_dataframe().head(n))
-
-    def unique(self):
-        # Pandas wants a series/array-like object
-        return _col(self.to_dataframe().unique())
-
-    def count(self):
-        return self._reduce_for_stat_function(F.count)
-
-    def _reduce_for_stat_function(self, sfun):
-        return _unpack_scalar(self._spark_ref_dataframe._spark_select(sfun(self)))
-
-    @property
-    def _pandas_anchor(self) -> DataFrame:
-        """
-        The anchoring dataframe for this column (if any).
-        :return:
-        """
-        if hasattr(self, "_spark_ref_dataframe"):
-            return self._spark_ref_dataframe
-        n = self._pandas_orig_repr()
-        raise ValueError("No reference to a dataframe for column {}".format(n))
-
-    def __len__(self):
-        return len(self.to_dataframe())
-
-    def __getitem__(self, key):
-        res = anchor_wrap(self, self._spark_getitem(key))
-        return res
-
-    def __getattr__(self, item):
-        if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
-            raise AttributeError(item)
-        return anchor_wrap(self, self.getField(item))
-
-    def __invert__(self):
-        return self.cast("boolean") == False  # noqa: disable=E712
-
-    def __str__(self):
-        return self._pandas_orig_repr()
-
-    def __repr__(self):
-        return repr(self.head(max_display_count).toPandas())
-
-    def __dir__(self):
-        if not isinstance(self.schema, StructType):
-            fields = []
-        else:
-            fields = [f for f in self.schema.fieldNames() if ' ' not in f]
-        return super(Column, self).__dir__() + fields
-
-    def _pandas_orig_repr(self):
-        # TODO: figure out how to reuse the original one.
-        return 'Column<%s>' % self._jc.toString().encode('utf8')
-
-
-class PandasLikeDataFrame(_Frame):
+class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
     """
     Methods that are relevant to dataframes.
     """
@@ -367,6 +67,37 @@ class PandasLikeDataFrame(_Frame):
         row = pdf.iloc[0]
         row.name = None
         return row  # Return first row as a Series
+
+    @derived_from(pd.DataFrame)
+    def iteritems(self):
+        cols = list(self.columns)
+        return list((col_name, self[col_name]) for col_name in cols)
+
+    @derived_from(pd.DataFrame)
+    def to_html(self, buf=None, columns=None, col_space=None, header=True, index=True,
+                na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
+                justify=None, max_rows=None, max_cols=None, show_dimensions=False, decimal='.',
+                bold_rows=True, classes=None, escape=True, notebook=False, border=None,
+                table_id=None, render_links=False):
+        return self.toPandas().to_html(
+            buf=buf, columns=columns, col_space=col_space, header=header, index=index,
+            na_rep=na_rep, formatters=formatters, float_format=float_format, sparsify=sparsify,
+            index_names=index_names, justify=justify, max_rows=max_rows, max_cols=max_cols,
+            show_dimensions=show_dimensions, decimal=decimal, bold_rows=bold_rows, classes=classes,
+            escape=escape, notebook=notebook, border=border, table_id=table_id,
+            render_links=render_links)
+
+    @property
+    def index(self):
+        """The index (row labels) Column of the DataFrame.
+
+        Currently supported only when the DataFrame has a single index.
+        """
+        if len(self._metadata.index_info) != 1:
+            raise KeyError('Currently supported only when the DataFrame has a single index.')
+        col = self._index_columns[0]
+        col._set_metadata(col._metadata.copy(index_info=[]))
+        return col
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns. By default
@@ -487,9 +218,27 @@ class PandasLikeDataFrame(_Frame):
             df.columns = columns
             return df
 
+    @derived_from(pd.DataFrame)
+    def isnull(self):
+        df = self.copy()
+        for name, col in df.iteritems():
+            df[name] = col.isnull()
+        return df
+
+    isna = isnull
+
+    @derived_from(pd.DataFrame)
+    def notnull(self):
+        df = self.copy()
+        for name, col in df.iteritems():
+            df[name] = col.notnull()
+        return df
+
+    notna = notnull
+
     @derived_from(DataFrame)
     def toPandas(self):
-        df = self._spark_select(self._metadata.all_fields)
+        df = self._spark_select(['`{}`'.format(name) for name in self._metadata.all_fields])
         pdf = df._spark_toPandas()
         if len(pdf) == 0 and len(df.schema) > 0:
             # TODO: push to OSS
@@ -538,6 +287,47 @@ class PandasLikeDataFrame(_Frame):
         df._metadata = self._metadata.copy()
         return df
 
+    @derived_from(pd.DataFrame)
+    def dropna(self, axis=0, how='any', thresh=None, subset=None, inplace=False):
+        if axis == 0 or axis == 'index':
+            if subset is not None:
+                if isinstance(subset, string_types):
+                    columns = [subset]
+                else:
+                    columns = list(subset)
+                invalids = [column for column in columns
+                            if column not in self._metadata.column_fields]
+                if len(invalids) > 0:
+                    raise KeyError(invalids)
+            else:
+                columns = list(self.columns)
+
+            cnt = reduce(lambda x, y: x + y,
+                         [F._spark_when(self[column].notna(), 1)._spark_otherwise(0)
+                          for column in columns],
+                         F._spark_lit(0))
+            if thresh is not None:
+                pred = cnt >= F._spark_lit(int(thresh))
+            elif how == 'any':
+                pred = cnt == F._spark_lit(len(columns))
+            elif how == 'all':
+                pred = cnt > F._spark_lit(0)
+            else:
+                if how is not None:
+                    raise ValueError('invalid how option: {h}'.format(h=how))
+                else:
+                    raise TypeError('must specify how or thresh')
+
+            df = self._spark_filter(pred)
+            df._metadata = self._metadata.copy()
+            if inplace:
+                _reassign_jdf(self, df)
+            else:
+                return df
+
+        else:
+            raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
+
     def head(self, n=5):
         df = self._spark_limit(n)
         df._metadata = self._metadata.copy()
@@ -554,9 +344,9 @@ class PandasLikeDataFrame(_Frame):
             raise ValueError(
                 "Length mismatch: Expected axis has %d elements, new values have %d elements"
                 % (len(old_names), len(names)))
-        df = self
-        for (old_name, new_name) in zip(old_names, names):
-            df = df._spark_withColumnRenamed(old_name, new_name)
+        df = self._spark_select(self._metadata.index_fields +
+                                [self[old_name]._spark_alias(new_name)
+                                 for (old_name, new_name) in zip(old_names, names)])
         df._metadata = self._metadata.copy(column_fields=names)
 
         _reassign_jdf(self, df)
@@ -599,7 +389,7 @@ class PandasLikeDataFrame(_Frame):
 
     def groupby(self, by):
         gp = self._spark_groupby(by)
-        from .groups import PandasLikeGroupBy
+        from databricks.koalas.groups import PandasLikeGroupBy
         return PandasLikeGroupBy(self, gp, None)
 
     @derived_from(pd.DataFrame)
@@ -644,7 +434,7 @@ class PandasLikeDataFrame(_Frame):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
             bcol = key.cast("boolean")
-            df = self._spark_getitem(bcol)
+            df = self._spark_filter(bcol)
             df._metadata = self._metadata
             return anchor_wrap(self, df)
         raise NotImplementedError(key)
@@ -657,7 +447,7 @@ class PandasLikeDataFrame(_Frame):
         # This is too expensive in Spark.
         # Are we assigning against a column?
         if isinstance(value, Column):
-            assert value._pandas_anchor is self,\
+            assert value._pandas_anchor is self, \
                 "Cannot combine column argument because it comes from a different dataframe"
         if isinstance(key, (tuple, list)):
             assert isinstance(value.schema, StructType)
@@ -706,38 +496,15 @@ def _reassign_jdf(target_df: DataFrame, new_df: DataFrame):
     target_df._lazy_rdd = None
 
 
-def _unpack_scalar(df):
+def _reduce_spark_multi(df, aggs):
     """
-    Takes a dataframe that is supposed to contain a single row with a single scalar value,
-    and returns this value.
+    Performs a reduction on a dataframe, the functions being known sql aggregate functions.
     """
-    l = df.head(2).collect()
+    assert isinstance(df, DataFrame)
+    df0 = df._spark_agg(*aggs)
+    l = df0.head(2).collect()
     assert len(l) == 1, (df, l)
     row = l[0]
-    l2 = list(row.asDict().values())
-    assert len(l2) == 1, (row, l2)
-    return l2[0]
-
-
-def anchor_wrap(df, col):
-    """
-    Ensures that the column has an anchoring reference to the dataframe.
-
-    This is required to get self-representable columns.
-    :param df: dataframe or column
-    :param col: a column
-    :return: column
-    """
-    if isinstance(col, Column):
-        if isinstance(df, Column):
-            ref = df._pandas_anchor
-        else:
-            assert isinstance(df, DataFrame), type(df)
-            ref = df
-        col._spark_ref_dataframe = ref
-    return col
-
-
-def _col(df):
-    assert isinstance(df, (DataFrame, pd.DataFrame)), type(df)
-    return df[df.columns[0]]
+    l2 = list(row)
+    assert len(l2) == len(aggs), (row, l2)
+    return l2

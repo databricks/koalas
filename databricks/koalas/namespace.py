@@ -17,11 +17,18 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-import pyspark
 import numpy as np
 import pandas as pd
-from .typing import Col, pandas_wrap
-from pyspark.sql import Column, DataFrame
+
+import pyspark
+from pyspark.sql import Column, DataFrame, functions as F
+from pyspark.sql.types import *
+
+from databricks.koalas.dask.compatibility import string_types
+from databricks.koalas.dask.utils import derived_from
+from databricks.koalas.frame import _reduce_spark_multi
+from databricks.koalas.session import SparkSessionPatches
+from databricks.koalas.typing import Col, pandas_wrap
 
 
 def default_session():
@@ -37,6 +44,9 @@ def from_pandas(pdf):
     :param pdf: :class:`pandas.DataFrame`
     """
     return default_session().from_pandas(pdf)
+
+
+SparkSessionPatches.from_pandas.__doc__ = from_pandas.__doc__
 
 
 def read_csv(path, header='infer', names=None, usecols=None,
@@ -73,6 +83,9 @@ def read_csv(path, header='infer', names=None, usecols=None,
                                       comment=comment)
 
 
+SparkSessionPatches.read_csv.__doc__ = read_csv.__doc__
+
+
 def read_parquet(path, columns=None):
     """Load a parquet object from the file path, returning a DataFrame.
 
@@ -81,6 +94,9 @@ def read_parquet(path, columns=None):
     :return: :class:`DataFrame`
     """
     return default_session().read_parquet(path=path, columns=columns)
+
+
+SparkSessionPatches.read_parquet.__doc__ = read_parquet.__doc__
 
 
 def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
@@ -98,6 +114,74 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
             errors=errors,
             format=format,
             infer_datetime_format=infer_datetime_format)
+
+
+@derived_from(pd)
+def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None, sparse=False,
+                drop_first=False, dtype=None):
+    if sparse is not False:
+        raise NotImplementedError("get_dummies currently does not support sparse")
+
+    if isinstance(columns, string_types):
+        columns = [columns]
+    if dtype is None:
+        dtype = 'byte'
+
+    if isinstance(data, Column):
+        if prefix is not None:
+            prefix = [str(prefix)]
+        columns = [data.name]
+        df = data.to_dataframe()
+        remaining_columns = []
+    else:
+        if isinstance(prefix, string_types):
+            raise ValueError("get_dummies currently does not support prefix as string types")
+        df = data.copy()
+        if columns is None:
+            columns = [column for column in df.columns
+                       if isinstance(data.schema[column].dataType,
+                                     _get_dummies_default_accept_types)]
+        if len(columns) == 0:
+            return df
+
+        if prefix is None:
+            prefix = columns
+
+        column_set = set(columns)
+        remaining_columns = [df[column] for column in df.columns if column not in column_set]
+
+    if any(not isinstance(data.schema[column].dataType, _get_dummies_acceptable_types)
+           for column in columns):
+        raise ValueError("get_dummies currently only accept {} values"
+                         .format(', '.join([t.typeName() for t in _get_dummies_acceptable_types])))
+
+    if prefix is not None and len(columns) != len(prefix):
+        raise ValueError(
+            "Length of 'prefix' ({}) did not match the length of the columns being encoded ({})."
+            .format(len(prefix), len(columns)))
+
+    all_values = _reduce_spark_multi(df, [F._spark_collect_set(F._spark_col(column))
+                                          ._spark_alias(column)
+                                          for column in columns])
+    for i, column in enumerate(columns):
+        values = sorted(all_values[i])
+        if drop_first:
+            values = values[1:]
+
+        def column_name(value):
+            if prefix is None:
+                return str(value)
+            else:
+                return '{}{}{}'.format(prefix[i], prefix_sep, value)
+
+        for value in values:
+            remaining_columns.append((df[column].notnull() & (df[column] == value))
+                                     .astype(dtype)
+                                     .alias(column_name(value)))
+        if dummy_na:
+            remaining_columns.append(df[column].isnull().astype(dtype).alias(column_name('nan')))
+
+    return df[remaining_columns]
 
 
 # @pandas_wrap(return_col=np.datetime64)
@@ -123,3 +207,11 @@ def _to_datetime2(arg_year, arg_month, arg_day,
         errors=errors,
         format=format,
         infer_datetime_format=infer_datetime_format)
+
+
+_get_dummies_default_accept_types = (
+    DecimalType, StringType, DateType
+)
+_get_dummies_acceptable_types = _get_dummies_default_accept_types + (
+    ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType, BooleanType, TimestampType
+)

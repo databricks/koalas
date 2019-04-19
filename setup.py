@@ -18,15 +18,22 @@
 
 from setuptools import setup
 
+
+install_requires = [
+    'pandas>=0.23',
+    'decorator',
+    'pyarrow>=0.10,<0.11',  # See https://github.com/databricks/spark-pandas/issues/26
+]
+
 setup(
-    name='databricks-koala',
-    version='0.0.5',
-    packages=['databricks', 'databricks.koala', 'databricks.koala._dask_stubs'],
-    install_requires=[
-        'pyspark>=2.4.0',
-        'pandas>=0.23',
-        'decorator',
-        'pyarrow>=0.10,<0.11'],  # See https://github.com/databricks/spark-pandas/issues/26
+    name='databricks-koalas',
+    version='0.0.6',
+    packages=['databricks', 'databricks.koalas', 'databricks.koalas.dask',
+              'databricks.koalas.missing'],
+    extras_require={
+        'spark': ['pyspark>=2.4.0'],
+    },
+    install_requires=install_requires,
     author="Timothy Hunter",
     author_email="tim@databricks.com",
     license='http://www.apache.org/licenses/LICENSE-2.0',

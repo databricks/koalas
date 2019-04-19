@@ -23,8 +23,8 @@ from pyspark.sql import Column, DataFrame
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
-from ._dask_stubs.compatibility import string_types
-from .exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
+from databricks.koalas.dask.compatibility import string_types
+from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 
 
 def _make_col(c):
@@ -114,7 +114,12 @@ class SparkDataFrameLocator(object):
         elif isinstance(rows_sel, slice):
             if rows_sel.step is not None:
                 raiseNotImplemented("Cannot use step with Spark.")
-            if len(self.df._index_columns) == 1:
+            if rows_sel == slice(None):
+                # If slice is None - select everything, so nothing to do
+                pass
+            elif len(self.df._index_columns) == 0:
+                raiseNotImplemented("Cannot use slice for Spark if no index provided.")
+            elif len(self.df._index_columns) == 1:
                 start = rows_sel.start
                 stop = rows_sel.stop
 
@@ -162,10 +167,11 @@ class SparkDataFrameLocator(object):
             df = df._spark_select(self.df._metadata.index_fields + columns)
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
-                           .format([col.name for col in columns]))
-        df._metadata = self.df._metadata.copy(column_fields=[col.name for col in columns])
+                           .format([col._jc.toString() for col in columns]))
+        df._metadata = self.df._metadata.copy(
+            column_fields=df._metadata.column_fields[-len(columns):])
         if cols_sel is not None and isinstance(cols_sel, Column):
-            from .structures import _col
+            from databricks.koalas.series import _col
             return _col(df)
         else:
             return df
