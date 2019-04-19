@@ -73,26 +73,27 @@ You should expect the following differences:
 ### Environment Setup
 
 We recommend setting up a Conda environment for development:
-```
+```bash
 conda create --name koalas-dev-env python=3.6
 source activate koalas-dev-env
 conda install -c conda-forge pyspark=2.4 pandas pyarrow=0.10 decorator flake8 nose
+pip install -e .  # installs koalas from current checkout
 ```
 
 ### Running Tests
 
 To run all the tests, similar to our CI pipeline:
-```
+```bash
 ./dev/run-tests.sh
 ```
 
 To run a specific test file:
-```
+```bash
 python databricks/koalas/tests/test_dataframe.py
 ```
 
 To run a specific test method:
-```
+```bash
 python databricks/koalas/tests/test_dataframe.py DataFrameTest.test_Dataframe
 ```
 
@@ -101,3 +102,6 @@ python databricks/koalas/tests/test_dataframe.py DataFrameTest.test_Dataframe
 Please create a GitHub issue if your favorite function is not yet supported.
 
 We also document all the functions that are not yet supported in the [missing directory](https://github.com/databricks/spark-pandas/tree/master/databricks/koalas/missing). In most cases, it is very easy to add new functions by simply wrapping the existing Pandas or Spark functions. Pull requests welcome!
+
+### Coding Conventions
+We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
