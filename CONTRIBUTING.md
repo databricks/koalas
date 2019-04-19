@@ -19,7 +19,7 @@ If you notice a bug in the code or documentation, or have suggestions for how we
 #### Prerequisites
 We recommend installing Koalas in its own conda environment for development, as follows:
 
-```
+```bash
 conda create --name koalas-dev-env python=3.6
 source activate koalas-dev-env
 conda install -c conda-forge pyspark=2.4 pandas pyarrow=0.10 decorator flake8 nose
@@ -30,17 +30,17 @@ pip install -e .  # installs koalas from current checkout
 #### Run unit tests
 
 Run all the unit test cases: 
-```
+```bash
 ./dev/run-tests.sh
 ```
 
 Run the unit test cases in a specific test file:
-```
+```bash
 python databricks/koalas/tests/test_dataframe.py
 ```
 
 Run a specific unit test case:
-```
+```bash
 python databricks/koalas/tests/test_dataframe.py DataFrameTest.test_Dataframe
 ```
 
@@ -54,4 +54,3 @@ Fork the Github repository at https://github.com/databricks/spark-pandas if you 
 ### Coding conventions
 
 We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
-
