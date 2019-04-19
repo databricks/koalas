@@ -351,6 +351,7 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
 
         _reassign_jdf(self, df)
 
+    @derived_from(pd.DataFrame, ua_args=['axis', 'level', 'numeric_only'])
     def count(self):
         return self._spark_count()
 

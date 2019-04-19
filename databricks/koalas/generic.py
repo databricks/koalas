@@ -30,30 +30,39 @@ class _Frame(object):
     The base class for both dataframes and series.
     """
 
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def mean(self):
         return self._reduce_for_stat_function(F.mean)
 
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only', 'min_count'])
     def sum(self):
         return self._reduce_for_stat_function(F.sum)
 
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def skew(self):
         return self._reduce_for_stat_function(F.skewness)
 
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def kurtosis(self):
         return self._reduce_for_stat_function(F.kurtosis)
 
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def kurt(self, *args, **kwargs):
         return self.kurtosis(*args, **kwargs)
 
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def min(self):
         return self._reduce_for_stat_function(F.min)
 
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def max(self):
         return self._reduce_for_stat_function(F.max)
 
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'ddof', 'numeric_only'])
     def std(self):
         return self._reduce_for_stat_function(F.stddev)
 
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'ddof', 'numeric_only'])
     def var(self):
         return self._reduce_for_stat_function(F.variance)
 

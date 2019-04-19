@@ -213,6 +213,7 @@ class PandasLikeSeries(_Frame, _MissingPandasLikeSeries):
         df._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
         return _col(df)
 
+    @derived_from(pd.Series, ua_args=['level'])
     def count(self):
         return self._reduce_for_stat_function(F.count)
 
