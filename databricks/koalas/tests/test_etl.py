@@ -18,7 +18,7 @@ import unittest
 
 import pandas as pd
 
-from databricks.koala.testing.utils import ComparisonTestBase, compare_both
+from databricks.koalas.testing.utils import ComparisonTestBase, compare_both
 
 
 class EtlTest(ComparisonTestBase):

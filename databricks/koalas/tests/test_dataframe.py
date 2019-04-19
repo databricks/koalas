@@ -21,8 +21,8 @@ import pandas as pd
 import pyspark
 from pyspark.sql import Column
 
-from databricks.koala.testing.utils import ReusedSQLTestCase, TestUtils
-from databricks.koala.exceptions import PandasNotImplementedError
+from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koalas.exceptions import PandasNotImplementedError
 
 
 class DataFrameTest(ReusedSQLTestCase, TestUtils):

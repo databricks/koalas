@@ -20,9 +20,9 @@ A base class to be monkey-patched to SparkSession to behave similar to pandas pa
 import pandas as pd
 from pyspark.sql.types import StructType
 
-from databricks.koala.dask.compatibility import string_types
-from databricks.koala.metadata import Metadata
-from databricks.koala.series import _col
+from databricks.koalas.dask.compatibility import string_types
+from databricks.koalas.metadata import Metadata
+from databricks.koalas.series import _col
 
 
 class SparkSessionPatches(object):

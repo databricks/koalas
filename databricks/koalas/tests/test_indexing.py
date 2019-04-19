@@ -20,8 +20,8 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from databricks.koala.exceptions import SparkPandasIndexingError
-from databricks.koala.testing.utils import ComparisonTestBase, ReusedSQLTestCase, compare_both
+from databricks.koalas.exceptions import SparkPandasIndexingError
+from databricks.koalas.testing.utils import ComparisonTestBase, ReusedSQLTestCase, compare_both
 
 
 class BasicIndexingTest(ComparisonTestBase):

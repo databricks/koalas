@@ -15,7 +15,7 @@
 #
 
 """
-Exceptions/Errors used in databricks-koala.
+Exceptions/Errors used in databricks-koalas.
 """
 
 

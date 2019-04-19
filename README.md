@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/databricks/spark-pandas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/spark-pandas)
 
-# Koala: Pandas APIs on Apache Spark
+# Koalas: Pandas APIs on Apache Spark
 
 This package augments PySpark's DataFrame API to 
 make it compliant (mostly) with the Pandas API.
@@ -24,13 +24,13 @@ Pending publication on the PyPI repository, a compiled package can be installed 
 this URL:
 
 ```bash
-pip install https://s3-us-west-2.amazonaws.com/databricks-tjhunter/koala/databricks_koala-0.0.5-py3-none-any.whl
+pip install https://s3-us-west-2.amazonaws.com/databricks-tjhunter/koalas/databricks_koalas-0.0.5-py3-none-any.whl
 ```
 
 After installing the package, you can import the package:
 
 ```py
-import databricks.koala
+import databricks.koalas
 ```
 
 That's it. Now you have turned all the Spark Dataframes 
@@ -55,14 +55,14 @@ df['x2'] = df.x * df.x
 
 ## License
 
-The license of the Koala project is Apache 2.0. See the `LICENSE` file for more details.
+The license of the Koalas project is Apache 2.0. See the `LICENSE` file for more details.
 
 Some files have been adapted from the Dask project, under the terms of the Apache 2.0 license
 and the Dask license. See the file `licenses/LICENSE-dask.txt` for more details.
 
 ## What is available
 
-Pandas has a very extensive API and currently Koala only supports a subset of the Pandas API.
+Pandas has a very extensive API and currently Koalas only supports a subset of the Pandas API.
 The authoritative status is this spreadsheet, available as a Google document:
 
 https://docs.google.com/spreadsheets/d/1GwBvGsqZAFFAD5PPc_lffDEXith353E1Y7UV6ZAAHWA/edit?usp=sharing

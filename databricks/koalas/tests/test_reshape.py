@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 import pyspark
 
-from databricks.koala.testing.utils import ReusedSQLTestCase
+from databricks.koalas.testing.utils import ReusedSQLTestCase
 
 
 class ReshapeTest(ReusedSQLTestCase):
