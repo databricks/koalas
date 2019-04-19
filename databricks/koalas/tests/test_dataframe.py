@@ -312,10 +312,10 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
         d = self.df
 
-        with self.assertRaisesRegex(PandasNotImplementedError, "DataFrame.*all"):
+        with self.assertRaisesRegex(PandasNotImplementedError, "DataFrame.*all.*not implemented"):
             d.all()
 
-        with self.assertRaisesRegex(PandasNotImplementedError, "Series.*all"):
+        with self.assertRaisesRegex(PandasNotImplementedError, "Series.*all.*not implemented"):
             d.a.all()
 
 
