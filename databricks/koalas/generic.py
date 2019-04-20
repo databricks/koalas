@@ -46,9 +46,7 @@ class _Frame(object):
     def kurtosis(self):
         return self._reduce_for_stat_function(F.kurtosis)
 
-    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
-    def kurt(self, *args, **kwargs):
-        return self.kurtosis(*args, **kwargs)
+    kurt = kurtosis
 
     @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def min(self):
