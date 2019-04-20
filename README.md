@@ -8,9 +8,8 @@ Pandas is the de facto standard (single-node) dataframe implementation in Python
  - Be immediately productive with Spark, with no learning curve, if one is already familiar with Pandas.
  - Have a single codebase that works both with Pandas (tests, smaller datasets) and with Spark (distributed datasets).
 
-Latest release: [![Latest release](https://img.shields.io/pypi/v/koalas.svg)](https://pypi.org/project/koalas/)
-
-Build status: [![Build Status](https://travis-ci.com/databricks/spark-pandas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/spark-pandas)
+[![Build Status](https://travis-ci.com/databricks/spark-pandas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/spark-pandas)
+[![Latest release](https://img.shields.io/pypi/v/koalas.svg)](https://pypi.org/project/koalas/)
 
 
 ## Table of Contents <!-- omit in toc -->
