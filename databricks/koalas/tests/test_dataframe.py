@@ -212,7 +212,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
     def test_stat_functions(self):
         df = pd.DataFrame({'A': [1, 2, 3, 4],
                            'B': [1.0, 2.1, 3, 4]})
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         functions = ['max', 'min', 'mean', 'sum']
         for funcname in functions:
@@ -234,7 +234,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
     def test_count(self):
         df = pd.DataFrame({'A': [1, 2, 3, 4],
                            'B': [1.0, 2.1, 3, 4]})
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         # NOTE: This does not patch the pandas API, but maintains compat with spark
         self.assertEqual(ddf.count(), len(df))
