@@ -25,10 +25,10 @@ import inspect
 
 import pandas as pd
 
-from databricks.koalas.frame import PandasLikeDataFrame
+from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
-from databricks.koalas.series import PandasLikeSeries
+from databricks.koalas.series import Series
 
 
 INDENT_LEN = 4
@@ -223,8 +223,8 @@ def make_modified_function_def(original_type, name, original, target):
 
 def _main():
     for original_type, target_type, missing_type in \
-            [(pd.DataFrame, PandasLikeDataFrame, _MissingPandasLikeDataFrame),
-             (pd.Series, PandasLikeSeries, _MissingPandasLikeSeries)]:
+            [(pd.DataFrame, DataFrame, _MissingPandasLikeDataFrame),
+             (pd.Series, Series, _MissingPandasLikeSeries)]:
         missing, modified = inspect_missing_functions(original_type, target_type, missing_type)
 
         print('MISSING functions for {}'.format(original_type.__name__))
