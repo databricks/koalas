@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import pyspark
 
+from databricks import koalas
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
@@ -40,7 +41,7 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
             def check(columns, expected):
                 if LooseVersion("0.21.1") <= LooseVersion(pd.__version__):
                     expected = pd.read_parquet(tmp, columns=columns)
-                actual = self.spark.read_parquet(tmp, columns=columns)
+                actual = koalas.read_parquet(tmp, columns=columns)
                 self.assertPandasEqual(expected, actual.toPandas())
 
             check(None, data)
@@ -58,7 +59,7 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
                 expected = pd.read_parquet(tmp)
             else:
                 expected = data
-            actual = pyspark.read_parquet(tmp)
+            actual = koalas.read_parquet(tmp)
             self.assertPandasEqual(expected, actual.toPandas())
 
 

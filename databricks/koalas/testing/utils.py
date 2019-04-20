@@ -25,6 +25,8 @@ import pandas as pd
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import Column, DataFrame, SparkSession
 
+from databricks import koalas
+
 
 class PySparkTestCase(unittest.TestCase):
 
@@ -238,7 +240,7 @@ class ComparisonTestBase(ReusedSQLTestCase):
 
     @property
     def df(self):
-        return self.spark.from_pandas(self.pdf)
+        return koalas.from_pandas(self.pdf)
 
     @property
     def pdf(self):

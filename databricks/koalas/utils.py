@@ -17,16 +17,13 @@
 """
 Utilities to monkey patch PySpark used in databricks-koalas.
 """
-from pyspark.sql import session, dataframe as df, column as col, functions as F
-import pyspark
+from pyspark.sql import dataframe as df, column as col, functions as F
 from decorator import decorator
 import types
 import logging
 
 from databricks.koalas.frame import PandasLikeDataFrame
 from databricks.koalas.series import PandasLikeSeries
-from databricks.koalas.session import SparkSessionPatches
-from databricks.koalas import namespace
 
 logger = logging.getLogger('spark')
 
@@ -58,12 +55,6 @@ def patch_spark():
     _wrap_operators()
     # Wrap all the functions in the standard libraries
     _wrap_functions()
-    # Inject a few useful functions.
-    for func in ['from_pandas', 'read_csv', 'read_parquet']:
-        setattr(session.SparkSession, func, getattr(SparkSessionPatches, func))
-        setattr(pyspark, func, getattr(namespace, func))
-    pyspark.to_datetime = namespace.to_datetime
-    pyspark.get_dummies = namespace.get_dummies
 
 
 @decorator
