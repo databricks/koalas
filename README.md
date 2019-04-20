@@ -91,9 +91,14 @@ You should expect the following differences:
 We recommend setting up a Conda environment for development:
 ```bash
 conda create --name koalas-dev-env python=3.6
-source activate koalas-dev-env
+conda activate koalas-dev-env
 conda install -c conda-forge pyspark=2.4 pandas pyarrow=0.10 decorator flake8 nose
 pip install -e .  # installs koalas from current checkout
+```
+
+Once setup, make sure you switch to `koalas-dev-env` before development:
+```bash
+conda activate koalas-dev-env
 ```
 
 ### Running Tests
