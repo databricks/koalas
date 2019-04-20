@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/databricks/spark-pandas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/spark-pandas)
 
-# Koalas: Pandas APIs on Apache Spark
+# Koalas: Pandas APIs on Apache Spark <!-- omit in toc -->
 
 The Koalas project makes data scientists more productive when interacting with big data, by augmenting Apache Spark's Python DataFrame API to be compatible with Pandas'.
 
@@ -9,17 +9,15 @@ Pandas is the de facto standard (single-node) dataframe implementation in Python
  - Have a single codebase that works both with Pandas (tests, smaller datasets) and with Spark (distributed datasets).
 
 
-## Table of Contents
-- [Koalas: Pandas APIs on Apache Spark](#koalas-pandas-apis-on-apache-spark)
-  - [Table of Contents](#table-of-contents)
-  - [Dependencies](#dependencies)
-  - [Get Started](#get-started)
-  - [Project Status](#project-status)
-  - [Development Guide](#development-guide)
-    - [Environment Setup](#environment-setup)
-    - [Running Tests](#running-tests)
-    - [Contributions](#contributions)
-    - [Coding Conventions](#coding-conventions)
+## Table of Contents <!-- omit in toc -->
+- [Dependencies](#dependencies)
+- [Get Started](#get-started)
+- [Project Status](#project-status)
+- [Development Guide](#development-guide)
+  - [Environment Setup](#environment-setup)
+  - [Running Tests](#running-tests)
+  - [Contributions](#contributions)
+  - [Coding Conventions](#coding-conventions)
 
 
 ## Dependencies
