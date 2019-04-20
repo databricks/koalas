@@ -30,8 +30,39 @@ class _Frame(object):
     The base class for both dataframes and series.
     """
 
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
+    def mean(self):
+        return self._reduce_for_stat_function(F.mean)
+
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only', 'min_count'])
+    def sum(self):
+        return self._reduce_for_stat_function(F.sum)
+
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
+    def skew(self):
+        return self._reduce_for_stat_function(F.skewness)
+
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
+    def kurtosis(self):
+        return self._reduce_for_stat_function(F.kurtosis)
+
+    kurt = kurtosis
+
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
+    def min(self):
+        return self._reduce_for_stat_function(F.min)
+
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def max(self):
-        return _reduce_spark(self, F.max)
+        return self._reduce_for_stat_function(F.max)
+
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'ddof', 'numeric_only'])
+    def std(self):
+        return self._reduce_for_stat_function(F.stddev)
+
+    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'ddof', 'numeric_only'])
+    def var(self):
+        return self._reduce_for_stat_function(F.variance)
 
     @derived_from(pd.DataFrame)
     def abs(self):
@@ -57,33 +88,6 @@ def _spark_col_apply(col_or_df, sfun):
     df = col_or_df
     df = df._spark_select([sfun(df[col]).alias(col) for col in df.columns])
     return df
-
-
-def _reduce_spark(col_or_df, sfun):
-    """
-    Performs a reduction on a dataframe, the function being a known sql function.
-    """
-    if isinstance(col_or_df, Column):
-        col = col_or_df
-        df0 = col._spark_ref_dataframe._spark_select(sfun(col))
-    else:
-        assert isinstance(col_or_df, DataFrame)
-        df = col_or_df
-        df0 = df._spark_select(sfun("*"))
-    return _unpack_scalar(df0)
-
-
-def _unpack_scalar(df):
-    """
-    Takes a dataframe that is supposed to contain a single row with a single scalar value,
-    and returns this value.
-    """
-    l = df.head(2).collect()
-    assert len(l) == 1, (df, l)
-    row = l[0]
-    l2 = list(row.asDict().values())
-    assert len(l2) == 1, (row, l2)
-    return l2[0]
 
 
 def anchor_wrap(df, col):

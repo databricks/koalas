@@ -213,6 +213,13 @@ class PandasLikeSeries(_Frame, _MissingPandasLikeSeries):
         df._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
         return _col(df)
 
+    @derived_from(pd.Series, ua_args=['level'])
+    def count(self):
+        return self._reduce_for_stat_function(F.count)
+
+    def _reduce_for_stat_function(self, sfun):
+        return _unpack_scalar(self._spark_ref_dataframe._spark_select(sfun(self)))
+
     @property
     def _pandas_anchor(self) -> DataFrame:
         """
@@ -254,6 +261,19 @@ class PandasLikeSeries(_Frame, _MissingPandasLikeSeries):
     def _pandas_orig_repr(self):
         # TODO: figure out how to reuse the original one.
         return 'Column<%s>' % self._jc.toString().encode('utf8')
+
+
+def _unpack_scalar(df):
+    """
+    Takes a dataframe that is supposed to contain a single row with a single scalar value,
+    and returns this value.
+    """
+    l = df.head(2).collect()
+    assert len(l) == 1, (df, l)
+    row = l[0]
+    l2 = list(row.asDict().values())
+    assert len(l2) == 1, (row, l2)
+    return l2[0]
 
 
 def _col(df):

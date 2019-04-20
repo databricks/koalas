@@ -60,6 +60,14 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
         return [anchor_wrap(self, self._spark_getitem(field))
                 for field in self._metadata.index_fields]
 
+    def _reduce_for_stat_function(self, sfun):
+        df = self._spark_select([sfun(self[col]).alias(col) for col in self.columns])
+        pdf = df.toPandas()
+        assert len(pdf) == 1, (df, pdf)
+        row = pdf.iloc[0]
+        row.name = None
+        return row  # Return first row as a Series
+
     @derived_from(pd.DataFrame)
     def iteritems(self):
         cols = list(self.columns)
@@ -343,6 +351,7 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
 
         _reassign_jdf(self, df)
 
+    @derived_from(pd.DataFrame, ua_args=['axis', 'level', 'numeric_only'])
     def count(self):
         return self._spark_count()
 
