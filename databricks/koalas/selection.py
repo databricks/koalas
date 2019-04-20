@@ -19,7 +19,7 @@ A locator for PandasLikeDataFrame.
 """
 from functools import reduce
 
-from pyspark.sql import Column, DataFrame
+from pyspark.sql import Column
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
@@ -28,11 +28,12 @@ from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNo
 
 
 def _make_col(c):
-    if isinstance(c, Column):
-        return c
+    from databricks.koalas.series import Series
+    if isinstance(c, Series):
+        return c._scol
     elif isinstance(c, str):
-        from pyspark.sql.functions import _spark_col
-        return _spark_col(c)
+        from pyspark.sql.functions import col
+        return col(c)
     else:
         raise SparkPandasNotImplementedError(
             description="Can only convert a string to a column type.")
@@ -45,6 +46,7 @@ def _unfold(key, col):
     the col parameter itself. Otherwise check the key contains column selection, and the selection
     is acceptable.
     """
+    from databricks.koalas.series import Series
     if col is not None:
         if isinstance(key, tuple):
             if len(key) > 1:
@@ -58,7 +60,7 @@ def _unfold(key, col):
         rows_sel, cols_sel = key
 
         # make cols_sel a 1-tuple of string if a single string
-        if isinstance(cols_sel, (str, Column)):
+        if isinstance(cols_sel, (str, Series)):
             cols_sel = _make_col(cols_sel)
         elif isinstance(cols_sel, slice) and cols_sel != slice(None):
             raise SparkPandasNotImplementedError(
@@ -82,20 +84,24 @@ class SparkDataFrameLocator(object):
     :class:`Column`(s) for cols.
     """
 
-    def __init__(self, df_or_col):
-        assert isinstance(df_or_col, (DataFrame, Column)), \
-            'unexpected argument type: {}'.format(type(df_or_col))
-        if isinstance(df_or_col, DataFrame):
-            self.df = df_or_col
-            self.col = None
+    def __init__(self, df_or_s):
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series
+        assert isinstance(df_or_s, (DataFrame, Series)), \
+            'unexpected argument type: {}'.format(type(df_or_s))
+        if isinstance(df_or_s, DataFrame):
+            self._kdf = df_or_s
+            self._ks = None
         else:
             # If df_or_col is Column, store both the DataFrame anchored to the Column and
             # the Column itself.
-            self.df = df_or_col._pandas_anchor
-            self.col = df_or_col
+            self._kdf = df_or_s._kdf
+            self._ks = df_or_s
 
     def __getitem__(self, key):
-        from pyspark.sql.functions import _spark_lit
+        from pyspark.sql.functions import lit
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series
 
         def raiseNotImplemented(description):
             raise SparkPandasNotImplementedError(
@@ -103,38 +109,36 @@ class SparkDataFrameLocator(object):
                 pandas_function=".loc[..., ...]",
                 spark_target_function="select, where")
 
-        rows_sel, cols_sel = _unfold(key, self.col)
+        rows_sel, cols_sel = _unfold(key, self._ks)
 
-        df = self.df
-        if isinstance(rows_sel, Column):
-            df_for_check_schema = self.df._spark_select(rows_sel)
-            assert isinstance(df_for_check_schema.schema.fields[0].dataType, BooleanType), \
-                (str(df_for_check_schema), df_for_check_schema.schema.fields[0].dataType)
-            df = df._spark_where(rows_sel)
+        sdf = self._kdf._sdf
+        if isinstance(rows_sel, Series):
+            sdf_for_check_schema = sdf.select(rows_sel)
+            assert isinstance(sdf_for_check_schema.schema.fields[0].dataType, BooleanType), \
+                (str(sdf_for_check_schema), sdf_for_check_schema.schema.fields[0].dataType)
+            sdf = sdf.where(rows_sel)
         elif isinstance(rows_sel, slice):
             if rows_sel.step is not None:
                 raiseNotImplemented("Cannot use step with Spark.")
             if rows_sel == slice(None):
                 # If slice is None - select everything, so nothing to do
                 pass
-            elif len(self.df._index_columns) == 0:
+            elif len(self._kdf._index_columns) == 0:
                 raiseNotImplemented("Cannot use slice for Spark if no index provided.")
-            elif len(self.df._index_columns) == 1:
+            elif len(self._kdf._index_columns) == 1:
                 start = rows_sel.start
                 stop = rows_sel.stop
 
-                index_column = self.df._index_columns[0]
+                index_column = self._kdf.index
                 index_data_type = index_column.schema[0].dataType
                 cond = []
                 if start is not None:
-                    cond.append(index_column >=
-                                _spark_lit(start)._spark_cast(index_data_type))
+                    cond.append(index_column._scol >= lit(start).cast(index_data_type))
                 if stop is not None:
-                    cond.append(index_column <=
-                                _spark_lit(stop)._spark_cast(index_data_type))
+                    cond.append(index_column._scol <= lit(stop).cast(index_data_type))
 
                 if len(cond) > 0:
-                    df = df._spark_where(reduce(lambda x, y: x & y, cond))
+                    sdf = sdf.where(reduce(lambda x, y: x & y, cond))
             else:
                 raiseNotImplemented("Cannot use slice for MultiIndex with Spark.")
         elif isinstance(rows_sel, string_types):
@@ -145,16 +149,16 @@ class SparkDataFrameLocator(object):
             except TypeError:
                 raiseNotImplemented("Cannot use a scalar value for row selection with Spark.")
             if len(rows_sel) == 0:
-                df = df._spark_where(_spark_lit(False))
-            elif len(self.df._index_columns) == 1:
-                index_column = self.df._index_columns[0]
+                sdf = sdf.where(lit(False))
+            elif len(self._kdf._index_columns) == 1:
+                index_column = self._kdf.index
                 index_data_type = index_column.schema[0].dataType
                 if len(rows_sel) == 1:
-                    df = df._spark_where(
-                        index_column == _spark_lit(rows_sel[0])._spark_cast(index_data_type))
+                    sdf = sdf.where(
+                        index_column._scol == lit(rows_sel[0]).cast(index_data_type))
                 else:
-                    df = df._spark_where(index_column._spark_isin(
-                        [_spark_lit(r)._spark_cast(index_data_type) for r in rows_sel]))
+                    sdf = sdf.where(index_column._scol.isin(
+                        [lit(r).cast(index_data_type) for r in rows_sel]))
             else:
                 raiseNotImplemented("Cannot select with MultiIndex with Spark.")
         if cols_sel is None:
@@ -164,11 +168,11 @@ class SparkDataFrameLocator(object):
         else:
             columns = [_make_col(c) for c in cols_sel]
         try:
-            df = df._spark_select(self.df._metadata.index_fields + columns)
+            df = DataFrame(sdf.select(self._kdf._metadata.index_fields + columns))
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))
-        df._metadata = self.df._metadata.copy(
+        df._pandas_metadata = self._kdf._metadata.copy(
             column_fields=df._metadata.column_fields[-len(columns):])
         if cols_sel is not None and isinstance(cols_sel, Column):
             from databricks.koalas.series import _col
@@ -177,6 +181,7 @@ class SparkDataFrameLocator(object):
             return df
 
     def __setitem__(self, key, value):
+        from databricks.koalas.frame import DataFrame
 
         if (not isinstance(key, tuple)) or (len(key) != 2):
             raise NotImplementedError("Only accepts pairs of candidates")

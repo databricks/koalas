@@ -17,11 +17,13 @@
 """
 A base class to be monkey-patched to DataFrame to behave similar to pandas DataFrame.
 """
+from decorator import dispatch_on
 from functools import reduce
 
 import numpy as np
 import pandas as pd
-from pyspark.sql import Column, DataFrame, functions as F
+from pyspark import sql as spark
+from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
@@ -33,35 +35,44 @@ from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.selection import SparkDataFrameLocator
 
 
-class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
-    """
-    Methods that are relevant to dataframes.
-    """
+def default_session():
+    return spark.SparkSession.builder.getOrCreate()
 
-    def __init__(self):
-        """ Define additional private fields.
 
-        * ``_pandas_metadata``: The metadata which stores column fields, and index fields and names.
-        """
-        self._pandas_metadata = None
+class DataFrame(_Frame, _MissingPandasLikeDataFrame):
 
-    @property
-    def _metadata(self):
-        if not hasattr(self, '_pandas_metadata') or self._pandas_metadata is None:
-            self._pandas_metadata = Metadata(column_fields=self.schema.fieldNames())
-        return self._pandas_metadata
+    @derived_from(pd.DataFrame)
+    @dispatch_on('data')
+    def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
+        pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
+        self.__init__from_pandas(pdf)
 
-    @_metadata.setter
-    def _metadata(self, metadata):
+    @__init__.register(pd.DataFrame)
+    def __init__from_pandas(self, pdf, *args):
+        metadata = Metadata.from_pandas(pdf)
+        reset_index = pdf.reset_index()
+        reset_index.columns = metadata.all_fields
+        self.__init__internal__(default_session().createDataFrame(reset_index), metadata)
+
+    @__init__.register(spark.DataFrame)
+    def __init__internal__(self, sdf, metadata=None, *args):
+        self._sdf = sdf
         self._pandas_metadata = metadata
 
     @property
+    def _metadata(self):
+        if self._pandas_metadata is None:
+            self._pandas_metadata = Metadata(column_fields=self._sdf.schema.fieldNames())
+        return self._pandas_metadata
+
+    @property
     def _index_columns(self):
-        return [anchor_wrap(self, self._spark_getitem(field))
+        from databricks.koalas.series import Series
+        return [Series(self._sdf.__getitem__(field), self)
                 for field in self._metadata.index_fields]
 
     def _reduce_for_stat_function(self, sfun):
-        df = self._spark_select([sfun(self[col]).alias(col) for col in self.columns])
+        df = self._sdf.select([sfun(self[col]).alias(col) for col in self.columns])
         pdf = df.toPandas()
         assert len(pdf) == 1, (df, pdf)
         row = pdf.iloc[0]
@@ -96,7 +107,7 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
         if len(self._metadata.index_info) != 1:
             raise KeyError('Currently supported only when the DataFrame has a single index.')
         col = self._index_columns[0]
-        col._set_metadata(col._metadata.copy(index_info=[]))
+        col._pandas_metadata = col._metadata.copy(index_info=[])
         return col
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
@@ -131,10 +142,10 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
 
         metadata = self._metadata.copy(column_fields=columns, index_info=index_info)
         if inplace:
-            self._metadata = metadata
+            self._pandas_metadata = metadata
         else:
             df = self.copy()
-            df._metadata = metadata
+            df._pandas_metadata = metadata
             return df
 
     def reset_index(self, level=None, drop=False, inplace=False):
@@ -236,14 +247,14 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
 
     notna = notnull
 
-    @derived_from(DataFrame)
+    @derived_from(spark.DataFrame)
     def toPandas(self):
-        df = self._spark_select(['`{}`'.format(name) for name in self._metadata.all_fields])
-        pdf = df._spark_toPandas()
-        if len(pdf) == 0 and len(df.schema) > 0:
+        sdf = self._sdf.select(['`{}`'.format(name) for name in self._metadata.all_fields])
+        pdf = sdf.toPandas()
+        if len(pdf) == 0 and len(sdf.schema) > 0:
             # TODO: push to OSS
             pdf = pdf.astype({field.name: to_arrow_type(field.dataType).to_pandas_dtype()
-                              for field in df.schema})
+                              for field in sdf.schema})
         if len(self._metadata.index_info) > 0:
             append = False
             for index_field in self._metadata.index_fields:
@@ -261,8 +272,9 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
 
     @derived_from(pd.DataFrame)
     def assign(self, **kwargs):
+        from databricks.koalas.series import Series
         for k, v in kwargs.items():
-            if not (isinstance(v, (Column,)) or
+            if not (isinstance(v, (Series,)) or
                     callable(v) or pd.api.types.is_scalar(v)):
                 raise TypeError("Column assignment doesn't support type "
                                 "{0}".format(type(v).__name__))
@@ -272,7 +284,7 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
         pairs = list(kwargs.items())
         df = self
         for (name, c) in pairs:
-            df = df._spark_withColumn(name, c)
+            df = df._sdf.withColumn(name, c)
         df._metadata = self._metadata.copy(
             column_fields=(self._metadata.column_fields +
                            [name for name, _ in pairs if name not in self._metadata.column_fields]))
@@ -283,9 +295,7 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
         return SparkDataFrameLocator(self)
 
     def copy(self):
-        df = DataFrame(self._jdf, self.sql_ctx)
-        df._metadata = self._metadata.copy()
-        return df
+        return DataFrame(self._sdf, self._metadata.copy())
 
     @derived_from(pd.DataFrame)
     def dropna(self, axis=0, how='any', thresh=None, subset=None, inplace=False):
@@ -303,35 +313,32 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
                 columns = list(self.columns)
 
             cnt = reduce(lambda x, y: x + y,
-                         [F._spark_when(self[column].notna(), 1)._spark_otherwise(0)
+                         [F.when(self[column].notna(), 1).otherwise(0)
                           for column in columns],
-                         F._spark_lit(0))
+                         F.lit(0))
             if thresh is not None:
-                pred = cnt >= F._spark_lit(int(thresh))
+                pred = cnt >= F.lit(int(thresh))
             elif how == 'any':
-                pred = cnt == F._spark_lit(len(columns))
+                pred = cnt == F.lit(len(columns))
             elif how == 'all':
-                pred = cnt > F._spark_lit(0)
+                pred = cnt > F.lit(0)
             else:
                 if how is not None:
                     raise ValueError('invalid how option: {h}'.format(h=how))
                 else:
                     raise TypeError('must specify how or thresh')
 
-            df = self._spark_filter(pred)
-            df._metadata = self._metadata.copy()
+            sdf = self._sdf.filter(pred)
             if inplace:
-                _reassign_jdf(self, df)
+                self._sdf = sdf
             else:
-                return df
+                return DataFrame(sdf, self._metadata.copy())
 
         else:
             raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
 
     def head(self, n=5):
-        df = self._spark_limit(n)
-        df._metadata = self._metadata.copy()
-        return df
+        return DataFrame(self._sdf.limit(n), self._metadata.copy())
 
     @property
     def columns(self):
@@ -344,53 +351,49 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
             raise ValueError(
                 "Length mismatch: Expected axis has %d elements, new values have %d elements"
                 % (len(old_names), len(names)))
-        df = self._spark_select(self._metadata.index_fields +
-                                [self[old_name]._spark_alias(new_name)
-                                 for (old_name, new_name) in zip(old_names, names)])
-        df._metadata = self._metadata.copy(column_fields=names)
-
-        _reassign_jdf(self, df)
+        sdf = self._sdf.select(self._metadata.index_fields +
+                               [self[old_name]._scol.alias(new_name)
+                                for (old_name, new_name) in zip(old_names, names)])
+        self._sdf = sdf
 
     @derived_from(pd.DataFrame, ua_args=['axis', 'level', 'numeric_only'])
     def count(self):
-        return self._spark_count()
+        return self._sdf.count()
 
     def unique(self):
-        return DataFrame(self._jdf.distinct(), self.sql_ctx)
+        return DataFrame(self._sdf.distinct(), self._metadata.copy())
 
     @derived_from(pd.DataFrame)
     def drop(self, labels, axis=0, errors='raise'):
         axis = self._validate_axis(axis)
         if axis == 1:
             if isinstance(labels, list):
-                df = self._spark_drop(*labels)
-                df._metadata = self._metadata.copy(
+                sdf = self._sdf.drop(*labels)
+                metadata = self._metadata.copy(
                     column_fields=[column for column in self._metadata.column_fields
                                    if column not in labels])
             else:
-                df = self._spark_drop(labels)
-                df._metadata = self._metadata.copy(
+                sdf = self._sdf.drop(labels)
+                metadata = self._metadata.copy(
                     column_fields=[column for column in self._metadata.column_fields
                                    if column != labels])
-            return df
+            return DataFrame(sdf, metadata)
             # return self.map_partitions(M.drop, labels, axis=axis, errors=errors)
         raise NotImplementedError("Drop currently only works for axis=1")
 
     @derived_from(pd.DataFrame)
     def get(self, key, default=None):
         try:
-            return anchor_wrap(self, self._pd_getitem(key))
+            return self._pd_getitem(key)
         except (KeyError, ValueError, IndexError):
             return default
 
     def sort_values(self, by):
-        df = self._spark_sort(by)
-        df._metadata = self._metadata
-        return df
+        return DataFrame(self._sdf.sort(by), self._metadata.copy())
 
     def groupby(self, by):
-        gp = self._spark_groupby(by)
         from databricks.koalas.groups import PandasLikeGroupBy
+        gp = self._sdf.groupby(by)
         return PandasLikeGroupBy(self, gp, None)
 
     @derived_from(pd.DataFrame)
@@ -412,11 +415,12 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
         return len(self), len(self.columns)
 
     def _pd_getitem(self, key):
+        from databricks.koalas.series import Series
         if key is None:
             raise KeyError("none key")
         if isinstance(key, string_types):
             try:
-                return self._spark_getitem(key)
+                return Series(self._sdf.__getitem__(key), self)
             except AnalysisException:
                 raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, string_types)):
@@ -430,26 +434,18 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
             return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
-            return self._spark_getitem(key)
-        if isinstance(key, Column):
+            return Series(self._sdf.__getitem__(key), self)
+        if isinstance(key, Series):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
-            bcol = key.cast("boolean")
-            df = self._spark_filter(bcol)
-            df._metadata = self._metadata
-            return anchor_wrap(self, df)
+            bcol = key._scol.cast("boolean")
+            return DataFrame(self._sdf.filter(bcol), self._metadata.copy())
         raise NotImplementedError(key)
 
     def __getitem__(self, key):
-        return anchor_wrap(self, self._pd_getitem(key))
+        return self._pd_getitem(key)
 
     def __setitem__(self, key, value):
-        # For now, we don't support realignment against different dataframes.
-        # This is too expensive in Spark.
-        # Are we assigning against a column?
-        if isinstance(value, Column):
-            assert value._pandas_anchor is self, \
-                "Cannot combine column argument because it comes from a different dataframe"
         if isinstance(key, (tuple, list)):
             assert isinstance(value.schema, StructType)
             field_names = value.schema.fieldNames()
@@ -458,18 +454,20 @@ class PandasLikeDataFrame(_Frame, _MissingPandasLikeDataFrame):
         else:
             df = self.assign(**{key: value})
 
-        _reassign_jdf(self, df)
+        self._sdf = df._sdf
+        self._pandas_metadata = df._metadata
 
     def __getattr__(self, key):
+        from databricks.koalas.series import Series
         if key.startswith("__") or key.startswith("_pandas_") or key.startswith("_spark_"):
             raise AttributeError(key)
-        return anchor_wrap(self, self._spark_getattr(key))
+        return Series(self._sdf.__getattr__(key), self)
 
     def __iter__(self):
         return self.toPandas().__iter__()
 
     def __len__(self):
-        return self._spark_count()
+        return self._sdf.count()
 
     def __dir__(self):
         fields = [f for f in self.schema.fieldNames() if ' ' not in f]

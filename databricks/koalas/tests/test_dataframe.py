@@ -63,7 +63,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
             'a': [1, 2, 3, 4, 5, 6, 7, 8, 9],
             'b': [4, 5, 6, 3, 2, 1, 0, 0, 0],
         })
-        ddf = self.spark.createDataFrame(df)
+        ddf = koalas.from_pandas(df)
         self.assert_eq(df[['a', 'b']], ddf[['a', 'b']])
 
         self.assertEqual(ddf.a.notnull().alias("x").name, "x")

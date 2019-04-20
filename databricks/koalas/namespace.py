@@ -21,19 +21,16 @@ import numpy as np
 import pandas as pd
 
 import pyspark
-from pyspark.sql import Column, DataFrame, functions as F
+from pyspark import sql as spark
+from pyspark.sql import functions as F
 from pyspark.sql.types import *
 
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
-from databricks.koalas.frame import _reduce_spark_multi
+from databricks.koalas.frame import DataFrame, default_session, _reduce_spark_multi
 from databricks.koalas.typing import Col, pandas_wrap
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.series import _col
-
-
-def default_session():
-    return pyspark.sql.SparkSession.builder.getOrCreate()
 
 
 def from_pandas(pdf):
@@ -46,12 +43,7 @@ def from_pandas(pdf):
     """
     if isinstance(pdf, pd.Series):
         return _col(from_pandas(pd.DataFrame(pdf)))
-    metadata = Metadata.from_pandas(pdf)
-    reset_index = pdf.reset_index()
-    reset_index.columns = metadata.all_fields
-    df = default_session().createDataFrame(reset_index)
-    df._metadata = metadata
-    return df
+    return DataFrame(pdf)
 
 
 def read_csv(path, header='infer', names=None, usecols=None,
@@ -172,13 +164,13 @@ def read_parquet(path, columns=None):
 
 
 def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
-    if isinstance(arg, Column):
+    if isinstance(arg, spark.Column):
         return _to_datetime1(
             arg,
             errors=errors,
             format=format,
             infer_datetime_format=infer_datetime_format)
-    if isinstance(arg, (dict, DataFrame)):
+    if isinstance(arg, (dict, spark.DataFrame)):
         return _to_datetime2(
             arg_year=arg['year'],
             arg_month=arg['month'],
@@ -199,7 +191,7 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
     if dtype is None:
         dtype = 'byte'
 
-    if isinstance(data, Column):
+    if isinstance(data, spark.Column):
         if prefix is not None:
             prefix = [str(prefix)]
         columns = [data.name]

@@ -22,10 +22,13 @@ import unittest
 from contextlib import contextmanager
 
 import pandas as pd
+from pyspark import sql as spark
 from pyspark import SparkConf, SparkContext
-from pyspark.sql import Column, DataFrame, SparkSession
+from pyspark.sql import SparkSession
 
 from databricks import koalas
+from databricks.koalas.frame import DataFrame
+from databricks.koalas.series import Series
 
 
 class PySparkTestCase(unittest.TestCase):
@@ -214,7 +217,7 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
 
     @staticmethod
     def _to_pandas(df):
-        if isinstance(df, (DataFrame, Column)):
+        if isinstance(df, (DataFrame, Series)):
             return df.toPandas()
         else:
             return df
