@@ -1,14 +1,27 @@
+
+
+# Koalas: Pandas APIs on Apache Spark <!-- omit in toc -->
+
+The Koalas project makes data scientists more productive when interacting with big data, by augmenting Apache Spark's Python DataFrame API to be compatible with Pandas'.
+
+Pandas is the de facto standard (single-node) dataframe implementation in Python, while Spark is the de facto standard for big data processing. With this package, data scientists can:
+ - Be immediately productive with Spark, with no learning curve, if one is already familiar with Pandas.
+ - Have a single codebase that works both with Pandas (tests, smaller datasets) and with Spark (distributed datasets).
+
 [![Build Status](https://travis-ci.com/databricks/spark-pandas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/spark-pandas)
+[![Latest release](https://img.shields.io/pypi/v/koalas.svg)](https://pypi.org/project/koalas/)
 
-# Koalas: Pandas APIs on Apache Spark
 
-This package augments PySpark's DataFrame API to 
-make it compliant (mostly) with the Pandas API.
-
-Pandas is the de facto standard (single-node) dataframe implementation in Python, while
-Apache Spark is the de facto standard for big data processing. This package helps you in two ways:
- - it allows you to keep a single codebase that works both with Pandas (tests, smaller datasets) and with Spark (distributed datasets)
- - it makes you immediately productive with Spark if you already know Pandas.
+## Table of Contents <!-- omit in toc -->
+- [Dependencies](#dependencies)
+- [Get Started](#get-started)
+- [Documentation](#documentation)
+- [Project Status](#project-status)
+- [Development Guide](#development-guide)
+  - [Environment Setup](#environment-setup)
+  - [Running Tests](#running-tests)
+  - [Contributions](#contributions)
+  - [Coding Conventions](#coding-conventions)
 
 
 ## Dependencies
@@ -18,17 +31,14 @@ Apache Spark is the de facto standard for big data processing. This package help
  - Python 3.5+ if you want to use type hints in UDFs. Work is ongoing to also support Python 2.
 
 
-## How to install & use
+## Get Started
 
-Pending publication on the PyPI repository, a compiled package can be installed by using
-this URL:
-
+Koalas is available at the Python package index:
 ```bash
-pip install https://s3-us-west-2.amazonaws.com/databricks-tjhunter/koala/databricks_koala-0.0.5-py3-none-any.whl
+pip install koalas
 ```
 
 After installing the package, you can import the package:
-
 ```py
 import databricks.koalas
 ```
@@ -38,7 +48,6 @@ that will be created from now on into API-compliant Pandas
 dataframes.
 
 Example:
-
 ```py
 import pandas as pd
 pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
@@ -52,28 +61,17 @@ df.columns = ['x', 'y', 'z1']
 df['x2'] = df.x * df.x
 ```
 
+## Documentation
 
-## License
-
-The license of the Koalas project is Apache 2.0. See the `LICENSE` file for more details.
-
-Some files have been adapted from the Dask project, under the terms of the Apache 2.0 license
-and the Dask license. See the file `licenses/LICENSE-dask.txt` for more details.
-
-## What is available
-
-Pandas has a very extensive API and currently Koalas only supports a subset of the Pandas API.
-The authoritative status is this spreadsheet, available as a Google document:
-
-https://docs.google.com/spreadsheets/d/1GwBvGsqZAFFAD5PPc_lffDEXith353E1Y7UV6ZAAHWA/edit?usp=sharing
+Coming soon. Generating API docs for this project is the highest priority item we are working on.
 
 
-## Current status
+## Project Status
 
 This project is currently in beta and is rapidly evolving.
 You should expect the following differences:
 
- - some functions may be missing (see the [What is available](#what-is-available) section)
+ - some functions may be missing (see the [Contributions](#Contributions) section)
 
  - some behaviour may be different, in particular in the treatment of nulls: Pandas uses
    Not a Number (NaN) special constants to indicate missing values, while Spark has a
@@ -85,14 +83,40 @@ You should expect the following differences:
 
 
 
-## How to contribute
+## Development Guide
 
-Are you missing a function from Pandas? No problem! Most functions are very easy to add
-by simply wrapping the existing Pandas function.
+### Environment Setup
 
- 1. Look at [the list of implemented functions](https://docs.google.com/spreadsheets/d/1GwBvGsqZAFFAD5PPc_lffDEXith353E1Y7UV6ZAAHWA/edit?usp=sharing) to see if a pull request already exists
- 
- 2. Wrap your function and submit it as a pull request
- 
-If the function already has the same name in Apache Spark and if the results differ, the 
-general policy is to follow the behaviour of Spark and to document the changes.
+We recommend setting up a Conda environment for development:
+```bash
+conda create --name koalas-dev-env python=3.6
+source activate koalas-dev-env
+conda install -c conda-forge pyspark=2.4 pandas pyarrow=0.10 decorator flake8 nose
+pip install -e .  # installs koalas from current checkout
+```
+
+### Running Tests
+
+To run all the tests, similar to our CI pipeline:
+```bash
+./dev/run-tests.sh
+```
+
+To run a specific test file:
+```bash
+python databricks/koalas/tests/test_dataframe.py
+```
+
+To run a specific test method:
+```bash
+python databricks/koalas/tests/test_dataframe.py DataFrameTest.test_Dataframe
+```
+
+### Contributions
+
+Please create a GitHub issue if your favorite function is not yet supported.
+
+We also document all the functions that are not yet supported in the [missing directory](https://github.com/databricks/spark-pandas/tree/master/databricks/koalas/missing). In most cases, it is very easy to add new functions by simply wrapping the existing Pandas or Spark functions. Pull requests welcome!
+
+### Coding Conventions
+We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
