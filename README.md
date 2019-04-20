@@ -1,12 +1,24 @@
 [![Build Status](https://travis-ci.com/databricks/spark-pandas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/spark-pandas)
 
-# Koalas: Pandas APIs on Apache Spark
+# Koalas: Pandas APIs on Apache Spark <!-- omit in toc -->
 
 The Koalas project makes data scientists more productive when interacting with big data, by augmenting Apache Spark's Python DataFrame API to be compatible with Pandas'.
 
 Pandas is the de facto standard (single-node) dataframe implementation in Python, while Spark is the de facto standard for big data processing. With this package, data scientists can:
  - Be immediately productive with Spark, with no learning curve, if one is already familiar with Pandas.
  - Have a single codebase that works both with Pandas (tests, smaller datasets) and with Spark (distributed datasets).
+
+
+## Table of Contents <!-- omit in toc -->
+- [Dependencies](#dependencies)
+- [Get Started](#get-started)
+- [Documentation](#documentation)
+- [Project Status](#project-status)
+- [Development Guide](#development-guide)
+  - [Environment Setup](#environment-setup)
+  - [Running Tests](#running-tests)
+  - [Contributions](#contributions)
+  - [Coding Conventions](#coding-conventions)
 
 
 ## Dependencies
@@ -18,15 +30,12 @@ Pandas is the de facto standard (single-node) dataframe implementation in Python
 
 ## Get Started
 
-Pending publication on the PyPI repository, a compiled package can be installed by using
-this URL:
-
+Koalas is available at the Python package index:
 ```bash
-pip install https://github.com/databricks/spark-pandas/releases/download/v0.0.6/databricks_koalas-0.0.6-py3-none-any.whl
+pip install koalas
 ```
 
 After installing the package, you can import the package:
-
 ```py
 import databricks.koalas
 ```
@@ -36,7 +45,6 @@ that will be created from now on into API-compliant Pandas
 dataframes.
 
 Example:
-
 ```py
 import pandas as pd
 pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
@@ -49,6 +57,10 @@ df.columns = ['x', 'y', 'z1']
 # Do some operations in place:
 df['x2'] = df.x * df.x
 ```
+
+## Documentation
+
+Coming soon. Generating API docs for this project is the highest priority item we are working on.
 
 
 ## Project Status
