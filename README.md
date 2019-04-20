@@ -9,27 +9,27 @@ Pandas is the de facto standard (single-node) dataframe implementation in Python
  - Have a single codebase that works both with Pandas (tests, smaller datasets) and with Spark (distributed datasets).
 
 
-# Table of Contents
+## Table of Contents
 - [Koalas: Pandas APIs on Apache Spark](#koalas-pandas-apis-on-apache-spark)
-- [Table of Contents](#table-of-contents)
-- [Dependencies](#dependencies)
-- [Get Started](#get-started)
-- [Project Status](#project-status)
-- [Development Guide](#development-guide)
-  - [Environment Setup](#environment-setup)
-  - [Running Tests](#running-tests)
-  - [Contributions](#contributions)
-  - [Coding Conventions](#coding-conventions)
+  - [Table of Contents](#table-of-contents)
+  - [Dependencies](#dependencies)
+  - [Get Started](#get-started)
+  - [Project Status](#project-status)
+  - [Development Guide](#development-guide)
+    - [Environment Setup](#environment-setup)
+    - [Running Tests](#running-tests)
+    - [Contributions](#contributions)
+    - [Coding Conventions](#coding-conventions)
 
 
-# Dependencies
+## Dependencies
 
  - Spark 2.4. Some older versions of Spark may work too but they are not officially supported.
  - A recent version of Pandas. It is officially developed against 0.23+ but some other versions may work too.
  - Python 3.5+ if you want to use type hints in UDFs. Work is ongoing to also support Python 2.
 
 
-# Get Started
+## Get Started
 
 Koalas is available at the Python package index:
 ```bash
@@ -60,7 +60,7 @@ df['x2'] = df.x * df.x
 ```
 
 
-# Project Status
+## Project Status
 
 This project is currently in beta and is rapidly evolving.
 You should expect the following differences:
@@ -77,9 +77,9 @@ You should expect the following differences:
 
 
 
-# Development Guide
+## Development Guide
 
-## Environment Setup
+### Environment Setup
 
 We recommend setting up a Conda environment for development:
 ```bash
@@ -89,7 +89,7 @@ conda install -c conda-forge pyspark=2.4 pandas pyarrow=0.10 decorator flake8 no
 pip install -e .  # installs koalas from current checkout
 ```
 
-## Running Tests
+### Running Tests
 
 To run all the tests, similar to our CI pipeline:
 ```bash
@@ -106,11 +106,11 @@ To run a specific test method:
 python databricks/koalas/tests/test_dataframe.py DataFrameTest.test_Dataframe
 ```
 
-## Contributions
+### Contributions
 
 Please create a GitHub issue if your favorite function is not yet supported.
 
 We also document all the functions that are not yet supported in the [missing directory](https://github.com/databricks/spark-pandas/tree/master/databricks/koalas/missing). In most cases, it is very easy to add new functions by simply wrapping the existing Pandas or Spark functions. Pull requests welcome!
 
-## Coding Conventions
+### Coding Conventions
 We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
