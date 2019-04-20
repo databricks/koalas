@@ -22,6 +22,7 @@ Pandas is the de facto standard (single-node) dataframe implementation in Python
   - [Running Tests](#running-tests)
   - [Contributions](#contributions)
   - [Coding Conventions](#coding-conventions)
+  - [Release Instructions](#release-instructions)
 
 
 ## Dependencies
@@ -120,3 +121,23 @@ We also document all the functions that are not yet supported in the [missing di
 
 ### Coding Conventions
 We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
+
+### Release Instructions
+Only project maintainers can do the following.
+
+Step 1. Make sure the build is green.
+
+Step 2. Create a new release on GitHub. Tag it as the same version as the setup.py.
+If the version is "0.1.0", tag the commit as "v0.1.0".
+
+Step 3. Upload the package to PyPi:
+```bash
+rm -rf dist/databricks_koala*
+python setup.py bdist_wheel
+export package_version=$(python setup.py --version)
+echo $package_version
+
+python3 -m pip install --user --upgrade twine
+python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl
+python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl
+```
