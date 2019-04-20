@@ -22,9 +22,6 @@ from decorator import decorator
 import types
 import logging
 
-from databricks.koalas.frame import PandasLikeDataFrame
-from databricks.koalas.series import PandasLikeSeries
-
 logger = logging.getLogger('spark')
 
 _TOUCHED_TEST = "_pandas_updated"
@@ -46,15 +43,15 @@ def patch_spark():
     # pyspark.sql.DataFrame = PatchedDF
 
     # Just going to update the dictionary
-    _inject(df.DataFrame, PandasLikeDataFrame)
-    _inject(df.Column, PandasLikeSeries)
+    # inject(df.DataFrame, PandasLikeDataFrame)
+    # inject(df.Column, PandasLikeSeries)
     # Override in all cases these methods to prevent any dispatching.
-    df.Column.__repr__ = PandasLikeSeries.__repr__
-    df.Column.__str__ = PandasLikeSeries.__str__
+    # df.Column.__repr__ = PandasLikeSeries.__repr__
+    # df.Column.__str__ = PandasLikeSeries.__str__
     # Replace the creation of the operators in columns
-    _wrap_operators()
+    # wrap_operators()
     # Wrap all the functions in the standard libraries
-    _wrap_functions()
+    # wrap_functions()
 
 
 @decorator
