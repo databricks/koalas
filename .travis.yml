@@ -18,7 +18,7 @@ matrix:
         - PYARROW_VERSION=0.10.0
     - python: "3.6"
       env:
-        - SPARK_VERSION=2.4.0
+        - SPARK_VERSION=2.4.1
         - PANDAS_VERSION=0.23.4
         - PYARROW_VERSION=0.10.0
 
