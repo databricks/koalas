@@ -18,9 +18,9 @@ import unittest
 
 import numpy as np
 import pandas as pd
-import pyspark
 from pyspark.sql import Column
 
+from databricks import koalas
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 
@@ -36,7 +36,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
     @property
     def df(self):
-        return self.spark.from_pandas(self.full)
+        return koalas.from_pandas(self.full)
 
     def test_Dataframe(self):
         d = self.df
@@ -102,7 +102,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
                      pd.DataFrame(np.random.randn(10, 5),
                                   index=pd.date_range('2011-01-01', freq='D',
                                                       periods=10))]:
-            ddf = self.spark.from_pandas(case)
+            ddf = koalas.from_pandas(case)
             self.assert_eq(list(ddf.index.toPandas()), list(case.index))
 
     def test_attributes(self):
@@ -112,9 +112,9 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assertNotIn('foo', dir(d))
         self.assertRaises(AttributeError, lambda: d.foo)
 
-        df = self.spark.from_pandas(pd.DataFrame({'a b c': [1, 2, 3]}))
+        df = koalas.from_pandas(pd.DataFrame({'a b c': [1, 2, 3]}))
         self.assertNotIn('a b c', dir(df))
-        df = self.spark.from_pandas(pd.DataFrame({'a': [1, 2], 5: [1, 2]}))
+        df = koalas.from_pandas(pd.DataFrame({'a': [1, 2], 5: [1, 2]}))
         self.assertIn('a', dir(df))
         self.assertNotIn(5, dir(df))
 
@@ -134,13 +134,13 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
         idx = pd.Index([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], name='x')
         df = pd.DataFrame(np.random.randn(10, 5), idx)
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
         self.assertEqual(ddf.index.name, 'x')
 
     def test_rename_columns(self):
         df = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7],
                            'b': [7, 6, 5, 4, 3, 2, 1]})
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         ddf.columns = ['x', 'y']
         df.columns = ['x', 'y']
@@ -153,7 +153,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
         # Multi-index columns
         df = pd.DataFrame({('A', '0'): [1, 2, 2, 3], ('B', 1): [1, 2, 3, 4]})
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         df.columns = ['x', 'y']
         ddf.columns = ['x', 'y']
@@ -162,7 +162,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
     def test_rename_series(self):
         s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-        ds = self.spark.from_pandas(pd.DataFrame(s)).x
+        ds = koalas.from_pandas(pd.DataFrame(s)).x
 
         s.name = 'renamed'
         ds.name = 'renamed'
@@ -179,7 +179,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
     def test_rename_series_method(self):
         # Series name
         s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-        ds = self.spark.from_pandas(pd.DataFrame(s)).x
+        ds = koalas.from_pandas(pd.DataFrame(s)).x
 
         self.assert_eq(ds.rename('y'), s.rename('y'))
         self.assertEqual(ds.name, 'x')  # no mutation
@@ -192,7 +192,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
         # Series index
         s = pd.Series(['a', 'b', 'c', 'd', 'e', 'f', 'g'], name='x')
-        ds = self.spark.from_pandas(pd.DataFrame(s)).x
+        ds = koalas.from_pandas(pd.DataFrame(s)).x
 
         # TODO: index
         # res = ds.rename(lambda x: x ** 2)
@@ -246,7 +246,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
                            'y': [1, 2, np.nan, 4, np.nan, np.nan],
                            'z': [1, 2, 3, 4, np.nan, np.nan]},
                           index=[10, 20, 30, 40, 50, 60])
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         self.assert_eq(ddf.x.dropna(), df.x.dropna())
         self.assert_eq(ddf.y.dropna(), df.y.dropna())
@@ -280,7 +280,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
     def test_value_counts(self):
         df = pd.DataFrame({'x': [1, 2, 1, 3, 3, np.nan, 1, 4]})
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         exp = df.x.value_counts()
         res = ddf.x.value_counts()
@@ -309,7 +309,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
     def test_isnull(self):
         df = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
                           index=[10, 20, 30, 40, 50, 60])
-        a = self.spark.from_pandas(df)
+        a = koalas.from_pandas(df)
 
         self.assert_eq(a.x.notnull(), df.x.notnull())
         self.assert_eq(a.x.isnull(), df.x.isnull())
@@ -320,22 +320,22 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         df = pd.DataFrame({'year': [2015, 2016],
                            'month': [2, 3],
                            'day': [4, 5]})
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
-        self.assert_eq(pd.to_datetime(df), pyspark.to_datetime(ddf))
+        self.assert_eq(pd.to_datetime(df), koalas.to_datetime(ddf))
 
         s = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
-        ds = self.spark.from_pandas(pd.DataFrame({'s': s}))['s']
+        ds = koalas.from_pandas(pd.DataFrame({'s': s}))['s']
 
         self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
-                       pyspark.to_datetime(ds, infer_datetime_format=True))
+                       koalas.to_datetime(ds, infer_datetime_format=True))
 
     def test_abs(self):
         df = pd.DataFrame({'A': [1, -2, 3, -4, 5],
                            'B': [1., -2, 3, -4, 5],
                            'C': [-6., -7, -8, -9, 10],
                            'D': ['a', 'b', 'c', 'd', 'e']})
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
         self.assert_eq(ddf.A.abs(), df.A.abs())
         self.assert_eq(ddf.B.abs(), df.B.abs())
         self.assert_eq(ddf[['B', 'C']].abs(), df[['B', 'C']].abs())

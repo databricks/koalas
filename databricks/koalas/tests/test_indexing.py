@@ -20,6 +20,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
+from databricks import koalas
 from databricks.koalas.exceptions import SparkPandasIndexingError
 from databricks.koalas.testing.utils import ComparisonTestBase, ReusedSQLTestCase, compare_both
 
@@ -97,10 +98,10 @@ class BasicIndexingTest(ComparisonTestBase):
     def test_from_pandas_with_explicit_index(self):
         pdf = self.pdf
 
-        df1 = self.spark.from_pandas(pdf.set_index('month'))
+        df1 = koalas.from_pandas(pdf.set_index('month'))
         self.assertPandasEqual(df1.toPandas(), pdf.set_index('month'))
 
-        df2 = self.spark.from_pandas(pdf.set_index(['year', 'month']))
+        df2 = koalas.from_pandas(pdf.set_index(['year', 'month']))
         self.assertPandasEqual(df2.toPandas(), pdf.set_index(['year', 'month']))
 
     def test_limitations(self):
@@ -123,7 +124,7 @@ class IndexingTest(ReusedSQLTestCase):
 
     @property
     def df(self):
-        return self.spark.from_pandas(self.full)
+        return koalas.from_pandas(self.full)
 
     def test_loc(self):
         d = self.df
@@ -158,12 +159,12 @@ class IndexingTest(ReusedSQLTestCase):
 
     def test_loc_non_informative_index(self):
         df = pd.DataFrame({'x': [1, 2, 3, 4]}, index=[10, 20, 30, 40])
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         self.assert_eq(ddf.loc[20:30], df.loc[20:30])
 
         df = pd.DataFrame({'x': [1, 2, 3, 4]}, index=[10, 20, 20, 40])
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
         self.assert_eq(ddf.loc[20:20], df.loc[20:20])
 
     def test_loc_with_series(self):
@@ -234,7 +235,7 @@ class IndexingTest(ReusedSQLTestCase):
         df = pd.DataFrame(np.random.randn(20, 5),
                           index=list('abcdefghijklmnopqrst'),
                           columns=list('ABCDE'))
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         self.assert_eq(ddf.loc[['a'], 'A'], df.loc[['a'], 'A'])
         self.assert_eq(ddf.loc[['a'], ['A']], df.loc[['a'], ['A']])
@@ -250,7 +251,7 @@ class IndexingTest(ReusedSQLTestCase):
         df = pd.DataFrame(np.random.randn(20, 5),
                           index=list('abcdefghijklmnopqrst'),
                           columns=list('AABCD'))
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         # TODO?: self.assert_eq(ddf.loc[['a'], 'A'], df.loc[['a'], 'A'])
         # TODO?: self.assert_eq(ddf.loc[['a'], ['A']], df.loc[['a'], ['A']])
@@ -275,7 +276,7 @@ class IndexingTest(ReusedSQLTestCase):
                            'B': [9, 8, 7, 6, 5, 4, 3, 2, 1],
                            'C': [True, False, True] * 3},
                           columns=list('ABC'))
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
         self.assert_eq(ddf['A'], df['A'])
 
         self.assert_eq(ddf[['A', 'B']], df[['A', 'B']])
@@ -288,7 +289,7 @@ class IndexingTest(ReusedSQLTestCase):
 
         # not str/unicode
         # TODO?: df = pd.DataFrame(np.random.randn(10, 5))
-        # TODO?: ddf = self.spark.from_pandas(df)
+        # TODO?: ddf = koalas.from_pandas(df)
         # TODO?: self.assert_eq(ddf[0], df[0])
         # TODO?: self.assert_eq(ddf[[1, 2]], df[[1, 2]])
 
@@ -300,7 +301,7 @@ class IndexingTest(ReusedSQLTestCase):
                            'B': [9, 8, 7, 6, 5, 4, 3, 2, 1],
                            'C': [True, False, True] * 3},
                           index=list('abcdefghi'))
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
         self.assert_eq(ddf['a':'e'], df['a':'e'])
         self.assert_eq(ddf['a':'b'], df['a':'b'])
         self.assert_eq(ddf['f':], df['f':])
@@ -308,14 +309,14 @@ class IndexingTest(ReusedSQLTestCase):
     def test_loc_on_numpy_datetimes(self):
         df = pd.DataFrame({'x': [1, 2, 3]},
                           index=list(map(np.datetime64, ['2014', '2015', '2016'])))
-        a = self.spark.from_pandas(df)
+        a = koalas.from_pandas(df)
 
         self.assert_eq(a.loc['2014':'2015'], df.loc['2014':'2015'])
 
     def test_loc_on_pandas_datetimes(self):
         df = pd.DataFrame({'x': [1, 2, 3]},
                           index=list(map(pd.Timestamp, ['2014', '2015', '2016'])))
-        a = self.spark.from_pandas(df)
+        a = koalas.from_pandas(df)
 
         self.assert_eq(a.loc['2014':'2015'], df.loc['2014':'2015'])
 
@@ -324,7 +325,7 @@ class IndexingTest(ReusedSQLTestCase):
         datetime_index = pd.date_range('2016-01-01', '2016-01-31', freq='12h')
         datetime_index.freq = None  # FORGET FREQUENCY
         df = pd.DataFrame({'num': range(len(datetime_index))}, index=datetime_index)
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         slice_ = slice('2016-01-03', '2016-01-05')
         result = ddf.loc[slice_, :]
@@ -335,7 +336,7 @@ class IndexingTest(ReusedSQLTestCase):
     def test_loc_timestamp_str(self):
         df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                           index=pd.date_range('2011-01-01', freq='H', periods=100))
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         # partial string slice
         # TODO?: self.assert_eq(df.loc['2011-01-02'],
@@ -351,7 +352,7 @@ class IndexingTest(ReusedSQLTestCase):
 
         df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                           index=pd.date_range('2011-01-01', freq='M', periods=100))
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
         # TODO?: self.assert_eq(df.loc['2011-01'], ddf.loc['2011-01'])
         # TODO?: self.assert_eq(df.loc['2011'], ddf.loc['2011'])
 
@@ -369,7 +370,7 @@ class IndexingTest(ReusedSQLTestCase):
     def test_getitem_timestamp_str(self):
         df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                           index=pd.date_range('2011-01-01', freq='H', periods=100))
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         # partial string slice
         # TODO?: self.assert_eq(df['2011-01-02'],
@@ -379,7 +380,7 @@ class IndexingTest(ReusedSQLTestCase):
 
         df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                           index=pd.date_range('2011-01-01', freq='M', periods=100))
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         # TODO?: self.assert_eq(df['2011-01'], ddf['2011-01'])
         # TODO?: self.assert_eq(df['2011'], ddf['2011'])
@@ -391,7 +392,7 @@ class IndexingTest(ReusedSQLTestCase):
     def test_getitem_period_str(self):
         df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                           index=pd.period_range('2011-01-01', freq='H', periods=100))
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         # partial string slice
         # TODO?: self.assert_eq(df['2011-01-02'],
@@ -401,7 +402,7 @@ class IndexingTest(ReusedSQLTestCase):
 
         df = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                           index=pd.period_range('2011-01-01', freq='M', periods=100))
-        ddf = self.spark.from_pandas(df)
+        ddf = koalas.from_pandas(df)
 
         # TODO?: self.assert_eq(df['2011-01'], ddf['2011-01'])
         # TODO?: self.assert_eq(df['2011'], ddf['2011'])
