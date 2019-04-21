@@ -27,6 +27,13 @@ MINIMUM_PYCODESTYLE="2.4.0"
 
 SPHINX_BUILD="sphinx-build"
 
+# Sphinx will import Koalas out of the box. Importing Koalas requires to have
+# PySpark currently.
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+if [ -n "$SPARK_HOME" ]; then
+    source $DIR/env_setup.sh
+fi
+
 function compile_python_test {
     local COMPILE_STATUS=
     local COMPILE_REPORT=
@@ -214,7 +221,7 @@ function sphinx_test {
     fi
 
     echo "starting $SPHINX_BUILD tests..."
-    pushd python/docs &> /dev/null
+    pushd docs &> /dev/null
     make clean &> /dev/null
     # Treat warnings as errors so we stop correctly
     SPHINX_REPORT=$( (SPHINXOPTS="-a -W" make html) 2>&1)

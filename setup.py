@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import sys
 from setuptools import setup
 
 DESCRIPTION = "Pandas DataFrame API on Apache Spark"
@@ -35,9 +36,17 @@ With this package, data scientists can:
   and with Spark (distributed datasets).
 """
 
+try:
+    exec(open('databricks/koalas/version.py').read())
+except IOError:
+    print("Failed to load Koalas version file for packaging. You must be in Koalas root dir.",
+          file=sys.stderr)
+    sys.exit(-1)
+VERSION = __version__  # noqa
+
 setup(
     name='koalas',
-    version='0.0.6',
+    version=VERSION,
     packages=['databricks', 'databricks.koalas', 'databricks.koalas.dask',
               'databricks.koalas.missing'],
     extras_require={

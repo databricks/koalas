@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+from databricks.koalas.version import __version__
+
 
 def assert_pyspark_version():
     import logging

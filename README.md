@@ -20,6 +20,7 @@ Pandas is the de facto standard (single-node) dataframe implementation in Python
 - [Development Guide](#development-guide)
   - [Environment Setup](#environment-setup)
   - [Running Tests](#running-tests)
+  - [Building Documentation](#building-documentation)
   - [Contributions](#contributions)
   - [Coding Conventions](#coding-conventions)
   - [Release Instructions](#release-instructions)
@@ -92,7 +93,7 @@ We recommend setting up a Conda environment for development:
 ```bash
 conda create --name koalas-dev-env python=3.6
 conda activate koalas-dev-env
-conda install -c conda-forge pyspark=2.4 pandas pyarrow=0.10 decorator flake8 nose
+conda install -c conda-forge --yes --file requirements-dev.txt
 pip install -e .  # installs koalas from current checkout
 ```
 
@@ -117,6 +118,17 @@ To run a specific test method:
 ```bash
 python databricks/koalas/tests/test_dataframe.py DataFrameTest.test_Dataframe
 ```
+
+### Building Documentation
+
+To build documentation via Sphinx:
+
+```bash
+cd docs && make clean html
+```
+
+It generates HTMLs under `docs/_build/html` directory. Open `docs/_build/html/index.html` to check if documenation is built properly.
+
 
 ### Contributions
 
