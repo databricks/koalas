@@ -15,6 +15,7 @@ Pandas is the de facto standard (single-node) dataframe implementation in Python
 ## Table of Contents <!-- omit in toc -->
 - [Dependencies](#dependencies)
 - [Get Started](#get-started)
+- [Documentation](#documentation)
 - [Project Status](#project-status)
 - [Development Guide](#development-guide)
   - [Environment Setup](#environment-setup)
@@ -61,6 +62,10 @@ df.columns = ['x', 'y', 'z1']
 # Do some operations in place:
 df['x2'] = df.x * df.x
 ```
+
+## Documentation
+
+Coming soon. Generating API docs for this project is the highest priority item we are working on.
 
 
 ## Project Status
