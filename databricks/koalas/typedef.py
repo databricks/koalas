@@ -134,6 +134,19 @@ def as_python_type(spark_tpe):
     return _py_conversions.get(spark_tpe, None)
 
 
+def list_sanitizer(input_list):
+    """
+    This function checks if elements inside a given list are supported by Spark.
+
+    :param input_list: list
+    :raises TypeError if any element is not supported by Spark
+    """
+    _possible_types = [as_python_type(spark_type) for spark_type in _base.keys()]
+    for e in input_list:
+        if not type(e) in _possible_types:
+            raise TypeError("List contains unsupported type {}".format(type(e)))
+
+
 def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
     """Infer Spark DataType from pandas Series dtype.
 

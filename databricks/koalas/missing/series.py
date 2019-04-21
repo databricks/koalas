@@ -93,7 +93,6 @@ class _MissingPandasLikeSeries(object):
     idxmin = unsupported_function('idxmin')
     infer_objects = unsupported_function('infer_objects')
     interpolate = unsupported_function('interpolate')
-    isin = unsupported_function('isin')
     item = unsupported_function('item')
     items = unsupported_function('items')
     iteritems = unsupported_function('iteritems')

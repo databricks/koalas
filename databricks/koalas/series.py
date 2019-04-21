@@ -36,6 +36,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.typedef import list_sanitizer
 
 
 @decorator
@@ -508,6 +509,58 @@ class Series(_Frame):
         kdf.columns = [index_name, self.name]
         kdf._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
         return _col(kdf)
+
+    def isin(self, values):
+        """
+        Check whether `values` are contained in Series.
+
+        Return a boolean Series showing whether each element in the Series
+        matches an element in the passed sequence of `values` exactly.
+
+        Parameters
+        ----------
+        values : list or set
+            The sequence of values to test.
+
+        Returns
+        -------
+        isin : Series (bool dtype)
+
+        Examples
+        --------
+        >>> s = pd.Series(['lama', 'cow', 'lama', 'beetle', 'lama',
+        ...                'hippo'], name='animal')
+        >>> s.isin(['cow', 'lama'])
+        0     True
+        1     True
+        2     True
+        3    False
+        4     True
+        5    False
+        Name: animal, dtype: bool
+
+        Passing a single string as ``s.isin('lama')`` will raise an error. Use
+        a list of one element instead:
+
+        >>> s.isin(['lama'])
+        0     True
+        1    False
+        2     True
+        3    False
+        4     True
+        5    False
+        Name: animal, dtype: bool
+        """
+        if isinstance(values, list):
+            list_sanitizer(values)
+            return Series(self._scol.isin(values).alias(self.name), self._kdf,
+                          self._index_info)
+        elif isinstance(values, set):
+            list_sanitizer(list(values))
+            return Series(self._scol.isin(list(values)).alias(self.name), self._kdf,
+                          self._index_info)
+        else:
+            raise TypeError('Values should be list or set.')
 
     def corr(self, other, method='pearson'):
         """

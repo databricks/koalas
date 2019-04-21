@@ -67,6 +67,7 @@ Reindexing / Selection / Label manipulation
    :toctree: api/
 
    Series.head
+   Series.isin
    Series.rename
    Series.reset_index
 

@@ -86,7 +86,6 @@ class _MissingPandasLikeDataFrame(object):
     info = unsupported_function('info')
     insert = unsupported_function('insert')
     interpolate = unsupported_function('interpolate')
-    isin = unsupported_function('isin')
     items = unsupported_function('items')
     iterrows = unsupported_function('iterrows')
     itertuples = unsupported_function('itertuples')
