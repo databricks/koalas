@@ -100,30 +100,30 @@ def read_csv(path, header='infer', names=None, usecols=None,
                 raise ValueError("Only length-1 comment characters supported")
             reader.option("comment", comment)
 
-        df = reader.csv(path)
+        sdf = reader.csv(path)
 
         if header is None:
-            df = df._spark_selectExpr(*["`%s` as `%s`" % (field.name, i)
-                                        for i, field in enumerate(df.schema)])
+            sdf = sdf.selectExpr(*["`%s` as `%s`" % (field.name, i)
+                                   for i, field in enumerate(sdf.schema)])
         if names is not None:
             names = list(names)
             if len(set(names)) != len(names):
                 raise ValueError('Found non-unique column index')
-            if len(names) != len(df.schema):
+            if len(names) != len(sdf.schema):
                 raise ValueError('Names do not match the number of columns: %d' % len(names))
-            df = df._spark_selectExpr(*["`%s` as `%s`" % (field.name, name)
-                                        for field, name in zip(df.schema, names)])
+            sdf = sdf.selectExpr(*["`%s` as `%s`" % (field.name, name)
+                                   for field, name in zip(sdf.schema, names)])
 
         if usecols is not None:
             if callable(usecols):
-                cols = [field.name for field in df.schema if usecols(field.name)]
+                cols = [field.name for field in sdf.schema if usecols(field.name)]
                 missing = []
             elif all(isinstance(col, int) for col in usecols):
-                cols = [field.name for i, field in enumerate(df.schema) if i in usecols]
+                cols = [field.name for i, field in enumerate(sdf.schema) if i in usecols]
                 missing = [col for col in usecols
-                           if col >= len(df.schema) or df.schema[col].name not in cols]
+                           if col >= len(sdf.schema) or sdf.schema[col].name not in cols]
             elif all(isinstance(col, string_types) for col in usecols):
-                cols = [field.name for field in df.schema if field.name in usecols]
+                cols = [field.name for field in sdf.schema if field.name in usecols]
                 missing = [col for col in usecols if col not in cols]
             else:
                 raise ValueError("'usecols' must either be list-like of all strings, "
@@ -133,12 +133,12 @@ def read_csv(path, header='infer', names=None, usecols=None,
                                  'found: %s' % missing)
 
             if len(cols) > 0:
-                df = df._spark_select(cols)
+                sdf = sdf.select(cols)
             else:
-                df = default_session().createDataFrame([], schema=StructType())
+                sdf = default_session().createDataFrame([], schema=StructType())
     else:
-        df = default_session().createDataFrame([], schema=StructType())
-    return df
+        sdf = default_session().createDataFrame([], schema=StructType())
+    return DataFrame(sdf)
 
 
 def read_parquet(path, columns=None):
@@ -151,17 +151,17 @@ def read_parquet(path, columns=None):
     if columns is not None:
         columns = list(columns)
     if columns is None or len(columns) > 0:
-        df = default_session().read.parquet(path)
+        sdf = default_session().read.parquet(path)
         if columns is not None:
-            fields = [field.name for field in df.schema]
+            fields = [field.name for field in sdf.schema]
             cols = [col for col in columns if col in fields]
             if len(cols) > 0:
-                df = df._spark_select(cols)
+                sdf = sdf.select(cols)
             else:
-                df = default_session().createDataFrame([], schema=StructType())
+                sdf = default_session().createDataFrame([], schema=StructType())
     else:
-        df = default_session().createDataFrame([], schema=StructType())
-    return df
+        sdf = default_session().createDataFrame([], schema=StructType())
+    return DataFrame(sdf)
 
 
 def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
@@ -200,30 +200,30 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
     if dtype is None:
         dtype = 'byte'
 
-    if isinstance(data, spark.Column):
+    if isinstance(data, Series):
         if prefix is not None:
             prefix = [str(prefix)]
         columns = [data.name]
-        df = data.to_dataframe()
+        kdf = data.to_dataframe()
         remaining_columns = []
     else:
         if isinstance(prefix, string_types):
             raise ValueError("get_dummies currently does not support prefix as string types")
-        df = data.copy()
+        kdf = data.copy()
         if columns is None:
-            columns = [column for column in df.columns
-                       if isinstance(data.schema[column].dataType,
+            columns = [column for column in kdf.columns
+                       if isinstance(data._sdf.schema[column].dataType,
                                      _get_dummies_default_accept_types)]
         if len(columns) == 0:
-            return df
+            return kdf
 
         if prefix is None:
             prefix = columns
 
         column_set = set(columns)
-        remaining_columns = [df[column] for column in df.columns if column not in column_set]
+        remaining_columns = [kdf[column] for column in kdf.columns if column not in column_set]
 
-    if any(not isinstance(data.schema[column].dataType, _get_dummies_acceptable_types)
+    if any(not isinstance(kdf._sdf.schema[column].dataType, _get_dummies_acceptable_types)
            for column in columns):
         raise ValueError("get_dummies currently only accept {} values"
                          .format(', '.join([t.typeName() for t in _get_dummies_acceptable_types])))
@@ -233,9 +233,8 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
             "Length of 'prefix' ({}) did not match the length of the columns being encoded ({})."
             .format(len(prefix), len(columns)))
 
-    all_values = _reduce_spark_multi(df, [F._spark_collect_set(F._spark_col(column))
-                                          ._spark_alias(column)
-                                          for column in columns])
+    all_values = _reduce_spark_multi(kdf._sdf, [F.collect_set(F.col(column)).alias(column)
+                                                for column in columns])
     for i, column in enumerate(columns):
         values = sorted(all_values[i])
         if drop_first:
@@ -248,13 +247,13 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
                 return '{}{}{}'.format(prefix[i], prefix_sep, value)
 
         for value in values:
-            remaining_columns.append((df[column].notnull() & (df[column] == value))
+            remaining_columns.append((kdf[column].notnull() & (kdf[column] == value))
                                      .astype(dtype)
-                                     .alias(column_name(value)))
+                                     .rename(column_name(value)))
         if dummy_na:
-            remaining_columns.append(df[column].isnull().astype(dtype).alias(column_name('nan')))
+            remaining_columns.append(kdf[column].isnull().astype(dtype).rename(column_name('nan')))
 
-    return df[remaining_columns]
+    return kdf[remaining_columns]
 
 
 # @pandas_wrap(return_col=np.datetime64)

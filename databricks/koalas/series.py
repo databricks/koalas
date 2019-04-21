@@ -26,7 +26,7 @@ from pyspark.sql.types import FloatType, DoubleType, StructType
 
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.generic import _Frame, anchor_wrap, max_display_count
+from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.selection import SparkDataFrameLocator
@@ -174,21 +174,20 @@ class Series(_Frame, _MissingPandasLikeSeries):
             raise TypeError('Cannot reset_index inplace on a Series to create a DataFrame')
 
         if name is not None:
-            df = self.rename(name).to_dataframe()
+            kdf = self.rename(name).to_dataframe()
         else:
-            df = self.to_dataframe()
-        df = df.reset_index(level=level, drop=drop)
+            kdf = self.to_dataframe()
+        kdf = kdf.reset_index(level=level, drop=drop)
         if drop:
-            col = _col(df)
+            col = _col(kdf)
             if inplace:
-                anchor_wrap(col, self)
-                self._jc = col._jc
-                self._pandas_schema = None
+                self._kdf = kdf
+                self._scol = col._scol
                 self._pandas_metadata = None
             else:
                 return col
         else:
-            return df
+            return kdf
 
     @property
     def loc(self):
@@ -275,7 +274,7 @@ class Series(_Frame, _MissingPandasLikeSeries):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        return anchor_wrap(self, self._spark_getitem(key))
+        return Series(self._scol.__getitem__(key), self._kdf)
 
     def __getattr__(self, item):
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):

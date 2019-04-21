@@ -92,22 +92,3 @@ def _spark_col_apply(kdf_or_ks, sfun):
     sdf = kdf._sdf
     sdf = sdf.select([sfun(sdf[col]).alias(col) for col in kdf.columns])
     return DataFrame(sdf)
-
-
-def anchor_wrap(df, col):
-    """
-    Ensures that the column has an anchoring reference to the dataframe.
-
-    This is required to get self-representable columns.
-    :param df: dataframe or column
-    :param col: a column
-    :return: column
-    """
-    if isinstance(col, Column):
-        if isinstance(df, Column):
-            ref = df._pandas_anchor
-        else:
-            assert isinstance(df, DataFrame), type(df)
-            ref = df
-        col._spark_ref_dataframe = ref
-    return col

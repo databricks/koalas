@@ -496,14 +496,14 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
         return {None: 0, 'index': 0, 'columns': 1}.get(axis, axis)
 
 
-def _reduce_spark_multi(df, aggs):
+def _reduce_spark_multi(sdf, aggs):
     """
     Performs a reduction on a dataframe, the functions being known sql aggregate functions.
     """
-    assert isinstance(df, DataFrame)
-    df0 = df._spark_agg(*aggs)
-    l = df0.head(2).collect()
-    assert len(l) == 1, (df, l)
+    assert isinstance(sdf, spark.DataFrame)
+    sdf0 = sdf.agg(*aggs)
+    l = sdf0.head(2)
+    assert len(l) == 1, (sdf, l)
     row = l[0]
     l2 = list(row)
     assert len(l2) == len(aggs), (row, l2)

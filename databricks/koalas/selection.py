@@ -19,7 +19,7 @@ A locator for PandasLikeDataFrame.
 """
 from functools import reduce
 
-from pyspark.sql import Column
+from pyspark import sql as spark
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
@@ -53,7 +53,7 @@ def _unfold(key, col):
                 raise SparkPandasIndexingError('Too many indexers')
             key = key[0]
         rows_sel = key
-        cols_sel = col
+        cols_sel = col._scol
     elif isinstance(key, tuple):
         if len(key) != 2:
             raise SparkPandasIndexingError("Only accepts pairs of candidates")
@@ -113,10 +113,10 @@ class SparkDataFrameLocator(object):
 
         sdf = self._kdf._sdf
         if isinstance(rows_sel, Series):
-            sdf_for_check_schema = sdf.select(rows_sel)
+            sdf_for_check_schema = sdf.select(rows_sel._scol)
             assert isinstance(sdf_for_check_schema.schema.fields[0].dataType, BooleanType), \
                 (str(sdf_for_check_schema), sdf_for_check_schema.schema.fields[0].dataType)
-            sdf = sdf.where(rows_sel)
+            sdf = sdf.where(rows_sel._scol)
         elif isinstance(rows_sel, slice):
             if rows_sel.step is not None:
                 raiseNotImplemented("Cannot use step with Spark.")
@@ -162,26 +162,27 @@ class SparkDataFrameLocator(object):
             else:
                 raiseNotImplemented("Cannot select with MultiIndex with Spark.")
         if cols_sel is None:
-            columns = [_make_col(c) for c in self.df._metadata.column_fields]
-        elif isinstance(cols_sel, Column):
+            columns = [_make_col(c) for c in self._kdf._metadata.column_fields]
+        elif isinstance(cols_sel, spark.Column):
             columns = [cols_sel]
         else:
             columns = [_make_col(c) for c in cols_sel]
         try:
-            df = DataFrame(sdf.select(self._kdf._metadata.index_fields + columns))
+            kdf = DataFrame(sdf.select(self._kdf._metadata.index_fields + columns))
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))
-        df._pandas_metadata = self._kdf._metadata.copy(
-            column_fields=df._metadata.column_fields[-len(columns):])
-        if cols_sel is not None and isinstance(cols_sel, Column):
+        kdf._pandas_metadata = self._kdf._metadata.copy(
+            column_fields=kdf._metadata.column_fields[-len(columns):])
+        if cols_sel is not None and isinstance(cols_sel, spark.Column):
             from databricks.koalas.series import _col
-            return _col(df)
+            return _col(kdf)
         else:
-            return df
+            return kdf
 
     def __setitem__(self, key, value):
         from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series
 
         if (not isinstance(key, tuple)) or (len(key) != 2):
             raise NotImplementedError("Only accepts pairs of candidates")
@@ -198,11 +199,11 @@ class SparkDataFrameLocator(object):
         if not isinstance(cols_sel, str):
             raise ValueError("""only column names can be assigned""")
 
-        if isinstance(value, Column):
-            self.df[cols_sel] = value
+        if isinstance(value, Series):
+            self._kdf[cols_sel] = value
         elif isinstance(value, DataFrame) and len(value.columns) == 1:
             from pyspark.sql.functions import _spark_col
-            self.df[cols_sel] = _spark_col(value.columns[0])
+            self._kdf[cols_sel] = _spark_col(value.columns[0])
         elif isinstance(value, DataFrame) and len(value.columns) != 1:
             raise ValueError("Only a dataframe with one column can be assigned")
         else:
