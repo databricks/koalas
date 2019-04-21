@@ -8,7 +8,7 @@ Pandas is the de facto standard (single-node) dataframe implementation in Python
  - Be immediately productive with Spark, with no learning curve, if one is already familiar with Pandas.
  - Have a single codebase that works both with Pandas (tests, smaller datasets) and with Spark (distributed datasets).
 
-[![Build Status](https://travis-ci.com/databricks/spark-pandas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/spark-pandas)
+[![Build Status](https://travis-ci.com/databricks/koalas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/koalas)
 [![Latest release](https://img.shields.io/pypi/v/koalas.svg)](https://pypi.org/project/koalas/)
 
 
@@ -134,7 +134,7 @@ It generates HTMLs under `docs/_build/html` directory. Open `docs/_build/html/in
 
 Please create a GitHub issue if your favorite function is not yet supported.
 
-We also document all the functions that are not yet supported in the [missing directory](https://github.com/databricks/spark-pandas/tree/master/databricks/koalas/missing). In most cases, it is very easy to add new functions by simply wrapping the existing Pandas or Spark functions. Pull requests welcome!
+We also document all the functions that are not yet supported in the [missing directory](https://github.com/databricks/koalas/tree/master/databricks/koalas/missing). In most cases, it is very easy to add new functions by simply wrapping the existing Pandas or Spark functions. Pull requests welcome!
 
 ### Coding Conventions
 We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.

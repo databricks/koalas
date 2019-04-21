@@ -56,16 +56,16 @@ setup(
     install_requires=[
         'pandas>=0.23',
         'decorator',
-        'pyarrow>=0.10,<0.11',  # See https://github.com/databricks/spark-pandas/issues/26
+        'pyarrow>=0.10,<0.11',  # See https://github.com/databricks/koalas/issues/26
     ],
     maintainer="Databricks",
-    maintainer_email="pandas-on-spark@databricks.com",
+    maintainer_email="koalas@databricks.com",
     license='http://www.apache.org/licenses/LICENSE-2.0',
-    url="https://github.com/databricks/spark-pandas",
+    url="https://github.com/databricks/koalas",
     project_urls={
-        'Bug Tracker': 'https://github.com/databricks/spark-pandas/issues',
+        'Bug Tracker': 'https://github.com/databricks/koalas/issues',
         # 'Documentation': '',
-        'Source Code': 'https://github.com/databricks/spark-pandas'
+        'Source Code': 'https://github.com/databricks/koalas'
     },
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
