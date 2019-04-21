@@ -18,11 +18,11 @@ import unittest
 
 import numpy as np
 import pandas as pd
-from pyspark.sql import Column
 
 from databricks import koalas
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
+from databricks.koalas.series import Series
 
 
 class DataFrameTest(ReusedSQLTestCase, TestUtils):
@@ -93,8 +93,9 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         d = self.df
         full = self.full
 
-        self.assertTrue(isinstance(d.a, Column))
-        self.assertTrue(isinstance(d.a + 1, Column))
+        self.assertTrue(isinstance(d.a, Series))
+        self.assertTrue(isinstance(d.a + 1, Series))
+        self.assertTrue(isinstance(1 + d.a, Series))
         # TODO: self.assert_eq(d + 1, full + 1)
 
     def test_Index(self):
@@ -112,9 +113,9 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assertNotIn('foo', dir(d))
         self.assertRaises(AttributeError, lambda: d.foo)
 
-        df = koalas.from_pandas(pd.DataFrame({'a b c': [1, 2, 3]}))
+        df = koalas.DataFrame({'a b c': [1, 2, 3]})
         self.assertNotIn('a b c', dir(df))
-        df = koalas.from_pandas(pd.DataFrame({'a': [1, 2], 5: [1, 2]}))
+        df = koalas.DataFrame({'a': [1, 2], 5: [1, 2]})
         self.assertIn('a', dir(df))
         self.assertNotIn(5, dir(df))
 
@@ -122,7 +123,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         d = self.df
 
         self.assert_eq(d.columns, pd.Index(['a', 'b']))
-        # TODO: self.assert_eq(d[['b', 'a']].columns, pd.Index(['b', 'a']))
+        self.assert_eq(d[['b', 'a']].columns, pd.Index(['b', 'a']))
         self.assertEqual(d['a'].name, 'a')
         self.assertEqual((d['a'] + 1).name, '(a + 1)')  # TODO: 'a'
         self.assertEqual((d['a'] + d['b']).name, '(a + b)')  # TODO: None
@@ -162,7 +163,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
     def test_rename_series(self):
         s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-        ds = koalas.from_pandas(pd.DataFrame(s)).x
+        ds = koalas.from_pandas(s)
 
         s.name = 'renamed'
         ds.name = 'renamed'
@@ -179,7 +180,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
     def test_rename_series_method(self):
         # Series name
         s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-        ds = koalas.from_pandas(pd.DataFrame(s)).x
+        ds = koalas.from_pandas(s)
 
         self.assert_eq(ds.rename('y'), s.rename('y'))
         self.assertEqual(ds.name, 'x')  # no mutation
@@ -192,7 +193,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
         # Series index
         s = pd.Series(['a', 'b', 'c', 'd', 'e', 'f', 'g'], name='x')
-        ds = koalas.from_pandas(pd.DataFrame(s)).x
+        ds = koalas.from_pandas(s)
 
         # TODO: index
         # res = ds.rename(lambda x: x ** 2)
@@ -325,7 +326,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pd.to_datetime(df), koalas.to_datetime(ddf))
 
         s = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
-        ds = koalas.from_pandas(pd.DataFrame({'s': s}))['s']
+        ds = koalas.from_pandas(s)
 
         self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
                        koalas.to_datetime(ds, infer_datetime_format=True))

@@ -15,7 +15,7 @@
 #
 
 """
-A base classes to be monkey-patched to Column to behave similar to pandas Series.
+A wrapper class for Spark Column to behave similar to pandas Series.
 """
 from decorator import decorator, dispatch_on
 
@@ -33,9 +33,13 @@ from databricks.koalas.selection import SparkDataFrameLocator
 
 
 @decorator
-def _column_op(f, self, *args, **kwargs):
-    col = f(self._scol, *args, **kwargs)
-    return Series(col, self._kdf, self._metadata)
+def _column_op(f, self, *args):
+    assert all((not isinstance(arg, Series)) or (arg._kdf is self._kdf) for arg in args), \
+        "Cannot combine column argument because it comes from a different dataframe"
+
+    args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
+    scol = f(self._scol, *args)
+    return Series(scol, self._kdf)
 
 
 class Series(_Frame, _MissingPandasLikeSeries):
@@ -44,15 +48,15 @@ class Series(_Frame, _MissingPandasLikeSeries):
     @dispatch_on('data')
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False):
         s = pd.Series(data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
-        self.__init__from_pandas(s)
+        self._init__from_pandas(s)
 
     @__init__.register(pd.Series)
-    def __init__from_pandas(self, s, *args):
+    def _init_from_pandas(self, s, *args):
         kdf = DataFrame(pd.DataFrame(s))
-        self.__init__internal__(kdf, _col(kdf))
+        self._init_from_spark(kdf._sdf[kdf._metadata.column_fields[0]], kdf)
 
     @__init__.register(spark.Column)
-    def __init__internal__(self, scol, kdf, metadata=None, *args):
+    def _init_from_spark(self, scol, kdf, metadata=None, *args):
         self._scol = scol
         self._kdf = kdf
         self._pandas_metadata = metadata
@@ -143,10 +147,10 @@ class Series(_Frame, _MissingPandasLikeSeries):
         if kwargs.get('inplace', False):
             self._scol = scol
             self._pandas_schema = None
-            self._pandas_metadata = None
+            self._pandas_metadata = self._metadata.copy(column_fields=[index])
             return self
         else:
-            return Series(scol, self._kdf)
+            return Series(scol, self._kdf, self._metadata.copy(column_fields=[index]))
 
     @property
     def _metadata(self):
@@ -192,8 +196,12 @@ class Series(_Frame, _MissingPandasLikeSeries):
 
     def to_dataframe(self):
         kdf = self._kdf
-        sdf = kdf._sdf.select(kdf._metadata.index_fields + [self._scol])
-        metadata = kdf._metadata.copy(column_fields=[sdf.schema[-1].name])
+        if self._pandas_metadata is not None:
+            metadata = self._pandas_metadata
+        else:
+            metadata = kdf._metadata
+        sdf = kdf._sdf.select(metadata.index_fields + [self._scol])
+        metadata = metadata.copy(column_fields=[sdf.schema[-1].name])
         return DataFrame(sdf, metadata)
 
     def toPandas(self):
@@ -216,14 +224,12 @@ class Series(_Frame, _MissingPandasLikeSeries):
 
     @derived_from(pd.Series)
     def dropna(self, axis=0, inplace=False, **kwargs):
-        col = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
+        ks = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
-            anchor_wrap(col, self)
-            self._jc = col._jc
-            self._pandas_schema = None
-            self._pandas_metadata = None
+            self._kdf = ks._kdf
+            self._scol = ks._scol
         else:
-            return col
+            return ks
 
     def head(self, n=5):
         return _col(self.to_dataframe().head(n))
@@ -253,17 +259,17 @@ class Series(_Frame, _MissingPandasLikeSeries):
             sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
 
         index_name = 'index' if self.name != 'index' else 'level_0'
-        df = DataFrame(sdf)
-        df.columns = [index_name, self.name]
-        df._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
-        return _col(df)
+        kdf = DataFrame(sdf)
+        kdf.columns = [index_name, self.name]
+        kdf._pandas_metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
+        return _col(kdf)
 
     @derived_from(pd.Series, ua_args=['level'])
     def count(self):
         return self._reduce_for_stat_function(F.count)
 
     def _reduce_for_stat_function(self, sfun):
-        return _unpack_scalar(self._spark_ref_dataframe._spark_select(sfun(self)))
+        return _unpack_scalar(self._kdf._sdf.select(sfun(self._scol)))
 
     def __len__(self):
         return len(self.to_dataframe())
@@ -291,16 +297,16 @@ class Series(_Frame, _MissingPandasLikeSeries):
 
     def _pandas_orig_repr(self):
         # TODO: figure out how to reuse the original one.
-        return 'Column<%s>' % self._jc.toString().encode('utf8')
+        return 'Column<%s>' % self._scol._jc.toString().encode('utf8')
 
 
-def _unpack_scalar(df):
+def _unpack_scalar(sdf):
     """
     Takes a dataframe that is supposed to contain a single row with a single scalar value,
     and returns this value.
     """
-    l = df.head(2).collect()
-    assert len(l) == 1, (df, l)
+    l = sdf.head(2)
+    assert len(l) == 1, (sdf, l)
     row = l[0]
     l2 = list(row.asDict().values())
     assert len(l2) == 1, (row, l2)

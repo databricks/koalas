@@ -18,7 +18,7 @@
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
 import pandas as pd
-from pyspark.sql import Column, DataFrame, functions as F
+from pyspark.sql import functions as F
 
 from databricks.koalas.dask.utils import derived_from
 
@@ -78,16 +78,20 @@ class _Frame(object):
         return self.toPandas()
 
 
-def _spark_col_apply(col_or_df, sfun):
+def _spark_col_apply(kdf_or_ks, sfun):
     """
     Performs a function to all cells on a dataframe, the function being a known sql function.
     """
-    if isinstance(col_or_df, Column):
-        return sfun(col_or_df)
-    assert isinstance(col_or_df, DataFrame)
-    df = col_or_df
-    df = df._spark_select([sfun(df[col]).alias(col) for col in df.columns])
-    return df
+    from databricks.koalas.frame import DataFrame
+    from databricks.koalas.series import Series
+    if isinstance(kdf_or_ks, Series):
+        ks = kdf_or_ks
+        return Series(sfun(kdf_or_ks._scol), ks._kdf)
+    assert isinstance(kdf_or_ks, DataFrame)
+    kdf = kdf_or_ks
+    sdf = kdf._sdf
+    sdf = sdf.select([sfun(sdf[col]).alias(col) for col in kdf.columns])
+    return DataFrame(sdf)
 
 
 def anchor_wrap(df, col):

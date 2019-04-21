@@ -49,12 +49,12 @@ def patch_spark():
     #_inject(df.DataFrame, PandasLikeDataFrame)
     #_inject(df.Column, PandasLikeSeries)
     # Override in all cases these methods to prevent any dispatching.
-    #df.Column.__repr__ = PandasLikeSeries.__repr__
-    #df.Column.__str__ = PandasLikeSeries.__str__
+    # df.Column.__repr__ = PandasLikeSeries.__repr__
+    # df.Column.__str__ = PandasLikeSeries.__str__
     # Replace the creation of the operators in columns
-    _wrap_operators()
+    #_wrap_operators()
     # Wrap all the functions in the standard libraries
-    _wrap_functions()
+    #_wrap_functions()
 
 
 @decorator

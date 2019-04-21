@@ -20,7 +20,6 @@ Wrappers around spark that correspond to common pandas functions.
 import numpy as np
 import pandas as pd
 
-import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import *
@@ -29,8 +28,7 @@ from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame, default_session, _reduce_spark_multi
 from databricks.koalas.typing import Col, pandas_wrap
-from databricks.koalas.metadata import Metadata
-from databricks.koalas.series import _col
+from databricks.koalas.series import Series, _col
 
 
 def from_pandas(pdf):
@@ -42,8 +40,11 @@ def from_pandas(pdf):
     :param pdf: :class:`pandas.DataFrame`
     """
     if isinstance(pdf, pd.Series):
-        return _col(from_pandas(pd.DataFrame(pdf)))
-    return DataFrame(pdf)
+        return Series(pdf)
+    elif isinstance(pdf, pd.DataFrame):
+        return DataFrame(pdf)
+    else:
+        raise ValueError("Unknown data type: {}".format(type(pdf)))
 
 
 def read_csv(path, header='infer', names=None, usecols=None,
@@ -164,13 +165,21 @@ def read_parquet(path, columns=None):
 
 
 def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
-    if isinstance(arg, spark.Column):
-        return _to_datetime1(
-            arg,
+    if isinstance(arg, Series):
+        return Series(_to_datetime1(
+            arg._scol,
             errors=errors,
             format=format,
-            infer_datetime_format=infer_datetime_format)
-    if isinstance(arg, (dict, spark.DataFrame)):
+            infer_datetime_format=infer_datetime_format), arg._kdf)
+    if isinstance(arg, DataFrame):
+        return Series(_to_datetime2(
+            arg_year=arg['year']._scol,
+            arg_month=arg['month']._scol,
+            arg_day=arg['day']._scol,
+            errors=errors,
+            format=format,
+            infer_datetime_format=infer_datetime_format), arg)
+    if isinstance(arg, dict):
         return _to_datetime2(
             arg_year=arg['year'],
             arg_month=arg['month'],
