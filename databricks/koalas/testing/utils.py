@@ -22,7 +22,6 @@ import unittest
 from contextlib import contextmanager
 
 import pandas as pd
-from pyspark import sql as spark
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
 

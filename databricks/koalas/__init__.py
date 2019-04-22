@@ -35,22 +35,8 @@ def assert_pyspark_version():
 
 assert_pyspark_version()
 
-from databricks.koalas.utils import *
 from databricks.koalas.namespace import *
 from databricks.koalas.typing import Col, pandas_wrap
 
-__all__ = ['patch_spark', 'read_csv', 'Col', 'pandas_wrap']
-
-
-def _auto_patch():
-    import os
-    import logging
-    # Autopatching is on by default.
-    x = os.getenv("SPARK_PANDAS_AUTOPATCH", "true")
-    if x.lower() in ("true", "1", "enabled"):
-        logger = logging.getLogger('spark')
-        logger.info("Patching spark automatically. You can disable it by setting "
-                    "SPARK_PANDAS_AUTOPATCH=false in your environment")
-        patch_spark()
-
-_auto_patch()
+__all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas', 'get_dummies',
+           'Col', 'pandas_wrap']
