@@ -57,12 +57,13 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
     @__init__.register(spark.DataFrame)
     def _init_from_spark(self, sdf, metadata=None, *args):
         self._sdf = sdf
-        self._pandas_metadata = metadata
+        if metadata is None:
+            self._pandas_metadata = Metadata(column_fields=self._sdf.schema.fieldNames())
+        else:
+            self._pandas_metadata = metadata
 
     @property
     def _metadata(self):
-        if self._pandas_metadata is None:
-            self._pandas_metadata = Metadata(column_fields=self._sdf.schema.fieldNames())
         return self._pandas_metadata
 
     @property
