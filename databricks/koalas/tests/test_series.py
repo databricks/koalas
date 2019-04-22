@@ -22,7 +22,7 @@ from databricks import koalas
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
-class SeriesTest(ReusedSQLTestCase, TestUtils):
+class SeriesDatetimeTest(ReusedSQLTestCase, TestUtils):
     def test_substraction(self):
         date1 = pd.Series(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M'))
         date2 = pd.Series(pd.date_range('2013-3-11 21:45:00', periods=3, freq='W'))

@@ -69,6 +69,8 @@ class Series(_Frame, _MissingPandasLikeSeries):
     def __sub__(self, other):
         assert isinstance(other, Series), "subtraction should only be applied to koalas.Series."
 
+        # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
+        # behaviours. Pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
         if isinstance(self.spark_type, TimestampType):
             if not isinstance(other.spark_type, TimestampType):
                 raise TypeError('datetime subtraction can only be applied to datetime series.')
