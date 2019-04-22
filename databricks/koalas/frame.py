@@ -22,7 +22,7 @@ from functools import reduce
 
 import numpy as np
 import pandas as pd
-from pyspark import sql as spark
+from pyspark import sql as spark, _NoValue
 from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
@@ -271,6 +271,8 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
                 pdf.index.name = index_names[0]
         return pdf
 
+    to_pandas = toPandas
+
     @derived_from(pd.DataFrame)
     def assign(self, **kwargs):
         from databricks.koalas.series import Series
@@ -419,6 +421,62 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
     @property
     def shape(self):
         return len(self), len(self.columns)
+
+    @property
+    def schema(self):
+        return spark.DataFrame.schema.fget(self._sdf)
+
+    @derived_from(spark.DataFrame)
+    def select(self, *cols):
+        return DataFrame(spark.DataFrame.select(self._sdf, *cols))
+
+    @derived_from(spark.DataFrame)
+    def selectExpr(self, *cols):
+        return DataFrame(spark.DataFrame.selectExpr(self._sdf, *cols))
+
+    @derived_from(spark.DataFrame)
+    def describe(self, *cols):
+        return DataFrame(spark.DataFrame.describe(self._sdf, *cols))
+
+    @property
+    def dtypes(self):
+        return spark.DataFrame.dtypes.fget(self._sdf)
+
+    @derived_from(spark.DataFrame)
+    def explain(self, extended=False):
+        return spark.DataFrame.explain(self._sdf, extended)
+
+    @derived_from(spark.DataFrame)
+    def agg(self, *exprs):
+        return DataFrame(spark.DataFrame.agg(self._sdf, *exprs))
+
+    aggregate = agg
+
+    @derived_from(spark.DataFrame)
+    def fillna(self, value, subset=None):
+        return DataFrame(spark.DataFrame.fillna(self._sdf, value, subset))
+
+    @derived_from(spark.DataFrame)
+    def subtract(self, other):
+        return DataFrame(spark.DataFrame.subtract(self._sdf, other))
+
+    sub = subtract
+
+    @derived_from(spark.DataFrame)
+    def subtract(self, other):
+        return DataFrame(spark.DataFrame.subtract(self._sdf, other))
+
+    @derived_from(spark.DataFrame)
+    def replace(self, to_replace, value=_NoValue, subset=None):
+        return DataFrame(spark.DataFrame.replace(self._sdf, to_replace, value, subset))
+
+    @derived_from(spark.DataFrame)
+    def sample(self, withReplacement=None, fraction=None, seed=None):
+        return DataFrame(spark.DataFrame.sample(self._sdf, withReplacement, fraction, seed))
+
+    @derived_from(spark.DataFrame)
+    def join(self, other, on=None, how=None):
+        return DataFrame(spark.DataFrame.join(self, other, on, how))
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series

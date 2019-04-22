@@ -15,7 +15,7 @@
 #
 
 """
-A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
+A base class for Koalas DataFrame/Series to behave similar to pandas DataFrame/Series.
 """
 import pandas as pd
 from pyspark.sql import functions as F

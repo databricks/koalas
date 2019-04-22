@@ -206,6 +206,8 @@ class Series(_Frame, _MissingPandasLikeSeries):
     def toPandas(self):
         return _col(self.to_dataframe().toPandas())
 
+    to_pandas = toPandas
+
     @derived_from(pd.Series)
     def isnull(self):
         if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):

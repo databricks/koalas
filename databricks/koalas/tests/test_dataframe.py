@@ -38,7 +38,7 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
     def df(self):
         return koalas.from_pandas(self.full)
 
-    def test_Dataframe(self):
+    def test_dataframe(self):
         d = self.df
         full = self.full
 
@@ -350,6 +350,12 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
         with self.assertRaisesRegex(PandasNotImplementedError, "Series.*all.*not implemented"):
             d.a.all()
+
+    def test_spark_api(self):
+        kdf = self.df
+        pdf = self.full
+
+        self.assert_eq(list(kdf.select("a").to_pandas()), list(pdf[['a']]))
 
 
 if __name__ == "__main__":
