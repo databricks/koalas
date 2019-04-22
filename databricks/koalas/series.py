@@ -54,7 +54,7 @@ def _column_op(f, self, *args):
     # extract Spark Column. For other arguments, they are used as are.
     args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
     scol = f(self._scol, *args)
-    return Series(scol, self._kdf)
+    return Series(scol, self._kdf, self._index_info)
 
 
 class Series(_Frame, _MissingPandasLikeSeries):
@@ -74,22 +74,22 @@ class Series(_Frame, _MissingPandasLikeSeries):
         """
 
         kdf = DataFrame(pd.DataFrame(s))
-        self._init_from_spark(kdf._sdf[kdf._metadata.column_fields[0]], kdf)
+        self._init_from_spark(kdf._sdf[kdf._metadata.column_fields[0]],
+                              kdf, kdf._metadata.index_info)
 
     @__init__.register(spark.Column)
-    def _init_from_spark(self, scol, kdf, metadata=None, *args):
+    def _init_from_spark(self, scol, kdf, index_info, *args):
         """
         Creates Koalas Series from Spark Column.
 
         :param scol: Spark Column
         :param kdf: Koalas DataFrame that should have the `scol`.
-        :param metadata: Metadata that contains column names and index information of `kdf`.
+        :param index_info: index information of this Series.
         """
-
+        assert index_info is not None
         self._scol = scol
         self._kdf = kdf
-        self._pandas_metadata = metadata
-        self._pandas_schema = None
+        self._index_info = index_info
 
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
@@ -148,7 +148,7 @@ class Series(_Frame, _MissingPandasLikeSeries):
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
-        return Series(self._scol.cast(spark_type), self._kdf)
+        return Series(self._scol.cast(spark_type), self._kdf, self._index_info)
 
     def getField(self, name):
         if not isinstance(self.schema, StructType):
@@ -158,7 +158,7 @@ class Series(_Frame, _MissingPandasLikeSeries):
             if name not in fnames:
                 raise AttributeError(
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
-            return Series(self._scol.getField(name), self._kdf)
+            return Series(self._scol.getField(name), self._kdf, self._index_info)
 
     # TODO: automate the process here
     def alias(self, name):
@@ -166,9 +166,7 @@ class Series(_Frame, _MissingPandasLikeSeries):
 
     @property
     def schema(self):
-        if self._pandas_schema is None:
-            self._pandas_schema = self.to_dataframe()._sdf.schema
-        return self._pandas_schema
+        return self.to_dataframe()._sdf.schema
 
     @property
     def shape(self):
@@ -189,17 +187,13 @@ class Series(_Frame, _MissingPandasLikeSeries):
         scol = self._scol.alias(index)
         if kwargs.get('inplace', False):
             self._scol = scol
-            self._pandas_schema = None
-            self._pandas_metadata = self._metadata.copy(column_fields=[index])
             return self
         else:
-            return Series(scol, self._kdf, self._metadata.copy(column_fields=[index]))
+            return Series(scol, self._kdf, self._index_info)
 
     @property
     def _metadata(self):
-        if self._pandas_metadata is None:
-            self._pandas_metadata = self.to_dataframe()._metadata
-        return self._pandas_metadata
+        return self.to_dataframe()._metadata
 
     @property
     def index(self):
@@ -222,13 +216,13 @@ class Series(_Frame, _MissingPandasLikeSeries):
             kdf = self.to_dataframe()
         kdf = kdf.reset_index(level=level, drop=drop)
         if drop:
-            col = _col(kdf)
+            s = _col(kdf)
             if inplace:
                 self._kdf = kdf
-                self._scol = col._scol
-                self._pandas_metadata = None
+                self._scol = s._scol
+                self._index_info = s._index_info
             else:
-                return col
+                return s
         else:
             return kdf
 
@@ -237,13 +231,8 @@ class Series(_Frame, _MissingPandasLikeSeries):
         return SparkDataFrameLocator(self)
 
     def to_dataframe(self):
-        kdf = self._kdf
-        if self._pandas_metadata is not None:
-            metadata = self._pandas_metadata
-        else:
-            metadata = kdf._metadata
-        sdf = kdf._sdf.select(metadata.index_fields + [self._scol])
-        metadata = metadata.copy(column_fields=[sdf.schema[-1].name])
+        sdf = self._kdf._sdf.select([field for field, _ in self._index_info] + [self._scol])
+        metadata = Metadata(column_fields=[sdf.schema[-1].name], index_info=self._index_info)
         return DataFrame(sdf, metadata)
 
     def toPandas(self):
@@ -252,9 +241,9 @@ class Series(_Frame, _MissingPandasLikeSeries):
     @derived_from(pd.Series)
     def isnull(self):
         if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
-            return Series(self._scol.isNull() | F.isnan(self._scol), self._kdf)
+            return Series(self._scol.isNull() | F.isnan(self._scol), self._kdf, self._index_info)
         else:
-            return Series(self._scol.isNull(), self._kdf)
+            return Series(self._scol.isNull(), self._kdf, self._index_info)
 
     isna = isnull
 
@@ -303,7 +292,7 @@ class Series(_Frame, _MissingPandasLikeSeries):
         index_name = 'index' if self.name != 'index' else 'level_0'
         kdf = DataFrame(sdf)
         kdf.columns = [index_name, self.name]
-        kdf._pandas_metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
+        kdf._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
         return _col(kdf)
 
     @derived_from(pd.Series, ua_args=['level'])
@@ -317,7 +306,7 @@ class Series(_Frame, _MissingPandasLikeSeries):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        return Series(self._scol.__getitem__(key), self._kdf)
+        return Series(self._scol.__getitem__(key), self._kdf, self._index_info)
 
     def __getattr__(self, item):
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
@@ -335,7 +324,7 @@ class Series(_Frame, _MissingPandasLikeSeries):
             fields = []
         else:
             fields = [f for f in self.schema.fieldNames() if ' ' not in f]
-        return super(spark.Column, self).__dir__() + fields
+        return super(Series, self).__dir__() + fields
 
     def _pandas_orig_repr(self):
         # TODO: figure out how to reuse the original one.

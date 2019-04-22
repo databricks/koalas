@@ -58,13 +58,9 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
     def _init_from_spark(self, sdf, metadata=None, *args):
         self._sdf = sdf
         if metadata is None:
-            self._pandas_metadata = Metadata(column_fields=self._sdf.schema.fieldNames())
+            self._metadata = Metadata(column_fields=self._sdf.schema.fieldNames())
         else:
-            self._pandas_metadata = metadata
-
-    @property
-    def _metadata(self):
-        return self._pandas_metadata
+            self._metadata = metadata
 
     @property
     def _index_columns(self):
@@ -107,9 +103,7 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
         from databricks.koalas.series import Series
         if len(self._metadata.index_info) != 1:
             raise KeyError('Currently supported only when the DataFrame has a single index.')
-        index = Series(self._index_columns[0], self)
-        index._pandas_metadata = index._metadata.copy(index_info=[])
-        return index
+        return Series(self._index_columns[0], self, [])
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns. By default
@@ -143,10 +137,10 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
 
         metadata = self._metadata.copy(column_fields=columns, index_info=index_info)
         if inplace:
-            self._pandas_metadata = metadata
+            self._metadata = metadata
         else:
             kdf = self.copy()
-            kdf._pandas_metadata = metadata
+            kdf._metadata = metadata
             return kdf
 
     def reset_index(self, level=None, drop=False, inplace=False):
@@ -222,11 +216,11 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
             index_info=index_info)
         columns = [name for _, name in index_columns] + self._metadata.column_fields
         if inplace:
-            self._pandas_metadata = metadata
+            self._metadata = metadata
             self.columns = columns
         else:
             kdf = self.copy()
-            kdf._pandas_metadata = metadata
+            kdf._metadata = metadata
             kdf.columns = columns
             return kdf
 
@@ -360,7 +354,7 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
                                [self[old_name]._scol.alias(new_name)
                                 for (old_name, new_name) in zip(old_names, names)])
         self._sdf = sdf
-        self._pandas_metadata = self._metadata.copy(column_fields=names)
+        self._metadata = self._metadata.copy(column_fields=names)
 
     @derived_from(pd.DataFrame, ua_args=['axis', 'level', 'numeric_only'])
     def count(self):
@@ -426,7 +420,7 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
             raise KeyError("none key")
         if isinstance(key, string_types):
             try:
-                return Series(self._sdf.__getitem__(key), self)
+                return Series(self._sdf.__getitem__(key), self, self._metadata.index_info)
             except AnalysisException:
                 raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, string_types)):
@@ -440,7 +434,7 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
             return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
-            return Series(self._sdf.__getitem__(key), self)
+            return Series(self._sdf.__getitem__(key), self, self._metadata.index_info)
         if isinstance(key, Series):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
@@ -468,13 +462,13 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
             kdf = self.assign(**{key: value})
 
         self._sdf = kdf._sdf
-        self._pandas_metadata = kdf._metadata
+        self._metadata = kdf._metadata
 
     def __getattr__(self, key):
         from databricks.koalas.series import Series
         if key.startswith("__") or key.startswith("_pandas_") or key.startswith("_spark_"):
             raise AttributeError(key)
-        return Series(self._sdf.__getattr__(key), self)
+        return Series(self._sdf.__getattr__(key), self, self._metadata.index_info)
 
     def __iter__(self):
         return self.toPandas().__iter__()
