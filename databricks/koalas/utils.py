@@ -15,7 +15,7 @@
 #
 
 """
-Utilities to monkey patch PySpark used in databricks-koalas.
+Utilities to monkey patch PySpark used in Koalas.
 """
 from pyspark.sql import dataframe as df, column as col, functions as F
 from decorator import decorator
