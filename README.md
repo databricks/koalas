@@ -16,14 +16,20 @@ Pandas is the de facto standard (single-node) dataframe implementation in Python
 - [Dependencies](#dependencies)
 - [Get Started](#get-started)
 - [Documentation](#documentation)
-- [Project Status](#project-status)
 - [Development Guide](#development-guide)
   - [Environment Setup](#environment-setup)
   - [Running Tests](#running-tests)
   - [Building Documentation](#building-documentation)
-  - [Contributions](#contributions)
   - [Coding Conventions](#coding-conventions)
   - [Release Instructions](#release-instructions)
+- [FAQ](#faq)
+  - [What's the project's status?](#whats-the-projects-status)
+  - [Should I use PySpark's DataFrame API or Koalas?](#should-i-use-pysparks-dataframe-api-or-koalas)
+  - [How can I request support for a method?](#how-can-i-request-support-for-a-method)
+  - [How is Koalas different from Dask?](#how-is-koalas-different-from-dask)
+  - [How can I contribute to Koalas?](#how-can-i-contribute-to-koalas)
+  - [Why a project (vs putting this in Apache Spark itself)?](#why-a-project-vs-putting-this-in-apache-spark-itself)
+  - [How do I use this on Databricks?](#how-do-i-use-this-on-databricks)
 
 
 ## Dependencies
@@ -63,24 +69,6 @@ df['x2'] = df.x * df.x
 ## Documentation
 
 Coming soon. Generating API docs for this project is the highest priority item we are working on.
-
-
-## Project Status
-
-This project is currently in beta and is rapidly evolving.
-You should expect the following differences:
-
- - some functions may be missing (see the [Contributions](#Contributions) section)
-
- - some behaviour may be different, in particular in the treatment of nulls: Pandas uses
-   Not a Number (NaN) special constants to indicate missing values, while Spark has a
-   special flag on each value to indicate missing values. We would love to hear your use
-   case if you find differences.
-   
- - because Spark is lazy in nature, some operations like creating new columns only get 
-   performed when Spark needs to print or write the dataframe.
-
-
 
 ## Development Guide
 
@@ -126,13 +114,6 @@ cd docs && make clean html
 
 It generates HTMLs under `docs/_build/html` directory. Open `docs/_build/html/index.html` to check if documenation is built properly.
 
-
-### Contributions
-
-Please create a GitHub issue if your favorite function is not yet supported.
-
-We also document all the functions that are not yet supported in the [missing directory](https://github.com/databricks/koalas/tree/master/databricks/koalas/missing). In most cases, it is very easy to add new functions by simply wrapping the existing Pandas or Spark functions. Pull requests welcome!
-
 ### Coding Conventions
 We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
 
@@ -155,3 +136,70 @@ python3 -m pip install --user --upgrade twine
 python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl
 python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl
 ```
+
+
+## FAQ
+
+### What's the project's status?
+This project is currently in beta and is rapidly evolving.
+You should expect the following differences:
+
+ - some functions may be missing (see the [Contributions](#Contributions) section)
+
+ - some behaviour may be different, in particular in the treatment of nulls: Pandas uses
+   Not a Number (NaN) special constants to indicate missing values, while Spark has a
+   special flag on each value to indicate missing values. We would love to hear your use
+   case if you find differences.
+   
+ - because Spark is lazy in nature, some operations like creating new columns only get 
+   performed when Spark needs to print or write the dataframe.
+   
+### Should I use PySpark's DataFrame API or Koalas?
+
+If you are already familiar with pandas and want to leverage Spark for big data, we recommend
+using Koalas. If you are learning Spark from ground up, we recommend you start with PySpark's API.
+
+### How can I request support for a method?
+
+File a GitHub issue: https://github.com/databricks/koalas/issues
+
+Databricks customers are also welcomed to file a support ticket to request a new feature.
+
+### How is Koalas different from Dask?
+
+Different projects have different focuses. Spark is already deployed in virtually every
+organization, and often is the primary interface to the massive amount of data stored in data lakes.
+Koalas draws design inspirations from Dask, and aims to make the transition from pandas to Spark
+easy for data scientists.
+
+### How can I contribute to Koalas?
+
+Please create a GitHub issue if your favorite function is not yet supported.
+
+We also document all the functions that are not yet supported in the
+[missing directory](https://github.com/databricks/koalas/tree/master/databricks/koalas/missing).
+In most cases, it is very easy to add new functions by simply wrapping the existing pandas or
+Spark functions. Pull requests welcome!
+
+### Why a project (vs putting this in Apache Spark itself)?
+
+Two reasons:
+
+1. We want a venue in which we can rapidly iterate and make new releases. The overhead of making
+a release as a separate project is miniscule (in the order of minutes), whereas as part of Spark
+is large (in the order of days).
+
+2. Koalas takes a different approach that might contradict Spark's API design principles, and those
+principles cannot be changed lightly given the large user base of Spark. A new, separate project
+provides an opportunity for us to experiment with new design principles.
+
+### How do I use this on Databricks?
+
+Databricks Runtime for Machine Learning has the right versions of dependencies setup already, so
+you just need to install Koalas from pip when creating a cluster.
+
+For the regular Databricks Runtime, you will need to upgrade pandas and NumPy versions to the
+required list. 
+
+In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and
+Databricks Runtime for Machine Learning.
