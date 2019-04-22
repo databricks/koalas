@@ -58,13 +58,9 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
     def _init_from_spark(self, sdf, metadata=None, *args):
         self._sdf = sdf
         if metadata is None:
-            self._pandas_metadata = Metadata(column_fields=self._sdf.schema.fieldNames())
+            self._metadata = Metadata(column_fields=self._sdf.schema.fieldNames())
         else:
-            self._pandas_metadata = metadata
-
-    @property
-    def _metadata(self):
-        return self._pandas_metadata
+            self._metadata = metadata
 
     @property
     def _index_columns(self):
@@ -141,10 +137,10 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
 
         metadata = self._metadata.copy(column_fields=columns, index_info=index_info)
         if inplace:
-            self._pandas_metadata = metadata
+            self._metadata = metadata
         else:
             kdf = self.copy()
-            kdf._pandas_metadata = metadata
+            kdf._metadata = metadata
             return kdf
 
     def reset_index(self, level=None, drop=False, inplace=False):
@@ -220,11 +216,11 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
             index_info=index_info)
         columns = [name for _, name in index_columns] + self._metadata.column_fields
         if inplace:
-            self._pandas_metadata = metadata
+            self._metadata = metadata
             self.columns = columns
         else:
             kdf = self.copy()
-            kdf._pandas_metadata = metadata
+            kdf._metadata = metadata
             kdf.columns = columns
             return kdf
 
@@ -358,7 +354,7 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
                                [self[old_name]._scol.alias(new_name)
                                 for (old_name, new_name) in zip(old_names, names)])
         self._sdf = sdf
-        self._pandas_metadata = self._metadata.copy(column_fields=names)
+        self._metadata = self._metadata.copy(column_fields=names)
 
     @derived_from(pd.DataFrame, ua_args=['axis', 'level', 'numeric_only'])
     def count(self):
@@ -466,7 +462,7 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
             kdf = self.assign(**{key: value})
 
         self._sdf = kdf._sdf
-        self._pandas_metadata = kdf._metadata
+        self._metadata = kdf._metadata
 
     def __getattr__(self, key):
         from databricks.koalas.series import Series

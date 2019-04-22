@@ -172,7 +172,7 @@ class SparkDataFrameLocator(object):
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))
-        kdf._pandas_metadata = self._kdf._metadata.copy(
+        kdf._metadata = self._kdf._metadata.copy(
             column_fields=kdf._metadata.column_fields[-len(columns):])
         if cols_sel is not None and isinstance(cols_sel, spark.Column):
             from databricks.koalas.series import _col

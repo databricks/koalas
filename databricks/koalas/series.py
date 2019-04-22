@@ -292,7 +292,7 @@ class Series(_Frame, _MissingPandasLikeSeries):
         index_name = 'index' if self.name != 'index' else 'level_0'
         kdf = DataFrame(sdf)
         kdf.columns = [index_name, self.name]
-        kdf._pandas_metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
+        kdf._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
         return _col(kdf)
 
     @derived_from(pd.Series, ua_args=['level'])
