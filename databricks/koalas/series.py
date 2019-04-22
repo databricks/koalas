@@ -23,7 +23,7 @@ import pandas as pd
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import FloatType, DoubleType, StructType
+from pyspark.sql.types import FloatType, DoubleType, StructType, TimestampType
 
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame
@@ -94,7 +94,16 @@ class Series(_Frame, _MissingPandasLikeSeries):
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
     __add__ = _column_op(spark.Column.__add__)
-    __sub__ = _column_op(spark.Column.__sub__)
+
+    def __sub__(self, other):
+        # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
+        # behaviours. Pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
+        if isinstance(other, Series) and isinstance(self.spark_type, TimestampType):
+            if not isinstance(other.spark_type, TimestampType):
+                raise TypeError('datetime subtraction can only be applied to datetime series.')
+            return self.astype('int') - other.astype('int')
+        return _column_op(spark.Column.__sub__)(self, other)
+
     __mul__ = _column_op(spark.Column.__mul__)
     __div__ = _column_op(spark.Column.__div__)
     __truediv__ = _column_op(spark.Column.__truediv__)
@@ -128,6 +137,11 @@ class Series(_Frame, _MissingPandasLikeSeries):
     def dtype(self):
         from databricks.koalas.typing import as_python_type
         return as_python_type(self.schema.fields[-1].dataType)
+
+    @property
+    def spark_type(self):
+        """ Returns the data type as defined by Spark, as a Spark DataType object."""
+        return self.schema.fields[-1].dataType
 
     def astype(self, dtype):
         from databricks.koalas.typing import as_spark_type
