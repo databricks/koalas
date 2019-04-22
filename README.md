@@ -28,7 +28,7 @@ Pandas is the de facto standard (single-node) dataframe implementation in Python
   - [How can I request support for a method?](#how-can-i-request-support-for-a-method)
   - [How is Koalas different from Dask?](#how-is-koalas-different-from-dask)
   - [How can I contribute to Koalas?](#how-can-i-contribute-to-koalas)
-  - [Why a project (vs putting this in Apache Spark itself)?](#why-a-project-vs-putting-this-in-apache-spark-itself)
+  - [Why a new project (vs putting this in Apache Spark itself)?](#why-a-new-project-vs-putting-this-in-apache-spark-itself)
   - [How do I use this on Databricks?](#how-do-i-use-this-on-databricks)
 
 
@@ -181,7 +181,7 @@ We also document all the functions that are not yet supported in the
 In most cases, it is very easy to add new functions by simply wrapping the existing pandas or
 Spark functions. Pull requests welcome!
 
-### Why a project (vs putting this in Apache Spark itself)?
+### Why a new project (vs putting this in Apache Spark itself)?
 
 Two reasons:
 
