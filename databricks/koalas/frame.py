@@ -457,16 +457,6 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
         return DataFrame(spark.DataFrame.fillna(self._sdf, value, subset))
 
     @derived_from(spark.DataFrame)
-    def subtract(self, other):
-        return DataFrame(spark.DataFrame.subtract(self._sdf, other))
-
-    sub = subtract
-
-    @derived_from(spark.DataFrame)
-    def subtract(self, other):
-        return DataFrame(spark.DataFrame.subtract(self._sdf, other))
-
-    @derived_from(spark.DataFrame)
     def replace(self, to_replace, value=_NoValue, subset=None):
         return DataFrame(spark.DataFrame.replace(self._sdf, to_replace, value, subset))
 
