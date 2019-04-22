@@ -16,6 +16,7 @@
 
 import unittest
 
+import numpy as np
 import pandas as pd
 
 from databricks import koalas
@@ -23,16 +24,34 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
 class SeriesDatetimeTest(ReusedSQLTestCase, TestUtils):
-    def test_subtraction(self):
+
+    @property
+    def pdf1(self):
         date1 = pd.Series(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M'))
         date2 = pd.Series(pd.date_range('2013-3-11 21:45:00', periods=3, freq='W'))
+        return pd.DataFrame(dict(start_date=date1, end_date=date2))
 
-        pdf = pd.DataFrame(dict(start_date=date1, end_date=date2))
-
+    @unittest.skip
+    def test_subtraction(self):
+        pdf = self.pdf1
         kdf = koalas.from_pandas(pdf)
         kdf['diff_seconds'] = kdf['end_date'] - kdf['start_date'] - 1
 
         self.assertEqual(list(kdf['diff_seconds'].toPandas()), [35545499, 33644699, 31571099])
+
+    def test_div(self):
+        pdf = self.pdf1
+        kdf = koalas.from_pandas(pdf)
+        duration = np.timedelta64(1, 'D')
+
+        print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        print((kdf['end_date'] - kdf['start_date']))
+        print((kdf['end_date'] - kdf['start_date']) / duration)
+        print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+
+        self.assertEqual(
+            (kdf['end_date'] - kdf['start_date']) / duration,
+            (pdf['end_date'] - kdf['start_date']) / duration)
 
 
 if __name__ == "__main__":

@@ -19,11 +19,12 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 """
 from decorator import decorator, dispatch_on
 
+import numpy as np
 import pandas as pd
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import FloatType, DoubleType, StructType, TimestampType
+from pyspark.sql.types import FloatType, DoubleType, LongType, StructType, TimestampType
 
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame
@@ -101,11 +102,21 @@ class Series(_Frame, _MissingPandasLikeSeries):
         if isinstance(other, Series) and isinstance(self.spark_type, TimestampType):
             if not isinstance(other.spark_type, TimestampType):
                 raise TypeError('datetime subtraction can only be applied to datetime series.')
-            return self.astype('int') - other.astype('int')
-        return _column_op(spark.Column.__sub__)(self, other)
+            return self.astype('bigint') - other.astype('bigint')
+        else:
+            # Fallback to Spark's division
+            return _column_op(spark.Column.__sub__)(self, other)
+
+    def __div__(self, other):
+        if isinstance(self.spark_type, LongType) and isinstance(other, np.timedelta64):
+            # Convert timedelta64[ns] to number of seconds.
+            num_secs = other / np.timedelta64(1, 's')
+            return self / other
+        else:
+            # Fallback to Spark's division
+            return _column_op(spark.Column.__div__)(self, other)
 
     __mul__ = _column_op(spark.Column.__mul__)
-    __div__ = _column_op(spark.Column.__div__)
     __truediv__ = _column_op(spark.Column.__truediv__)
     __mod__ = _column_op(spark.Column.__mod__)
     __radd__ = _column_op(spark.Column.__radd__)
