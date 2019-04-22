@@ -170,7 +170,7 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
             arg._scol,
             errors=errors,
             format=format,
-            infer_datetime_format=infer_datetime_format), arg._kdf)
+            infer_datetime_format=infer_datetime_format), arg._kdf, arg._index_info)
     if isinstance(arg, DataFrame):
         return Series(_to_datetime2(
             arg_year=arg['year']._scol,
@@ -178,7 +178,7 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
             arg_day=arg['day']._scol,
             errors=errors,
             format=format,
-            infer_datetime_format=infer_datetime_format), arg)
+            infer_datetime_format=infer_datetime_format), arg, arg._metadata.index_info)
     if isinstance(arg, dict):
         return _to_datetime2(
             arg_year=arg['year'],

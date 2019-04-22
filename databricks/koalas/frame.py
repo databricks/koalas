@@ -107,9 +107,7 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
         from databricks.koalas.series import Series
         if len(self._metadata.index_info) != 1:
             raise KeyError('Currently supported only when the DataFrame has a single index.')
-        index = Series(self._index_columns[0], self)
-        index._pandas_metadata = index._metadata.copy(index_info=[])
-        return index
+        return Series(self._index_columns[0], self, [])
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns. By default
@@ -426,7 +424,7 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
             raise KeyError("none key")
         if isinstance(key, string_types):
             try:
-                return Series(self._sdf.__getitem__(key), self)
+                return Series(self._sdf.__getitem__(key), self, self._metadata.index_info)
             except AnalysisException:
                 raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, string_types)):
@@ -440,7 +438,7 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
             return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
-            return Series(self._sdf.__getitem__(key), self)
+            return Series(self._sdf.__getitem__(key), self, self._metadata.index_info)
         if isinstance(key, Series):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
@@ -474,7 +472,7 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
         from databricks.koalas.series import Series
         if key.startswith("__") or key.startswith("_pandas_") or key.startswith("_spark_"):
             raise AttributeError(key)
-        return Series(self._sdf.__getattr__(key), self)
+        return Series(self._sdf.__getattr__(key), self, self._metadata.index_info)
 
     def __iter__(self):
         return self.toPandas().__iter__()
