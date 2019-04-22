@@ -72,7 +72,7 @@ class Series(_Frame, _MissingPandasLikeSeries):
         if isinstance(other, Series) and isinstance(self.spark_type, TimestampType):
             if not isinstance(other.spark_type, TimestampType):
                 raise TypeError('datetime subtraction can only be applied to datetime series.')
-            return Series(self._scol.cast('int') - other._scol.cast('int'), self._kdf)
+            return self.astype('int') - other.astype('int')
         return _column_op(spark.Column.__sub__)(self, other)
 
     __mul__ = _column_op(spark.Column.__mul__)
