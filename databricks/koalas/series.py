@@ -20,6 +20,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 from decorator import decorator, dispatch_on
 
 import pandas as pd
+
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType, DoubleType, StructType
@@ -34,9 +35,23 @@ from databricks.koalas.selection import SparkDataFrameLocator
 
 @decorator
 def _column_op(f, self, *args):
+    """
+    A decorator that wraps APIs taking/returning Spark Column so that Koalas Series can be
+    supported too. If this decorator is used for the `f` function that takes Spark Column and
+    returns Spark Column, decorated `f` takes Koalas Series as well and returns Koalas
+    Series.
+
+    :param f: a function that takes Spark Column and returns Spark Column.
+    :param self: Koalas Series
+    :param args: arguments that the function `f` takes.
+    """
+
     assert all((not isinstance(arg, Series)) or (arg._kdf is self._kdf) for arg in args), \
         "Cannot combine column argument because it comes from a different dataframe"
 
+    # It is possible for the function `f` takes other arguments than Spark Column.
+    # To cover this case, explicitly check if the argument is Koalas Series and
+    # extract Spark Column. For other arguments, they are used as are.
     args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
     scol = f(self._scol, *args)
     return Series(scol, self._kdf)
@@ -48,15 +63,29 @@ class Series(_Frame, _MissingPandasLikeSeries):
     @dispatch_on('data')
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False):
         s = pd.Series(data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
-        self._init__from_pandas(s)
+        self._init_from_pandas(s)
 
     @__init__.register(pd.Series)
     def _init_from_pandas(self, s, *args):
+        """
+        Creates Koalas Series from Pandas Series.
+
+        :param s: Pandas Series
+        """
+
         kdf = DataFrame(pd.DataFrame(s))
         self._init_from_spark(kdf._sdf[kdf._metadata.column_fields[0]], kdf)
 
     @__init__.register(spark.Column)
     def _init_from_spark(self, scol, kdf, metadata=None, *args):
+        """
+        Creates Koalas Series from Spark Column.
+
+        :param scol: Spark Column
+        :param kdf: Koalas DataFrame that should have the `scol`.
+        :param metadata: Metadata that contains column names and index information of `kdf`.
+        """
+
         self._scol = scol
         self._kdf = kdf
         self._pandas_metadata = metadata
