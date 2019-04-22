@@ -42,19 +42,16 @@ pip install koalas
 
 After installing the package, you can import the package:
 ```py
-import databricks.koalas
+from databricks import koalas
 ```
 
-That's it. Now you have turned all the Spark Dataframes 
-that will be created from now on into API-compliant Pandas 
-dataframes.
-
-Example:
+Now you can turn a pandas DataFrame into a Spark DataFrame that is API-compliant with the former:
 ```py
 import pandas as pd
 pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
 
-df = spark.from_pandas(pdf)
+# Create a Spark DataFrame from pandas DataFrame
+df = koalas.from_pandas(pdf)
 
 # Rename the columns
 df.columns = ['x', 'y', 'z1']
