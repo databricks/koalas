@@ -27,9 +27,8 @@ from pyspark.sql.types import *
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import _reduce_spark_multi
+from databricks.koalas.session import SparkSessionPatches
 from databricks.koalas.typing import Col, pandas_wrap
-from databricks.koalas.metadata import Metadata
-from databricks.koalas.series import _col
 
 
 def default_session():
@@ -44,14 +43,10 @@ def from_pandas(pdf):
 
     :param pdf: :class:`pandas.DataFrame`
     """
-    if isinstance(pdf, pd.Series):
-        return _col(from_pandas(pd.DataFrame(pdf)))
-    metadata = Metadata.from_pandas(pdf)
-    reset_index = pdf.reset_index()
-    reset_index.columns = metadata.all_fields
-    df = default_session().createDataFrame(reset_index)
-    df._metadata = metadata
-    return df
+    return default_session().from_pandas(pdf)
+
+
+SparkSessionPatches.from_pandas.__doc__ = from_pandas.__doc__
 
 
 def read_csv(path, header='infer', names=None, usecols=None,
@@ -83,69 +78,12 @@ def read_csv(path, header='infer', names=None, usecols=None,
     :param comment: Indicates the line should not be parsed.
     :return: :class:`DataFrame`
     """
-    if mangle_dupe_cols is not True:
-        raise ValueError("mangle_dupe_cols can only be `True`: %s" % mangle_dupe_cols)
-    if parse_dates is not False:
-        raise ValueError("parse_dates can only be `False`: %s" % parse_dates)
+    return default_session().read_csv(path=path, header=header, names=names, usecols=usecols,
+                                      mangle_dupe_cols=mangle_dupe_cols, parse_dates=parse_dates,
+                                      comment=comment)
 
-    if usecols is not None and not callable(usecols):
-        usecols = list(usecols)
-    if usecols is None or callable(usecols) or len(usecols) > 0:
-        reader = default_session().read.option("inferSchema", "true")
 
-        if header == 'infer':
-            header = 0 if names is None else None
-        if header == 0:
-            reader.option("header", True)
-        elif header is None:
-            reader.option("header", False)
-        else:
-            raise ValueError("Unknown header argument {}".format(header))
-
-        if comment is not None:
-            if not isinstance(comment, string_types) or len(comment) != 1:
-                raise ValueError("Only length-1 comment characters supported")
-            reader.option("comment", comment)
-
-        df = reader.csv(path)
-
-        if header is None:
-            df = df._spark_selectExpr(*["`%s` as `%s`" % (field.name, i)
-                                        for i, field in enumerate(df.schema)])
-        if names is not None:
-            names = list(names)
-            if len(set(names)) != len(names):
-                raise ValueError('Found non-unique column index')
-            if len(names) != len(df.schema):
-                raise ValueError('Names do not match the number of columns: %d' % len(names))
-            df = df._spark_selectExpr(*["`%s` as `%s`" % (field.name, name)
-                                        for field, name in zip(df.schema, names)])
-
-        if usecols is not None:
-            if callable(usecols):
-                cols = [field.name for field in df.schema if usecols(field.name)]
-                missing = []
-            elif all(isinstance(col, int) for col in usecols):
-                cols = [field.name for i, field in enumerate(df.schema) if i in usecols]
-                missing = [col for col in usecols
-                           if col >= len(df.schema) or df.schema[col].name not in cols]
-            elif all(isinstance(col, string_types) for col in usecols):
-                cols = [field.name for field in df.schema if field.name in usecols]
-                missing = [col for col in usecols if col not in cols]
-            else:
-                raise ValueError("'usecols' must either be list-like of all strings, "
-                                 "all unicode, all integers or a callable.")
-            if len(missing) > 0:
-                raise ValueError('Usecols do not match columns, columns expected but not '
-                                 'found: %s' % missing)
-
-            if len(cols) > 0:
-                df = df._spark_select(cols)
-            else:
-                df = default_session().createDataFrame([], schema=StructType())
-    else:
-        df = default_session().createDataFrame([], schema=StructType())
-    return df
+SparkSessionPatches.read_csv.__doc__ = read_csv.__doc__
 
 
 def read_parquet(path, columns=None):
@@ -155,20 +93,10 @@ def read_parquet(path, columns=None):
     :param columns: If not None, only these columns will be read from the file.
     :return: :class:`DataFrame`
     """
-    if columns is not None:
-        columns = list(columns)
-    if columns is None or len(columns) > 0:
-        df = default_session().read.parquet(path)
-        if columns is not None:
-            fields = [field.name for field in df.schema]
-            cols = [col for col in columns if col in fields]
-            if len(cols) > 0:
-                df = df._spark_select(cols)
-            else:
-                df = default_session().createDataFrame([], schema=StructType())
-    else:
-        df = default_session().createDataFrame([], schema=StructType())
-    return df
+    return default_session().read_parquet(path=path, columns=columns)
+
+
+SparkSessionPatches.read_parquet.__doc__ = read_parquet.__doc__
 
 
 def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
