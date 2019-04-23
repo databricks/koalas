@@ -19,11 +19,12 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 """
 from decorator import decorator, dispatch_on
 
+import numpy as np
 import pandas as pd
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import FloatType, DoubleType, StructType, TimestampType
+from pyspark.sql.types import FloatType, DoubleType, LongType, StructType, TimestampType
 
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame
@@ -53,8 +54,18 @@ def _column_op(f, self, *args):
     # To cover this case, explicitly check if the argument is Koalas Series and
     # extract Spark Column. For other arguments, they are used as are.
     args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
+
     scol = f(self._scol, *args)
     return Series(scol, self._kdf, self._index_info)
+
+
+@decorator
+def _numpy_column_op(f, self, *args):
+    # PySpark does not support NumPy type out of the box. For now, we convert NumPy types
+    # into some primitive types understandable in PySpark.
+    args = [float(arg / np.timedelta64(1, 's')) if isinstance(arg, np.timedelta64)
+            else arg for arg in args]
+    return _column_op(f)(self, *args)
 
 
 class Series(_Frame, _MissingPandasLikeSeries):
@@ -101,18 +112,19 @@ class Series(_Frame, _MissingPandasLikeSeries):
         if isinstance(other, Series) and isinstance(self.spark_type, TimestampType):
             if not isinstance(other.spark_type, TimestampType):
                 raise TypeError('datetime subtraction can only be applied to datetime series.')
-            return self.astype('int') - other.astype('int')
-        return _column_op(spark.Column.__sub__)(self, other)
+            return self.astype('bigint') - other.astype('bigint')
+        else:
+            return _column_op(spark.Column.__sub__)(self, other)
 
     __mul__ = _column_op(spark.Column.__mul__)
-    __div__ = _column_op(spark.Column.__div__)
-    __truediv__ = _column_op(spark.Column.__truediv__)
+    __div__ = _numpy_column_op(spark.Column.__div__)
+    __truediv__ = _numpy_column_op(spark.Column.__truediv__)
     __mod__ = _column_op(spark.Column.__mod__)
     __radd__ = _column_op(spark.Column.__radd__)
     __rsub__ = _column_op(spark.Column.__rsub__)
     __rmul__ = _column_op(spark.Column.__rmul__)
-    __rdiv__ = _column_op(spark.Column.__rdiv__)
-    __rtruediv__ = _column_op(spark.Column.__rtruediv__)
+    __rdiv__ = _numpy_column_op(spark.Column.__rdiv__)
+    __rtruediv__ = _numpy_column_op(spark.Column.__rtruediv__)
     __rmod__ = _column_op(spark.Column.__rmod__)
     __pow__ = _column_op(spark.Column.__pow__)
     __rpow__ = _column_op(spark.Column.__rpow__)
