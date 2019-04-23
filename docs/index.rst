@@ -1,6 +1,6 @@
-.. Koalas' documentation master file, created by
+.. Koalas' documentation master file
 
-Welcome to Koalas' documentation!
+Koalas: pandas APIs on Apache Spark
 ============================================
 
 The Koalas project makes data scientists more productive when interacting with big data, by augmenting Apache Spark's Python DataFrame API to be compatible with Pandas'.
@@ -14,3 +14,4 @@ Pandas is the de facto standard (single-node) dataframe implementation in Python
     :maxdepth: 2
 
     api
+    quickstart
