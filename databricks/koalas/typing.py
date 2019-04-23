@@ -92,7 +92,7 @@ _base = {
     types.ByteType(): [np.int8, 'int8', 'byte'],
     types.ShortType(): [np.int16, 'int16', 'short'],
     types.IntegerType(): [int, 'int', np.int],
-    types.LongType(): [np.int64, 'int64', 'long'],
+    types.LongType(): [np.int64, 'int64', 'long', 'bigint'],
     types.FloatType(): [float, 'float', np.float],
     types.DoubleType(): [np.float64, 'float64', 'double'],
     types.TimestampType(): [np.datetime64],
