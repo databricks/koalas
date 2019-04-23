@@ -364,9 +364,9 @@ def _unpack_scalar(sdf):
     Takes a dataframe that is supposed to contain a single row with a single scalar value,
     and returns this value.
     """
-    ret = sdf.head(1)
-    assert len(ret) == 1, (sdf, ret)
-    row = ret[0]
+    l = sdf.head(2)
+    assert len(l) == 1, (sdf, l)
+    row = l[0]
     l2 = list(row.asDict().values())
     assert len(l2) == 1, (row, l2)
     return l2[0]
