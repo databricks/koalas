@@ -671,6 +671,41 @@ class DataFrame(_Frame):
         else:
             raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
 
+    @derived_from(pd.DataFrame)
+    def fillna(self, value=None, axis=None, inplace=False):
+        """Fill NA/NaN values.
+
+        :param value: scalar, dict, Series
+                    Value to use to fill holes. alternately a dict/Series of values
+                    specifying which value to use for each column.
+                    DataFrame is not supported.
+        :param axis: {0 or `index`}
+                    1 and `columns` are not supported.
+        :param inplace: boolean, default False
+                    Fill in place (do not create a new object)
+        :return: :class:`DataFrame`
+        """
+
+        if axis is None:
+            axis = 0
+        if value is not None:
+            if axis == 0 or axis == "index":
+                if isinstance(value, (float, int, str, bool, dict)):
+                    sdf = self._sdf.fillna(value)
+                if isinstance(value, pd.Series):
+                    sdf = self._sdf.fillna(value.to_dict())
+                elif isinstance(value, pd.DataFrame):
+                    raise NotImplementedError("Dataframe value is not supported")
+            else:
+                raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
+        else:
+            raise ValueError('Must specify value')
+
+        if inplace:
+            self._sdf = sdf
+        else:
+            return DataFrame(sdf, self._metadata.copy())
+
     def head(self, n=5):
         """
         Return the first `n` rows.
