@@ -33,7 +33,7 @@ Now you can turn a pandas DataFrame into a Spark DataFrame that is API-compliant
     # Do some operations in place:
     df['x2'] = df.x * df.x
 
-You can also create Koakas DataFrame directly from regular Python data like Pandas:
+You can also create Koalas DataFrame directly from regular Python data like Pandas:
 
 .. code-block:: python
 
