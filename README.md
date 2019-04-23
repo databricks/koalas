@@ -185,9 +185,9 @@ Spark functions. Pull requests welcome!
 
 Two reasons:
 
-1. We want a venue in which we can rapidly iterate and make new releases. The overhead of making
-a release as a separate project is miniscule (in the order of minutes), whereas as part of Spark
-is large (in the order of days).
+1. We want a venue in which we can rapidly iterate and make new releases. The overhead of making a
+release as a separate project is minuscule (in the order of minutes). A release on Spark takes a
+lot longer (in the order of days)
 
 2. Koalas takes a different approach that might contradict Spark's API design principles, and those
 principles cannot be changed lightly given the large user base of Spark. A new, separate project
