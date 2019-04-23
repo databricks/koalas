@@ -26,8 +26,6 @@ import inspect
 import pandas as pd
 
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
-from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.series import Series
 
 
@@ -35,7 +33,7 @@ INDENT_LEN = 4
 LINE_LEN_LIMIT = 100
 
 
-def inspect_missing_functions(original_type, target_type, missing_type):
+def inspect_missing_functions(original_type, target_type):
     """
     Find functions which exist in original_type but not in target_type,
     or the signature is modified.
@@ -47,8 +45,6 @@ def inspect_missing_functions(original_type, target_type, missing_type):
     missing = []
     modified = []
 
-    already_in_missing = set([(name, inspect.signature(func)) for name, func
-                              in inspect.getmembers(missing_type, inspect.isfunction)])
     for name, func in inspect.getmembers(original_type, inspect.isfunction):
         # Skip the private attributes
         if name.startswith('_'):
@@ -60,9 +56,7 @@ def inspect_missing_functions(original_type, target_type, missing_type):
             f = getattr(target_type, name)
             if inspect.isfunction(f):
                 target_signature = inspect.signature(f)
-                if (name, target_signature) in already_in_missing:
-                    missing.append((name, original_signature))
-                elif str(original_signature) != str(target_signature):
+                if str(original_signature) != str(target_signature):
                     modified.append((name, original_signature, target_signature))
                 continue
 
@@ -222,10 +216,9 @@ def make_modified_function_def(original_type, name, original, target):
 
 
 def _main():
-    for original_type, target_type, missing_type in \
-            [(pd.DataFrame, DataFrame, _MissingPandasLikeDataFrame),
-             (pd.Series, Series, _MissingPandasLikeSeries)]:
-        missing, modified = inspect_missing_functions(original_type, target_type, missing_type)
+    for original_type, target_type in [(pd.DataFrame, DataFrame),
+                                       (pd.Series, Series)]:
+        missing, modified = inspect_missing_functions(original_type, target_type)
 
         print('MISSING functions for {}'.format(original_type.__name__))
         for name, signature in missing:

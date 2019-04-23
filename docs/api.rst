@@ -1,9 +1,12 @@
 .. Koalas' documentation master file, created by
 
-Welcome to Koalas' documentation!
+Koalas: pandas APIs on Apache Spark
 ============================================
 
 .. toctree::
     :maxdepth: 2
 
-    api
+    io
+    general_functions
+    series
+    frame

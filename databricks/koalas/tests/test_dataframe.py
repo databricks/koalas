@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import inspect
 import unittest
 
 import numpy as np
@@ -22,6 +23,8 @@ import pandas as pd
 from databricks import koalas
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
+from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
+from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.series import Series
 
 
@@ -345,11 +348,17 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
         d = self.df
 
-        with self.assertRaisesRegex(PandasNotImplementedError, "DataFrame.*all.*not implemented"):
-            d.all()
+        missing_functions = inspect.getmembers(_MissingPandasLikeDataFrame, inspect.isfunction)
+        for name, _ in missing_functions:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "DataFrame.*{}.*not implemented".format(name)):
+                getattr(d, name)()
 
-        with self.assertRaisesRegex(PandasNotImplementedError, "Series.*all.*not implemented"):
-            d.a.all()
+        missing_functions = inspect.getmembers(_MissingPandasLikeSeries, inspect.isfunction)
+        for name, _ in missing_functions:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "Series.*{}.*not implemented".format(name)):
+                getattr(d.a, name)()
 
 
 if __name__ == "__main__":

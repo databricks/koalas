@@ -20,7 +20,6 @@ Wrappers around spark that correspond to common pandas functions.
 import numpy as np
 import pandas as pd
 
-from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import *
 
@@ -28,7 +27,7 @@ from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame, default_session, _reduce_spark_multi
 from databricks.koalas.typing import Col, pandas_wrap
-from databricks.koalas.series import Series, _col
+from databricks.koalas.series import Series
 
 
 def from_pandas(pdf):
