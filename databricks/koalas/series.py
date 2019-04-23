@@ -18,6 +18,7 @@
 A wrapper class for Spark Column to behave similar to pandas Series.
 """
 from decorator import decorator, dispatch_on
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -71,7 +72,7 @@ def _numpy_column_op(f, self, *args):
     return _column_op(f)(self, *new_args)
 
 
-class Series(_Frame, _MissingPandasLikeSeries):
+class Series(_Frame):
 
     @derived_from(pd.Series)
     @dispatch_on('data')
@@ -326,6 +327,8 @@ class Series(_Frame, _MissingPandasLikeSeries):
     def __getattr__(self, item):
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
             raise AttributeError(item)
+        if hasattr(_MissingPandasLikeSeries, item):
+            return partial(getattr(_MissingPandasLikeSeries, item), self)
         return self.getField(item)
 
     def __str__(self):
