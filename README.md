@@ -36,6 +36,7 @@ pandas is the de facto standard (single-node) dataframe implementation in Python
 
 ## Dependencies
 
+ - [cmake](https://cmake.org/) for building pyarrow
  - Spark 2.4. Some older versions of Spark may work too but they are not officially supported.
  - A recent version of pandas. It is officially developed against 0.23+ but some other versions may work too.
  - Python 3.5+ if you want to use type hints in UDFs. Work is ongoing to also support Python 2.
@@ -47,6 +48,8 @@ Koalas is available at the Python package index:
 ```bash
 pip install koalas
 ```
+
+If this fails to install the pyarrow dependency, you may want to try installing with Python 3.6.x, as `pip install arrow` does not work out of the box for 3.7 https://github.com/apache/arrow/issues/1125.
 
 After installing the package, you can import the package:
 ```py
