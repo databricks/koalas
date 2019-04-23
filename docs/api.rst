@@ -1,6 +1,4 @@
-.. Koalas' documentation master file, created by
-
-Koalas: pandas APIs on Apache Spark
+API References
 ============================================
 
 .. toctree::

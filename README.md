@@ -78,6 +78,7 @@ We recommend setting up a Conda environment for development:
 ```bash
 conda create --name koalas-dev-env python=3.6
 conda activate koalas-dev-env
+conda install -c conda-forge pyspark=2.4
 conda install -c conda-forge --yes --file requirements-dev.txt
 pip install -e .  # installs koalas from current checkout
 ```
