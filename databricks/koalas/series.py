@@ -163,7 +163,10 @@ class Series(_Frame):
     @property
     def dtype(self):
         """Return the dtype object of the underlying data."""
-        return to_arrow_type(self.schema.fields[-1].dataType).to_pandas_dtype()
+        if type(self.spark_type) == TimestampType:
+            return np.dtype('datetime64[ns]')
+        else:
+            return np.dtype(to_arrow_type(self.spark_type).to_pandas_dtype())
 
     @property
     def spark_type(self):

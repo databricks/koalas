@@ -369,9 +369,8 @@ class DataFrame(_Frame):
 
         :return: :class:`pd.Series` The data type of each column.
         """
-        return pd.Series([to_arrow_type(self._sdf.schema[col].dataType).to_pandas_dtype()
-                          for col in self.columns],
-                         index=list(self.columns))
+        return pd.Series([self[col].dtype for col in self._metadata.column_fields],
+                         index=self._metadata.column_fields)
 
     @derived_from(pd.DataFrame, ua_args=['axis', 'level', 'numeric_only'])
     def count(self):
