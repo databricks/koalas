@@ -62,9 +62,13 @@ def _column_op(f, self, *args):
 def _numpy_column_op(f, self, *args):
     # PySpark does not support NumPy type out of the box. For now, we convert NumPy types
     # into some primitive types understandable in PySpark.
-    args = [float(arg / np.timedelta64(1, 's')) if isinstance(arg, np.timedelta64)
-            else arg for arg in args]
-    return _column_op(f)(self, *args)
+    new_args = []
+    for arg in args:
+        if isinstance(self.spark_type, LongType) and isinstance(arg, np.timedelta64):
+            new_args.append(float(arg / np.timedelta64(1, 's')))
+        else:
+            new_args.append(arg)
+    return _column_op(f)(self, *new_args)
 
 
 class Series(_Frame, _MissingPandasLikeSeries):
