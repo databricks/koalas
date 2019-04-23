@@ -41,12 +41,15 @@ A few categories of functions are not considered for now to be part of the API, 
 *Functions that have an unexpected performance impact* 
 These functions (and the caller of theses functions) assume that the data is represented in a compact format (numpy in the case of pandas).
 Because these functions would force the full collection of the data and because there is a quick workaround, it is recommended that 
-they are not included.
+they are not included. 
 
-The workaround is to force the materialization of the pandas DataFrame, either by calling `.to_pandas()` or `.to_dense()`.
+The workaround is to force the materialization of the pandas DataFrame, either by calling:
+ - `.to_pandas()` (koalas only)
+ - `.to_numpy()` (works with both pandas and koalas)
+
 Here is a list of such functions:
  - DataFrame.values
- - `DataFrame.__iter__` and the array protocol
+ - `DataFrame.__iter__` and the array protocol `__array__`
 
 Other frameworks like Dask or Molin have a low-level block representation of a multidimensional array that Spark lacks. Until such representation is available, these functions should not be considered.
 
