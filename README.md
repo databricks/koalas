@@ -28,7 +28,7 @@ pandas is the de facto standard (single-node) dataframe implementation in Python
   - [How can I request support for a method?](#how-can-i-request-support-for-a-method)
   - [How is Koalas different from Dask?](#how-is-koalas-different-from-dask)
   - [How can I contribute to Koalas?](#how-can-i-contribute-to-koalas)
-  - [Why a new project (vs putting this in Apache Spark itself)?](#why-a-new-project-vs-putting-this-in-apache-spark-itself)
+  - [Why a new project (instead of putting this in Apache Spark itself)?](#why-a-new-project-instead-of-putting-this-in-apache-spark-itself)
   - [How do I use this on Databricks?](#how-do-i-use-this-on-databricks)
 
 
@@ -170,19 +170,23 @@ Databricks customers are also welcome to file a support ticket to request a new 
 
 Different projects have different focuses. Spark is already deployed in virtually every
 organization, and often is the primary interface to the massive amount of data stored in data lakes.
-Koalas draws design inspirations from Dask, and aims to make the transition from pandas to Spark
-easy for data scientists.
+Koalas was inspired by Dask, and aims to make the transition from pandas to Spark easy for data
+scientists.
 
 ### How can I contribute to Koalas?
 
 Please create a GitHub issue if your favorite function is not yet supported.
+
+Make sure the name also reflects precisely which function you want to implement, such as
+`DataFrame.fillna` or `Series.dropna`. If an open issue already exists and you want do add
+missing parameters, consider contributing to that issue instead.
 
 We also document all the functions that are not yet supported in the
 [missing directory](https://github.com/databricks/koalas/tree/master/databricks/koalas/missing).
 In most cases, it is very easy to add new functions by simply wrapping the existing pandas or
 Spark functions. Pull requests welcome!
 
-### Why a new project (vs putting this in Apache Spark itself)?
+### Why a new project (instead of putting this in Apache Spark itself)?
 
 Two reasons:
 
