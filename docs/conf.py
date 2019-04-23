@@ -60,6 +60,7 @@ numpydoc_show_class_members = False
 # -- Options for auto output -------------------------------------------------
 
 autoclass_content = 'both'
+autosummary_generate = True
 
 
 # -- Options for HTML output -------------------------------------------------
