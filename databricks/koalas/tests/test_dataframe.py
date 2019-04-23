@@ -345,6 +345,51 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(ddf[['B', 'C']].abs(), df[['B', 'C']].abs())
         # self.assert_eq(ddf.select('A', 'B').abs(), df[['A', 'B']].abs())
 
+    def test_corr(self):
+        # DataFrame
+        df = pd.util.testing.makeMissingDataframe(0.3, 42)
+        ddf = koalas.from_pandas(df)
+
+        res = ddf.corr()
+        # TODO: res3 = ddf.corr(min_periods=10)
+        sol = df.corr()
+        # TODO: sol2 = df.corr(min_periods=10)
+        self.assert_eq(res, sol)
+        # TODO: self.assert_eq(res3, sol2)
+        assert res._name == ddf.corr()._name
+        # TODO: assert res._name != res3._name
+
+        self.assertRaises(NotImplementedError, lambda: ddf.corr(method='spearman'))
+
+        # Series
+        a = df.A
+        b = df.B
+        da = koalas.from_pandas(a)
+        db = koalas.from_pandas(b)
+
+        res = da.corr(db)
+        # TODO: res3 = da.corr(db, min_periods=10)
+        sol = da.corr(db)
+        # TODO: sol2 = da.corr(db, min_periods=10)
+        self.assert_eq(res, sol)
+        # TODO: self.assert_eq(res3, sol2)
+        assert res._name == da.corr(db)._name
+        # TODO: assert res._name != res3._name
+
+        self.assertRaises(NotImplementedError, lambda: da.corr(db, method='spearman'))
+        self.assertRaises(TypeError, lambda: da.corr(ddf))
+
+    def test_cov_corr_meta(self):
+        df = pd.DataFrame({'a': np.array([1, 2, 3]),
+                           'b': np.array([1.0, 2.0, 3.0], dtype='f4'),
+                           'c': np.array([1.0, 2.0, 3.0])},
+                          index=pd.Index([1, 2, 3], name='myindex'))
+        ddf = koalas.from_pandas(df)
+        self.assert_eq(ddf.corr(), df.corr())
+        # self.assert_eq(ddf.cov(), df.cov())
+        # assert ddf.a.cov(ddf.b)._meta.dtype == 'f8'
+        assert ddf.a.corr(ddf.b)._meta.dtype == 'f8'
+
     def test_missing(self):
         d = self.df
 

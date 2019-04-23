@@ -62,6 +62,7 @@ Computations / Descriptive Stats
    :toctree: api/
 
    DataFrame.abs
+   DataFrame.corr
    DataFrame.count
    DataFrame.kurt
    DataFrame.kurtosis

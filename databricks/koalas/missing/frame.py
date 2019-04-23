@@ -51,7 +51,6 @@ class _MissingPandasLikeDataFrame(object):
     combine_first = unsupported_function('combine_first')
     compound = unsupported_function('compound')
     convert_objects = unsupported_function('convert_objects')
-    corr = unsupported_function('corr')
     corrwith = unsupported_function('corrwith')
     cov = unsupported_function('cov')
     cummax = unsupported_function('cummax')

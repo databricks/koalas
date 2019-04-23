@@ -321,6 +321,10 @@ class Series(_Frame):
         kdf._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
         return _col(kdf)
 
+    @derived_from(pd.Series, ua_args=['min_periods'])
+    def corr(self, other, method='pearson'):
+        return 0
+
     @derived_from(pd.Series, ua_args=['level'])
     def count(self):
         return self._reduce_for_stat_function(F.count)
