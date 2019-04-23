@@ -397,6 +397,7 @@ class DataFrame(_Frame):
 
     @property
     def columns(self):
+        """The column labels of the DataFrame."""
         return pd.Index(self._metadata.column_fields)
 
     @columns.setter
@@ -468,6 +469,20 @@ class DataFrame(_Frame):
 
     @property
     def shape(self):
+        """
+        Return a tuple representing the dimensionality of the DataFrame.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
+        >>> df.shape
+        (2, 2)
+
+        >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4],
+        ...                    'col3': [5, 6]})
+        >>> df.shape
+        (2, 3)
+        """
         return len(self), len(self.columns)
 
     def _pd_getitem(self, key):
