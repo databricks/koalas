@@ -55,6 +55,7 @@ pygments_style = 'sphinx'
 # The master toctree document.
 master_doc = 'index'
 
+numpydoc_show_class_members = False
 
 # -- Options for auto output -------------------------------------------------
 
