@@ -4,6 +4,6 @@ pandas>=0.23
 pyarrow>=0.10,<0.11
 decorator
 sphinx==2.0.1
-nbsphinx=0.4.2
-numpydoc=0.8.0
+nbsphinx==0.4.2
+numpydoc==0.8.0
 
