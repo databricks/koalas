@@ -27,6 +27,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
+from databricks.koalas.utils import default_session
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.generic import _Frame, max_display_count
@@ -35,11 +36,14 @@ from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.selection import SparkDataFrameLocator
 
 
-def default_session():
-    return spark.SparkSession.builder.getOrCreate()
-
-
 class DataFrame(_Frame):
+    """
+    Koala DataFrame that corresponds to Pandas DataFrame logically. This holds Spark DataFrame
+    internally.
+
+    :ivar _sdf: Spark Column instance
+    :ivar _metadata: Metadata related to column names and index information.
+    """
 
     @derived_from(pd.DataFrame)
     @dispatch_on('data')

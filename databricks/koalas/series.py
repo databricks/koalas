@@ -65,6 +65,7 @@ def _numpy_column_op(f, self, *args):
     # into some primitive types understandable in PySpark.
     new_args = []
     for arg in args:
+        # TODO: This is a quick hack to support NumPy type. We should revisit this.
         if isinstance(self.spark_type, LongType) and isinstance(arg, np.timedelta64):
             new_args.append(float(arg / np.timedelta64(1, 's')))
         else:
@@ -73,6 +74,15 @@ def _numpy_column_op(f, self, *args):
 
 
 class Series(_Frame):
+    """
+    Koala Series that corresponds to Pandas Series logically. This holds Spark Column
+    internally.
+
+    :ivar _scol: Spark Column instance
+    :ivar _kdf: Parent's Koalas DataFrame
+    :ivar _index_info: Each pair holds the index field name which exists in Spark fields,
+      and the index name.
+    """
 
     @derived_from(pd.Series)
     @dispatch_on('data')
@@ -112,7 +122,7 @@ class Series(_Frame):
 
     def __sub__(self, other):
         # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
-        # behaviours. Pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
+        # behaviors. Pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
         if isinstance(other, Series) and isinstance(self.spark_type, TimestampType):
             if not isinstance(other.spark_type, TimestampType):
                 raise TypeError('datetime subtraction can only be applied to datetime series.')
@@ -354,9 +364,9 @@ def _unpack_scalar(sdf):
     Takes a dataframe that is supposed to contain a single row with a single scalar value,
     and returns this value.
     """
-    l = sdf.head(2)
-    assert len(l) == 1, (sdf, l)
-    row = l[0]
+    ret = sdf.head(1)
+    assert len(ret) == 1, (sdf, ret)
+    row = ret[0]
     l2 = list(row.asDict().values())
     assert len(l2) == 1, (row, l2)
     return l2[0]

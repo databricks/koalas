@@ -25,7 +25,8 @@ from pyspark.sql.types import *
 
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
-from databricks.koalas.frame import DataFrame, default_session, _reduce_spark_multi
+from databricks.koalas.utils import default_session
+from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.typing import Col, pandas_wrap
 from databricks.koalas.series import Series
 
