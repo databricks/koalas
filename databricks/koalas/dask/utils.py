@@ -122,10 +122,15 @@ def _skip_doctest(line):
         return line
 
 
+def _pandas_to_koalas_in_doctest(line):
+    return line.replace("pd", "koalas")
+
+
 def skip_doctest(doc):
     if doc is None:
         return ''
-    return '\n'.join([_skip_doctest(line) for line in doc.split('\n')])
+    return '\n'.join(
+        [_pandas_to_koalas_in_doctest(_skip_doctest(line)) for line in doc.split('\n')])
 
 
 def extra_titles(doc):

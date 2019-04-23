@@ -18,7 +18,7 @@
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
 from decorator import dispatch_on
-from functools import reduce
+from functools import partial, reduce
 
 import numpy as np
 import pandas as pd
@@ -39,7 +39,7 @@ def default_session():
     return spark.SparkSession.builder.getOrCreate()
 
 
-class DataFrame(_Frame, _MissingPandasLikeDataFrame):
+class DataFrame(_Frame):
 
     @derived_from(pd.DataFrame)
     @dispatch_on('data')
@@ -468,6 +468,8 @@ class DataFrame(_Frame, _MissingPandasLikeDataFrame):
         from databricks.koalas.series import Series
         if key.startswith("__") or key.startswith("_pandas_") or key.startswith("_spark_"):
             raise AttributeError(key)
+        if hasattr(_MissingPandasLikeDataFrame, key):
+            return partial(getattr(_MissingPandasLikeDataFrame, key), self)
         return Series(self._sdf.__getattr__(key), self, self._metadata.index_info)
 
     def __iter__(self):
