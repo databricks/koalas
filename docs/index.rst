@@ -1,10 +1,9 @@
 .. Koalas' documentation master file, created by
 
-Koalas: pandas APIs on Apache Spark
+Welcome to Koalas' documentation!
 ============================================
 
 .. toctree::
-    :hidden:
-    :maxdepth: 3
+    :maxdepth: 2
 
     api

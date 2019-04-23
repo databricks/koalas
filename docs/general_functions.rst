@@ -1,0 +1,20 @@
+.. _api.general_functions:
+
+=================
+General functions
+=================
+.. currentmodule:: databricks.koalas
+
+Data manipulations
+~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   get_dummies
+
+Top-level dealing with datetimelike
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   to_datetime
