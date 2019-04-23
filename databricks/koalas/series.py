@@ -25,7 +25,8 @@ import pandas as pd
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import FloatType, DoubleType, LongType, StructType, TimestampType
+from pyspark.sql.types import FloatType, DoubleType, LongType, StructType, TimestampType, \
+    to_arrow_type
 
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame
@@ -161,8 +162,8 @@ class Series(_Frame):
 
     @property
     def dtype(self):
-        from databricks.koalas.typing import as_python_type
-        return as_python_type(self.schema.fields[-1].dataType)
+        """Return the dtype object of the underlying data."""
+        return to_arrow_type(self.schema.fields[-1].dataType).to_pandas_dtype()
 
     @property
     def spark_type(self):

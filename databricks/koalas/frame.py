@@ -360,6 +360,19 @@ class DataFrame(_Frame):
         self._sdf = sdf
         self._metadata = self._metadata.copy(column_fields=names)
 
+    @property
+    def dtypes(self):
+        """Return the dtypes in the DataFrame.
+
+        This returns a Series with the data type of each column. The result's index is the original
+        DataFrame's columns. Columns with mixed types are stored with the object dtype.
+
+        :return: :class:`pd.Series` The data type of each column.
+        """
+        return pd.Series([to_arrow_type(self._sdf.schema[col].dataType).to_pandas_dtype()
+                          for col in self.columns],
+                         index=list(self.columns))
+
     @derived_from(pd.DataFrame, ua_args=['axis', 'level', 'numeric_only'])
     def count(self):
         return self._sdf.count()

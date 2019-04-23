@@ -282,6 +282,11 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(NotImplementedError, msg):
             ddf.dropna(axis='foo')
 
+    def test_dtype(self):
+        d = self.df
+        full = self.full
+        self.assertTrue((d.dtypes == full.dtypes).all())
+
     def test_value_counts(self):
         df = pd.DataFrame({'x': [1, 2, 1, 3, 3, np.nan, 1, 4]})
         ddf = koalas.from_pandas(df)
