@@ -9,13 +9,16 @@ Koalas helps developers familiar with the Pandas API to scale their data science
 As such, it focuses on existing users of pandas.
  - it focuses on the high level, public APIs that users are usually working with
  - it respects to the largest extent the conventions of the Python numerical ecosystem, and allows the use of numpy types, etc. that are supported by Spark.
- - it should clearly document when results may differ between Spark and Pandas
+ - it should clearly document when results may differ between Spark and pandas (which may happen because Spark rows are not ordered)
 
 
 ### A unified API for data science
 
 The Koalas dataframe is meant to provide the best of pandas and Spark under a single API, with easy and clear conversions 
-between each API.
+between each API when necessary. It aims at incorporating:
+ - most of the data transform tools from pandas
+ - the SQL and streaming capabilities of Spark
+ - a solid numerical foundation to integrate ML models and algorithms
 
 
 There are 4 different classes of functions:
@@ -30,7 +33,8 @@ There are 4 different classes of functions:
 
 Since Spark and Pandas have the similar API's with slight differences, the choice is to honor the contract of the pandas API first.
 
-
+The `pandas.Series` object is much more versatile and universal than the `PySpark.Row` object. In particular, it can be used for most 
+practical purposes as a replacement, so it is the preferred way of returning single results, when they are not scalars.
 
 ### Pandas functions that are not considered for inclusion in Koalas
 
