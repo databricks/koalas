@@ -44,7 +44,7 @@ A few categories of functions are not considered for now to be part of the API, 
 
 *Functions that have an unexpected performance impact* 
 These functions (and the caller of theses functions) assume that the data is represented in a compact format (numpy in the case of pandas).
-Because these functions would force the full collection of the data and because there is a quick workaround, it is recommended that 
+Because these functions would force the full collection of the data and because there is a well-documented workaround, it is recommended that 
 they are not included. 
 
 The workaround is to force the materialization of the pandas DataFrame, either by calling:
