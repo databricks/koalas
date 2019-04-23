@@ -16,6 +16,7 @@ pandas is the de facto standard (single-node) dataframe implementation in Python
 - [Dependencies](#dependencies)
 - [Get Started](#get-started)
 - [Documentation](#documentation)
+- [Mailing List](#mailing-list)
 - [Development Guide](#development-guide)
   - [Environment Setup](#environment-setup)
   - [Running Tests](#running-tests)
@@ -68,7 +69,12 @@ df['x2'] = df.x * df.x
 
 ## Documentation
 
-Coming soon. Generating API docs for this project is the highest priority item we are working on.
+Project docs are published here: https://koalas.readthedocs.io
+
+## Mailing List
+
+We use Google Groups for mailling list: https://groups.google.com/forum/#!forum/koalas-dev
+
 
 ## Development Guide
 
