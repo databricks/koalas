@@ -51,12 +51,12 @@ After installing the package, you can import the package:
 from databricks import koalas
 ```
 
-Now you can turn a pandas DataFrame into a Spark DataFrame that is API-compliant with the former:
+Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
 ```py
 import pandas as pd
 pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
 
-# Create a Spark DataFrame from pandas DataFrame
+# Create a Koalas DataFrame from pandas DataFrame
 df = koalas.from_pandas(pdf)
 
 # Rename the columns
@@ -112,7 +112,7 @@ To build documentation via Sphinx:
 cd docs && make clean html
 ```
 
-It generates HTMLs under `docs/_build/html` directory. Open `docs/_build/html/index.html` to check if documenation is built properly.
+It generates HTMLs under `docs/_build/html` directory. Open `docs/_build/html/index.html` to check if documentation is built properly.
 
 ### Coding Conventions
 We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
@@ -127,7 +127,7 @@ If the version is "0.1.0", tag the commit as "v0.1.0".
 
 Step 3. Upload the package to PyPi:
 ```bash
-rm -rf dist/databricks_koala*
+rm -rf dist/koalas*
 python setup.py bdist_wheel
 export package_version=$(python setup.py --version)
 echo $package_version
