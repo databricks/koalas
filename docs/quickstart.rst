@@ -17,14 +17,14 @@ After installing the package, you can import the package:
     from databricks import koalas
 
 
-Now you can turn a pandas DataFrame into a Spark DataFrame that is API-compliant with the former:
+Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
 
 .. code-block:: python
 
     import pandas as pd
     pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
 
-    # Create a Spark DataFrame from pandas DataFrame
+    # Create a Koalas DataFrame from pandas DataFrame
     df = koalas.from_pandas(pdf)
 
     # Rename the columns
