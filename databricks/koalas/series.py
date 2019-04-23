@@ -54,7 +54,6 @@ def _column_op(f, self, *args):
     # To cover this case, explicitly check if the argument is Koalas Series and
     # extract Spark Column. For other arguments, they are used as are.
     args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
-
     scol = f(self._scol, *args)
     return Series(scol, self._kdf, self._index_info)
 
