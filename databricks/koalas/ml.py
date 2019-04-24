@@ -15,6 +15,7 @@
 #
 
 import pandas as pd
+import numpy as np
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.stat import Correlation
 
@@ -49,9 +50,13 @@ def to_numeric_df(kdf):
     :return: a pair of dataframe, list of strings (the name of the columns
              that were converted to numerical types)
     """
-    accepted_types = ["double", "integer", "float"]
-    numeric_fields = [f.name for f in kdf._sdf.schema.fields if f.dataType.typeName() in accepted_types]
-    numeric_df = kdf._sdf.select(*numeric_fields).dropna()
-    va = VectorAssembler(inputCols=numeric_fields, outputCol="_1")
+    # TODO, it should be more robust.
+    accepted_types = {np.int, np.int64, np.float, np.float64}
+    print("to_numeric_df", [(fname, kdf[fname].dtype) for fname in kdf._metadata.column_fields])
+    numeric_fields = [fname for fname in kdf._metadata.column_fields
+                      if kdf[fname].dtype in accepted_types]
+    print("numeric_fields", numeric_fields)
+    numeric_df = kdf._sdf.select(*numeric_fields)
+    va = VectorAssembler(inputCols=numeric_fields, outputCol="_1", handleInvalid="keep")
     v = va.transform(numeric_df).select("_1")
     return v, numeric_fields
