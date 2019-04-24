@@ -361,8 +361,8 @@ class DataFrame(_Frame):
         Examples
         --------
         >>> df = ks.DataFrame({'animal':['alligator', 'bee', 'falcon', 'lion',
-        ...                    'monkey', 'parrot', 'shark', 'whale', 'zebra']})  # doctest: +SKIP
-        >>> df  # doctest: +SKIP
+        ...                    'monkey', 'parrot', 'shark', 'whale', 'zebra']})
+        >>> df
               animal
         0  alligator
         1        bee
@@ -376,7 +376,7 @@ class DataFrame(_Frame):
 
         Viewing the first 5 lines
 
-        >>> df.head()  # doctest: +SKIP
+        >>> df.head()
               animal
         0  alligator
         1        bee
@@ -386,7 +386,7 @@ class DataFrame(_Frame):
 
         Viewing the first `n` lines (three in this case)
 
-        >>> df.head(3)  # doctest: +SKIP
+        >>> df.head(3)
               animal
         0  alligator
         1        bee
@@ -429,8 +429,8 @@ class DataFrame(_Frame):
         ...                    'c': np.arange(3, 6).astype('i1'),
         ...                    'd': np.arange(4.0, 7.0, dtype='float64'),
         ...                    'e': [True, False, True],
-        ...                    'f': pd.date_range('20130101', periods=3)})  # doctest: +SKIP
-        >>> df.dtypes  # doctest: +SKIP
+        ...                    'f': pd.date_range('20130101', periods=3)})
+        >>> df.dtypes
         a            object
         b             int64
         c             int64
@@ -503,13 +503,13 @@ class DataFrame(_Frame):
 
         Examples
         --------
-        >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4]})  # doctest: +SKIP
-        >>> df.shape  # doctest: +SKIP
+        >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
+        >>> df.shape
         (2, 2)
 
         >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4],
-        ...                    'col3': [5, 6]})  # doctest: +SKIP
-        >>> df.shape  # doctest: +SKIP
+        ...                    'col3': [5, 6]})
+        >>> df.shape
         (2, 3)
         """
         return len(self), len(self.columns)
@@ -541,6 +541,9 @@ class DataFrame(_Frame):
             bcol = key._scol.cast("boolean")
             return DataFrame(self._sdf.filter(bcol), self._metadata.copy())
         raise NotImplementedError(key)
+
+    def __repr__(self):
+        return repr(self.toPandas())
 
     def __getitem__(self, key):
         return self._pd_getitem(key)

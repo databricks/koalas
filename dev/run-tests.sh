@@ -29,8 +29,9 @@ FWDIR="$( cd "$DIR"/.. && pwd )"
 cd "$FWDIR"
 
 if [ "$#" = 0 ]; then
-    ARGS="--nologcapture --all-modules --verbose --with-doctest"
+    ARGS="--nologcapture --all-modules --verbose "
 else
     ARGS="$@"
 fi
-exec nosetests $ARGS --where "$FWDIR"
+exec python databricks/koalas/testing/doctest_main.py
+#exec python -m nose $ARGS --where "$FWDIR"
