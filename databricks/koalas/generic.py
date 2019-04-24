@@ -30,12 +30,7 @@ class _Frame(object):
     The base class for both dataframes and series.
     """
 
-    @property
-    def values(self):
-        return self.toPandas().values
-
-    @derived_from(pd.DataFrame)
-    def get_values(self):
+    def to_numpy(self):
         """
         A NumPy ndarray representing the values in this DataFrame
         :return: numpy.ndarray
