@@ -671,7 +671,6 @@ class DataFrame(_Frame):
         else:
             raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
 
-    @derived_from(pd.DataFrame)
     def fillna(self, value=None, axis=None, inplace=False):
         """Fill NA/NaN values.
 
