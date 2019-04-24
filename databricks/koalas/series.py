@@ -196,6 +196,7 @@ class Series(_Frame):
 
     @property
     def shape(self):
+        """Return a tuple of the shape of the underlying data."""
         return len(self),
 
     @property
@@ -288,6 +289,7 @@ class Series(_Frame):
         else:
             return ks
 
+    @derived_from(DataFrame)
     def head(self, n=5):
         return _col(self.to_dataframe().head(n))
 
