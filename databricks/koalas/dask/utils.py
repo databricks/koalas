@@ -123,7 +123,7 @@ def _skip_doctest(line):
 
 
 def _pandas_to_koalas_in_doctest(line):
-    return line.replace("pd", "koalas")
+    return line.replace("pd", "ks")
 
 
 def skip_doctest(doc):
