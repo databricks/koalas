@@ -35,6 +35,9 @@ class _Frame(object):
         A NumPy ndarray representing the values in this DataFrame
         :return: numpy.ndarray
                  Numpy representation of DataFrame
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
         """
         return self.toPandas().values
 
