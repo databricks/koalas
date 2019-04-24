@@ -20,6 +20,11 @@ Attributes
 
    Series.index
 
+.. autosummary::
+   :toctree: api/
+
+   Series.dtype
+
 Conversion
 ----------
 .. autosummary::
