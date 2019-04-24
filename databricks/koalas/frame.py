@@ -361,8 +361,8 @@ class DataFrame(_Frame):
         Examples
         --------
         >>> df = ks.DataFrame({'animal':['alligator', 'bee', 'falcon', 'lion',
-        ...                    'monkey', 'parrot', 'shark', 'whale', 'zebra']})
-        >>> df
+        ...                    'monkey', 'parrot', 'shark', 'whale', 'zebra']})  # doctest: +SKIP
+        >>> df  # doctest: +SKIP
               animal
         0  alligator
         1        bee
@@ -376,7 +376,7 @@ class DataFrame(_Frame):
 
         Viewing the first 5 lines
 
-        >>> df.head()
+        >>> df.head()  # doctest: +SKIP
               animal
         0  alligator
         1        bee
@@ -386,7 +386,7 @@ class DataFrame(_Frame):
 
         Viewing the first `n` lines (three in this case)
 
-        >>> df.head(3)
+        >>> df.head(3)  # doctest: +SKIP
               animal
         0  alligator
         1        bee
@@ -474,13 +474,13 @@ class DataFrame(_Frame):
 
         Examples
         --------
-        >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
-        >>> df.shape
+        >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4]})  # doctest: +SKIP
+        >>> df.shape  # doctest: +SKIP
         (2, 2)
 
         >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4],
-        ...                    'col3': [5, 6]})
-        >>> df.shape
+        ...                    'col3': [5, 6]})  # doctest: +SKIP
+        >>> df.shape  # doctest: +SKIP
         (2, 3)
         """
         return len(self), len(self.columns)
