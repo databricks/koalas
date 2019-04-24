@@ -345,6 +345,12 @@ table td.data, table th.row_heading table th.col_heading {
     text-align: right;
 }
 
+/**
+ * Avoid that newlines are injected in the middle of a function name in a table.
+ */
+.longtable.docutils.align-center {
+    word-wrap: break-word;
+}
 
 /**
  * See also
