@@ -11,7 +11,8 @@ Pandas is the de facto standard (single-node) dataframe implementation in Python
 * Have a single codebase that works both with Pandas (tests, smaller datasets) and with Spark (distributed datasets).
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
 
-    api
     quickstart
+    reference/index
+

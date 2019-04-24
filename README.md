@@ -36,6 +36,7 @@ pandas is the de facto standard (single-node) dataframe implementation in Python
 
 ## Dependencies
 
+ - [cmake](https://cmake.org/) for building pyarrow
  - Spark 2.4. Some older versions of Spark may work too but they are not officially supported.
  - A recent version of pandas. It is officially developed against 0.23+ but some other versions may work too.
  - Python 3.5+ if you want to use type hints in UDFs. Work is ongoing to also support Python 2.
@@ -48,9 +49,11 @@ Koalas is available at the Python package index:
 pip install koalas
 ```
 
+If this fails to install the pyarrow dependency, you may want to try installing with Python 3.6.x, as `pip install arrow` does not work out of the box for 3.7 https://github.com/apache/arrow/issues/1125.
+
 After installing the package, you can import the package:
 ```py
-from databricks import koalas
+from databricks import koalas as ks
 ```
 
 Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
@@ -59,7 +62,7 @@ import pandas as pd
 pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
 
 # Create a Koalas DataFrame from pandas DataFrame
-df = koalas.from_pandas(pdf)
+df = ks.from_pandas(pdf)
 
 # Rename the columns
 df.columns = ['x', 'y', 'z1']
