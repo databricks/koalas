@@ -9,13 +9,15 @@ pandas is the de facto standard (single-node) dataframe implementation in Python
  - Have a single codebase that works both with pandas (tests, smaller datasets) and with Spark (distributed datasets).
 
 [![Build Status](https://travis-ci.com/databricks/koalas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/koalas)
-[![Latest release](https://img.shields.io/pypi/v/koalas.svg)](https://pypi.org/project/koalas/)
+[![Documentation Status](https://readthedocs.org/projects/koalas/badge/?version=latest)](https://koalas.readthedocs.io/en/latest/?badge=latest)
+[![Latest Release](https://img.shields.io/pypi/v/koalas.svg)](https://pypi.org/project/koalas/)
 
 
 ## Table of Contents <!-- omit in toc -->
 - [Dependencies](#dependencies)
 - [Get Started](#get-started)
 - [Documentation](#documentation)
+- [Mailing List](#mailing-list)
 - [Development Guide](#development-guide)
   - [Environment Setup](#environment-setup)
   - [Running Tests](#running-tests)
@@ -28,12 +30,13 @@ pandas is the de facto standard (single-node) dataframe implementation in Python
   - [How can I request support for a method?](#how-can-i-request-support-for-a-method)
   - [How is Koalas different from Dask?](#how-is-koalas-different-from-dask)
   - [How can I contribute to Koalas?](#how-can-i-contribute-to-koalas)
-  - [Why a new project (vs putting this in Apache Spark itself)?](#why-a-new-project-vs-putting-this-in-apache-spark-itself)
+  - [Why a new project (instead of putting this in Apache Spark itself)?](#why-a-new-project-instead-of-putting-this-in-apache-spark-itself)
   - [How do I use this on Databricks?](#how-do-i-use-this-on-databricks)
 
 
 ## Dependencies
 
+ - [cmake](https://cmake.org/) for building pyarrow
  - Spark 2.4. Some older versions of Spark may work too but they are not officially supported.
  - A recent version of pandas. It is officially developed against 0.23+ but some other versions may work too.
  - Python 3.5+ if you want to use type hints in UDFs. Work is ongoing to also support Python 2.
@@ -46,9 +49,11 @@ Koalas is available at the Python package index:
 pip install koalas
 ```
 
+If this fails to install the pyarrow dependency, you may want to try installing with Python 3.6.x, as `pip install arrow` does not work out of the box for 3.7 https://github.com/apache/arrow/issues/1125.
+
 After installing the package, you can import the package:
 ```py
-from databricks import koalas
+from databricks import koalas as ks
 ```
 
 Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
@@ -57,7 +62,7 @@ import pandas as pd
 pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
 
 # Create a Koalas DataFrame from pandas DataFrame
-df = koalas.from_pandas(pdf)
+df = ks.from_pandas(pdf)
 
 # Rename the columns
 df.columns = ['x', 'y', 'z1']
@@ -68,7 +73,12 @@ df['x2'] = df.x * df.x
 
 ## Documentation
 
-Coming soon. Generating API docs for this project is the highest priority item we are working on.
+Project docs are published here: https://koalas.readthedocs.io
+
+## Mailing List
+
+We use Google Groups for mailling list: https://groups.google.com/forum/#!forum/koalas-dev
+
 
 ## Development Guide
 
@@ -170,19 +180,23 @@ Databricks customers are also welcome to file a support ticket to request a new 
 
 Different projects have different focuses. Spark is already deployed in virtually every
 organization, and often is the primary interface to the massive amount of data stored in data lakes.
-Koalas draws design inspirations from Dask, and aims to make the transition from pandas to Spark
-easy for data scientists.
+Koalas was inspired by Dask, and aims to make the transition from pandas to Spark easy for data
+scientists.
 
 ### How can I contribute to Koalas?
 
 Please create a GitHub issue if your favorite function is not yet supported.
+
+Make sure the name also reflects precisely which function you want to implement, such as
+`DataFrame.fillna` or `Series.dropna`. If an open issue already exists and you want do add
+missing parameters, consider contributing to that issue instead.
 
 We also document all the functions that are not yet supported in the
 [missing directory](https://github.com/databricks/koalas/tree/master/databricks/koalas/missing).
 In most cases, it is very easy to add new functions by simply wrapping the existing pandas or
 Spark functions. Pull requests welcome!
 
-### Why a new project (vs putting this in Apache Spark itself)?
+### Why a new project (instead of putting this in Apache Spark itself)?
 
 Two reasons:
 
