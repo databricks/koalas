@@ -31,7 +31,9 @@ class SeriesDatetimeTest(ReusedSQLTestCase, TestUtils):
         date2 = pd.Series(pd.date_range('2013-3-11 21:45:00', periods=3, freq='W'))
         return pd.DataFrame(dict(start_date=date1, end_date=date2))
 
-    @unittest.skip
+    @unittest.skip(
+        "It fails in certain OSs presumably due to different "
+        "timezone behaviours inherited from C library.")
     def test_subtraction(self):
         pdf = self.pdf1
         kdf = koalas.from_pandas(pdf)

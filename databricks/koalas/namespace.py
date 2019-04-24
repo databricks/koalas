@@ -21,7 +21,8 @@ import numpy as np
 import pandas as pd
 
 from pyspark.sql import functions as F
-from pyspark.sql.types import *
+from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
+    DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
 
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
