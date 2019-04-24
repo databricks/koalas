@@ -52,10 +52,8 @@ def to_numeric_df(kdf):
     """
     # TODO, it should be more robust.
     accepted_types = {np.int, np.int64, np.float, np.float64}
-    print("to_numeric_df", [(fname, kdf[fname].dtype) for fname in kdf._metadata.column_fields])
     numeric_fields = [fname for fname in kdf._metadata.column_fields
                       if kdf[fname].dtype in accepted_types]
-    print("numeric_fields", numeric_fields)
     numeric_df = kdf._sdf.select(*numeric_fields)
     va = VectorAssembler(inputCols=numeric_fields, outputCol="_1", handleInvalid="keep")
     v = va.transform(numeric_df).select("_1")
