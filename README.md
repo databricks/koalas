@@ -53,7 +53,7 @@ If this fails to install the pyarrow dependency, you may want to try installing 
 
 After installing the package, you can import the package:
 ```py
-from databricks import koalas
+from databricks import koalas as ks
 ```
 
 Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
@@ -62,7 +62,7 @@ import pandas as pd
 pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
 
 # Create a Koalas DataFrame from pandas DataFrame
-df = koalas.from_pandas(pdf)
+df = ks.from_pandas(pdf)
 
 # Rename the columns
 df.columns = ['x', 'y', 'z1']
