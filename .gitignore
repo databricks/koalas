@@ -42,3 +42,6 @@ _build
 
 # Unix swap files
 *.swp
+
+# mypy cache
+.mypy_cache/

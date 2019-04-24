@@ -27,6 +27,8 @@ MINIMUM_PYCODESTYLE="2.4.0"
 
 SPHINX_BUILD="sphinx-build"
 
+MYPY_BUILD="mypy"
+
 # Sphinx will import Koalas out of the box. Importing Koalas requires to have
 # PySpark currently.
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -244,6 +246,32 @@ function sphinx_test {
     popd &> /dev/null
 }
 
+function mypy_test {
+    local MYPY_REPORT=
+    local MYPY_STATUS=
+
+    # Check that the documentation builds acceptably, skip check if sphinx is not installed.
+    if ! hash "$MYPY_BUILD" 2> /dev/null; then
+        echo "The $MYPY_BUILD command was not found. Skipping mypy checks for now."
+        echo
+        return
+    fi
+
+    echo "starting mypy test..."
+    MYPY_REPORT=$( ($MYPY_BUILD --package databricks.koalas --ignore-missing-imports) 2>&1)
+    MYPY_STATUS=$?
+
+    if [ "$MYPY_STATUS" -ne 0 ]; then
+        echo "mypy checks failed:"
+        echo "$MYPY_REPORT"
+        echo "$MYPY_STATUS"
+        exit "$MYPY_STATUS"
+    else
+        echo "mypy checks passed."
+        echo
+    fi
+}
+
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 SPARK_ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 
@@ -256,6 +284,7 @@ pycodestyle_test "$PYTHON_SOURCE"
 flake8_test
 pydocstyle_test
 sphinx_test
+mypy_test
 
 echo
 echo "all lint-python tests passed!"
