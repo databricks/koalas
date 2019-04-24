@@ -211,7 +211,7 @@ provides an opportunity for us to experiment with new design principles.
 ### How do I use this on Databricks?
 
 Databricks Runtime for Machine Learning has the right versions of dependencies setup already, so
-you just need to install Koalas from pip when creating a cluster.
+you just need to install Koalas from PyPi when creating a cluster.
 
 For the regular Databricks Runtime, you will need to upgrade pandas and NumPy versions to the
 required list. 
