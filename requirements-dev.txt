@@ -7,4 +7,3 @@ sphinx==2.0.1
 nbsphinx==0.4.2
 numpydoc==0.8.0
 mypy==0.701
-pyspark-stubs
