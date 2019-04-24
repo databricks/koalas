@@ -162,7 +162,22 @@ class Series(_Frame):
 
     @property
     def dtype(self):
-        """Return the dtype object of the underlying data."""
+        """Return the dtype object of the underlying data.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3])  # doctest: +SKIP
+        >>> s.dtype  # doctest: +SKIP
+        dtype('int64')
+
+        >>> s = ks.Series(list('abc'))  # doctest: +SKIP
+        >>> s.dtype  # doctest: +SKIP
+        dtype('O')
+
+        >>> s = ks.Series(pd.date_range('20130101', periods=3))  # doctest: +SKIP
+        >>> s.dtype  # doctest: +SKIP
+        dtype('<M8[ns]')
+        """
         if type(self.spark_type) == TimestampType:
             return np.dtype('datetime64[ns]')
         else:
