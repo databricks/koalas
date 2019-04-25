@@ -29,7 +29,7 @@ def corr(kdf, method='pearson'):
     :param method:
     :return:
     """
-    assert method in ('pearson', 'kendall', 'spearman'), method
+    assert method in ('pearson', 'spearman'), method
     ndf, fields = to_numeric_df(kdf)
     corr = Correlation.corr(ndf, "_1", method)
     pcorr = corr.toPandas()
@@ -51,7 +51,8 @@ def to_numeric_df(kdf):
              that were converted to numerical types)
     """
     # TODO, it should be more robust.
-    accepted_types = {np.int, np.int64, np.float, np.float64}
+    accepted_types = {np.dtype(dt) for dt in [np.int8, np.int16, np.int32, np.int64,
+                                              np.float32, np.float64, np.bool_]}
     numeric_fields = [fname for fname in kdf._metadata.column_fields
                       if kdf[fname].dtype in accepted_types]
     numeric_df = kdf._sdf.select(*numeric_fields)

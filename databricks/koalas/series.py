@@ -342,10 +342,46 @@ class Series(_Frame):
         kdf._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
         return _col(kdf)
 
-    @derived_from(pd.Series, ua_args=['min_periods'])
     def corr(self, other, method='pearson'):
-        # This implementation is suboptimal because it computes more than necessary, but it should be a start
-        df = self._kdf.assign(corr_arg1=self, corr_arg2=other)[["corr_arg1", "corr_arg2"]]  # This should work??
+        """
+        Compute correlation with `other` Series, excluding missing values.
+
+        Parameters
+        ----------
+        other : Series
+        method : {'pearson', 'spearman'}
+            * pearson : standard correlation coefficient
+            * spearman : Spearman rank correlation
+
+        Returns
+        -------
+        correlation : float
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'s1': [.2, .0, .6, .2],
+        ...                    's2': [.3, .6, .0, .1]})
+        >>> s1 = df.s1
+        >>> s2 = df.s2
+        >>> s1.corr(s2, method='pearson')
+        -0.8510644963469898
+
+        >>> s1.corr(s2, method='spearman')
+        -0.9486832980505125
+
+        Notes
+        -----
+        There are behavior differences between Koalas and pandas.
+
+        * the `method` argument only accepts 'pearson', 'spearman'
+        * the data should not contain NaNs. Koalas will return an error.
+        * Koalas doesn't support the following argument(s).
+
+          * `min_periods` argument is not supported
+        """
+        # This implementation is suboptimal because it computes more than necessary,
+        # but it should be a start
+        df = self._kdf.assign(corr_arg1=self, corr_arg2=other)[["corr_arg1", "corr_arg2"]]
         c = df.corr(method=method)
         return c.loc["corr_arg1", "corr_arg2"]
 

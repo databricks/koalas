@@ -213,38 +213,6 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(ds, s)
 
-    def test_stat_functions(self):
-        df = pd.DataFrame({'A': [1, 2, 3, 4],
-                           'B': [1.0, 2.1, 3, 4]})
-        ddf = koalas.from_pandas(df)
-
-        functions = ['max', 'min', 'mean', 'sum']
-        for funcname in functions:
-            self.assertEqual(getattr(ddf.A, funcname)(), getattr(df.A, funcname)())
-            self.assert_eq(getattr(ddf, funcname)(), getattr(df, funcname)())
-
-        functions = ['std', 'var']
-        for funcname in functions:
-            self.assertAlmostEqual(getattr(ddf.A, funcname)(), getattr(df.A, funcname)())
-            self.assertPandasAlmostEqual(getattr(ddf, funcname)(), getattr(df, funcname)())
-
-        # NOTE: To test skew and kurt, just make sure they run.
-        #       The numbers are different in spark and pandas.
-        functions = ['skew', 'kurt']
-        for funcname in functions:
-            getattr(ddf.A, funcname)()
-            getattr(ddf, funcname)()
-
-    def test_count(self):
-        df = pd.DataFrame({'A': [1, 2, 3, 4],
-                           'B': [1.0, 2.1, 3, 4]})
-        ddf = koalas.from_pandas(df)
-
-        # NOTE: This does not patch the pandas API, but maintains compat with spark
-        self.assertEqual(ddf.count(), len(df))
-
-        self.assertEqual(ddf.A.count(), df.A.count())
-
     def test_dropna(self):
         df = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
                            'y': [1, 2, np.nan, 4, np.nan, np.nan],
@@ -344,49 +312,6 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
                        koalas.to_datetime(ds, infer_datetime_format=True))
-
-    def test_abs(self):
-        df = pd.DataFrame({'A': [1, -2, 3, -4, 5],
-                           'B': [1., -2, 3, -4, 5],
-                           'C': [-6., -7, -8, -9, 10],
-                           'D': ['a', 'b', 'c', 'd', 'e']})
-        ddf = koalas.from_pandas(df)
-        self.assert_eq(ddf.A.abs(), df.A.abs())
-        self.assert_eq(ddf.B.abs(), df.B.abs())
-        self.assert_eq(ddf[['B', 'C']].abs(), df[['B', 'C']].abs())
-        # self.assert_eq(ddf.select('A', 'B').abs(), df[['A', 'B']].abs())
-
-    def test_corr(self):
-        # DataFrame
-        df = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)  # We do not handle NaNs for now
-        print("df", df)
-        ddf = koalas.from_pandas(df)
-
-        res = ddf.corr()
-        sol = df.corr()
-        self.assertPandasAlmostEqual(res, sol)
-
-        # Series
-        a = df.A
-        b = df.B
-        da = ddf.A
-        db = ddf.B
-
-        res = da.corr(db)
-        sol = a.corr(b)
-        self.assertAlmostEqual(res, sol)
-        self.assertRaises(TypeError, lambda: da.corr(ddf))
-
-    def test_cov_corr_meta(self):
-        df = pd.DataFrame({'a': np.array([1, 2, 3]),
-                           'b': np.array([1.0, 2.0, 3.0], dtype='f4'),
-                           'c': np.array([1.0, 2.0, 3.0])},
-                          index=pd.Index([1, 2, 3], name='myindex'))
-        ddf = koalas.from_pandas(df)
-        self.assert_eq(ddf.corr(), df.corr())
-        # self.assert_eq(ddf.cov(), df.cov())
-        # assert ddf.a.cov(ddf.b)._meta.dtype == 'f8'
-        # assert ddf.a.corr(ddf.b)._meta.dtype == 'f8'
 
     def test_missing(self):
         d = self.df
