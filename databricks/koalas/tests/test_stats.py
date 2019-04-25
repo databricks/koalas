@@ -20,10 +20,10 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas
-from databricks.koalas.testing.utils import ReusedSQLTestCase
+from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
-class StatsTest(ReusedSQLTestCase):
+class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_stat_functions(self):
         df = pd.DataFrame({'A': [1, 2, 3, 4],
@@ -69,40 +69,45 @@ class StatsTest(ReusedSQLTestCase):
         # self.assert_eq(ddf.select('A', 'B').abs(), df[['A', 'B']].abs())
 
     def test_corr(self):
-        # DataFrame
-        df = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)  # do not handle NaNs for now
-        ddf = koalas.from_pandas(df)
+        # Disable arrow execution since corr() is using UDT internally which is not supported.
+        with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
+            # DataFrame
+            # we do not handle NaNs for now
+            df = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
+            ddf = koalas.from_pandas(df)
 
-        res = ddf.corr()
-        sol = df.corr()
-        self.assertPandasAlmostEqual(res, sol)
+            res = ddf.corr()
+            sol = df.corr()
+            self.assertPandasAlmostEqual(res, sol)
 
-        # Series
-        a = df.A
-        b = df.B
-        da = ddf.A
-        db = ddf.B
+            # Series
+            a = df.A
+            b = df.B
+            da = ddf.A
+            db = ddf.B
 
-        res = da.corr(db)
-        sol = a.corr(b)
-        self.assertAlmostEqual(res, sol)
-        self.assertRaises(TypeError, lambda: da.corr(ddf))
+            res = da.corr(db)
+            sol = a.corr(b)
+            self.assertAlmostEqual(res, sol)
+            self.assertRaises(TypeError, lambda: da.corr(ddf))
 
     def test_cov_corr_meta(self):
-        df = pd.DataFrame({'a': np.array([1, 2, 3], dtype='i1'),
-                           'b': np.array([1, 2, 3], dtype='i2'),
-                           'c': np.array([1, 2, 3], dtype='i4'),
-                           'd': np.array([1, 2, 3]),
-                           'e': np.array([1.0, 2.0, 3.0], dtype='f4'),
-                           'f': np.array([1.0, 2.0, 3.0]),
-                           'g': np.array([True, False, True]),
-                           'h': np.array(list('abc'))},
-                          index=pd.Index([1, 2, 3], name='myindex'))
-        ddf = koalas.from_pandas(df)
-        self.assert_eq(ddf.corr(), df.corr())
-        # self.assert_eq(ddf.cov(), df.cov())
-        # assert ddf.a.cov(ddf.b)._meta.dtype == 'f8'
-        # assert ddf.a.corr(ddf.b)._meta.dtype == 'f8'
+        # Disable arrow execution since corr() is using UDT internally which is not supported.
+        with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
+            df = pd.DataFrame({'a': np.array([1, 2, 3], dtype='i1'),
+                               'b': np.array([1, 2, 3], dtype='i2'),
+                               'c': np.array([1, 2, 3], dtype='i4'),
+                               'd': np.array([1, 2, 3]),
+                               'e': np.array([1.0, 2.0, 3.0], dtype='f4'),
+                               'f': np.array([1.0, 2.0, 3.0]),
+                               'g': np.array([True, False, True]),
+                               'h': np.array(list('abc'))},
+                              index=pd.Index([1, 2, 3], name='myindex'))
+            ddf = koalas.from_pandas(df)
+            self.assert_eq(ddf.corr(), df.corr())
+            # self.assert_eq(ddf.cov(), df.cov())
+            # assert ddf.a.cov(ddf.b)._meta.dtype == 'f8'
+            # assert ddf.a.corr(ddf.b)._meta.dtype == 'f8'
 
 
 if __name__ == "__main__":

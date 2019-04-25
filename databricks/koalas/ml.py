@@ -59,6 +59,6 @@ def to_numeric_df(kdf):
     numeric_fields = [fname for fname in kdf._metadata.column_fields
                       if kdf[fname].dtype in accepted_types]
     numeric_df = kdf._sdf.select(*numeric_fields)
-    va = VectorAssembler(inputCols=numeric_fields, outputCol="_1", handleInvalid="keep")
+    va = VectorAssembler(inputCols=numeric_fields, outputCol="_1")
     v = va.transform(numeric_df).select("_1")
     return v, numeric_fields
