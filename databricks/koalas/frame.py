@@ -33,6 +33,7 @@ from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
+from databricks.koalas.ml import corr
 from databricks.koalas.selection import SparkDataFrameLocator
 
 
@@ -78,6 +79,50 @@ class DataFrame(_Frame):
         row = pdf.iloc[0]
         row.name = None
         return row  # Return first row as a Series
+
+    def corr(self, method='pearson'):
+        """
+        Compute pairwise correlation of columns, excluding NA/null values.
+
+        Parameters
+        ----------
+        method : {'pearson', 'spearman'}
+            * pearson : standard correlation coefficient
+            * spearman : Spearman rank correlation
+
+        Returns
+        -------
+        y : pandas.DataFrame
+
+        See Also
+        --------
+        Series.corr
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'])
+        >>> df.corr('pearson')
+                  dogs      cats
+        dogs  1.000000 -0.851064
+        cats -0.851064  1.000000
+
+        >>> df.corr('spearman')
+                  dogs      cats
+        dogs  1.000000 -0.948683
+        cats -0.948683  1.000000
+
+        Notes
+        -----
+        There are behavior differences between Koalas and pandas.
+
+        * the `method` argument only accepts 'pearson', 'spearman'
+        * the data should not contain NaNs. Koalas will return an error.
+        * Koalas doesn't support the following argument(s).
+
+          * `min_periods` argument is not supported
+        """
+        return corr(self, method)
 
     @derived_from(pd.DataFrame)
     def iteritems(self):

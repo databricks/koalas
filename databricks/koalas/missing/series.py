@@ -55,7 +55,6 @@ class _MissingPandasLikeSeries(object):
     compress = unsupported_function('compress')
     convert_objects = unsupported_function('convert_objects')
     copy = unsupported_function('copy')
-    corr = unsupported_function('corr')
     cov = unsupported_function('cov')
     cummax = unsupported_function('cummax')
     cummin = unsupported_function('cummin')

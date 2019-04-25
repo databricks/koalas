@@ -23,7 +23,7 @@ from contextlib import contextmanager
 
 import pandas as pd
 from pyspark import SparkConf, SparkContext
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, SQLContext
 
 from databricks import koalas
 from databricks.koalas.frame import DataFrame
@@ -161,6 +161,7 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
     def tearDownClass(cls):
         super(ReusedSQLTestCase, cls).tearDownClass()
         cls.spark.stop()
+        SQLContext._instantiatedContext = None
 
     def assertPandasEqual(self, left, right):
         if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):

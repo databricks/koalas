@@ -40,6 +40,7 @@ Computations / Descriptive Stats
    :toctree: api/
 
    Series.abs
+   Series.corr
    Series.count
    Series.kurt
    Series.max
