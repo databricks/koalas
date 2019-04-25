@@ -34,6 +34,4 @@ else
     ARGS="$@"
 fi
 # Runs the main program that finds and runs the docstrings.
-exec python databricks/koalas/testing/doctest_main.py
-# Then run the test suites
-exec nosetests $ARGS --where "$FWDIR"
+python databricks/koalas/testing/doctest_main.py && nosetests $ARGS --where "$FWDIR"
