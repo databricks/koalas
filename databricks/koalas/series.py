@@ -168,7 +168,7 @@ class Series(_Frame):
         --------
         >>> s = ks.Series([1, 2, 3])
         >>> s.dtype
-        dtype('int64')
+        dtype('int64')a
 
         >>> s = ks.Series(list('abc'))
         >>> s.dtype
