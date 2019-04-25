@@ -487,8 +487,53 @@ class DataFrame(_Frame):
         return pd.Series([self[col].dtype for col in self._metadata.column_fields],
                          index=self._metadata.column_fields)
 
-    @derived_from(pd.DataFrame, ua_args=['axis', 'level', 'numeric_only'])
     def count(self):
+        """
+        Count non-NA cells for each column or row.
+
+        The values `None`, `NaN`, `NaT`, and optionally `numpy.inf` (depending
+        on `pandas.options.mode.use_inf_as_na`) are considered NA.
+
+        Returns
+        -------
+        Series or DataFrame
+            For each column/row the number of non-NA/null entries.
+            If `level` is specified returns a `DataFrame`.
+
+        See Also
+        --------
+        Series.count: Number of non-NA elements in a Series.
+        DataFrame.shape: Number of DataFrame rows and columns (including NA
+            elements).
+        DataFrame.isna: Boolean same-sized DataFrame showing places of NA
+            elements.
+
+        Examples
+        --------
+        Constructing DataFrame from a dictionary:
+
+        >>> df = pd.DataFrame({"Person":
+        ...                    ["John", "Myla", "Lewis", "John", "Myla"],
+        ...                    "Age": [24., np.nan, 21., 33, 26],
+        ...                    "Single": [False, True, True, True, False]})
+        >>> df
+           Person   Age  Single
+        0    John  24.0   False
+        1    Myla   NaN    True
+        2   Lewis  21.0    True
+        3    John  33.0    True
+        4    Myla  26.0   False
+
+        Notice the uncounted NA values:
+
+        >>> df.count()
+        Person    5
+        Age       4
+        Single    5
+        dtype: int64
+
+        Counts for each **row**:
+        """
         return self._sdf.count()
 
     def unique(self):

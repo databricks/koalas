@@ -385,8 +385,14 @@ class Series(_Frame):
         c = df.corr(method=method)
         return c.loc["corr_arg1", "corr_arg2"]
 
-    @derived_from(pd.Series, ua_args=['level'])
     def count(self):
+        """
+        Return number of non-NA/null observations in the Series.
+
+        Returns
+        -------
+        nobs : int
+        """
         return self._reduce_for_stat_function(F.count)
 
     def _reduce_for_stat_function(self, sfun):
