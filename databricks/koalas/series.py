@@ -166,16 +166,16 @@ class Series(_Frame):
 
         Examples
         --------
-        >>> s = ks.Series([1, 2, 3])  # doctest: +SKIP
-        >>> s.dtype  # doctest: +SKIP
+        >>> s = ks.Series([1, 2, 3])
+        >>> s.dtype
         dtype('int64')
 
-        >>> s = ks.Series(list('abc'))  # doctest: +SKIP
-        >>> s.dtype  # doctest: +SKIP
+        >>> s = ks.Series(list('abc'))
+        >>> s.dtype
         dtype('O')
 
-        >>> s = ks.Series(pd.date_range('20130101', periods=3))  # doctest: +SKIP
-        >>> s.dtype  # doctest: +SKIP
+        >>> s = ks.Series(pd.date_range('20130101', periods=3))
+        >>> s.dtype
         dtype('<M8[ns]')
         """
         if type(self.spark_type) == TimestampType:
