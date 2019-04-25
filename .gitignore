@@ -39,3 +39,9 @@ __pycache__/
 
 # Sphinx build
 _build
+
+# Unix swap files
+*.swp
+
+# mypy cache
+.mypy_cache/

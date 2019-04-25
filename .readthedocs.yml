@@ -14,5 +14,26 @@
 # limitations under the License.
 #
 
-# https://packaging.python.org/guides/packaging-namespace-packages/#pkgutil-style-namespace-packages
-__path__ = __import__('pkgutil').extend_path(__path__, __name__)  # type: ignore
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+# Required
+version: 2
+
+# Build documentation in the docs/ directory with Sphinx
+sphinx:
+  configuration: docs/source/conf.py
+
+# Optionally build your docs in additional formats such as PDF and ePub
+formats: all
+
+# Optionally set the version of Python and requirements required to build your docs
+python:
+  version: 3.5
+  install:
+    - requirements: requirements-dev.txt
+    - method: pip
+      path: .
+      extra_requirements:
+        - spark
+

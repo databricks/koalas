@@ -346,10 +346,63 @@ class DataFrame(_Frame):
             raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
 
     def head(self, n=5):
+        """
+        Return the first `n` rows.
+
+        This function returns the first `n` rows for the object based
+        on position. It is useful for quickly testing if your object
+        has the right type of data in it.
+
+        Parameters
+        ----------
+        n : int, default 5
+            Number of rows to select.
+
+        Returns
+        -------
+        obj_head : same type as caller
+            The first `n` rows of the caller object.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'animal':['alligator', 'bee', 'falcon', 'lion',
+        ...                    'monkey', 'parrot', 'shark', 'whale', 'zebra']})
+        >>> df
+              animal
+        0  alligator
+        1        bee
+        2     falcon
+        3       lion
+        4     monkey
+        5     parrot
+        6      shark
+        7      whale
+        8      zebra
+
+        Viewing the first 5 lines
+
+        >>> df.head()
+              animal
+        0  alligator
+        1        bee
+        2     falcon
+        3       lion
+        4     monkey
+
+        Viewing the first `n` lines (three in this case)
+
+        >>> df.head(3)
+              animal
+        0  alligator
+        1        bee
+        2     falcon
+        """
+
         return DataFrame(self._sdf.limit(n), self._metadata.copy())
 
     @property
     def columns(self):
+        """The column labels of the DataFrame."""
         return pd.Index(self._metadata.column_fields)
 
     @columns.setter
@@ -364,6 +417,35 @@ class DataFrame(_Frame):
                                 for (old_name, new_name) in zip(old_names, names)])
         self._sdf = sdf
         self._metadata = self._metadata.copy(column_fields=names)
+
+    @property
+    def dtypes(self):
+        """Return the dtypes in the DataFrame.
+
+        This returns a Series with the data type of each column. The result's index is the original
+        DataFrame's columns. Columns with mixed types are stored with the object dtype.
+
+        :return: :class:`pd.Series` The data type of each column.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': list('abc'),
+        ...                    'b': list(range(1, 4)),
+        ...                    'c': np.arange(3, 6).astype('i1'),
+        ...                    'd': np.arange(4.0, 7.0, dtype='float64'),
+        ...                    'e': [True, False, True],
+        ...                    'f': pd.date_range('20130101', periods=3)})
+        >>> df.dtypes
+        a            object
+        b             int64
+        c             int64
+        d           float64
+        e              bool
+        f    datetime64[ns]
+        dtype: object
+        """
+        return pd.Series([self[col].dtype for col in self._metadata.column_fields],
+                         index=self._metadata.column_fields)
 
     @derived_from(pd.DataFrame, ua_args=['axis', 'level', 'numeric_only'])
     def count(self):
@@ -421,6 +503,20 @@ class DataFrame(_Frame):
 
     @property
     def shape(self):
+        """
+        Return a tuple representing the dimensionality of the DataFrame.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
+        >>> df.shape
+        (2, 2)
+
+        >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4],
+        ...                    'col3': [5, 6]})
+        >>> df.shape
+        (2, 3)
+        """
         return len(self), len(self.columns)
 
     def _pd_getitem(self, key):
@@ -450,6 +546,9 @@ class DataFrame(_Frame):
             bcol = key._scol.cast("boolean")
             return DataFrame(self._sdf.filter(bcol), self._metadata.copy())
         raise NotImplementedError(key)
+
+    def __repr__(self):
+        return repr(self.toPandas())
 
     def __getitem__(self, key):
         return self._pd_getitem(key)

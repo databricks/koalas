@@ -25,7 +25,8 @@ import pandas as pd
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import FloatType, DoubleType, LongType, StructType, TimestampType
+from pyspark.sql.types import FloatType, DoubleType, LongType, StructType, TimestampType, \
+    to_arrow_type
 
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame
@@ -161,8 +162,26 @@ class Series(_Frame):
 
     @property
     def dtype(self):
-        from databricks.koalas.typing import as_python_type
-        return as_python_type(self.schema.fields[-1].dataType)
+        """Return the dtype object of the underlying data.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3])  # doctest: +SKIP
+        >>> s.dtype  # doctest: +SKIP
+        dtype('int64')
+
+        >>> s = ks.Series(list('abc'))  # doctest: +SKIP
+        >>> s.dtype  # doctest: +SKIP
+        dtype('O')
+
+        >>> s = ks.Series(pd.date_range('20130101', periods=3))  # doctest: +SKIP
+        >>> s.dtype  # doctest: +SKIP
+        dtype('<M8[ns]')
+        """
+        if type(self.spark_type) == TimestampType:
+            return np.dtype('datetime64[ns]')
+        else:
+            return np.dtype(to_arrow_type(self.spark_type).to_pandas_dtype())
 
     @property
     def spark_type(self):
@@ -196,6 +215,7 @@ class Series(_Frame):
 
     @property
     def shape(self):
+        """Return a tuple of the shape of the underlying data."""
         return len(self),
 
     @property
@@ -288,6 +308,7 @@ class Series(_Frame):
         else:
             return ks
 
+    @derived_from(DataFrame)
     def head(self, n=5):
         return _col(self.to_dataframe().head(n))
 

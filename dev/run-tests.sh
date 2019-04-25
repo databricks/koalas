@@ -29,8 +29,11 @@ FWDIR="$( cd "$DIR"/.. && pwd )"
 cd "$FWDIR"
 
 if [ "$#" = 0 ]; then
-    ARGS="--nologcapture --all-modules --verbose --with-doctest"
+    ARGS="--nologcapture --all-modules --verbose "
 else
     ARGS="$@"
 fi
+# Runs the main program that finds and runs the docstrings.
+exec python databricks/koalas/testing/doctest_main.py
+# Then run the test suites
 exec nosetests $ARGS --where "$FWDIR"

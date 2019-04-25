@@ -14,7 +14,7 @@ After installing the package, you can import the package:
 
 .. code-block:: python
 
-    from databricks import koalas
+    import databricks.koalas as ks
 
 
 Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
@@ -25,7 +25,7 @@ Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-complian
     pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
 
     # Create a Koalas DataFrame from pandas DataFrame
-    df = koalas.from_pandas(pdf)
+    df = ks.from_pandas(pdf)
 
     # Rename the columns
     df.columns = ['x', 'y', 'z1']
@@ -37,7 +37,7 @@ You can also create Koalas DataFrame directly from regular Python data like Pand
 
 .. code-block:: python
 
-    from databricks import koalas
+    import databricks.koalas as ks
 
-    koalas.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6]})
+    ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6]})
 

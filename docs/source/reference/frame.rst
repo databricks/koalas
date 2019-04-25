@@ -24,6 +24,7 @@ Attributes and underlying data
 .. autosummary::
    :toctree: api/
 
+   DataFrame.dtypes
    DataFrame.shape
 
 Conversion
