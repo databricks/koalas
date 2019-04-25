@@ -143,8 +143,8 @@ def infer_pd_series_spark_type(s):
     """
     dt = s.dtype
     if dt == np.dtype('object'):
-        if len(s) == 0:
-            raise ValueError("can not infer schema from empty dataset")
+        if len(s) == 0 or s.isnull().all():
+            raise ValueError("can not infer schema from empty or null dataset")
         return types.from_arrow_type(pa.Array.from_pandas(s).type)
     elif is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
         return types.TimestampType()

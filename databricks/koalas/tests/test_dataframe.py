@@ -85,6 +85,22 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
             self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
 
+    def test_all_null_dataframe(self):
+        a = pd.Series([None, None, None], dtype='float64')
+        b = pd.Series([None, None, None], dtype='str')
+        pdf = pd.DataFrame({'a': a, 'b': b})
+
+        self.assert_eq(koalas.from_pandas(a).dtype, a.dtype)
+        self.assertTrue(koalas.from_pandas(a).toPandas().isnull().all())
+        self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
+        self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
+
+        with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
+            self.assert_eq(koalas.from_pandas(a).dtype, a.dtype)
+            self.assertTrue(koalas.from_pandas(a).toPandas().isnull().all())
+            self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
+            self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
+
     def test_nullable_object(self):
         pdf = pd.DataFrame({'a': list('abc') + [np.nan],
                             'b': list(range(1, 4)) + [np.nan],

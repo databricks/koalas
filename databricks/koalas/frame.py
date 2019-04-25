@@ -59,14 +59,14 @@ class DataFrame(_Frame):
         metadata = Metadata.from_pandas(pdf)
         reset_index = pdf.reset_index()
         reset_index.columns = metadata.all_fields
+        schema = StructType([StructField(name, infer_pd_series_spark_type(col),
+                                         nullable=bool(col.isnull().any()))
+                             for name, col in reset_index.iteritems()])
         for name, col in reset_index.iteritems():
             dt = col.dtype
             if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
                 continue
             reset_index[name] = col.replace({np.nan: None})
-        schema = StructType([StructField(name, infer_pd_series_spark_type(col),
-                                         nullable=bool(col.isnull().any()))
-                             for name, col in reset_index.iteritems()])
         self._init_from_spark(default_session().createDataFrame(reset_index, schema=schema),
                               metadata)
 
