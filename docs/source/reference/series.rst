@@ -76,4 +76,4 @@ Serialization / IO / Conversion
 .. autosummary::
    :toctree: api/
 
-   DataFrame.to_numpy
+   Series.to_numpy
