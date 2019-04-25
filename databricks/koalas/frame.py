@@ -92,7 +92,7 @@ class DataFrame(_Frame):
 
         Returns
         -------
-        y : DataFrame
+        y : pandas.DataFrame
 
         See Also
         --------

@@ -25,9 +25,12 @@ def corr(kdf, method='pearson'):
     The correlation matrix of all the numerical columns of this dataframe.
 
     Only accepts scalar numerical values for now.
+
     :param kdf: the koalas dataframe.
-    :param method:
-    :return:
+    :param method: {'pearson', 'spearman'}
+                   * pearson : standard correlation coefficient
+                   * spearman : Spearman rank correlation
+    :return: :class:`pandas.DataFrame`
     """
     assert method in ('pearson', 'spearman'), method
     ndf, fields = to_numeric_df(kdf)
