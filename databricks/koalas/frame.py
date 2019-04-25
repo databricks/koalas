@@ -517,12 +517,12 @@ class DataFrame(_Frame):
         ...                    "Age": [24., np.nan, 21., 33, 26],
         ...                    "Single": [False, True, True, True, False]})
         >>> df
-           Person   Age  Single
-        0    John  24.0   False
-        1    Myla   NaN    True
-        2   Lewis  21.0    True
-        3    John  33.0    True
-        4    Myla  26.0   False
+          Person   Age  Single
+        0   John  24.0   False
+        1   Myla   NaN    True
+        2  Lewis  21.0    True
+        3   John  33.0    True
+        4   Myla  26.0   False
 
         Notice the uncounted NA values:
 
