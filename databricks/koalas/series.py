@@ -323,7 +323,10 @@ class Series(_Frame):
 
     @derived_from(pd.Series, ua_args=['min_periods'])
     def corr(self, other, method='pearson'):
-        return 0
+        # This implementation is suboptimal because it computes more than necessary, but it should be a start
+        df = self._kdf.assign(corr_arg1=self, corr_arg2=other)[["corr_arg1", "corr_arg2"]]  # This should work??
+        c = df.corr(method=method)
+        return c.loc["corr_arg1", "corr_arg2"]
 
     @derived_from(pd.Series, ua_args=['level'])
     def count(self):
