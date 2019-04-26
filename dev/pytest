@@ -18,8 +18,12 @@
 set -o pipefail
 set -e
 
-# Runs both doctests and unit tests by default, otherwise hands arguments over to nose.
+if ! hash pytest 2> /dev/null; then
+    echo "The pytest command was not found. Please install 'pytest' Python package."
+    exit 1
+fi
 
+# Runs both doctests and unit tests by default, otherwise hands arguments over to pytest.
 # The current directory of the script.
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -31,11 +35,7 @@ FWDIR="$( cd "$DIR"/.. && pwd )"
 cd "$FWDIR"
 
 if [ "$#" = 0 ]; then
-    ARGS="--verbose --showlocals --doctest-modules databricks"
+    pytest --verbose --showlocals --doctest-modules databricks
 else
-    ARGS="$@"
+    pytest "$@"
 fi
-
-pushd "$FWDIR" > /dev/null
-pytest $ARGS
-popd > /dev/null

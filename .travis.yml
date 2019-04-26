@@ -57,4 +57,4 @@ before_script:
   - ./dev/lint-python
 
 script:
-  - ./dev/run-tests.sh
+  - ./dev/pytest
