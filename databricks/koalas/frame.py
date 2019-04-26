@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import StructType, to_arrow_type
+from pyspark.sql.types import DoubleType, FloatType, StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -497,9 +497,7 @@ class DataFrame(_Frame):
 
         Returns
         -------
-        Series or DataFrame
-            For each column/row the number of non-NA/null entries.
-            If `level` is specified returns a `DataFrame`.
+        pandas.Series
 
         See Also
         --------
@@ -513,7 +511,7 @@ class DataFrame(_Frame):
         --------
         Constructing DataFrame from a dictionary:
 
-        >>> df = pd.DataFrame({"Person":
+        >>> df = ks.DataFrame({"Person":
         ...                    ["John", "Myla", "Lewis", "John", "Myla"],
         ...                    "Age": [24., np.nan, 21., 33, 26],
         ...                    "Single": [False, True, True, True, False]})
@@ -532,10 +530,20 @@ class DataFrame(_Frame):
         Age       4
         Single    5
         dtype: int64
-
-        Counts for each **row**:
         """
-        return self._sdf.count()
+        # Build the expressions to do counting.
+        count_exprs = []
+        for col in self._metadata.column_fields:
+            spark_type = self._sdf.schema[col].dataType
+            # Special handle floating point types because Spark's count treats nan as a valid value,
+            # whereas Pandas count doesn't include nan.
+            if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
+                count_exprs.append(F.count(F.nanvl(col, F.lit(None))).alias(col))
+            else:
+                count_exprs.append(F.count(col).alias(col))
+
+        row = self._sdf.select(*count_exprs).collect()[0]
+        return pd.Series(row.asDict())
 
     def unique(self):
         sdf = self._sdf
@@ -655,6 +663,7 @@ class DataFrame(_Frame):
         else:
             kdf = self.assign(**{key: value})
 
+        # Spark DataFrame
         self._sdf = kdf._sdf
         self._metadata = kdf._metadata
 
