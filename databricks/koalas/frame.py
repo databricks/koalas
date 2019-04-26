@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import DoubleType, FloatType, StructType, to_arrow_type
+from pyspark.sql.types import DataType, DoubleType, FloatType, StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -74,7 +74,10 @@ class DataFrame(_Frame):
                 for field in self._metadata.index_fields]
 
     def _reduce_for_stat_function(self, sfun):
-        sdf = self._sdf.select([sfun(self._sdf[col]).alias(col) for col in self.columns])
+        exprs = []
+        for col in self.columns:
+            exprs.append(sfun(self._sdf[col], self._sdf.schema[col].dataType).alias(col))
+        sdf = self._sdf.select(*exprs)
         pdf = sdf.toPandas()
         assert len(pdf) == 1, (sdf, pdf)
         row = pdf.iloc[0]
@@ -531,19 +534,15 @@ class DataFrame(_Frame):
         Single    5
         dtype: int64
         """
-        # Build the expressions to do counting.
-        count_exprs = []
-        for col in self._metadata.column_fields:
-            spark_type = self._sdf.schema[col].dataType
+        def count_expr(col: spark.Column, spark_type: DataType) -> spark.Column:
             # Special handle floating point types because Spark's count treats nan as a valid value,
             # whereas Pandas count doesn't include nan.
             if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
-                count_exprs.append(F.count(F.nanvl(col, F.lit(None))).alias(col))
+                return F.count(F.nanvl(col, F.lit(None)))
             else:
-                count_exprs.append(F.count(col).alias(col))
+                return F.count(col)
 
-        row = self._sdf.select(*count_exprs).collect()[0]
-        return pd.Series(row.asDict())
+        return self._reduce_for_stat_function(count_expr)
 
     def unique(self):
         sdf = self._sdf
