@@ -38,7 +38,7 @@ assert_pyspark_version()
 from databricks.koalas.namespace import *
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.series import Series
-from databricks.koalas.type import Col, pandas_wrap
+from databricks.koalas.typedef import Col, pandas_wrap
 
 __all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
            'get_dummies', 'DataFrame', 'Series']

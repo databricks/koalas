@@ -190,7 +190,7 @@ class Series(_Frame):
         return self.schema.fields[-1].dataType
 
     def astype(self, dtype):
-        from databricks.koalas.type import as_spark_type
+        from databricks.koalas.typedef import as_spark_type
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
