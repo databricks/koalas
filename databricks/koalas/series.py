@@ -28,7 +28,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType, DoubleType, LongType, StructType, TimestampType, \
     to_arrow_type
 
-from databricks import koalas as ks
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
