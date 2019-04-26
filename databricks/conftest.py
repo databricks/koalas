@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 #
 # Copyright (C) 2019 Databricks, Inc.
 #
@@ -15,25 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import pytest
 
-# Runs both doctests and unit tests by default, otherwise hands arguments over to nose.
+from databricks import koalas
 
-# The current directory of the script.
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [ -n "$SPARK_HOME" ]; then
-    source $DIR/env_setup.sh
-fi
-
-FWDIR="$( cd "$DIR"/.. && pwd )"
-cd "$FWDIR"
-
-if [ "$#" = 0 ]; then
-    ARGS="--verbose --showlocals --doctest-modules databricks"
-else
-    ARGS="$@"
-fi
-
-pushd "$FWDIR" > /dev/null
-pytest $ARGS
-popd
+@pytest.fixture(autouse=True)
+def add_ks(doctest_namespace):
+    doctest_namespace['ks'] = koalas
