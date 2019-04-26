@@ -71,3 +71,10 @@ Missing data handling
    Series.isna
    Series.notna
    Series.dropna
+
+Serialization / IO / Conversion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Series.to_numpy

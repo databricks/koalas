@@ -30,6 +30,17 @@ class _Frame(object):
     The base class for both dataframes and series.
     """
 
+    def to_numpy(self):
+        """
+        A NumPy ndarray representing the values in this DataFrame
+        :return: numpy.ndarray
+                 Numpy representation of DataFrame
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+        """
+        return self.toPandas().values
+
     @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def mean(self):
         return self._reduce_for_stat_function(F.mean)
