@@ -47,16 +47,6 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             getattr(ddf.A, funcname)()
             getattr(ddf, funcname)()
 
-    def test_count(self):
-        df = pd.DataFrame({'A': [1, 2, 3, 4],
-                           'B': [1.0, 2.1, 3, 4]})
-        ddf = koalas.from_pandas(df)
-
-        # NOTE: This does not patch the pandas API, but maintains compat with spark
-        self.assertEqual(ddf.count(), len(df))
-
-        self.assertEqual(ddf.A.count(), df.A.count())
-
     def test_abs(self):
         df = pd.DataFrame({'A': [1, -2, 3, -4, 5],
                            'B': [1., -2, 3, -4, 5],
