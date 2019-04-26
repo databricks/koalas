@@ -662,8 +662,7 @@ class DataFrame(_Frame):
         else:
             kdf = self.assign(**{key: value})
 
-        # Spark DataFrame
-        self._sdf = kdf._sdf
+        self._sdf: spark.DataFrame = kdf._sdf
         self._metadata = kdf._metadata
 
     def __getattr__(self, key):
