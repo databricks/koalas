@@ -38,4 +38,4 @@ fi
 
 pushd "$FWDIR" > /dev/null
 pytest $ARGS
-popd
+popd > /dev/null

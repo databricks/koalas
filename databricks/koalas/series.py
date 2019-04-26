@@ -173,7 +173,7 @@ class Series(_Frame):
 
         >>> s = ks.Series(list('abc'))
         >>> s.dtype
-        dtype('O')a
+        dtype('O')
 
         >>> s = ks.Series(pd.date_range('20130101', periods=3))
         >>> s.dtype
