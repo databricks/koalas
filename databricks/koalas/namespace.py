@@ -28,7 +28,7 @@ from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.utils import default_session
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.typehint import Col, pandas_wrap
+from databricks.koalas.type import Col, pandas_wrap
 from databricks.koalas.series import Series
 
 
