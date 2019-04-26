@@ -80,7 +80,7 @@ class Metadata(object):
 
         :param column_fields: the new column field names. If None, then the original ones are used.
         :param index_info: the new index information. If None, then the original one is used.
-        :return: the new metadata.
+        :return: the copied metadata.
         """
         if column_fields is None:
             column_fields = self._column_fields
