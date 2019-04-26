@@ -24,7 +24,11 @@ from databricks.koalas.dask.compatibility import string_types
 
 class Metadata(object):
     """
-    Manages column names and index information
+    Manages column names and index information.
+
+    :ivar _column_fields: list of the Spark field names to be seen as columns in Koalas DataFrame.
+    :ivar _index_info: list of pair holding the Spark field names for indexes,
+                       and the index name to be seen in Koalas DataFrame.
     """
 
     def __init__(self, column_fields, index_info=None):
@@ -46,27 +50,38 @@ class Metadata(object):
 
     @property
     def column_fields(self):
+        """ Returns the managed column field names. """
         return self._column_fields
 
     @property
     def index_info(self):
+        """ Return the managed index information. """
         return self._index_info
 
     @property
     def index_fields(self):
+        """ Returns the managed index field names. """
         return [index_field for index_field, _ in self._index_info]
 
     @property
     def index_names(self):
+        """ Return the managed index names. """
         return [name for _, name in self._index_info]
 
     @property
     def all_fields(self):
+        """ Return all the field names including index field names. """
         index_fields = self.index_fields
         return index_fields + [field for field in self._column_fields
                                if field not in index_fields]
 
     def copy(self, column_fields=None, index_info=None):
+        """ Copy the metadata.
+
+        :param column_fields: the new column field names. If None, then the original ones are used.
+        :param index_info: the new index information. If None, then the original one is used.
+        :return: the copied metadata.
+        """
         if column_fields is None:
             column_fields = self._column_fields
         if index_info is None:
@@ -75,6 +90,11 @@ class Metadata(object):
 
     @staticmethod
     def from_pandas(pdf):
+        """ Create a metadata from pandas DataFrame.
+
+        :param pdf: :class:`pd.DataFrame`
+        :return: the created metadata
+        """
         column_fields = [str(col) for col in pdf.columns]
         index = pdf.index
         if isinstance(index, pd.MultiIndex):

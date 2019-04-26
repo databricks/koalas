@@ -328,10 +328,26 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
                                         "Series.*{}.*not implemented".format(name)):
                 getattr(d.a, name)()
 
+    def test_to_numpy(self):
+        df = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
+                           'b': [1, 2, 9, 4, 2, 4],
+                           'c': ["one", "three", "six", "seven", "one", "5"]},
+                          index=[10, 20, 30, 40, 50, 60])
+
+        ddf = koalas.from_pandas(df)
+
+        np.testing.assert_equal(ddf.to_numpy(), df.values)
+
+        s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
+
+        ddf = koalas.from_pandas(s)
+        np.testing.assert_equal(ddf.to_numpy(), s.values)
+
 
 if __name__ == "__main__":
     try:
         import xmlrunner
+
         testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
     except ImportError:
         testRunner = None

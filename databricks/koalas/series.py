@@ -364,11 +364,11 @@ class Series(_Frame):
         ...                    's2': [.3, .6, .0, .1]})
         >>> s1 = df.s1
         >>> s2 = df.s2
-        >>> s1.corr(s2, method='pearson')
-        -0.8510644963469898
+        >>> s1.corr(s2, method='pearson')  # doctest: +ELLIPSIS
+        -0.851064...
 
-        >>> s1.corr(s2, method='spearman')
-        -0.9486832980505125
+        >>> s1.corr(s2, method='spearman')  # doctest: +ELLIPSIS
+        -0.948683...
 
         Notes
         -----
