@@ -153,6 +153,7 @@ python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/ko
 
 ### What's the project's status?
 This project is currently in beta and is rapidly evolving.
+We plan to do weekly releases at this stage.
 You should expect the following differences:
 
  - some functions may be missing (see the [Contributions](#Contributions) section)
