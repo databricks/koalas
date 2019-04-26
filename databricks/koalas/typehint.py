@@ -17,10 +17,10 @@
 """
 Utilities to deal with types. This is mostly focused on python3.
 """
-from decorator import decorate
-from decorator import getfullargspec
 import typing
 
+from decorator import decorate
+from decorator import getfullargspec
 import numpy as np
 from pyspark.sql import Column
 from pyspark.sql.functions import pandas_udf

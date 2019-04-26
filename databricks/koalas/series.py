@@ -28,6 +28,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType, DoubleType, LongType, StructType, TimestampType, \
     to_arrow_type
 
+import databricks.koalas as ks
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
@@ -189,7 +190,7 @@ class Series(_Frame):
         return self.schema.fields[-1].dataType
 
     def astype(self, dtype):
-        from databricks.koalas.typing import as_spark_type
+        from databricks.koalas.typehint import as_spark_type
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
