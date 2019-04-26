@@ -15,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+set -o pipefail
+set -e
 
 # Runs both doctests and unit tests by default, otherwise hands arguments over to nose.
 
