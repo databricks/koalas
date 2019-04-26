@@ -25,7 +25,7 @@ import pandas as pd
 from databricks.koalas.dask.compatibility import string_types
 
 
-IndexInfo = Tuple[str, str]
+IndexInfo = Tuple[str, Optional[str]]
 
 
 class Metadata(object):
@@ -71,7 +71,7 @@ class Metadata(object):
         return [index_field for index_field, _ in self._index_info]
 
     @property
-    def index_names(self) -> List[str]:
+    def index_names(self) -> List[Optional[str]]:
         """ Return the managed index names. """
         return [name for _, name in self._index_info]
 
@@ -105,6 +105,8 @@ class Metadata(object):
         """
         column_fields = [str(col) for col in pdf.columns]
         index = pdf.index
+
+        index_info: List[IndexInfo]
         if isinstance(index, pd.MultiIndex):
             if index.names is None:
                 index_info = [('__index_level_{}__'.format(i), None)
