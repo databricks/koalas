@@ -27,6 +27,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
