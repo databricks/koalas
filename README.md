@@ -100,20 +100,33 @@ conda activate koalas-dev-env
 
 ### Running Tests
 
+There is a script `./dev/pytest` which is exactly same as `pytest` but with some default settings to run Koalas tests easily.
+
 To run all the tests, similar to our CI pipeline:
 ```bash
-./dev/run-tests.sh
+# Run all unittest and doctest
+./dev/pytest
 ```
 
 To run a specific test file:
 ```bash
-python databricks/koalas/tests/test_dataframe.py
+# Run unittest
+./dev/pytest -k test_dataframe.py
+
+# Run doctest
+./dev/pytest -k series.py --doctest-modules databricks
 ```
 
-To run a specific test method:
+To run a specific doctest/unittest:
 ```bash
-python databricks/koalas/tests/test_dataframe.py DataFrameTest.test_Dataframe
+# Run unittest
+./dev/pytest -k "DataFrameTest and test_Dataframe"
+
+# Run doctest
+./dev/pytest -k DataFrame.corr --doctest-modules databricks
 ```
+
+Note that `-k` is used for simplicity although it takes an expression. You can use `--verbose` to check what to filter. See `pytest --help` for more details.
 
 ### Building Documentation
 

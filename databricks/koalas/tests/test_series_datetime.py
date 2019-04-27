@@ -49,12 +49,3 @@ class SeriesDatetimeTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 (kdf['end_date'] - kdf['start_date']) / duration,
                 (pdf['end_date'] - pdf['start_date']) / duration)
-
-
-if __name__ == "__main__":
-    try:
-        import xmlrunner
-        testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
-    except ImportError:
-        testRunner = None
-    unittest.main(testRunner=testRunner, verbosity=2)

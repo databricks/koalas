@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 #
 # Copyright (C) 2019 Databricks, Inc.
 #
@@ -13,14 +15,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+set -o pipefail
+set -e
 
-import sys
+if ! hash pytest 2> /dev/null; then
+    echo "The pytest command was not found. Please install 'pytest' Python package."
+    exit 1
+fi
 
-if __name__ == "__main__":
-    import doctest
-    import databricks.koalas as ks
-    from databricks.koalas import frame, series, namespace
-    modules = [frame, series, namespace]
-    failure_count = sum([doctest.testmod(m, extraglobs={"ks": ks})[0] for m in modules])
-    if failure_count:
-        sys.exit(-1)
+# The current directory of the script.
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+if [ -n "$SPARK_HOME" ]; then
+    source $DIR/env_setup.sh
+fi
+
+FWDIR="$( cd "$DIR"/.. && pwd )"
+cd "$FWDIR"
+
+# Runs both doctests and unit tests by default, otherwise hands arguments over to pytest.
+if [ "$#" = 0 ]; then
+    pytest --verbose --showlocals --doctest-modules databricks
+else
+    pytest "$@"
+fi
