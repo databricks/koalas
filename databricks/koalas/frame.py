@@ -23,7 +23,7 @@ from functools import partial, reduce
 import numpy as np
 import pandas as pd
 from pyspark import sql as spark
-from pyspark.sql import functions as F
+from pyspark.sql import functions as F, Column
 from pyspark.sql.types import StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
@@ -331,8 +331,10 @@ class DataFrame(_Frame):
         for (name, c) in pairs:
             if isinstance(c, Series):
                 sdf = sdf.withColumn(name, c._scol)
-            else:
+            elif isinstance(c, Column):
                 sdf = sdf.withColumn(name, c)
+            else:
+                sdf = sdf.withColumn(name, F.lit(c))
 
         metadata = self._metadata.copy(
             column_fields=(self._metadata.column_fields +
@@ -650,8 +652,7 @@ class DataFrame(_Frame):
         if isinstance(key, (tuple, list)):
             assert isinstance(value.schema, StructType)
             field_names = value.schema.fieldNames()
-            kdf = self.assign(**{k: value[c]
-                                 for k, c in zip(key, field_names)})
+            kdf = self.assign(**{k: value[c] for k, c in zip(key, field_names)})
         else:
             kdf = self.assign(**{key: value})
 

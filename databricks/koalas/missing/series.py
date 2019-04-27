@@ -175,7 +175,6 @@ class _MissingPandasLikeSeries(object):
     to_latex = unsupported_function('to_latex')
     to_list = unsupported_function('to_list')
     to_msgpack = unsupported_function('to_msgpack')
-    to_numpy = unsupported_function('to_numpy')
     to_period = unsupported_function('to_period')
     to_pickle = unsupported_function('to_pickle')
     to_sparse = unsupported_function('to_sparse')
