@@ -36,6 +36,8 @@ class Metadata(object):
     :ivar _index_info: list of pair holding the Spark field names for indexes,
                        and the index name to be seen in Koalas DataFrame.
     """
+    _column_fields: List[str]
+    _index_info: List[IndexInfo]
 
     def __init__(self, column_fields: List[str],
                  index_info: Optional[List[IndexInfo]] = None) -> None:
