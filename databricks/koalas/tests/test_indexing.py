@@ -105,7 +105,7 @@ class BasicIndexingTest(ComparisonTestBase):
         self.assertPandasEqual(df2.toPandas(), pdf.set_index(['year', 'month']))
 
     def test_limitations(self):
-        df = self.df.set_index('month')
+        df = self.kdf.set_index('month')
 
         self.assertRaisesRegex(ValueError, 'Level should be all int or all string.',
                                lambda: df.reset_index([1, 'month']))
