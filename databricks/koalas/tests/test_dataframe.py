@@ -376,6 +376,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(NotImplementedError, msg):
             ddf.fillna(df_nan)
 
+        # Test dict sanitizer
+        value_dict = {'x': np.int64(-6), 'y': np.int64(-4), 'z': -5}
+        msg = "Dict contains unsupported type <class 'numpy.int64'>"
+        with self.assertRaisesRegex(TypeError, msg):
+            ddf.fillna(value_dict)
+
     def test_isnull(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
                            index=[10, 20, 30, 40, 50, 60])
