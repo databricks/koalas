@@ -570,11 +570,6 @@ class DataFrame(_Frame):
     def sort_values(self, by):
         return DataFrame(self._sdf.sort(by), self._metadata.copy())
 
-    def groupby(self, by):
-        from databricks.koalas.groups import PandasLikeGroupBy
-        gp = self._sdf.groupby(by)
-        return PandasLikeGroupBy(self, gp, None)
-
     @derived_from(pd.DataFrame)
     def pipe(self, func, *args, **kwargs):
         # Taken from pandas:

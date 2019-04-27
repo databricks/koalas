@@ -84,6 +84,19 @@ class _Frame(object):
         """
         return _spark_col_apply(self, F.abs)
 
+    def groupby(self, by):
+        from databricks.koalas.groupby import GroupBy
+        from databricks.koalas.series import Series
+        if isinstance(by, str):
+            by = [by]
+        elif isinstance(by, Series):
+            by = [by]
+        else:
+            by = list(by)
+        if len(by) == 0:
+            raise ValueError('No group keys passed!')
+        return GroupBy(self, by=by)
+
     def compute(self):
         """Alias of `toPandas()` to mimic dask for easily porting tests."""
         return self.toPandas()

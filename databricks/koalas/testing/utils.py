@@ -194,30 +194,44 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
             self.assertEqual(left.shape, right.shape, msg=msg)
             for lcol, rcol in zip(left.columns, right.columns):
                 self.assertEqual(str(lcol), str(rcol), msg=msg)
-                for lval, rval in zip(left[lcol], right[rcol]):
+                for lnull, rnull in zip(left[lcol].isnull(), right[rcol].isnull()):
+                    self.assertEqual(lnull, rnull, msg=msg)
+                for lval, rval in zip(left[lcol].dropna(), right[rcol].dropna()):
                     self.assertAlmostEqual(lval, rval, msg=msg)
         elif isinstance(left, pd.Series) and isinstance(left, pd.Series):
             msg = ("Series are not almost equal: " +
                    "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
                    "\n\nRight:\n%s\n%s" % (right, right.dtype))
-            for lval, rval in zip(left, right):
+            self.assertEqual(len(left), len(right), msg=msg)
+            for lnull, rnull in zip(left.isnull(), right.isnull()):
+                self.assertEqual(lnull, rnull, msg=msg)
+            for lval, rval in zip(left.dropna(), right.dropna()):
                 self.assertAlmostEqual(lval, rval, msg=msg)
         elif isinstance(left, pd.Index) and isinstance(left, pd.Index):
             msg = ("Indices are not almost equal: " +
                    "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
                    "\n\nRight:\n%s\n%s" % (right, right.dtype))
-            for lval, rval in zip(left, right):
+            self.assertEqual(len(left), len(right), msg=msg)
+            for lnull, rnull in zip(left.isnull(), right.isnull()):
+                self.assertEqual(lnull, rnull, msg=msg)
+            for lval, rval in zip(left.dropna(), right.dropna()):
                 self.assertAlmostEqual(lval, rval, msg=msg)
         else:
             raise ValueError("Unexpected values: (%s, %s)" % (left, right))
 
-    def assert_eq(self, left, right):
+    def assert_eq(self, left, right, almost=False):
         lpdf = self._to_pandas(left)
         rpdf = self._to_pandas(right)
         if isinstance(lpdf, (pd.DataFrame, pd.Series, pd.Index)):
-            self.assertPandasEqual(lpdf, rpdf)
+            if almost:
+                self.assertPandasAlmostEqual(lpdf, rpdf)
+            else:
+                self.assertPandasEqual(lpdf, rpdf)
         else:
-            self.assertEqual(lpdf, rpdf)
+            if almost:
+                self.assertAlmostEqual(lpdf, rpdf)
+            else:
+                self.assertEqual(lpdf, rpdf)
 
     @staticmethod
     def _to_pandas(df):

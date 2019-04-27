@@ -87,7 +87,6 @@ class _MissingPandasLikeSeries(object):
     get_ftype_counts = unsupported_function('get_ftype_counts')
     get_value = unsupported_function('get_value')
     get_values = unsupported_function('get_values')
-    groupby = unsupported_function('groupby')
     gt = unsupported_function('gt')
     hist = unsupported_function('hist')
     idxmax = unsupported_function('idxmax')
