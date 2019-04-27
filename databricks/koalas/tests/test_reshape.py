@@ -192,12 +192,3 @@ class ReshapeTest(ReusedSQLTestCase):
             exp = exp.astype({'A_a': 'float64', 'A_b': 'float64'})
         res = koalas.get_dummies(ddf, dtype='float64')
         self.assertPandasAlmostEqual(exp, res.toPandas())
-
-
-if __name__ == "__main__":
-    try:
-        import xmlrunner
-        testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
-    except ImportError:
-        testRunner = None
-    unittest.main(testRunner=testRunner, verbosity=2)

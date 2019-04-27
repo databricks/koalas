@@ -342,13 +342,3 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
 
         ddf = koalas.from_pandas(s)
         np.testing.assert_equal(ddf.to_numpy(), s.values)
-
-
-if __name__ == "__main__":
-    try:
-        import xmlrunner
-
-        testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
-    except ImportError:
-        testRunner = None
-    unittest.main(testRunner=testRunner, verbosity=2)

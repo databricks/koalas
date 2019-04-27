@@ -133,12 +133,3 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
     def test_read_csv_with_parse_dates(self):
         self.assertRaisesRegex(ValueError, 'parse_dates',
                                lambda: koalas.read_csv('path', parse_dates=True))
-
-
-if __name__ == "__main__":
-    try:
-        import xmlrunner
-        testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
-    except ImportError:
-        testRunner = None
-    unittest.main(testRunner=testRunner, verbosity=2)
