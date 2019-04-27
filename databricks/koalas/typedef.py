@@ -172,7 +172,7 @@ def _check_compatible(arg, sig_arg: X):
 
 def dict_sanitizer(input_dict):
     """
-    This function check if elements inside a given dict are supported by Spark.
+    This function checks if elements inside a given dict are supported by Spark.
     :param input_dict: dict
     :raises TypeError if any element is not supported by Spark
     """
