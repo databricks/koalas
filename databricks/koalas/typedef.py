@@ -22,6 +22,7 @@ import typing
 from decorator import decorate
 from decorator import getfullargspec
 import numpy as np
+import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 import pyarrow as pa
 from pyspark.sql import Column
@@ -135,7 +136,7 @@ def as_python_type(spark_tpe):
     return _py_conversions.get(spark_tpe, None)
 
 
-def infer_pd_series_spark_type(s):
+def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
     """Infer Spark DataType from pandas Series dtype.
 
     :param s: :class:`pandas.Series` to be inferred
