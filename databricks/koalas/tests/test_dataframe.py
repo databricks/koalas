@@ -20,14 +20,14 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas
-from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.series import Series
 
 
-class DataFrameTest(ReusedSQLTestCase, TestUtils):
+class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     @property
     def pdf(self):
@@ -69,6 +69,51 @@ class DataFrameTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(df[['a', 'b']], ddf[['a', 'b']])
 
         self.assertEqual(ddf.a.notnull().alias("x").name, "x")
+
+    def test_empty_dataframe(self):
+        a = pd.Series([], dtype='i1')
+        b = pd.Series([], dtype='str')
+        pdf = pd.DataFrame({'a': a, 'b': b})
+
+        self.assert_eq(koalas.from_pandas(a), a)
+        self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
+        self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
+
+        with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
+            self.assert_eq(koalas.from_pandas(a), a)
+            self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
+            self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
+
+    def test_all_null_dataframe(self):
+        a = pd.Series([None, None, None], dtype='float64')
+        b = pd.Series([None, None, None], dtype='str')
+        pdf = pd.DataFrame({'a': a, 'b': b})
+
+        self.assert_eq(koalas.from_pandas(a).dtype, a.dtype)
+        self.assertTrue(koalas.from_pandas(a).toPandas().isnull().all())
+        self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
+        self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
+
+        with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
+            self.assert_eq(koalas.from_pandas(a).dtype, a.dtype)
+            self.assertTrue(koalas.from_pandas(a).toPandas().isnull().all())
+            self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
+            self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
+
+    def test_nullable_object(self):
+        pdf = pd.DataFrame({'a': list('abc') + [np.nan],
+                            'b': list(range(1, 4)) + [np.nan],
+                            'c': list(np.arange(3, 6).astype('i1')) + [np.nan],
+                            'd': list(np.arange(4.0, 7.0, dtype='float64')) + [np.nan],
+                            'e': [True, False, True, np.nan],
+                            'f': list(pd.date_range('20130101', periods=3)) + [np.nan]})
+
+        kdf = koalas.from_pandas(pdf)
+        self.assert_eq(kdf, pdf)
+
+        with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
+            kdf = koalas.from_pandas(pdf)
+            self.assert_eq(kdf, pdf)
 
     def test_assign(self):
         kdf = self.kdf.copy()
