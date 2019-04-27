@@ -29,7 +29,6 @@ from pyspark.sql import Column
 from pyspark.sql.functions import pandas_udf
 import pyspark.sql.types as types
 
-
 T = typing.TypeVar("T")
 
 
@@ -113,7 +112,6 @@ def _build_py_type_dict():
 
 _known_types = _build_type_dict()
 
-
 _py_conversions = _build_py_type_dict()
 
 
@@ -172,6 +170,18 @@ def _check_compatible(arg, sig_arg: X):
     assert False, (arg, sig_arg)
 
 
+def dict_sanitizer(input_dict):
+    """
+    This function check if elements inside a given dict are supported by Spark.
+    :param input_dict: dict
+    :raises TypeError if any element is not supported by Spark
+    """
+    _possible_type_values = [int, str, float, np.float64, np.float, bool]
+    for e in input_dict.values():
+        if not type(e) in _possible_type_values:
+            raise TypeError("Dict contains unsupported type {}".format(type(e)))
+
+
 def make_fun(f, *args, **kwargs):
     """
     This function calls the function f while taking into account some of the
@@ -225,7 +235,7 @@ def make_fun(f, *args, **kwargs):
     all_indexes = col_indexes + col_keys  # type: typing.Union[str, int]
 
     def clean_fun(*args2):
-        assert len(args2) == len(all_indexes),\
+        assert len(args2) == len(all_indexes), \
             "Missing some inputs:{}!={}".format(all_indexes, [str(c) for c in args2])
         full_args = list(frozen_args)
         full_kwargs = dict(frozen_kwargs)
@@ -236,6 +246,7 @@ def make_fun(f, *args, **kwargs):
                 assert isinstance(idx, str), str(idx)
                 full_kwargs[idx] = arg
         return f(*full_args, **full_kwargs)
+
     udf = pandas_udf(clean_fun, returnType=spark_ret_type)
     wrapped_udf = udf  # udf #_wrap_callable(udf)
     col_args = []
@@ -254,6 +265,7 @@ def _wrap_callable(obj):
 
     def f(*args, **kwargs):
         return f0(*args, **kwargs)
+
     obj.__call__ = f
     return obj
 
