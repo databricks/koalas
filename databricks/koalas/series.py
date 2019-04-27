@@ -28,6 +28,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType, DoubleType, LongType, StructType, TimestampType, \
     to_arrow_type
 
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
@@ -189,7 +190,7 @@ class Series(_Frame):
         return self.schema.fields[-1].dataType
 
     def astype(self, dtype):
-        from databricks.koalas.typing import as_spark_type
+        from databricks.koalas.typedef import as_spark_type
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
@@ -363,11 +364,11 @@ class Series(_Frame):
         ...                    's2': [.3, .6, .0, .1]})
         >>> s1 = df.s1
         >>> s2 = df.s2
-        >>> s1.corr(s2, method='pearson')
-        -0.8510644963469898
+        >>> s1.corr(s2, method='pearson')  # doctest: +ELLIPSIS
+        -0.851064...
 
-        >>> s1.corr(s2, method='spearman')
-        -0.9486832980505125
+        >>> s1.corr(s2, method='spearman')  # doctest: +ELLIPSIS
+        -0.948683...
 
         Notes
         -----
@@ -385,8 +386,14 @@ class Series(_Frame):
         c = df.corr(method=method)
         return c.loc["corr_arg1", "corr_arg2"]
 
-    @derived_from(pd.Series, ua_args=['level'])
     def count(self):
+        """
+        Return number of non-NA/null observations in the Series.
+
+        Returns
+        -------
+        nobs : int
+        """
         return self._reduce_for_stat_function(F.count)
 
     def _reduce_for_stat_function(self, sfun):

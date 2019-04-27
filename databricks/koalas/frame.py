@@ -24,10 +24,11 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from pyspark import sql as spark
-from pyspark.sql import functions as F
+from pyspark.sql import functions as F, Column
 from pyspark.sql.types import StructField, StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
@@ -36,7 +37,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.selection import SparkDataFrameLocator
-from databricks.koalas.typing import infer_pd_series_spark_type
+from databricks.koalas.typedef import infer_pd_series_spark_type
 
 
 class DataFrame(_Frame):
@@ -341,8 +342,10 @@ class DataFrame(_Frame):
         for (name, c) in pairs:
             if isinstance(c, Series):
                 sdf = sdf.withColumn(name, c._scol)
-            else:
+            elif isinstance(c, Column):
                 sdf = sdf.withColumn(name, c)
+            else:
+                sdf = sdf.withColumn(name, F.lit(c))
 
         metadata = self._metadata.copy(
             column_fields=(self._metadata.column_fields +
@@ -498,8 +501,53 @@ class DataFrame(_Frame):
         return pd.Series([self[col].dtype for col in self._metadata.column_fields],
                          index=self._metadata.column_fields)
 
-    @derived_from(pd.DataFrame, ua_args=['axis', 'level', 'numeric_only'])
     def count(self):
+        """
+        Count non-NA cells for each column or row.
+
+        The values `None`, `NaN`, `NaT`, and optionally `numpy.inf` (depending
+        on `pandas.options.mode.use_inf_as_na`) are considered NA.
+
+        Returns
+        -------
+        Series or DataFrame
+            For each column/row the number of non-NA/null entries.
+            If `level` is specified returns a `DataFrame`.
+
+        See Also
+        --------
+        Series.count: Number of non-NA elements in a Series.
+        DataFrame.shape: Number of DataFrame rows and columns (including NA
+            elements).
+        DataFrame.isna: Boolean same-sized DataFrame showing places of NA
+            elements.
+
+        Examples
+        --------
+        Constructing DataFrame from a dictionary:
+
+        >>> df = pd.DataFrame({"Person":
+        ...                    ["John", "Myla", "Lewis", "John", "Myla"],
+        ...                    "Age": [24., np.nan, 21., 33, 26],
+        ...                    "Single": [False, True, True, True, False]})
+        >>> df
+          Person   Age  Single
+        0   John  24.0   False
+        1   Myla   NaN    True
+        2  Lewis  21.0    True
+        3   John  33.0    True
+        4   Myla  26.0   False
+
+        Notice the uncounted NA values:
+
+        >>> df.count()
+        Person    5
+        Age       4
+        Single    5
+        dtype: int64
+
+        Counts for each **row**:
+        """
         return self._sdf.count()
 
     def unique(self):
@@ -615,8 +663,7 @@ class DataFrame(_Frame):
         if isinstance(key, (tuple, list)):
             assert isinstance(value.schema, StructType)
             field_names = value.schema.fieldNames()
-            kdf = self.assign(**{k: value[c]
-                                 for k, c in zip(key, field_names)})
+            kdf = self.assign(**{k: value[c] for k, c in zip(key, field_names)})
         else:
             kdf = self.assign(**{key: value})
 

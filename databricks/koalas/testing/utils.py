@@ -242,12 +242,12 @@ class TestUtils(object):
 class ComparisonTestBase(ReusedSQLTestCase):
 
     @property
-    def df(self):
+    def kdf(self):
         return koalas.from_pandas(self.pdf)
 
     @property
     def pdf(self):
-        return self.df.toPandas()
+        return self.kdf.toPandas()
 
 
 def compare_both(f=None, almost=True):
@@ -264,7 +264,7 @@ def compare_both(f=None, almost=True):
         else:
             compare = self.assertPandasEqual
 
-        for result_pandas, result_spark in zip(f(self, self.pdf), f(self, self.df)):
+        for result_pandas, result_spark in zip(f(self, self.pdf), f(self, self.kdf)):
             compare(result_pandas, result_spark.toPandas())
 
     return wrapped

@@ -123,7 +123,7 @@ To build documentation via Sphinx:
 cd docs && make clean html
 ```
 
-It generates HTMLs under `docs/_build/html` directory. Open `docs/_build/html/index.html` to check if documentation is built properly.
+It generates HTMLs under `docs/build/html` directory. Open `docs/build/html/index.html` to check if documentation is built properly.
 
 ### Coding Conventions
 We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
@@ -153,6 +153,7 @@ python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/ko
 
 ### What's the project's status?
 This project is currently in beta and is rapidly evolving.
+We plan to do weekly releases at this stage.
 You should expect the following differences:
 
  - some functions may be missing (see the [Contributions](#Contributions) section)

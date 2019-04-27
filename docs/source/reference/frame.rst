@@ -114,3 +114,4 @@ Serialization / IO / Conversion
    :toctree: api/
 
    DataFrame.to_html
+   DataFrame.to_numpy

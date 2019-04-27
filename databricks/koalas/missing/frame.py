@@ -170,7 +170,6 @@ class _MissingPandasLikeDataFrame(object):
     to_json = unsupported_function('to_json')
     to_latex = unsupported_function('to_latex')
     to_msgpack = unsupported_function('to_msgpack')
-    to_numpy = unsupported_function('to_numpy')
     to_panel = unsupported_function('to_panel')
     to_parquet = unsupported_function('to_parquet')
     to_period = unsupported_function('to_period')
