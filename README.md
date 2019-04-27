@@ -123,7 +123,7 @@ To run a specific doctest/unittest:
 ./dev/pytest -k "DataFrameTest and test_Dataframe"
 
 # Run doctest
-./dev/pytest -k DataFrame.corr --doctest-modules databricks 
+./dev/pytest -k DataFrame.corr --doctest-modules databricks
 ```
 
 Note that `-k` is used for simplicity although it takes an expression. You can use `--verbose` to check what to filter. See `pytest --help` for more details.

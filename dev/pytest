@@ -23,7 +23,6 @@ if ! hash pytest 2> /dev/null; then
     exit 1
 fi
 
-# Runs both doctests and unit tests by default, otherwise hands arguments over to pytest.
 # The current directory of the script.
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -34,6 +33,7 @@ fi
 FWDIR="$( cd "$DIR"/.. && pwd )"
 cd "$FWDIR"
 
+# Runs both doctests and unit tests by default, otherwise hands arguments over to pytest.
 if [ "$#" = 0 ]; then
     pytest --verbose --showlocals --doctest-modules databricks
 else

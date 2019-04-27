@@ -15,11 +15,9 @@
 #
 
 from distutils.version import LooseVersion
-import unittest
 
 import numpy as np
 import pandas as pd
-import pyspark
 
 from databricks import koalas
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils

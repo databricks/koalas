@@ -16,7 +16,6 @@
 
 from contextlib import contextmanager
 from distutils.version import LooseVersion
-import unittest
 
 import pandas as pd
 
