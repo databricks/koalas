@@ -17,7 +17,6 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
-from decorator import dispatch_on
 from functools import partial, reduce
 
 import numpy as np
@@ -38,6 +37,8 @@ from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.typedef import infer_pd_series_spark_type
+from databricks.koalas.typing import dict_sanitizer
+
 
 
 class DataFrame(_Frame):
@@ -689,9 +690,13 @@ class DataFrame(_Frame):
             axis = 0
         if value is not None:
             if axis == 0 or axis == "index":
-                if isinstance(value, (float, int, str, bool, dict)):
+                if isinstance(value, (float, int, str, bool)):
+                    sdf = self._sdf.fillna(value)
+                if isinstance(value, dict):
+                    dict_sanitizer(value)
                     sdf = self._sdf.fillna(value)
                 if isinstance(value, pd.Series):
+                    dict_sanitizer(value.to_dict())
                     sdf = self._sdf.fillna(value.to_dict())
                 elif isinstance(value, pd.DataFrame):
                     raise NotImplementedError("Dataframe value is not supported")
