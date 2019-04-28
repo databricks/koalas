@@ -319,6 +319,64 @@ class Series(_Frame):
 
     @derived_from(pd.Series)
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+        """
+        Return a Series containing counts of unique values.
+        The resulting object will be in descending order so that the
+        first element is the most frequently-occurring element.
+        Excludes NA values by default.
+        Parameters
+        ----------
+        normalize : boolean, default False
+            If True then the object returned will contain the relative
+            frequencies of the unique values.
+        sort : boolean, default True
+            Sort by values.
+        ascending : boolean, default False
+            Sort in ascending order.
+        bins : Not Yet Supported
+        # TODO: Update Documentation when its supported
+        dropna : boolean, default True
+            Don't include counts of NaN.
+        Returns
+        -------
+        counts : Series
+        See Also
+        --------
+        Series.count: Number of non-NA elements in a Series.
+        Examples
+        --------
+        import pandas as pd
+        import databricks.koalas as ks
+        import numpy as np
+        >>> pdf = pd.DataFrame({'x':[0, 1, np.nan, 0, 2, np.nan, 3, 3]})
+        >>> df = ks.from_pandas(pdf)
+        >>> df.x.value_counts()
+         3.0    2
+         0.0    2
+         1.0    1
+         2.0    1
+        Name: x, dtype: int64
+
+        With `normalize` set to `True`, returns the relative frequency by
+        dividing all values by the sum of values.
+        >>> df.x.value_counts(normalize=True)
+         0.0    0.333333
+         3.0    0.333333
+         1.0    0.166667
+         2.0    0.166667
+         Name: x, dtype: float64
+
+        **dropna**
+        With `dropna` set to `False` we can also see NaN index values.
+        >>> df.x.value_counts(dropna=False)
+         0.0    2
+         3.0    2
+         NaN     2
+         1.0    1
+         2.0    1
+         Name: x, dtype: int64
+
+        """
         if bins is not None:
             raise NotImplementedError("value_counts currently does not support bins")
 
