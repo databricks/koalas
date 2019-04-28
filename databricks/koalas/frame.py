@@ -21,8 +21,8 @@ from functools import partial, reduce
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from decorator import dispatch_on
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import StructField, StructType, to_arrow_type
@@ -37,8 +37,8 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.selection import SparkDataFrameLocator
+from databricks.koalas.typedef import dict_sanitizer
 from databricks.koalas.typedef import infer_pd_series_spark_type
-from databricks.koalas.typing import dict_sanitizer
 from databricks.koalas.utils import default_session
 
 
