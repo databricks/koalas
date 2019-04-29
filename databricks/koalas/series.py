@@ -317,7 +317,6 @@ class Series(_Frame):
         # Pandas wants a series/array-like object
         return _col(self.to_dataframe().unique())
 
-    @derived_from(pd.Series)
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
         """
         Return a Series containing counts of unique values.
@@ -345,11 +344,7 @@ class Series(_Frame):
         Series.count: Number of non-NA elements in a Series.
         Examples
         --------
-        import pandas as pd
-        import databricks.koalas as ks
-        import numpy as np
-        >>> pdf = pd.DataFrame({'x':[0, 1, np.nan, 0, 2, np.nan, 3, 3]})
-        >>> df = ks.from_pandas(pdf)
+        >>> pdf = ks.DataFrame({'x':[0, 1, np.nan, 0, 2, np.nan, 3, 3]})
         >>> df.x.value_counts()
          3.0    2
          0.0    2
