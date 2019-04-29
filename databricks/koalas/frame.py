@@ -315,6 +315,10 @@ class DataFrame(_Frame):
         to Koalas, it will lose the index information and the original index
         will be turned into a normal column.
 
+        See Also
+        --------
+        DataFrame.to_spark
+
         Examples
         --------
         >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
@@ -341,6 +345,10 @@ class DataFrame(_Frame):
     def to_spark(self):
         """
         Return the current DataFrame as a Spark DataFrame.
+
+        See Also
+        --------
+        DataFrame.to_koalas
         """
         return self._sdf
 
