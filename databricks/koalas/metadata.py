@@ -17,9 +17,15 @@
 """
 A metadata to manage indexes.
 """
+
+from typing import List, Optional, Tuple
+
 import pandas as pd
 
 from databricks.koalas.dask.compatibility import string_types
+
+
+IndexInfo = Tuple[str, Optional[str]]
 
 
 class Metadata(object):
@@ -30,8 +36,11 @@ class Metadata(object):
     :ivar _index_info: list of pair holding the Spark field names for indexes,
                        and the index name to be seen in Koalas DataFrame.
     """
+    _column_fields: List[str]
+    _index_info: List[IndexInfo]
 
-    def __init__(self, column_fields, index_info=None):
+    def __init__(self, column_fields: List[str],
+                 index_info: Optional[List[IndexInfo]] = None) -> None:
         """ Create a new metadata to manage column fields and index fields and names.
 
         :param column_fields: list of string
@@ -49,33 +58,34 @@ class Metadata(object):
         self._index_info = index_info or []
 
     @property
-    def column_fields(self):
+    def column_fields(self) -> List[str]:
         """ Returns the managed column field names. """
         return self._column_fields
 
     @property
-    def index_info(self):
+    def index_info(self) -> List[IndexInfo]:
         """ Return the managed index information. """
         return self._index_info
 
     @property
-    def index_fields(self):
+    def index_fields(self) -> List[str]:
         """ Returns the managed index field names. """
         return [index_field for index_field, _ in self._index_info]
 
     @property
-    def index_names(self):
+    def index_names(self) -> List[Optional[str]]:
         """ Return the managed index names. """
         return [name for _, name in self._index_info]
 
     @property
-    def all_fields(self):
+    def all_fields(self) -> List[str]:
         """ Return all the field names including index field names. """
         index_fields = self.index_fields
         return index_fields + [field for field in self._column_fields
                                if field not in index_fields]
 
-    def copy(self, column_fields=None, index_info=None):
+    def copy(self, column_fields: Optional[List[str]] = None,
+             index_info: Optional[List[IndexInfo]] = None) -> 'Metadata':
         """ Copy the metadata.
 
         :param column_fields: the new column field names. If None, then the original ones are used.
@@ -89,7 +99,7 @@ class Metadata(object):
         return Metadata(column_fields=column_fields.copy(), index_info=index_info.copy())
 
     @staticmethod
-    def from_pandas(pdf):
+    def from_pandas(pdf: pd.DataFrame) -> 'Metadata':
         """ Create a metadata from pandas DataFrame.
 
         :param pdf: :class:`pd.DataFrame`
@@ -97,6 +107,8 @@ class Metadata(object):
         """
         column_fields = [str(col) for col in pdf.columns]
         index = pdf.index
+
+        index_info: List[IndexInfo]
         if isinstance(index, pd.MultiIndex):
             if index.names is None:
                 index_info = [('__index_level_{}__'.format(i), None)

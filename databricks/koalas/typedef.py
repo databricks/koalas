@@ -22,6 +22,9 @@ import typing
 from decorator import decorate
 from decorator import getfullargspec
 import numpy as np
+import pandas as pd
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
+import pyarrow as pa
 from pyspark.sql import Column
 from pyspark.sql.functions import pandas_udf
 import pyspark.sql.types as types
@@ -131,6 +134,23 @@ def as_spark_type(tpe):
 
 def as_python_type(spark_tpe):
     return _py_conversions.get(spark_tpe, None)
+
+
+def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
+    """Infer Spark DataType from pandas Series dtype.
+
+    :param s: :class:`pandas.Series` to be inferred
+    :return: the inferred Spark data type
+    """
+    dt = s.dtype
+    if dt == np.dtype('object'):
+        if len(s) == 0 or s.isnull().all():
+            raise ValueError("can not infer schema from empty or null dataset")
+        return types.from_arrow_type(pa.Array.from_pandas(s).type)
+    elif is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
+        return types.TimestampType()
+    else:
+        return types.from_arrow_type(pa.from_numpy_dtype(dt))
 
 
 def _check_compatible(arg, sig_arg: X):

@@ -22,9 +22,11 @@ from functools import partial, reduce
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from pyspark import sql as spark
-from pyspark.sql import functions as F
-from pyspark.sql.types import DataType, DoubleType, FloatType, StructType, to_arrow_type
+from pyspark.sql import functions as F, Column
+from pyspark.sql.types import DataType, DoubleType, FloatType, StructField, StructType, \
+    to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -36,6 +38,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.selection import SparkDataFrameLocator
+from databricks.koalas.typedef import infer_pd_series_spark_type
 
 
 class DataFrame(_Frame):
@@ -58,7 +61,16 @@ class DataFrame(_Frame):
         metadata = Metadata.from_pandas(pdf)
         reset_index = pdf.reset_index()
         reset_index.columns = metadata.all_fields
-        self._init_from_spark(default_session().createDataFrame(reset_index), metadata)
+        schema = StructType([StructField(name, infer_pd_series_spark_type(col),
+                                         nullable=bool(col.isnull().any()))
+                             for name, col in reset_index.iteritems()])
+        for name, col in reset_index.iteritems():
+            dt = col.dtype
+            if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
+                continue
+            reset_index[name] = col.replace({np.nan: None})
+        self._init_from_spark(default_session().createDataFrame(reset_index, schema=schema),
+                              metadata)
 
     @__init__.register(spark.DataFrame)
     def _init_from_spark(self, sdf, metadata=None, *args):
@@ -334,8 +346,10 @@ class DataFrame(_Frame):
         for (name, c) in pairs:
             if isinstance(c, Series):
                 sdf = sdf.withColumn(name, c._scol)
-            else:
+            elif isinstance(c, Column):
                 sdf = sdf.withColumn(name, c)
+            else:
+                sdf = sdf.withColumn(name, F.lit(c))
 
         metadata = self._metadata.copy(
             column_fields=(self._metadata.column_fields +
@@ -482,7 +496,7 @@ class DataFrame(_Frame):
         >>> df.dtypes
         a            object
         b             int64
-        c             int64
+        c              int8
         d           float64
         e              bool
         f    datetime64[ns]
@@ -657,8 +671,7 @@ class DataFrame(_Frame):
         if isinstance(key, (tuple, list)):
             assert isinstance(value.schema, StructType)
             field_names = value.schema.fieldNames()
-            kdf = self.assign(**{k: value[c]
-                                 for k, c in zip(key, field_names)})
+            kdf = self.assign(**{k: value[c] for k, c in zip(key, field_names)})
         else:
             kdf = self.assign(**{key: value})
 

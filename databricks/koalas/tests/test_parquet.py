@@ -15,11 +15,9 @@
 #
 
 from distutils.version import LooseVersion
-import unittest
 
 import numpy as np
 import pandas as pd
-import pyspark
 
 from databricks import koalas
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
@@ -61,12 +59,3 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
                 expected = data
             actual = koalas.read_parquet(tmp)
             self.assertPandasEqual(expected, actual.toPandas())
-
-
-if __name__ == "__main__":
-    try:
-        import xmlrunner
-        testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
-    except ImportError:
-        testRunner = None
-    unittest.main(testRunner=testRunner, verbosity=2)

@@ -105,7 +105,7 @@ class BasicIndexingTest(ComparisonTestBase):
         self.assertPandasEqual(df2.toPandas(), pdf.set_index(['year', 'month']))
 
     def test_limitations(self):
-        df = self.df.set_index('month')
+        df = self.kdf.set_index('month')
 
         self.assertRaisesRegex(ValueError, 'Level should be all int or all string.',
                                lambda: df.reset_index([1, 'month']))
@@ -409,12 +409,3 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assert_eq(df['2011-01':'2012-05'], ddf['2011-01':'2012-05'])
         self.assert_eq(df['2011':'2015'], ddf['2011':'2015'])
-
-
-if __name__ == "__main__":
-    try:
-        import xmlrunner
-        testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
-    except ImportError:
-        testRunner = None
-    unittest.main(testRunner=testRunner, verbosity=2)

@@ -34,6 +34,8 @@ class PySparkTestCase(unittest.TestCase):
 
     def setUp(self):
         self._old_sys_path = list(sys.path)
+        if SparkContext._active_spark_context is not None:
+            SparkContext._active_spark_context.stop()
         class_name = self.__class__.__name__
         self.sc = SparkContext('local[4]', class_name)
 
@@ -53,6 +55,8 @@ class ReusedPySparkTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        if SparkContext._active_spark_context is not None:
+            SparkContext._active_spark_context.stop()
         cls.sc = SparkContext('local[4]', cls.__name__, conf=cls.conf())
 
     @classmethod
@@ -242,12 +246,12 @@ class TestUtils(object):
 class ComparisonTestBase(ReusedSQLTestCase):
 
     @property
-    def df(self):
+    def kdf(self):
         return koalas.from_pandas(self.pdf)
 
     @property
     def pdf(self):
-        return self.df.toPandas()
+        return self.kdf.toPandas()
 
 
 def compare_both(f=None, almost=True):
@@ -264,7 +268,7 @@ def compare_both(f=None, almost=True):
         else:
             compare = self.assertPandasEqual
 
-        for result_pandas, result_spark in zip(f(self, self.pdf), f(self, self.df)):
+        for result_pandas, result_spark in zip(f(self, self.pdf), f(self, self.kdf)):
             compare(result_pandas, result_spark.toPandas())
 
     return wrapped

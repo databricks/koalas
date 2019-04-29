@@ -15,7 +15,6 @@
 #
 
 import os
-import unittest
 
 import pandas as pd
 
@@ -61,12 +60,3 @@ class EtlTest(ComparisonTestBase):
 
         # df7 = df4.loc[df4.signal_3 > 0, ['Symbol', 'Date']]
         # yield df7
-
-
-if __name__ == "__main__":
-    try:
-        import xmlrunner
-        testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
-    except ImportError:
-        testRunner = None
-    unittest.main(testRunner=testRunner, verbosity=2)
