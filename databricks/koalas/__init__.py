@@ -42,3 +42,18 @@ from databricks.koalas.typedef import Col, pandas_wrap
 
 __all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
            'get_dummies', 'DataFrame', 'Series']
+
+def _auto_patch():
+    import os
+    import logging
+    # Autopatching is on by default.
+    x = os.getenv("SPARK_KOALAS_AUTOPATCH", "true")
+    if x.lower() in ("true", "1", "enabled"):
+        logger = logging.getLogger('spark')
+        logger.info("Patching spark automatically. You can disable it by setting "
+                    "SPARK_KOALAS_AUTOPATCH=false in your environment")
+
+    from pyspark.sql import dataframe as df
+    df.DataFrame.to_koalas = DataFrame.to_koalas
+
+_auto_patch()
