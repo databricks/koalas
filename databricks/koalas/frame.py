@@ -86,9 +86,18 @@ class DataFrame(_Frame):
                 for field in self._metadata.index_fields]
 
     def _reduce_for_stat_function(self, sfun):
+        from inspect import signature
         exprs = []
+        num_args = len(signature(sfun).parameters)
         for col in self.columns:
-            exprs.append(sfun(self._sdf[col], self._sdf.schema[col].dataType).alias(col))
+            if num_args == 1:
+                # Only pass in the column if sfun accepts only one arg
+                exprs.append(sfun(self._sdf[col]).alias(col))
+            else:  # must be 2
+                assert num_args == 2
+                # Pass in both the column and its data type if sfun accepts two args
+                exprs.append(sfun(self._sdf[col], self._sdf.schema[col].dataType).alias(col))
+
         sdf = self._sdf.select(*exprs)
         pdf = sdf.toPandas()
         assert len(pdf) == 1, (sdf, pdf)
