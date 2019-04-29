@@ -303,6 +303,47 @@ class DataFrame(_Frame):
 
     notna = notnull
 
+    def to_koalas(self):
+        """
+        Converts the existing DataFrame into a Koalas DataFrame.
+
+        This method is monkey-patched into Spark's DataFrame and can be used
+        to convert a Spark DataFrame into a Koalas DataFrame. If running on
+        an existing Koalas DataFrame, the method returns itself.
+
+        If a Koalas DataFrame is converted to a Spark DataFrame and then back
+        to Koalas, it will lose the index information and the original index
+        will be turned into a normal column.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
+        >>> df
+           col1  col2
+        0     1     3
+        1     2     4
+
+        >>> spark_df = df.to_spark()
+        >>> spark_df
+        DataFrame[__index_level_0__: bigint, col1: bigint, col2: bigint]
+
+        >>> kdf = spark_df.to_koalas()
+        >>> kdf
+           __index_level_0__  col1  col2
+        0                  0     1     3
+        1                  1     2     4
+        """
+        if isinstance(self, DataFrame):
+            return self
+        else:
+            return DataFrame(self)
+
+    def to_spark(self):
+        """
+        Return the current DataFrame as a Spark DataFrame.
+        """
+        return self._sdf
+
     @derived_from(spark.DataFrame)
     def toPandas(self):
         sdf = self._sdf.select(['`{}`'.format(name) for name in self._metadata.all_fields])

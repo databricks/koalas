@@ -19,8 +19,6 @@ import inspect
 import numpy as np
 import pandas as pd
 
-from pyspark import sql as spark
-
 from databricks import koalas
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
