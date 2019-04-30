@@ -18,7 +18,10 @@
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
 import pandas as pd
+
+from pyspark import sql as spark
 from pyspark.sql import functions as F
+from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks.koalas.dask.utils import derived_from
 
@@ -87,6 +90,15 @@ class _Frame(object):
     def compute(self):
         """Alias of `toPandas()` to mimic dask for easily porting tests."""
         return self.toPandas()
+
+    @staticmethod
+    def _count_expr(col: spark.Column, spark_type: DataType) -> spark.Column:
+        # Special handle floating point types because Spark's count treats nan as a valid value,
+        # whereas Pandas count doesn't include nan.
+        if isinstance(spark_type, (FloatType, DoubleType)):
+            return F.count(F.nanvl(col, F.lit(None)))
+        else:
+            return F.count(col)
 
 
 def _spark_col_apply(kdf_or_ks, sfun):
