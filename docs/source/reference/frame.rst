@@ -115,3 +115,5 @@ Serialization / IO / Conversion
 
    DataFrame.to_html
    DataFrame.to_numpy
+   DataFrame.to_koalas
+   DataFrame.to_spark
