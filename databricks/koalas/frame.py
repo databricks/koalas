@@ -25,7 +25,8 @@ import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.types import StructField, StructType, to_arrow_type
+from pyspark.sql.types import DataType, DoubleType, FloatType, StructField, StructType, \
+    to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -85,7 +86,26 @@ class DataFrame(_Frame):
                 for field in self._metadata.index_fields]
 
     def _reduce_for_stat_function(self, sfun):
-        sdf = self._sdf.select([sfun(self._sdf[col]).alias(col) for col in self.columns])
+        """
+        Applies sfun to each column and returns a pd.Series where the number of rows equal the
+        number of columns.
+
+        :param sfun: either an 1-arg function that takes a Column and returns a Column, or
+        a 2-arg function that takes a Column and its DataType and returns a Column.
+        """
+        from inspect import signature
+        exprs = []
+        num_args = len(signature(sfun).parameters)
+        for col in self.columns:
+            if num_args == 1:
+                # Only pass in the column if sfun accepts only one arg
+                exprs.append(sfun(self._sdf[col]).alias(col))
+            else:  # must be 2
+                assert num_args == 2
+                # Pass in both the column and its data type if sfun accepts two args
+                exprs.append(sfun(self._sdf[col], self._sdf.schema[col].dataType).alias(col))
+
+        sdf = self._sdf.select(*exprs)
         pdf = sdf.toPandas()
         assert len(pdf) == 1, (sdf, pdf)
         row = pdf.iloc[0]
@@ -510,9 +530,7 @@ class DataFrame(_Frame):
 
         Returns
         -------
-        Series or DataFrame
-            For each column/row the number of non-NA/null entries.
-            If `level` is specified returns a `DataFrame`.
+        pandas.Series
 
         See Also
         --------
@@ -526,7 +544,7 @@ class DataFrame(_Frame):
         --------
         Constructing DataFrame from a dictionary:
 
-        >>> df = pd.DataFrame({"Person":
+        >>> df = ks.DataFrame({"Person":
         ...                    ["John", "Myla", "Lewis", "John", "Myla"],
         ...                    "Age": [24., np.nan, 21., 33, 26],
         ...                    "Single": [False, True, True, True, False]})
@@ -545,10 +563,16 @@ class DataFrame(_Frame):
         Age       4
         Single    5
         dtype: int64
-
-        Counts for each **row**:
         """
-        return self._sdf.count()
+        def count_expr(col: spark.Column, spark_type: DataType) -> spark.Column:
+            # Special handle floating point types because Spark's count treats nan as a valid value,
+            # whereas Pandas count doesn't include nan.
+            if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
+                return F.count(F.nanvl(col, F.lit(None)))
+            else:
+                return F.count(col)
+
+        return self._reduce_for_stat_function(count_expr)
 
     def unique(self):
         sdf = self._sdf
@@ -667,7 +691,7 @@ class DataFrame(_Frame):
         else:
             kdf = self.assign(**{key: value})
 
-        self._sdf = kdf._sdf
+        self._sdf: spark.DataFrame = kdf._sdf
         self._metadata = kdf._metadata
 
     def __getattr__(self, key):
