@@ -206,8 +206,8 @@ class Series(_Frame):
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
             return Series(self._scol.getField(name), self._kdf, self._index_info)
 
-    # TODO: automate the process here
     def alias(self, name):
+        """An alias for :meth:`Series.rename`."""
         return self.rename(name)
 
     @property
@@ -227,8 +227,39 @@ class Series(_Frame):
     def name(self, name):
         self.rename(name, inplace=True)
 
-    @derived_from(pd.Series)
+    # TODO: Functionality and documentation should be matched. Currently, changing index labels
+    # taking dictionary and function to change index are not supported.
     def rename(self, index=None, **kwargs):
+        """
+        Alter Series name.
+
+        Parameters
+        ----------
+        index : scalar
+            Scalar will alter the ``Series.name`` attribute.
+        inplace : bool, default False
+            Whether to return a new Series. If True then value of copy is
+            ignored.
+
+        Returns
+        -------
+        Series
+            Series with name altered.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3])
+        >>> s
+        0    1
+        1    2
+        2    3
+        Name: 0, dtype: int64
+        >>> s.rename("my_name")  # scalar, changes Series.name
+        0    1
+        1    2
+        2    3
+        Name: my_name, dtype: int64
+        """
         if index is None:
             return self
         scol = self._scol.alias(index)
