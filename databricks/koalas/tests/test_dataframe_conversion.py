@@ -35,7 +35,8 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
     def kdf(self):
         return koalas.from_pandas(self.pdf)
 
-    def strip_all_whitespace(self, str):
+    @staticmethod
+    def strip_all_whitespace(str):
         """A helper function to remove all whitespace from a string."""
         return str.translate({ord(c): None for c in string.whitespace})
 
