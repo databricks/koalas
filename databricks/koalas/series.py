@@ -298,6 +298,7 @@ class Series(_Frame):
         1    0.0
         2    0.6
         3    0.2
+        Name: dogs, dtype: float64
         """
         return _col(self.to_dataframe().toPandas())
 
