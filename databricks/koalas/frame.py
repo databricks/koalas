@@ -338,8 +338,8 @@ class DataFrame(_Frame):
         2  True  False
         3  True   True
 
-        >>> pdf = pd.DataFrame([['ant', 'bee', 'cat'], ['dog', NaN, 'fly']])
-        >>> df = ks.from_pandas(pdf)
+        >>> df = ks.DataFrame([['ant', 'bee', 'cat'], ['dog', NaN, 'fly']])
+        >>> df.notnull()
               0      1     2
         0  True   True  True
         1  True  False  True
