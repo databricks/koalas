@@ -73,8 +73,9 @@ Missing data handling
    Series.dropna
 
 Serialization / IO / Conversion
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 .. autosummary::
    :toctree: api/
 
+   Series.to_pandas
    Series.to_numpy

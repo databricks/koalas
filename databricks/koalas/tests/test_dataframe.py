@@ -399,3 +399,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         ddf = koalas.from_pandas(s)
         np.testing.assert_equal(ddf.to_numpy(), s.values)
+
+    def test_to_pandas(self):
+        kdf = self.kdf
+        pdf = self.pdf
+        self.assert_eq(kdf.toPandas(), pdf)
+        self.assert_eq(kdf.to_pandas(), pdf)

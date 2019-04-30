@@ -372,8 +372,24 @@ class DataFrame(_Frame):
         """
         return self._sdf
 
-    @derived_from(spark.DataFrame)
-    def toPandas(self):
+    def to_pandas(self):
+        """
+        Return a Pandas DataFrame.
+
+        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'])
+        >>> df.to_pandas()
+           dogs  cats
+        0   0.2   0.3
+        1   0.0   0.6
+        2   0.6   0.0
+        3   0.2   0.1
+        """
         sdf = self._sdf.select(['`{}`'.format(name) for name in self._metadata.all_fields])
         pdf = sdf.toPandas()
         if len(pdf) == 0 and len(sdf.schema) > 0:
@@ -394,6 +410,9 @@ class DataFrame(_Frame):
             else:
                 pdf.index.name = index_names[0]
         return pdf
+
+    # Alias to maintain backward compatibility with Spark
+    toPandas = to_pandas
 
     @derived_from(pd.DataFrame)
     def assign(self, **kwargs):
