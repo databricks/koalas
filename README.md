@@ -144,12 +144,14 @@ We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception:
 ### Release Instructions
 Only project maintainers can do the following.
 
-Step 1. Make sure the build is green.
+Step 1. Make sure version is set correctly in `databricks/koalas/version.py`.
 
-Step 2. Create a new release on GitHub. Tag it as the same version as the setup.py.
+Step 2. Make sure the build is green.
+
+Step 3. Create a new release on GitHub. Tag it as the same version as the setup.py.
 If the version is "0.1.0", tag the commit as "v0.1.0".
 
-Step 3. Upload the package to PyPi:
+Step 4. Upload the package to PyPi:
 ```bash
 rm -rf dist/koalas*
 python setup.py bdist_wheel
