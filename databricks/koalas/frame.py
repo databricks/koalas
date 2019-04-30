@@ -161,13 +161,99 @@ class DataFrame(_Frame):
         cols = list(self.columns)
         return list((col_name, self[col_name]) for col_name in cols)
 
-    @derived_from(pd.DataFrame)
     def to_html(self, buf=None, columns=None, col_space=None, header=True, index=True,
                 na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
                 justify=None, max_rows=None, max_cols=None, show_dimensions=False, decimal='.',
                 bold_rows=True, classes=None, escape=True, notebook=False, border=None,
                 table_id=None, render_links=False):
-        return self.toPandas().to_html(
+        """
+        Render a DataFrame as an HTML table.
+
+        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        buf : StringIO-like, optional
+            Buffer to write to.
+        columns : sequence, optional, default None
+            The subset of columns to write. Writes all columns by default.
+        col_space : int, optional
+            The minimum width of each column.
+        header : bool, optional
+            %(header)s.
+        index : bool, optional, default True
+            Whether to print index (row) labels.
+        na_rep : str, optional, default 'NaN'
+            String representation of NAN to use.
+        formatters : list or dict of one-param. functions, optional
+            Formatter functions to apply to columns' elements by position or
+            name.
+            The result of each function must be a unicode string.
+            List must be of length equal to the number of columns.
+        float_format : one-parameter function, optional, default None
+            Formatter function to apply to columns' elements if they are
+            floats. The result of this function must be a unicode string.
+        sparsify : bool, optional, default True
+            Set to False for a DataFrame with a hierarchical index to print
+            every multiindex key at each row.
+        index_names : bool, optional, default True
+            Prints the names of the indexes.
+        justify : str, default None
+            How to justify the column labels. If None uses the option from
+            the print configuration (controlled by set_option), 'right' out
+            of the box. Valid values are
+
+            * left
+            * right
+            * center
+            * justify
+            * justify-all
+            * start
+            * end
+            * inherit
+            * match-parent
+            * initial
+            * unset.
+        max_rows : int, optional
+            Maximum number of rows to display in the console.
+        max_cols : int, optional
+            Maximum number of columns to display in the console.
+        show_dimensions : bool, default False
+            Display DataFrame dimensions (number of rows by number of columns).
+        decimal : str, default '.'
+            Character recognized as decimal separator, e.g. ',' in Europe.
+        bold_rows : bool, default True
+            Make the row labels bold in the output.
+        classes : str or list or tuple, default None
+            CSS class(es) to apply to the resulting html table.
+        escape : bool, default True
+            Convert the characters <, >, and & to HTML-safe sequences.
+        notebook : {True, False}, default False
+            Whether the generated HTML is for IPython Notebook.
+        border : int
+            A ``border=border`` attribute is included in the opening
+            `<table>` tag. Default ``pd.options.html.border``.
+        table_id : str, optional
+            A css id is included in the opening `<table>` tag if specified.
+        render_links : bool, default False
+            Convert URLs to HTML links.
+
+        Returns
+        -------
+        str (or unicode, depending on data and options)
+            String representation of the dataframe.
+
+        See Also
+        --------
+        to_string : Convert DataFrame to a string.
+        """
+        if max_rows is not None:
+            kdf = self.head(max_rows)
+        else:
+            kdf = self
+
+        return kdf.to_pandas().to_html(
             buf=buf, columns=columns, col_space=col_space, header=header, index=index,
             na_rep=na_rep, formatters=formatters, float_format=float_format, sparsify=sparsify,
             index_names=index_names, justify=justify, max_rows=max_rows, max_cols=max_cols,
