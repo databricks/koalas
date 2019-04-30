@@ -316,6 +316,46 @@ class DataFrame(_Frame):
 
     @derived_from(pd.DataFrame)
     def notnull(self):
+        """
+        Detects non-missing values for items in the current Dataframe.
+
+        This function takes a dataframe and indicates whether it's
+        values are valid (not missing, which is ``NaN`` in numeric
+        datatypes, ``None`` or ``NaN`` in objects and ``NaT`` in datetimelike).
+
+
+        See Also
+        --------
+        Dataframe.isnull
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, None), (.6, None), (.2, .1)])
+        ...                    (.2, .1)])
+        >>> df.notnull()
+              0      1
+        0  True   True
+        1  True  False
+        2  True  False
+        3  True   True
+
+        >>> pdf = pd.DataFrame([['ant', 'bee', 'cat'], ['dog', NaN, 'fly']])
+        >>> df = ks.from_pandas(pdf)
+              0      1     2
+        0  True   True  True
+        1  True  False  True
+
+        >>> dates = pd.Series(pd.date_range('2013-3-11 21:45:00',
+        ...                                  periods=4, freq='W'))
+        >>> nat = np.datetime64('NaT')
+        >>> dates[0] = nat
+        >>> dates.notnull()
+        0    False
+        1     True
+        2     True
+        3     True
+        dtype: bool
+        """
         kdf = self.copy()
         for name, ks in kdf.iteritems():
             kdf[name] = ks.notnull()
