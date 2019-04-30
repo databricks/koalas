@@ -364,7 +364,7 @@ class DataFrame(_Frame):
                 pdf.index.name = index_names[0]
         return pdf
 
-    # toPandas alias to match Spark's version
+    # Alias to maintain backward compatibility with Spark
     toPandas = to_pandas
 
     @derived_from(pd.DataFrame)
