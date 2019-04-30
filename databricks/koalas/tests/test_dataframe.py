@@ -370,6 +370,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
                        koalas.to_datetime(ds, infer_datetime_format=True))
 
+    def test_sort_values(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
+                           'b': [7, 6, 5, 4, 3, 2, 1]})
+        kdf = koalas.from_pandas(pdf)
+        self.assert_eq(kdf.sort_values('b'), pdf.sort_values('b'))
+        self.assert_eq(kdf.sort_values(['b', 'a']), pdf.sort_values(['b', 'a']))
+        self.assert_eq(
+            kdf.sort_values(['b', 'a'], ascending=[False, True]),
+            pdf.sort_values(['b', 'a'], ascending=[False, True]))
+
+        self.assertRaises(ValueError, lambda: kdf.sort_values(['b', 'a'], ascending=[False]))
+
     def test_missing(self):
         kdf = self.kdf
 

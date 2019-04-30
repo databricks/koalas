@@ -728,6 +728,9 @@ class DataFrame(_Frame):
         """
         if isinstance(by, string_types):
             by = [by]
+        if not isinstance(ascending, bool) and len(ascending) != len(by):
+            raise ValueError('Length of ascending ({}) != length of by ({})'
+                             .format(len(ascending), len(by)))
         return DataFrame(self._sdf.sort(*by, ascending=ascending), self._metadata.copy())
 
     def groupby(self, by):
