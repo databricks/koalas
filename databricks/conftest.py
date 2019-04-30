@@ -16,8 +16,12 @@
 import pytest
 
 from databricks import koalas
-
+import numpy as np
 
 @pytest.fixture(autouse=True)
 def add_ks(doctest_namespace):
     doctest_namespace['ks'] = koalas
+
+@pytest.fixture(autouse=True)
+def add_np(doctest_namespace):
+    doctest_namespace['np'] = np
