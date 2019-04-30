@@ -413,11 +413,36 @@ class Series(_Frame):
         Returns
         -------
         nobs : int
+
+        Examples
+        --------
+        Constructing DataFrame from a dictionary:
+
+        >>> df = ks.DataFrame({"Person":
+        ...                    ["John", "Myla", "Lewis", "John", "Myla"],
+        ...                    "Age": [24., np.nan, 21., 33, 26]})
+
+        Notice the uncounted NA values:
+
+        >>> df['Person'].count()
+        5
+
+        >>> df['Age'].count()
+        4
         """
-        return self._reduce_for_stat_function(F.count)
+        return self._reduce_for_stat_function(_Frame._count_expr)
 
     def _reduce_for_stat_function(self, sfun):
-        return _unpack_scalar(self._kdf._sdf.select(sfun(self._scol)))
+        from inspect import signature
+        num_args = len(signature(sfun).parameters)
+        if num_args == 1:
+            # Only pass in the column if sfun accepts only one arg
+            expr = sfun(self._scol)
+        else:  # must be 2
+            assert num_args == 2
+            # Pass in both the column and its data type if sfun accepts two args
+            expr = sfun(self._scol, self.schema[self.name].dataType)
+        return _unpack_scalar(self._kdf._sdf.select(expr))
 
     def __len__(self):
         return len(self.to_dataframe())

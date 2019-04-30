@@ -591,10 +591,9 @@ class DataFrame(_Frame):
 
     def count(self):
         """
-        Count non-NA cells for each column or row.
+        Count non-NA cells for each column.
 
-        The values `None`, `NaN`, `NaT`, and optionally `numpy.inf` (depending
-        on `pandas.options.mode.use_inf_as_na`) are considered NA.
+        The values `None`, `NaN` are considered NA.
 
         Returns
         -------
@@ -632,15 +631,7 @@ class DataFrame(_Frame):
         Single    5
         dtype: int64
         """
-        def count_expr(col: spark.Column, spark_type: DataType) -> spark.Column:
-            # Special handle floating point types because Spark's count treats nan as a valid value,
-            # whereas Pandas count doesn't include nan.
-            if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
-                return F.count(F.nanvl(col, F.lit(None)))
-            else:
-                return F.count(col)
-
-        return self._reduce_for_stat_function(count_expr)
+        return self._reduce_for_stat_function(_Frame._count_expr)
 
     def unique(self):
         sdf = self._sdf
