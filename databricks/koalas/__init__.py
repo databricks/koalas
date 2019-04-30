@@ -43,6 +43,7 @@ from databricks.koalas.typedef import Col, pandas_wrap
 __all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
            'get_dummies', 'DataFrame', 'Series']
 
+
 def _auto_patch():
     import os
     import logging
@@ -55,5 +56,6 @@ def _auto_patch():
 
     from pyspark.sql import dataframe as df
     df.DataFrame.to_koalas = DataFrame.to_koalas
+
 
 _auto_patch()
