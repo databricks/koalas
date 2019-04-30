@@ -314,7 +314,6 @@ class DataFrame(_Frame):
 
     isna = isnull
 
-    @derived_from(pd.DataFrame)
     def notnull(self):
         """
         Detects non-missing values for items in the current Dataframe.
