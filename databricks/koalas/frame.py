@@ -343,17 +343,6 @@ class DataFrame(_Frame):
               0      1     2
         0  True   True  True
         1  True  False  True
-
-        >>> dates = pd.Series(pd.date_range('2013-3-11 21:45:00',
-        ...                                  periods=4, freq='W'))
-        >>> nat = np.datetime64('NaT')
-        >>> dates[0] = nat
-        >>> dates.notnull()
-        0    False
-        1     True
-        2     True
-        3     True
-        dtype: bool
         """
         kdf = self.copy()
         for name, ks in kdf.iteritems():
