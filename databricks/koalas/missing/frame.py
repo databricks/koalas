@@ -178,7 +178,6 @@ class _MissingPandasLikeDataFrame(object):
     to_sparse = unsupported_function('to_sparse')
     to_sql = unsupported_function('to_sql')
     to_stata = unsupported_function('to_stata')
-    to_string = unsupported_function('to_string')
     to_timestamp = unsupported_function('to_timestamp')
     to_xarray = unsupported_function('to_xarray')
     transform = unsupported_function('transform')
