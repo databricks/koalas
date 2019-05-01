@@ -382,6 +382,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(ValueError, lambda: kdf.sort_values(['b', 'a'], ascending=[False]))
 
+        self.assert_eq(
+            kdf.sort_values(['b', 'a'], na_position='first'),
+            pdf.sort_values(['b', 'a'], na_position='first'))
+
+        self.assertRaises(ValueError, lambda: kdf.sort_values(['b', 'a'], na_position='invalid'))
+
+        self.assert_eq(kdf.sort_values('b', inplace=True), pdf.sort_values('b', inplace=True))
+        self.assert_eq(kdf, pdf)
+
     def test_missing(self):
         kdf = self.kdf
 

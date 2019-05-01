@@ -661,7 +661,7 @@ class DataFrame(_Frame):
         except (KeyError, ValueError, IndexError):
             return default
 
-    def sort_values(self, by, ascending=True):
+    def sort_values(self, by, ascending=True, inplace=False, na_position='last'):
         """
         Sort by the values along either axis.
 
@@ -672,6 +672,10 @@ class DataFrame(_Frame):
              Sort ascending vs. descending. Specify list for multiple sort
              orders.  If this is a list of bools, must match the length of
              the by.
+        inplace : bool, default False
+             if True, perform operation in-place
+        na_position : {'first', 'last'}, default 'last'
+             `first` puts NaNs at the beginning, `last` puts NaNs at the end
 
         Returns
         -------
@@ -728,10 +732,29 @@ class DataFrame(_Frame):
         """
         if isinstance(by, string_types):
             by = [by]
-        if not isinstance(ascending, bool) and len(ascending) != len(by):
+        if isinstance(ascending, bool):
+            ascending = [ascending] * len(by)
+        if len(ascending) != len(by):
             raise ValueError('Length of ascending ({}) != length of by ({})'
                              .format(len(ascending), len(by)))
-        return DataFrame(self._sdf.sort(*by, ascending=ascending), self._metadata.copy())
+        if na_position not in ('first', 'last'):
+            raise ValueError("invalid na_position: '{}'".format(na_position))
+
+        # Mapper: Get a spark column function for (ascending, na_position) combination
+        # Note: Use the Series.asc() version instead of F.asc(Series) as the anchor is needed
+        mapper = {
+            (True, 'first'): lambda x: x.asc_nulls_first(),
+            (True, 'last'): lambda x: x.asc_nulls_last(),
+            (False, 'first'): lambda x: x.desc_nulls_first(),
+            (False, 'last'): lambda x: x.desc_nulls_last(),
+        }
+        by = [mapper[(asc, na_position)](self[colname]) for colname, asc in zip(by, ascending)]
+        kdf = DataFrame(self._sdf.sort(*by, ascending=ascending), self._metadata.copy())
+        if inplace:
+            self._sdf: spark.DataFrame = kdf._sdf
+            self._metadata = kdf._metadata
+        else:
+            return kdf
 
     def groupby(self, by):
         from databricks.koalas.groups import PandasLikeGroupBy
