@@ -19,15 +19,13 @@ A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
 from decorator import dispatch_on
 from functools import partial, reduce
-from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.types import DataType, DoubleType, FloatType, StructField, StructType, \
-    to_arrow_type
+from pyspark.sql.types import StructField, StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
