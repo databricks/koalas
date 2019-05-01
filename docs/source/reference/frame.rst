@@ -118,3 +118,4 @@ Serialization / IO / Conversion
    DataFrame.to_numpy
    DataFrame.to_koalas
    DataFrame.to_spark
+   DataFrame.to_string

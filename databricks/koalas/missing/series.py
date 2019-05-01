@@ -179,7 +179,6 @@ class _MissingPandasLikeSeries(object):
     to_pickle = unsupported_function('to_pickle')
     to_sparse = unsupported_function('to_sparse')
     to_sql = unsupported_function('to_sql')
-    to_string = unsupported_function('to_string')
     to_timestamp = unsupported_function('to_timestamp')
     to_xarray = unsupported_function('to_xarray')
     tolist = unsupported_function('tolist')

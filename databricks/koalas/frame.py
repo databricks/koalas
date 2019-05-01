@@ -25,12 +25,11 @@ import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.types import DataType, DoubleType, FloatType, StructField, StructType, \
-    to_arrow_type
+from pyspark.sql.types import StructField, StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.utils import default_session
+from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.generic import _Frame, max_display_count
@@ -161,19 +160,204 @@ class DataFrame(_Frame):
         cols = list(self.columns)
         return list((col_name, self[col_name]) for col_name in cols)
 
-    @derived_from(pd.DataFrame)
     def to_html(self, buf=None, columns=None, col_space=None, header=True, index=True,
                 na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
                 justify=None, max_rows=None, max_cols=None, show_dimensions=False, decimal='.',
                 bold_rows=True, classes=None, escape=True, notebook=False, border=None,
                 table_id=None, render_links=False):
-        return self.toPandas().to_html(
-            buf=buf, columns=columns, col_space=col_space, header=header, index=index,
-            na_rep=na_rep, formatters=formatters, float_format=float_format, sparsify=sparsify,
-            index_names=index_names, justify=justify, max_rows=max_rows, max_cols=max_cols,
-            show_dimensions=show_dimensions, decimal=decimal, bold_rows=bold_rows, classes=classes,
-            escape=escape, notebook=notebook, border=border, table_id=table_id,
-            render_links=render_links)
+        """
+        Render a DataFrame as an HTML table.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory. If the input
+                  is large, set max_rows parameter.
+
+        Parameters
+        ----------
+        buf : StringIO-like, optional
+            Buffer to write to.
+        columns : sequence, optional, default None
+            The subset of columns to write. Writes all columns by default.
+        col_space : int, optional
+            The minimum width of each column.
+        header : bool, optional
+            Write out the column names. If a list of strings is given, it
+            is assumed to be aliases for the column names
+        index : bool, optional, default True
+            Whether to print index (row) labels.
+        na_rep : str, optional, default 'NaN'
+            String representation of NAN to use.
+        formatters : list or dict of one-param. functions, optional
+            Formatter functions to apply to columns' elements by position or
+            name.
+            The result of each function must be a unicode string.
+            List must be of length equal to the number of columns.
+        float_format : one-parameter function, optional, default None
+            Formatter function to apply to columns' elements if they are
+            floats. The result of this function must be a unicode string.
+        sparsify : bool, optional, default True
+            Set to False for a DataFrame with a hierarchical index to print
+            every multiindex key at each row.
+        index_names : bool, optional, default True
+            Prints the names of the indexes.
+        justify : str, default None
+            How to justify the column labels. If None uses the option from
+            the print configuration (controlled by set_option), 'right' out
+            of the box. Valid values are
+
+            * left
+            * right
+            * center
+            * justify
+            * justify-all
+            * start
+            * end
+            * inherit
+            * match-parent
+            * initial
+            * unset.
+        max_rows : int, optional
+            Maximum number of rows to display in the console.
+        max_cols : int, optional
+            Maximum number of columns to display in the console.
+        show_dimensions : bool, default False
+            Display DataFrame dimensions (number of rows by number of columns).
+        decimal : str, default '.'
+            Character recognized as decimal separator, e.g. ',' in Europe.
+        bold_rows : bool, default True
+            Make the row labels bold in the output.
+        classes : str or list or tuple, default None
+            CSS class(es) to apply to the resulting html table.
+        escape : bool, default True
+            Convert the characters <, >, and & to HTML-safe sequences.
+        notebook : {True, False}, default False
+            Whether the generated HTML is for IPython Notebook.
+        border : int
+            A ``border=border`` attribute is included in the opening
+            `<table>` tag. Default ``pd.options.html.border``.
+        table_id : str, optional
+            A css id is included in the opening `<table>` tag if specified.
+        render_links : bool, default False
+            Convert URLs to HTML links (only works with Pandas 0.24+).
+
+        Returns
+        -------
+        str (or unicode, depending on data and options)
+            String representation of the dataframe.
+
+        See Also
+        --------
+        to_string : Convert DataFrame to a string.
+        """
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        if max_rows is not None:
+            kdf = self.head(max_rows)
+        else:
+            kdf = self
+
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_html, pd.DataFrame.to_html, args)
+
+    def to_string(self, buf=None, columns=None, col_space=None, header=True,
+                  index=True, na_rep='NaN', formatters=None, float_format=None,
+                  sparsify=None, index_names=True, justify=None,
+                  max_rows=None, max_cols=None, show_dimensions=False,
+                  decimal='.', line_width=None):
+        """
+        Render a DataFrame to a console-friendly tabular output.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory. If the input
+                  is large, set max_rows parameter.
+
+        Parameters
+        ----------
+        buf : StringIO-like, optional
+            Buffer to write to.
+        columns : sequence, optional, default None
+            The subset of columns to write. Writes all columns by default.
+        col_space : int, optional
+            The minimum width of each column.
+        header : bool, optional
+            Write out the column names. If a list of strings is given, it
+            is assumed to be aliases for the column names
+        index : bool, optional, default True
+            Whether to print index (row) labels.
+        na_rep : str, optional, default 'NaN'
+            String representation of NAN to use.
+        formatters : list or dict of one-param. functions, optional
+            Formatter functions to apply to columns' elements by position or
+            name.
+            The result of each function must be a unicode string.
+            List must be of length equal to the number of columns.
+        float_format : one-parameter function, optional, default None
+            Formatter function to apply to columns' elements if they are
+            floats. The result of this function must be a unicode string.
+        sparsify : bool, optional, default True
+            Set to False for a DataFrame with a hierarchical index to print
+            every multiindex key at each row.
+        index_names : bool, optional, default True
+            Prints the names of the indexes.
+        justify : str, default None
+            How to justify the column labels. If None uses the option from
+            the print configuration (controlled by set_option), 'right' out
+            of the box. Valid values are
+
+            * left
+            * right
+            * center
+            * justify
+            * justify-all
+            * start
+            * end
+            * inherit
+            * match-parent
+            * initial
+            * unset.
+        max_rows : int, optional
+            Maximum number of rows to display in the console.
+        max_cols : int, optional
+            Maximum number of columns to display in the console.
+        show_dimensions : bool, default False
+            Display DataFrame dimensions (number of rows by number of columns).
+        decimal : str, default '.'
+            Character recognized as decimal separator, e.g. ',' in Europe.
+        line_width : int, optional
+            Width to wrap a line in characters.
+
+        Returns
+        -------
+        str (or unicode, depending on data and options)
+            String representation of the dataframe.
+
+        See Also
+        --------
+        to_html : Convert DataFrame to HTML.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'col1': [1, 2, 3], 'col2': [4, 5, 6]})
+        >>> print(df.to_string())
+           col1  col2
+        0     1     4
+        1     2     5
+        2     3     6
+
+        >>> print(df.to_string(max_rows=2))
+           col1  col2
+        0     1     4
+        1     2     5
+        """
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        if max_rows is not None:
+            kdf = self.head(max_rows)
+        else:
+            kdf = self
+
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_string, pd.DataFrame.to_string, args)
 
     @property
     def index(self):
@@ -713,8 +897,102 @@ class DataFrame(_Frame):
         except (KeyError, ValueError, IndexError):
             return default
 
-    def sort_values(self, by):
-        return DataFrame(self._sdf.sort(by), self._metadata.copy())
+    def sort_values(self, by, ascending=True, inplace=False, na_position='last'):
+        """
+        Sort by the values along either axis.
+
+        Parameters
+        ----------
+        by : str or list of str
+        ascending : bool or list of bool, default True
+             Sort ascending vs. descending. Specify list for multiple sort
+             orders.  If this is a list of bools, must match the length of
+             the by.
+        inplace : bool, default False
+             if True, perform operation in-place
+        na_position : {'first', 'last'}, default 'last'
+             `first` puts NaNs at the beginning, `last` puts NaNs at the end
+
+        Returns
+        -------
+        sorted_obj : DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({
+        ...     'col1': ['A', 'A', 'B', None, 'D', 'C'],
+        ...     'col2': [2, 1, 9, 8, 7, 4],
+        ...     'col3': [0, 1, 9, 4, 2, 3],
+        ... })
+        >>> df
+           col1  col2  col3
+        0     A     2     0
+        1     A     1     1
+        2     B     9     9
+        3  None     8     4
+        4     D     7     2
+        5     C     4     3
+
+        Sort by col1
+
+        >>> df.sort_values(by=['col1'])
+           col1  col2  col3
+        0     A     2     0
+        1     A     1     1
+        2     B     9     9
+        5     C     4     3
+        4     D     7     2
+        3  None     8     4
+
+
+        Sort by multiple columns
+
+        >>> df.sort_values(by=['col1', 'col2'])
+           col1  col2  col3
+        1     A     1     1
+        0     A     2     0
+        2     B     9     9
+        5     C     4     3
+        4     D     7     2
+        3  None     8     4
+
+        Sort Descending
+
+        >>> df.sort_values(by='col1', ascending=False)
+           col1  col2  col3
+        4     D     7     2
+        5     C     4     3
+        2     B     9     9
+        0     A     2     0
+        1     A     1     1
+        3  None     8     4
+        """
+        if isinstance(by, string_types):
+            by = [by]
+        if isinstance(ascending, bool):
+            ascending = [ascending] * len(by)
+        if len(ascending) != len(by):
+            raise ValueError('Length of ascending ({}) != length of by ({})'
+                             .format(len(ascending), len(by)))
+        if na_position not in ('first', 'last'):
+            raise ValueError("invalid na_position: '{}'".format(na_position))
+
+        # Mapper: Get a spark column function for (ascending, na_position) combination
+        # Note that 'asc_nulls_first' and friends were added as of Spark 2.4, see SPARK-23847.
+        mapper = {
+            (True, 'first'): lambda x: Column(getattr(x._jc, "asc_nulls_first")()),
+            (True, 'last'): lambda x: Column(getattr(x._jc, "asc_nulls_last")()),
+            (False, 'first'): lambda x: Column(getattr(x._jc, "desc_nulls_first")()),
+            (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
+        }
+        by = [mapper[(asc, na_position)](self[colname]._scol)
+              for colname, asc in zip(by, ascending)]
+        kdf = DataFrame(self._sdf.sort(*by), self._metadata.copy())
+        if inplace:
+            self._sdf: spark.DataFrame = kdf._sdf
+            self._metadata = kdf._metadata
+        else:
+            return kdf
 
     def groupby(self, by):
         from databricks.koalas.groups import PandasLikeGroupBy
