@@ -67,8 +67,8 @@ def validate_arguments_and_invoke_function(pdf: pd.DataFrame, koalas_func: Calla
                 del args[param.name]
             else:
                 raise TypeError(
-                    ("The version of pandas available does not support parameter '%s' " +
-                        "for function '%s'.") % (param.name, pandas_func.__name__))
+                    ("The pandas version [%s] available does not support parameter '%s' " +
+                        "for function '%s'.") % (pd.__version__, param.name, pandas_func.__name__))
 
     args['self'] = pdf
     return pandas_func(**args)
