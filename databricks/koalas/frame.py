@@ -19,6 +19,7 @@ A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
 from decorator import dispatch_on
 from functools import partial, reduce
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -238,7 +239,7 @@ class DataFrame(_Frame):
         table_id : str, optional
             A css id is included in the opening `<table>` tag if specified.
         render_links : bool, default False
-            Convert URLs to HTML links.
+            Convert URLs to HTML links (only works with Pandas 0.24+).
 
         Returns
         -------
@@ -254,13 +255,19 @@ class DataFrame(_Frame):
         else:
             kdf = self
 
-        return kdf.to_pandas().to_html(
-            buf=buf, columns=columns, col_space=col_space, header=header, index=index,
-            na_rep=na_rep, formatters=formatters, float_format=float_format, sparsify=sparsify,
-            index_names=index_names, justify=justify, max_rows=max_rows, max_cols=max_cols,
-            show_dimensions=show_dimensions, decimal=decimal, bold_rows=bold_rows, classes=classes,
-            escape=escape, notebook=notebook, border=border, table_id=table_id,
-            render_links=render_links)
+        kwargs = {
+            "buf": buf, "columns": columns, "col_space": col_space,
+            "header": header, "index": index, "na_rep": na_rep,
+            "formatters": formatters, "float_format": float_format, "sparsify": sparsify,
+            "index_names": index_names, "justify": justify, "max_rows": max_rows,
+            "max_cols": max_cols, "show_dimensions": show_dimensions, "decimal": decimal,
+            "bold_rows": bold_rows, "classes": classes, "escape": escape,
+            "notebook": notebook, "border": border, "table_id": table_id
+        }
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            kwargs["render_links"] = render_links
+
+        return kdf.to_pandas().to_html(**kwargs)
 
     @property
     def index(self):
