@@ -61,8 +61,9 @@ class _MissingPandasLikeDataFrameGroupBy(object):
 
 class _MissingPandasLikeSeriesGroupBy(object):
 
-    agg = unsupported_function('agg')
-    aggregate = unsupported_function('aggregate')
+    # TODO: agg and aggregate should be implemented.
+    # agg = unsupported_function('agg')
+    # aggregate = unsupported_function('aggregate')
     all = unsupported_function('all')
     any = unsupported_function('any')
     apply = unsupported_function('apply')
