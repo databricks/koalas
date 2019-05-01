@@ -35,7 +35,7 @@ cd "$FWDIR"
 
 # Runs both doctests and unit tests by default, otherwise hands arguments over to pytest.
 if [ "$#" = 0 ]; then
-    pytest --verbose --showlocals --doctest-modules databricks
+    pytest --cov=databricks --verbose --showlocals --doctest-modules databricks
 else
     pytest "$@"
 fi

@@ -9,6 +9,7 @@ pandas is the de facto standard (single-node) dataframe implementation in Python
  - Have a single codebase that works both with pandas (tests, smaller datasets) and with Spark (distributed datasets).
 
 [![Build Status](https://travis-ci.com/databricks/koalas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/koalas)
+[![codecov](https://codecov.io/gh/databricks/koalas/branch/master/graph/badge.svg)](https://codecov.io/gh/databricks/koalas)
 [![Documentation Status](https://readthedocs.org/projects/koalas/badge/?version=latest)](https://koalas.readthedocs.io/en/latest/?badge=latest)
 [![Latest Release](https://img.shields.io/pypi/v/koalas.svg)](https://pypi.org/project/koalas/)
 

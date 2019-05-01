@@ -48,8 +48,10 @@ install:
   - conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
   - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION
   - conda activate test-environment
+  - conda install -c conda-forge --yes codecov pytest-cov
   - conda install -c conda-forge --yes --file requirements-dev.txt
 
+  # Show installed packages
   - conda list
 
 before_script:
@@ -58,3 +60,8 @@ before_script:
 
 script:
   - ./dev/pytest
+
+# Push the results back to codecov
+after_success:
+  - codecov
+
