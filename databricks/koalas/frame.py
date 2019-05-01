@@ -755,8 +755,101 @@ class DataFrame(_Frame):
         except (KeyError, ValueError, IndexError):
             return default
 
-    def sort_values(self, by):
-        return DataFrame(self._sdf.sort(by), self._metadata.copy())
+    def sort_values(self, by, ascending=True, inplace=False, na_position='last'):
+        """
+        Sort by the values along either axis.
+
+        Parameters
+        ----------
+        by : str or list of str
+        ascending : bool or list of bool, default True
+             Sort ascending vs. descending. Specify list for multiple sort
+             orders.  If this is a list of bools, must match the length of
+             the by.
+        inplace : bool, default False
+             if True, perform operation in-place
+        na_position : {'first', 'last'}, default 'last'
+             `first` puts NaNs at the beginning, `last` puts NaNs at the end
+
+        Returns
+        -------
+        sorted_obj : DataFrame
+
+        Examples
+        --------
+        >>> df = pd.DataFrame({
+        ...     'col1': ['A', 'A', 'B', np.nan, 'D', 'C'],
+        ...     'col2': [2, 1, 9, 8, 7, 4],
+        ...     'col3': [0, 1, 9, 4, 2, 3],
+        ... })
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
+            col1 col2 col3
+        0     A    2    0
+        1     A    1    1
+        2     B    9    9
+        3   NaN    8    4
+        4     D    7    2
+        5     C    4    3
+
+        Sort by col1
+
+        >>> df.sort_values(by=['col1'])  # doctest: +NORMALIZE_WHITESPACE
+            col1 col2 col3
+        0     A    2    0
+        1     A    1    1
+        2     B    9    9
+        5     C    4    3
+        4     D    7    2
+        3   NaN    8    4
+
+        Sort by multiple columns
+
+        >>> df.sort_values(by=['col1', 'col2'])  # doctest: +NORMALIZE_WHITESPACE
+            col1 col2 col3
+        1     A    1    1
+        0     A    2    0
+        2     B    9    9
+        5     C    4    3
+        4     D    7    2
+        3   NaN    8    4
+
+        Sort Descending
+
+        >>> df.sort_values(by='col1', ascending=False)  # doctest: +NORMALIZE_WHITESPACE
+            col1 col2 col3
+        4     D    7    2
+        5     C    4    3
+        2     B    9    9
+        0     A    2    0
+        1     A    1    1
+        3   NaN    8    4
+        """
+        if isinstance(by, string_types):
+            by = [by]
+        if isinstance(ascending, bool):
+            ascending = [ascending] * len(by)
+        if len(ascending) != len(by):
+            raise ValueError('Length of ascending ({}) != length of by ({})'
+                             .format(len(ascending), len(by)))
+        if na_position not in ('first', 'last'):
+            raise ValueError("invalid na_position: '{}'".format(na_position))
+
+        # Mapper: Get a spark column function for (ascending, na_position) combination
+        # Note that 'asc_nulls_first' and friends were added as of Spark 2.4, see SPARK-23847.
+        mapper = {
+            (True, 'first'): lambda x: Column(getattr(x._jc, "asc_nulls_first")()),
+            (True, 'last'): lambda x: Column(getattr(x._jc, "asc_nulls_last")()),
+            (False, 'first'): lambda x: Column(getattr(x._jc, "desc_nulls_first")()),
+            (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
+        }
+        by = [mapper[(asc, na_position)](self[colname]._scol)
+              for colname, asc in zip(by, ascending)]
+        kdf = DataFrame(self._sdf.sort(*by), self._metadata.copy())
+        if inplace:
+            self._sdf: spark.DataFrame = kdf._sdf
+            self._metadata = kdf._metadata
+        else:
+            return kdf
 
     def groupby(self, by):
         from databricks.koalas.groups import PandasLikeGroupBy

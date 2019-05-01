@@ -370,6 +370,27 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
                        koalas.to_datetime(ds, infer_datetime_format=True))
 
+    def test_sort_values(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
+                           'b': [7, 6, 5, 4, 3, 2, 1]})
+        kdf = koalas.from_pandas(pdf)
+        self.assert_eq(repr(kdf.sort_values('b')), repr(pdf.sort_values('b')))
+        self.assert_eq(repr(kdf.sort_values(['b', 'a'])), repr(pdf.sort_values(['b', 'a'])))
+        self.assert_eq(
+            repr(kdf.sort_values(['b', 'a'], ascending=[False, True])),
+            repr(pdf.sort_values(['b', 'a'], ascending=[False, True])))
+
+        self.assertRaises(ValueError, lambda: kdf.sort_values(['b', 'a'], ascending=[False]))
+
+        self.assert_eq(
+            repr(kdf.sort_values(['b', 'a'], na_position='first')),
+            repr(pdf.sort_values(['b', 'a'], na_position='first')))
+
+        self.assertRaises(ValueError, lambda: kdf.sort_values(['b', 'a'], na_position='invalid'))
+
+        self.assert_eq(kdf.sort_values('b', inplace=True), pdf.sort_values('b', inplace=True))
+        self.assert_eq(repr(kdf), repr(pdf))
+
     def test_missing(self):
         kdf = self.kdf
 
