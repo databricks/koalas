@@ -25,7 +25,7 @@ import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.types import StructField, StructType, to_arrow_type
+from pyspark.sql.types import BooleanType, StructField, StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -96,13 +96,20 @@ class DataFrame(_Frame):
         exprs = []
         num_args = len(signature(sfun).parameters)
         for col in self.columns:
+            col_sdf = self._sdf[col]
+            col_type = self._sdf.schema[col].dataType
+            if isinstance(col_type, BooleanType):
+                # Stat functions cannot be used with boolean values by default
+                # Thus, cast to integer (true to 1 and false to 0)
+                col_sdf = col_sdf.cast('integer')
             if num_args == 1:
                 # Only pass in the column if sfun accepts only one arg
-                exprs.append(sfun(self._sdf[col]).alias(col))
+                col_sdf = sfun(col_sdf)
             else:  # must be 2
                 assert num_args == 2
                 # Pass in both the column and its data type if sfun accepts two args
-                exprs.append(sfun(self._sdf[col], self._sdf.schema[col].dataType).alias(col))
+                col_sdf = sfun(col_sdf, col_type)
+            exprs.append(col_sdf.alias(col))
 
         sdf = self._sdf.select(*exprs)
         pdf = sdf.toPandas()
