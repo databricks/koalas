@@ -867,52 +867,53 @@ class DataFrame(_Frame):
 
         Examples
         --------
-        >>> df = pd.DataFrame({
-        ...     'col1': ['A', 'A', 'B', np.nan, 'D', 'C'],
+        >>> df = ks.DataFrame({
+        ...     'col1': ['A', 'A', 'B', None, 'D', 'C'],
         ...     'col2': [2, 1, 9, 8, 7, 4],
         ...     'col3': [0, 1, 9, 4, 2, 3],
         ... })
-        >>> df  # doctest: +NORMALIZE_WHITESPACE
-            col1 col2 col3
-        0     A    2    0
-        1     A    1    1
-        2     B    9    9
-        3   NaN    8    4
-        4     D    7    2
-        5     C    4    3
+        >>> df
+           col1  col2  col3
+        0     A     2     0
+        1     A     1     1
+        2     B     9     9
+        3  None     8     4
+        4     D     7     2
+        5     C     4     3
 
         Sort by col1
 
-        >>> df.sort_values(by=['col1'])  # doctest: +NORMALIZE_WHITESPACE
-            col1 col2 col3
-        0     A    2    0
-        1     A    1    1
-        2     B    9    9
-        5     C    4    3
-        4     D    7    2
-        3   NaN    8    4
+        >>> df.sort_values(by=['col1'])
+           col1  col2  col3
+        0     A     2     0
+        1     A     1     1
+        2     B     9     9
+        5     C     4     3
+        4     D     7     2
+        3  None     8     4
+
 
         Sort by multiple columns
 
-        >>> df.sort_values(by=['col1', 'col2'])  # doctest: +NORMALIZE_WHITESPACE
-            col1 col2 col3
-        1     A    1    1
-        0     A    2    0
-        2     B    9    9
-        5     C    4    3
-        4     D    7    2
-        3   NaN    8    4
+        >>> df.sort_values(by=['col1', 'col2'])
+           col1  col2  col3
+        1     A     1     1
+        0     A     2     0
+        2     B     9     9
+        5     C     4     3
+        4     D     7     2
+        3  None     8     4
 
         Sort Descending
 
-        >>> df.sort_values(by='col1', ascending=False)  # doctest: +NORMALIZE_WHITESPACE
-            col1 col2 col3
-        4     D    7    2
-        5     C    4    3
-        2     B    9    9
-        0     A    2    0
-        1     A    1    1
-        3   NaN    8    4
+        >>> df.sort_values(by='col1', ascending=False)
+           col1  col2  col3
+        4     D     7     2
+        5     C     4     3
+        2     B     9     9
+        0     A     2     0
+        1     A     1     1
+        3  None     8     4
         """
         if isinstance(by, string_types):
             by = [by]
