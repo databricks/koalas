@@ -98,9 +98,10 @@ class DataFrame(_Frame):
         for col in self.columns:
             col_sdf = self._sdf[col]
             col_type = self._sdf.schema[col].dataType
-            if isinstance(col_type, BooleanType):
+            if isinstance(col_type, BooleanType) and sfun.__name__ not in ('min', 'max'):
                 # Stat functions cannot be used with boolean values by default
                 # Thus, cast to integer (true to 1 and false to 0)
+                # Exclude the min and max methods though since those work with booleans
                 col_sdf = col_sdf.cast('integer')
             if num_args == 1:
                 # Only pass in the column if sfun accepts only one arg

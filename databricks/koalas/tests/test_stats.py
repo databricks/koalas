@@ -100,17 +100,18 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             # assert ddf.a.corr(ddf.b)._meta.dtype == 'f8'
 
     def test_stats_on_boolean(self):
-        df = pd.DataFrame({'A': [True, False]})
+        df = pd.DataFrame({'A': [True, False, True],
+                           'B': [False, False, True]})
         ddf = koalas.from_pandas(df)
 
-        self.assert_eq(ddf.min(), df.min())
-        self.assert_eq(ddf.max(), df.max())
+        pd.testing.assert_series_equal(ddf.min(), df.min())
+        pd.testing.assert_series_equal(ddf.max(), df.max())
 
-        self.assert_eq(ddf.sum(), df.sum())
-        self.assert_eq(ddf.mean(), df.mean())
+        pd.testing.assert_series_equal(ddf.sum(), df.sum())
+        pd.testing.assert_series_equal(ddf.mean(), df.mean())
 
-        self.assert_eq(ddf.var(), df.var())
-        self.assert_eq(ddf.std(), df.std())
+        pd.testing.assert_series_equal(ddf.var(), df.var())
+        pd.testing.assert_series_equal(ddf.std(), df.std())
 
 
 if __name__ == "__main__":
