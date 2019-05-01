@@ -181,7 +181,8 @@ class DataFrame(_Frame):
         col_space : int, optional
             The minimum width of each column.
         header : bool, optional
-            %(header)s.
+            Write out the column names. If a list of strings is given, it
+            is assumed to be aliases for the column names
         index : bool, optional, default True
             Whether to print index (row) labels.
         na_rep : str, optional, default 'NaN'
@@ -258,42 +259,97 @@ class DataFrame(_Frame):
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_html, pd.DataFrame.to_html, args)
 
-    def to_string(self, buf=None, na_rep='NaN', float_format=None, header=True,
-                  index=True, length=False, dtype=False, name=False,
-                  max_rows=None):
+    def to_string(self, buf=None, columns=None, col_space=None, header=True,
+                  index=True, na_rep='NaN', formatters=None, float_format=None,
+                  sparsify=None, index_names=True, justify=None,
+                  max_rows=None, max_cols=None, show_dimensions=False,
+                  decimal='.', line_width=None):
         """
-        Render a string representation of the Series.
+        Render a DataFrame to a console-friendly tabular output.
 
-        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
-            to be small, as all the data is loaded into the driver's memory. If the input DataFrame
-            is large, set max_rows parameter.
+        Notes
+        -----
+        This method should only be used if the resulting Pandas DataFrame is expected
+        to be small, as all the data is loaded into the driver's memory. If the input DataFrame
+        is large, set max_rows parameter.
 
         Parameters
         ----------
         buf : StringIO-like, optional
-            buffer to write to
-        na_rep : string, optional
-            string representation of NAN to use, default 'NaN'
-        float_format : one-parameter function, optional
-            formatter function to apply to columns' elements if they are floats
-            default None
-        header : boolean, default True
-            Add the Series header (index name)
-        index : bool, optional
-            Add index (row) labels, default True
-        length : boolean, default False
-            Add the Series length
-        dtype : boolean, default False
-            Add the Series dtype
-        name : boolean, default False
-            Add the Series name if not None
+            Buffer to write to.
+        columns : sequence, optional, default None
+            The subset of columns to write. Writes all columns by default.
+        col_space : int, optional
+            The minimum width of each column.
+        header : bool, optional
+            Write out the column names. If a list of strings is given, it
+            is assumed to be aliases for the column names
+        index : bool, optional, default True
+            Whether to print index (row) labels.
+        na_rep : str, optional, default 'NaN'
+            String representation of NAN to use.
+        formatters : list or dict of one-param. functions, optional
+            Formatter functions to apply to columns' elements by position or
+            name.
+            The result of each function must be a unicode string.
+            List must be of length equal to the number of columns.
+        float_format : one-parameter function, optional, default None
+            Formatter function to apply to columns' elements if they are
+            floats. The result of this function must be a unicode string.
+        sparsify : bool, optional, default True
+            Set to False for a DataFrame with a hierarchical index to print
+            every multiindex key at each row.
+        index_names : bool, optional, default True
+            Prints the names of the indexes.
+        justify : str, default None
+            How to justify the column labels. If None uses the option from
+            the print configuration (controlled by set_option), 'right' out
+            of the box. Valid values are
+
+            * left
+            * right
+            * center
+            * justify
+            * justify-all
+            * start
+            * end
+            * inherit
+            * match-parent
+            * initial
+            * unset.
         max_rows : int, optional
-            Maximum number of rows to show before truncating. If None, show
-            all.
+            Maximum number of rows to display in the console.
+        max_cols : int, optional
+            Maximum number of columns to display in the console.
+        show_dimensions : bool, default False
+            Display DataFrame dimensions (number of rows by number of columns).
+        decimal : str, default '.'
+            Character recognized as decimal separator, e.g. ',' in Europe.
+        line_width : int, optional
+            Width to wrap a line in characters.
 
         Returns
         -------
-        formatted : string (if not buffer passed)
+        str (or unicode, depending on data and options)
+            String representation of the dataframe.
+
+        See Also
+        --------
+        to_html : Convert DataFrame to HTML.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'col1': [1, 2, 3], 'col2': [4, 5, 6]})
+        >>> print(df.to_string())
+           col1  col2
+        0     1     4
+        1     2     5
+        2     3     6
+
+        >>> print(df.to_string(max_rows=2))
+           col1  col2
+        0     1     4
+        1     2     5
         """
         # Make sure locals() call is at the top of the function so we don't capture local variables.
         args = locals()

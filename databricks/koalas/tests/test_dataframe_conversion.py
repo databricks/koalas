@@ -70,10 +70,3 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
             """)
         got = self.strip_all_whitespace(self.kdf.to_html(max_rows=2))
         self.assert_eq(got, expected)
-
-    def test_to_string(self):
-        self.assert_eq(self.kdf.to_string(),
-                       '   a  b\n0  1  4\n1  2  5\n3  3  6')
-
-        self.assert_eq(self.kdf.to_string(max_rows=2),
-                       '   a  b\n0  1  4\n1  2  5')
