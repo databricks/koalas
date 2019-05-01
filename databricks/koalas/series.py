@@ -322,7 +322,7 @@ class Series(_Frame):
 
         .. note:: This method should only be used if the resulting Pandas object is expected
                   to be small, as all the data is loaded into the driver's memory. If the input
-                  s large, set max_rows parameter.
+                  is large, set max_rows parameter.
 
         Parameters
         ----------
@@ -380,7 +380,7 @@ class Series(_Frame):
 
         .. note:: This method should only be used if the resulting Pandas object is expected
                   to be small, as all the data is loaded into the driver's memory. If the input
-                  s large, set max_rows parameter.
+                  is large, set max_rows parameter.
 
         Examples
         --------
