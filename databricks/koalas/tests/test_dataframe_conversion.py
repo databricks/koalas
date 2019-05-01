@@ -56,7 +56,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
         got = self.strip_all_whitespace(self.kdf.to_html())
         self.assert_eq(got, expected)
 
-    def test_to_html_max_rows(self):
+        # with max_rows set
         expected = self.strip_all_whitespace("""
             <table border="1" class="dataframe">
               <thead>
