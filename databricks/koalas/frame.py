@@ -37,9 +37,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.selection import SparkDataFrameLocator
-from databricks.koalas.typedef import dict_sanitizer
-from databricks.koalas.typedef import infer_pd_series_spark_type
-from databricks.koalas.utils import default_session
+from databricks.koalas.typedef import infer_pd_series_spark_type, dict_sanitizer
 
 
 class DataFrame(_Frame):
