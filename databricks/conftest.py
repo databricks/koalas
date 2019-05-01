@@ -23,6 +23,7 @@ from databricks import koalas
 def add_ks(doctest_namespace):
     doctest_namespace['ks'] = koalas
 
+
 @pytest.fixture(autouse=True)
 def add_np(doctest_namespace):
     doctest_namespace['np'] = np
