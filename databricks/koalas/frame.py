@@ -741,12 +741,12 @@ class DataFrame(_Frame):
             raise ValueError("invalid na_position: '{}'".format(na_position))
 
         # Mapper: Get a spark column function for (ascending, na_position) combination
-        # Note: Use the Series.asc() version instead of F.asc(Series) as the anchor is needed
+        # Note that 'asc_nulls_first' and friends were added as of Spark 2.4, see SPARK-23847.
         mapper = {
-            (True, 'first'): lambda x: x.asc_nulls_first(),
-            (True, 'last'): lambda x: x.asc_nulls_last(),
-            (False, 'first'): lambda x: x.desc_nulls_first(),
-            (False, 'last'): lambda x: x.desc_nulls_last(),
+            (True, 'first'): lambda x: Column(getattr(x._jc, "asc_nulls_first")()),
+            (True, 'last'): lambda x: Column(getattr(x._jc, "asc_nulls_last")()),
+            (False, 'first'): lambda x: Column(getattr(x._jc, "desc_nulls_first")()),
+            (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
         }
         by = [mapper[(asc, na_position)](self[colname]._scol)
               for colname, asc in zip(by, ascending)]
