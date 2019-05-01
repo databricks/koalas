@@ -99,6 +99,33 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             # assert ddf.a.cov(ddf.b)._meta.dtype == 'f8'
             # assert ddf.a.corr(ddf.b)._meta.dtype == 'f8'
 
+    def test_stats_on_boolean_dataframe(self):
+        df = pd.DataFrame({'A': [True, False, True],
+                           'B': [False, False, True]})
+        ddf = koalas.from_pandas(df)
+
+        pd.testing.assert_series_equal(ddf.min(), df.min())
+        pd.testing.assert_series_equal(ddf.max(), df.max())
+
+        pd.testing.assert_series_equal(ddf.sum(), df.sum())
+        pd.testing.assert_series_equal(ddf.mean(), df.mean())
+
+        pd.testing.assert_series_equal(ddf.var(), df.var())
+        pd.testing.assert_series_equal(ddf.std(), df.std())
+
+    def test_stats_on_boolean_series(self):
+        s = pd.Series([True, False, True])
+        ds = koalas.from_pandas(s)
+
+        self.assertEqual(ds.min(), s.min())
+        self.assertEqual(ds.max(), s.max())
+
+        self.assertEqual(ds.sum(), s.sum())
+        self.assertEqual(ds.mean(), s.mean())
+
+        self.assertAlmostEqual(ds.var(), s.var())
+        self.assertAlmostEqual(ds.std(), s.std())
+
 
 if __name__ == "__main__":
     try:
