@@ -376,15 +376,15 @@ class Series(_Frame):
 
     def to_pandas(self):
         """
-        Return a pandas DataFrame.
+        Return a pandas Series.
 
-        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
-            to be small, as all the data is loaded into the driver's memory.
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory. If the input
+                  s large, set max_rows parameter.
 
         Examples
         --------
-        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
-        ...                   columns=['dogs', 'cats'])
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)], columns=['dogs', 'cats'])
         >>> df['dogs'].to_pandas()
         0    0.2
         1    0.0
