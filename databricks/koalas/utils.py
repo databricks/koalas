@@ -17,7 +17,7 @@
 Commonly used utils in Koalas.
 """
 
-from typing import Callable, Dict
+from typing import Callable, Dict, Union
 
 from pyspark import sql as spark
 import pandas as pd
@@ -27,8 +27,9 @@ def default_session():
     return spark.SparkSession.builder.getOrCreate()
 
 
-def validate_arguments_and_invoke_function(pdf: pd.DataFrame, koalas_func: Callable,
-                                           pandas_func: Callable, input_args: Dict):
+def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],
+                                           koalas_func: Callable, pandas_func: Callable,
+                                           input_args: Dict):
     """
     Invokes a pandas function.
 
@@ -43,7 +44,7 @@ def validate_arguments_and_invoke_function(pdf: pd.DataFrame, koalas_func: Calla
 
     For example usage, look at DataFrame.to_html().
 
-    :param pdf: the pandas DataFrame to operate on
+    :param pobj: the pandas DataFrame or Series to operate on
     :param koalas_func: koalas function, used to get default parameter values
     :param pandas_func: pandas function, used to check whether pandas supports all the arguments
     :param input_args: arguments to pass to the pandas function, often created by using locals().
@@ -70,5 +71,5 @@ def validate_arguments_and_invoke_function(pdf: pd.DataFrame, koalas_func: Calla
                     ("The pandas version [%s] available does not support parameter '%s' " +
                         "for function '%s'.") % (pd.__version__, param.name, pandas_func.__name__))
 
-    args['self'] = pdf
+    args['self'] = pobj
     return pandas_func(**args)

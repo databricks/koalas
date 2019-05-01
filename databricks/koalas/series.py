@@ -35,6 +35,7 @@ from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.selection import SparkDataFrameLocator
+from databricks.koalas.utils import validate_arguments_and_invoke_function
 
 
 @decorator
@@ -312,6 +313,66 @@ class Series(_Frame):
         sdf = self._kdf._sdf.select([field for field, _ in self._index_info] + [self._scol])
         metadata = Metadata(column_fields=[sdf.schema[-1].name], index_info=self._index_info)
         return DataFrame(sdf, metadata)
+
+    def to_string(self, buf=None, na_rep='NaN', float_format=None, header=True,
+                  index=True, length=False, dtype=False, name=False,
+                  max_rows=None):
+        """
+        Render a string representation of the Series.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory. If the input
+                  s large, set max_rows parameter.
+
+        Parameters
+        ----------
+        buf : StringIO-like, optional
+            buffer to write to
+        na_rep : string, optional
+            string representation of NAN to use, default 'NaN'
+        float_format : one-parameter function, optional
+            formatter function to apply to columns' elements if they are floats
+            default None
+        header : boolean, default True
+            Add the Series header (index name)
+        index : bool, optional
+            Add index (row) labels, default True
+        length : boolean, default False
+            Add the Series length
+        dtype : boolean, default False
+            Add the Series dtype
+        name : boolean, default False
+            Add the Series name if not None
+        max_rows : int, optional
+            Maximum number of rows to show before truncating. If None, show
+            all.
+
+        Returns
+        -------
+        formatted : string (if not buffer passed)
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)], columns=['dogs', 'cats'])
+        >>> print(df['dogs'].to_string())
+        0    0.2
+        1    0.0
+        2    0.6
+        3    0.2
+
+        >>> print(df['dogs'].to_string(max_rows=2))
+        0    0.2
+        1    0.0
+        """
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        if max_rows is not None:
+            kseries = self.head(max_rows)
+        else:
+            kseries = self
+
+        return validate_arguments_and_invoke_function(
+            kseries.to_pandas(), self.to_string, pd.Series.to_string, args)
 
     def to_pandas(self):
         """
