@@ -330,7 +330,6 @@ class DataFrame(_Frame):
         Examples
         --------
         >>> df = ks.DataFrame([(.2, .3), (.0, None), (.6, None), (.2, .1)])
-        ...                    (.2, .1)])
         >>> df.notnull()
               0      1
         0  True   True
@@ -338,7 +337,7 @@ class DataFrame(_Frame):
         2  True  False
         3  True   True
 
-        >>> df = ks.DataFrame([['ant', 'bee', 'cat'], ['dog', NaN, 'fly']])
+        >>> df = ks.DataFrame([['ant', 'bee', 'cat'], ['dog', None, 'fly']])
         >>> df.notnull()
               0      1     2
         0  True   True  True
