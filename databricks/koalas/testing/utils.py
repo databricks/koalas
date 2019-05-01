@@ -220,6 +220,15 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
             raise ValueError("Unexpected values: (%s, %s)" % (left, right))
 
     def assert_eq(self, left, right, almost=False):
+        """
+        Asserts if two arbitrary objects are equal or not. If given objects are Koalas DataFrame
+        or Series, they are converted into Pandas' and compared.
+
+        :param left: object to compare
+        :param right: object to compare
+        :param almost: if this is enabled, the comparison is delegated to `unittest`'s
+                       `assertAlmostEqual`. See its documentation for more details.
+        """
         lpdf = self._to_pandas(left)
         rpdf = self._to_pandas(right)
         if isinstance(lpdf, (pd.DataFrame, pd.Series, pd.Index)):

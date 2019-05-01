@@ -23,8 +23,6 @@ def unsupported_function(method_name):
 
 class _MissingPandasLikeDataFrameGroupBy(object):
 
-    agg = unsupported_function('agg')
-    aggregate = unsupported_function('aggregate')
     all = unsupported_function('all')
     any = unsupported_function('any')
     apply = unsupported_function('apply')

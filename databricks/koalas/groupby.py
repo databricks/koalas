@@ -24,6 +24,8 @@ from typing import Any, List, Union
 from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType, DoubleType, NumericType
 
+from databricks.koalas.dask.compatibility import string_types
+from databricks.koalas.generic import _Frame
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
@@ -36,13 +38,42 @@ ColumnLike = Union[str, Series]
 
 class GroupBy(object):
 
-    def __new__(cls, obj: Union[DataFrame, Series], *args, **kwargs):
+    def __new__(cls, obj: _Frame, *args, **kwargs):
         if isinstance(obj, DataFrame):
             return super(GroupBy, cls).__new__(DataFrameGroupBy)
         elif isinstance(obj, Series):
             return super(GroupBy, cls).__new__(SeriesGroupBy)
         else:
-            raise TypeError('invalid type: {}'.format(obj))
+            raise TypeError('Constructor expects DataFrame or Series; however, '
+                            'got [%s]' % (obj,))
+
+    # TODO: Series support is not implemented yet.
+    def aggregate(self, func_or_funcs, *args, **kwargs):
+        """Compute aggregates and returns the result as a :class:`DataFrame`.
+        The available aggregate functions can be built-in aggregation functions, such as `avg`,
+        `max`, `min`, `sum`, `count`.
+
+        :param func_or_funcs: a dict mapping from column name (string) to aggregate functions
+                              (string).
+        """
+        if not isinstance(func_or_funcs, dict) or \
+            not all(isinstance(key, string_types) and isinstance(value, string_types)
+                    for key, value in func_or_funcs.items()):
+            raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
+                             "functions (string).")
+
+        sdf = self._kdf._sdf
+        groupkeys = self._groupkeys
+        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+                         for i, s in enumerate(groupkeys)]
+        sdf.groupby(*groupkey_cols).agg(func_or_funcs)
+        reordered = ['%s(%s)' % (value, key) for key, value in iter(func_or_funcs.items())]
+        kdf = DataFrame(sdf.select(reordered))
+        kdf.columns = [key for key in iter(func_or_funcs.keys())]
+
+        return kdf
+
+    agg = aggregate
 
     def count(self):
         return self._reduce_for_stat_function(F.count, only_numeric=False)
