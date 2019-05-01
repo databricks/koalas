@@ -20,10 +20,12 @@ A wrapper for GroupedData to behave similar to pandas GroupBy.
 
 from functools import partial
 from typing import Any, List, Union
+import numpy as np
 
 from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType, DoubleType, NumericType
 
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.generic import _Frame
 from databricks.koalas.frame import DataFrame
@@ -48,13 +50,51 @@ class GroupBy(object):
                             'got [%s]' % (obj,))
 
     # TODO: Series support is not implemented yet.
+    # TODO: not all arguments are implemented comparing to Pandas' for now.
     def aggregate(self, func_or_funcs, *args, **kwargs):
-        """Compute aggregates and returns the result as a :class:`DataFrame`.
-        The available aggregate functions can be built-in aggregation functions, such as `avg`,
-        `max`, `min`, `sum`, `count`.
+        """Aggregate using one or more operations over the specified axis.
 
-        :param func_or_funcs: a dict mapping from column name (string) to aggregate functions
-                              (string).
+        Parameters
+        ----------
+        func : dict
+             a dict mapping from column name (string) to aggregate functions (string).
+
+        Returns
+        -------
+        Series or DataFrame
+
+            The return can be:
+
+            * Series : when DataFrame.agg is called with a single function
+            * DataFrame : when DataFrame.agg is called with several functions
+
+            Return Series or DataFrame.
+
+        Notes
+        -----
+        `agg` is an alias for `aggregate`. Use the alias.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'A': [1, 1, 2, 2],
+        ...                    'B': [1, 2, 3, 4],
+        ...                    'C': [0.362, 0.227, 1.267, -0.562]})
+
+        >>> df
+           A  B      C
+        0  1  1  0.362
+        1  1  2  0.227
+        2  2  3  1.267
+        3  2  4 -0.562
+
+        Different aggregations per column
+
+        >>> df.groupby('A').agg({'B': 'min', 'C': 'sum'})
+           B      C
+        0  1  0.589
+        1  3  0.705
+
         """
         if not isinstance(func_or_funcs, dict) or \
             not all(isinstance(key, string_types) and isinstance(value, string_types)
@@ -66,9 +106,9 @@ class GroupBy(object):
         groupkeys = self._groupkeys
         groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
                          for i, s in enumerate(groupkeys)]
-        sdf.groupby(*groupkey_cols).agg(func_or_funcs)
+        gdf = sdf.groupby(*groupkey_cols).agg(func_or_funcs)
         reordered = ['%s(%s)' % (value, key) for key, value in iter(func_or_funcs.items())]
-        kdf = DataFrame(sdf.select(reordered))
+        kdf = DataFrame(gdf.select(reordered))
         kdf.columns = [key for key in iter(func_or_funcs.keys())]
 
         return kdf
@@ -76,31 +116,113 @@ class GroupBy(object):
     agg = aggregate
 
     def count(self):
+        """
+        Compute count of group, excluding missing values.
+        """
         return self._reduce_for_stat_function(F.count, only_numeric=False)
 
+    # TODO: We should fix See Also when Series implementation is finished.
     def first(self):
+        """
+        Compute first of group values.
+
+        See Also
+        --------
+
+        koalas.DataFrame.groupby
+        """
         return self._reduce_for_stat_function(F.first, only_numeric=False)
 
     def last(self):
+        """
+        Compute last of group values.
+
+        See Also
+        --------
+
+        koalas.DataFrame.groupby
+        """
         return self._reduce_for_stat_function(lambda col: F.last(col, ignorenulls=True),
                                               only_numeric=False)
 
     def max(self):
+        """
+        Compute max of group values.
+
+        See Also
+        --------
+
+        koalas.DataFrame.groupby
+        """
         return self._reduce_for_stat_function(F.max, only_numeric=False)
 
+    # TODO: examples should be updated.
     def mean(self):
+        """
+        Compute mean of groups, excluding missing values.
+
+        Returns
+        -------
+        koalas.Series or koalas.DataFrame
+
+        See Also
+        --------
+
+        koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 1, 2, 1, 2],
+        ...                    'B': [np.nan, 2, 3, 4, 5],
+        ...                    'C': [1, 2, 1, 1, 2]}, columns=['A', 'B', 'C'])
+
+        Groupby one column and return the mean of the remaining columns in
+        each group.
+
+        >>> df.groupby('A').mean()  # doctest: +NORMALIZE_WHITESPACE
+             B         C
+        A
+        1  3.0  1.333333
+        2  4.0  1.500000
+        """
+
         return self._reduce_for_stat_function(F.mean, only_numeric=True)
 
     def min(self):
+        """
+        Compute min of group values.
+
+        See Also
+        --------
+
+        koalas.DataFrame.groupby
+        """
         return self._reduce_for_stat_function(F.min, only_numeric=False)
 
+    # TODO: sync the doc and implement `ddof`.
     def std(self):
+        """
+        Compute standard deviation of groups, excluding missing values.
+        """
+
         return self._reduce_for_stat_function(F.stddev, only_numeric=True)
 
     def sum(self):
+        """
+        Compute sum of group values
+
+        See Also
+        --------
+
+        koalas.DataFrame.groupby
+        """
         return self._reduce_for_stat_function(F.sum, only_numeric=True)
 
+    # TODO: sync the doc and implement `ddof`.
     def var(self):
+        """
+        Compute variance of groups, excluding missing values.
+        """
         return self._reduce_for_stat_function(F.variance, only_numeric=True)
 
     def _reduce_for_stat_function(self, sfun, only_numeric):

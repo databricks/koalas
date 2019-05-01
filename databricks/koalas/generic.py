@@ -23,6 +23,7 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.utils import derived_from
 
 max_display_count = 1000
@@ -87,9 +88,11 @@ class _Frame(object):
         """
         return _spark_col_apply(self, F.abs)
 
+    # TODO: by argument only support the grouping name only for now. Documentation should
+    # be updated when it's supported.
     def groupby(self, by):
         """
-        Group DataFrame or Series using a mapper or by a Series of columns.
+        Group DataFrame or Series using a Series of columns.
 
         A groupby operation involves some combination of splitting the
         object, applying a function, and combining the results. This can be
@@ -98,21 +101,21 @@ class _Frame(object):
 
         Parameters
         ----------
-        by : mapping, function, label, or list of labels
+        by : Series, label, or list of labels
             Used to determine the groups for the groupby.
-            If ``by`` is a function, it's called on each value of the object's
-            index. If a dict or Series is passed, the Series or dict VALUES
-            will be used to determine the groups (the Series' values are first
-            aligned; see ``.align()`` method). If an ndarray is passed, the
-            values are used as-is determine the groups. A label or list of
-            labels may be passed to group by the columns in ``self``. Notice
-            that a tuple is interpreted a (single) key.
+            If Series is passed, the Series or dict VALUES
+            will be used to determine the groups. A label or list of
+            labels may be passed to group by the columns in ``self``.
 
         Returns
         -------
         DataFrameGroupBy or SeriesGroupBy
             Depends on the calling object and returns groupby object that
             contains information about the groups.
+
+        See Also
+        --------
+        koalas.groupby.GroupBy
 
         Examples
         --------
@@ -130,34 +133,6 @@ class _Frame(object):
         Animal
         Falcon      375.0
         Parrot       25.0
-
-        **Hierarchical Indexes**
-
-        We can groupby different levels of a hierarchical index
-        using the `level` parameter:
-
-        >>> arrays = [['Falcon', 'Falcon', 'Parrot', 'Parrot'],
-        ...           ['Captive', 'Wild', 'Captive', 'Wild']]
-        >>> index = pd.MultiIndex.from_arrays(arrays, names=('Animal', 'Type'))
-        >>> df = pd.DataFrame({'Max Speed': [390., 350., 30., 20.]},
-        ...                   index=index)
-        >>> df  # doctest: +NORMALIZE_WHITESPACE
-                        Max Speed
-        Animal Type
-        Falcon Captive      390.0
-               Wild         350.0
-        Parrot Captive       30.0
-               Wild          20.0
-        >>> df.groupby(level=0).mean()  # doctest: +NORMALIZE_WHITESPACE
-                Max Speed
-        Animal
-        Falcon      370.0
-        Parrot       25.0
-        >>> df.groupby(level=1).mean()  # doctest: +NORMALIZE_WHITESPACE
-                 Max Speed
-        Type
-        Captive      210.0
-        Wild         185.0
         """
         from databricks.koalas.groupby import GroupBy
         from databricks.koalas.series import Series
