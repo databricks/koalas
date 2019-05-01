@@ -377,8 +377,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.sort_values('b'), pdf.sort_values('b'))
         self.assert_eq(kdf.sort_values(['b', 'a']), pdf.sort_values(['b', 'a']))
         self.assert_eq(
-            kdf.sort_values(['b', 'a'], ascending=[False, True]),
-            pdf.sort_values(['b', 'a'], ascending=[False, True]))
+            repr(kdf.sort_values(['b', 'a'], ascending=[False, True])),
+            repr(pdf.sort_values(['b', 'a'], ascending=[False, True])))
 
         self.assertRaises(ValueError, lambda: kdf.sort_values(['b', 'a'], ascending=[False]))
 

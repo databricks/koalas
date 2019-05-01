@@ -748,8 +748,9 @@ class DataFrame(_Frame):
             (False, 'first'): lambda x: x.desc_nulls_first(),
             (False, 'last'): lambda x: x.desc_nulls_last(),
         }
-        by = [mapper[(asc, na_position)](self[colname]) for colname, asc in zip(by, ascending)]
-        kdf = DataFrame(self._sdf.sort(*by, ascending=ascending), self._metadata.copy())
+        by = [mapper[(asc, na_position)](self[colname]._scol)
+              for colname, asc in zip(by, ascending)]
+        kdf = DataFrame(self._sdf.sort(*by), self._metadata.copy())
         if inplace:
             self._sdf: spark.DataFrame = kdf._sdf
             self._metadata = kdf._metadata
