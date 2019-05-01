@@ -25,8 +25,8 @@ import pandas as pd
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import FloatType, DoubleType, LongType, StructType, TimestampType, \
-    to_arrow_type
+from pyspark.sql.types import BooleanType, FloatType, DoubleType, LongType, StructType, \
+    TimestampType, to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.utils import derived_from
@@ -527,14 +527,21 @@ class Series(_Frame):
     def _reduce_for_stat_function(self, sfun):
         from inspect import signature
         num_args = len(signature(sfun).parameters)
+        col_sdf = self._scol
+        col_type = self.schema[self.name].dataType
+        if isinstance(col_type, BooleanType) and sfun.__name__ not in ('min', 'max'):
+            # Stat functions cannot be used with boolean values by default
+            # Thus, cast to integer (true to 1 and false to 0)
+            # Exclude the min and max methods though since those work with booleans
+            col_sdf = col_sdf.cast('integer')
         if num_args == 1:
             # Only pass in the column if sfun accepts only one arg
-            expr = sfun(self._scol)
+            col_sdf = sfun(col_sdf)
         else:  # must be 2
             assert num_args == 2
             # Pass in both the column and its data type if sfun accepts two args
-            expr = sfun(self._scol, self.schema[self.name].dataType)
-        return _unpack_scalar(self._kdf._sdf.select(expr))
+            col_sdf = sfun(col_sdf, col_type)
+        return _unpack_scalar(self._kdf._sdf.select(col_sdf))
 
     def __len__(self):
         return len(self.to_dataframe())
