@@ -305,8 +305,34 @@ class DataFrame(_Frame):
             kdf.columns = columns
             return kdf
 
-    @derived_from(pd.DataFrame)
     def isnull(self):
+        """
+        Detects missing values for items in the current Dataframe.
+
+        Return a boolean same-sized Dataframe indicating if the values are NA. 
+        NA values, such as None or numpy.NaN, gets mapped to True values.
+        Everything else gets mapped to False values.
+
+        See Also
+        --------
+        Dataframe.notnull
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, None), (.6, None), (.2, .1)])
+        >>> df.isnull()
+               0      1
+        0  False  False
+        1  False   True
+        2  False   True
+        3  False  False
+
+        >>> df = ks.DataFrame([[None, 'bee', None], ['dog', None, 'fly']])
+        >>> df.isnull()
+               0      1      2
+        0   True  False   True
+        1  False   True  False
+        """
         kdf = self.copy()
         for name, ks in kdf.iteritems():
             kdf[name] = ks.isnull()
@@ -321,7 +347,6 @@ class DataFrame(_Frame):
         This function takes a dataframe and indicates whether it's
         values are valid (not missing, which is ``NaN`` in numeric
         datatypes, ``None`` or ``NaN`` in objects and ``NaT`` in datetimelike).
-
 
         See Also
         --------
