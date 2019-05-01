@@ -17,14 +17,18 @@
 Commonly used utils in Koalas.
 """
 
+from typing import Callable, Dict
+
 from pyspark import sql as spark
+import pandas as pd
 
 
 def default_session():
     return spark.SparkSession.builder.getOrCreate()
 
 
-def validate_arguments_and_invoke_function(pdf, koalas_func, pandas_func, input_args):
+def validate_arguments_and_invoke_function(pdf: pd.DataFrame, koalas_func: Callable,
+                                           pandas_func: Callable, input_args: Dict):
     """
     Invokes a pandas function.
 
