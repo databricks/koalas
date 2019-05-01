@@ -56,7 +56,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
         got = self.strip_all_whitespace(self.kdf.to_html())
         self.assert_eq(got, expected)
 
-    def test_to_html_max_rows(self):
+        # with max_rows set
         expected = self.strip_all_whitespace("""
             <table border="1" class="dataframe">
               <thead>
@@ -70,3 +70,10 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
             """)
         got = self.strip_all_whitespace(self.kdf.to_html(max_rows=2))
         self.assert_eq(got, expected)
+
+    def test_to_string(self):
+        self.assert_eq(self.kdf.to_string(),
+                       '   a  b\n0  1  4\n1  2  5\n3  3  6')
+
+        self.assert_eq(self.kdf.to_string(max_rows=2),
+                       '   a  b\n0  1  4\n1  2  5')

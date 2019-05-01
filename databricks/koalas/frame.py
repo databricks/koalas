@@ -258,6 +258,53 @@ class DataFrame(_Frame):
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_html, pd.DataFrame.to_html, args)
 
+    def to_string(self, buf=None, na_rep='NaN', float_format=None, header=True,
+                  index=True, length=False, dtype=False, name=False,
+                  max_rows=None):
+        """
+        Render a string representation of the Series.
+
+        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
+            to be small, as all the data is loaded into the driver's memory. If the input DataFrame
+            is large, set max_rows parameter.
+
+        Parameters
+        ----------
+        buf : StringIO-like, optional
+            buffer to write to
+        na_rep : string, optional
+            string representation of NAN to use, default 'NaN'
+        float_format : one-parameter function, optional
+            formatter function to apply to columns' elements if they are floats
+            default None
+        header : boolean, default True
+            Add the Series header (index name)
+        index : bool, optional
+            Add index (row) labels, default True
+        length : boolean, default False
+            Add the Series length
+        dtype : boolean, default False
+            Add the Series dtype
+        name : boolean, default False
+            Add the Series name if not None
+        max_rows : int, optional
+            Maximum number of rows to show before truncating. If None, show
+            all.
+
+        Returns
+        -------
+        formatted : string (if not buffer passed)
+        """
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        if max_rows is not None:
+            kdf = self.head(max_rows)
+        else:
+            kdf = self
+
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_string, pd.DataFrame.to_string, args)
+
     @property
     def index(self):
         """The index (row labels) Column of the DataFrame.
