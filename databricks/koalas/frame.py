@@ -881,8 +881,47 @@ class DataFrame(_Frame):
         sdf = self._sdf
         return DataFrame(spark.DataFrame(sdf._jdf.distinct(), sdf.sql_ctx), self._metadata.copy())
 
-    @derived_from(pd.DataFrame)
     def drop(self, labels, axis=0, errors='raise'):
+        """
+        Drop specified labels from columns.
+
+        Remove columns by specifying label names and axis=1.
+        Removing rows is yet to be implemented.
+
+        Parameters
+        ----------
+        labels : single label or list-like
+            Column labels to drop.
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+            Whether to drop labels from the index (0 or 'index') or
+            columns (1 or 'columns').
+
+        Returns
+        -------
+        dropped : koalas.DataFrame
+
+        See Also
+        --------
+        Series.dropna
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6], 'w': [7, 8]})
+        >>> df
+           x  y  z  w
+        0  1  3  5  7
+        1  2  4  6  8
+
+        >>> df.drop('x', axis=1)
+           y  z  w
+        0  3  5  7
+        1  4  6  8
+
+        >>> df.drop(['y', 'z'], axis=1)
+           x  w
+        0  1  7
+        1  2  8
+        """
         axis = self._validate_axis(axis)
         if axis == 1:
             if isinstance(labels, list):
