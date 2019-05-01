@@ -31,7 +31,7 @@ from pyspark.sql.types import DataType, DoubleType, FloatType, StructField, Stru
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.utils import default_session
+from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.generic import _Frame, max_display_count
@@ -250,24 +250,14 @@ class DataFrame(_Frame):
         --------
         to_string : Convert DataFrame to a string.
         """
+        args = locals()
         if max_rows is not None:
             kdf = self.head(max_rows)
         else:
             kdf = self
 
-        kwargs = {
-            "buf": buf, "columns": columns, "col_space": col_space,
-            "header": header, "index": index, "na_rep": na_rep,
-            "formatters": formatters, "float_format": float_format, "sparsify": sparsify,
-            "index_names": index_names, "justify": justify, "max_rows": max_rows,
-            "max_cols": max_cols, "show_dimensions": show_dimensions, "decimal": decimal,
-            "bold_rows": bold_rows, "classes": classes, "escape": escape,
-            "notebook": notebook, "border": border, "table_id": table_id
-        }
-        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
-            kwargs["render_links"] = render_links
-
-        return kdf.to_pandas().to_html(**kwargs)
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_html, pd.DataFrame.to_html, args)
 
     @property
     def index(self):
