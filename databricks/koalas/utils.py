@@ -46,7 +46,9 @@ def validate_arguments_and_invoke_function(pdf: pd.DataFrame, koalas_func: Calla
     :param pdf: the pandas DataFrame to operate on
     :param koalas_func: koalas function, used to get default parameter values
     :param pandas_func: pandas function, used to check whether pandas supports all the arguments
-    :param input_args: arguments to pass to the pandas function
+    :param input_args: arguments to pass to the pandas function, often created by using locals().
+                       Make sure locals() call is at the top of the function so it captures only
+                       input parameters, rather than local variables.
     :return: whatever pandas_func returns
     """
     import inspect

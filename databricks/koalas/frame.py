@@ -250,6 +250,7 @@ class DataFrame(_Frame):
         --------
         to_string : Convert DataFrame to a string.
         """
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
         args = locals()
         if max_rows is not None:
             kdf = self.head(max_rows)
