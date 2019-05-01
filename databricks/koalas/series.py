@@ -317,6 +317,7 @@ class Series(_Frame):
         # Pandas wants a series/array-like object
         return _col(self.to_dataframe().unique())
 
+    # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
         """
         Return a Series containing counts of unique values.
@@ -333,7 +334,6 @@ class Series(_Frame):
         ascending : boolean, default False
             Sort in ascending order.
         bins : Not Yet Supported
-        # TODO: Update Documentation when its supported
         dropna : boolean, default True
             Don't include counts of NaN.
         Returns
@@ -344,7 +344,7 @@ class Series(_Frame):
         Series.count: Number of non-NA elements in a Series.
         Examples
         --------
-        >>> pdf = ks.DataFrame({'x':[0, 1, np.nan, 0, 2, np.nan, 3, 3]})
+        >>> df = ks.DataFrame({'x':[0, 1, np.nan, 0, 2, np.nan, 3, 3]})
         >>> df.x.value_counts()
          3.0    2
          0.0    2
