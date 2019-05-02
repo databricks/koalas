@@ -29,7 +29,6 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.utils import derived_from
-from databricks.koalas.utils import _resolve_column
 
 max_display_count = 1000
 
