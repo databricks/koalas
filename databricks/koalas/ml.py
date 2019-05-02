@@ -32,7 +32,7 @@ def corr(kdf, method='pearson'):
                    * spearman : Spearman rank correlation
     :return: :class:`pandas.DataFrame`
     """
-    assert method in ('pearson', 'spearman'), method
+    assert method in ('pearson', 'spearman')
     ndf, fields = to_numeric_df(kdf)
     corr = Correlation.corr(ndf, "_1", method)
     pcorr = corr.toPandas()
