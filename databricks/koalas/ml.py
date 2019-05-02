@@ -55,7 +55,7 @@ def to_numeric_df(kdf: ks.DataFrame) -> Tuple[pyspark.sql.DataFrame, List[str]]:
     vector of doubles. This dataframe has a single field called '_1'.
 
     TODO: index is not preserved currently
-    :param df:
+    :param kdf: the koalas dataframe.
     :return: a pair of dataframe, list of strings (the name of the columns
              that were converted to numerical types)
     """
