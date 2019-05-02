@@ -727,7 +727,7 @@ class DataFrame(_Frame):
         DataFrame.drop : Drop specified labels from columns.
         DataFrame.isnull: Indicate missing values.
         DataFrame.notnull : Indicate existing (non-missing) values.
-        
+
         Examples
         --------
         >>> df = ks.DataFrame({"name": ['Alfred', 'Batman', 'Catwoman'],
