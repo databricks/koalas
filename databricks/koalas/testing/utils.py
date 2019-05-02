@@ -187,6 +187,13 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
             raise ValueError("Unexpected values: (%s, %s)" % (left, right))
 
     def assertPandasAlmostEqual(self, left, right):
+        """
+        This function checks if given Pandas objects approximately same,
+        which means the conditions below:
+          - Both objects are nullable
+          - Compare floats rounding to the number of decimal places, 7 after
+            dropping missing values (NaN, NaT, None)
+        """
         if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
             msg = ("DataFrames are not almost equal: " +
                    "\n\nLeft:\n%s\n%s" % (left, left.dtypes) +

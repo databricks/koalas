@@ -118,6 +118,15 @@ class GroupBy(object):
     def count(self):
         """
         Compute count of group, excluding missing values.
+
+        >>> df = ks.DataFrame({'A': [1, 1, 2, 1, 2],
+        ...                    'B': [np.nan, 2, 3, 4, 5],
+        ...                    'C': [1, 2, 1, 1, 2]}, columns=['A', 'B', 'C'])
+        >>> df.groupby('A').count()  # doctest: +NORMALIZE_WHITESPACE
+            B  C
+        A
+        1  2  3
+        2  2  2
         """
         return self._reduce_for_stat_function(F.count, only_numeric=False)
 
