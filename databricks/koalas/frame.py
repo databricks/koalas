@@ -716,12 +716,12 @@ class DataFrame(_Frame):
             these would be a list of columns to include.
         inplace : bool, default False
             If True, do operation inplace and return None.
-        
+
         Returns
         -------
         DataFrame
             DataFrame with NA entries dropped from it.
-        
+
         See Also
         --------
         DataFrame.drop : Drop specified labels from columns.
