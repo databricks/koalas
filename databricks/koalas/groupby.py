@@ -19,7 +19,7 @@ A wrapper for GroupedData to behave similar to pandas GroupBy.
 """
 
 from functools import partial
-from typing import Any, List, Union
+from typing import Any, List
 import numpy as np
 
 from pyspark.sql import functions as F
@@ -27,7 +27,6 @@ from pyspark.sql.types import FloatType, DoubleType, NumericType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.compatibility import string_types
-from databricks.koalas.generic import _Frame
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
@@ -239,8 +238,8 @@ class GroupBy(object):
             stat_exprs = []
             for ks in self._agg_columns:
                 spark_type = ks.spark_type
-                # TODO: we should have a function that takes dataframes and converts the numeric types
-                # Converting the NaNs is used in a few places, it should be in utils.
+                # TODO: we should have a function that takes dataframes and converts the numeric
+                # types. Converting the NaNs is used in a few places, it should be in utils.
                 # Special handle floating point types because Spark's count treats nan as a valid
                 # value, whereas Pandas count doesn't include nan.
                 if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):

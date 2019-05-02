@@ -17,10 +17,8 @@
 """
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
-from typing import Callable, Dict, Union, List, TYPE_CHECKING
 from collections.abc import Iterable
-if TYPE_CHECKING:
-    from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+
 import pandas as pd
 
 from pyspark import sql as spark
@@ -138,7 +136,32 @@ class _Frame(object):
         Falcon      375.0
         Parrot       25.0
         """
-        return _build_groupby(self, by)
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series
+        from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
+
+        df_or_s = self
+        if isinstance(by, str):
+            by = [by]
+        elif isinstance(by, Series):
+            by = [by]
+        elif isinstance(by, Iterable):
+            by = list(by)
+        else:
+            raise ValueError('Not a valid index: TODO')
+        if not len(by):
+            raise ValueError('No group keys passed!')
+        if isinstance(df_or_s, DataFrame):
+            df = df_or_s  # type: DataFrame
+            col_by = [_resolve_col(df, col_or_s) for col_or_s in by]
+            return DataFrameGroupBy(df_or_s, col_by)
+        if isinstance(df_or_s, Series):
+            col = df_or_s  # type: Series
+            anchor = df_or_s._kdf
+            col_by = [_resolve_col(anchor, col_or_s) for col_or_s in by]
+            return SeriesGroupBy(col, col_by)
+        raise TypeError('Constructor expects DataFrame or Series; however, '
+                        'got [%s]' % (df_or_s,))
 
     def compute(self):
         """Alias of `toPandas()` to mimic dask for easily porting tests."""
@@ -154,33 +177,7 @@ class _Frame(object):
             return F.count(col)
 
 
-def _build_groupby(df_or_s, by):
-    import databricks.koalas as ks
-    from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
-    if isinstance(by, str):
-        by = [by]
-    elif isinstance(by, ks.Series):
-        by = [by]
-    elif isinstance(by, Iterable):
-        by = list(by)
-    else:
-        raise ValueError('Not a valid index: TODO')
-    if not len(by):
-        raise ValueError('No group keys passed!')
-    if isinstance(df_or_s, ks.DataFrame):
-        df = df_or_s  # type: ks.DataFrame
-        col_by = [_resolve_col(df, col_or_s) for col_or_s in by]
-        return DataFrameGroupBy(df_or_s, col_by)
-    if isinstance(df_or_s, ks.Series):
-        col = df_or_s  # type: ks.Series
-        anchor = df_or_s._kdf
-        col_by = [_resolve_col(anchor, col_or_s) for col_or_s in by]
-        return SeriesGroupBy(col, col_by)
-    raise TypeError('Constructor expects DataFrame or Series; however, '
-                    'got [%s]' % (df_or_s,))
-
-
-def _resolve_col(kdf: ks.DataFrame, col_like: Union[str, ks.Series]) -> ks.Series:
+def _resolve_col(kdf, col_like):
     if isinstance(col_like, ks.Series):
         assert kdf == col_like._kdf, \
             "Cannot combine column argument because it comes from a different dataframe"
@@ -205,4 +202,3 @@ def _spark_col_apply(kdf_or_ks, sfun):
     sdf = kdf._sdf
     sdf = sdf.select([sfun(sdf[col]).alias(col) for col in kdf.columns])
     return DataFrame(sdf)
-
