@@ -730,8 +730,8 @@ class DataFrame(_Frame):
         
         Examples
         --------
-        >>> df = ks.DataFrame({"name": ['Alfred', 'Batman', 'Catwoman'], 
-        ...                    "toy": [None, 'Batmobile', 'Bullwhip'], 
+        >>> df = ks.DataFrame({"name": ['Alfred', 'Batman', 'Catwoman'],
+        ...                    "toy": [None, 'Batmobile', 'Bullwhip'],
         ...                    "born": [None, "1940-04-25", None]})
         >>> df
                name        toy        born
