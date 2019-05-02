@@ -324,6 +324,7 @@ class Series(_Frame):
         The resulting object will be in descending order so that the
         first element is the most frequently-occurring element.
         Excludes NA values by default.
+
         Parameters
         ----------
         normalize : boolean, default False
@@ -336,41 +337,45 @@ class Series(_Frame):
         bins : Not Yet Supported
         dropna : boolean, default True
             Don't include counts of NaN.
+
         Returns
         -------
         counts : Series
+
         See Also
         --------
         Series.count: Number of non-NA elements in a Series.
+
         Examples
         --------
-        >>> df = ks.DataFrame({'x':[0, 1, np.nan, 0, 2, np.nan, 3, 3]})
+        >>> df = ks.DataFrame({'x':[1, 1,1 ,np.nan, 2, 3,2, 2, 2, 3, 0]})
         >>> df.x.value_counts()
-         3.0    2
-         0.0    2
-         1.0    1
-         2.0    1
+        2.0    4
+        1.0    3
+        3.0    2
+        0.0    1
         Name: x, dtype: int64
 
         With `normalize` set to `True`, returns the relative frequency by
         dividing all values by the sum of values.
+
         >>> df.x.value_counts(normalize=True)
-         0.0    0.333333
-         3.0    0.333333
-         1.0    0.166667
-         2.0    0.166667
-         Name: x, dtype: float64
+        2.0    0.4
+        1.0    0.3
+        3.0    0.2
+        0.0    0.1
+        Name: x, dtype: float64
 
         **dropna**
         With `dropna` set to `False` we can also see NaN index values.
-        >>> df.x.value_counts(dropna=False)
-         0.0    2
-         3.0    2
-         NaN     2
-         1.0    1
-         2.0    1
-         Name: x, dtype: int64
 
+        >>> df.x.value_counts(dropna=False)
+        2.0    4
+        1.0    3
+        3.0    2
+        0.0    1
+        NaN    1
+        Name: x, dtype: int64
         """
         if bins is not None:
             raise NotImplementedError("value_counts currently does not support bins")
