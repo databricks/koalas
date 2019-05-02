@@ -190,16 +190,14 @@ class DataFrame(_Frame):
 
         >>> for label, content in df.iteritems():
         ...    print('label:', label)
-        ...    print('content:', content.to_string(), sep='\n')
-        ...
+        ...    print('content:', content.to_string())
+        ... 
         label: species
-        content:
-        panda         bear
+        content: panda         bear
         polar         bear
         koala    marsupial
         label: population
-        content:
-        panda     1864
+        content: panda     1864
         polar    22000
         koala    80000
         """
