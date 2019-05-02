@@ -169,7 +169,7 @@ class DataFrame(_Frame):
 
         Iterates over the DataFrame columns, returning a tuple with
         the column name and the content as a Series.
-        
+
         Yields
         ------
         label : object
@@ -183,7 +183,7 @@ class DataFrame(_Frame):
         ...                    'population': [1864, 22000, 80000]},
         ...                     index=['panda', 'polar', 'koala'])
         >>> df
-                 species  population                                                    
+                 species  population
         panda       bear        1864
         polar       bear       22000
         koala  marsupial       80000
@@ -191,7 +191,7 @@ class DataFrame(_Frame):
         >>> for label, content in df.iteritems():
         ...    print('label:', label)
         ...    print('content:', content.to_string(), sep='\n')
-        ... 
+        ...
         label: species
         content:
         panda         bear
