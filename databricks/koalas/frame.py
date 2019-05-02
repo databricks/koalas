@@ -894,7 +894,7 @@ class DataFrame(_Frame):
             Column labels to drop.
         axis : {0 or 'index', 1 or 'columns'}, default 0
             Whether to drop labels from the index (0 or 'index') or
-            columns (1 or 'columns').
+            columns (1 or 'columns'). Currently only axis = 1 is supported.
 
         Returns
         -------
@@ -921,6 +921,11 @@ class DataFrame(_Frame):
            x  w
         0  1  7
         1  2  8
+
+        Notes
+        -----
+        Currently only axis = 1 is supported in this function,
+        axis = 0 is yet to be implemented.
         """
         axis = self._validate_axis(axis)
         if axis == 1:
