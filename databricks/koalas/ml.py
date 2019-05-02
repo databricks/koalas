@@ -14,13 +14,19 @@
 # limitations under the License.
 #
 
-import pandas as pd
+from typing import List, Tuple
+
 import numpy as np
+import pandas as pd
+import pyspark
+
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.stat import Correlation
 
+import databricks.koalas as ks
 
-def corr(kdf, method='pearson'):
+
+def corr(kdf: ks.DataFrame, method: str = 'pearson') -> pd.DataFrame:
     """
     The correlation matrix of all the numerical columns of this dataframe.
 
@@ -43,7 +49,7 @@ def corr(kdf, method='pearson'):
     return arr
 
 
-def to_numeric_df(kdf):
+def to_numeric_df(kdf: ks.DataFrame) -> Tuple[pyspark.sql.DataFrame, List[str]]:
     """
     Takes a dataframe and turns it into a dataframe containing a single numerical
     vector of doubles. This dataframe has a single field called '_1'.
