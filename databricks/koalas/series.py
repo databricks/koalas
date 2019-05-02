@@ -318,7 +318,7 @@ class Series(_Frame):
         return _col(self.to_dataframe().unique())
 
     # TODO: Update Documentation for Bins Parameter when its supported
-    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True): # doctest: +NORMALIZE_WHITESPACE
+    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
         """
         Return a Series containing counts of unique values.
         The resulting object will be in descending order so that the
@@ -348,8 +348,8 @@ class Series(_Frame):
 
         Examples
         --------
-        >>> df = ks.DataFrame({'x':[0, 0, 1, 1, 1, np.nan ]})
-        >>> df.x.value_counts()
+        >>> df = ks.DataFrame({'x':[0, 0, 1, 1, 1, np.nan]})
+        >>> df.x.value_counts() # doctest: +NORMALIZE_WHITESPACE
         1.0    3
         0.0    2
         Name: x, dtype: int64
@@ -357,7 +357,7 @@ class Series(_Frame):
         With `normalize` set to `True`, returns the relative frequency by
         dividing all values by the sum of values.
 
-        >>> df.x.value_counts(normalize=True)
+        >>> df.x.value_counts(normalize=True) # doctest: +NORMALIZE_WHITESPACE
         1.0    0.6
         0.0    0.4
         Name: x, dtype: float64
@@ -365,7 +365,7 @@ class Series(_Frame):
         **dropna**
         With `dropna` set to `False` we can also see NaN index values.
 
-        >>> df.x.value_counts(dropna=False)
+        >>> df.x.value_counts(dropna=False) # doctest: +NORMALIZE_WHITESPACE
         1.0    3
         0.0    2
         NaN    1
