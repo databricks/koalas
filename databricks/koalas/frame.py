@@ -693,6 +693,87 @@ class DataFrame(_Frame):
 
     @derived_from(pd.DataFrame)
     def dropna(self, axis=0, how='any', thresh=None, subset=None, inplace=False):
+        """
+        Remove missing values.
+
+        Parameters
+        ----------
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+            Determine if rows or columns which contain missing values are
+            removed.
+            * 0, or 'index' : Drop rows which contain missing values.
+            * 1, or 'columns' : Drop columns which contain missing value.
+            .. dropna currently only works for axis=0 or axis='index'
+               axis=1 is yet to be implemented.
+        how : {'any', 'all'}, default 'any'
+            Determine if row or column is removed from DataFrame, when we have
+            at least one NA or all NA.
+            * 'any' : If any NA values are present, drop that row or column.
+            * 'all' : If all values are NA, drop that row or column.
+        thresh : int, optional
+            Require that many non-NA values.
+        subset : array-like, optional
+            Labels along other axis to consider, e.g. if you are dropping rows
+            these would be a list of columns to include.
+        inplace : bool, default False
+            If True, do operation inplace and return None.
+        
+        Returns
+        -------
+        DataFrame
+            DataFrame with NA entries dropped from it.
+        
+        See Also
+        --------
+        DataFrame.drop : Drop specified labels from columns.
+        DataFrame.isnull: Indicate missing values.
+        DataFrame.notnull : Indicate existing (non-missing) values.
+        
+        Examples
+        --------
+        >>> df = ks.DataFrame({"name": ['Alfred', 'Batman', 'Catwoman'], 
+        ...                    "toy": [None, 'Batmobile', 'Bullwhip'], 
+        ...                    "born": [None, "1940-04-25", None]})
+        >>> df
+               name        toy        born
+        0    Alfred       None        None
+        1    Batman  Batmobile  1940-04-25
+        2  Catwoman   Bullwhip        None
+
+        Drop the rows where at least one element is missing.
+
+        >>> df.dropna()
+             name        toy        born
+        1  Batman  Batmobile  1940-04-25
+
+        Drop the rows where all elements are missing.
+
+        >>> df.dropna(how='all')
+               name        toy        born
+        0    Alfred       None        None
+        1    Batman  Batmobile  1940-04-25
+        2  Catwoman   Bullwhip        None
+
+        Keep only the rows with at least 2 non-NA values.
+
+        >>> df.dropna(thresh=2)
+               name        toy        born
+        1    Batman  Batmobile  1940-04-25
+        2  Catwoman   Bullwhip        None
+
+        Define in which columns to look for missing values.
+
+        >>> df.dropna(subset=['name', 'born'])
+             name        toy        born
+        1  Batman  Batmobile  1940-04-25
+
+        Keep the DataFrame with valid entries in the same variable.
+
+        >>> df.dropna(inplace=True)
+        >>> df
+             name        toy        born
+        1  Batman  Batmobile  1940-04-25
+        """
         if axis == 0 or axis == 'index':
             if subset is not None:
                 if isinstance(subset, string_types):
@@ -967,11 +1048,13 @@ class DataFrame(_Frame):
             Column labels to drop.
         axis : {0 or 'index', 1 or 'columns'}, default 0
             Whether to drop labels from the index (0 or 'index') or
-            columns (1 or 'columns'). Currently only axis = 1 is supported.
+            columns (1 or 'columns').
+            .. dropna currently only works for axis=0 or axis='index'
+               axis=1 is yet to be implemented.
 
         Returns
         -------
-        dropped : koalas.DataFrame
+        dropped : DataFrame
 
         See Also
         --------
