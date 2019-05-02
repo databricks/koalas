@@ -93,6 +93,7 @@ Missing data handling
    :toctree: api/
 
    DataFrame.dropna
+   DataFrame.fillna
 
 Reshaping, sorting, transposing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

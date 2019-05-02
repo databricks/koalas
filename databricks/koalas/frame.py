@@ -17,11 +17,11 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
-from decorator import dispatch_on
 from functools import partial, reduce
 
 import numpy as np
 import pandas as pd
+from decorator import dispatch_on
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
@@ -37,7 +37,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.selection import SparkDataFrameLocator
-from databricks.koalas.typedef import infer_pd_series_spark_type
+from databricks.koalas.typedef import infer_pd_series_spark_type, dict_sanitizer
 
 
 class DataFrame(_Frame):
@@ -730,6 +730,79 @@ class DataFrame(_Frame):
 
         else:
             raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
+
+    def fillna(self, value=None, axis=None, inplace=False):
+        """Fill NA/NaN values.
+
+        :param value: scalar, dict, Series
+                    Value to use to fill holes. alternately a dict/Series of values
+                    specifying which value to use for each column.
+                    DataFrame is not supported.
+        :param axis: {0 or `index`}
+                    1 and `columns` are not supported.
+        :param inplace: boolean, default False
+                    Fill in place (do not create a new object)
+        :return: :class:`DataFrame`
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({
+        ...     'A': [None, 3, None, None],
+        ...     'B': [2, 4, None, 3],
+        ...     'C': [None, None, None, 1],
+        ...     'D': [0, 1, 5, 4]
+        ...     })
+        >>> df
+             A    B    C  D
+        0  NaN  2.0  NaN  0
+        1  3.0  4.0  NaN  1
+        2  NaN  NaN  NaN  5
+        3  NaN  3.0  1.0  4
+
+        Replace all NaN elements with 0s.
+
+        >>> df.fillna(0)
+             A    B    C  D
+        0  0.0  2.0  0.0  0
+        1  3.0  4.0  0.0  1
+        2  0.0  0.0  0.0  5
+        3  0.0  3.0  1.0  4
+
+        Replace all NaN elements in column 'A', 'B', 'C', and 'D', with 0, 1,
+        2, and 3 respectively.
+
+        >>> values = {'A': 0, 'B': 1, 'C': 2, 'D': 3}
+        >>> df.fillna(value=values)
+             A    B    C  D
+        0  0.0  2.0  2.0  0
+        1  3.0  4.0  2.0  1
+        2  0.0  1.0  2.0  5
+        3  0.0  3.0  1.0  4
+        """
+
+        if axis is None:
+            axis = 0
+        if value is not None:
+            if axis == 0 or axis == "index":
+                if isinstance(value, (float, int, str, bool)):
+                    sdf = self._sdf.fillna(value)
+                if isinstance(value, dict):
+                    dict_sanitizer(value)
+                    sdf = self._sdf.fillna(value)
+                if isinstance(value, pd.Series):
+                    dict_sanitizer(value.to_dict())
+                    sdf = self._sdf.fillna(value.to_dict())
+                elif isinstance(value, pd.DataFrame):
+                    raise NotImplementedError("Dataframe value is not supported")
+            else:
+                raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
+        else:
+            raise ValueError('Must specify value')
+
+        if inplace:
+            self._sdf = sdf
+        else:
+            return DataFrame(sdf, self._metadata.copy())
 
     def head(self, n=5):
         """

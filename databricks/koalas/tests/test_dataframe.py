@@ -346,6 +346,46 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         ds.name = 'index'
         self.assertPandasAlmostEqual(ds.value_counts().toPandas(), s.value_counts())
 
+    def test_fillna(self):
+        pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
+                            'y': [1, 2, np.nan, 4, np.nan, np.nan],
+                            'z': [1, 2, 3, 4, np.nan, np.nan]},
+                           index=[10, 20, 30, 40, 50, 60])
+
+        kdf = koalas.from_pandas(pdf)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf.fillna(-1), pdf.fillna(-1))
+        self.assert_eq(kdf.fillna({'x': -1, 'y': -2, 'z': -5}),
+                       pdf.fillna({'x': -1, 'y': -2, 'z': -5}))
+
+        pdf.fillna({'x': -1, 'y': -2, 'z': -5}, inplace=True)
+        kdf.fillna({'x': -1, 'y': -2, 'z': -5}, inplace=True)
+        self.assert_eq(kdf, pdf)
+
+        s_nan = pd.Series([-1, -2, -5], index=['x', 'y', 'z'], dtype=int)
+        self.assert_eq(kdf.fillna(s_nan),
+                       pdf.fillna(s_nan))
+
+        msg = "fillna currently only works for axis=0 or axis='index'"
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            kdf.fillna(-1, axis=1)
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            kdf.fillna(-1, axis='column')
+        msg = 'Must specify value'
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.fillna()
+        df_nan = pd.DataFrame({'x': [-1], 'y': [-1], 'z': [-1]})
+        msg = "Dataframe value is not supported"
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            kdf.fillna(df_nan)
+
+        # Test dict sanitizer
+        value_dict = {'x': np.int64(-6), 'y': np.int64(-4), 'z': -5}
+        msg = "Dict contains unsupported type <class 'numpy.int64'>"
+        with self.assertRaisesRegex(TypeError, msg):
+            kdf.fillna(value_dict)
+
     def test_isnull(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
                            index=[10, 20, 30, 40, 50, 60])
