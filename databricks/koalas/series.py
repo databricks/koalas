@@ -348,33 +348,27 @@ class Series(_Frame):
 
         Examples
         --------
-        >>> df = ks.DataFrame({'x':[1, 1,1 ,np.nan, 2, 3,2, 2, 2, 3, 0]})
+        >>> df = ks.DataFrame({'x':[ ]})
         >>> df.x.value_counts()
-        2.0    4
         1.0    3
-        3.0    2
-        0.0    1
+        0.0    2
         Name: x, dtype: int64
 
         With `normalize` set to `True`, returns the relative frequency by
         dividing all values by the sum of values.
 
         >>> df.x.value_counts(normalize=True)
-        2.0    0.4
-        1.0    0.3
-        3.0    0.2
-        0.0    0.1
+        1.0    0.6
+        0.0    0.4
         Name: x, dtype: float64
 
         **dropna**
         With `dropna` set to `False` we can also see NaN index values.
 
         >>> df.x.value_counts(dropna=False)
-        2.0    4
         1.0    3
-        3.0    2
-        0.0    1
-        NaN    1
+        0.0    2
+        NaN     1
         Name: x, dtype: int64
         """
         if bins is not None:
