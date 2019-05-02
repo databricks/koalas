@@ -17,10 +17,13 @@
 Commonly used utils in Koalas.
 """
 
-from typing import Callable, Dict, Union
+from typing import Callable, Dict, Union, List, TYPE_CHECKING
 
 from pyspark import sql as spark
 import pandas as pd
+
+if TYPE_CHECKING:
+    from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 
 
 def default_session():

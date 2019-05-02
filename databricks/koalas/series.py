@@ -82,7 +82,9 @@ class Series(_Frame):
     internally.
 
     :ivar _scol: Spark Column instance
+    :type _scol: pyspark.Column
     :ivar _kdf: Parent's Koalas DataFrame
+    :type _kdf: ks.DataFrame
     :ivar _index_info: Each pair holds the index field name which exists in Spark fields,
       and the index name.
     """
@@ -116,7 +118,7 @@ class Series(_Frame):
         """
         assert index_info is not None
         self._scol = scol
-        self._kdf = kdf
+        self._kdf: ks.DataFrame = kdf
         self._index_info = index_info
 
     # arithmetic operators
