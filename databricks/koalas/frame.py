@@ -191,7 +191,7 @@ class DataFrame(_Frame):
         >>> for label, content in df.iteritems():
         ...    print('label:', label)
         ...    print('content:', content.to_string())
-        ... 
+        ...
         label: species
         content: panda         bear
         polar         bear
