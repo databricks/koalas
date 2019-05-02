@@ -691,7 +691,6 @@ class DataFrame(_Frame):
     def copy(self):
         return DataFrame(self._sdf, self._metadata.copy())
 
-    @derived_from(pd.DataFrame)
     def dropna(self, axis=0, how='any', thresh=None, subset=None, inplace=False):
         """
         Remove missing values.
