@@ -348,7 +348,7 @@ class Series(_Frame):
 
         Examples
         --------
-        >>> df = ks.DataFrame({'x':[ ]})
+        >>> df = ks.DataFrame({'x':[0, 0, 1, 1, 1, np.nan ]})
         >>> df.x.value_counts()
         1.0    3
         0.0    2
@@ -368,7 +368,7 @@ class Series(_Frame):
         >>> df.x.value_counts(dropna=False)
         1.0    3
         0.0    2
-        NaN     1
+        NaN    1
         Name: x, dtype: int64
         """
         if bins is not None:
