@@ -23,6 +23,7 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.utils import derived_from
 
 max_display_count = 1000
@@ -86,6 +87,64 @@ class _Frame(object):
         :return: :class:`Series` or :class:`DataFrame` with the absolute value of each element.
         """
         return _spark_col_apply(self, F.abs)
+
+    # TODO: by argument only support the grouping name only for now. Documentation should
+    # be updated when it's supported.
+    def groupby(self, by):
+        """
+        Group DataFrame or Series using a Series of columns.
+
+        A groupby operation involves some combination of splitting the
+        object, applying a function, and combining the results. This can be
+        used to group large amounts of data and compute operations on these
+        groups.
+
+        Parameters
+        ----------
+        by : Series, label, or list of labels
+            Used to determine the groups for the groupby.
+            If Series is passed, the Series or dict VALUES
+            will be used to determine the groups. A label or list of
+            labels may be passed to group by the columns in ``self``.
+
+        Returns
+        -------
+        DataFrameGroupBy or SeriesGroupBy
+            Depends on the calling object and returns groupby object that
+            contains information about the groups.
+
+        See Also
+        --------
+        koalas.groupby.GroupBy
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'Animal': ['Falcon', 'Falcon',
+        ...                               'Parrot', 'Parrot'],
+        ...                    'Max Speed': [380., 370., 24., 26.]})
+        >>> df
+           Animal  Max Speed
+        0  Falcon      380.0
+        1  Falcon      370.0
+        2  Parrot       24.0
+        3  Parrot       26.0
+        >>> df.groupby(['Animal']).mean()  # doctest: +NORMALIZE_WHITESPACE
+                Max Speed
+        Animal
+        Falcon      375.0
+        Parrot       25.0
+        """
+        from databricks.koalas.groupby import GroupBy
+        from databricks.koalas.series import Series
+        if isinstance(by, str):
+            by = [by]
+        elif isinstance(by, Series):
+            by = [by]
+        else:
+            by = list(by)
+        if len(by) == 0:
+            raise ValueError('No group keys passed!')
+        return GroupBy(self, by=by)
 
     def compute(self):
         """Alias of `toPandas()` to mimic dask for easily porting tests."""

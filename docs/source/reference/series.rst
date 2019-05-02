@@ -32,6 +32,13 @@ Conversion
 
    Series.astype
 
+Function application, GroupBy & Window
+--------------------------------------
+.. autosummary::
+   :toctree: api/
+
+   Series.groupby
+
 .. _api.series.stats:
 
 Computations / Descriptive Stats

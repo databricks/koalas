@@ -26,6 +26,7 @@ import inspect
 import pandas as pd
 
 from databricks.koalas.frame import DataFrame
+from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 from databricks.koalas.series import Series
 
 
@@ -217,7 +218,9 @@ def make_modified_function_def(original_type, name, original, target):
 
 def _main():
     for original_type, target_type in [(pd.DataFrame, DataFrame),
-                                       (pd.Series, Series)]:
+                                       (pd.Series, Series),
+                                       (pd.core.groupby.DataFrameGroupBy, DataFrameGroupBy),
+                                       (pd.core.groupby.SeriesGroupBy, SeriesGroupBy)]:
         missing, modified = inspect_missing_functions(original_type, target_type)
 
         print('MISSING functions for {}'.format(original_type.__name__))

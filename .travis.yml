@@ -48,7 +48,7 @@ install:
   - conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
   - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION
   - conda activate test-environment
-  - conda install -c conda-forge --yes codecov pytest-cov
+  - conda install -c conda-forge --yes codecov
   - conda install -c conda-forge --yes --file requirements-dev.txt
 
   # Show installed packages
