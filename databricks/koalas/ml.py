@@ -26,6 +26,9 @@ from pyspark.ml.stat import Correlation
 import databricks.koalas as ks
 
 
+CORRELATION_OUTPUT_COLUMN = '_correlation_output'
+
+
 def corr(kdf: ks.DataFrame, method: str = 'pearson') -> pd.DataFrame:
     """
     The correlation matrix of all the numerical columns of this dataframe.
@@ -40,7 +43,7 @@ def corr(kdf: ks.DataFrame, method: str = 'pearson') -> pd.DataFrame:
     """
     assert method in ('pearson', 'spearman')
     ndf, fields = to_numeric_df(kdf)
-    corr = Correlation.corr(ndf, "_1", method)
+    corr = Correlation.corr(ndf, CORRELATION_OUTPUT_COLUMN, method)
     pcorr = corr.toPandas()
     arr = pcorr.iloc[0, 0].toArray()
     arr = pd.DataFrame(arr)
@@ -65,6 +68,6 @@ def to_numeric_df(kdf: ks.DataFrame) -> Tuple[pyspark.sql.DataFrame, List[str]]:
     numeric_fields = [fname for fname in kdf._metadata.column_fields
                       if kdf[fname].dtype in accepted_types]
     numeric_df = kdf._sdf.select(*numeric_fields)
-    va = VectorAssembler(inputCols=numeric_fields, outputCol="_1")
-    v = va.transform(numeric_df).select("_1")
+    va = VectorAssembler(inputCols=numeric_fields, outputCol=CORRELATION_OUTPUT_COLUMN)
+    v = va.transform(numeric_df).select(CORRELATION_OUTPUT_COLUMN)
     return v, numeric_fields
