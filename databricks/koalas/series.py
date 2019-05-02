@@ -318,7 +318,7 @@ class Series(_Frame):
         return _col(self.to_dataframe().unique())
 
     # TODO: Update Documentation for Bins Parameter when its supported
-    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True): # doctest: +NORMALIZE_WHITESPACE
         """
         Return a Series containing counts of unique values.
         The resulting object will be in descending order so that the
