@@ -1002,11 +1002,6 @@ class DataFrame(_Frame):
         else:
             return kdf
 
-    def groupby(self, by):
-        from databricks.koalas.groups import PandasLikeGroupBy
-        gp = self._sdf.groupby(by)
-        return PandasLikeGroupBy(self, gp, None)
-
     @derived_from(pd.DataFrame)
     def pipe(self, func, *args, **kwargs):
         # Taken from pandas:

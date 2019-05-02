@@ -8,3 +8,4 @@ API References
     general_functions
     series
     frame
+    groupby
