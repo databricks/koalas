@@ -793,7 +793,7 @@ class DataFrame(_Frame):
         if isinstance(value, dict):
             for v in value.values():
                 if not isinstance(v, (float, int, str, bool)):
-                    raise TypeError("Unsupported type %s" % type(value))
+                    raise TypeError("Unsupported type %s" % type(v))
 
         sdf = self._sdf.fillna(value)
         if inplace:
