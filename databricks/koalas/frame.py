@@ -429,8 +429,8 @@ class DataFrame(_Frame):
         >>> df.to_dict('records')  # doctest: +ELLIPSIS
         [{'col1': 1..., 'col2': 0.5}, {'col1': 2..., 'col2': 0.75}]
 
-        >>> df.to_dict('index')
-        {'row1': {'col1': 1, 'col2': 0.5}, 'row2': {'col1': 2, 'col2': 0.75}}
+        >>> df.to_dict('index')  # doctest: +ELLIPSIS
+        {'row1': {'col1': 1..., 'col2': 0.5}, 'row2': {'col1': 2..., 'col2': 0.75}}
 
         You can also specify the mapping type.
 
