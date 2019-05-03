@@ -404,7 +404,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_sort_values(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
-                           'b': [7, 6, 5, 4, 3, 2, 1]})
+                            'b': [7, 6, 5, 4, 3, 2, 1]})
         kdf = koalas.from_pandas(pdf)
         self.assert_eq(repr(kdf.sort_values('b')), repr(pdf.sort_values('b')))
         self.assert_eq(repr(kdf.sort_values(['b', 'a'])), repr(pdf.sort_values(['b', 'a'])))
@@ -458,3 +458,35 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = self.pdf
         self.assert_eq(kdf.toPandas(), pdf)
         self.assert_eq(kdf.to_pandas(), pdf)
+
+    def test_isin(self):
+        df = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
+                           'b': [1, 2, 9, 4, 2, 4],
+                           'c': ["one", "three", "six", "seven", "one", "5"]},
+                          index=[10, 20, 30, 40, 50, 60])
+
+        kdf = koalas.from_pandas(df)
+        self.assert_eq(kdf.isin([4, 'six']), df.isin([4, 'six']))
+        self.assert_eq(kdf.isin({"a": [2, 8], "c": ['three', "one"]}),
+                       df.isin({"a": [2, 8], "c": ['three', "one"]}))
+
+        msg = "'DataFrame' object has no attribute {'e'}"
+        with self.assertRaisesRegex(AttributeError, msg):
+            kdf.isin({"e": [5, 7], "a": [1, 6]})
+
+        msg = "Dataframe and Series are not supported"
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            kdf.isin(df)
+
+        msg = "Values should be iterable, Series, DataFrame or dict."
+        with self.assertRaisesRegex(TypeError, msg):
+            kdf.isin(1)
+
+        # Test list sanitizer
+        msg = "List contains unsupported type <class 'pandas.core.frame.DataFrame'>"
+        with self.assertRaisesRegex(TypeError, msg):
+            kdf.isin([df, df])
+
+        msg = "List contains unsupported type <class 'pandas.core.frame.DataFrame'>"
+        with self.assertRaisesRegex(TypeError, msg):
+            kdf.isin({"a": [5, df]})

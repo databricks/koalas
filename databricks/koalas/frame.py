@@ -17,6 +17,7 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
+from collections.abc import Iterable
 from functools import partial, reduce
 
 import numpy as np
@@ -37,7 +38,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.selection import SparkDataFrameLocator
-from databricks.koalas.typedef import infer_pd_series_spark_type
+from databricks.koalas.typedef import infer_pd_series_spark_type, list_sanitizer
 
 
 class DataFrame(_Frame):
@@ -1261,6 +1262,72 @@ class DataFrame(_Frame):
             self._metadata = kdf._metadata
         else:
             return kdf
+
+    def isin(self, values):
+        """
+        Whether each element in the DataFrame is contained in values.
+
+        Parameters
+        ----------
+        values : iterable or dict
+           The sequence of values to test. If values is a dict,
+           the keys must be the column names, which must match.
+           Series and DataFrame are not supported.
+        Returns
+        -------
+        DataFrame
+            DataFrame of booleans showing whether each element in the DataFrame
+            is contained in values.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'num_legs': [2, 4], 'num_wings': [2, 0]},
+        ...                   index=['falcon', 'dog'])
+        >>> df
+                num_legs  num_wings
+        falcon         2          2
+        dog            4          0
+
+        When ``values`` is a list check whether every value in the DataFrame
+        is present in the list (which animals have 0 or 2 legs or wings)
+
+        >>> df.isin([0, 2])
+                num_legs  num_wings
+        falcon      True       True
+        dog        False       True
+
+        When ``values`` is a dict, we can pass values to check for each
+        column separately:
+
+        >>> df.isin({'num_wings': [0, 3]})
+                num_legs  num_wings
+        falcon     False      False
+        dog        False       True
+        """
+        if isinstance(values, dict):
+            if set(values.keys()).issubset(self.columns):
+                _select_columns = self._metadata.index_fields
+                for col in self.columns:
+                    if col in list(values.keys()):
+                        list_sanitizer(values[col])
+                        _select_columns.append(self[col]._scol.isin(values[col]).alias(col))
+                    else:
+                        _select_columns.append(F.lit(False).alias(col))
+
+                return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
+            else:
+                raise AttributeError(
+                    "'DataFrame' object has no attribute %s"
+                    % (set(values.keys()).difference(self.columns)))
+        elif not isinstance(values, (pd.DataFrame, pd.Series)) and isinstance(values, Iterable):
+            list_sanitizer(values)
+            _select_columns = self._metadata.index_fields + [self[col]._scol.isin(values).alias(col)
+                                                             for col in self.columns]
+            return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
+        elif isinstance(values, (pd.DataFrame, pd.Series)):
+            raise NotImplementedError("Dataframe and Series are not supported")
+        else:
+            raise TypeError('Values should be iterable, Series, DataFrame or dict.')
 
     @derived_from(pd.DataFrame)
     def pipe(self, func, *args, **kwargs):
