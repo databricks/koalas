@@ -442,9 +442,9 @@ class DataFrame(_Frame):
         If you want a `defaultdict`, you need to initialize it:
 
         >>> dd = defaultdict(list)
-        >>> df.to_dict('records', into=dd)
-        [defaultdict(<class 'list'>, {'col1': 1.0, 'col2': 0.5}), \
-defaultdict(<class 'list'>, {'col1': 2.0, 'col2': 0.75})]
+        >>> df.to_dict('records', into=dd)  # doctest: +ELLIPSIS
+        [defaultdict(<class 'list'>, {'col1': 1..., 'col2': 0.5}), \
+defaultdict(<class 'list'>, {'col1': 2..., 'col2': 0.75})]
         """
         # Make sure locals() call is at the top of the function so we don't capture local variables.
         args = locals()
