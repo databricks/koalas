@@ -1078,7 +1078,7 @@ class DataFrame(_Frame):
         ----------
         labels : single label or list-like
             Column labels to drop.
-        axis : {0 or 'index', 1 or 'columns'}, default 0
+        axis : {0 or 'index'}, default 0
             Whether to drop labels from the index (0 or 'index') or
             columns (1 or 'columns').
             .. dropna currently only works for axis=0 or axis='index'
