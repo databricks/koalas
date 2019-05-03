@@ -87,3 +87,4 @@ Serialization / IO / Conversion
    Series.to_pandas
    Series.to_numpy
    Series.to_string
+   Series.to_dict

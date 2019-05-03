@@ -166,7 +166,6 @@ class _MissingPandasLikeSeries(object):
     to_clipboard = unsupported_function('to_clipboard')
     to_csv = unsupported_function('to_csv')
     to_dense = unsupported_function('to_dense')
-    to_dict = unsupported_function('to_dict')
     to_excel = unsupported_function('to_excel')
     to_frame = unsupported_function('to_frame')
     to_hdf = unsupported_function('to_hdf')
