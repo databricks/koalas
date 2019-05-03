@@ -170,18 +170,6 @@ def _check_compatible(arg, sig_arg: X):
     assert False, (arg, sig_arg)
 
 
-def dict_sanitizer(input_dict):
-    """
-    This function checks if elements inside a given dict are supported by Spark.
-    :param input_dict: dict
-    :raises TypeError if any element is not supported by Spark
-    """
-    _possible_type_values = [int, str, float, np.float64, np.float, bool]
-    for e in input_dict.values():
-        if not type(e) in _possible_type_values:
-            raise TypeError("Dict contains unsupported type {}".format(type(e)))
-
-
 def make_fun(f, *args, **kwargs):
     """
     This function calls the function f while taking into account some of the

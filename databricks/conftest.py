@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import pytest
+import numpy as np
 
 from databricks import koalas
 
@@ -21,3 +22,8 @@ from databricks import koalas
 @pytest.fixture(autouse=True)
 def add_ks(doctest_namespace):
     doctest_namespace['ks'] = koalas
+
+
+@pytest.fixture(autouse=True)
+def add_np(doctest_namespace):
+    doctest_namespace['np'] = np
