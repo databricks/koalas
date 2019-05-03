@@ -734,10 +734,8 @@ class DataFrame(_Frame):
         Parameters
         ----------
         axis : {0 or 'index'}, default 0
-            Determine if rows or columns which contain missing values are
-            removed.
+            Determine rows which contain missing values are removed.
             * 0, or 'index' : Drop rows which contain missing values.
-            * 1, or 'columns' : Drop columns which contain missing value.
             .. dropna currently only works for axis=0 or axis='index'
                axis=1 is yet to be implemented.
         how : {'any', 'all'}, default 'any'
@@ -1067,7 +1065,7 @@ class DataFrame(_Frame):
         sdf = self._sdf
         return DataFrame(spark.DataFrame(sdf._jdf.distinct(), sdf.sql_ctx), self._metadata.copy())
 
-    def drop(self, labels, axis=0):
+    def drop(self, labels, axis=1):
         """
         Drop specified labels from columns.
 
@@ -1078,11 +1076,9 @@ class DataFrame(_Frame):
         ----------
         labels : single label or list-like
             Column labels to drop.
-        axis : {0 or 'index'}, default 0
-            Whether to drop labels from the index (0 or 'index') or
-            columns (1 or 'columns').
-            .. dropna currently only works for axis=0 or axis='index'
-               axis=1 is yet to be implemented.
+        axis : {1 or 'columns'}, default 1
+            .. dropna currently only works for axis=1 'columns'
+               axis=0 is yet to be implemented.
 
         Returns
         -------
