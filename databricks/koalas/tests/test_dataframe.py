@@ -367,24 +367,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.fillna(s_nan),
                        pdf.fillna(s_nan))
 
-        msg = "fillna currently only works for axis=0 or axis='index'"
-        with self.assertRaisesRegex(NotImplementedError, msg):
+        with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
             kdf.fillna(-1, axis=1)
-        with self.assertRaisesRegex(NotImplementedError, msg):
+        with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
             kdf.fillna(-1, axis='column')
-        msg = 'Must specify value'
-        with self.assertRaisesRegex(ValueError, msg):
+        with self.assertRaisesRegex(ValueError, "must specify value"):
             kdf.fillna()
-        df_nan = pd.DataFrame({'x': [-1], 'y': [-1], 'z': [-1]})
-        msg = "Dataframe value is not supported"
-        with self.assertRaisesRegex(NotImplementedError, msg):
-            kdf.fillna(df_nan)
-
-        # Test dict sanitizer
-        value_dict = {'x': np.int64(-6), 'y': np.int64(-4), 'z': -5}
-        msg = "Dict contains unsupported type <class 'numpy.int64'>"
-        with self.assertRaisesRegex(TypeError, msg):
-            kdf.fillna(value_dict)
+        with self.assertRaisesRegex(TypeError, "Unsupported.*DataFrame"):
+            kdf.fillna(pd.DataFrame({'x': [-1], 'y': [-1], 'z': [-1]}))
+        with self.assertRaisesRegex(TypeError, "Unsupported.*numpy.int64"):
+            kdf.fillna({'x': np.int64(-6), 'y': np.int64(-4), 'z': -5})
 
     def test_isnull(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},

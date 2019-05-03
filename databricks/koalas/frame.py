@@ -37,7 +37,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.selection import SparkDataFrameLocator
-from databricks.koalas.typedef import infer_pd_series_spark_type, dict_sanitizer
+from databricks.koalas.typedef import infer_pd_series_spark_type
 
 
 class DataFrame(_Frame):
@@ -779,26 +779,23 @@ class DataFrame(_Frame):
         2  0.0  1.0  2.0  5
         3  0.0  3.0  1.0  4
         """
-
         if axis is None:
             axis = 0
-        if value is not None:
-            if axis == 0 or axis == "index":
-                if isinstance(value, (float, int, str, bool)):
-                    sdf = self._sdf.fillna(value)
-                if isinstance(value, dict):
-                    dict_sanitizer(value)
-                    sdf = self._sdf.fillna(value)
-                if isinstance(value, pd.Series):
-                    dict_sanitizer(value.to_dict())
-                    sdf = self._sdf.fillna(value.to_dict())
-                elif isinstance(value, pd.DataFrame):
-                    raise NotImplementedError("Dataframe value is not supported")
-            else:
-                raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
-        else:
-            raise ValueError('Must specify value')
+        if not (axis == 0 or axis == "index"):
+            raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
 
+        if value is None:
+            raise ValueError('Currently must specify value')
+        if not isinstance(value, (float, int, str, bool, dict, pd.Series)):
+            raise TypeError("Unsupported type %s" % type(value))
+        if isinstance(value, pd.Series):
+            value = value.to_dict()
+        if isinstance(value, dict):
+            for v in value.values():
+                if not isinstance(v, (float, int, str, bool)):
+                    raise TypeError("Unsupported type %s" % type(v))
+
+        sdf = self._sdf.fillna(value)
         if inplace:
             self._sdf = sdf
         else:
