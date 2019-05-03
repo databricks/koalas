@@ -163,8 +163,44 @@ class DataFrame(_Frame):
         """
         return corr(self, method)
 
-    @derived_from(pd.DataFrame)
     def iteritems(self):
+        """
+        Iterator over (column name, Series) pairs.
+
+        Iterates over the DataFrame columns, returning a tuple with
+        the column name and the content as a Series.
+
+        Returns
+        ------
+        label : object
+            The column names for the DataFrame being iterated over.
+        content : Series
+            The column entries belonging to each label, as a Series.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'species': ['bear', 'bear', 'marsupial'],
+        ...                    'population': [1864, 22000, 80000]},
+        ...                     index=['panda', 'polar', 'koala'])
+        >>> df
+                 species  population
+        panda       bear        1864
+        polar       bear       22000
+        koala  marsupial       80000
+
+        >>> for label, content in df.iteritems():
+        ...    print('label:', label)
+        ...    print('content:', content.to_string())
+        ...
+        label: species
+        content: panda         bear
+        polar         bear
+        koala    marsupial
+        label: population
+        content: panda     1864
+        polar    22000
+        koala    80000
+        """
         cols = list(self.columns)
         return list((col_name, self[col_name]) for col_name in cols)
 
@@ -691,8 +727,86 @@ class DataFrame(_Frame):
     def copy(self):
         return DataFrame(self._sdf, self._metadata.copy())
 
-    @derived_from(pd.DataFrame)
     def dropna(self, axis=0, how='any', thresh=None, subset=None, inplace=False):
+        """
+        Remove missing values.
+
+        Parameters
+        ----------
+        axis : {0 or 'index'}, default 0
+            Determine rows which contain missing values are removed.
+            * 0, or 'index' : Drop rows which contain missing values.
+            .. dropna currently only works for axis=0 or axis='index'
+               axis=1 is yet to be implemented.
+        how : {'any', 'all'}, default 'any'
+            Determine if row or column is removed from DataFrame, when we have
+            at least one NA or all NA.
+            * 'any' : If any NA values are present, drop that row or column.
+            * 'all' : If all values are NA, drop that row or column.
+        thresh : int, optional
+            Require that many non-NA values.
+        subset : array-like, optional
+            Labels along other axis to consider, e.g. if you are dropping rows
+            these would be a list of columns to include.
+        inplace : bool, default False
+            If True, do operation inplace and return None.
+
+        Returns
+        -------
+        DataFrame
+            DataFrame with NA entries dropped from it.
+
+        See Also
+        --------
+        DataFrame.drop : Drop specified labels from columns.
+        DataFrame.isnull: Indicate missing values.
+        DataFrame.notnull : Indicate existing (non-missing) values.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({"name": ['Alfred', 'Batman', 'Catwoman'],
+        ...                    "toy": [None, 'Batmobile', 'Bullwhip'],
+        ...                    "born": [None, "1940-04-25", None]})
+        >>> df
+               name        toy        born
+        0    Alfred       None        None
+        1    Batman  Batmobile  1940-04-25
+        2  Catwoman   Bullwhip        None
+
+        Drop the rows where at least one element is missing.
+
+        >>> df.dropna()
+             name        toy        born
+        1  Batman  Batmobile  1940-04-25
+
+        Drop the rows where all elements are missing.
+
+        >>> df.dropna(how='all')
+               name        toy        born
+        0    Alfred       None        None
+        1    Batman  Batmobile  1940-04-25
+        2  Catwoman   Bullwhip        None
+
+        Keep only the rows with at least 2 non-NA values.
+
+        >>> df.dropna(thresh=2)
+               name        toy        born
+        1    Batman  Batmobile  1940-04-25
+        2  Catwoman   Bullwhip        None
+
+        Define in which columns to look for missing values.
+
+        >>> df.dropna(subset=['name', 'born'])
+             name        toy        born
+        1  Batman  Batmobile  1940-04-25
+
+        Keep the DataFrame with valid entries in the same variable.
+
+        >>> df.dropna(inplace=True)
+        >>> df
+             name        toy        born
+        1  Batman  Batmobile  1940-04-25
+        """
         if axis == 0 or axis == 'index':
             if subset is not None:
                 if isinstance(subset, string_types):
@@ -951,8 +1065,52 @@ class DataFrame(_Frame):
         sdf = self._sdf
         return DataFrame(spark.DataFrame(sdf._jdf.distinct(), sdf.sql_ctx), self._metadata.copy())
 
-    @derived_from(pd.DataFrame)
-    def drop(self, labels, axis=0, errors='raise'):
+    def drop(self, labels, axis=1):
+        """
+        Drop specified labels from columns.
+
+        Remove columns by specifying label names and axis=1.
+        Removing rows is yet to be implemented.
+
+        Parameters
+        ----------
+        labels : single label or list-like
+            Column labels to drop.
+        axis : {1 or 'columns'}, default 1
+            .. dropna currently only works for axis=1 'columns'
+               axis=0 is yet to be implemented.
+
+        Returns
+        -------
+        dropped : DataFrame
+
+        See Also
+        --------
+        Series.dropna
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6], 'w': [7, 8]})
+        >>> df
+           x  y  z  w
+        0  1  3  5  7
+        1  2  4  6  8
+
+        >>> df.drop('x', axis=1)
+           y  z  w
+        0  3  5  7
+        1  4  6  8
+
+        >>> df.drop(['y', 'z'], axis=1)
+           x  w
+        0  1  7
+        1  2  8
+
+        Notes
+        -----
+        Currently only axis = 1 is supported in this function,
+        axis = 0 is yet to be implemented.
+        """
         axis = self._validate_axis(axis)
         if axis == 1:
             if isinstance(labels, list):
@@ -968,8 +1126,40 @@ class DataFrame(_Frame):
             return DataFrame(sdf, metadata)
         raise NotImplementedError("Drop currently only works for axis=1")
 
-    @derived_from(pd.DataFrame)
     def get(self, key, default=None):
+        """
+        Get item from object for given key (DataFrame column, Panel slice,
+        etc.). Returns default value if not found.
+
+        Parameters
+        ----------
+        key : object
+
+        Returns
+        -------
+        value : same type as items contained in object
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
+        >>> df
+           x  y  z
+        0  0  a  a
+        1  1  b  b
+        2  2  b  b
+
+        >>> df.get('x')
+        0    0
+        1    1
+        2    2
+        Name: x, dtype: int64
+
+        >>> df.get(['x', 'y'])
+           x  y
+        0  0  a
+        1  1  b
+        2  2  b
+        """
         try:
             return self._pd_getitem(key)
         except (KeyError, ValueError, IndexError):
