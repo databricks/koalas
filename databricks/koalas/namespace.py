@@ -193,7 +193,8 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
 def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None, sparse=False,
                 drop_first=False, dtype=None):
     """
-    Convert categorical variable into dummy/indicator variables
+    Convert categorical variable into dummy/indicator variables, also
+    known as one hot encoding.
 
     Parameters
     ----------
