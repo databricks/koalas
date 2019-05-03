@@ -76,7 +76,9 @@ Missing data handling
    :toctree: api/
 
    Series.isna
+   Series.isnull
    Series.notna
+   Series.notnull
    Series.dropna
 
 Serialization / IO / Conversion

@@ -34,7 +34,9 @@ Conversion
 
    DataFrame.copy
    DataFrame.isna
+   DataFrame.isnull
    DataFrame.notna
+   DataFrame.notnull
 
 Indexing, iteration
 ~~~~~~~~~~~~~~~~~~~
