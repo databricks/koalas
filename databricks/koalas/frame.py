@@ -170,7 +170,7 @@ class DataFrame(_Frame):
         Iterates over the DataFrame columns, returning a tuple with
         the column name and the content as a Series.
 
-        Yields
+        Returns
         ------
         label : object
             The column names for the DataFrame being iterated over.
@@ -733,7 +733,7 @@ class DataFrame(_Frame):
 
         Parameters
         ----------
-        axis : {0 or 'index', 1 or 'columns'}, default 0
+        axis : {0 or 'index'}, default 0
             Determine if rows or columns which contain missing values are
             removed.
             * 0, or 'index' : Drop rows which contain missing values.
@@ -1067,7 +1067,7 @@ class DataFrame(_Frame):
         sdf = self._sdf
         return DataFrame(spark.DataFrame(sdf._jdf.distinct(), sdf.sql_ctx), self._metadata.copy())
 
-    def drop(self, labels, axis=0, errors='raise'):
+    def drop(self, labels, axis=0):
         """
         Drop specified labels from columns.
 
