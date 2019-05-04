@@ -24,7 +24,6 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
-from databricks.koalas.series import Series
 
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
@@ -150,15 +149,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(list(kdf.index.head(2).toPandas()), list(pdf.index[:2]))
         self.assert_eq(list(kdf.index.head(3).toPandas()), list(pdf.index[:3]))
 
-    def test_Series(self):
-        kdf = self.kdf
-        pdf = self.pdf
-
-        self.assertTrue(isinstance(kdf.a, Series))
-        self.assertTrue(isinstance(kdf.a + 1, Series))
-        self.assertTrue(isinstance(1 + kdf.a, Series))
-        # TODO: self.assert_eq(d + 1, pdf + 1)
-
     def test_Index(self):
         for case in [pd.DataFrame(np.random.randn(10, 5), index=list('abcdefghij')),
                      pd.DataFrame(np.random.randn(10, 5),
@@ -220,55 +210,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.columns = ['x', 'y']
         self.assert_eq(kdf.columns, pd.Index(['x', 'y']))
         self.assert_eq(kdf, pdf)
-
-    def test_rename_series(self):
-        ps = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-        ks = koalas.from_pandas(ps)
-
-        ps.name = 'renamed'
-        ks.name = 'renamed'
-        self.assertEqual(ks.name, 'renamed')
-        self.assert_eq(ks, ps)
-
-        ind = ps.index
-        dind = ks.index
-        ind.name = 'renamed'
-        dind.name = 'renamed'
-        self.assertEqual(ind.name, 'renamed')
-        self.assert_eq(list(dind.toPandas()), list(ind))
-
-    def test_rename_series_method(self):
-        # Series name
-        ps = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-        ks = koalas.from_pandas(ps)
-
-        self.assert_eq(ks.rename('y'), ps.rename('y'))
-        self.assertEqual(ks.name, 'x')  # no mutation
-        # self.assert_eq(ks.rename(), ps.rename())
-
-        ks.rename('z', inplace=True)
-        ps.rename('z', inplace=True)
-        self.assertEqual(ks.name, 'z')
-        self.assert_eq(ks, ps)
-
-        # Series index
-        ps = pd.Series(['a', 'b', 'c', 'd', 'e', 'f', 'g'], name='x')
-        # ks = koalas.from_pandas(s)
-
-        # TODO: index
-        # res = ks.rename(lambda x: x ** 2)
-        # self.assert_eq(res, ps.rename(lambda x: x ** 2))
-
-        # res = ks.rename(ps)
-        # self.assert_eq(res, ps.rename(ps))
-
-        # res = ks.rename(ks)
-        # self.assert_eq(res, ps.rename(ps))
-
-        # res = ks.rename(lambda x: x**2, inplace=True)
-        # self.assertis(res, ks)
-        # s.rename(lambda x: x**2, inplace=True)
-        # self.assert_eq(ks, ps)
 
     def test_dropna(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
@@ -447,11 +388,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = koalas.from_pandas(pdf)
 
         np.testing.assert_equal(kdf.to_numpy(), pdf.values)
-
-        s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-
-        ddf = koalas.from_pandas(s)
-        np.testing.assert_equal(ddf.to_numpy(), s.values)
 
     def test_to_pandas(self):
         kdf = self.kdf
