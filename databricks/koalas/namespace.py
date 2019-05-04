@@ -24,8 +24,8 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
     DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
 
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.compatibility import string_types
-from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.utils import default_session
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.typedef import Col, pandas_wrap
@@ -190,9 +190,89 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
             infer_datetime_format=infer_datetime_format)
 
 
-@derived_from(pd)
 def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None, sparse=False,
                 drop_first=False, dtype=None):
+    """
+    Convert categorical variable into dummy/indicator variables, also
+    known as one hot encoding.
+
+    Parameters
+    ----------
+    data : array-like, Series, or DataFrame
+    prefix : string, list of strings, or dict of strings, default None
+        String to append DataFrame column names.
+        Pass a list with length equal to the number of columns
+        when calling get_dummies on a DataFrame. Alternatively, `prefix`
+        can be a dictionary mapping column names to prefixes.
+    prefix_sep : string, default '_'
+        If appending prefix, separator/delimiter to use. Or pass a
+        list or dictionary as with `prefix.`
+    dummy_na : bool, default False
+        Add a column to indicate NaNs, if False NaNs are ignored.
+    columns : list-like, default None
+        Column names in the DataFrame to be encoded.
+        If `columns` is None then all the columns with
+        `object` or `category` dtype will be converted.
+    sparse : bool, default False
+        Whether the dummy-encoded columns should be be backed by
+        a :class:`SparseArray` (True) or a regular NumPy array (False).
+        In Koalas, this value must be "False".
+    drop_first : bool, default False
+        Whether to get k-1 dummies out of k categorical levels by removing the
+        first level.
+    dtype : dtype, default np.uint8
+        Data type for new columns. Only a single dtype is allowed.
+
+    Returns
+    -------
+    dummies : DataFrame
+
+    See Also
+    --------
+    Series.str.get_dummies
+
+    Examples
+    --------
+    >>> s = ks.Series(list('abca'))
+
+    >>> ks.get_dummies(s)
+       a  b  c
+    0  1  0  0
+    1  0  1  0
+    2  0  0  1
+    3  1  0  0
+
+    >>> df = ks.DataFrame({'A': ['a', 'b', 'a'], 'B': ['b', 'a', 'c'],
+    ...                    'C': [1, 2, 3]})
+
+    >>> ks.get_dummies(df, prefix=['col1', 'col2'])
+       C  col1_a  col1_b  col2_a  col2_b  col2_c
+    0  1       1       0       0       1       0
+    1  2       0       1       1       0       0
+    2  3       1       0       0       0       1
+
+    >>> ks.get_dummies(ks.Series(list('abcaa')))
+       a  b  c
+    0  1  0  0
+    1  0  1  0
+    2  0  0  1
+    3  1  0  0
+    4  1  0  0
+
+    >>> ks.get_dummies(ks.Series(list('abcaa')), drop_first=True)
+       b  c
+    0  0  0
+    1  1  0
+    2  0  1
+    3  0  0
+    4  0  0
+
+    >>> ks.get_dummies(ks.Series(list('abc')), dtype=float)
+         a    b    c
+    0  1.0  0.0  0.0
+    1  0.0  1.0  0.0
+    2  0.0  0.0  1.0
+    """
     if sparse is not False:
         raise NotImplementedError("get_dummies currently does not support sparse")
 
