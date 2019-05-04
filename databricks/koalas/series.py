@@ -25,8 +25,8 @@ import pandas as pd
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, FloatType, DoubleType, LongType, StructType, \
-    TimestampType, to_arrow_type
+from pyspark.sql.types import BooleanType, FloatType, DoubleType, LongType, StringType, \
+    StructType, TimestampType, to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.utils import derived_from
@@ -124,7 +124,19 @@ class Series(_Frame):
 
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
-    __add__ = _column_op(spark.Column.__add__)
+
+    def __add__(self, other):
+        if isinstance(self.spark_type, StringType):
+            # Concatenate string columns
+            if isinstance(other, Series) and isinstance(other.spark_type, StringType):
+                return _column_op(F.concat)(self, other)
+            # Handle df['col'] + 'literal'
+            elif isinstance(other, str):
+                return _column_op(F.concat)(self, F.lit(other))
+            else:
+                raise TypeError('string addition can only be applied to string series or literals.')
+        else:
+            return _column_op(spark.Column.__add__)(self, other)
 
     def __sub__(self, other):
         # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
@@ -140,7 +152,14 @@ class Series(_Frame):
     __div__ = _numpy_column_op(spark.Column.__div__)
     __truediv__ = _numpy_column_op(spark.Column.__truediv__)
     __mod__ = _column_op(spark.Column.__mod__)
-    __radd__ = _column_op(spark.Column.__radd__)
+
+    def __radd__(self, other):
+        # Handle 'literal' + df['col']
+        if isinstance(self.spark_type, StringType) and isinstance(other, str):
+            return Series(F.concat(F.lit(other), self._scol), self._kdf, self._index_info)
+        else:
+            return _column_op(spark.Column.__radd__)(self, other)
+
     __rsub__ = _column_op(spark.Column.__rsub__)
     __rmul__ = _column_op(spark.Column.__rmul__)
     __rdiv__ = _numpy_column_op(spark.Column.__rdiv__)
