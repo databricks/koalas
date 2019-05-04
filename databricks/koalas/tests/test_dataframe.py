@@ -23,7 +23,6 @@ from databricks import koalas
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
-from databricks.koalas.missing.series import _MissingPandasLikeSeries
 
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
@@ -70,33 +69,23 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(ddf.a.notnull().alias("x").name, "x")
 
     def test_empty_dataframe(self):
-        a = pd.Series([], dtype='i1')
-        b = pd.Series([], dtype='str')
-        pdf = pd.DataFrame({'a': a, 'b': b})
 
-        self.assert_eq(koalas.from_pandas(a), a)
-        self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
+        pdf = pd.DataFrame({'a': pd.Series([], dtype='i1'),
+                            'b': pd.Series([], dtype='str')})
+
         self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
 
         with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
-            self.assert_eq(koalas.from_pandas(a), a)
-            self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
             self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
 
     def test_all_null_dataframe(self):
-        a = pd.Series([None, None, None], dtype='float64')
-        b = pd.Series([None, None, None], dtype='str')
-        pdf = pd.DataFrame({'a': a, 'b': b})
 
-        self.assert_eq(koalas.from_pandas(a).dtype, a.dtype)
-        self.assertTrue(koalas.from_pandas(a).toPandas().isnull().all())
-        self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
+        pdf = pd.DataFrame({'a': pd.Series([None, None, None], dtype='float64'),
+                            'b': pd.Series([None, None, None], dtype='str')})
+
         self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
 
         with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
-            self.assert_eq(koalas.from_pandas(a).dtype, a.dtype)
-            self.assertTrue(koalas.from_pandas(a).toPandas().isnull().all())
-            self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
             self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
 
     def test_nullable_object(self):
@@ -149,7 +138,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(list(kdf.index.head(2).toPandas()), list(pdf.index[:2]))
         self.assert_eq(list(kdf.index.head(3).toPandas()), list(pdf.index[:3]))
 
-    def test_Index(self):
+    def test_index(self):
         for case in [pd.DataFrame(np.random.randn(10, 5), index=list('abcdefghij')),
                      pd.DataFrame(np.random.randn(10, 5),
                                   index=pd.date_range('2011-01-01', freq='D',
@@ -218,10 +207,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                            index=[10, 20, 30, 40, 50, 60])
         kdf = koalas.from_pandas(pdf)
 
-        self.assert_eq(kdf.x.dropna(), pdf.x.dropna())
-        self.assert_eq(kdf.y.dropna(), pdf.y.dropna())
-        self.assert_eq(kdf.z.dropna(), pdf.z.dropna())
-
         self.assert_eq(kdf.dropna(), pdf.dropna())
         self.assert_eq(kdf.dropna(how='all'), pdf.dropna(how='all'))
         self.assert_eq(kdf.dropna(subset=['x']), pdf.dropna(subset=['x']))
@@ -234,9 +219,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pdf.dropna(thresh=1, subset=['y', 'z']))
 
         ddf2 = kdf.copy()
-        x = ddf2.x
-        x.dropna(inplace=True)
-        self.assert_eq(x, pdf.x.dropna())
         ddf2.dropna(inplace=True)
         self.assert_eq(ddf2, pdf.dropna())
 
@@ -258,34 +240,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = koalas.from_pandas(pdf)
         self.assert_eq(kdf, pdf)
         self.assertTrue((kdf.dtypes == pdf.dtypes).all())
-
-    def test_value_counts(self):
-        pdf = pd.DataFrame({'x': [1, 2, 1, 3, 3, np.nan, 1, 4]})
-        kdf = koalas.from_pandas(pdf)
-
-        exp = pdf.x.value_counts()
-        res = kdf.x.value_counts()
-        self.assertEqual(res.name, exp.name)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
-
-        self.assertPandasAlmostEqual(kdf.x.value_counts(normalize=True).toPandas(),
-                                     pdf.x.value_counts(normalize=True))
-        self.assertPandasAlmostEqual(kdf.x.value_counts(ascending=True).toPandas(),
-                                     pdf.x.value_counts(ascending=True))
-        self.assertPandasAlmostEqual(kdf.x.value_counts(normalize=True, dropna=False).toPandas(),
-                                     pdf.x.value_counts(normalize=True, dropna=False))
-        self.assertPandasAlmostEqual(kdf.x.value_counts(ascending=True, dropna=False).toPandas(),
-                                     pdf.x.value_counts(ascending=True, dropna=False))
-
-        with self.assertRaisesRegex(NotImplementedError,
-                                    "value_counts currently does not support bins"):
-            kdf.x.value_counts(bins=3)
-
-        s = pdf.x
-        s.name = 'index'
-        ds = kdf.x
-        ds.name = 'index'
-        self.assertPandasAlmostEqual(ds.value_counts().toPandas(), s.value_counts())
 
     def test_fillna(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
@@ -324,8 +278,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                            index=[10, 20, 30, 40, 50, 60])
         kdf = koalas.from_pandas(pdf)
 
-        self.assert_eq(kdf.x.notnull(), pdf.x.notnull())
-        self.assert_eq(kdf.x.isnull(), pdf.x.isnull())
         self.assert_eq(kdf.notnull(), pdf.notnull())
         self.assert_eq(kdf.isnull(), pdf.isnull())
 
@@ -336,12 +288,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = koalas.from_pandas(pdf)
 
         self.assert_eq(pd.to_datetime(pdf), koalas.to_datetime(kdf))
-
-        s = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
-        ds = koalas.from_pandas(s)
-
-        self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
-                       koalas.to_datetime(ds, infer_datetime_format=True))
 
     def test_sort_values(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
@@ -372,12 +318,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "DataFrame.*{}.*not implemented".format(name)):
                 getattr(kdf, name)()
-
-        missing_functions = inspect.getmembers(_MissingPandasLikeSeries, inspect.isfunction)
-        for name, _ in missing_functions:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "Series.*{}.*not implemented".format(name)):
-                getattr(kdf.a, name)()
 
     def test_to_numpy(self):
         pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
