@@ -374,6 +374,9 @@ class DataFrame(_Frame):
         The type of the key-value pairs can be customized with the parameters
         (see below).
 
+        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
+            to be small, as all the data is loaded into the driver's memory.
+
         Parameters
         ----------
         orient : str {'dict', 'list', 'series', 'split', 'records', 'index'}
