@@ -510,7 +510,6 @@ class DataFrame(_Frame):
               - 'table' : dict like {'schema': {schema}, 'data': {data}}
                 describing the data, and the data component is
                 like ``orient='records'``.
-                .. versionchanged:: 0.20.0
         date_format : {None, 'epoch', 'iso'}
             Type of date conversion. 'epoch' = epoch milliseconds,
             'iso' = ISO8601. The default depends on the `orient`. For
@@ -533,7 +532,6 @@ class DataFrame(_Frame):
             If 'orient' is 'records' write out line delimited json format. Will
             throw ValueError if incorrect 'orient' since others are not list
             like.
-            .. versionadded:: 0.19.0
         compression : {'infer', 'gzip', 'bz2', 'zip', 'xz', None}
             A string representing the compression to use in the output file,
             only used when the first argument is a filename. By default, the
@@ -545,10 +543,6 @@ class DataFrame(_Frame):
             Whether to include the index values in the JSON string. Not
             including the index (``index=False``) is only supported when
             orient is 'split' or 'table'.
-            .. versionadded:: 0.23.0
-        See Also
-        --------
-        read_json
         Examples
         --------
         >>> df = ks.DataFrame([['a', 'b'], ['c', 'd']],
