@@ -123,13 +123,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.head(2), pdf.head(2))
         self.assert_eq(kdf.head(3), pdf.head(3))
-        self.assert_eq(kdf['a'].head(2), pdf['a'].head(2))
-        self.assert_eq(kdf['a'].head(3), pdf['a'].head(3))
 
-        # TODO: self.assert_eq(d.tail(2), pdf.tail(2))
-        # TODO: self.assert_eq(d.tail(3), pdf.tail(3))
-        # TODO: self.assert_eq(d['a'].tail(2), pdf['a'].tail(2))
-        # TODO: self.assert_eq(d['a'].tail(3), pdf['a'].tail(3))
 
     def test_index_head(self):
         kdf = self.kdf
