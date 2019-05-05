@@ -227,8 +227,62 @@ class Series(_Frame):
     def name(self, name):
         self.rename(name, inplace=True)
 
-    @derived_from(pd.Series)
+    # TODO: Check the following:
+    #  1. function, changes labels
+    #  2.  mapping, changes labels
     def rename(self, index=None, **kwargs):
+        """
+        Alter axes input function or functions. Function / dict values must be unique (1-to-1).
+        Labels not contained in a dict / Series will be left as-is.
+        Extra labels listed don’t throw an error.
+        Alternatively, change Series.name with a scalar value (Series only).
+
+        Parameters
+        ----------
+        index : scalar, list-like, dict-like or function, optional
+
+            Scalar or list-like will alter the Series.name attribute,
+            and raise on DataFrame or Panel.
+            dict-like or functions are transformations to apply to that axis’ values
+
+        copy : boolean, default True
+
+            Also copy underlying data
+
+        inplace : boolean, default False
+
+            Whether to return a new Series. If True then value of copy is ignored.
+
+        level : int or level name, default None
+
+            In case of a MultiIndex, only rename labels in the specified level.
+
+        Returns
+        --------
+        renamed : Series (new object)
+
+        Examples
+        --------
+
+        >>> s = ks.Series([1, 2, 3])
+        >>> s
+        0    1
+        1    2
+        2    3
+        Name: 0, dtype: int64
+
+        >>> s.rename("my_name") # scalar, changes Series.name
+        0    1
+        1    2
+        2    3
+        Name: my_name, dtype: int64
+
+        >>> s.rename("myname", inplace=True)
+        0    1
+        1    2
+        2    3
+        Name: myname, dtype: int64
+        """
         if index is None:
             return self
         scol = self._scol.alias(index)
@@ -252,8 +306,79 @@ class Series(_Frame):
             raise KeyError('Currently supported only when the Column has a single index.')
         return self._kdf.index
 
-    @derived_from(pd.Series)
     def reset_index(self, level=None, drop=False, name=None, inplace=False):
+        """
+        Generate a new DataFrame or Series with the index reset.
+
+        This is useful when the index needs to be treated as a column,
+        or when the index is meaningless and needs to be reset
+        to the default before another operation.
+
+        Parameters
+        ----------
+
+        level : int, str, tuple, or list, default optional
+
+            For a Series with a MultiIndex, only remove the specified levels from the index.
+            Removes all levels by default.
+        drop : bool, default False
+
+            Just reset the index, without inserting it as a column in the new DataFrame.
+        name : object, optional
+
+            The name to use for the column containing the original Series values.
+            Uses self.name by default. This argument is ignored when drop is True.
+        inplace : bool, default False
+
+            Modify the Series in place (do not create a new object).
+
+
+        Returns
+        -------
+
+        Series or DataFrame
+
+        When drop is False (the default), a DataFrame is returned.
+        The newly created columns will come first in the DataFrame,
+        followed by the original Series values.
+        When drop is True, a Series is returned.
+        In either case, if inplace=True, no value is returned.
+
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4], name='foo',
+        ...         index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
+        >>> s.reset_index()
+          idx  foo
+        0   a    1
+        1   b    2
+        2   c    3
+        3   d    4
+
+        >>> s.reset_index(name='values')
+          idx  values
+        0   a       1
+        1   b       2
+        2   c       3
+        3   d       4
+
+        >>> s.reset_index(drop=True)
+        0    1
+        1    2
+        2    3
+        3    4
+        Name: foo, dtype: int64
+
+        >>> s.reset_index(inplace=True, drop=True)
+        >>> s
+        0    1
+        1    2
+        2    3
+        3    4
+        Name: foo, dtype: int64
+
+        """
         if inplace and not drop:
             raise TypeError('Cannot reset_index inplace on a Series to create a DataFrame')
 
@@ -285,8 +410,36 @@ class Series(_Frame):
     def toPandas(self):
         return _col(self.to_dataframe().toPandas())
 
-    @derived_from(pd.Series)
     def isnull(self):
+        """
+        Detect existing (non-missing) values.
+
+        Return a boolean same-sized object indicating if the values are NA.
+        NA values, such as None or numpy.NaN, gets mapped to True values.
+        Everything else gets mapped to False values. Characters such as empty strings '' or
+        numpy.inf are not considered NA values
+        (unless you set pandas.options.mode.use_inf_as_na = True).
+
+        Returns
+        -------
+        Series: Mask of bool values for each element in Series
+               that indicates whether an element is not an NA value.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'age': [5, 6, np.NaN],
+        ...    'born': [pd.NaT, pd.Timestamp('1939-05-27'),
+        ...             pd.Timestamp('1940-04-25')],
+        ...    'name': ['Alfred', 'Batman', ''],
+        ...    'toy': [None, 'Batmobile', 'Joker']})
+        >>> df.age.isnull() # doctest: +NORMALIZE_WHITESPACE
+        0    False
+        1    False
+        2     True
+        Name: ((age IS NULL) OR isnan(age)), dtype: bool
+
+        """
         if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
             return Series(self._scol.isNull() | F.isnan(self._scol), self._kdf, self._index_info)
         else:
@@ -294,14 +447,98 @@ class Series(_Frame):
 
     isna = isnull
 
-    @derived_from(pd.Series)
     def notnull(self):
+        """
+        Detect existing (non-missing) values.
+
+        Return a boolean same-sized object indicating if the values are not NA.
+        Non-missing values get mapped to True.
+        Characters such as empty strings '' or numpy.inf are not considered NA values
+        (unless you set pandas.options.mode.use_inf_as_na = True).
+        NA values, such as None or numpy.NaN, get mapped to False values.
+
+        Returns
+        -------
+        Series: Mask of bool values for each element in Series
+               that indicates whether an element is not an NA value.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'age': [5, 6, np.NaN],
+        ...    'born': [pd.NaT, pd.Timestamp('1939-05-27'),
+        ...             pd.Timestamp('1940-04-25')],
+        ...    'name': ['Alfred', 'Batman', ''],
+        ...    'toy': [None, 'Batmobile', 'Joker']})
+        >>> df.name.notnull() # doctest: +NORMALIZE_WHITESPACE
+        0     True
+        1     True
+        2     True
+        Name: (NOT (name IS NULL)), dtype: bool
+        """
         return ~self.isnull()
 
     notna = notnull
 
-    @derived_from(pd.Series)
     def dropna(self, axis=0, inplace=False, **kwargs):
+        """
+        Return a new Series with missing values removed.
+
+        Parameters
+        ----------
+
+        axis : {0 or ‘index’}, default 0
+            There is only one axis to drop values from.
+
+        inplace : bool, default False
+            If True, do operation inplace and return None.
+
+        **kwargs
+            Not in use.
+
+        Returns
+        -------
+
+        Series
+            Series with NA entries dropped from it.
+
+        Examples
+        --------
+        >>> ser = ks.Series([1., 2., np.nan])
+        >>> ser
+        0    1.0
+        1    2.0
+        2    NaN
+        Name: 0, dtype: float64
+
+        >>> ser.dropna()
+        0    1.0
+        1    2.0
+        Name: 0, dtype: float64
+
+        >>> ser.dropna(inplace=True)
+        >>> ser
+        0    1.0
+        1    2.0
+        Name: 0, dtype: float64
+
+        >>> ser = pd.Series([np.NaN, 2, pd.NaT, '', None, 'I stay'])
+        >>> ser # doctest: +NORMALIZE_WHITESPACE
+        0       NaN
+        1         2
+        2       NaT
+        3
+        4      None
+        5    I stay
+        dtype: object
+
+        >>> ser.dropna() # doctest: +NORMALIZE_WHITESPACE
+        1         2
+        3
+        5    I stay
+        dtype: object
+
+        """
         ks = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
             self._kdf = ks._kdf
@@ -309,8 +546,30 @@ class Series(_Frame):
         else:
             return ks
 
-    @derived_from(DataFrame)
     def head(self, n=5):
+        """
+        Return the first n rows.
+
+        This function returns the first n rows for the object based on position.
+        It is useful for quickly testing if your object has the right type of data in it.
+
+        Parameters
+        ----------
+        n : Integer, default =  5
+
+        Returns
+        -------
+        The first n rows of the caller object.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'animal':['alligator', 'bee', 'falcon', 'lion']})
+        >>> df.animal.head(2)  # doctest: +NORMALIZE_WHITESPACE
+        0     alligator
+        1     bee
+        Name: animal, dtype: object
+        """
         return _col(self.to_dataframe().head(n))
 
     def unique(self):
