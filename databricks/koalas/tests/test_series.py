@@ -39,9 +39,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_series(self):
         ks = self.ks
 
-        self.assertTrue(isinstance(ks.x, Series))
-        self.assertTrue(isinstance(ks.x + 1, Series))
-        self.assertTrue(isinstance(1 + ks.x, Series))
+        self.assertTrue(isinstance(ks['x'], Series))
+
         # TODO: self.assert_eq(d + 1, pdf + 1)
 
     def test_empty_series(self):
