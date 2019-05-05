@@ -16,6 +16,7 @@
 
 import string
 
+import numpy as np
 import pandas as pd
 
 from databricks import koalas
@@ -39,6 +40,32 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
     def strip_all_whitespace(str):
         """A helper function to remove all whitespace from a string."""
         return str.translate({ord(c): None for c in string.whitespace})
+
+    def test_csv(self):
+        pdf = self.pdf
+        kdf = self.kdf
+
+        self.assert_eq(kdf.to_csv(), pdf.to_csv())
+
+        pdf = pd.DataFrame({
+            'a': [1, np.nan, 3],
+            'b': ["one", "two", None],
+        }, index=[0, 1, 3])
+
+        kdf = koalas.from_pandas(pdf)
+
+        self.assert_eq(kdf.to_csv(na_rep='null'), pdf.to_csv(na_rep='null'))
+
+        pdf = pd.DataFrame({
+            'a': [1.0, 2.0, 3.0],
+            'b': [4.0, 5.0, 6.0],
+        }, index=[0, 1, 3])
+
+        kdf = koalas.from_pandas(pdf)
+
+        self.assert_eq(kdf.to_csv(float_format='%.1f'), pdf.to_csv(float_format='%.1f'))
+        self.assert_eq(kdf.to_csv(header=False), pdf.to_csv(header=False))
+        self.assert_eq(kdf.to_csv(index=False), pdf.to_csv(index=False))
 
     def test_to_html(self):
         expected = self.strip_all_whitespace("""
