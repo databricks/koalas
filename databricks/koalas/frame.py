@@ -278,6 +278,65 @@ class DataFrame(_Frame):
         cols = list(self.columns)
         return list((col_name, self[col_name]) for col_name in cols)
 
+    def to_clipboard(self, excel=True, sep=None, **kwargs):
+        r"""
+         Copy object to the system clipboard.
+         Write a text representation of object to the system clipboard.
+         This can be pasted into Excel, for example.
+         Parameters
+         ----------
+         excel : bool, default True
+             - True, use the provided separator, writing in a csv format for
+               allowing easy pasting into excel.
+             - False, write a string representation of the object to the
+               clipboard.
+         sep : str, default ``'\t'``
+             Field delimiter.
+         **kwargs./
+             These parameters will be passed to DataFrame.to_csv.
+         See Also
+         --------
+         DataFrame.to_csv : Write a DataFrame to a comma-separated values
+             (csv) file.
+         read_clipboard : Read text from clipboard and pass to read_table.
+         Notes
+         -----
+         Requirements for your platform.
+           - Linux : `xclip`, or `xsel` (with `gtk` or `PyQt4` modules)
+           - Windows : none
+           - OS X : none
+         Examples
+         --------
+         Copy the contents of a DataFrame to the clipboard.
+         >>> df = ks.DataFrame([[1, 2, 3], [4, 5, 6]], columns=['A', 'B', 'C'])
+         >>> df.to_clipboard(sep=',')
+
+         ... # Wrote the following to the system clipboard:
+         ... # ,A,B,C
+         ... # 0,1,2,3
+         ... # 1,4,5,6
+         We can omit the the index by passing the keyword `index` and setting
+         it to false.
+         >>> df.to_clipboard(sep=',', index=False)
+
+         ... # Wrote the following to the system clipboard:
+         ... # A,B,C
+         ... # 1,2,3
+         ... # 4,5,6
+         """
+
+        args = locals()
+        kdf = self
+
+        if len(args['kwargs']) > 1:
+            # explode kwargs
+            kwargs_copy = args['kwargs']
+            args = {**args, **kwargs_copy}
+        del args['kwargs']
+
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_clipboard, pd.DataFrame.to_clipboard, args)
+
     def to_html(self, buf=None, columns=None, col_space=None, header=True, index=True,
                 na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
                 justify=None, max_rows=None, max_cols=None, show_dimensions=False, decimal='.',
