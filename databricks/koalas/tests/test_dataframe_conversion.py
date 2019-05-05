@@ -150,3 +150,20 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
             pdf.to_excel(pandas_location, index=False)
             dataframes = self.get_excel_dfs(koalas_location, pandas_location)
             self.assert_eq(dataframes['got'], dataframes['expected'])
+
+    def test_json(self):
+        pdf = self.pdf
+
+        kdf = koalas.from_pandas(pdf)
+
+        self.assert_eq(kdf.to_json(), pdf.to_json())
+        self.assert_eq(kdf.to_json(orient='split'), pdf.to_json(orient='split'))
+        self.assert_eq(kdf.to_json(orient='records'), pdf.to_json(orient='records'))
+        self.assert_eq(kdf.to_json(orient='index'), pdf.to_json(orient='index'))
+        self.assert_eq(kdf.to_json(orient='values'), pdf.to_json(orient='values'))
+        self.assert_eq(kdf.to_json(orient='table'), pdf.to_json(orient='table'))
+        self.assert_eq(kdf.to_json(orient='records', lines=True),
+                       pdf.to_json(orient='records', lines=True))
+        self.assert_eq(kdf.to_json(orient='split', index=False),
+                       pdf.to_json(orient='split', index=False))
+

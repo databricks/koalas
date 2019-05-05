@@ -124,5 +124,6 @@ Serialization / IO / Conversion
    DataFrame.to_koalas
    DataFrame.to_spark
    DataFrame.to_string
+   DataFrame.to_json
    DataFrame.to_dict
    DataFrame.to_excel
