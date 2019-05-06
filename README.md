@@ -42,7 +42,7 @@ This project is currently in beta and is rapidly evolving, with a weekly release
  - [cmake](https://cmake.org/) for building pyarrow
  - Spark 2.4. Some older versions of Spark may work too but they are not officially supported.
  - A recent version of pandas. It is officially developed against 0.23+ but some other versions may work too.
- - Python 3.5+ if you want to use type hints in UDFs. Work is ongoing to also support Python 2.
+ - Python 3.5+.
 
 
 ## Get Started
