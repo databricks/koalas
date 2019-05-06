@@ -73,6 +73,7 @@ class GroupBy(object):
         >>> df = ks.DataFrame({'A': [1, 1, 2, 2],
         ...                    'B': [1, 2, 3, 4],
         ...                    'C': [0.362, 0.227, 1.267, -0.562]})
+        >>> df = df[['A', 'B', 'C']]
 
         >>> df
            A  B      C
@@ -83,7 +84,8 @@ class GroupBy(object):
 
         Different aggregations per column
 
-        >>> df.groupby('A').agg({'B': 'min', 'C': 'sum'})  # doctest: +NORMALIZE_WHITESPACE
+        >>> aggregated = df.groupby('A').agg({'B': 'min', 'C': 'sum'})
+        >>> aggregated[['B', 'C']]  # doctest: +NORMALIZE_WHITESPACE
            B      C
         A
         1  1  0.589
