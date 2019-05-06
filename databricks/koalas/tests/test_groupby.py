@@ -78,6 +78,15 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                 self.assert_eq(getattr(kdf.groupby(kdf.b > i), func)(),
                                getattr(pdf.groupby(pdf.b > i), func)(), almost=almost)
 
+    def test_aggregate(self):
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2],
+                            'B': [1, 2, 3, 4],
+                            'C': [0.362, 0.227, 1.267, -0.562]})
+        kdf = koalas.from_pandas(pdf)
+
+        self.assert_eq(kdf.groupby('A').agg({'B': 'min', 'C': 'sum'}),
+                       pdf.groupby('A').agg({'B': 'min', 'C': 'sum'}))
+
     def test_raises(self):
         kdf = koalas.DataFrame({'a': [1, 2, 6, 4, 4, 6, 4, 3, 7],
                                 'b': [4, 2, 7, 3, 3, 1, 1, 1, 2]},
