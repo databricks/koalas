@@ -1346,7 +1346,7 @@ defaultdict(<class 'list'>, {'col1': 2..., 'col2': 0.75})]
               for colname, asc in zip(by, ascending)]
         kdf = DataFrame(self._sdf.sort(*by), self._metadata.copy())
         if inplace:
-            self._sdf: spark.DataFrame = kdf._sdf
+            self._sdf = kdf._sdf
             self._metadata = kdf._metadata
         else:
             return kdf
@@ -1498,7 +1498,7 @@ defaultdict(<class 'list'>, {'col1': 2..., 'col2': 0.75})]
         else:
             kdf = self.assign(**{key: value})
 
-        self._sdf: spark.DataFrame = kdf._sdf
+        self._sdf = kdf._sdf
         self._metadata = kdf._metadata
 
     def __getattr__(self, key):
