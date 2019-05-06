@@ -4,14 +4,14 @@ pyarrow>=0.10,<0.11
 decorator
 
 # Documentation build
-sphinx>=2.0.1
-nbsphinx>=0.4.2
-numpydoc>=0.8.0
+sphinx
+nbsphinx
+numpydoc
 
 # Linter
-mypy>=0.701
-flake8>=3.5.0
+mypy
+flake8
 
 # Test
-pytest>=4.4.1
-pytest-cov>=2.6.1
+pytest
+pytest-cov
