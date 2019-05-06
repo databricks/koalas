@@ -469,7 +469,7 @@ class DataFrame(_Frame):
         Name: col2, dtype: float64)]
         >>> df_dict = df.to_dict('split')
         >>> sorted(df_dict.items())  # doctest: +ELLIPSIS
-        [('columns', ['col1', 'col2']), ('data', [[1.0, ..., 0.75]]), ('index', ['row1', 'row2'])]
+        [('columns', ['col1', 'col2']), ('data', [[1..., 0.75]]), ('index', ['row1', 'row2'])]
 
         >>> df_dict = df.to_dict('records')
         >>> [sorted(values.items()) for values in df_dict]  # doctest: +ELLIPSIS
