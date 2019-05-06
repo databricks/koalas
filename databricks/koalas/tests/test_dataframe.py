@@ -343,19 +343,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(AttributeError, msg):
             kdf.isin({"e": [5, 7], "a": [1, 6]})
 
-        msg = "Dataframe and Series are not supported"
+        msg = "DataFrame and Series are not supported"
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.isin(df)
 
         msg = "Values should be iterable, Series, DataFrame or dict."
         with self.assertRaisesRegex(TypeError, msg):
             kdf.isin(1)
-
-        # Test list sanitizer
-        msg = "List contains unsupported type <class 'pandas.core.frame.DataFrame'>"
-        with self.assertRaisesRegex(TypeError, msg):
-            kdf.isin([df, df])
-
-        msg = "List contains unsupported type <class 'pandas.core.frame.DataFrame'>"
-        with self.assertRaisesRegex(TypeError, msg):
-            kdf.isin({"a": [5, df]})
