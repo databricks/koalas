@@ -67,6 +67,7 @@ Reindexing / Selection / Label manipulation
    :toctree: api/
 
    Series.head
+   Series.isin
    Series.rename
    Series.reset_index
 
@@ -76,7 +77,9 @@ Missing data handling
    :toctree: api/
 
    Series.isna
+   Series.isnull
    Series.notna
+   Series.notnull
    Series.dropna
 
 Serialization / IO / Conversion
@@ -87,3 +90,4 @@ Serialization / IO / Conversion
    Series.to_pandas
    Series.to_numpy
    Series.to_string
+   Series.to_dict

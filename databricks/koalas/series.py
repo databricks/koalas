@@ -25,8 +25,8 @@ import pandas as pd
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, FloatType, DoubleType, LongType, StructType, \
-    TimestampType, to_arrow_type
+from pyspark.sql.types import BooleanType, FloatType, DoubleType, LongType, StringType, \
+    StructType, TimestampType, to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.utils import derived_from
@@ -36,6 +36,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.typedef import list_sanitizer
 
 
 @decorator
@@ -82,7 +83,9 @@ class Series(_Frame):
     internally.
 
     :ivar _scol: Spark Column instance
+    :type _scol: pyspark.Column
     :ivar _kdf: Parent's Koalas DataFrame
+    :type _kdf: ks.DataFrame
     :ivar _index_info: Each pair holds the index field name which exists in Spark fields,
       and the index name.
     """
@@ -116,12 +119,24 @@ class Series(_Frame):
         """
         assert index_info is not None
         self._scol = scol
-        self._kdf = kdf
+        self._kdf: ks.DataFrame = kdf
         self._index_info = index_info
 
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
-    __add__ = _column_op(spark.Column.__add__)
+
+    def __add__(self, other):
+        if isinstance(self.spark_type, StringType):
+            # Concatenate string columns
+            if isinstance(other, Series) and isinstance(other.spark_type, StringType):
+                return _column_op(F.concat)(self, other)
+            # Handle df['col'] + 'literal'
+            elif isinstance(other, str):
+                return _column_op(F.concat)(self, F.lit(other))
+            else:
+                raise TypeError('string addition can only be applied to string series or literals.')
+        else:
+            return _column_op(spark.Column.__add__)(self, other)
 
     def __sub__(self, other):
         # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
@@ -137,7 +152,14 @@ class Series(_Frame):
     __div__ = _numpy_column_op(spark.Column.__div__)
     __truediv__ = _numpy_column_op(spark.Column.__truediv__)
     __mod__ = _column_op(spark.Column.__mod__)
-    __radd__ = _column_op(spark.Column.__radd__)
+
+    def __radd__(self, other):
+        # Handle 'literal' + df['col']
+        if isinstance(self.spark_type, StringType) and isinstance(other, str):
+            return Series(F.concat(F.lit(other), self._scol), self._kdf, self._index_info)
+        else:
+            return _column_op(spark.Column.__radd__)(self, other)
+
     __rsub__ = _column_op(spark.Column.__rsub__)
     __rmul__ = _column_op(spark.Column.__rmul__)
     __rdiv__ = _numpy_column_op(spark.Column.__rdiv__)
@@ -374,6 +396,44 @@ class Series(_Frame):
         return validate_arguments_and_invoke_function(
             kseries.to_pandas(), self.to_string, pd.Series.to_string, args)
 
+    def to_dict(self, into=dict):
+        """
+        Convert Series to {label -> value} dict or dict-like object.
+
+        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        into : class, default dict
+            The collections.abc.Mapping subclass to use as the return
+            object. Can be the actual class or an empty
+            instance of the mapping type you want.  If you want a
+            collections.defaultdict, you must pass it initialized.
+
+        Returns
+        -------
+        collections.abc.Mapping
+            Key-value representation of Series.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4])
+        >>> s.to_dict()
+        {0: 1, 1: 2, 2: 3, 3: 4}
+        >>> from collections import OrderedDict, defaultdict
+        >>> s.to_dict(OrderedDict)
+        OrderedDict([(0, 1), (1, 2), (2, 3), (3, 4)])
+        >>> dd = defaultdict(list)
+        >>> s.to_dict(dd)
+        defaultdict(<class 'list'>, {0: 1, 1: 2, 2: 3, 3: 4})
+        """
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        kseries = self
+        return validate_arguments_and_invoke_function(
+            kseries.to_pandas(), self.to_dict, pd.Series.to_dict, args)
+
     def to_pandas(self):
         """
         Return a pandas Series.
@@ -429,8 +489,60 @@ class Series(_Frame):
         # Pandas wants a series/array-like object
         return _col(self.to_dataframe().unique())
 
-    @derived_from(pd.Series)
+    # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+        """
+        Return a Series containing counts of unique values.
+        The resulting object will be in descending order so that the
+        first element is the most frequently-occurring element.
+        Excludes NA values by default.
+
+        Parameters
+        ----------
+        normalize : boolean, default False
+            If True then the object returned will contain the relative
+            frequencies of the unique values.
+        sort : boolean, default True
+            Sort by values.
+        ascending : boolean, default False
+            Sort in ascending order.
+        bins : Not Yet Supported
+        dropna : boolean, default True
+            Don't include counts of NaN.
+
+        Returns
+        -------
+        counts : Series
+
+        See Also
+        --------
+        Series.count: Number of non-NA elements in a Series.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'x':[0, 0, 1, 1, 1, np.nan]})
+        >>> df.x.value_counts() # doctest: +NORMALIZE_WHITESPACE
+        1.0    3
+        0.0    2
+        Name: x, dtype: int64
+
+        With `normalize` set to `True`, returns the relative frequency by
+        dividing all values by the sum of values.
+
+        >>> df.x.value_counts(normalize=True) # doctest: +NORMALIZE_WHITESPACE
+        1.0    0.6
+        0.0    0.4
+        Name: x, dtype: float64
+
+        **dropna**
+        With `dropna` set to `False` we can also see NaN index values.
+
+        >>> df.x.value_counts(dropna=False) # doctest: +NORMALIZE_WHITESPACE
+        1.0    3
+        0.0    2
+        NaN    1
+        Name: x, dtype: int64
+        """
         if bins is not None:
             raise NotImplementedError("value_counts currently does not support bins")
 
@@ -454,6 +566,58 @@ class Series(_Frame):
         kdf.columns = [index_name, self.name]
         kdf._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
         return _col(kdf)
+
+    def isin(self, values):
+        """
+        Check whether `values` are contained in Series.
+
+        Return a boolean Series showing whether each element in the Series
+        matches an element in the passed sequence of `values` exactly.
+
+        Parameters
+        ----------
+        values : list or set
+            The sequence of values to test.
+
+        Returns
+        -------
+        isin : Series (bool dtype)
+
+        Examples
+        --------
+        >>> s = pd.Series(['lama', 'cow', 'lama', 'beetle', 'lama',
+        ...                'hippo'], name='animal')
+        >>> s.isin(['cow', 'lama'])
+        0     True
+        1     True
+        2     True
+        3    False
+        4     True
+        5    False
+        Name: animal, dtype: bool
+
+        Passing a single string as ``s.isin('lama')`` will raise an error. Use
+        a list of one element instead:
+
+        >>> s.isin(['lama'])
+        0     True
+        1    False
+        2     True
+        3    False
+        4     True
+        5    False
+        Name: animal, dtype: bool
+        """
+        if isinstance(values, list):
+            list_sanitizer(values)
+            return Series(self._scol.isin(values).alias(self.name), self._kdf,
+                          self._index_info)
+        elif isinstance(values, set):
+            list_sanitizer(list(values))
+            return Series(self._scol.isin(list(values)).alias(self.name), self._kdf,
+                          self._index_info)
+        else:
+            raise TypeError('Values should be list or set.')
 
     def corr(self, other, method='pearson'):
         """

@@ -19,7 +19,7 @@ A wrapper for GroupedData to behave similar to pandas GroupBy.
 """
 
 from functools import partial
-from typing import Any, List, Union
+from typing import Any, List
 import numpy as np
 
 from pyspark.sql import functions as F
@@ -27,7 +27,6 @@ from pyspark.sql.types import FloatType, DoubleType, NumericType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.compatibility import string_types
-from databricks.koalas.generic import _Frame
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
@@ -35,19 +34,13 @@ from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy
 from databricks.koalas.series import Series, _col
 
 
-ColumnLike = Union[str, Series]
-
-
 class GroupBy(object):
-
-    def __new__(cls, obj: _Frame, *args, **kwargs):
-        if isinstance(obj, DataFrame):
-            return super(GroupBy, cls).__new__(DataFrameGroupBy)
-        elif isinstance(obj, Series):
-            return super(GroupBy, cls).__new__(SeriesGroupBy)
-        else:
-            raise TypeError('Constructor expects DataFrame or Series; however, '
-                            'got [%s]' % (obj,))
+    """
+    :ivar _kdf: The parent dataframe that is used to perform the groupby
+    :type _kdf: DataFrame
+    :ivar _groupkeys: The list of keys that will be used to perform the grouping
+    :type _groupkeys: List[Series]
+    """
 
     # TODO: Series support is not implemented yet.
     # TODO: not all arguments are implemented comparing to Pandas' for now.
@@ -245,6 +238,8 @@ class GroupBy(object):
             stat_exprs = []
             for ks in self._agg_columns:
                 spark_type = ks.spark_type
+                # TODO: we should have a function that takes dataframes and converts the numeric
+                # types. Converting the NaNs is used in a few places, it should be in utils.
                 # Special handle floating point types because Spark's count treats nan as a valid
                 # value, whereas Pandas count doesn't include nan.
                 if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
@@ -265,9 +260,9 @@ class GroupBy(object):
 
 class DataFrameGroupBy(GroupBy):
 
-    def __init__(self, kdf: DataFrame, by: List[ColumnLike], agg_columns=None):
+    def __init__(self, kdf: DataFrame, by: List[Series], agg_columns: List[str] = None):
         self._kdf = kdf
-        self._groupkeys = [_resolve_col(kdf, col) for col in by]
+        self._groupkeys = by
 
         if agg_columns is None:
             groupkey_names = set(s.name for s in self._groupkeys)
@@ -284,14 +279,15 @@ class DataFrameGroupBy(GroupBy):
         if isinstance(item, str):
             return SeriesGroupBy(self._kdf[item], self._groupkeys)
         else:
+            # TODO: check that item is a list of strings
             return DataFrameGroupBy(self._kdf, self._groupkeys, item)
 
 
 class SeriesGroupBy(GroupBy):
 
-    def __init__(self, ks: Series, by: List[ColumnLike]):
+    def __init__(self, ks: Series, by: List[Series]):
         self._ks = ks
-        self._groupkeys = [_resolve_col(ks._kdf, col) for col in by]
+        self._groupkeys = by
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeSeriesGroupBy, item):
@@ -299,7 +295,7 @@ class SeriesGroupBy(GroupBy):
         raise AttributeError(item)
 
     @property
-    def _kdf(self):
+    def _kdf(self) -> DataFrame:
         return self._ks._kdf
 
     @property
@@ -308,14 +304,3 @@ class SeriesGroupBy(GroupBy):
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
         return _col(super(SeriesGroupBy, self)._reduce_for_stat_function(sfun, only_numeric))
-
-
-def _resolve_col(kdf: DataFrame, col_like: Union[ColumnLike]) -> Series:
-    if isinstance(col_like, Series):
-        assert kdf == col_like._kdf, \
-            "Cannot combine column argument because it comes from a different dataframe"
-        return col_like
-    elif isinstance(col_like, str):
-        return kdf[col_like]
-    else:
-        raise ValueError(col_like)
