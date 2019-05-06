@@ -183,6 +183,7 @@ class DataFrame(_Frame):
         >>> df = ks.DataFrame({'species': ['bear', 'bear', 'marsupial'],
         ...                    'population': [1864, 22000, 80000]},
         ...                     index=['panda', 'polar', 'koala'])
+        >>> df = df[['species', 'population']]
         >>> df
                  species  population
         panda       bear        1864
@@ -448,29 +449,35 @@ class DataFrame(_Frame):
         >>> df = ks.DataFrame({'col1': [1, 2],
         ...                    'col2': [0.5, 0.75]},
         ...                   index=['row1', 'row2'])
+        >>> df = df[['col1', 'col2']]
         >>> df
               col1  col2
         row1     1  0.50
         row2     2  0.75
-        >>> df.to_dict()
-        {'col1': {'row1': 1, 'row2': 2}, 'col2': {'row1': 0.5, 'row2': 0.75}}
+        >>> df_dict = df.to_dict()
+        >>> sorted([(key, sorted(values.items())) for key, values in df_dict.items()])
+        [('col1', [('row1', 1), ('row2', 2)]), ('col2', [('row1', 0.5), ('row2', 0.75)])]
 
         You can specify the return orientation.
 
-        >>> df.to_dict('series')
-        {'col1': row1    1
+        >>> df_dict = df.to_dict('series')
+        >>> sorted(df_dict.items())
+        [('col1', row1    1
         row2    2
-        Name: col1, dtype: int64, 'col2': row1    0.50
+        Name: col1, dtype: int64), ('col2', row1    0.50
         row2    0.75
-        Name: col2, dtype: float64}
-        >>> df.to_dict('split')  # doctest: +ELLIPSIS
-        {'index': ['row1', 'row2'], 'columns': ['col1', 'col2'], 'data': [[1...
+        Name: col2, dtype: float64)]
+        >>> df_dict = df.to_dict('split')
+        >>> sorted(df_dict.items())  # doctest: +ELLIPSIS
+        [('columns', ['col1', 'col2']), ('data', [[1..., 0.75]]), ('index', ['row1', 'row2'])]
 
-        >>> df.to_dict('records')  # doctest: +ELLIPSIS
-        [{'col1': 1..., 'col2': 0.5}, {'col1': 2..., 'col2': 0.75}]
+        >>> df_dict = df.to_dict('records')
+        >>> [sorted(values.items()) for values in df_dict]  # doctest: +ELLIPSIS
+        [[('col1', 1...), ('col2', 0.5)], [('col1', 2...), ('col2', 0.75)]]
 
-        >>> df.to_dict('index')  # doctest: +ELLIPSIS
-        {'row1': {'col1': 1..., 'col2': 0.5}, 'row2': {'col1': 2..., 'col2': 0.75}}
+        >>> df_dict = df.to_dict('index')
+        >>> sorted([(key, sorted(values.items())) for key, values in df_dict.items()])
+        [('row1', [('col1', 1), ('col2', 0.5)]), ('row2', [('col1', 2), ('col2', 0.75)])]
 
         You can also specify the mapping type.
 
@@ -483,8 +490,8 @@ class DataFrame(_Frame):
 
         >>> dd = defaultdict(list)
         >>> df.to_dict('records', into=dd)  # doctest: +ELLIPSIS
-        [defaultdict(<class 'list'>, {'col1': 1..., 'col2': 0.5}), \
-defaultdict(<class 'list'>, {'col1': 2..., 'col2': 0.75})]
+        [defaultdict(<class 'list'>, {'col..., 'col...}), \
+defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         # Make sure locals() call is at the top of the function so we don't capture local variables.
         args = locals()
@@ -856,6 +863,7 @@ defaultdict(<class 'list'>, {'col1': 2..., 'col2': 0.75})]
         >>> df = ks.DataFrame({"name": ['Alfred', 'Batman', 'Catwoman'],
         ...                    "toy": [None, 'Batmobile', 'Bullwhip'],
         ...                    "born": [None, "1940-04-25", None]})
+        >>> df = df[['name', 'toy', 'born']]
         >>> df
                name        toy        born
         0    Alfred       None        None
@@ -1132,6 +1140,7 @@ defaultdict(<class 'list'>, {'col1': 2..., 'col2': 0.75})]
         ...                    ["John", "Myla", "Lewis", "John", "Myla"],
         ...                    "Age": [24., np.nan, 21., 33, 26],
         ...                    "Single": [False, True, True, True, False]})
+        >>> df = df[["Person", "Age", "Single"]]
         >>> df
           Person   Age  Single
         0   John  24.0   False
@@ -1180,6 +1189,7 @@ defaultdict(<class 'list'>, {'col1': 2..., 'col2': 0.75})]
         Examples
         --------
         >>> df = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6], 'w': [7, 8]})
+        >>> df = df[['x', 'y', 'z', 'w']]
         >>> df
            x  y  z  w
         0  1  3  5  7
@@ -1346,7 +1356,7 @@ defaultdict(<class 'list'>, {'col1': 2..., 'col2': 0.75})]
               for colname, asc in zip(by, ascending)]
         kdf = DataFrame(self._sdf.sort(*by), self._metadata.copy())
         if inplace:
-            self._sdf: spark.DataFrame = kdf._sdf
+            self._sdf = kdf._sdf
             self._metadata = kdf._metadata
         else:
             return kdf
@@ -1498,7 +1508,7 @@ defaultdict(<class 'list'>, {'col1': 2..., 'col2': 0.75})]
         else:
             kdf = self.assign(**{key: value})
 
-        self._sdf: spark.DataFrame = kdf._sdf
+        self._sdf = kdf._sdf
         self._metadata = kdf._metadata
 
     def __getattr__(self, key):

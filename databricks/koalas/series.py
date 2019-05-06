@@ -119,7 +119,7 @@ class Series(_Frame):
         """
         assert index_info is not None
         self._scol = scol
-        self._kdf: ks.DataFrame = kdf
+        self._kdf = kdf
         self._index_info = index_info
 
     # arithmetic operators
