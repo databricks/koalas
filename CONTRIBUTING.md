@@ -1,112 +1,79 @@
-# Contributing to Koalas - design and principles
+# Contributing Guide and Design Principles <!-- omit in toc -->
 
 This document gives guidance to developers if they plan to contribute to Koalas.
 In particular, it answers the questions:
- - what is in the scope of the Koalas project? What should go into PySpark or Pandas instead?
- - What is expected for code contributions
+ - What is in the scope of the Koalas project? What should go into PySpark or Pandas instead?
+ - What is expected for code contributions?
 
-Koalas helps developers familiar with the Pandas API to scale their data science pipelines with Spark.
-As such, it focuses on existing users of pandas.
- - it focuses on the high level, public APIs that users are usually working with
- - it respects to the largest extent the conventions of the Python numerical ecosystem, and allows the use of numpy types, etc. that are supported by Spark.
- - it should clearly document when results may differ between Spark and pandas (which may happen because Spark rows are not ordered)
+Koalas focuses on making data scientists productive when analyzing big data. The initial goal is to remove as much friction as possible for data scientists when they transition from using pandas against small datasets to Spark on large datasets. As such, it focuses on existing users of pandas.
+ - It focuses on the high level, public APIs that users are usually working with.
+ - It respects to the largest extent the conventions of the Python numerical ecosystem, and allows the use of numpy types, etc. that are supported by Spark.
+ - It should clearly document when results may differ between Spark and pandas (which may happen because Spark rows are not ordered).
 
+Over time, the project will expand to include functionalities specific to big data analytics, e.g. plotting, data profiling, but for now we are focusing on the above.
 
-### A unified API for data science
+## Unifying pandas API and Spark API
 
-The Koalas dataframe is meant to provide the best of pandas and Spark under a single API, with easy and clear conversions 
-between each API when necessary. It aims at incorporating:
+The Koalas DataFrame is meant to provide the best of pandas and Spark under a single API, with easy and clear conversions between each API when necessary. It aims at incorporating:
  - most of the data transform tools from pandas
- - the SQL and streaming capabilities of Spark
+ - the SQL capabilities of Spark
  - a solid numerical foundation to integrate ML models and algorithms
 
-
 There are 4 different classes of functions:
- - functions that are only found in Spark (`select`, `selectExpr`). These functions are also available in Koalas
- - functions that are found in Spark but that have a clear equivalent in pandas (`alias` and `rename` for example). These 
-   functions will be implemented as the alias of the pandas function, but should be marked either for deprecation or that
-   they are strictly aliases of the same functions. They are provided so that existing users of PySpark can get the benefits
+ 1. Functions that are only found in Spark (`select`, `selectExpr`). These functions should also beavailable in Koalas.
+ 2. Functions that are found in Spark but that have a clear equivalent in pandas, e.g. `alias` and `rename`. These 
+   functions will be implemented as the alias of the pandas function, but should be marked that they are aliases of the same functions. They are provided so that existing users of PySpark can get the benefits
    of Koalas without having to adapt their code.
- - functions that are found in both Spark and pandas under the same name (`count`, `dtypes`, `head`). The return value
-   is the same as the return type in pandas (and not Spark).
- - functions that are only found in pandas. When these functions are appropriate for distributed datasets, they are available in Koalas.
+ 3. Functions that are found in both Spark and pandas under the same name (`count`, `dtypes`, `head`). The return value is the same as the return type in pandas (and not Spark's).
+ 4. Functions that are only found in pandas. When these functions are appropriate for distributed datasets, they are available in Koalas.
 
 Since Spark and Pandas have the similar API's with slight differences, the choice is to honor the contract of the pandas API first.
 
-The `pandas.Series` object is much more versatile and universal than the `PySpark.Row` object. In particular, it can be used for most 
-practical purposes as a replacement, so it is the preferred way of returning single results, when they are not scalars.
 
-### Pandas functions that are not considered for inclusion in Koalas
+### Return Type
+
+Often developers face the question whether a particular function should return a Koalas DataFrame/Series, or a pandas DataFrame/Series.
+
+The principle is: if the returned object can be large, use a Koalas DataFrame/Series. If the data is bound to be small, use a pandas DataFrame/Series. For example, `DataFrame.dtypes` return a pandas Series, because the number of columns in a DataFrame is bounded and small, whereas `DataFrame.head(n)` returns a Koalas DataFrame, because the number n can be very large.
+
+
+### Pandas functions that are NOT considered for inclusion in Koalas
 
 A few categories of functions are not considered for now to be part of the API, for different reasons:
 
-*Low level and deprecated functions* (Frame, user types, DataFrame.ix)
+1. *Low level and deprecated functions* (Frame, user types, DataFrame.ix)
 
-*Functions that have an unexpected performance impact* 
-These functions (and the caller of theses functions) assume that the data is represented in a compact format (numpy in the case of pandas).
-Because these functions would force the full collection of the data and because there is a well-documented workaround, it is recommended that 
-they are not included. 
+2. *Functions that have an unexpected performance impact*
 
-The workaround is to force the materialization of the pandas DataFrame, either by calling:
- - `.to_pandas()` (koalas only)
- - `.to_numpy()` (works with both pandas and koalas)
+    These functions (and the caller of theses functions) assume that the data is represented in a compact format (numpy in the case of pandas). Because these functions would force the full collection of the data and because there is a well-documented workaround, it is recommended that  they are not included. 
 
-Here is a list of such functions:
- - DataFrame.values
- - `DataFrame.__iter__` and the array protocol `__array__`
+    The workaround is to force the materialization of the pandas DataFrame, either by calling:
+      - `.to_pandas()` (koalas only)
+      - `.to_numpy()` (works with both pandas and koalas)
 
-Other frameworks like Dask or Molin have a low-level block representation of a multidimensional array that Spark lacks. Until such representation is available, these functions should not be considered.
+    Here is a list of such functions:
+    - DataFrame.values
+    - `DataFrame.__iter__` and the array protocol `__array__`
 
-### Spark functions that are temporarily included in Koalas
+3. *Low-level multidimensional arrays*: Other frameworks like Dask or Molin have a low-level block representation of a multidimensional array that Spark lacks. Until such representation is available, these functions should not be considered.
 
-- Column.alias
-- DataFrame.collect? `.to_pandas` is more complete
-- DataFrame.describe
-- DataFrame.distinct alias for `unique`
-- DataFrame.join alias for `.merge`
-- DataFrame.limit alias for `.head`
 
 ### Spark functions that should be included in Koalas
 
 - pyspark.range
+- Functions to control the partitioning, and in-memory representation of the data.
+- Functions that add SQL-like functionalities to DataFrame.
+- Functions that present algorithms specific to distributed datasets (approx quantiles for example)
 
-Streaming functions
-
-Functions to control the partitioning, and in-memory representation of the data.
-
-Functions that add SQL-like functionalities to DataFrame.
-
-Functions that present algorithms specific to distributed datasets
-(approx quantiles for example)
-
-- DataFrame.approxQuantile, cache, checkpoint, coalesce, colRegex, createGlobalTempView, createOrReplaceGlobalTempView, createOrReplaceTempView, createTempView, crossJoin, crosstab, dropDuplicates / drop_duplicates, explain, hint, intersect, intersectAll, isLocal, isStreaming, localCheckpoint, persist, printSchema, registerTempTable, repartition, repartitionByRange, rollup, schema, select, selectExpr, subtract, take, toDF, unionByName, withWatermark
-
-
-### Reading and writing files.
-
-TODO: Koalas methods for reading and writing should work for both local and distributed files.
-
-
-When writing, the protocol to use is the default Spark protocol. This means in particular that
-dataframes written with Koalas will have multiple partitions, like in Spark. The current workaround is 
-to call `.to_pandas()` and then save it.
 
 ## How to contribute
 
-The largest amount of work consists simply in implementing the pandas API in Spark terms, which is usually straightforward.
-Because this project is aimed at users who may not be familiar with the intimate technical details of pandas or Spark, a
-few points have to be respected:
+The largest amount of work consists simply in implementing the pandas API in Spark terms, which is usually straightforward. Because this project is aimed at users who may not be familiar with the intimate technical details of pandas or Spark, a few points have to be respected:
 
-*Testing* For pandas functions, the testing coverage should be as good as in pandas. This is easily done by copying the 
-relevant tests from pandas or dask into koalas.
+- *Testing*: For pandas functions, the testing coverage should be as good as in pandas. This is easily done by copying the relevant tests from pandas or dask into Koalas.
 
-*Documentation* For the implemented parameters, the documentation should be as comprehensive as in the corresponding parameter 
-in PySpark or Pandas. At the very least, use the `@derived_from` decorator that automatically lifts the documentation from
-the relevant project.
+- *Documentation*: For the implemented parameters, the documentation should be as comprehensive as in the corresponding parameter in PySpark or pandas. A recommended way to add documentation is to start with the docstring of the corresponding function in PySpark or pandas, and adapt it for Koalas. If you are adding a new function, also add it to the API reference doc index page in `docs/source/reference` directory.
 
-*Exposing details* Do not add internal fields if possible. Nearly all the state should be already encapsulated in the
-Spark dataframe. Similarly, do not replicate the abstract interfaces found in Pandas. They are meant to be a protocol to exchange
-data at high performance with numpy, which we cannot do anyway.
+- *Exposing details*: Do not add internal fields if possible. Nearly all the state should be already encapsulated in the Spark dataframe. Similarly, do not replicate the abstract interfaces found in Pandas. They are meant to be a protocol to exchange data at high performance with numpy, which we cannot do anyway.
 
-*Monkey patching, field introspection and other advanced python techniques* The current design should not require any of 
-these.
+- *Monkey patching, field introspection and other advanced python techniques*: The current design should not require any of these. Avoid using these advanced techniques as much as possible.
