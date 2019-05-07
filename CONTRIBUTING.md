@@ -12,6 +12,21 @@ Koalas focuses on making data scientists productive when analyzing big data. The
 
 Over time, the project will expand to include functionalities specific to big data analytics, e.g. plotting, data profiling, but for now we are focusing on the above.
 
+
+## Design Principles
+
+1. Be Pythonic
+
+    Koalas targets Python data scientists. In that sense, we want to stick to the convention they are already familiar with as much as possible. Here are some examples:
+
+    - Function names and parameters use snake_case, rather than CamelCase. This is different from PySpark's design. For example, Koalas has `to_pandas()`, whereas PySpark has `toPandas()` for converting a DataFrame into a pandas DataFrame. In limited cases, to maintain compatibility with Spark, we also provide Spark's variant as an alias.
+
+
+2. Koalas data structure for big data, and pandas data structure for small data.
+
+    Often developers face the question whether a particular function should return a Koalas DataFrame/Series, or a pandas DataFrame/Series. The principle is: if the returned object can be large, use a Koalas DataFrame/Series. If the data is bound to be small, use a pandas DataFrame/Series. For example, `DataFrame.dtypes` return a pandas Series, because the number of columns in a DataFrame is bounded and small, whereas `DataFrame.head()` or `Series.unique()` returns a Koalas DataFrame, because the resulting object can be large.
+
+
 ## Unifying pandas API and Spark API
 
 The Koalas DataFrame is meant to provide the best of pandas and Spark under a single API, with easy and clear conversions between each API when necessary. It aims at incorporating:
