@@ -17,6 +17,8 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
+from typing import Optional
+
 import numpy as np
 import pandas as pd
 
@@ -56,6 +58,37 @@ def sql(query: str) -> DataFrame:
     ----------
     query : str
         the SQL query
+    >>> ks.sql("select * from range(10) where id > 7")
+       id
+    0   8
+    1   9
+    """
+    return DataFrame(default_session().sql(query))
+
+
+def range(start: int,
+          end: Optional[int] = None,
+          step: int = 1,
+          num_partitions: Optional[int] = None) -> DataFrame:
+    """
+    Create a DataFrame with some range of numbers.
+
+    The resulting DataFrame has a single int64 column named `id`, containing elements in a range
+    from ``start`` to ``end`` (exclusive) with step value ``step``. If only the first parameter
+    (i.e. start) is specified, we treat it as the end value with the start value being 0.
+
+    This is similar to the range function in SparkSession and is used primarily for testing.
+
+    Parameters
+    ----------
+    start : int
+        the start value (inclusive)
+    end : int, optional
+        the end value (exclusive)
+    step : int, optional, default 1
+        the incremental step
+    num_partitions : int, optional
+        the number of partitions of the DataFrame
 
     Returns
     -------
@@ -63,12 +96,28 @@ def sql(query: str) -> DataFrame:
 
     Examples
     --------
-    >>> ks.sql("select * from range(10) where id > 7")
+    When the first parameter is specified, we generate a range of values up till that number.
+
+    >>> ks.range(5)
        id
-    0   8
-    1   9
+    0   0
+    1   1
+    2   2
+    3   3
+    4   4
+
+    When start, end, and step are specified:
+
+    >>> ks.range(start = 100, end = 200, step = 20)
+        id
+    0  100
+    1  120
+    2  140
+    3  160
+    4  180
     """
-    return DataFrame(default_session().sql(query))
+    sdf = default_session().range(start=start, end=end, step=step, numPartitions=num_partitions)
+    return DataFrame(sdf)
 
 
 def read_csv(path, header='infer', names=None, usecols=None,
