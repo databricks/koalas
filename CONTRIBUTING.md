@@ -1,18 +1,15 @@
-# Contributing Guide
+# Contributing Guide <!-- omit in toc -->
 
 This document gives guidance to developers if they plan to contribute to Koalas. The largest amount of work consists simply in implementing the pandas API in Spark terms, which is usually straightforward.
 
-- [Contributing Guide](#contributing-guide)
-  - [Step-by-step Guide](#step-by-step-guide)
-  - [Environment Setup](#environment-setup)
-  - [Running Tests](#running-tests)
-  - [Building Documentation](#building-documentation)
-  - [Coding Conventions](#coding-conventions)
-  - [Release Instructions](#release-instructions)
+- [Step-by-step Guide](#step-by-step-guide)
+- [Environment Setup](#environment-setup)
+- [Running Tests](#running-tests)
+- [Building Documentation](#building-documentation)
+- [Coding Conventions](#coding-conventions)
+- [Release Instructions](#release-instructions)
 
 ## Step-by-step Guide
-
-Here is a step by step guide:
 
 1. Read and understand the [Design Principles](https://github.com/databricks/koalas/blob/master/README.md#design-principles) for the project. Contributions should match these projects.
 
