@@ -21,6 +21,7 @@ This project is currently in beta and is rapidly evolving, with a weekly release
 - [Get Started](#get-started)
 - [Documentation](#documentation)
 - [Mailing List](#mailing-list)
+- [Development Guide](#development-guide)
 - [Design Principles](#design-principles)
   - [Be Pythonic](#be-pythonic)
   - [Unify small data (pandas) API and big data (Spark) API, but pandas first](#unify-small-data-pandas-api-and-big-data-spark-api-but-pandas-first)
@@ -82,12 +83,15 @@ df['x2'] = df.x * df.x
 
 Project docs are published here: https://koalas.readthedocs.io
 
-You can also find the development guide here: https://github.com/databricks/koalas/master/CONTRIBUTING.md
-
 
 ## Mailing List
 
 We use Google Groups for mailling list: https://groups.google.com/forum/#!forum/koalas-dev
+
+
+## Development Guide
+
+See [CONTRIBUTING.md](https://github.com/databricks/koalas/master/CONTRIBUTING.md).
 
 
 ## Design Principles
