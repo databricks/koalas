@@ -533,10 +533,6 @@ class Series(_Frame):
 
         >>> ks.Series([pd.Timestamp('2016-01-01') for _ in range(3)]).unique()
         array(['2016-01-01T00:00:00.000000000'], dtype='datetime64[ns]')
-
-        >>> ks.Series([pd.Timestamp('2016-01-01', tz='US/Eastern')
-        ...            for _ in range(3)]).unique()
-        array(['2016-01-01T14:00:00.000000000'], dtype='datetime64[ns]')
         """
         return pd.Series.unique(self.to_pandas())
 
