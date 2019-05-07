@@ -23,7 +23,7 @@ Koalas targets Python data scientists. We want to stick to the convention that u
 
 - Koalas respects to the largest extent the conventions of the Python numerical ecosystem, and allows the use of numpy types, etc. that are supported by Spark.
 
-- Koalas docs follow rest of the PyData project docs.
+- Koalas docs' style and infrastructure simply follow rest of the PyData projects'.
 
 #### Unify small data (pandas) API and big data (Spark) API, but pandas first
 
@@ -39,18 +39,21 @@ There are 4 different classes of functions:
 
  4. Functions that are only found in pandas. When these functions are appropriate for distributed datasets, they should become available in Koalas.
 
-
 #### Return Koalas data structure for big data, and pandas data structure for small data
 
 Often developers face the question whether a particular function should return a Koalas DataFrame/Series, or a pandas DataFrame/Series. The principle is: if the returned object can be large, use a Koalas DataFrame/Series. If the data is bound to be small, use a pandas DataFrame/Series. For example, `DataFrame.dtypes` return a pandas Series, because the number of columns in a DataFrame is bounded and small, whereas `DataFrame.head()` or `Series.unique()` returns a Koalas DataFrame, because the resulting object can be large.
 
+#### Provide discoverable APIs for common data science tasks
+
+At the risk of overgeneralization, there are two API design approaches: the first starts with abstractions, and users accomplish their tasks by composing primitives; the second focuses on the common tasks users do, and provide APIs directly for those. While the world is not black and white, Spark has taken more of the former approach, while pandas has taken more of latter with a lot of functions for common tasks.
+
+Koalas should also lean more towards the latter, providing discoverable APIs for common data science tasks. In most cases, this principle is well taken care off by simply implementing pandas' APIs. However, there will be circumstances in which pandas' APIs don't address a specific need, e.g. plotting for big data.
 
 #### Provide well documented APIs, with examples
 
 All functions and parameters should be documented. Most functions should be documented with examples, because those are the easiest to understand than a blob of text explaining what the function does.
 
 A recommended way to add documentation is to start with the docstring of the corresponding function in PySpark or pandas, and adapt it for Koalas. If you are adding a new function, also add it to the API reference doc index page in `docs/source/reference` directory. The examples in docstring also improve our test coverage.
-
 
 #### Guardrails to prevent users from shooting themselves in the foot
 
@@ -66,13 +69,11 @@ A few exceptions, however, exist. One common pattern with "big data science" is 
 
 Note that it is clear from the names that these functions return some local data structure that would require materializing data in a single node's memory. For these functions, we also explicitly document them with a warning note that the resulting data structure must be small.
 
-
 #### Be a lean API layer and move fast
 
 Koalas is designed as an API overlay layer on top of Spark. The project should be lightweight, and most functions should be implemented as wrappers around Spark or pandas. Koalas does not accept heavyweight implementations, e.g. execution engine changes.
 
 This approach enables us to move fast. For the considerable future, we aim to be making weekly releases.
-
 
 #### High test coverage
 
