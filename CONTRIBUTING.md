@@ -45,9 +45,11 @@ Often developers face the question whether a particular function should return a
 
 #### Provide discoverable APIs for common data science tasks
 
-At the risk of overgeneralization, there are two API design approaches: the first starts with abstractions, and users accomplish their tasks by composing primitives; the second focuses on the common tasks users do, and provide APIs directly for those. While the world is not black and white, Spark has taken more of the former approach, while pandas has taken more of latter with a lot of functions for common tasks.
+At the risk of overgeneralization, there are two API design approaches: the first focuses on providing APIs for common tasks; the second starts with abstractions, and enable users to accomplish their tasks by composing primitives. While the world is not black and white, pandas takes more of the former approach, while Spark has taken more of the later.
 
-Koalas should also lean more towards the latter, providing discoverable APIs for common data science tasks. In most cases, this principle is well taken care off by simply implementing pandas' APIs. However, there will be circumstances in which pandas' APIs don't address a specific need, e.g. plotting for big data.
+One example is value count (count by some key column), one of the most common operations in data science. pandas `DataFrame.value_count` returns the result in sorted order, which in 90% of the cases is what users prefer when exploring data, whereas Spark's does not sort, which is more desirable when building data pipelines, as users can accomplish the pandas behavior by adding an explicit `orderBy`.
+
+Similar to pandas, Koalas should also lean more towards the former, providing discoverable APIs for common data science tasks. In most cases, this principle is well taken care off by simply implementing pandas' APIs. However, there will be circumstances in which pandas' APIs don't address a specific need, e.g. plotting for big data.
 
 #### Provide well documented APIs, with examples
 
