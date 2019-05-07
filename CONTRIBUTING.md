@@ -15,16 +15,25 @@ Over time, the project will expand to include functionalities specific to big da
 
 ## Design Principles
 
-1. Be Pythonic
+1. *Pythonic*
 
-    Koalas targets Python data scientists. In that sense, we want to stick to the convention they are already familiar with as much as possible. Here are some examples:
+    Koalas targets Python data scientists. We want to stick to the convention that users are already familiar with as much as possible. Here are some examples:
 
     - Function names and parameters use snake_case, rather than CamelCase. This is different from PySpark's design. For example, Koalas has `to_pandas()`, whereas PySpark has `toPandas()` for converting a DataFrame into a pandas DataFrame. In limited cases, to maintain compatibility with Spark, we also provide Spark's variant as an alias.
 
+    - Koalas respects to the largest extent the conventions of the Python numerical ecosystem, and allows the use of numpy types, etc. that are supported by Spark.
 
 2. Koalas data structure for big data, and pandas data structure for small data.
 
     Often developers face the question whether a particular function should return a Koalas DataFrame/Series, or a pandas DataFrame/Series. The principle is: if the returned object can be large, use a Koalas DataFrame/Series. If the data is bound to be small, use a pandas DataFrame/Series. For example, `DataFrame.dtypes` return a pandas Series, because the number of columns in a DataFrame is bounded and small, whereas `DataFrame.head()` or `Series.unique()` returns a Koalas DataFrame, because the resulting object can be large.
+
+3. Well documented APIs, with examples
+
+   Every single function and parameter should be documented, ideally with examples, because those are the easiest to understand. A recommended way to add documentation is to start with the docstring of the corresponding function in PySpark or pandas, and adapt it for Koalas. If you are adding a new function, also add it to the API reference doc index page in `docs/source/reference` directory. The examples in docstring also improve our test coverage.
+
+4. Minimize the chances for users to shoot themselves in the foot
+
+   
 
 
 ## Unifying pandas API and Spark API
