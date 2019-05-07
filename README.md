@@ -33,6 +33,7 @@ This project is currently in beta and is rapidly evolving, with a weekly release
   - [High test coverage](#high-test-coverage)
 - [FAQ](#faq)
   - [What's the project's status?](#whats-the-projects-status)
+  - [Is it Koalas or koalas?](#is-it-koalas-or-koalas)
   - [Should I use PySpark's DataFrame API or Koalas?](#should-i-use-pysparks-dataframe-api-or-koalas)
   - [How can I request support for a method?](#how-can-i-request-support-for-a-method)
   - [How is Koalas different from Dask?](#how-is-koalas-different-from-dask)
@@ -179,10 +180,14 @@ You should expect the following differences:
    Not a Number (NaN) special constants to indicate missing values, while Spark has a
    special flag on each value to indicate missing values. We would love to hear from you
    if you come across any discrepancies
-   
+
  - because Spark is lazy in nature, some operations like creating new columns only get 
    performed when Spark needs to print or write the dataframe.
-   
+
+### Is it Koalas or koalas?
+
+It's Koalas. Unlike pandas, we use upper case here.
+
 ### Should I use PySpark's DataFrame API or Koalas?
 
 If you are already familiar with pandas and want to leverage Spark for big data, we recommend
