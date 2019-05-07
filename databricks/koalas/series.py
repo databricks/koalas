@@ -491,6 +491,8 @@ class Series(_Frame):
     def head(self, n=5):
         return _col(self.to_dataframe().head(n))
 
+    # TODO: Categorical type isn't supported (due to PySpark's limitation) and
+    # some doctests related with timestamps were not added.
     def unique(self):
         """
         Return unique values of Series object.
