@@ -1168,7 +1168,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Drop specified labels from columns.
 
-        Remove columns by specifying label names and axis=1.
+        Remove columns by specifying label names and axis=1 or columns.
+        When specifying both labels and columns, only labels will be dropped.
         Removing rows is yet to be implemented.
 
         Parameters

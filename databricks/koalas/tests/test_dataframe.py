@@ -193,6 +193,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(['x', 'y']))
         self.assert_eq(kdf, pdf)
 
+    def test_drop(self):
+        kdf = koalas.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6]})
+
+        # Assert 'labels' or 'columns' parameter is set
+        expected_error_message = "Need to specify at least one of 'labels' or 'columns'"
+        with self.assertRaisesRegex(ValueError, expected_error_message):
+            kdf.drop()
+        # Assert axis cannot be 0
+        with self.assertRaisesRegex(NotImplementedError, "Drop currently only works for axis=1"):
+            kdf.drop('x', axis=0)
+        # Assert using a str for 'labels' works
+        self.assert_eq(kdf.drop('x', axis=1), pd.DataFrame({'y': [3, 4], 'z': [5, 6]}))
+        # Assert axis is 1 by default
+        self.assert_eq(kdf.drop('x'), pd.DataFrame({'y': [3, 4], 'z': [5, 6]}))
+        # Assert using a list for 'labels' works
+        self.assert_eq(kdf.drop(['y', 'z'], axis=1), pd.DataFrame({'x': [1, 2]}))
+        # Assert using 'columns' instead of 'labels' produces the same results
+        self.assert_eq(kdf.drop(columns='x'), pd.DataFrame({'y': [3, 4], 'z': [5, 6]}))
+        self.assert_eq(kdf.drop(columns=['y', 'z']), pd.DataFrame({'x': [1, 2]}))
+        # Assert 'labels' being used when both 'labels' and 'columns' are specified
+        self.assert_eq(kdf.drop(labels=['x'], columns=['y']), pd.DataFrame({'y': [3, 4], 'z': [5, 6]}))
+
     def test_dropna(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
                             'y': [1, 2, np.nan, 4, np.nan, np.nan],
