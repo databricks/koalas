@@ -14,15 +14,40 @@
 # limitations under the License.
 #
 
-from databricks.koalas.missing import _unsupported_function
+from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
 def unsupported_function(method_name):
     return _unsupported_function(class_name='pd.groupby.GroupBy', method_name=method_name)
 
 
+def unsupported_property(property_name):
+    return _unsupported_property(class_name='pd.groupby.GroupBy', property_name=property_name)
+
+
 class _MissingPandasLikeDataFrameGroupBy(object):
 
+    # Properties
+    corr = unsupported_property('corr')
+    corrwith = unsupported_property('corrwith')
+    cov = unsupported_property('cov')
+    diff = unsupported_property('diff')
+    dtypes = unsupported_property('dtypes')
+    fillna = unsupported_property('fillna')
+    groups = unsupported_property('groups')
+    hist = unsupported_property('hist')
+    idxmax = unsupported_property('idxmax')
+    idxmin = unsupported_property('idxmin')
+    indices = unsupported_property('indices')
+    mad = unsupported_property('mad')
+    ngroups = unsupported_property('ngroups')
+    plot = unsupported_property('plot')
+    quantile = unsupported_property('quantile')
+    skew = unsupported_property('skew')
+    take = unsupported_property('take')
+    tshift = unsupported_property('tshift')
+
+    # Functions
     all = unsupported_function('all')
     any = unsupported_function('any')
     apply = unsupported_function('apply')
@@ -61,9 +86,31 @@ class _MissingPandasLikeDataFrameGroupBy(object):
 
 class _MissingPandasLikeSeriesGroupBy(object):
 
-    # TODO: agg and aggregate should be implemented.
-    # agg = unsupported_function('agg')
-    # aggregate = unsupported_function('aggregate')
+    # Properties
+    corr = unsupported_property('corr')
+    cov = unsupported_property('cov')
+    diff = unsupported_property('diff')
+    dtype = unsupported_property('dtype')
+    fillna = unsupported_property('fillna')
+    groups = unsupported_property('groups')
+    hist = unsupported_property('hist')
+    idxmax = unsupported_property('idxmax')
+    idxmin = unsupported_property('idxmin')
+    indices = unsupported_property('indices')
+    is_monotonic_decreasing = unsupported_property('is_monotonic_decreasing')
+    is_monotonic_increasing = unsupported_property('is_monotonic_increasing')
+    mad = unsupported_property('mad')
+    ngroups = unsupported_property('ngroups')
+    nlargest = unsupported_property('nlargest')
+    nsmallest = unsupported_property('nsmallest')
+    plot = unsupported_property('plot')
+    quantile = unsupported_property('quantile')
+    skew = unsupported_property('skew')
+    take = unsupported_property('take')
+    tshift = unsupported_property('tshift')
+    unique = unsupported_property('unique')
+
+    # Functions
     all = unsupported_function('all')
     any = unsupported_function('any')
     apply = unsupported_function('apply')

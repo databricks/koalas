@@ -19,6 +19,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 """
 from decorator import decorator, dispatch_on
 from functools import partial
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -710,11 +711,15 @@ class Series(_Frame):
     def __getitem__(self, key):
         return Series(self._scol.__getitem__(key), self._kdf, self._index_info)
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
             raise AttributeError(item)
         if hasattr(_MissingPandasLikeSeries, item):
-            return partial(getattr(_MissingPandasLikeSeries, item), self)
+            property_or_func = getattr(_MissingPandasLikeSeries, item)
+            if isinstance(property_or_func, property):
+                return property_or_func.fget(self)  # type: ignore
+            else:
+                return partial(property_or_func, self)
         return self.getField(item)
 
     def __str__(self):

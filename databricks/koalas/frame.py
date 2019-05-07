@@ -17,8 +17,8 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
-from collections.abc import Iterable
 from functools import partial, reduce
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -1508,12 +1508,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self._sdf = kdf._sdf
         self._metadata = kdf._metadata
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         from databricks.koalas.series import Series
         if key.startswith("__") or key.startswith("_pandas_") or key.startswith("_spark_"):
             raise AttributeError(key)
         if hasattr(_MissingPandasLikeDataFrame, key):
-            return partial(getattr(_MissingPandasLikeDataFrame, key), self)
+            property_or_func = getattr(_MissingPandasLikeDataFrame, key)
+            if isinstance(property_or_func, property):
+                return property_or_func.fget(self)  # type: ignore
+            else:
+                return partial(property_or_func, self)
         return Series(self._sdf.__getattr__(key), self, self._metadata.index_info)
 
     def __iter__(self):

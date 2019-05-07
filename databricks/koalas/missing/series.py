@@ -14,15 +14,52 @@
 # limitations under the License.
 #
 
-from databricks.koalas.missing import _unsupported_function
+from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
 def unsupported_function(method_name):
     return _unsupported_function(class_name='pd.Series', method_name=method_name)
 
 
+def unsupported_property(property_name):
+    return _unsupported_property(class_name='pd.Series', property_name=property_name)
+
+
 class _MissingPandasLikeSeries(object):
 
+    # Properties
+    T = unsupported_property('T')
+    array = unsupported_property('array')
+    asobject = unsupported_property('asobject')
+    at = unsupported_property('at')
+    axes = unsupported_property('axes')
+    base = unsupported_property('base')
+    blocks = unsupported_property('blocks')
+    data = unsupported_property('data')
+    dtypes = unsupported_property('dtypes')
+    empty = unsupported_property('empty')
+    flags = unsupported_property('flags')
+    ftype = unsupported_property('ftype')
+    ftypes = unsupported_property('ftypes')
+    hasnans = unsupported_property('hasnans')
+    iat = unsupported_property('iat')
+    iloc = unsupported_property('iloc')
+    imag = unsupported_property('imag')
+    is_copy = unsupported_property('is_copy')
+    is_monotonic = unsupported_property('is_monotonic')
+    is_monotonic_decreasing = unsupported_property('is_monotonic_decreasing')
+    is_monotonic_increasing = unsupported_property('is_monotonic_increasing')
+    is_unique = unsupported_property('is_unique')
+    itemsize = unsupported_property('itemsize')
+    ix = unsupported_property('ix')
+    nbytes = unsupported_property('nbytes')
+    ndim = unsupported_property('ndim')
+    real = unsupported_property('real')
+    size = unsupported_property('size')
+    strides = unsupported_property('strides')
+    values = unsupported_property('values')
+
+    # Functions
     add = unsupported_function('add')
     add_prefix = unsupported_function('add_prefix')
     add_suffix = unsupported_function('add_suffix')

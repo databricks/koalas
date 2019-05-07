@@ -276,7 +276,11 @@ class DataFrameGroupBy(GroupBy):
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeDataFrameGroupBy, item):
-            return partial(getattr(_MissingPandasLikeDataFrameGroupBy, item), self)
+            property_or_func = getattr(_MissingPandasLikeDataFrameGroupBy, item)
+            if isinstance(property_or_func, property):
+                return property_or_func.fget(self)  # type: ignore
+            else:
+                return partial(property_or_func, self)
         return self.__getitem__(item)
 
     def __getitem__(self, item):
@@ -295,7 +299,11 @@ class SeriesGroupBy(GroupBy):
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeSeriesGroupBy, item):
-            return partial(getattr(_MissingPandasLikeSeriesGroupBy, item), self)
+            property_or_func = getattr(_MissingPandasLikeSeriesGroupBy, item)
+            if isinstance(property_or_func, property):
+                return property_or_func.fget(self)  # type: ignore
+            else:
+                return partial(property_or_func, self)
         raise AttributeError(item)
 
     @property
