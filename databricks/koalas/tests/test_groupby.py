@@ -106,12 +106,30 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                                                inspect.isfunction)
         for name, _ in missing_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "GroupBy.*{}.*not implemented".format(name)):
+                                        "method.*GroupBy.*{}.*not implemented"
+                                        .format(name)):
                 getattr(kdf.groupby('a'), name)()
 
         missing_functions = inspect.getmembers(_MissingPandasLikeSeriesGroupBy,
                                                inspect.isfunction)
         for name, _ in missing_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "GroupBy.*{}.*not implemented".format(name)):
+                                        "method.*GroupBy.*{}.*not implemented"
+                                        .format(name)):
                 getattr(kdf.a.groupby('a'), name)()
+
+        missing_properties = inspect.getmembers(_MissingPandasLikeDataFrameGroupBy,
+                                                lambda o: isinstance(o, property))
+        for name, _ in missing_properties:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "property.*GroupBy.*{}.*not implemented"
+                                        .format(name)):
+                getattr(kdf.groupby('a'), name)
+
+        missing_properties = inspect.getmembers(_MissingPandasLikeSeriesGroupBy,
+                                                lambda o: isinstance(o, property))
+        for name, _ in missing_properties:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "property.*GroupBy.*{}.*not implemented"
+                                        .format(name)):
+                getattr(kdf.a.groupby('a'), name)

@@ -26,7 +26,7 @@ from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 
 
-class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
+class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     @property
     def ps(self):
@@ -204,5 +204,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         missing_functions = inspect.getmembers(_MissingPandasLikeSeries, inspect.isfunction)
         for name, _ in missing_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "Series.*{}.*not implemented".format(name)):
+                                        "method.*Series.*{}.*not implemented".format(name)):
                 getattr(ks, name)()
+
+        missing_properties = inspect.getmembers(_MissingPandasLikeSeries,
+                                                lambda o: isinstance(o, property))
+        for name, _ in missing_properties:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "property.*Series.*{}.*not implemented".format(name)):
+                getattr(ks, name)

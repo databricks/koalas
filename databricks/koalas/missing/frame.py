@@ -14,15 +14,36 @@
 # limitations under the License.
 #
 
-from databricks.koalas.missing import _unsupported_function
+from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
 def unsupported_function(method_name):
     return _unsupported_function(class_name='pd.DataFrame', method_name=method_name)
 
 
+def unsupported_property(property_name):
+    return _unsupported_property(class_name='pd.DataFrame', property_name=property_name)
+
+
 class _MissingPandasLikeDataFrame(object):
 
+    # Properties
+    T = unsupported_property('T')
+    at = unsupported_property('at')
+    axes = unsupported_property('axes')
+    blocks = unsupported_property('blocks')
+    empty = unsupported_property('empty')
+    ftypes = unsupported_property('ftypes')
+    iat = unsupported_property('iat')
+    iloc = unsupported_property('iloc')
+    is_copy = unsupported_property('is_copy')
+    ix = unsupported_property('ix')
+    ndim = unsupported_property('ndim')
+    size = unsupported_property('size')
+    style = unsupported_property('style')
+    values = unsupported_property('values')
+
+    # Functions
     add = unsupported_function('add')
     add_prefix = unsupported_function('add_prefix')
     add_suffix = unsupported_function('add_suffix')

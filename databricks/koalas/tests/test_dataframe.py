@@ -309,8 +309,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         missing_functions = inspect.getmembers(_MissingPandasLikeDataFrame, inspect.isfunction)
         for name, _ in missing_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "DataFrame.*{}.*not implemented".format(name)):
+                                        "method.*DataFrame.*{}.*not implemented".format(name)):
                 getattr(kdf, name)()
+
+        missing_properties = inspect.getmembers(_MissingPandasLikeDataFrame,
+                                                lambda o: isinstance(o, property))
+        for name, _ in missing_properties:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "property.*DataFrame.*{}.*not implemented".format(name)):
+                getattr(kdf, name)
 
     def test_to_numpy(self):
         pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
