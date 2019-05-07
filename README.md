@@ -30,12 +30,6 @@ This project is currently in beta and is rapidly evolving, with a weekly release
   - [Guardrails to prevent users from shooting themselves in the foot](#guardrails-to-prevent-users-from-shooting-themselves-in-the-foot)
   - [Be a lean API layer and move fast](#be-a-lean-api-layer-and-move-fast)
   - [High test coverage](#high-test-coverage)
-- [Development Guide](#development-guide)
-  - [Environment Setup](#environment-setup)
-  - [Running Tests](#running-tests)
-  - [Building Documentation](#building-documentation)
-  - [Coding Conventions](#coding-conventions)
-  - [Release Instructions](#release-instructions)
 - [FAQ](#faq)
   - [What's the project's status?](#whats-the-projects-status)
   - [Should I use PySpark's DataFrame API or Koalas?](#should-i-use-pysparks-dataframe-api-or-koalas)
@@ -83,9 +77,13 @@ df.columns = ['x', 'y', 'z1']
 df['x2'] = df.x * df.x
 ```
 
+
 ## Documentation
 
 Project docs are published here: https://koalas.readthedocs.io
+
+You can also find the development guide here: https://github.com/databricks/koalas/master/CONTRIBUTING.md
+
 
 ## Mailing List
 
@@ -162,89 +160,6 @@ This approach enables us to move fast. For the considerable future, we aim to be
 
 Koalas should be well tested. The project tracks its test coverage with over 90% across the entire codebase, and close to 100% for critical parts. Pull requests will not be accepted unless they have close to 100% statement coverage from the codecov report.
 
-
-## Development Guide
-
-### Environment Setup
-
-We recommend setting up a Conda environment for development:
-```bash
-conda create --name koalas-dev-env python=3.6
-conda activate koalas-dev-env
-conda install -c conda-forge pyspark=2.4
-conda install -c conda-forge --yes --file requirements-dev.txt
-pip install -e .  # installs koalas from current checkout
-```
-
-Once setup, make sure you switch to `koalas-dev-env` before development:
-```bash
-conda activate koalas-dev-env
-```
-
-### Running Tests
-
-There is a script `./dev/pytest` which is exactly same as `pytest` but with some default settings to run Koalas tests easily.
-
-To run all the tests, similar to our CI pipeline:
-```bash
-# Run all unittest and doctest
-./dev/pytest
-```
-
-To run a specific test file:
-```bash
-# Run unittest
-./dev/pytest -k test_dataframe.py
-
-# Run doctest
-./dev/pytest -k series.py --doctest-modules databricks
-```
-
-To run a specific doctest/unittest:
-```bash
-# Run unittest
-./dev/pytest -k "DataFrameTest and test_Dataframe"
-
-# Run doctest
-./dev/pytest -k DataFrame.corr --doctest-modules databricks
-```
-
-Note that `-k` is used for simplicity although it takes an expression. You can use `--verbose` to check what to filter. See `pytest --help` for more details.
-
-### Building Documentation
-
-To build documentation via Sphinx:
-
-```bash
-cd docs && make clean html
-```
-
-It generates HTMLs under `docs/build/html` directory. Open `docs/build/html/index.html` to check if documentation is built properly.
-
-### Coding Conventions
-We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
-
-### Release Instructions
-Only project maintainers can do the following.
-
-Step 1. Make sure version is set correctly in `databricks/koalas/version.py`.
-
-Step 2. Make sure the build is green.
-
-Step 3. Create a new release on GitHub. Tag it as the same version as the setup.py.
-If the version is "0.1.0", tag the commit as "v0.1.0".
-
-Step 4. Upload the package to PyPi:
-```bash
-rm -rf dist/koalas*
-python setup.py bdist_wheel
-export package_version=$(python setup.py --version)
-echo $package_version
-
-python3 -m pip install --user --upgrade twine
-python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl
-python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl
-```
 
 
 ## FAQ
