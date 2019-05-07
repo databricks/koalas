@@ -483,8 +483,13 @@ class DataFrame(_Frame):
                 index=True):
         """
         Convert the object to a JSON string.
+
         Note NaN's and None will be converted to null and datetime objects
         will be converted to UNIX timestamps.
+
+            .. note:: This method should only be used if the resulting JSON is expected
+                to be small, as all the data is loaded into the driver's memory.
+
         Parameters
         ----------
         path_or_buf : string or file handle, optional
@@ -492,14 +497,20 @@ class DataFrame(_Frame):
             a string.
         orient : string
             Indication of expected JSON string format.
+
             * Series
+
               - default is 'index'
               - allowed values are: {'split','records','index','table'}
+
             * DataFrame
+
               - default is 'columns'
               - allowed values are:
                 {'split','records','index','columns','values','table'}
+
             * The format of the JSON string
+
               - 'split' : dict like {'index' -> [index],
                 'columns' -> [columns], 'data' -> [values]}
               - 'records' : list like
@@ -536,15 +547,14 @@ class DataFrame(_Frame):
             A string representing the compression to use in the output file,
             only used when the first argument is a filename. By default, the
             compression is inferred from the filename.
-            .. versionadded:: 0.21.0
-            .. versionchanged:: 0.24.0
-               'infer' option added and set to default
         index : bool, default True
             Whether to include the index values in the JSON string. Not
             including the index (``index=False``) is only supported when
             orient is 'split' or 'table'.
+
         Examples
         --------
+
         >>> df = ks.DataFrame([['a', 'b'], ['c', 'd']],
         ...                   index=['row 1', 'row 2'],
         ...                   columns=['col 1', 'col 2'])
@@ -555,22 +565,27 @@ class DataFrame(_Frame):
 
         Encoding/decoding a Dataframe using ``'records'`` formatted JSON.
         Note that index labels are not preserved with this encoding.
+
         >>> df.to_json(orient='records')
         '[{"col 1":"a","col 2":"b"},{"col 1":"c","col 2":"d"}]'
 
         Encoding/decoding a Dataframe using ``'index'`` formatted JSON:
+
         >>> df.to_json(orient='index')
         '{"row 1":{"col 1":"a","col 2":"b"},"row 2":{"col 1":"c","col 2":"d"}}'
 
         Encoding/decoding a Dataframe using ``'columns'`` formatted JSON:
+
         >>> df.to_json(orient='columns')
         '{"col 1":{"row 1":"a","row 2":"c"},"col 2":{"row 1":"b","row 2":"d"}}'
 
         Encoding/decoding a Dataframe using ``'values'`` formatted JSON:
+
         >>> df.to_json(orient='values')
         '[["a","b"],["c","d"]]'
 
         Encoding with Table Schema
+
         >>> df.to_json(orient='table')
         '{"schema": {"fields":[{"name":"index","type":"string"},\
 {"name":"col 1","type":"string"},\
