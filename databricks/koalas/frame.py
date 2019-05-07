@@ -22,7 +22,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from decorator import dispatch_on
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
@@ -51,13 +50,16 @@ class DataFrame(_Frame):
     """
 
     @derived_from(pd.DataFrame)
-    @dispatch_on('data')
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
-        pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
-        self._init_from_pandas(pdf)
+        if isinstance(data, pd.DataFrame):
+            self._init_from_pandas(data)
+        elif isinstance(data, spark.DataFrame):
+            self._init_from_spark(data, index)
+        else:
+            pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
+            self._init_from_pandas(pdf)
 
-    @__init__.register(pd.DataFrame)
-    def _init_from_pandas(self, pdf, *args):
+    def _init_from_pandas(self, pdf):
         metadata = Metadata.from_pandas(pdf)
         reset_index = pdf.reset_index()
         reset_index.columns = metadata.all_fields
@@ -72,8 +74,7 @@ class DataFrame(_Frame):
         self._init_from_spark(default_session().createDataFrame(reset_index, schema=schema),
                               metadata)
 
-    @__init__.register(spark.DataFrame)
-    def _init_from_spark(self, sdf, metadata=None, *args):
+    def _init_from_spark(self, sdf, metadata=None):
         self._sdf = sdf
         if metadata is None:
             self._metadata = Metadata(column_fields=self._sdf.schema.fieldNames())

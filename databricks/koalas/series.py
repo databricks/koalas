@@ -17,8 +17,7 @@
 """
 A wrapper class for Spark Column to behave similar to pandas Series.
 """
-from decorator import decorator, dispatch_on
-from functools import partial
+from functools import partial, wraps
 from typing import Any
 
 import numpy as np
@@ -40,8 +39,7 @@ from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 
 
-@decorator
-def _column_op(f, self, *args):
+def _column_op(f):
     """
     A decorator that wraps APIs taking/returning Spark Column so that Koalas Series can be
     supported too. If this decorator is used for the `f` function that takes Spark Column and
@@ -52,30 +50,34 @@ def _column_op(f, self, *args):
     :param self: Koalas Series
     :param args: arguments that the function `f` takes.
     """
+    @wraps(f)
+    def wrapper(self, *args):
+        assert all((not isinstance(arg, Series)) or (arg._kdf is self._kdf) for arg in args), \
+            "Cannot combine column argument because it comes from a different dataframe"
 
-    assert all((not isinstance(arg, Series)) or (arg._kdf is self._kdf) for arg in args), \
-        "Cannot combine column argument because it comes from a different dataframe"
-
-    # It is possible for the function `f` takes other arguments than Spark Column.
-    # To cover this case, explicitly check if the argument is Koalas Series and
-    # extract Spark Column. For other arguments, they are used as are.
-    args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
-    scol = f(self._scol, *args)
-    return Series(scol, self._kdf, self._index_info)
+        # It is possible for the function `f` takes other arguments than Spark Column.
+        # To cover this case, explicitly check if the argument is Koalas Series and
+        # extract Spark Column. For other arguments, they are used as are.
+        args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
+        scol = f(self._scol, *args)
+        return Series(scol, self._kdf, self._index_info)
+    return wrapper
 
 
-@decorator
-def _numpy_column_op(f, self, *args):
-    # PySpark does not support NumPy type out of the box. For now, we convert NumPy types
-    # into some primitive types understandable in PySpark.
-    new_args = []
-    for arg in args:
-        # TODO: This is a quick hack to support NumPy type. We should revisit this.
-        if isinstance(self.spark_type, LongType) and isinstance(arg, np.timedelta64):
-            new_args.append(float(arg / np.timedelta64(1, 's')))
-        else:
-            new_args.append(arg)
-    return _column_op(f)(self, *new_args)
+def _numpy_column_op(f):
+    @wraps(f)
+    def wrapper(self, *args):
+        # PySpark does not support NumPy type out of the box. For now, we convert NumPy types
+        # into some primitive types understandable in PySpark.
+        new_args = []
+        for arg in args:
+            # TODO: This is a quick hack to support NumPy type. We should revisit this.
+            if isinstance(self.spark_type, LongType) and isinstance(arg, np.timedelta64):
+                new_args.append(float(arg / np.timedelta64(1, 's')))
+            else:
+                new_args.append(arg)
+        return _column_op(f)(self, *new_args)
+    return wrapper
 
 
 class Series(_Frame):
@@ -92,13 +94,17 @@ class Series(_Frame):
     """
 
     @derived_from(pd.Series)
-    @dispatch_on('data')
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False):
-        s = pd.Series(data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
-        self._init_from_pandas(s)
+        if isinstance(data, pd.Series):
+            self._init_from_pandas(data)
+        elif isinstance(data, spark.Column):
+            self._init_from_spark(data, index, dtype)
+        else:
+            s = pd.Series(
+                data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
+            self._init_from_pandas(s)
 
-    @__init__.register(pd.Series)
-    def _init_from_pandas(self, s, *args):
+    def _init_from_pandas(self, s):
         """
         Creates Koalas Series from Pandas Series.
 
@@ -109,8 +115,7 @@ class Series(_Frame):
         self._init_from_spark(kdf._sdf[kdf._metadata.column_fields[0]],
                               kdf, kdf._metadata.index_info)
 
-    @__init__.register(spark.Column)
-    def _init_from_spark(self, scol, kdf, index_info, *args):
+    def _init_from_spark(self, scol, kdf, index_info):
         """
         Creates Koalas Series from Spark Column.
 
