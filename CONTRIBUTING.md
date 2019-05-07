@@ -2,6 +2,16 @@
 
 This document gives guidance to developers if they plan to contribute to Koalas. The largest amount of work consists simply in implementing the pandas API in Spark terms, which is usually straightforward.
 
+- [Contributing Guide](#contributing-guide)
+  - [Step-by-step Guide](#step-by-step-guide)
+  - [Environment Setup](#environment-setup)
+  - [Running Tests](#running-tests)
+  - [Building Documentation](#building-documentation)
+  - [Coding Conventions](#coding-conventions)
+  - [Release Instructions](#release-instructions)
+
+## Step-by-step Guide
+
 Here is a step by step guide:
 
 1. Read and understand the [Design Principles](https://github.com/databricks/koalas/tree/design-principles#design-principles) for the project. Contributions should match these projects.
@@ -19,7 +29,7 @@ Here is a step by step guide:
 That's it. Your contribution, once merged, will be available in the next release.
 
 
-### Environment Setup
+## Environment Setup
 
 We recommend setting up a Conda environment for development:
 ```bash
@@ -36,7 +46,7 @@ conda activate koalas-dev-env
 ```
 
 
-### Running Tests
+## Running Tests
 
 There is a script `./dev/pytest` which is exactly same as `pytest` but with some default settings to run Koalas tests easily.
 
@@ -67,7 +77,7 @@ To run a specific doctest/unittest:
 Note that `-k` is used for simplicity although it takes an expression. You can use `--verbose` to check what to filter. See `pytest --help` for more details.
 
 
-### Building Documentation
+## Building Documentation
 
 To build documentation via Sphinx:
 
@@ -78,11 +88,11 @@ cd docs && make clean html
 It generates HTMLs under `docs/build/html` directory. Open `docs/build/html/index.html` to check if documentation is built properly.
 
 
-### Coding Conventions
+## Coding Conventions
 We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
 
 
-### Release Instructions
+## Release Instructions
 Only project maintainers can do the following.
 
 Step 1. Make sure version is set correctly in `databricks/koalas/version.py`.
