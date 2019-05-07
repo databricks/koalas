@@ -14,7 +14,7 @@ This document gives guidance to developers if they plan to contribute to Koalas.
 
 Here is a step by step guide:
 
-1. Read and understand the [Design Principles](https://github.com/databricks/koalas/tree/design-principles#design-principles) for the project. Contributions should match these projects.
+1. Read and understand the [Design Principles](https://github.com/databricks/koalas/blob/master/README.md#design-principles) for the project. Contributions should match these projects.
 
 2. Signaling your work: If you are working on something, comment on the relevant ticket that are you doing so to avoid multiple people taking on the same work at the same time. It is also a good practice to signal that your work has stalled or you have moved on and want somebody else to take over.
 
