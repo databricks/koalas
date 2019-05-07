@@ -213,7 +213,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.drop(columns='x'), pd.DataFrame({'y': [3, 4], 'z': [5, 6]}))
         self.assert_eq(kdf.drop(columns=['y', 'z']), pd.DataFrame({'x': [1, 2]}))
         # Assert 'labels' being used when both 'labels' and 'columns' are specified
-        expected_output = pd.DataFrame({'y': [3, 4],'z': [5, 6]})
+        expected_output = pd.DataFrame({'y': [3, 4], 'z': [5, 6]})
         self.assert_eq(kdf.drop(labels=['x'], columns=['y']), expected_output)
 
     def test_dropna(self):
