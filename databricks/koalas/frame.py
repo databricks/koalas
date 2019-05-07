@@ -52,14 +52,14 @@ class DataFrame(_Frame):
     @derived_from(pd.DataFrame)
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
         if isinstance(data, pd.DataFrame):
-            self._init_from_pandas(data, index, columns, dtype, copy)
+            self._init_from_pandas(data)
         elif isinstance(data, spark.DataFrame):
-            self._init_from_spark(data, index, columns, dtype, copy)
+            self._init_from_spark(data, index)
         else:
             pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
             self._init_from_pandas(pdf)
 
-    def _init_from_pandas(self, pdf, *args):
+    def _init_from_pandas(self, pdf):
         metadata = Metadata.from_pandas(pdf)
         reset_index = pdf.reset_index()
         reset_index.columns = metadata.all_fields
@@ -74,7 +74,7 @@ class DataFrame(_Frame):
         self._init_from_spark(default_session().createDataFrame(reset_index, schema=schema),
                               metadata)
 
-    def _init_from_spark(self, sdf, metadata=None, *args):
+    def _init_from_spark(self, sdf, metadata=None):
         self._sdf = sdf
         if metadata is None:
             self._metadata = Metadata(column_fields=self._sdf.schema.fieldNames())

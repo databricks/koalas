@@ -96,15 +96,15 @@ class Series(_Frame):
     @derived_from(pd.Series)
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False):
         if isinstance(data, pd.Series):
-            self._init_from_pandas(data, index, dtype, name, copy, fastpath)
+            self._init_from_pandas(data)
         elif isinstance(data, spark.Column):
-            self._init_from_spark(data, index, dtype, name, copy, fastpath)
+            self._init_from_spark(data, index, dtype)
         else:
             s = pd.Series(
                 data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
             self._init_from_pandas(s)
 
-    def _init_from_pandas(self, s, *args):
+    def _init_from_pandas(self, s):
         """
         Creates Koalas Series from Pandas Series.
 
@@ -115,7 +115,7 @@ class Series(_Frame):
         self._init_from_spark(kdf._sdf[kdf._metadata.column_fields[0]],
                               kdf, kdf._metadata.index_info)
 
-    def _init_from_spark(self, scol, kdf, index_info, *args):
+    def _init_from_spark(self, scol, kdf, index_info):
         """
         Creates Koalas Series from Spark Column.
 
