@@ -23,6 +23,30 @@ Koalas targets Python data scientists. We want to stick to the convention that u
 
 - Koalas respects to the largest extent the conventions of the Python numerical ecosystem, and allows the use of numpy types, etc. that are supported by Spark.
 
+- Koalas docs follow rest of the PyData project docs.
+
+#### Unify small data (pandas) API and big data (Spark) API, but pandas first
+
+The Koalas DataFrame is meant to provide the best of pandas and Spark under a single API, with easy and clear conversions between each API when necessary. When Spark and pandas have similar APIs with subtle differences, the principle is to honor the contract of the pandas API first.
+
+There are 4 different classes of functions:
+
+ 1. Functions that are only found in Spark (`select`, `selectExpr`). These functions should also beavailable in Koalas.
+
+ 2. Functions that are found in Spark but that have a clear equivalent in pandas, e.g. `alias` and `rename`. These functions will be implemented as the alias of the pandas function, but should be marked that they are aliases of the same functions. They are provided so that existing users of PySpark can get the benefits of Koalas without having to adapt their code.
+
+ 3. Functions that are found in both Spark and pandas under the same name (`count`, `dtypes`, `head`). The return value is the same as the return type in pandas (and not Spark's).
+
+ 4. Functions that are only found in pandas. When these functions are appropriate for distributed datasets, they should become available in Koalas.
+
+
+#### Be a lean API layer and move fast
+
+Koalas is designed as an API overlay layer on top of Spark. The project should be lightweight, and most functions should be implemented as wrappers around Spark or pandas. Koalas does not accept heavyweight implementations, e.g. execution engine changes.
+
+This approach enables us to move fast. For the considerable future, we aim to be making weekly releases.
+
+
 #### Return Koalas data structure for big data, and pandas data structure for small data
 
 Often developers face the question whether a particular function should return a Koalas DataFrame/Series, or a pandas DataFrame/Series. The principle is: if the returned object can be large, use a Koalas DataFrame/Series. If the data is bound to be small, use a pandas DataFrame/Series. For example, `DataFrame.dtypes` return a pandas Series, because the number of columns in a DataFrame is bounded and small, whereas `DataFrame.head()` or `Series.unique()` returns a Koalas DataFrame, because the resulting object can be large.
@@ -39,7 +63,7 @@ A recommended way to add documentation is to start with the docstring of the cor
 Certain operations in pandas are prohibitively expensive as data scales, and we don't want to give users the illusion that they can rely on such operations in Koalas. That is to say, methods implemented in Koalas should be safe to perform by default on large datasets. As a result, the following capabilities are not implemented in Koalas:
 
 1. Capabilities that are fundamentally not parallelizable: e.g. imperatively looping over each element
-2. Capabilities that require materializing the entire working set in a single node's memory: e.g. [`DataFrame.values`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.values.html#pandas.DataFrame.values).
+2. Capabilities that require materializing the entire working set in a single node's memory: e.g. [`pandas.DataFrame.values`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.values.html#pandas.DataFrame.values).
 
 A few exceptions, however, exist. One common pattern with "big data science" is that while the initial dataset is large, the working set becomes smaller as the analysis goes deeper. For example, data scientists often perform aggregation on datasets and want to then convert the aggregated dataset to some local data structure. To help data scientists, we offer the following:
 
@@ -49,58 +73,9 @@ A few exceptions, however, exist. One common pattern with "big data science" is 
 Note that it is clear from the names that these functions return some local data structure that would require materializing data in a single node's memory. For these functions, we also explicitly document them with a warning note that the resulting data structure must be small.
 
 
-## Unifying pandas API and Spark API
+#### High test coverage
 
-The Koalas DataFrame is meant to provide the best of pandas and Spark under a single API, with easy and clear conversions between each API when necessary. It aims at incorporating:
- - most of the data transform tools from pandas
- - the SQL capabilities of Spark
- - a solid numerical foundation to integrate ML models and algorithms
-
-There are 4 different classes of functions:
- 1. Functions that are only found in Spark (`select`, `selectExpr`). These functions should also beavailable in Koalas.
- 2. Functions that are found in Spark but that have a clear equivalent in pandas, e.g. `alias` and `rename`. These 
-   functions will be implemented as the alias of the pandas function, but should be marked that they are aliases of the same functions. They are provided so that existing users of PySpark can get the benefits
-   of Koalas without having to adapt their code.
- 3. Functions that are found in both Spark and pandas under the same name (`count`, `dtypes`, `head`). The return value is the same as the return type in pandas (and not Spark's).
- 4. Functions that are only found in pandas. When these functions are appropriate for distributed datasets, they are available in Koalas.
-
-Since Spark and Pandas have the similar API's with slight differences, the choice is to honor the contract of the pandas API first.
-
-
-### Return Type
-
-Often developers face the question whether a particular function should return a Koalas DataFrame/Series, or a pandas DataFrame/Series.
-
-The principle is: if the returned object can be large, use a Koalas DataFrame/Series. If the data is bound to be small, use a pandas DataFrame/Series. For example, `DataFrame.dtypes` return a pandas Series, because the number of columns in a DataFrame is bounded and small, whereas `DataFrame.head(n)` returns a Koalas DataFrame, because the number n can be very large.
-
-
-### Pandas functions that are NOT considered for inclusion in Koalas
-
-A few categories of functions are not considered for now to be part of the API, for different reasons:
-
-1. *Low level and deprecated functions* (Frame, user types, DataFrame.ix)
-
-2. *Functions that have an unexpected performance impact*
-
-    These functions (and the caller of theses functions) assume that the data is represented in a compact format (numpy in the case of pandas). Because these functions would force the full collection of the data and because there is a well-documented workaround, it is recommended that  they are not included. 
-
-    The workaround is to force the materialization of the pandas DataFrame, either by calling:
-      - [`.to_pandas()`](https://koalas.readthedocs.io/en/stable/reference/api/databricks.koalas.DataFrame.to_pandas.html) : returns a pandas DataFrame, koalas only
-      - [`.to_numpy()`](https://koalas.readthedocs.io/en/stable/reference/api/databricks.koalas.DataFrame.to_numpy.html): returns a numpy array, works with both pandas and Koalas
-
-    Here is a list of such functions:
-    - DataFrame.values
-    - `DataFrame.__iter__` and the array protocol `__array__`
-
-3. *Low-level functions for multidimensional arrays*: Other frameworks like Dask or Molin have a low-level block representation of a multidimensional array that Spark lacks. This includes for example all the array representations in `pandas.array`. Until such representation is available, these functions should not be considered.
-
-
-### Spark functions that should be included in Koalas
-
-- pyspark.range
-- Functions to control the partitioning, and in-memory representation of the data.
-- Functions that add SQL-like functionalities to DataFrame.
-- Functions that present algorithms specific to distributed datasets (approx quantiles for example)
+Koalas should be well tested. The project tracks its test coverage with over 90% across the entire codebase, and close to 100% for critical parts. Pull requests will not be accepted unless they have close to 100% statement coverage from the codecov report.
 
 
 ## How to contribute
