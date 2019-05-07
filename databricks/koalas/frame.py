@@ -574,19 +574,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def to_csv(self, path_or_buf=None, sep=",", na_rep='', float_format=None,
                columns=None, header=True, index=True, index_label=None,
                mode='w', encoding=None, compression='infer', quoting=None,
-               quotechar='"', line_terminator=None, chunksize=None,
+               quotechar='"', line_terminator="\n", chunksize=None,
                tupleize_cols=None, date_format=None, doublequote=True,
                escapechar=None, decimal='.'):
-        r"""
+        """
         Write object to a comma-separated values (csv) file.
-            The order of arguments for Series was changed.
+
         Parameters
         ----------
         path_or_buf : str or file handle, default None
             File path or object, if None is provided the result is returned as
             a string.  If a file object is passed it should be opened with
             `newline=''`, disabling universal newlines.
-               Was previously named "path" for Series.
+
         sep : str, default ','
             String of length 1. Field delimiter for the output file.
         na_rep : str, default ''
@@ -598,7 +598,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         header : bool or list of str, default True
             Write out the column names. If a list of strings is given it is
             assumed to be aliases for the column names.
-               Previously defaulted to False for Series.
         index : bool, default True
             Write row names (index).
         index_label : str or sequence, or False, default None
@@ -618,14 +617,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             is path-like, then detect compression from the following
             extensions: '.gz', '.bz2', '.zip' or '.xz'. (otherwise no
             compression).
-               'infer' option added and set to default.
         quoting : optional constant from csv module
             Defaults to csv.QUOTE_MINIMAL. If you have set a `float_format`
             then floats are converted to strings and thus csv.QUOTE_NONNUMERIC
             will treat them as non-numeric.
         quotechar : str, default '\"'
             String of length 1. Character used to quote fields.
-        line_terminator : string, optional
+        line_terminator : string, default '\n'
             The newline character or character sequence to use in the output
             file. Defaults to `os.linesep`, which depends on the OS in which
             this method is called ('\n' for linux, '\r\n' for Windows, i.e.).
@@ -635,8 +633,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Write MultiIndex columns as a list of tuples (if True) or in
             the new, expanded format, where each MultiIndex column is a row
             in the CSV (if False).
-               This argument will be removed and will always write each row
-               of the multi-index as a separate row in the CSV file.
         date_format : str, default None
             Format string for datetime objects.
         doublequote : bool, default True
@@ -647,25 +643,29 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         decimal : str, default '.'
             Character recognized as decimal separator. E.g. use ',' for
             European data.
+
         Returns
         -------
         None or str
             If path_or_buf is None, returns the resulting csv format as a
             string. Otherwise returns None.
+
+            .. note:: This method should only be used if the resulting CSV is expected
+            to be small, as all the data is loaded into the driver's memory.
+
         Examples
         --------
         >>> df = ks.DataFrame({'name': ['Raphael', 'Donatello'],
         ...                    'mask': ['red', 'purple'],
         ...                    'weapon': ['sai', 'bo staff']})
         >>> df.to_csv(index=False)
-        'name,mask,weapon\nRaphael,red,sai\nDonatello,purple,bo staff\n'
+        'name,mask,weapon\\nRaphael,red,sai\\nDonatello,purple,bo staff\\n'
         """
+
         # Make sure locals() call is at the top of the function so we don't capture local variables.
         args = locals()
         kdf = self
 
-        if line_terminator is None and pd.__version__ < "0.24":
-            args['line_terminator'] = '\n'
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_csv, pd.DataFrame.to_csv, args)
 
