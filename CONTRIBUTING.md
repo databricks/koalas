@@ -40,20 +40,14 @@ There are 4 different classes of functions:
  4. Functions that are only found in pandas. When these functions are appropriate for distributed datasets, they should become available in Koalas.
 
 
-#### Be a lean API layer and move fast
-
-Koalas is designed as an API overlay layer on top of Spark. The project should be lightweight, and most functions should be implemented as wrappers around Spark or pandas. Koalas does not accept heavyweight implementations, e.g. execution engine changes.
-
-This approach enables us to move fast. For the considerable future, we aim to be making weekly releases.
-
-
 #### Return Koalas data structure for big data, and pandas data structure for small data
 
 Often developers face the question whether a particular function should return a Koalas DataFrame/Series, or a pandas DataFrame/Series. The principle is: if the returned object can be large, use a Koalas DataFrame/Series. If the data is bound to be small, use a pandas DataFrame/Series. For example, `DataFrame.dtypes` return a pandas Series, because the number of columns in a DataFrame is bounded and small, whereas `DataFrame.head()` or `Series.unique()` returns a Koalas DataFrame, because the resulting object can be large.
 
+
 #### Provide well documented APIs, with examples
 
-Every single function and parameter should be documented. Most functions are documented with examples, because those are the easiest to understand than a blob of text explaining what the function does.
+All functions and parameters should be documented. Most functions should be documented with examples, because those are the easiest to understand than a blob of text explaining what the function does.
 
 A recommended way to add documentation is to start with the docstring of the corresponding function in PySpark or pandas, and adapt it for Koalas. If you are adding a new function, also add it to the API reference doc index page in `docs/source/reference` directory. The examples in docstring also improve our test coverage.
 
@@ -63,7 +57,7 @@ A recommended way to add documentation is to start with the docstring of the cor
 Certain operations in pandas are prohibitively expensive as data scales, and we don't want to give users the illusion that they can rely on such operations in Koalas. That is to say, methods implemented in Koalas should be safe to perform by default on large datasets. As a result, the following capabilities are not implemented in Koalas:
 
 1. Capabilities that are fundamentally not parallelizable: e.g. imperatively looping over each element
-2. Capabilities that require materializing the entire working set in a single node's memory: e.g. [`pandas.DataFrame.values`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.values.html#pandas.DataFrame.values).
+2. Capabilities that require materializing the entire working set in a single node's memory. This is why we do not implement [`pandas.DataFrame.values`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.values.html#pandas.DataFrame.values). Another example is the `_repr_html_` call caps the total number of records shown to a maximum of 1000, to prevent users from blowing up their driver node simply by typing the name of the DataFrame in a notebook.
 
 A few exceptions, however, exist. One common pattern with "big data science" is that while the initial dataset is large, the working set becomes smaller as the analysis goes deeper. For example, data scientists often perform aggregation on datasets and want to then convert the aggregated dataset to some local data structure. To help data scientists, we offer the following:
 
@@ -71,6 +65,13 @@ A few exceptions, however, exist. One common pattern with "big data science" is 
 - [`DataFrame.to_numpy()`](https://koalas.readthedocs.io/en/stable/reference/api/databricks.koalas.DataFrame.to_numpy.html): returns a numpy array, works with both pandas and Koalas
 
 Note that it is clear from the names that these functions return some local data structure that would require materializing data in a single node's memory. For these functions, we also explicitly document them with a warning note that the resulting data structure must be small.
+
+
+#### Be a lean API layer and move fast
+
+Koalas is designed as an API overlay layer on top of Spark. The project should be lightweight, and most functions should be implemented as wrappers around Spark or pandas. Koalas does not accept heavyweight implementations, e.g. execution engine changes.
+
+This approach enables us to move fast. For the considerable future, we aim to be making weekly releases.
 
 
 #### High test coverage
