@@ -22,6 +22,7 @@ from functools import partial
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -36,7 +37,6 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.utils import validate_arguments_and_invoke_function
-from databricks.koalas.typedef import list_sanitizer
 
 
 @decorator
@@ -608,16 +608,13 @@ class Series(_Frame):
         5    False
         Name: animal, dtype: bool
         """
-        if isinstance(values, list):
-            list_sanitizer(values)
-            return Series(self._scol.isin(values).alias(self.name), self._kdf,
-                          self._index_info)
-        elif isinstance(values, set):
-            list_sanitizer(list(values))
-            return Series(self._scol.isin(list(values)).alias(self.name), self._kdf,
-                          self._index_info)
-        else:
-            raise TypeError('Values should be list or set.')
+        if not is_list_like(values):
+            raise TypeError("only list-like objects are allowed to be passed"
+                            " to isin(), you passed a [{values_type}]"
+                            .format(values_type=type(values).__name__))
+
+        return Series(self._scol.isin(list(values)).alias(self.name), self._kdf,
+                      self._index_info)
 
     def corr(self, other, method='pearson'):
         """

@@ -23,7 +23,7 @@ from functools import partial, reduce
 import numpy as np
 import pandas as pd
 from decorator import dispatch_on
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import BooleanType, StructField, StructType, to_arrow_type
@@ -38,7 +38,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.selection import SparkDataFrameLocator
-from databricks.koalas.typedef import infer_pd_series_spark_type, list_sanitizer
+from databricks.koalas.typedef import infer_pd_series_spark_type
 
 
 class DataFrame(_Frame):
@@ -1402,30 +1402,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         falcon     False      False
         dog        False       True
         """
-        if isinstance(values, dict):
-            if set(values.keys()).issubset(self.columns):
-                _select_columns = self._metadata.index_fields
-                for col in self.columns:
-                    if col in list(values.keys()):
-                        list_sanitizer(values[col])
-                        _select_columns.append(self[col]._scol.isin(values[col]).alias(col))
-                    else:
-                        _select_columns.append(F.lit(False).alias(col))
+        if isinstance(values, (pd.DataFrame, pd.Series)):
+            raise NotImplementedError("DataFrame and Series are not supported")
+        if isinstance(values, dict) and not set(values.keys()).issubset(self.columns):
+            raise AttributeError(
+                "'DataFrame' object has no attribute %s"
+                % (set(values.keys()).difference(self.columns)))
 
-                return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
-            else:
-                raise AttributeError(
-                    "'DataFrame' object has no attribute %s"
-                    % (set(values.keys()).difference(self.columns)))
-        elif not isinstance(values, (pd.DataFrame, pd.Series)) and isinstance(values, Iterable):
-            list_sanitizer(values)
-            _select_columns = self._metadata.index_fields + [self[col]._scol.isin(values).alias(col)
-                                                             for col in self.columns]
-            return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
-        elif isinstance(values, (pd.DataFrame, pd.Series)):
-            raise NotImplementedError("Dataframe and Series are not supported")
+        _select_columns = self._metadata.index_fields
+        if isinstance(values, dict):
+            for col in self.columns:
+                if col in values:
+                    _select_columns.append(self[col]._scol.isin(values[col]).alias(col))
+                else:
+                    _select_columns.append(F.lit(False).alias(col))
+        elif is_list_like(values):
+            _select_columns += [
+                self[col]._scol.isin(list(values)).alias(col) for col in self.columns]
         else:
             raise TypeError('Values should be iterable, Series, DataFrame or dict.')
+
+        return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
 
     @derived_from(pd.DataFrame)
     def pipe(self, func, *args, **kwargs):

@@ -136,17 +136,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         ds = koalas.from_pandas(s)
 
         self.assert_eq(ds.isin(['cow', 'lama']), s.isin(['cow', 'lama']))
-        self.assert_eq(ds.isin(set(['cow'])), s.isin(set(['cow'])))
+        self.assert_eq(ds.isin({'cow'}), s.isin({'cow'}))
 
-        msg = "Values should be list or set"
+        msg = "only list-like objects are allowed to be passed to isin()"
         with self.assertRaisesRegex(TypeError, msg):
-            ds.isin(s)
-
-        # test list sanitizer
-        value_list = [s, s]
-        msg = "List contains unsupported type <class 'pandas.core.series.Series'>"
-        with self.assertRaisesRegex(TypeError, msg):
-            ds.isin(value_list)
+            ds.isin(1)
 
     def test_dropna(self):
         ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
