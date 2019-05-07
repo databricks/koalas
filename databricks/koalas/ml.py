@@ -42,6 +42,11 @@ def corr(kdf: 'ks.DataFrame', method: str = 'pearson') -> pd.DataFrame:
                    * pearson : standard correlation coefficient
                    * spearman : Spearman rank correlation
     :return: :class:`pandas.DataFrame`
+
+    >>> ks.DataFrame({'A': [0, 1], 'B': [1, 0], 'C': ['x', 'y']}).corr()
+         A    B
+    A  1.0 -1.0
+    B -1.0  1.0
     """
     assert method in ('pearson', 'spearman')
     ndf, fields = to_numeric_df(kdf)
@@ -63,6 +68,9 @@ def to_numeric_df(kdf: 'ks.DataFrame') -> Tuple[pyspark.sql.DataFrame, List[str]
     :param kdf: the koalas dataframe.
     :return: a pair of dataframe, list of strings (the name of the columns
              that were converted to numerical types)
+
+    >>> to_numeric_df(ks.DataFrame({'A': [0, 1], 'B': [1, 0], 'C': ['x', 'y']}))
+    (DataFrame[_correlation_output: vector], ['A', 'B'])
     """
     # TODO, it should be more robust.
     accepted_types = {np.dtype(dt) for dt in [np.int8, np.int16, np.int32, np.int64,
