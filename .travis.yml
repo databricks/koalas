@@ -60,6 +60,7 @@ install:
   - conda list
   -
   # Useful for to_clipboard test
+  - export DISPLAY=:0.0
   - sudo apt-get install xclip
 
 before_script:
