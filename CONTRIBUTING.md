@@ -15,7 +15,7 @@ Over time, the project will expand to include functionalities specific to big da
 
 ## Design Principles
 
-#### Pythonic
+#### Be Pythonic
 
 Koalas targets Python data scientists. We want to stick to the convention that users are already familiar with as much as possible. Here are some examples:
 
@@ -23,20 +23,30 @@ Koalas targets Python data scientists. We want to stick to the convention that u
 
 - Koalas respects to the largest extent the conventions of the Python numerical ecosystem, and allows the use of numpy types, etc. that are supported by Spark.
 
-#### Koalas data structure for big data, and pandas data structure for small data.
+#### Return Koalas data structure for big data, and pandas data structure for small data
 
 Often developers face the question whether a particular function should return a Koalas DataFrame/Series, or a pandas DataFrame/Series. The principle is: if the returned object can be large, use a Koalas DataFrame/Series. If the data is bound to be small, use a pandas DataFrame/Series. For example, `DataFrame.dtypes` return a pandas Series, because the number of columns in a DataFrame is bounded and small, whereas `DataFrame.head()` or `Series.unique()` returns a Koalas DataFrame, because the resulting object can be large.
 
-#### Well documented APIs, with examples
+#### Provide well documented APIs, with examples
 
 Every single function and parameter should be documented. Most functions are documented with examples, because those are the easiest to understand than a blob of text explaining what the function does.
 
 A recommended way to add documentation is to start with the docstring of the corresponding function in PySpark or pandas, and adapt it for Koalas. If you are adding a new function, also add it to the API reference doc index page in `docs/source/reference` directory. The examples in docstring also improve our test coverage.
 
 
-#### Minimize the chances for users to shoot themselves in the foot
+#### Guardrails to prevent users from shooting themselves in the foot
 
-   
+Certain operations in pandas are prohibitively expensive as data scales, and we don't want to give users the illusion that they can rely on such operations in Koalas. That is to say, methods implemented in Koalas should be safe to perform by default on large datasets. As a result, the following capabilities are not implemented in Koalas:
+
+1. Capabilities that are fundamentally not parallelizable: e.g. imperatively looping over each element
+2. Capabilities that require materializing the entire working set in a single node's memory: e.g. [`DataFrame.values`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.values.html#pandas.DataFrame.values).
+
+A few exceptions, however, exist. One common pattern with "big data science" is that while the initial dataset is large, the working set becomes smaller as the analysis goes deeper. For example, data scientists often perform aggregation on datasets and want to then convert the aggregated dataset to some local data structure. To help data scientists, we offer the following:
+
+- [`DataFrame.to_pandas()`](https://koalas.readthedocs.io/en/stable/reference/api/databricks.koalas.DataFrame.to_pandas.html) : returns a pandas DataFrame, koalas only
+- [`DataFrame.to_numpy()`](https://koalas.readthedocs.io/en/stable/reference/api/databricks.koalas.DataFrame.to_numpy.html): returns a numpy array, works with both pandas and Koalas
+
+Note that it is clear from the names that these functions return some local data structure that would require materializing data in a single node's memory. For these functions, we also explicitly document them with a warning note that the resulting data structure must be small.
 
 
 ## Unifying pandas API and Spark API
