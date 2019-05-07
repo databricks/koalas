@@ -18,7 +18,7 @@
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
 from functools import partial, reduce
-from typing import Any
+from typing import Any, List, Union
 
 import numpy as np
 import pandas as pd
@@ -1164,11 +1164,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf
         return DataFrame(spark.DataFrame(sdf._jdf.distinct(), sdf.sql_ctx), self._metadata.copy())
 
-    def drop(self, labels, axis=1):
+    def drop(self, labels=None, axis=1, columns: Union[str, List[str]] = None):
         """
         Drop specified labels from columns.
 
-        Remove columns by specifying label names and axis=1.
+        Remove columns by specifying label names and axis=1 or columns.
+        When specifying both labels and columns, only labels will be dropped.
         Removing rows is yet to be implemented.
 
         Parameters
@@ -1178,6 +1179,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         axis : {1 or 'columns'}, default 1
             .. dropna currently only works for axis=1 'columns'
                axis=0 is yet to be implemented.
+        columns : single label or list-like
+            Alternative to specifying axis (``labels, axis=1``
+            is equivalent to ``columns=labels``).
 
         Returns
         -------
@@ -1206,25 +1210,31 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  1  7
         1  2  8
 
+        >>> df.drop(columns=['y', 'z'])
+           x  w
+        0  1  7
+        1  2  8
+
         Notes
         -----
         Currently only axis = 1 is supported in this function,
         axis = 0 is yet to be implemented.
         """
-        axis = self._validate_axis(axis)
-        if axis == 1:
-            if isinstance(labels, list):
-                sdf = self._sdf.drop(*labels)
-                metadata = self._metadata.copy(
-                    column_fields=[column for column in self._metadata.column_fields
-                                   if column not in labels])
-            else:
-                sdf = self._sdf.drop(labels)
-                metadata = self._metadata.copy(
-                    column_fields=[column for column in self._metadata.column_fields
-                                   if column != labels])
+        if labels is not None:
+            axis = self._validate_axis(axis)
+            if axis == 1:
+                return self.drop(columns=labels)
+            raise NotImplementedError("Drop currently only works for axis=1")
+        elif columns is not None:
+            if isinstance(columns, str):
+                columns = [columns]
+            sdf = self._sdf.drop(*columns)
+            metadata = self._metadata.copy(
+                column_fields=[column for column in self.columns if column not in columns]
+            )
             return DataFrame(sdf, metadata)
-        raise NotImplementedError("Drop currently only works for axis=1")
+        else:
+            raise ValueError("Need to specify at least one of 'labels' or 'columns'")
 
     def get(self, key, default=None):
         """
