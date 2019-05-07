@@ -48,6 +48,29 @@ def from_pandas(pdf):
         raise ValueError("Unknown data type: {}".format(type(pdf)))
 
 
+def sql(query: str) -> DataFrame:
+    """
+    Execute a SQL query and return the result as a Koalas DataFrame.
+
+    Parameters
+    ----------
+    query : str
+        the SQL query
+
+    Returns
+    -------
+    df : koalas.DataFrame
+
+    Examples
+    --------
+    >>> ks.sql("select * from range(10) where id > 7")
+       id
+    0   8
+    1   9
+    """
+    return DataFrame(default_session().sql(query))
+
+
 def read_csv(path, header='infer', names=None, usecols=None,
              mangle_dupe_cols=True, parse_dates=False, comment=None):
     """Read CSV (comma-separated) file into DataFrame.
