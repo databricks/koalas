@@ -1,8 +1,8 @@
-# Contributing Guide and Design Principles <!-- omit in toc -->
+# Contributing Guide and Design Principles
 
 This document gives guidance to developers if they plan to contribute to Koalas.
 In particular, it answers the questions:
- - What is in the scope of the Koalas project? What should go into PySpark or Pandas instead?
+ - What is in the scope of the Koalas project? What should go into PySpark or pandas instead?
  - What is expected for code contributions?
 
 Koalas focuses on making data scientists productive when analyzing big data. The initial goal is to remove as much friction as possible for data scientists when they transition from using pandas against small datasets to Spark on large datasets. As such, it focuses on existing users of pandas.
@@ -48,14 +48,14 @@ A few categories of functions are not considered for now to be part of the API, 
     These functions (and the caller of theses functions) assume that the data is represented in a compact format (numpy in the case of pandas). Because these functions would force the full collection of the data and because there is a well-documented workaround, it is recommended that  they are not included. 
 
     The workaround is to force the materialization of the pandas DataFrame, either by calling:
-      - `.to_pandas()` (koalas only)
-      - `.to_numpy()` (works with both pandas and koalas)
+      - [`.to_pandas()`](https://koalas.readthedocs.io/en/stable/reference/api/databricks.koalas.DataFrame.to_pandas.html) : returns a pandas DataFrame, koalas only
+      - [`.to_numpy()`](https://koalas.readthedocs.io/en/stable/reference/api/databricks.koalas.DataFrame.to_numpy.html): returns a numpy array, works with both pandas and Koalas
 
     Here is a list of such functions:
     - DataFrame.values
     - `DataFrame.__iter__` and the array protocol `__array__`
 
-3. *Low-level multidimensional arrays*: Other frameworks like Dask or Molin have a low-level block representation of a multidimensional array that Spark lacks. Until such representation is available, these functions should not be considered.
+3. *Low-level functions for multidimensional arrays*: Other frameworks like Dask or Molin have a low-level block representation of a multidimensional array that Spark lacks. This includes for example all the array representations in `pandas.array`. Until such representation is available, these functions should not be considered.
 
 
 ### Spark functions that should be included in Koalas
