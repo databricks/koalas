@@ -26,7 +26,7 @@ from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 
 
-class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
+class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     @property
     def ps(self):
