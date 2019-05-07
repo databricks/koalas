@@ -114,7 +114,7 @@ The Koalas DataFrame is meant to provide the best of pandas and Spark under a si
 
 There are 4 different classes of functions:
 
- 1. Functions that are only found in Spark (`select`, `selectExpr`). These functions should also beavailable in Koalas.
+ 1. Functions that are only found in Spark (`select`, `selectExpr`). These functions should also be available in Koalas.
 
  2. Functions that are found in Spark but that have a clear equivalent in pandas, e.g. `alias` and `rename`. These functions will be implemented as the alias of the pandas function, but should be marked that they are aliases of the same functions. They are provided so that existing users of PySpark can get the benefits of Koalas without having to adapt their code.
 
