@@ -18,11 +18,11 @@
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
 from functools import partial, reduce
+from typing import Any, List, Union
 
 import numpy as np
 import pandas as pd
-from decorator import dispatch_on
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import BooleanType, StructField, StructType, to_arrow_type
@@ -50,13 +50,16 @@ class DataFrame(_Frame):
     """
 
     @derived_from(pd.DataFrame)
-    @dispatch_on('data')
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
-        pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
-        self._init_from_pandas(pdf)
+        if isinstance(data, pd.DataFrame):
+            self._init_from_pandas(data)
+        elif isinstance(data, spark.DataFrame):
+            self._init_from_spark(data, index)
+        else:
+            pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
+            self._init_from_pandas(pdf)
 
-    @__init__.register(pd.DataFrame)
-    def _init_from_pandas(self, pdf, *args):
+    def _init_from_pandas(self, pdf):
         metadata = Metadata.from_pandas(pdf)
         reset_index = pdf.reset_index()
         reset_index.columns = metadata.all_fields
@@ -71,8 +74,7 @@ class DataFrame(_Frame):
         self._init_from_spark(default_session().createDataFrame(reset_index, schema=schema),
                               metadata)
 
-    @__init__.register(spark.DataFrame)
-    def _init_from_spark(self, sdf, metadata=None, *args):
+    def _init_from_spark(self, sdf, metadata=None):
         self._sdf = sdf
         if metadata is None:
             self._metadata = Metadata(column_fields=self._sdf.schema.fieldNames())
@@ -182,6 +184,7 @@ class DataFrame(_Frame):
         >>> df = ks.DataFrame({'species': ['bear', 'bear', 'marsupial'],
         ...                    'population': [1864, 22000, 80000]},
         ...                     index=['panda', 'polar', 'koala'])
+        >>> df = df[['species', 'population']]
         >>> df
                  species  population
         panda       bear        1864
@@ -402,6 +405,100 @@ class DataFrame(_Frame):
 
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_string, pd.DataFrame.to_string, args)
+
+    def to_dict(self, orient='dict', into=dict):
+        """
+        Convert the DataFrame to a dictionary.
+
+        The type of the key-value pairs can be customized with the parameters
+        (see below).
+
+        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        orient : str {'dict', 'list', 'series', 'split', 'records', 'index'}
+            Determines the type of the values of the dictionary.
+
+            - 'dict' (default) : dict like {column -> {index -> value}}
+            - 'list' : dict like {column -> [values]}
+            - 'series' : dict like {column -> Series(values)}
+            - 'split' : dict like
+              {'index' -> [index], 'columns' -> [columns], 'data' -> [values]}
+            - 'records' : list like
+              [{column -> value}, ... , {column -> value}]
+            - 'index' : dict like {index -> {column -> value}}
+
+            Abbreviations are allowed. `s` indicates `series` and `sp`
+            indicates `split`.
+
+        into : class, default dict
+            The collections.abc.Mapping subclass used for all Mappings
+            in the return value.  Can be the actual class or an empty
+            instance of the mapping type you want.  If you want a
+            collections.defaultdict, you must pass it initialized.
+
+        Returns
+        -------
+        dict, list or collections.abc.Mapping
+            Return a collections.abc.Mapping object representing the DataFrame.
+            The resulting transformation depends on the `orient` parameter.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'col1': [1, 2],
+        ...                    'col2': [0.5, 0.75]},
+        ...                   index=['row1', 'row2'])
+        >>> df = df[['col1', 'col2']]
+        >>> df
+              col1  col2
+        row1     1  0.50
+        row2     2  0.75
+        >>> df_dict = df.to_dict()
+        >>> sorted([(key, sorted(values.items())) for key, values in df_dict.items()])
+        [('col1', [('row1', 1), ('row2', 2)]), ('col2', [('row1', 0.5), ('row2', 0.75)])]
+
+        You can specify the return orientation.
+
+        >>> df_dict = df.to_dict('series')
+        >>> sorted(df_dict.items())
+        [('col1', row1    1
+        row2    2
+        Name: col1, dtype: int64), ('col2', row1    0.50
+        row2    0.75
+        Name: col2, dtype: float64)]
+        >>> df_dict = df.to_dict('split')
+        >>> sorted(df_dict.items())  # doctest: +ELLIPSIS
+        [('columns', ['col1', 'col2']), ('data', [[1..., 0.75]]), ('index', ['row1', 'row2'])]
+
+        >>> df_dict = df.to_dict('records')
+        >>> [sorted(values.items()) for values in df_dict]  # doctest: +ELLIPSIS
+        [[('col1', 1...), ('col2', 0.5)], [('col1', 2...), ('col2', 0.75)]]
+
+        >>> df_dict = df.to_dict('index')
+        >>> sorted([(key, sorted(values.items())) for key, values in df_dict.items()])
+        [('row1', [('col1', 1), ('col2', 0.5)]), ('row2', [('col1', 2), ('col2', 0.75)])]
+
+        You can also specify the mapping type.
+
+        >>> from collections import OrderedDict, defaultdict
+        >>> df.to_dict(into=OrderedDict)
+        OrderedDict([('col1', OrderedDict([('row1', 1), ('row2', 2)])), \
+('col2', OrderedDict([('row1', 0.5), ('row2', 0.75)]))])
+
+        If you want a `defaultdict`, you need to initialize it:
+
+        >>> dd = defaultdict(list)
+        >>> df.to_dict('records', into=dd)  # doctest: +ELLIPSIS
+        [defaultdict(<class 'list'>, {'col..., 'col...}), \
+defaultdict(<class 'list'>, {'col..., 'col...})]
+        """
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        kdf = self
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_dict, pd.DataFrame.to_dict, args)
 
     @property
     def index(self):
@@ -767,6 +864,7 @@ class DataFrame(_Frame):
         >>> df = ks.DataFrame({"name": ['Alfred', 'Batman', 'Catwoman'],
         ...                    "toy": [None, 'Batmobile', 'Bullwhip'],
         ...                    "born": [None, "1940-04-25", None]})
+        >>> df = df[['name', 'toy', 'born']]
         >>> df
                name        toy        born
         0    Alfred       None        None
@@ -1043,6 +1141,7 @@ class DataFrame(_Frame):
         ...                    ["John", "Myla", "Lewis", "John", "Myla"],
         ...                    "Age": [24., np.nan, 21., 33, 26],
         ...                    "Single": [False, True, True, True, False]})
+        >>> df = df[["Person", "Age", "Single"]]
         >>> df
           Person   Age  Single
         0   John  24.0   False
@@ -1065,11 +1164,12 @@ class DataFrame(_Frame):
         sdf = self._sdf
         return DataFrame(spark.DataFrame(sdf._jdf.distinct(), sdf.sql_ctx), self._metadata.copy())
 
-    def drop(self, labels, axis=1):
+    def drop(self, labels=None, axis=1, columns: Union[str, List[str]] = None):
         """
         Drop specified labels from columns.
 
-        Remove columns by specifying label names and axis=1.
+        Remove columns by specifying label names and axis=1 or columns.
+        When specifying both labels and columns, only labels will be dropped.
         Removing rows is yet to be implemented.
 
         Parameters
@@ -1079,6 +1179,9 @@ class DataFrame(_Frame):
         axis : {1 or 'columns'}, default 1
             .. dropna currently only works for axis=1 'columns'
                axis=0 is yet to be implemented.
+        columns : single label or list-like
+            Alternative to specifying axis (``labels, axis=1``
+            is equivalent to ``columns=labels``).
 
         Returns
         -------
@@ -1091,6 +1194,7 @@ class DataFrame(_Frame):
         Examples
         --------
         >>> df = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6], 'w': [7, 8]})
+        >>> df = df[['x', 'y', 'z', 'w']]
         >>> df
            x  y  z  w
         0  1  3  5  7
@@ -1106,25 +1210,31 @@ class DataFrame(_Frame):
         0  1  7
         1  2  8
 
+        >>> df.drop(columns=['y', 'z'])
+           x  w
+        0  1  7
+        1  2  8
+
         Notes
         -----
         Currently only axis = 1 is supported in this function,
         axis = 0 is yet to be implemented.
         """
-        axis = self._validate_axis(axis)
-        if axis == 1:
-            if isinstance(labels, list):
-                sdf = self._sdf.drop(*labels)
-                metadata = self._metadata.copy(
-                    column_fields=[column for column in self._metadata.column_fields
-                                   if column not in labels])
-            else:
-                sdf = self._sdf.drop(labels)
-                metadata = self._metadata.copy(
-                    column_fields=[column for column in self._metadata.column_fields
-                                   if column != labels])
+        if labels is not None:
+            axis = self._validate_axis(axis)
+            if axis == 1:
+                return self.drop(columns=labels)
+            raise NotImplementedError("Drop currently only works for axis=1")
+        elif columns is not None:
+            if isinstance(columns, str):
+                columns = [columns]
+            sdf = self._sdf.drop(*columns)
+            metadata = self._metadata.copy(
+                column_fields=[column for column in self.columns if column not in columns]
+            )
             return DataFrame(sdf, metadata)
-        raise NotImplementedError("Drop currently only works for axis=1")
+        else:
+            raise ValueError("Need to specify at least one of 'labels' or 'columns'")
 
     def get(self, key, default=None):
         """
@@ -1257,10 +1367,73 @@ class DataFrame(_Frame):
               for colname, asc in zip(by, ascending)]
         kdf = DataFrame(self._sdf.sort(*by), self._metadata.copy())
         if inplace:
-            self._sdf: spark.DataFrame = kdf._sdf
+            self._sdf = kdf._sdf
             self._metadata = kdf._metadata
         else:
             return kdf
+
+    def isin(self, values):
+        """
+        Whether each element in the DataFrame is contained in values.
+
+        Parameters
+        ----------
+        values : iterable or dict
+           The sequence of values to test. If values is a dict,
+           the keys must be the column names, which must match.
+           Series and DataFrame are not supported.
+        Returns
+        -------
+        DataFrame
+            DataFrame of booleans showing whether each element in the DataFrame
+            is contained in values.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'num_legs': [2, 4], 'num_wings': [2, 0]},
+        ...                   index=['falcon', 'dog'])
+        >>> df
+                num_legs  num_wings
+        falcon         2          2
+        dog            4          0
+
+        When ``values`` is a list check whether every value in the DataFrame
+        is present in the list (which animals have 0 or 2 legs or wings)
+
+        >>> df.isin([0, 2])
+                num_legs  num_wings
+        falcon      True       True
+        dog        False       True
+
+        When ``values`` is a dict, we can pass values to check for each
+        column separately:
+
+        >>> df.isin({'num_wings': [0, 3]})
+                num_legs  num_wings
+        falcon     False      False
+        dog        False       True
+        """
+        if isinstance(values, (pd.DataFrame, pd.Series)):
+            raise NotImplementedError("DataFrame and Series are not supported")
+        if isinstance(values, dict) and not set(values.keys()).issubset(self.columns):
+            raise AttributeError(
+                "'DataFrame' object has no attribute %s"
+                % (set(values.keys()).difference(self.columns)))
+
+        _select_columns = self._metadata.index_fields
+        if isinstance(values, dict):
+            for col in self.columns:
+                if col in values:
+                    _select_columns.append(self[col]._scol.isin(values[col]).alias(col))
+                else:
+                    _select_columns.append(F.lit(False).alias(col))
+        elif is_list_like(values):
+            _select_columns += [
+                self[col]._scol.isin(list(values)).alias(col) for col in self.columns]
+        else:
+            raise TypeError('Values should be iterable, Series, DataFrame or dict.')
+
+        return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
 
     @derived_from(pd.DataFrame)
     def pipe(self, func, *args, **kwargs):
@@ -1343,15 +1516,19 @@ class DataFrame(_Frame):
         else:
             kdf = self.assign(**{key: value})
 
-        self._sdf: spark.DataFrame = kdf._sdf
+        self._sdf = kdf._sdf
         self._metadata = kdf._metadata
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         from databricks.koalas.series import Series
         if key.startswith("__") or key.startswith("_pandas_") or key.startswith("_spark_"):
             raise AttributeError(key)
         if hasattr(_MissingPandasLikeDataFrame, key):
-            return partial(getattr(_MissingPandasLikeDataFrame, key), self)
+            property_or_func = getattr(_MissingPandasLikeDataFrame, key)
+            if isinstance(property_or_func, property):
+                return property_or_func.fget(self)  # type: ignore
+            else:
+                return partial(property_or_func, self)
         return Series(self._sdf.__getattr__(key), self, self._metadata.index_info)
 
     def __iter__(self):

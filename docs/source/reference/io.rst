@@ -5,6 +5,14 @@ Input/Output
 ============
 .. currentmodule:: databricks.koalas
 
+
+Data Generator
+~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   range
+
 Flat File
 ~~~~~~~~~
 .. autosummary::

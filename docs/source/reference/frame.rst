@@ -34,7 +34,9 @@ Conversion
 
    DataFrame.copy
    DataFrame.isna
+   DataFrame.isnull
    DataFrame.notna
+   DataFrame.notnull
 
 Indexing, iteration
 ~~~~~~~~~~~~~~~~~~~
@@ -84,6 +86,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.head
    DataFrame.reset_index
    DataFrame.set_index
+   DataFrame.isin
 
 .. _api.dataframe.missing:
 
@@ -120,3 +123,4 @@ Serialization / IO / Conversion
    DataFrame.to_koalas
    DataFrame.to_spark
    DataFrame.to_string
+   DataFrame.to_dict

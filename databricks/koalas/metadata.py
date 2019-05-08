@@ -36,8 +36,6 @@ class Metadata(object):
     :ivar _index_info: list of pair holding the Spark field names for indexes,
                        and the index name to be seen in Koalas DataFrame.
     """
-    _column_fields: List[str]
-    _index_info: List[IndexInfo]
 
     def __init__(self, column_fields: List[str],
                  index_info: Optional[List[IndexInfo]] = None) -> None:
@@ -54,8 +52,8 @@ class Metadata(object):
             or all(isinstance(index_field, string_types)
                    and (index_name is None or isinstance(index_name, string_types))
                    for index_field, index_name in index_info)
-        self._column_fields = column_fields
-        self._index_info = index_info or []
+        self._column_fields = column_fields  # type: List[str]
+        self._index_info = index_info or []  # type: List[IndexInfo]
 
     @property
     def column_fields(self) -> List[str]:
@@ -108,7 +106,7 @@ class Metadata(object):
         column_fields = [str(col) for col in pdf.columns]
         index = pdf.index
 
-        index_info: List[IndexInfo]
+        index_info = []  # type: List[IndexInfo]
         if isinstance(index, pd.MultiIndex):
             if index.names is None:
                 index_info = [('__index_level_{}__'.format(i), None)

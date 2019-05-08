@@ -17,6 +17,8 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
+from typing import Optional
+
 import numpy as np
 import pandas as pd
 
@@ -24,8 +26,8 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
     DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
 
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.compatibility import string_types
-from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.utils import default_session
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.typedef import Col, pandas_wrap
@@ -46,6 +48,76 @@ def from_pandas(pdf):
         return DataFrame(pdf)
     else:
         raise ValueError("Unknown data type: {}".format(type(pdf)))
+
+
+def sql(query: str) -> DataFrame:
+    """
+    Execute a SQL query and return the result as a Koalas DataFrame.
+
+    Parameters
+    ----------
+    query : str
+        the SQL query
+    >>> ks.sql("select * from range(10) where id > 7")
+       id
+    0   8
+    1   9
+    """
+    return DataFrame(default_session().sql(query))
+
+
+def range(start: int,
+          end: Optional[int] = None,
+          step: int = 1,
+          num_partitions: Optional[int] = None) -> DataFrame:
+    """
+    Create a DataFrame with some range of numbers.
+
+    The resulting DataFrame has a single int64 column named `id`, containing elements in a range
+    from ``start`` to ``end`` (exclusive) with step value ``step``. If only the first parameter
+    (i.e. start) is specified, we treat it as the end value with the start value being 0.
+
+    This is similar to the range function in SparkSession and is used primarily for testing.
+
+    Parameters
+    ----------
+    start : int
+        the start value (inclusive)
+    end : int, optional
+        the end value (exclusive)
+    step : int, optional, default 1
+        the incremental step
+    num_partitions : int, optional
+        the number of partitions of the DataFrame
+
+    Returns
+    -------
+    df : koalas.DataFrame
+
+    Examples
+    --------
+    When the first parameter is specified, we generate a range of values up till that number.
+
+    >>> ks.range(5)
+       id
+    0   0
+    1   1
+    2   2
+    3   3
+    4   4
+
+    When start, end, and step are specified:
+
+    >>> ks.range(start = 100, end = 200, step = 20)
+        id
+    0  100
+    1  120
+    2  140
+    3  160
+    4  180
+    """
+    sdf = default_session().range(start=start, end=end, step=step, numPartitions=num_partitions)
+    return DataFrame(sdf)
 
 
 def read_csv(path, header='infer', names=None, usecols=None,
@@ -190,9 +262,89 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
             infer_datetime_format=infer_datetime_format)
 
 
-@derived_from(pd)
 def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None, sparse=False,
                 drop_first=False, dtype=None):
+    """
+    Convert categorical variable into dummy/indicator variables, also
+    known as one hot encoding.
+
+    Parameters
+    ----------
+    data : array-like, Series, or DataFrame
+    prefix : string, list of strings, or dict of strings, default None
+        String to append DataFrame column names.
+        Pass a list with length equal to the number of columns
+        when calling get_dummies on a DataFrame. Alternatively, `prefix`
+        can be a dictionary mapping column names to prefixes.
+    prefix_sep : string, default '_'
+        If appending prefix, separator/delimiter to use. Or pass a
+        list or dictionary as with `prefix.`
+    dummy_na : bool, default False
+        Add a column to indicate NaNs, if False NaNs are ignored.
+    columns : list-like, default None
+        Column names in the DataFrame to be encoded.
+        If `columns` is None then all the columns with
+        `object` or `category` dtype will be converted.
+    sparse : bool, default False
+        Whether the dummy-encoded columns should be be backed by
+        a :class:`SparseArray` (True) or a regular NumPy array (False).
+        In Koalas, this value must be "False".
+    drop_first : bool, default False
+        Whether to get k-1 dummies out of k categorical levels by removing the
+        first level.
+    dtype : dtype, default np.uint8
+        Data type for new columns. Only a single dtype is allowed.
+
+    Returns
+    -------
+    dummies : DataFrame
+
+    See Also
+    --------
+    Series.str.get_dummies
+
+    Examples
+    --------
+    >>> s = ks.Series(list('abca'))
+
+    >>> ks.get_dummies(s)
+       a  b  c
+    0  1  0  0
+    1  0  1  0
+    2  0  0  1
+    3  1  0  0
+
+    >>> df = ks.DataFrame({'A': ['a', 'b', 'a'], 'B': ['b', 'a', 'c'],
+    ...                    'C': [1, 2, 3]})
+
+    >>> ks.get_dummies(df, prefix=['col1', 'col2'])
+       C  col1_a  col1_b  col2_a  col2_b  col2_c
+    0  1       1       0       0       1       0
+    1  2       0       1       1       0       0
+    2  3       1       0       0       0       1
+
+    >>> ks.get_dummies(ks.Series(list('abcaa')))
+       a  b  c
+    0  1  0  0
+    1  0  1  0
+    2  0  0  1
+    3  1  0  0
+    4  1  0  0
+
+    >>> ks.get_dummies(ks.Series(list('abcaa')), drop_first=True)
+       b  c
+    0  0  0
+    1  1  0
+    2  0  1
+    3  0  0
+    4  0  0
+
+    >>> ks.get_dummies(ks.Series(list('abc')), dtype=float)
+         a    b    c
+    0  1.0  0.0  0.0
+    1  0.0  1.0  0.0
+    2  0.0  0.0  1.0
+    """
     if sparse is not False:
         raise NotImplementedError("get_dummies currently does not support sparse")
 

@@ -73,6 +73,7 @@ class GroupBy(object):
         >>> df = ks.DataFrame({'A': [1, 1, 2, 2],
         ...                    'B': [1, 2, 3, 4],
         ...                    'C': [0.362, 0.227, 1.267, -0.562]})
+        >>> df = df[['A', 'B', 'C']]
 
         >>> df
            A  B      C
@@ -83,10 +84,12 @@ class GroupBy(object):
 
         Different aggregations per column
 
-        >>> df.groupby('A').agg({'B': 'min', 'C': 'sum'})
+        >>> aggregated = df.groupby('A').agg({'B': 'min', 'C': 'sum'})
+        >>> aggregated[['B', 'C']]  # doctest: +NORMALIZE_WHITESPACE
            B      C
-        0  1  0.589
-        1  3  0.705
+        A
+        1  1  0.589
+        2  3  0.705
 
         """
         if not isinstance(func_or_funcs, dict) or \
@@ -99,12 +102,13 @@ class GroupBy(object):
         groupkeys = self._groupkeys
         groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
                          for i, s in enumerate(groupkeys)]
-        gdf = sdf.groupby(*groupkey_cols).agg(func_or_funcs)
-        reordered = ['%s(%s)' % (value, key) for key, value in iter(func_or_funcs.items())]
-        kdf = DataFrame(gdf.select(reordered))
-        kdf.columns = [key for key in iter(func_or_funcs.keys())]
-
-        return kdf
+        reordered = [F.expr('{1}({0}) as {0}'.format(key, value))
+                     for key, value in func_or_funcs.items()]
+        sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
+        metadata = Metadata(column_fields=[key for key, _ in func_or_funcs.items()],
+                            index_info=[('__index_level_{}__'.format(i), s.name)
+                                        for i, s in enumerate(groupkeys)])
+        return DataFrame(sdf, metadata)
 
     agg = aggregate
 
@@ -272,7 +276,11 @@ class DataFrameGroupBy(GroupBy):
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeDataFrameGroupBy, item):
-            return partial(getattr(_MissingPandasLikeDataFrameGroupBy, item), self)
+            property_or_func = getattr(_MissingPandasLikeDataFrameGroupBy, item)
+            if isinstance(property_or_func, property):
+                return property_or_func.fget(self)  # type: ignore
+            else:
+                return partial(property_or_func, self)
         return self.__getitem__(item)
 
     def __getitem__(self, item):
@@ -291,7 +299,11 @@ class SeriesGroupBy(GroupBy):
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeSeriesGroupBy, item):
-            return partial(getattr(_MissingPandasLikeSeriesGroupBy, item), self)
+            property_or_func = getattr(_MissingPandasLikeSeriesGroupBy, item)
+            if isinstance(property_or_func, property):
+                return property_or_func.fget(self)  # type: ignore
+            else:
+                return partial(property_or_func, self)
         raise AttributeError(item)
 
     @property

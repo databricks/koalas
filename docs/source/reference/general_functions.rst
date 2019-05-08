@@ -11,6 +11,7 @@ Data manipulations
    :toctree: api/
 
    get_dummies
+   sql
 
 Top-level dealing with datetimelike
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -17,16 +17,17 @@
 """
 A wrapper class for Spark Column to behave similar to pandas Series.
 """
-from decorator import decorator, dispatch_on
-from functools import partial
+from functools import partial, wraps
+from typing import Any
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, FloatType, DoubleType, LongType, StructType, \
-    TimestampType, to_arrow_type
+from pyspark.sql.types import BooleanType, FloatType, DoubleType, LongType, StringType, \
+    StructType, TimestampType, to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.dask.utils import derived_from
@@ -38,8 +39,7 @@ from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 
 
-@decorator
-def _column_op(f, self, *args):
+def _column_op(f):
     """
     A decorator that wraps APIs taking/returning Spark Column so that Koalas Series can be
     supported too. If this decorator is used for the `f` function that takes Spark Column and
@@ -50,30 +50,34 @@ def _column_op(f, self, *args):
     :param self: Koalas Series
     :param args: arguments that the function `f` takes.
     """
+    @wraps(f)
+    def wrapper(self, *args):
+        assert all((not isinstance(arg, Series)) or (arg._kdf is self._kdf) for arg in args), \
+            "Cannot combine column argument because it comes from a different dataframe"
 
-    assert all((not isinstance(arg, Series)) or (arg._kdf is self._kdf) for arg in args), \
-        "Cannot combine column argument because it comes from a different dataframe"
-
-    # It is possible for the function `f` takes other arguments than Spark Column.
-    # To cover this case, explicitly check if the argument is Koalas Series and
-    # extract Spark Column. For other arguments, they are used as are.
-    args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
-    scol = f(self._scol, *args)
-    return Series(scol, self._kdf, self._index_info)
+        # It is possible for the function `f` takes other arguments than Spark Column.
+        # To cover this case, explicitly check if the argument is Koalas Series and
+        # extract Spark Column. For other arguments, they are used as are.
+        args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
+        scol = f(self._scol, *args)
+        return Series(scol, self._kdf, self._index_info)
+    return wrapper
 
 
-@decorator
-def _numpy_column_op(f, self, *args):
-    # PySpark does not support NumPy type out of the box. For now, we convert NumPy types
-    # into some primitive types understandable in PySpark.
-    new_args = []
-    for arg in args:
-        # TODO: This is a quick hack to support NumPy type. We should revisit this.
-        if isinstance(self.spark_type, LongType) and isinstance(arg, np.timedelta64):
-            new_args.append(float(arg / np.timedelta64(1, 's')))
-        else:
-            new_args.append(arg)
-    return _column_op(f)(self, *new_args)
+def _numpy_column_op(f):
+    @wraps(f)
+    def wrapper(self, *args):
+        # PySpark does not support NumPy type out of the box. For now, we convert NumPy types
+        # into some primitive types understandable in PySpark.
+        new_args = []
+        for arg in args:
+            # TODO: This is a quick hack to support NumPy type. We should revisit this.
+            if isinstance(self.spark_type, LongType) and isinstance(arg, np.timedelta64):
+                new_args.append(float(arg / np.timedelta64(1, 's')))
+            else:
+                new_args.append(arg)
+        return _column_op(f)(self, *new_args)
+    return wrapper
 
 
 class Series(_Frame):
@@ -90,13 +94,17 @@ class Series(_Frame):
     """
 
     @derived_from(pd.Series)
-    @dispatch_on('data')
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False):
-        s = pd.Series(data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
-        self._init_from_pandas(s)
+        if isinstance(data, pd.Series):
+            self._init_from_pandas(data)
+        elif isinstance(data, spark.Column):
+            self._init_from_spark(data, index, dtype)
+        else:
+            s = pd.Series(
+                data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
+            self._init_from_pandas(s)
 
-    @__init__.register(pd.Series)
-    def _init_from_pandas(self, s, *args):
+    def _init_from_pandas(self, s):
         """
         Creates Koalas Series from Pandas Series.
 
@@ -107,8 +115,7 @@ class Series(_Frame):
         self._init_from_spark(kdf._sdf[kdf._metadata.column_fields[0]],
                               kdf, kdf._metadata.index_info)
 
-    @__init__.register(spark.Column)
-    def _init_from_spark(self, scol, kdf, index_info, *args):
+    def _init_from_spark(self, scol, kdf, index_info):
         """
         Creates Koalas Series from Spark Column.
 
@@ -118,12 +125,24 @@ class Series(_Frame):
         """
         assert index_info is not None
         self._scol = scol
-        self._kdf: ks.DataFrame = kdf
+        self._kdf = kdf
         self._index_info = index_info
 
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
-    __add__ = _column_op(spark.Column.__add__)
+
+    def __add__(self, other):
+        if isinstance(self.spark_type, StringType):
+            # Concatenate string columns
+            if isinstance(other, Series) and isinstance(other.spark_type, StringType):
+                return _column_op(F.concat)(self, other)
+            # Handle df['col'] + 'literal'
+            elif isinstance(other, str):
+                return _column_op(F.concat)(self, F.lit(other))
+            else:
+                raise TypeError('string addition can only be applied to string series or literals.')
+        else:
+            return _column_op(spark.Column.__add__)(self, other)
 
     def __sub__(self, other):
         # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
@@ -139,7 +158,14 @@ class Series(_Frame):
     __div__ = _numpy_column_op(spark.Column.__div__)
     __truediv__ = _numpy_column_op(spark.Column.__truediv__)
     __mod__ = _column_op(spark.Column.__mod__)
-    __radd__ = _column_op(spark.Column.__radd__)
+
+    def __radd__(self, other):
+        # Handle 'literal' + df['col']
+        if isinstance(self.spark_type, StringType) and isinstance(other, str):
+            return Series(F.concat(F.lit(other), self._scol), self._kdf, self._index_info)
+        else:
+            return _column_op(spark.Column.__radd__)(self, other)
+
     __rsub__ = _column_op(spark.Column.__rsub__)
     __rmul__ = _column_op(spark.Column.__rmul__)
     __rdiv__ = _numpy_column_op(spark.Column.__rdiv__)
@@ -376,6 +402,44 @@ class Series(_Frame):
         return validate_arguments_and_invoke_function(
             kseries.to_pandas(), self.to_string, pd.Series.to_string, args)
 
+    def to_dict(self, into=dict):
+        """
+        Convert Series to {label -> value} dict or dict-like object.
+
+        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        into : class, default dict
+            The collections.abc.Mapping subclass to use as the return
+            object. Can be the actual class or an empty
+            instance of the mapping type you want.  If you want a
+            collections.defaultdict, you must pass it initialized.
+
+        Returns
+        -------
+        collections.abc.Mapping
+            Key-value representation of Series.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4])
+        >>> s.to_dict()
+        {0: 1, 1: 2, 2: 3, 3: 4}
+        >>> from collections import OrderedDict, defaultdict
+        >>> s.to_dict(OrderedDict)
+        OrderedDict([(0, 1), (1, 2), (2, 3), (3, 4)])
+        >>> dd = defaultdict(list)
+        >>> s.to_dict(dd)
+        defaultdict(<class 'list'>, {0: 1, 1: 2, 2: 3, 3: 4})
+        """
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        kseries = self
+        return validate_arguments_and_invoke_function(
+            kseries.to_pandas(), self.to_dict, pd.Series.to_dict, args)
+
     def to_pandas(self):
         """
         Return a pandas Series.
@@ -509,6 +573,55 @@ class Series(_Frame):
         kdf._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
         return _col(kdf)
 
+    def isin(self, values):
+        """
+        Check whether `values` are contained in Series.
+
+        Return a boolean Series showing whether each element in the Series
+        matches an element in the passed sequence of `values` exactly.
+
+        Parameters
+        ----------
+        values : list or set
+            The sequence of values to test.
+
+        Returns
+        -------
+        isin : Series (bool dtype)
+
+        Examples
+        --------
+        >>> s = pd.Series(['lama', 'cow', 'lama', 'beetle', 'lama',
+        ...                'hippo'], name='animal')
+        >>> s.isin(['cow', 'lama'])
+        0     True
+        1     True
+        2     True
+        3    False
+        4     True
+        5    False
+        Name: animal, dtype: bool
+
+        Passing a single string as ``s.isin('lama')`` will raise an error. Use
+        a list of one element instead:
+
+        >>> s.isin(['lama'])
+        0     True
+        1    False
+        2     True
+        3    False
+        4     True
+        5    False
+        Name: animal, dtype: bool
+        """
+        if not is_list_like(values):
+            raise TypeError("only list-like objects are allowed to be passed"
+                            " to isin(), you passed a [{values_type}]"
+                            .format(values_type=type(values).__name__))
+
+        return Series(self._scol.isin(list(values)).alias(self.name), self._kdf,
+                      self._index_info)
+
     def corr(self, other, method='pearson'):
         """
         Compute correlation with `other` Series, excluding missing values.
@@ -603,11 +716,15 @@ class Series(_Frame):
     def __getitem__(self, key):
         return Series(self._scol.__getitem__(key), self._kdf, self._index_info)
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
             raise AttributeError(item)
         if hasattr(_MissingPandasLikeSeries, item):
-            return partial(getattr(_MissingPandasLikeSeries, item), self)
+            property_or_func = getattr(_MissingPandasLikeSeries, item)
+            if isinstance(property_or_func, property):
+                return property_or_func.fget(self)  # type: ignore
+            else:
+                return partial(property_or_func, self)
         return self.getField(item)
 
     def __str__(self):

@@ -18,9 +18,9 @@
 Utilities to deal with types. This is mostly focused on python3.
 """
 import typing
+from inspect import getfullargspec
+from functools import wraps
 
-from decorator import decorate
-from decorator import getfullargspec
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
@@ -198,7 +198,7 @@ def make_fun(f, *args, **kwargs):
     final_kwargs = {}
     col_keys = []
     frozen_kwargs = {}  # Value is none for kwargs that are columns, and the value otherwise
-    for (key, arg) in kwargs:
+    for (key, arg) in kwargs.items():
         sig_arg = sig_kwargs[key]
         arg2 = _check_compatible(arg, sig_arg)
         final_kwargs[key] = arg2
@@ -235,16 +235,13 @@ def make_fun(f, *args, **kwargs):
                 full_kwargs[idx] = arg
         return f(*full_args, **full_kwargs)
 
-    udf = pandas_udf(clean_fun, returnType=spark_ret_type)
-    wrapped_udf = udf  # udf #_wrap_callable(udf)
+    wrapped_udf = pandas_udf(clean_fun, returnType=spark_ret_type)
     col_args = []
     for idx in col_indexes:
         col_args.append(final_args[idx])
     for key in col_keys:
         col_args.append(final_kwargs[key])
     col = wrapped_udf(*col_args)
-    # TODO: make more robust
-    col._spark_ref_dataframe = col_args[0]._spark_ref_dataframe
     return col
 
 
@@ -259,31 +256,34 @@ def _wrap_callable(obj):
 
 
 def pandas_wrap(f, return_col=None):
-    # Extract the signature arguments from this function.
-    spec = getfullargspec(f)
-    rtype = None
-    return_sig = spec.annotations.get("return", None)
-    if not (return_col or return_sig):
-        raise ValueError(
-            "Missing type information. It should either be provided as an argument to pandas_wrap,"
-            "or as a python typing hint")
-    if return_col is not None:
-        rtype = _to_stype(return_col)
-    if return_sig is not None:
-        rtype = _to_stype(return_sig)
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        # Extract the signature arguments from this function.
+        spec = getfullargspec(f)
+        rtype = None
+        return_sig = spec.annotations.get("return", None)
+        if not (return_col or return_sig):
+            raise ValueError(
+                "Missing type information. It should either be provided as an argument to "
+                "pandas_wrap, or as a python typing hint")
+        if return_col is not None:
+            rtype = _to_stype(return_col)
+        if return_sig is not None:
+            rtype = _to_stype(return_sig)
 
-    # Extract the input signatures, if any:
-    sig_args = []
-    sig_kwargs = {}
-    for key in spec.args:
-        t = spec.annotations.get(key, None)
-        if t is not None:
-            dt = _to_stype(t)
-        else:
-            dt = _Unknown(None)
-        sig_kwargs[key] = dt
-        sig_args.append(dt)
-    f.sig_return = rtype
-    f.sig_args = sig_args
-    f.sig_kwargs = sig_kwargs
-    return decorate(f, make_fun)
+        # Extract the input signatures, if any:
+        sig_args = []
+        sig_kwargs = {}
+        for key in spec.args:
+            t = spec.annotations.get(key, None)
+            if t is not None:
+                dt = _to_stype(t)
+            else:
+                dt = _Unknown(None)
+            sig_kwargs[key] = dt
+            sig_args.append(dt)
+        f.sig_return = rtype
+        f.sig_args = sig_args
+        f.sig_kwargs = sig_kwargs
+        return make_fun(f, *args, **kwargs)
+    return wrapper
