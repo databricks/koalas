@@ -1474,16 +1474,28 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        right: the DataFrame for the right side of the join operation
-        how: a join method out of ['inner', 'left', 'right', 'full', 'outer']
-        on: the column name to be joined on. Defaults to the index if not specified
-        suffixes: suffix to apply to overlapping column names in the left and right side,
-            respectively
+        right: Object to merge with.
+        how: Type of merge to be performed.
+            {‘left’, ‘right’, ‘outer’, ‘inner’}, default ‘inner’
+
+            left: use only keys from left frame, similar to a SQL left outer join; preserve key
+                order.
+            right: use only keys from right frame, similar to a SQL right outer join; preserve key
+                order.
+            outer: use union of keys from both frames, similar to a SQL full outer join; sort keys
+                lexicographically.
+            inner: use intersection of keys from both frames, similar to a SQL inner join;
+                preserve the order of the left keys.
+        on: Column or index level names to join on. These must be found in both DataFrames. If on
+            is None and not merging on indexes then this defaults to the intersection of the
+            columns in both DataFrames.
+        suffixes: Suffix to apply to overlapping column names in the left and right side,
+            respectively.
 
         Returns
         -------
         DataFrame
-            The joined DataFrame
+            A DataFrame of the two merged objects.
 
         Examples
         --------
