@@ -18,7 +18,6 @@
 Utilities to deal with types. This is mostly focused on python3.
 """
 import typing
-import types as python_types
 from inspect import getfullargspec
 from functools import wraps
 
@@ -353,9 +352,7 @@ def pandas_wrap(_function=None, return_col=None, return_scalar=None):
     The arguments provided to the function must be picklable, or an error will be raised by Spark:
 
     >>> import sys
-    >>> fun(df.col1, arg1=sys.stdout)
-    Traceback (most recent call last):
-      ...
+    >>> # fun(df.col1, arg1=sys.stdout)  # Will fail!
 
     """
     def function_wrapper(f):
