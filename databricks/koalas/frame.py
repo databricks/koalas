@@ -1534,7 +1534,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         As described in #263, joining string columns currently returns None for missing values
             instead of NaN.
         """
-        if on is None and not left_index and not right_index :
+        if on is None and not left_index and not right_index:
             raise SparkPandasMergeError("At least 'on' or 'left_index' and 'right_index' have ",
                                         "to be set")
         if on is not None and (left_index or right_index):
