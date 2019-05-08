@@ -164,7 +164,7 @@ class _Frame(object):
                         'got [%s]' % (df_or_s,))
 
     def compute(self):
-        """Alias of `toPandas()` to mimic dask for easily porting tests."""
+        """Alias of `to_pandas()` to mimic dask for easily porting tests."""
         return self.toPandas()
 
     @staticmethod

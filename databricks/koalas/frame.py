@@ -29,7 +29,8 @@ from pyspark.sql.types import BooleanType, StructField, StructType, to_arrow_typ
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
+from databricks.koalas.utils import default_session, lazy_property, \
+    validate_arguments_and_invoke_function
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.generic import _Frame, max_display_count
@@ -85,6 +86,11 @@ class DataFrame(_Frame):
     def _index_columns(self):
         return [self._sdf.__getitem__(field)
                 for field in self._metadata.index_fields]
+
+    @lazy_property
+    def _pandas_df_with_max_display_count(self) -> pd.DataFrame:
+        """A cached version pandas DataFrame used for repr and repr_html."""
+        return self.head(max_display_count).to_pandas()
 
     def _reduce_for_stat_function(self, sfun):
         """
@@ -1496,7 +1502,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         raise NotImplementedError(key)
 
     def __repr__(self):
-        return repr(self.toPandas())
+        return repr(self._pandas_df_with_max_display_count)
+
+    def _repr_html_(self):
+        return self._pandas_df_with_max_display_count._repr_html_()
 
     def __getitem__(self, key):
         return self._pd_getitem(key)
@@ -1540,9 +1549,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def __dir__(self):
         fields = [f for f in self._sdf.schema.fieldNames() if ' ' not in f]
         return super(DataFrame, self).__dir__() + fields
-
-    def _repr_html_(self):
-        return self.head(max_display_count).toPandas()._repr_html_()
 
     @classmethod
     def _validate_axis(cls, axis=0):

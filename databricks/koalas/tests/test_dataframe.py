@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas
+from databricks.koalas.generic import max_display_count
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
@@ -67,6 +68,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(df[['a', 'b']], ddf[['a', 'b']])
 
         self.assertEqual(ddf.a.notnull().alias("x").name, "x")
+
+    def test_repr(self):
+        # Make sure we only fetch max_display_count
+        self.assertEqual(koalas.range(1001).__repr__(),
+                         koalas.range(max_display_count).__repr__())
+
+    def test_repr_html(self):
+        # Make sure we only fetch max_display_count
+        self.assertEqual(koalas.range(1001)._repr_html_(),
+                         koalas.range(max_display_count)._repr_html_())
 
     def test_empty_dataframe(self):
 
