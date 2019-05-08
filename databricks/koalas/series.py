@@ -245,18 +245,7 @@ class Series(_Frame):
             and raise on DataFrame or Panel.
             dict-like or functions are transformations to apply to that axis’ values
 
-        copy : boolean, default True
-
-            Also copy underlying data
-
-        inplace : boolean, default False
-
-            Whether to return a new Series. If True then value of copy is ignored.
-
-        level : int or level name, default None
-
-            In case of a MultiIndex, only rename labels in the specified level.
-
+        **kwargs : Not in Use
         Returns
         --------
         renamed : Series (new object)
