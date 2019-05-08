@@ -285,7 +285,7 @@ class DataFrame(_Frame):
         Write a text representation of object to the system clipboard.
         This can be pasted into Excel, for example.
 
-            .. note:: This method should only be used if the resulting Excel is expected
+            .. note:: This method should only be used if the resulting DataFrame is expected
                 to be small, as all the data is loaded into the driver's memory.
 
         Parameters
@@ -296,16 +296,10 @@ class DataFrame(_Frame):
             - False, write a string representation of the object to the
               clipboard.
 
-        sep : str, default ``'\t'``
+        sep : str, default ``'\\t'``
             Field delimiter.
         **kwargs
             These parameters will be passed to DataFrame.to_csv.
-
-        See Also
-        --------
-        DataFrame.to_csv : Write a DataFrame to a comma-separated values
-            (csv) file.
-        read_clipboard : Read text from clipboard and pass to read_table.
 
         Notes
         -----
