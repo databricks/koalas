@@ -1,6 +1,7 @@
 # Dependencies in Koalas
 pandas>=0.23
 pyarrow>=0.10,<0.11
+numpy>=0.14
 
 # Documentation build
 sphinx
