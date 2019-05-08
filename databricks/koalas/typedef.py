@@ -30,6 +30,9 @@ from pyspark.sql import Column
 from pyspark.sql.functions import pandas_udf
 import pyspark.sql.types as types
 
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+
+
 __all__ = ['Col', '_make_fun', 'pandas_wrap', 'as_spark_type', 'as_python_type', 'infer_pd_series_spark_type']
 
 
@@ -85,11 +88,11 @@ def _get_col_inner(tpe):
 
 
 def _to_stype(tpe) -> X:
-    print("_to_stype:a:", tpe)
+    #print("_to_stype:a:", tpe)
     if _is_col(tpe):
-        print("_to_stype:0:", _get_col_inner(tpe), tpe)
+        #print("_to_stype:0:", _get_col_inner(tpe), tpe)
         inner = as_spark_type(_get_col_inner(tpe))
-        print("_to_stype:inner:", inner)
+        #print("_to_stype:inner:", inner)
         return _Column(inner)
     inner = as_spark_type(tpe)
     if inner is None:
@@ -113,7 +116,8 @@ _base = {
 
 
 def _build_type_dict():
-    return dict([(other_type, spark_type) for (spark_type, l) in _base.items() for other_type in l])
+    return dict([(other_type, spark_type) for (spark_type, l) in _base.items() for other_type in l]
+                + [(spark_type, spark_type) for (spark_type, _) in _base.items()])
 
 
 def _build_py_type_dict():
@@ -208,7 +212,7 @@ def _make_fun(f, return_type, *args, **kwargs):
 
     col_args_idxs = [idx for (idx, c) in enumerate(col_args) if c is not None]
     all_indexes = col_args_idxs + [key for (key, _) in col_kwargs]  # type: typing.List[typing.Union[int, str]]
-    print("col_args_idxs", all_indexes)
+    #print("col_args_idxs", all_indexes)
     if not all_indexes:
         # No argument is related to spark
         # The function is just called through without other considerations.
@@ -243,7 +247,7 @@ def _make_fun(f, return_type, *args, **kwargs):
     col = wrapped_udf(*spark_col_args)
     series = Series(data=col, index=index_info, anchor=kdf)
     name = "{}({})".format(f.__name__, ", ".join(name_tokens))
-    series = series.alias(name)
+    series = series.astype(return_type).alias(name)
     return series
 
 def _get_metadata(args, kwargs):
@@ -280,31 +284,87 @@ def pandas_wrap(_function=None, return_col=None, return_scalar=None):
     --------
 
     Wrapping a function with python 3's type annotations:
-    >>> @pandas_wrap
-    >>> def f1(col1, col2 = None, arg1="x") -> ks.Col[int]:
-    >>>    return 2 * col1 if arg1 == "x" else col1 * col2
-    >>> # Call this function on pandas series:
-    >>> pdf = pd.DataFrame({"col1": [1, 2], "col2": [10, 20]})
-    >>> f1(pdf.col1)
-    >>> # Call this function on koalas series
-    >>> df = ks.DataFrame(pdf)
-    >>> f1(df.col1)
-    >>> f1(df.col1, col2=df.col2, arg1="y")
 
-    Wrapping a function with explicit annotations. The following is equivalent to the function above.
-    >>> @pandas_wrap(return_col=int)
-    >>> def f1bis(col1, col2 = None, arg1="x"):
-    >>>    return 2 * col1 if arg1 == "x" else col1 * col2
-    >>> f1bis(pdf.col1)
-    >>> f1(df.col1, col2=df.col2, arg1="y")
+    >>> from databricks.koalas import pandas_wrap, Col
+    >>> pdf = pd.DataFrame({"col1": [1, 2], "col2": [10, 20]}, dtype=np.int64)
+    >>> df = ks.DataFrame(pdf)
+
+    Consider a simple function that operates on pandas series of integers
+    >>> def fun(col1):
+    ...     return col1.apply(lambda x: x * 2) # Arbitrary pandas code.
+    >>> fun(pdf.col1)
+    0    2
+    1    4
+    Name: col1, dtype: int64
+
+    Koalas needs to know the return type in order to make this function accessible to Spark. The following function
+    uses python built-in typing hint system to hint that this function returns a Series of integers:
+
+    >>> @pandas_wrap
+    ... def fun(col1) -> Col[np.int64]:
+    ...     return col1.apply(lambda x: x * 2) # Arbitrary pandas code.
+
+    This function works as before on pandas Series:
+
+    >>> fun(pdf.col1)
+    0    2
+    1    4
+    Name: col1, dtype: int64
+
+    Now it also works on Koalas series:
+
+    >>> fun(df.col1)
+    0    2
+    1    4
+    Name: fun(col1), dtype: int64
+
+    Alternatively, the type hint can be provided as an argument to the pandas_wrap decorator:
+
+    >>> @pandas_wrap(return_col=np.int64)
+    ... def fun(col1):
+    ...     return col1.apply(lambda x: x * 2) # Arbitrary pandas code.
+
+    >>> fun(df.col1)
+    0    2
+    1    4
+    Name: fun(col1), dtype: int64
+
+    Unlike PySpark user-defined functions, the decorator supports arguments all of python's styles of arguments (
+    named arguments, optional arguments, list and keyworded arguments). It will automatically distribute argument
+    values that are not Koalas series. Here is an example of function with optional series arguments and non-series
+    arguments:
+
+    >>> @pandas_wrap(return_col=float)
+    ... def fun(col1, col2 = None, arg1="x"):
+    ...    return 2.0 * col1 if arg1 == "x" else 3.0 * col1 * col2
+
+    >>> fun(df.col1)
+    0    2.0
+    1    4.0
+    Name: fun(col1), dtype: float32
+
+    >>> fun(df.col1, col2=df.col2, arg1="y")
+    0     30.0
+    1    120.0
+    Name: fun(col1, col2=col2), dtype: float32
+
+    Notes
+    -----
+    The arguments provided to the function must be picklable, or an error will be raised by Spark:
+
+    >>> import sys
+    >>> fun(df.col1, arg1=sys.stdout)
+    Traceback (most recent call last):
+      ...
+
     """
     def function_wrapper(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            print("wrapper", args, kwargs)
+            #print("wrapper", args, kwargs)
             # Extract the signature arguments from this function.
             sig_return = _infer_return_type(f, return_col, return_scalar)
-            print("sig_return", sig_return)
+            #print("sig_return", sig_return)
             if not isinstance(sig_return, _Column):
                 raise ValueError("Expected the return type of this function to be of type column, but "
                                  "found type {}".format(sig_return))
@@ -327,7 +387,7 @@ def _get_return_type(return_sig, return_col, return_scalar):
     Resolves the return type.
     :return: X
     """
-    print("_get_return_type", (return_sig, return_col, return_scalar))
+    #print("_get_return_type", (return_sig, return_col, return_scalar))
     if not (return_col or return_sig or return_scalar):
         raise ValueError(
             "Missing type information. It should either be provided as an argument to "

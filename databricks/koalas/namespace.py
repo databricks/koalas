@@ -239,19 +239,19 @@ def read_parquet(path, columns=None):
 
 def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
     if isinstance(arg, Series):
-        return Series(_to_datetime1(
-            arg._scol,
+        return _to_datetime1(
+            arg,
             errors=errors,
             format=format,
-            infer_datetime_format=infer_datetime_format), arg._kdf, arg._index_info)
+            infer_datetime_format=infer_datetime_format)
     if isinstance(arg, DataFrame):
-        return Series(_to_datetime2(
-            arg_year=arg['year']._scol,
-            arg_month=arg['month']._scol,
-            arg_day=arg['day']._scol,
+        return _to_datetime2(
+            arg_year=arg['year'],
+            arg_month=arg['month'],
+            arg_day=arg['day'],
             errors=errors,
             format=format,
-            infer_datetime_format=infer_datetime_format), arg, arg._metadata.index_info)
+            infer_datetime_format=infer_datetime_format)
     if isinstance(arg, dict):
         return _to_datetime2(
             arg_year=arg['year'],
