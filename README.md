@@ -22,13 +22,18 @@ This project is currently in beta and is rapidly evolving, with a weekly release
 - [Documentation](#documentation)
 - [Mailing List](#mailing-list)
 - [Development Guide](#development-guide)
-  - [Environment Setup](#environment-setup)
-  - [Running Tests](#running-tests)
-  - [Building Documentation](#building-documentation)
-  - [Coding Conventions](#coding-conventions)
-  - [Release Instructions](#release-instructions)
+- [Design Principles](#design-principles)
+  - [Be Pythonic](#be-pythonic)
+  - [Unify small data (pandas) API and big data (Spark) API, but pandas first](#unify-small-data-pandas-api-and-big-data-spark-api-but-pandas-first)
+  - [Return Koalas data structure for big data, and pandas data structure for small data](#return-koalas-data-structure-for-big-data-and-pandas-data-structure-for-small-data)
+  - [Provide discoverable APIs for common data science tasks](#provide-discoverable-apis-for-common-data-science-tasks)
+  - [Provide well documented APIs, with examples](#provide-well-documented-apis-with-examples)
+  - [Guardrails to prevent users from shooting themselves in the foot](#guardrails-to-prevent-users-from-shooting-themselves-in-the-foot)
+  - [Be a lean API layer and move fast](#be-a-lean-api-layer-and-move-fast)
+  - [High test coverage](#high-test-coverage)
 - [FAQ](#faq)
   - [What's the project's status?](#whats-the-projects-status)
+  - [Is it Koalas or koalas?](#is-it-koalas-or-koalas)
   - [Should I use PySpark's DataFrame API or Koalas?](#should-i-use-pysparks-dataframe-api-or-koalas)
   - [How can I request support for a method?](#how-can-i-request-support-for-a-method)
   - [How is Koalas different from Dask?](#how-is-koalas-different-from-dask)
@@ -74,9 +79,11 @@ df.columns = ['x', 'y', 'z1']
 df['x2'] = df.x * df.x
 ```
 
+
 ## Documentation
 
 Project docs are published here: https://koalas.readthedocs.io
+
 
 ## Mailing List
 
@@ -85,86 +92,79 @@ We use Google Groups for mailling list: https://groups.google.com/forum/#!forum/
 
 ## Development Guide
 
-### Environment Setup
+See [CONTRIBUTING.md](https://github.com/databricks/koalas/master/CONTRIBUTING.md).
 
-We recommend setting up a Conda environment for development:
-```bash
-conda create --name koalas-dev-env python=3.6
-conda activate koalas-dev-env
-conda install -c conda-forge pyspark=2.4
-conda install -c conda-forge --yes --file requirements-dev.txt
-pip install -e .  # installs koalas from current checkout
-```
 
-Once setup, make sure you switch to `koalas-dev-env` before development:
-```bash
-conda activate koalas-dev-env
-```
+## Design Principles
 
-### Running Tests
+This section outlines design princples guiding the Koalas project.
 
-There is a script `./dev/pytest` which is exactly same as `pytest` but with some default settings to run Koalas tests easily.
+### Be Pythonic
 
-To run all the tests, similar to our CI pipeline:
-```bash
-# Run all unittest and doctest
-./dev/pytest
-```
+Koalas targets Python data scientists. We want to stick to the convention that users are already familiar with as much as possible. Here are some examples:
 
-To run a specific test file:
-```bash
-# Run unittest
-./dev/pytest -k test_dataframe.py
+- Function names and parameters use snake_case, rather than CamelCase. This is different from PySpark's design. For example, Koalas has `to_pandas()`, whereas PySpark has `toPandas()` for converting a DataFrame into a pandas DataFrame. In limited cases, to maintain compatibility with Spark, we also provide Spark's variant as an alias.
 
-# Run doctest
-./dev/pytest -k series.py --doctest-modules databricks
-```
+- Koalas respects to the largest extent the conventions of the Python numerical ecosystem, and allows the use of numpy types, etc. that are supported by Spark.
 
-To run a specific doctest/unittest:
-```bash
-# Run unittest
-./dev/pytest -k "DataFrameTest and test_Dataframe"
+- Koalas docs' style and infrastructure simply follow rest of the PyData projects'.
 
-# Run doctest
-./dev/pytest -k DataFrame.corr --doctest-modules databricks
-```
+### Unify small data (pandas) API and big data (Spark) API, but pandas first
 
-Note that `-k` is used for simplicity although it takes an expression. You can use `--verbose` to check what to filter. See `pytest --help` for more details.
+The Koalas DataFrame is meant to provide the best of pandas and Spark under a single API, with easy and clear conversions between each API when necessary. When Spark and pandas have similar APIs with subtle differences, the principle is to honor the contract of the pandas API first.
 
-### Building Documentation
+There are 4 different classes of functions:
 
-To build documentation via Sphinx:
+ 1. Functions that are only found in Spark (`select`, `selectExpr`). These functions should also be available in Koalas.
 
-```bash
-cd docs && make clean html
-```
+ 2. Functions that are found in Spark but that have a clear equivalent in pandas, e.g. `alias` and `rename`. These functions will be implemented as the alias of the pandas function, but should be marked that they are aliases of the same functions. They are provided so that existing users of PySpark can get the benefits of Koalas without having to adapt their code.
 
-It generates HTMLs under `docs/build/html` directory. Open `docs/build/html/index.html` to check if documentation is built properly.
+ 3. Functions that are found in both Spark and pandas under the same name (`count`, `dtypes`, `head`). The return value is the same as the return type in pandas (and not Spark's).
 
-### Coding Conventions
-We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
+ 4. Functions that are only found in pandas. When these functions are appropriate for distributed datasets, they should become available in Koalas.
 
-### Release Instructions
-Only project maintainers can do the following.
+### Return Koalas data structure for big data, and pandas data structure for small data
 
-Step 1. Make sure version is set correctly in `databricks/koalas/version.py`.
+Often developers face the question whether a particular function should return a Koalas DataFrame/Series, or a pandas DataFrame/Series. The principle is: if the returned object can be large, use a Koalas DataFrame/Series. If the data is bound to be small, use a pandas DataFrame/Series. For example, `DataFrame.dtypes` return a pandas Series, because the number of columns in a DataFrame is bounded and small, whereas `DataFrame.head()` or `Series.unique()` returns a Koalas DataFrame, because the resulting object can be large.
 
-Step 2. Make sure the build is green.
+### Provide discoverable APIs for common data science tasks
 
-Step 3. Create a new release on GitHub. Tag it as the same version as the setup.py.
-If the version is "0.1.0", tag the commit as "v0.1.0".
+At the risk of overgeneralization, there are two API design approaches: the first focuses on providing APIs for common tasks; the second starts with abstractions, and enable users to accomplish their tasks by composing primitives. While the world is not black and white, pandas takes more of the former approach, while Spark has taken more of the later.
 
-Step 4. Upload the package to PyPi:
-```bash
-rm -rf dist/koalas*
-python setup.py bdist_wheel
-export package_version=$(python setup.py --version)
-echo $package_version
+One example is value count (count by some key column), one of the most common operations in data science. pandas `DataFrame.value_count` returns the result in sorted order, which in 90% of the cases is what users prefer when exploring data, whereas Spark's does not sort, which is more desirable when building data pipelines, as users can accomplish the pandas behavior by adding an explicit `orderBy`.
 
-python3 -m pip install --user --upgrade twine
-python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl
-python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl
-```
+Similar to pandas, Koalas should also lean more towards the former, providing discoverable APIs for common data science tasks. In most cases, this principle is well taken care off by simply implementing pandas' APIs. However, there will be circumstances in which pandas' APIs don't address a specific need, e.g. plotting for big data.
+
+### Provide well documented APIs, with examples
+
+All functions and parameters should be documented. Most functions should be documented with examples, because those are the easiest to understand than a blob of text explaining what the function does.
+
+A recommended way to add documentation is to start with the docstring of the corresponding function in PySpark or pandas, and adapt it for Koalas. If you are adding a new function, also add it to the API reference doc index page in `docs/source/reference` directory. The examples in docstring also improve our test coverage.
+
+### Guardrails to prevent users from shooting themselves in the foot
+
+Certain operations in pandas are prohibitively expensive as data scales, and we don't want to give users the illusion that they can rely on such operations in Koalas. That is to say, methods implemented in Koalas should be safe to perform by default on large datasets. As a result, the following capabilities are not implemented in Koalas:
+
+1. Capabilities that are fundamentally not parallelizable: e.g. imperatively looping over each element
+2. Capabilities that require materializing the entire working set in a single node's memory. This is why we do not implement [`pandas.DataFrame.values`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.values.html#pandas.DataFrame.values). Another example is the `_repr_html_` call caps the total number of records shown to a maximum of 1000, to prevent users from blowing up their driver node simply by typing the name of the DataFrame in a notebook.
+
+A few exceptions, however, exist. One common pattern with "big data science" is that while the initial dataset is large, the working set becomes smaller as the analysis goes deeper. For example, data scientists often perform aggregation on datasets and want to then convert the aggregated dataset to some local data structure. To help data scientists, we offer the following:
+
+- [`DataFrame.to_pandas()`](https://koalas.readthedocs.io/en/stable/reference/api/databricks.koalas.DataFrame.to_pandas.html) : returns a pandas DataFrame, koalas only
+- [`DataFrame.to_numpy()`](https://koalas.readthedocs.io/en/stable/reference/api/databricks.koalas.DataFrame.to_numpy.html): returns a numpy array, works with both pandas and Koalas
+
+Note that it is clear from the names that these functions return some local data structure that would require materializing data in a single node's memory. For these functions, we also explicitly document them with a warning note that the resulting data structure must be small.
+
+### Be a lean API layer and move fast
+
+Koalas is designed as an API overlay layer on top of Spark. The project should be lightweight, and most functions should be implemented as wrappers around Spark or pandas. Koalas does not accept heavyweight implementations, e.g. execution engine changes.
+
+This approach enables us to move fast. For the considerable future, we aim to be making weekly releases.
+
+### High test coverage
+
+Koalas should be well tested. The project tracks its test coverage with over 90% across the entire codebase, and close to 100% for critical parts. Pull requests will not be accepted unless they have close to 100% statement coverage from the codecov report.
+
 
 
 ## FAQ
@@ -180,10 +180,14 @@ You should expect the following differences:
    Not a Number (NaN) special constants to indicate missing values, while Spark has a
    special flag on each value to indicate missing values. We would love to hear from you
    if you come across any discrepancies
-   
+
  - because Spark is lazy in nature, some operations like creating new columns only get 
    performed when Spark needs to print or write the dataframe.
-   
+
+### Is it Koalas or koalas?
+
+It's Koalas. Unlike pandas, we use upper case here.
+
 ### Should I use PySpark's DataFrame API or Koalas?
 
 If you are already familiar with pandas and want to leverage Spark for big data, we recommend
