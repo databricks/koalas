@@ -1557,7 +1557,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         If you have a function that takes the data as (say) the first
         argument, pass a tuple indicating which keyword expects the
-        data. For example, suppose ``total_and_product`` takes its data as ``arg1``:
+        data. For example, suppose ``total`` takes its data as ``arg1``:
 
         >>> def total(df, column1, column2):
         ...     return df.assign(total = df[column1] + df[column2])
