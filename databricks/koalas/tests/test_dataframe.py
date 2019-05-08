@@ -22,7 +22,7 @@ import pandas as pd
 
 from databricks import koalas
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
-from databricks.koalas.exceptions import PandasNotImplementedError
+from databricks.koalas.exceptions import PandasNotImplementedError, SparkPandasMergeError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 
 
@@ -386,13 +386,22 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         left_kdf = koalas.DataFrame({'A': [1, 2]})
         right_kdf = koalas.DataFrame({'B': ['x', 'y']}, index=[1, 2])
 
+        # Assert only 'on' or 'left_index' and 'right_index' parameters are set
+        msg = "At least 'on' or 'left_index' and 'right_index' have to be set"
+        with self.assertRaises(SparkPandasMergeError, msg=msg):
+            left_kdf.merge(right_kdf)
+        msg = "Only 'on' or 'left_index' and 'right_index' can be set"
+        with self.assertRaises(SparkPandasMergeError, msg=msg):
+            left_kdf.merge(right_kdf, on='id', left_index=True)
+
+        # Assert a valid option for the 'how' parameter is used
         msg = ("The 'how' parameter has to be amongst the following values: ['inner', 'left', " +
                "'right', 'full', 'outer']")
         with self.assertRaises(ValueError, msg=msg):
-            left_kdf.merge(right_kdf, how='foo')
+            left_kdf.merge(right_kdf, how='foo', left_index=True, right_index=True)
 
         # Assert inner join
-        res = left_kdf.merge(right_kdf)
+        res = left_kdf.merge(right_kdf, left_index=True, right_index=True)
         self.assert_eq(res, pd.DataFrame({'A': [2], 'B': ['x']}))
 
         # Assert inner join on non-default column
@@ -403,24 +412,25 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(res, pd.DataFrame(OrderedDict(A=[1, 2], id=[0, 1], B=['x', 'y'])))
 
         # Assert left join
-        res = left_kdf.merge(right_kdf, how='left')
+        res = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left')
         # FIXME Replace None with np.nan once #263 is solved
         self.assert_eq(res, pd.DataFrame({'A': [1, 2], 'B': [None, 'x']}))
 
         # Assert right join
-        res = left_kdf.merge(right_kdf, how='right')
+        res = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right')
         self.assert_eq(res, pd.DataFrame({'A': [2, np.nan], 'B': ['x', 'y']}))
 
         # Assert full outer join
-        res = left_kdf.merge(right_kdf, how='outer')
+        res = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer')
         # FIXME Replace None with np.nan once #263 is solved
         self.assert_eq(res, pd.DataFrame({'A': [1, 2, np.nan], 'B': [None, 'x', 'y']}))
 
         # Assert full outer join also works with 'full' keyword
-        res = left_kdf.merge(right_kdf, how='full')
+        res = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='full')
         # FIXME Replace None with np.nan once #263 is solved
         self.assert_eq(res, pd.DataFrame({'A': [1, 2, np.nan], 'B': [None, 'x', 'y']}))
 
         # Assert suffixes create the expected column names
-        res = left_kdf.merge(koalas.DataFrame({'A': [3, 4]}), suffixes=('_left', '_right'))
+        res = left_kdf.merge(koalas.DataFrame({'A': [3, 4]}), left_index=True, right_index=True,
+                             suffixes=('_left', '_right'))
         self.assert_eq(res, pd.DataFrame({'A_left': [1, 2], 'A_right': [3, 4]}))

@@ -32,6 +32,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
+from databricks.koalas.exceptions import SparkPandasMergeError
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
@@ -1468,6 +1469,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return len(self), len(self.columns)
 
     def merge(self, right: 'DataFrame', how: str = 'inner', on: str = None,
+              left_index: bool = False, right_index: bool = False,
               suffixes: Tuple[str, str] = ('_x', '_y')) -> 'DataFrame':
         """
         Merge DataFrame objects with a database-style join.
@@ -1489,6 +1491,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         on: Column or index level names to join on. These must be found in both DataFrames. If on
             is None and not merging on indexes then this defaults to the intersection of the
             columns in both DataFrames.
+        left_index: Use the index from the left DataFrame as the join key(s). If it is a
+            MultiIndex, the number of keys in the other DataFrame (either the index or a number of
+            columns) must match the number of levels.
+        right_index: Use the index from the right DataFrame as the join key. Same caveats as
+            left_index.
         suffixes: Suffix to apply to overlapping column names in the left and right side,
             respectively.
 
@@ -1527,6 +1534,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         As described in #263, joining string columns currently returns None for missing values
             instead of NaN.
         """
+        if on is None and not left_index and not right_index :
+            raise SparkPandasMergeError("At least 'on' or 'left_index' and 'right_index' have ",
+                                        "to be set")
+        if on is not None and (left_index or right_index):
+            raise SparkPandasMergeError("Only 'on' or 'left_index' and 'right_index' can be set")
+
         if how == 'full':
             print("Warning: While Koalas will accept 'full', you should use 'outer' instead to",
                   "be compatible with the pandas merge API")
