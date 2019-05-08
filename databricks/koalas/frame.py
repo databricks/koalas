@@ -18,7 +18,7 @@
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
 from functools import partial, reduce
-from typing import Any, List, Union
+from typing import Any, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -1466,6 +1466,101 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         (2, 3)
         """
         return len(self), len(self.columns)
+
+    def merge(self, right: 'DataFrame', how: str = 'inner', on: str = None,
+              suffixes: Tuple[str, str] = ('_x', '_y')) -> 'DataFrame':
+        """
+        Perform a database (SQL) merge operation between two DataFrame objects.
+
+        Parameters
+        ----------
+        right: the DataFrame for the right side of the join operation
+        how: a join method out of ['inner', 'left', 'right', 'full', 'outer']
+        on: the column name to be joined on. Defaults to the index if not specified
+        suffixes: suffix to apply to overlapping column names in the left and right side,
+            respectively
+
+        Returns
+        -------
+        DataFrame
+            The joined DataFrame
+
+        Examples
+        --------
+        >>> left_kdf = koalas.DataFrame({'A': [1, 2]})
+        >>> right_kdf = koalas.DataFrame({'B': ['x', 'y']}, index=[1, 2])
+
+        >>> left_kdf.merge(right_kdf)
+           A  B
+        0  2  x
+
+        >>> left_kdf.merge(right_kdf, how='left')
+           A     B
+        0  1  None
+        1  2     x
+
+        >>> left_kdf.merge(right_kdf, how='right')
+             A  B
+        0  2.0  x
+        1  NaN  y
+
+        >>> left_kdf.merge(right_kdf, how='outer')
+             A     B
+        0  1.0  None
+        1  2.0     x
+        2  NaN     y
+
+        Notes
+        -----
+        As described in #263, joining string columns currently returns None for missing values
+            instead of NaN.
+        """
+        if how == 'full':
+            print("Warning: While Koalas will accept 'full', you should use 'outer' instead to",
+                  "be compatible with the pandas merge API")
+            pass
+        if how == 'outer':
+            # 'outer' in pandas equals 'full' in Spark
+            how = 'full'
+        if how not in ('inner', 'left', 'right', 'full'):
+            raise ValueError("The 'how' parameter has to be amongst the following values: ",
+                             "['inner', 'left', 'right', 'full', 'outer']")
+
+        if on is None:
+            # FIXME Move index string to constant?
+            on = '__index_level_0__'
+
+        left_table = self._sdf.alias('left_table')
+        right_table = right._sdf.alias('right_table')
+
+        # Unpack suffixes tuple for convenience
+        left_suffix = suffixes[0]
+        right_suffix = suffixes[1]
+
+        # Append suffixes to columns with the same name to avoid conflicts later
+        duplicate_columns = list(self.columns & right.columns)
+        if duplicate_columns:
+            for duplicate_column_name in duplicate_columns:
+                left_table = left_table.withColumnRenamed(duplicate_column_name,
+                                                          duplicate_column_name + left_suffix)
+                right_table = right_table.withColumnRenamed(duplicate_column_name,
+                                                            duplicate_column_name + right_suffix)
+
+        join_condition = (left_table[on] == right_table[on] if on not in duplicate_columns
+                          else left_table[on + left_suffix] == right_table[on + right_suffix])
+        joined_table = left_table.join(right_table, join_condition, how=how)
+
+        if on in duplicate_columns:
+            # Merge duplicate key columns
+            joined_table = joined_table.withColumnRenamed(on + left_suffix, on)
+            joined_table = joined_table.drop(on + right_suffix)
+
+        # Remove auxiliary index
+        # FIXME Move index string to constant?
+        joined_table = joined_table.drop('__index_level_0__')
+
+        kdf = DataFrame(joined_table)
+        return kdf
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series

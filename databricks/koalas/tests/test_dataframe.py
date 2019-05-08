@@ -380,3 +380,41 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "Values should be iterable, Series, DataFrame or dict."
         with self.assertRaisesRegex(TypeError, msg):
             kdf.isin(1)
+
+    def test_merge(self):
+        left_kdf = koalas.DataFrame({'A': [1, 2]})
+        right_kdf = koalas.DataFrame({'B': ['x', 'y']}, index=[1, 2])
+
+        msg = ("The 'how' parameter has to be amongst the following values: ['inner', 'left', " +
+               "'right', 'full', 'outer']")
+        with self.assertRaises(ValueError, msg=msg):
+            left_kdf.merge(right_kdf, how='foo')
+
+        # Assert inner join
+        res = left_kdf.merge(right_kdf)
+        self.assert_eq(res, pd.DataFrame({'A': [2], 'B': ['x']}))
+
+        # Assert inner join on non-default column
+        left_kdf_with_id = koalas.DataFrame({'A': [1, 2], 'id': [0, 1]})
+        right_kdf_with_id = koalas.DataFrame({'B': ['x', 'y'], 'id': [0, 1]}, index=[1, 2])
+        res = left_kdf_with_id.merge(right_kdf_with_id, on='id')
+        self.assert_eq(res, pd.DataFrame({'A': [1, 2], 'id': [0, 1], 'B': ['x', 'y']}))
+
+        # Assert left join
+        res = left_kdf.merge(right_kdf, how='left')
+        # FIXME Replace None with np.nan once #263 is solved
+        self.assert_eq(res, pd.DataFrame({'A': [1, 2], 'B': [None, 'x']}))
+
+        # Assert right join
+        res = left_kdf.merge(right_kdf, how='right')
+        self.assert_eq(res, pd.DataFrame({'A': [2, np.nan], 'B': ['x', 'y']}))
+
+        # Assert full outer join
+        res = left_kdf.merge(right_kdf, how='outer')
+        # FIXME Replace None with np.nan once #263 is solved
+        self.assert_eq(res, pd.DataFrame({'A': [1, 2, np.nan], 'B': [None, 'x', 'y']}))
+
+        # Assert full outer join also works with 'full' keyword
+        res = left_kdf.merge(right_kdf, how='full')
+        # FIXME Replace None with np.nan once #263 is solved
+        self.assert_eq(res, pd.DataFrame({'A': [1, 2, np.nan], 'B': [None, 'x', 'y']}))
