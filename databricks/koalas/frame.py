@@ -586,7 +586,7 @@ class DataFrame(_Frame):
 
         Encoding with Table Schema
 
-        >>> df.to_json(orient='table')
+        >>> df.to_json(orient='table') # doctest: +SKIP
         '{"schema": {"fields":[{"name":"index","type":"string"},\
 {"name":"col 1","type":"string"},\
 {"name":"col 2","type":"string"}],\
