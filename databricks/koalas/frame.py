@@ -1509,21 +1509,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> left_kdf = ks.DataFrame({'A': [1, 2]})
         >>> right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
 
-        >>> left_kdf.merge(right_kdf)
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True)
            A  B
         0  2  x
 
-        >>> left_kdf.merge(right_kdf, how='left')
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left')
            A     B
         0  1  None
         1  2     x
 
-        >>> left_kdf.merge(right_kdf, how='right')
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right')
              A  B
         0  2.0  x
         1  NaN  y
 
-        >>> left_kdf.merge(right_kdf, how='outer')
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer')
              A     B
         0  1.0  None
         1  2.0     x
