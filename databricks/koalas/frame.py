@@ -846,7 +846,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                   temp_c  temp_f  temp_k
         Portland    17.0    62.6  290.15
         Berkeley    25.0    77.0  298.15
-        
+
         Notes
         -----
         Assigning multiple columns within the same ``assign`` is possible
