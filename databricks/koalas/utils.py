@@ -73,3 +73,19 @@ def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],
 
     args['self'] = pobj
     return pandas_func(**args)
+
+
+def lazy_property(fn):
+    """
+    Decorator that makes a property lazy-evaluated.
+
+    Copied from https://stevenloria.com/lazy-properties/
+    """
+    attr_name = '_lazy_' + fn.__name__
+
+    @property
+    def _lazy_property(self):
+        if not hasattr(self, attr_name):
+            setattr(self, attr_name, fn(self))
+        return getattr(self, attr_name)
+    return _lazy_property

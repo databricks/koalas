@@ -55,8 +55,8 @@ setup(
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*',
     install_requires=[
         'pandas>=0.23',
-        'decorator',
         'pyarrow>=0.10,<0.11',  # See https://github.com/databricks/koalas/issues/26
+        'numpy>=0.14',
     ],
     maintainer="Databricks",
     maintainer_email="koalas@databricks.com",

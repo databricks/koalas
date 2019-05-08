@@ -17,7 +17,9 @@
 import pandas as pd
 
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
-from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.utils import lazy_property, validate_arguments_and_invoke_function
+
+some_global_variable = 0
 
 
 class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
@@ -43,3 +45,20 @@ class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
         # to a non-default value
         with self.assertRaises(TypeError):
             self.to_html(unsupported_param=1)
+
+    def test_lazy_property(self):
+        obj = TestClassForLazyProp()
+        # If lazy prop is not working, the second test would fail (because it'd be 2)
+        self.assert_eq(obj.lazy_prop, 1)
+        self.assert_eq(obj.lazy_prop, 1)
+
+
+class TestClassForLazyProp:
+
+    def __init__(self):
+        self.some_variable = 0
+
+    @lazy_property
+    def lazy_prop(self):
+        self.some_variable += 1
+        return self.some_variable
