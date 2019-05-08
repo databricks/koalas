@@ -125,6 +125,8 @@ class Series(_Frame):
         :param index_info: index information of this Series.
         """
         assert index_info is not None
+        assert kdf is not None
+        assert isinstance(kdf, ks.DataFrame), type(kdf)
         self._scol = scol
         self._kdf = kdf
         self._index_info = index_info

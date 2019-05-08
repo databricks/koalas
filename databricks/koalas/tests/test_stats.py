@@ -53,9 +53,9 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                            'C': [-6., -7, -8, -9, 10],
                            'D': ['a', 'b', 'c', 'd', 'e']})
         ddf = koalas.from_pandas(df)
-        self.assertPandasAlmostEqual(ddf.A.abs(), df.A.abs())
-        self.assertPandasAlmostEqual(ddf.B.abs(), df.B.abs())
-        self.assertPandasAlmostEqual(ddf[['B', 'C']].abs(), df[['B', 'C']].abs())
+        self.assert_eq(ddf.A.abs(), df.A.abs())
+        self.assert_eq(ddf.B.abs(), df.B.abs())
+        self.assert_eq(ddf[['B', 'C']].abs(), df[['B', 'C']].abs())
         # self.assert_eq(ddf.select('A', 'B').abs(), df[['A', 'B']].abs())
 
     def test_corr(self):
