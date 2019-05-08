@@ -3,16 +3,15 @@
 Koalas: pandas APIs on Apache Spark
 ============================================
 
-The Koalas project makes data scientists more productive when interacting with big data, by augmenting Apache Spark's Python DataFrame API to be compatible with Pandas'.
+Koalas makes data scientists more productive when interacting with big data, by augmenting Apache Spark's `Python DataFrame API <https://spark.apache.org/docs/latest/api/python/index.html>`_ to be compatible with `pandas DataFrame <https://pandas.pydata.org/>`_.
 
-Pandas is the de facto standard (single-node) dataframe implementation in Python, while Spark is the de facto standard for big data processing. With this package, data scientists can:
+pandas is the de facto standard (single-node) DataFrame implementation in Python, while Spark is the de facto standard for big data processing. With Koalas package, you can:
 
-* Be immediately productive with Spark, with no learning curve, if one is already familiar with Pandas.
-* Have a single codebase that works both with Pandas (tests, smaller datasets) and with Spark (distributed datasets).
+* Be immediately productive with Spark, with no learning curve, if you are already familiar with pandas.
+* Have a single codebase that works both with pandas (tests, smaller datasets) and with Spark (distributed datasets).
 
 .. toctree::
     :maxdepth: 3
 
     quickstart
     reference/index
-
