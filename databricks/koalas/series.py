@@ -500,43 +500,29 @@ class Series(_Frame):
         Uniques are returned in order of appearance. Hash table-based unique,
         therefore does NOT sort.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
-                  to be small, as all the data is loaded into the driver's memory.
+        .. note:: This method returns newly creased Series whereas Pandas returns
+                  the unique values as a NumPy array.
 
         Returns
         -------
-        ndarray or ExtensionArray
-            The unique values returned as a NumPy array. See Notes.
-
-        See Also
-        --------
-        unique : Top-level unique method for any 1-d array-like object.
-        Index.unique : Return Index with unique values from an Index object.
-
-        Notes
-        -----
-        Returns the unique values as a NumPy array. In case of an
-        extension-array backed Series, a new
-        :class:`~api.extensions.ExtensionArray` of that type with just
-        the unique values is returned. This includes
-
-            * Period
-            * Datetime with Timezone
-            * Interval
-            * Sparse
-            * IntegerNA
+        Returns the unique values as a Series.
 
         See Examples section.
 
         Examples
         --------
         >>> ks.Series([2, 1, 3, 3], name='A').unique()
-        array([2, 1, 3])
+        0    1
+        1    3
+        2    2
+        Name: A, dtype: int64
 
         >>> ks.Series([pd.Timestamp('2016-01-01') for _ in range(3)]).unique()
-        array(['2016-01-01T00:00:00.000000000'], dtype='datetime64[ns]')
+        0   2016-01-01
+        Name: 0, dtype: datetime64[ns]
         """
-        return pd.Series.unique(self.to_pandas())
+        sdf = self.to_dataframe()._sdf
+        return _col(DataFrame(sdf.select(self._scol).distinct()))
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
