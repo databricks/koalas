@@ -841,11 +841,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         referencing an existing Series or sequence and you can also
         create multiple columns within the same assign.
 
-        >>> df.assign(temp_f=df['temp_c'] * 9 / 5 + 32,
-        ...           temp_k=df['temp_c'] + 273.15)
-                  temp_c  temp_f  temp_k
-        Portland    17.0    62.6  290.15
-        Berkeley    25.0    77.0  298.15
+        >>> df.assign(temp_k=df['temp_c'] + 273.15,
+        ...           temp_f=df['temp_c'] * 9 / 5 + 32)
+                  temp_c  temp_k  temp_f
+        Portland    17.0  290.15    62.6
+        Berkeley    25.0  298.15    77.0
 
         Notes
         -----
