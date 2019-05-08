@@ -126,7 +126,7 @@ _known_types = _build_type_dict()
 _py_conversions = _build_py_type_dict()
 
 
-def as_spark_type(tpe):
+def as_spark_type(tpe) -> types.DataType:
     """
     Given a python type, returns the equivalent spark type.
     Accepts:
@@ -162,7 +162,7 @@ def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
         return types.from_arrow_type(pa.from_numpy_dtype(dt))
 
 
-def _make_fun(f, return_type, *args, **kwargs):
+def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) -> 'ks.Series':
     """
     This function calls the function f while taking into account some of the
     limitations of the pandas UDF support:
@@ -170,7 +170,7 @@ def _make_fun(f, return_type, *args, **kwargs):
     - support for scalar values (as long as they are picklable)
     - support for type hints and input checks.
     :param f: the function to call. It is expected to have field annotations (see below).
-    :param return_sig: the return signature (type X above)
+    :param return_sig: the return type
     :param args: the arguments of the function
     :param kwargs: the kwargs to pass to the function
     :return: the value of executing the function: f(*args, **kwargs)
@@ -323,18 +323,18 @@ def pandas_wrap(_function=None, return_col=None, return_scalar=None):
     example of function with optional series arguments and non-series arguments:
 
     >>> @pandas_wrap(return_col=float)
-    ... def fun(col1, col2 = None, arg1="x"):
-    ...    return 2.0 * col1 if arg1 == "x" else 3.0 * col1 * col2
+    ... def fun(col1, col2 = None, arg1="x", **kwargs):
+    ...    return 2.0 * col1 if arg1 == "x" else 3.0 * col1 * col2 * kwargs['col3']
 
     >>> fun(df.col1)
     0    2.0
     1    4.0
     Name: fun(col1), dtype: float32
 
-    >>> fun(df.col1, col2=df.col2, arg1="y")
-    0     30.0
-    1    120.0
-    Name: fun(col1, col2=col2), dtype: float32
+    >>> fun(df.col1, col2=df.col2, arg1="y", col3=df.col2)
+    0     300.0
+    1    2400.0
+    Name: fun(col1, col2=col2, col3=col2), dtype: float32
 
     Notes
     -----
@@ -360,13 +360,13 @@ def pandas_wrap(_function=None, return_col=None, return_scalar=None):
     return function_wrapper(_function)
 
 
-def _infer_return_type(f, return_col_hint=None, return_scalar_hint=None):
+def _infer_return_type(f, return_col_hint=None, return_scalar_hint=None) -> X:
     spec = getfullargspec(f)
     return_sig = spec.annotations.get("return", None)
     return _get_return_type(return_sig, return_col_hint, return_scalar_hint)
 
 
-def _get_return_type(return_sig, return_col, return_scalar):
+def _get_return_type(return_sig, return_col, return_scalar) -> X:
     """
     Resolves the return type.
     :return: X
