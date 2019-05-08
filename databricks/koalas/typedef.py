@@ -18,6 +18,7 @@
 Utilities to deal with types. This is mostly focused on python3.
 """
 import typing
+import types as python_types
 from inspect import getfullargspec
 from functools import wraps
 
@@ -29,6 +30,7 @@ from pyspark.sql import Column
 from pyspark.sql.functions import pandas_udf
 import pyspark.sql.types as types
 
+
 T = typing.TypeVar("T")
 
 
@@ -37,9 +39,10 @@ class Col(typing.Generic[T]):
         return self
 
 
+# A column of data, with the data type.
 class _Column(object):
     def __init__(self, inner):
-        self.inner = inner
+        self.inner = inner  # type: types.DataType
 
     def __repr__(self):
         return "_ColumnType[{}]".format(self.inner)
@@ -50,17 +53,19 @@ class _DataFrame(object):
         return "_DataFrameType"
 
 
+# The type is scalar, or any other type that we do not know about.
 class _Regular(object):
     def __init__(self, tpe):
-        self.type = tpe
+        self.type = tpe  # type: types.DataType
 
     def __repr__(self):
         return "_RegularType[{}]".format(self.type)
 
 
+# The type is left unspecified.
 class _Unknown(object):
     def __init__(self, tpe):
-        self.type = tpe
+        self.type = tpe  # type: types.DataType
 
     def __repr__(self):
         return "_UnknownType"
@@ -152,6 +157,8 @@ def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
 
 
 def _check_compatible(arg, sig_arg: X):
+    # No input type check for now.
+    return arg
     if isinstance(sig_arg, _Unknown):
         return arg
     if isinstance(sig_arg, _Regular):
@@ -177,22 +184,39 @@ def make_fun(f, *args, **kwargs):
     - support for keyword arguments
     - support for scalar values (as long as they are picklable)
     - support for type hints and input checks.
-    :param f:
-    :param args:
-    :param kwargs:
-    :return:
+    :param f: the function to call. It is expected to have field annotations (see below).
+    :param args: the arguments of the function
+    :param kwargs: the kwargs to pass to the function
+    :return: the value of executing the function: f(*args, **kwargs)
+
+    The way this function executes depends on the what is provided as arguments:
+     - if one of the arguments is a koalas series or dataframe:
+        - the function is wrapped as a Spark UDF
+        - the series arguments are checked to be coming from the same original anchor
+        - the non-series arguments are serialized into the spark UDF.
+
+    The function is expected to have the following arguments:
+    f.sig_args: List[X]
+    f.sig_kwargs: Dict[str, X]
+    f.sig_return: X
     """
+    from databricks.koalas.series import Series
     sig_args = f.sig_args  # type: typing.List[X]
+    # All the argue
     final_args = []
-    col_indexes = []
+    # The list of indexes in the args list of columns.
+    col_indexes = []  # type: typing.List[int]
     frozen_args = []  # None for columns or the value for non-columns
     for (idx, (arg, sig_arg)) in enumerate(zip(args, sig_args)):
         arg2 = _check_compatible(arg, sig_arg)
-        if isinstance(arg2, (Column,)):
+        if isinstance(arg2, (Column, Series)):
             col_indexes.append(idx)
             frozen_args.append(None)
         else:
             frozen_args.append(arg2)
+        if isinstance(arg2, Series):
+            # Unwrap the spark column in the series.
+            arg2 = arg2._scol
         final_args.append(arg2)
     sig_kwargs = f.sig_kwargs  # type: typing.Dict[str, X]
     final_kwargs = {}
@@ -201,12 +225,16 @@ def make_fun(f, *args, **kwargs):
     for (key, arg) in kwargs.items():
         sig_arg = sig_kwargs[key]
         arg2 = _check_compatible(arg, sig_arg)
+        if isinstance(arg2, Series):
+            # Unwrap the spark column in the series.
+            arg2 = arg2._scol
         final_kwargs[key] = arg2
-        if isinstance(arg2, (Column,)):
+        if isinstance(arg2, (Column, Series)):
             col_keys.append(key)
             frozen_kwargs[key] = None
         else:
             frozen_kwargs[key] = arg2
+    print("col_keys", col_keys)
     if not col_keys and not col_indexes:
         # No argument is related to spark
         # The function is just called through without other considerations.
@@ -217,10 +245,12 @@ def make_fun(f, *args, **kwargs):
     ret_type = f.sig_return
     assert isinstance(ret_type, _Column), ret_type
     spark_ret_type = ret_type.inner
+    print("spark_ret_type", spark_ret_type)
     # Spark UDFs do not handle extra data that is not a column.
     # We build a new UDF that only takes arguments from columns, the rest is
     # sent inside the closure into the function.
     all_indexes = col_indexes + col_keys  # type: typing.Union[str, int]
+    (index_info, kdf) = _get_metadata(args, kwargs)
 
     def clean_fun(*args2):
         assert len(args2) == len(all_indexes), \
@@ -242,7 +272,19 @@ def make_fun(f, *args, **kwargs):
     for key in col_keys:
         col_args.append(final_kwargs[key])
     col = wrapped_udf(*col_args)
-    return col
+    # TODO: add the index and kdf
+    series = Series(data=col, index=index_info, anchor=kdf)
+    return series
+
+def _get_metadata(args, kwargs):
+    from databricks.koalas.series import Series
+    all_cols = ([arg for arg in args if isinstance(arg, Series)]
+                 + [arg for arg in kwargs.values() if isinstance(arg, Series)])
+    assert all_cols
+    # TODO: check all the anchors
+    s = all_cols[0]
+    return (s._index_info, s._kdf)
+
 
 
 def _wrap_callable(obj):
@@ -253,6 +295,71 @@ def _wrap_callable(obj):
 
     obj.__call__ = f
     return obj
+
+
+def pandas_wrap2(return_col=None, **tpe_kwargs):
+    """ This annotation makes a function available for Koalas.
+
+    Spark requires more information about the return types than pandas, and sometimes more
+    information is required. This annotations allows you to seemlessly write functions that
+    work for both pandas and koalas.
+
+    Examples
+    --------
+    """
+    def function_wrapper(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            print("wrapper", args, kwargs)
+            # Extract the signature arguments from this function.
+            spec = getfullargspec(f)
+            return_sig = spec.annotations.get("return", None)
+            sig_return = _get_return_type(return_sig, return_col)
+
+            # Extract the input signatures, if any:
+            sig_args = []
+            sig_kwargs = {}
+            for key in spec.args:
+                dt = _get_argument_type(
+                    fun_sig=spec.annotations.get(key, None),
+                    annotation_sig=tpe_kwargs.get(key, None)
+                )
+                sig_kwargs[key] = dt
+                sig_args.append(dt)
+            f.sig_return = sig_return
+            f.sig_args = sig_args
+            f.sig_kwargs = sig_kwargs
+            print("sig_return", sig_return)
+            print("sig_args", sig_args)
+            print("sig_kwargs", sig_kwargs)
+            return make_fun(f, *args, **kwargs)
+        return wrapper
+    # If no argument is passed, directly call the wrapper:
+    if isinstance(return_col, python_types.FunctionType):
+        return function_wrapper(return_col)
+    return function_wrapper
+
+
+def _get_argument_type(fun_sig, annotation_sig):
+    if fun_sig is not None:
+        return _to_stype(fun_sig)
+    if annotation_sig is not None:
+        return _to_stype(annotation_sig)
+    return _Unknown(None)
+
+
+def _get_return_type(return_sig, return_col):
+    if not (return_col or return_sig):
+        raise ValueError(
+            "Missing type information. It should either be provided as an argument to "
+            "pandas_wrap, or as a python typing hint")
+    if return_col is not None:
+        if isinstance(return_col, Col):
+            return _to_stype(return_col)
+        else:
+            return _to_stype(Col[return_col])
+    if return_sig is not None:
+        return _to_stype(return_sig)
 
 
 def pandas_wrap(f, return_col=None):

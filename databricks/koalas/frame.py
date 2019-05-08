@@ -509,7 +509,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         from databricks.koalas.series import Series
         if len(self._metadata.index_info) != 1:
             raise KeyError('Currently supported only when the DataFrame has a single index.')
-        return Series(self._index_columns[0], self, [])
+        return Series(self._index_columns[0], anchor=self, index=[])
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns. By default
@@ -1481,7 +1481,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise KeyError("none key")
         if isinstance(key, string_types):
             try:
-                return Series(self._sdf.__getitem__(key), self, self._metadata.index_info)
+                return Series(self._sdf.__getitem__(key), anchor=self, index=self._metadata.index_info)
             except AnalysisException:
                 raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, string_types)):
@@ -1495,7 +1495,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
-            return Series(self._sdf.__getitem__(key), self, self._metadata.index_info)
+            return Series(self._sdf.__getitem__(key), anchor=self, index=self._metadata.index_info)
         if isinstance(key, Series):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
@@ -1540,7 +1540,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        return Series(self._sdf.__getattr__(key), self, self._metadata.index_info)
+        return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_info)
 
     def __iter__(self):
         return self.toPandas().__iter__()
