@@ -1425,10 +1425,107 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
 
-    @derived_from(pd.DataFrame)
     def pipe(self, func, *args, **kwargs):
-        # Taken from pandas:
-        # https://github.com/pydata/pandas/blob/master/pandas/core/generic.py#L2698-L2707
+        """
+        Apply func(self, \*args, \*\*kwargs).
+
+        Parameters
+        ----------
+        func : function
+            function to apply to the (koalas) Dataframe.
+            ``args``, and ``kwargs`` are passed into ``func``.
+            Alternatively a ``(callable, data_keyword)`` tuple where
+            ``data_keyword`` is a string indicating the keyword of
+            ``callable`` that expects the %(klass)s.
+        args : iterable, optional
+            positional arguments passed into ``func``.
+        kwargs : mapping, optional
+            a dictionary of keyword arguments passed into ``func``.
+
+        Returns
+        -------
+        object : the return type of ``func``.
+
+        See Also
+        --------
+        DataFrame.apply
+        DataFrame.applymap
+        Series.map
+
+        Notes
+        -----
+        Use ``.pipe`` when chaining together functions that expect
+        Series, DataFrames or GroupBy objects. For example, given
+
+        >>> df = ks.DataFrame({'num_legs': [2, 4], 'num_wings': [2, 0]},
+        ...                   index=['falcon', 'dog'])
+        >>> def print_arguments_and_return_first(*args, **kwargs):
+        ...    print(args, kwargs)
+        ...    return args[0]
+        >>> f = g = h = print_arguments_and_return_first
+
+        instead of writing
+
+        >>> f(g(h(df), arg1="a"), arg2="b", arg3="c")
+        (        num_legs  num_wings
+        falcon         2          2
+        dog            4          0,) {}
+        (        num_legs  num_wings
+        falcon         2          2
+        dog            4          0,) {'arg1': 'a'}
+        (        num_legs  num_wings
+        falcon         2          2
+        dog            4          0,) {'arg2': 'b', 'arg3': 'c'}
+                num_legs  num_wings
+        falcon         2          2
+        dog            4          0
+
+
+        You can write
+
+        >>> (df.pipe(h)
+        ...    .pipe(g, arg1="a")
+        ...    .pipe(f, arg2="b", arg3="c")
+        ... )
+        (        num_legs  num_wings
+        falcon         2          2
+        dog            4          0,) {}
+        (        num_legs  num_wings
+        falcon         2          2
+        dog            4          0,) {'arg1': 'a'}
+        (        num_legs  num_wings
+        falcon         2          2
+        dog            4          0,) {'arg2': 'b', 'arg3': 'c'}
+                num_legs  num_wings
+        falcon         2          2
+        dog            4          0
+
+
+        If you have a function that takes the data as (say) the second
+        argument, pass a tuple indicating which keyword expects the
+        data. For example, suppose ``f`` takes its data as ``arg2``:
+
+        >>> def f(arg1, arg2, **kwargs):
+        ...     print((arg1, arg2), kwargs)
+        ...     return arg2
+        >>> (df.pipe(h)
+        ...    .pipe(g, arg1="a")
+        ...    .pipe((f, 'arg2'), arg1="a", arg3="c")
+        ...  )
+        (        num_legs  num_wings
+        falcon         2          2
+        dog            4          0,) {}
+        (        num_legs  num_wings
+        falcon         2          2
+        dog            4          0,) {'arg1': 'a'}
+        ('a',         num_legs  num_wings
+        falcon         2          2
+        dog            4          0) {'arg3': 'c'}
+                num_legs  num_wings
+        falcon         2          2
+        dog            4          0
+        """
+
         if isinstance(func, tuple):
             func, target = func
             if target in kwargs:
