@@ -74,13 +74,26 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(koalas.range(1001).__repr__(),
                          koalas.range(max_display_count).__repr__())
 
+    def test_repr_cache_invalidation(self):
+        # If there is any cache, inplace operations should invalidate it.
+        df = koalas.range(10)
+        df.__repr__()
+        df['a'] = df['id']
+        self.assertEqual(df.__repr__(), df.to_pandas().__repr__())
+
     def test_repr_html(self):
         # Make sure we only fetch max_display_count
         self.assertEqual(koalas.range(1001)._repr_html_(),
                          koalas.range(max_display_count)._repr_html_())
 
-    def test_empty_dataframe(self):
+    def test_repr_html_cache_invalidation(self):
+        # If there is any cache, inplace operations should invalidate it.
+        df = koalas.range(10)
+        df._repr_html_()
+        df['a'] = df['id']
+        self.assertEqual(df._repr_html_(), df.to_pandas()._repr_html_())
 
+    def test_empty_dataframe(self):
         pdf = pd.DataFrame({'a': pd.Series([], dtype='i1'),
                             'b': pd.Series([], dtype='str')})
 

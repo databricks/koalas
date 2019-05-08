@@ -36,7 +36,7 @@ from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.selection import SparkDataFrameLocator
-from databricks.koalas.utils import lazy_property, validate_arguments_and_invoke_function
+from databricks.koalas.utils import validate_arguments_and_invoke_function
 
 
 def _column_op(f):
@@ -127,11 +127,6 @@ class Series(_Frame):
         self._scol = scol
         self._kdf = kdf
         self._index_info = index_info
-
-    @lazy_property
-    def _pandas_series_with_max_display_count(self) -> pd.DataFrame:
-        """A cached version pandas Series used for repr."""
-        return self.head(max_display_count).to_pandas()
 
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
@@ -736,7 +731,7 @@ class Series(_Frame):
         return self._pandas_orig_repr()
 
     def __repr__(self):
-        return repr(self._pandas_series_with_max_display_count)
+        return repr(self.head(max_display_count).to_pandas())
 
     def __dir__(self):
         if not isinstance(self.schema, StructType):

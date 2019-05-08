@@ -49,6 +49,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(koalas.range(1001)['id'].__repr__(),
                          koalas.range(max_display_count)['id'].__repr__())
 
+    def test_repr_cache_invalidation(self):
+        # If there is any cache, inplace operations should invalidate it.
+        s = koalas.range(10)['id']
+        s.__repr__()
+        s.rename('a', inplace=True)
+        self.assertEqual(s.__repr__(), s.rename("a").__repr__())
+
     def test_empty_series(self):
         a = pd.Series([], dtype='i1')
         b = pd.Series([], dtype='str')
