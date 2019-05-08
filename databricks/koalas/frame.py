@@ -18,6 +18,7 @@
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
 import warnings
+from distutils.version import LooseVersion
 from functools import partial, reduce
 from typing import Any, List, Tuple, Union
 
@@ -574,7 +575,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def to_csv(self, path_or_buf=None, sep=",", na_rep='', float_format=None,
                columns=None, header=True, index=True, index_label=None,
                mode='w', encoding=None, compression='infer', quoting=None,
-               quotechar='"', line_terminator="\n", chunksize=None,
+               quotechar='"', line_terminator=None, chunksize=None,
                tupleize_cols=None, date_format=None, doublequote=True,
                escapechar=None, decimal='.'):
         """
@@ -623,7 +624,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             will treat them as non-numeric.
         quotechar : str, default '\"'
             String of length 1. Character used to quote fields.
-        line_terminator : string, default '\n'
+        line_terminator : string, optional
             The newline character or character sequence to use in the output
             file. Defaults to `os.linesep`, which depends on the OS in which
             this method is called ('\n' for linux, '\r\n' for Windows, i.e.).
@@ -665,6 +666,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # Make sure locals() call is at the top of the function so we don't capture local variables.
         args = locals()
         kdf = self
+
+        if line_terminator is None and LooseVersion(pd.__version__) < LooseVersion("0.24.0"):
+            args['line_terminator'] = '\n'
 
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_csv, pd.DataFrame.to_csv, args)
