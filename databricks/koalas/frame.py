@@ -1559,21 +1559,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         argument, pass a tuple indicating which keyword expects the
         data. For example, suppose ``total_and_product`` takes its data as ``arg1``:
 
-        >>> def total_and_product(df, column1, column2):
-        ...     return df.assign(total = df[column1] + df[column2],
-        ...                      product = df[column1] * df[column2])
+        >>> def total(df, column1, column2):
+        ...     return df.assign(total = df[column1] + df[column2])
 
         >>> df = ks.DataFrame({'x':range(3), 'y':range(3, 6), 'z':range(6, 9)})
         >>> (df
         ...   .pipe(test_func, 'add', num=7)
         ...   .pipe(test_func, 'mul', num=10)
         ...   .pipe(test_func, 'div', num=5)
-        ...   .pipe((total_and_product, 'df'), column1='x', column2='y')
+        ...   .pipe((total, 'df'), column1='x', column2='y')
         ... )
-              x     y     z  total  product
-        0  14.0  20.0  26.0   34.0    280.0
-        1  16.0  22.0  28.0   38.0    352.0
-        2  18.0  24.0  30.0   42.0    432.0
+              x     y     z  total
+        0  14.0  20.0  26.0   34.0
+        1  16.0  22.0  28.0   38.0
+        2  18.0  24.0  30.0   42.0
         """
         if isinstance(func, tuple):
             func, target = func
