@@ -1443,10 +1443,82 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
 
-    @derived_from(pd.DataFrame)
     def pipe(self, func, *args, **kwargs):
-        # Taken from pandas:
-        # https://github.com/pydata/pandas/blob/master/pandas/core/generic.py#L2698-L2707
+        """
+        Apply func(self, *args, **kwargs).
+
+        Parameters
+        ----------
+        func : function
+            function to apply to the Dataframe.
+            ``args``, and ``kwargs`` are passed into ``func``.
+            Alternatively a ``(callable, data_keyword)`` tuple where
+            ``data_keyword`` is a string indicating the keyword of
+            ``callable`` that expects the DataFrames.
+        args : iterable, optional
+            positional arguments passed into ``func``.
+        kwargs : mapping, optional
+            a dictionary of keyword arguments passed into ``func``.
+
+        Returns
+        -------
+        object : the return type of ``func``.
+
+
+        Notes
+        -----
+        Use ``.pipe`` when chaining together functions that expect
+        Series, DataFrames or GroupBy objects. For example, given
+
+        >>> df = ks.DataFrame({'category': ['A', 'A', 'B'],
+        ...                    'col1': [1, 2, 3],
+        ...                    'col2': [4, 5, 6]})
+        >>> def keep_category_a(df):
+        ...    return df[df['category'] == 'A']
+        >>> def add_one(df, column):
+        ...    return df.assign(col3=df[column] + 1)
+        >>> def multiply(df, column1, column2):
+        ...    return df.assign(col4=df[column1] * df[column2])
+
+
+        instead of writing
+
+        >>> multiply(add_one(keep_category_a(df), column="col1"), column1="col2", column2="col3")
+          category  col1  col2  col3  col4
+        0        A     1     4     2     8
+        1        A     2     5     3    15
+
+
+        You can write
+
+        >>> (df.pipe(keep_category_a)
+        ...    .pipe(add_one, column="col1")
+        ...    .pipe(multiply, column1="col2", column2="col3")
+        ... )
+          category  col1  col2  col3  col4
+        0        A     1     4     2     8
+        1        A     2     5     3    15
+
+
+        If you have a function that takes the data as (say) the second
+        argument, pass a tuple indicating which keyword expects the
+        data. For example, suppose ``f`` takes its data as ``df``:
+
+        >>> def multiply_2(column1, df, column2):
+        ...     return df.assign(col4=df[column1] * df[column2])
+
+
+        Then you can write
+
+        >>> (df.pipe(keep_category_a)
+        ...    .pipe(add_one, column="col1")
+        ...    .pipe((multiply_2, 'df'), column1="col2", column2="col3")
+        ... )
+          category  col1  col2  col3  col4
+        0        A     1     4     2     8
+        1        A     2     5     3    15
+        """
+
         if isinstance(func, tuple):
             func, target = func
             if target in kwargs:
