@@ -1453,33 +1453,33 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Series, DataFrames or GroupBy objects. For example, given
 
         >>> df = ks.DataFrame({'category': ['A', 'A', 'B'],
-        ...                    'a': [1, 2, 3],
-        ...                    'b': [4, 5, 6]})
+        ...                    'col1': [1, 2, 3],
+        ...                    'col2': [4, 5, 6]})
         >>> def keep_category_a(df):
         ...    return df[df['category'] == 'A']
         >>> def add_one(df, column):
-        ...    return df.assign(c=df[column] + 1)
+        ...    return df.assign(col3=df[column] + 1)
         >>> def multiply(df, column1, column2):
-        ...    return df.assign(d=df[column1] * df[column2])
+        ...    return df.assign(col4=df[column1] * df[column2])
 
 
         instead of writing
 
-        >>> multiply(add_one(keep_category_a(df), column="a"), column1="b", column2="c")
-          category  a  b  c   d
-        0        A  1  4  2   8
-        1        A  2  5  3  15
+        >>> multiply(add_one(keep_category_a(df), column="col1"), column1="col2", column2="col3")
+          category  col1  col2  col3  col4
+        0        A     1     4     2     8
+        1        A     2     5     3    15
 
 
         You can write
 
         >>> (df.pipe(keep_category_a)
-        ...    .pipe(add_one, column="a")
-        ...    .pipe(multiply, column1="b", column2="c")
+        ...    .pipe(add_one, column="col1")
+        ...    .pipe(multiply, column1="col2", column2="col3")
         ... )
-          category  a  b  c   d
-        0        A  1  4  2   8
-        1        A  2  5  3  15
+          category  col1  col2  col3  col4
+        0        A     1     4     2     8
+        1        A     2     5     3    15
 
 
         If you have a function that takes the data as (say) the second
@@ -1487,18 +1487,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         data. For example, suppose ``f`` takes its data as ``df``:
 
         >>> def multiply_2(column1, df, column2):
-        ...     return df.assign(d=df[column1] * df[column2])
+        ...     return df.assign(col4=df[column1] * df[column2])
 
 
         Then you can write
 
         >>> (df.pipe(keep_category_a)
-        ...    .pipe(add_one, column="a")
-        ...    .pipe((multiply_2, 'df'), column1="b", column2="c")
+        ...    .pipe(add_one, column="col1")
+        ...    .pipe((multiply_2, 'df'), column1="col2", column2="col3")
         ... )
-          category  a  b  c   d
-        0        A  1  4  2   8
-        1        A  2  5  3  15
+          category  col1  col2  col3  col4
+        0        A     1     4     2     8
+        1        A     2     5     3    15
         """
 
         if isinstance(func, tuple):
