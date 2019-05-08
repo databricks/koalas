@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+from collections import OrderedDict
 import inspect
 
 import numpy as np
@@ -398,7 +399,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         left_kdf_with_id = koalas.DataFrame({'A': [1, 2], 'id': [0, 1]})
         right_kdf_with_id = koalas.DataFrame({'B': ['x', 'y'], 'id': [0, 1]}, index=[1, 2])
         res = left_kdf_with_id.merge(right_kdf_with_id, on='id')
-        self.assert_eq(res, pd.DataFrame({'A': [1, 2], 'id': [0, 1], 'B': ['x', 'y']}))
+        # Use OrderedDict to also assure column order with Python 3.5
+        self.assert_eq(res, pd.DataFrame(OrderedDict(A=[1, 2], id=[0, 1], B=['x', 'y'])))
 
         # Assert left join
         res = left_kdf.merge(right_kdf, how='left')
