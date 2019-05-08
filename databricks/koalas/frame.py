@@ -1518,7 +1518,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if how == 'full':
             print("Warning: While Koalas will accept 'full', you should use 'outer' instead to",
                   "be compatible with the pandas merge API")
-            pass
         if how == 'outer':
             # 'outer' in pandas equals 'full' in Spark
             how = 'full'
