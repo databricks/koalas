@@ -185,8 +185,10 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
     """
     from databricks.koalas.series import Series
     # All the arguments.
-    frozen_args = []  # None for columns or the value for non-columns
-    col_args = []  # ks.Series for columns or None for the non-columns
+    # None for columns or the value for non-columns
+    frozen_args = []  # type: typing.List[typing.Any]
+    # ks.Series for columns or None for the non-columns
+    col_args = []  # type: typing.List[typing.Optional[Series]]
     for arg in args:
         if isinstance(arg, Series):
             frozen_args.append(None)
@@ -198,8 +200,10 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
             frozen_args.append(arg)
             col_args.append(None)
 
-    frozen_kwargs = []  # Value is none for kwargs that are columns, and the value otherwise
-    col_kwargs = []  # Value is a spark col for kwarg that is column, and None otherwise
+    # Value is none for kwargs that are columns, and the value otherwise
+    frozen_kwargs = []  # type: typing.List[typing.Tuple[str, typing.Any]]
+    # Value is a spark col for kwarg that is column, and None otherwise
+    col_kwargs = []  # type: typing.List[typing.Tuple[str, Series]]
     for (key, arg) in kwargs.items():
         if isinstance(arg, Series):
             col_kwargs.append((key, arg))
@@ -210,8 +214,7 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
             frozen_kwargs.append((key, arg))
 
     col_args_idxs = [idx for (idx, c) in enumerate(col_args) if c is not None]
-    all_indexes = (col_args_idxs
-                   + [key for (key, _) in col_kwargs])  # type: typing.List[typing.Union[int, str]]
+    all_indexes = (col_args_idxs + [key for (key, _) in col_kwargs])  # type: ignore
     if not all_indexes:
         # No argument is related to spark
         # The function is just called through without other considerations.
@@ -388,3 +391,4 @@ def _get_return_type(return_sig, return_col, return_scalar) -> X:
         return _Scalar(inner)
     if return_sig is not None:
         return _to_stype(return_sig)
+    assert False
