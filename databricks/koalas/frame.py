@@ -1470,7 +1470,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def merge(self, right: 'DataFrame', how: str = 'inner', on: str = None,
               suffixes: Tuple[str, str] = ('_x', '_y')) -> 'DataFrame':
         """
-        Perform a database (SQL) merge operation between two DataFrame objects.
+        Merge DataFrame objects with a database-style join.
 
         Parameters
         ----------
