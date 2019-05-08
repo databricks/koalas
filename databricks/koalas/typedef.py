@@ -280,6 +280,7 @@ def pandas_wrap(_function=None, return_col=None, return_scalar=None):
     >>> df = ks.DataFrame(pdf)
 
     Consider a simple function that operates on pandas series of integers
+
     >>> def fun(col1):
     ...     return col1.apply(lambda x: x * 2) # Arbitrary pandas code.
     >>> fun(pdf.col1)
