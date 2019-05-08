@@ -60,7 +60,7 @@ def _column_op(f):
         # extract Spark Column. For other arguments, they are used as are.
         args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
         scol = f(self._scol, *args)
-        return Series(scol, self._kdf, self._index_info)
+        return Series(scol, anchor=self._kdf, index=self._index_info)
     return wrapper
 
 
@@ -94,11 +94,12 @@ class Series(_Frame):
     """
 
     @derived_from(pd.Series)
-    def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False):
+    def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False,
+                 anchor=None):
         if isinstance(data, pd.Series):
             self._init_from_pandas(data)
         elif isinstance(data, spark.Column):
-            self._init_from_spark(data, index, dtype)
+            self._init_from_spark(data, anchor, index)
         else:
             s = pd.Series(
                 data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
@@ -124,6 +125,8 @@ class Series(_Frame):
         :param index_info: index information of this Series.
         """
         assert index_info is not None
+        assert kdf is not None
+        assert isinstance(kdf, ks.DataFrame), type(kdf)
         self._scol = scol
         self._kdf = kdf
         self._index_info = index_info
@@ -162,7 +165,8 @@ class Series(_Frame):
     def __radd__(self, other):
         # Handle 'literal' + df['col']
         if isinstance(self.spark_type, StringType) and isinstance(other, str):
-            return Series(F.concat(F.lit(other), self._scol), self._kdf, self._index_info)
+            return Series(F.concat(F.lit(other), self._scol), anchor=self._kdf,
+                          index=self._index_info)
         else:
             return _column_op(spark.Column.__radd__)(self, other)
 
@@ -223,7 +227,7 @@ class Series(_Frame):
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
-        return Series(self._scol.cast(spark_type), self._kdf, self._index_info)
+        return Series(self._scol.cast(spark_type), anchor=self._kdf, index=self._index_info)
 
     def getField(self, name):
         if not isinstance(self.schema, StructType):
@@ -233,7 +237,7 @@ class Series(_Frame):
             if name not in fnames:
                 raise AttributeError(
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
-            return Series(self._scol.getField(name), self._kdf, self._index_info)
+            return Series(self._scol.getField(name), anchor=self._kdf, index=self._index_info)
 
     def alias(self, name):
         """An alias for :meth:`Series.rename`."""
@@ -296,7 +300,7 @@ class Series(_Frame):
             self._scol = scol
             return self
         else:
-            return Series(scol, self._kdf, self._index_info)
+            return Series(scol, anchor=self._kdf, index=self._index_info)
 
     @property
     def _metadata(self):
@@ -466,9 +470,10 @@ class Series(_Frame):
     @derived_from(pd.Series)
     def isnull(self):
         if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
-            return Series(self._scol.isNull() | F.isnan(self._scol), self._kdf, self._index_info)
+            return Series(self._scol.isNull() | F.isnan(self._scol), anchor=self._kdf,
+                          index=self._index_info)
         else:
-            return Series(self._scol.isNull(), self._kdf, self._index_info)
+            return Series(self._scol.isNull(), anchor=self._kdf, index=self._index_info)
 
     isna = isnull
 
@@ -648,8 +653,8 @@ class Series(_Frame):
                             " to isin(), you passed a [{values_type}]"
                             .format(values_type=type(values).__name__))
 
-        return Series(self._scol.isin(list(values)).alias(self.name), self._kdf,
-                      self._index_info)
+        return Series(self._scol.isin(list(values)).alias(self.name), anchor=self._kdf,
+                      index=self._index_info)
 
     def corr(self, other, method='pearson'):
         """
@@ -743,7 +748,7 @@ class Series(_Frame):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        return Series(self._scol.__getitem__(key), self._kdf, self._index_info)
+        return Series(self._scol.__getitem__(key), anchor=self._kdf, index=self._index_info)
 
     def __getattr__(self, item: str) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):

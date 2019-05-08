@@ -41,7 +41,7 @@ from databricks.koalas.series import Series
 from databricks.koalas.typedef import Col, pandas_wrap
 
 __all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
-           'get_dummies', 'DataFrame', 'Series']
+           'get_dummies', 'DataFrame', 'Series', 'Col', 'pandas_wrap']
 
 
 def _auto_patch():
