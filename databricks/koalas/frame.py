@@ -659,7 +659,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'name': ['Raphael', 'Donatello'],
         ...                    'mask': ['red', 'purple'],
         ...                    'weapon': ['sai', 'bo staff']})
-        >>> df.to_csv(index=False)
+        >>> df.to_csv(index=False) # doctest: +SKIP
         'name,mask,weapon\\nRaphael,red,sai\\nDonatello,purple,bo staff\\n'
         """
 
