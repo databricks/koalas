@@ -1499,8 +1499,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> left_kdf = koalas.DataFrame({'A': [1, 2]})
-        >>> right_kdf = koalas.DataFrame({'B': ['x', 'y']}, index=[1, 2])
+        >>> left_kdf = ks.DataFrame({'A': [1, 2]})
+        >>> right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
 
         >>> left_kdf.merge(right_kdf)
            A  B
