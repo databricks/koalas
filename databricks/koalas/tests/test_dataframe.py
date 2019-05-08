@@ -418,3 +418,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         res = left_kdf.merge(right_kdf, how='full')
         # FIXME Replace None with np.nan once #263 is solved
         self.assert_eq(res, pd.DataFrame({'A': [1, 2, np.nan], 'B': [None, 'x', 'y']}))
+
+        # Assert suffixes create the expected column names
+        res = left_kdf.merge(koalas.DataFrame({'A': [3, 4]}), suffixes=('_left', '_right'))
+        self.assert_eq(res, pd.DataFrame({'A_left': [1, 2], 'A_right': [3, 4]}))
