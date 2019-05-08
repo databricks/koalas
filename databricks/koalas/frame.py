@@ -1427,7 +1427,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def pipe(self, func, *args, **kwargs):
         """
-        Apply func(self, \*args, \*\*kwargs).
+        Apply func(self, *args, **kwargs).
 
         Parameters
         ----------
@@ -1436,7 +1436,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ``args``, and ``kwargs`` are passed into ``func``.
             Alternatively a ``(callable, data_keyword)`` tuple where
             ``data_keyword`` is a string indicating the keyword of
-            ``callable`` that expects the %(klass)s.
+            ``callable`` that expects the Series, DataFrames or GroupBy object.
         args : iterable, optional
             positional arguments passed into ``func``.
         kwargs : mapping, optional
