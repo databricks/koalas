@@ -1489,10 +1489,77 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
 
-    @derived_from(pd.DataFrame)
     def pipe(self, func, *args, **kwargs):
-        # Taken from pandas:
-        # https://github.com/pydata/pandas/blob/master/pandas/core/generic.py#L2698-L2707
+        """
+        Apply func(self, *args, **kwargs).
+
+        Parameters
+        ----------
+        func : function
+            function to apply to the %(klass)s.
+            ``args``, and ``kwargs`` are passed into ``func``.
+            Alternatively a ``(callable, data_keyword)`` tuple where
+            ``data_keyword`` is a string indicating the keyword of
+            ``callable`` that expects the %(klass)s.
+        args : iterable, optional
+            positional arguments passed into ``func``.
+        kwargs : mapping, optional
+            a dictionary of keyword arguments passed into ``func``.
+
+        Returns
+        -------
+        object : the return type of ``func``.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'x':range(3), 'y':range(3, 6), 'z':range(6, 9)})
+        >>> df
+           x  y  z
+        0  0  3  6
+        1  1  4  7
+        2  2  5  8
+
+        >>> def test_func(dataframe, func, num=1):
+        ...     for column in dataframe.columns:
+        ...         if func == 'add':
+        ...             dataframe[column] += num
+        ...         if func == 'mul':
+        ...             dataframe[column] *= num
+        ...         if func == 'div':
+        ...             dataframe[column] /= num
+        ...     return dataframe
+
+        >>> df.pipe(test_func, 'add', num=7) \
+        ...   .pipe(test_func, 'mul', num=10) \
+        ...   .pipe(test_func, 'div', num=5)
+              x     y     z
+        0  14.0  20.0  26.0
+        1  16.0  22.0  28.0
+        2  18.0  24.0  30.0
+
+        Notes
+        -----
+        Use ``.pipe`` when chaining together functions that expect
+        Series, DataFrames or GroupBy objects. Instead of writing
+
+        >>> f(g(h(df), arg1=a), arg2=b, arg3=c)
+
+        You can write
+
+        >>> (df.pipe(h)
+        ...    .pipe(g, arg1=a)
+        ...    .pipe(f, arg2=b, arg3=c)
+        ... )
+
+        If you have a function that takes the data as (say) the second
+        argument, pass a tuple indicating which keyword expects the
+        data. For example, suppose ``f`` takes its data as ``arg2``:
+
+        >>> (df.pipe(h)
+        ...    .pipe(g, arg1=a)
+        ...    .pipe((f, 'arg2'), arg1=a, arg3=c)
+        ...  )
+        """
         if isinstance(func, tuple):
             func, target = func
             if target in kwargs:
