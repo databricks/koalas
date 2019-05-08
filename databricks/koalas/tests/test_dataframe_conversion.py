@@ -151,9 +151,9 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
             dataframes = self.get_excel_dfs(koalas_location, pandas_location)
             self.assert_eq(dataframes['got'], dataframes['expected'])
 
-    def test_json(self):
-        pdf = self.pdf
+    def test_to_json(self):
 
+        pdf = self.pdf
         kdf = koalas.from_pandas(pdf)
 
         self.assert_eq(kdf.to_json(), pdf.to_json())
