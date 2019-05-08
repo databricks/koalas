@@ -122,7 +122,6 @@ class _MissingPandasLikeDataFrame(object):
     median = unsupported_function('median')
     melt = unsupported_function('melt')
     memory_usage = unsupported_function('memory_usage')
-    merge = unsupported_function('merge')
     mod = unsupported_function('mod')
     mode = unsupported_function('mode')
     mul = unsupported_function('mul')
