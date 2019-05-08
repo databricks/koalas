@@ -491,9 +491,38 @@ class Series(_Frame):
     def head(self, n=5):
         return _col(self.to_dataframe().head(n))
 
+    # TODO: Categorical type isn't supported (due to PySpark's limitation) and
+    # some doctests related with timestamps were not added.
     def unique(self):
-        # Pandas wants a series/array-like object
-        return _col(self.to_dataframe().unique())
+        """
+        Return unique values of Series object.
+
+        Uniques are returned in order of appearance. Hash table-based unique,
+        therefore does NOT sort.
+
+        .. note:: This method returns newly creased Series whereas Pandas returns
+                  the unique values as a NumPy array.
+
+        Returns
+        -------
+        Returns the unique values as a Series.
+
+        See Examples section.
+
+        Examples
+        --------
+        >>> ks.Series([2, 1, 3, 3], name='A').unique()
+        0    1
+        1    3
+        2    2
+        Name: A, dtype: int64
+
+        >>> ks.Series([pd.Timestamp('2016-01-01') for _ in range(3)]).unique()
+        0   2016-01-01
+        Name: 0, dtype: datetime64[ns]
+        """
+        sdf = self.to_dataframe()._sdf
+        return _col(DataFrame(sdf.select(self._scol).distinct()))
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
