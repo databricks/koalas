@@ -581,6 +581,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Write object to a comma-separated values (csv) file.
 
+            .. note:: This method should only be used if the resulting CSV is expected
+                to be small, as all the data is loaded into the driver's memory.
+
         Parameters
         ----------
         path_or_buf : str or file handle, default None
@@ -650,9 +653,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         None or str
             If path_or_buf is None, returns the resulting csv format as a
             string. Otherwise returns None.
-
-            .. note:: This method should only be used if the resulting CSV is expected
-            to be small, as all the data is loaded into the driver's memory.
 
         Examples
         --------
