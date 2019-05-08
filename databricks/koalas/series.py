@@ -731,7 +731,7 @@ class Series(_Frame):
         return self._pandas_orig_repr()
 
     def __repr__(self):
-        return repr(self.head(max_display_count).toPandas())
+        return repr(self.head(max_display_count).to_pandas())
 
     def __dir__(self):
         if not isinstance(self.schema, StructType):
