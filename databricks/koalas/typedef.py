@@ -243,12 +243,14 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
         if col is not None:
             spark_col_args.append(col._scol)
             name_tokens.append(col.name)
+    kw_name_tokens = []
     for (key, col) in col_kwargs:
         spark_col_args.append(col._scol)
-        name_tokens.append("{}={}".format(key, col.name))
+        kw_name_tokens.append("{}={}".format(key, col.name))
     col = wrapped_udf(*spark_col_args)
     series = Series(data=col, index=index_info, anchor=kdf)
-    name = "{}({})".format(f.__name__, ", ".join(name_tokens))
+    all_name_tokens = name_tokens + sorted(kw_name_tokens)
+    name = "{}({})".format(f.__name__, ", ".join(all_name_tokens))
     series = series.astype(return_type).alias(name)
     return series
 
