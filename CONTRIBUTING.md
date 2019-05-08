@@ -13,13 +13,13 @@ This document gives guidance to developers if they plan to contribute to Koalas.
 
 1. Read and understand the [Design Principles](https://github.com/databricks/koalas/blob/master/README.md#design-principles) for the project. Contributions should match these projects.
 
-2. Signaling your work: If you are working on something, comment on the relevant ticket that are you doing so to avoid multiple people taking on the same work at the same time. It is also a good practice to signal that your work has stalled or you have moved on and want somebody else to take over.
+2. Signaling your work: If you are working on something, comment on the relevant ticket that you are doing so to avoid multiple people taking on the same work at the same time. It is also a good practice to signal that your work has stalled or you have moved on and want somebody else to take over.
 
 3. Understand what the functionality is in pandas or in Spark.
 
 4. Implement the functionality, with test cases providing close to 100% statement coverage. Document the functionality.
 
-5. Run existing and new test cases to make sure they still pass.
+5. Run existing and new test cases to make sure they still pass. Also run the linter `dev/lint-python`.
 
 6. Submit a pull request, and be responsive to code review feedback from other community members.
 

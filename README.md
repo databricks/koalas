@@ -105,7 +105,7 @@ Koalas targets Python data scientists. We want to stick to the convention that u
 
 - Function names and parameters use snake_case, rather than CamelCase. This is different from PySpark's design. For example, Koalas has `to_pandas()`, whereas PySpark has `toPandas()` for converting a DataFrame into a pandas DataFrame. In limited cases, to maintain compatibility with Spark, we also provide Spark's variant as an alias.
 
-- Koalas respects to the largest extent the conventions of the Python numerical ecosystem, and allows the use of numpy types, etc. that are supported by Spark.
+- Koalas respects to the largest extent the conventions of the Python numerical ecosystem, and allows the use of NumPy types, etc. that can be supported by Spark.
 
 - Koalas docs' style and infrastructure simply follow rest of the PyData projects'.
 
@@ -113,19 +113,22 @@ Koalas targets Python data scientists. We want to stick to the convention that u
 
 The Koalas DataFrame is meant to provide the best of pandas and Spark under a single API, with easy and clear conversions between each API when necessary. When Spark and pandas have similar APIs with subtle differences, the principle is to honor the contract of the pandas API first.
 
-There are 4 different classes of functions:
+There are different classes of functions:
 
- 1. Functions that are only found in Spark (`select`, `selectExpr`). These functions should also be available in Koalas.
-
+ 1. Functions that are found in both Spark and pandas under the same name (`count`, `dtypes`, `head`). The return value is the same as the return type in pandas (and not Spark's).
+    
  2. Functions that are found in Spark but that have a clear equivalent in pandas, e.g. `alias` and `rename`. These functions will be implemented as the alias of the pandas function, but should be marked that they are aliases of the same functions. They are provided so that existing users of PySpark can get the benefits of Koalas without having to adapt their code.
+ 
+ 3. Functions that are only found in pandas. When these functions are appropriate for distributed datasets, they should become available in Koalas.
+ 
+ 4. Functions that are only found in Spark that are essential to controlling the distributed nature of the computations, e.g. `cache`. These functions should be available in Koalas.
 
- 3. Functions that are found in both Spark and pandas under the same name (`count`, `dtypes`, `head`). The return value is the same as the return type in pandas (and not Spark's).
+We are still debating whether data transformation functions only available in Spark should be added to Koalas, e.g. `select`. We would love to hear your feedback on that.
 
- 4. Functions that are only found in pandas. When these functions are appropriate for distributed datasets, they should become available in Koalas.
 
 ### Return Koalas data structure for big data, and pandas data structure for small data
 
-Often developers face the question whether a particular function should return a Koalas DataFrame/Series, or a pandas DataFrame/Series. The principle is: if the returned object can be large, use a Koalas DataFrame/Series. If the data is bound to be small, use a pandas DataFrame/Series. For example, `DataFrame.dtypes` return a pandas Series, because the number of columns in a DataFrame is bounded and small, whereas `DataFrame.head()` or `Series.unique()` returns a Koalas DataFrame, because the resulting object can be large.
+Often developers face the question whether a particular function should return a Koalas DataFrame/Series, or a pandas DataFrame/Series. The principle is: if the returned object can be large, use a Koalas DataFrame/Series. If the data is bound to be small, use a pandas DataFrame/Series. For example, `DataFrame.dtypes` return a pandas Series, because the number of columns in a DataFrame is bounded and small, whereas `DataFrame.head()` or `Series.unique()` returns a Koalas DataFrame/Series, because the resulting object can be large.
 
 ### Provide discoverable APIs for common data science tasks
 
@@ -133,7 +136,7 @@ At the risk of overgeneralization, there are two API design approaches: the firs
 
 One example is value count (count by some key column), one of the most common operations in data science. pandas `DataFrame.value_count` returns the result in sorted order, which in 90% of the cases is what users prefer when exploring data, whereas Spark's does not sort, which is more desirable when building data pipelines, as users can accomplish the pandas behavior by adding an explicit `orderBy`.
 
-Similar to pandas, Koalas should also lean more towards the former, providing discoverable APIs for common data science tasks. In most cases, this principle is well taken care off by simply implementing pandas' APIs. However, there will be circumstances in which pandas' APIs don't address a specific need, e.g. plotting for big data.
+Similar to pandas, Koalas should also lean more towards the former, providing discoverable APIs for common data science tasks. In most cases, this principle is well taken care of by simply implementing pandas' APIs. However, there will be circumstances in which pandas' APIs don't address a specific need, e.g. plotting for big data.
 
 ### Provide well documented APIs, with examples
 
@@ -159,7 +162,7 @@ Note that it is clear from the names that these functions return some local data
 
 Koalas is designed as an API overlay layer on top of Spark. The project should be lightweight, and most functions should be implemented as wrappers around Spark or pandas. Koalas does not accept heavyweight implementations, e.g. execution engine changes.
 
-This approach enables us to move fast. For the considerable future, we aim to be making weekly releases.
+This approach enables us to move fast. For the considerable future, we aim to be making weekly releases. If we find a critical bug, we will be making a new release as soon as the bug fix is available.
 
 ### High test coverage
 
