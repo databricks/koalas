@@ -94,7 +94,8 @@ class Series(_Frame):
     """
 
     @derived_from(pd.Series)
-    def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False, anchor=None):
+    def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False,
+                 anchor=None):
         if isinstance(data, pd.Series):
             self._init_from_pandas(data)
         elif isinstance(data, spark.Column):
@@ -162,7 +163,8 @@ class Series(_Frame):
     def __radd__(self, other):
         # Handle 'literal' + df['col']
         if isinstance(self.spark_type, StringType) and isinstance(other, str):
-            return Series(F.concat(F.lit(other), self._scol), anchor=self._kdf, index=self._index_info)
+            return Series(F.concat(F.lit(other), self._scol), anchor=self._kdf,
+                          index=self._index_info)
         else:
             return _column_op(spark.Column.__radd__)(self, other)
 
@@ -466,7 +468,8 @@ class Series(_Frame):
     @derived_from(pd.Series)
     def isnull(self):
         if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
-            return Series(self._scol.isNull() | F.isnan(self._scol), anchor=self._kdf, index=self._index_info)
+            return Series(self._scol.isNull() | F.isnan(self._scol), anchor=self._kdf,
+                          index=self._index_info)
         else:
             return Series(self._scol.isNull(), anchor=self._kdf, index=self._index_info)
 

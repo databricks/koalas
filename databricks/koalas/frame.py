@@ -1481,7 +1481,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise KeyError("none key")
         if isinstance(key, string_types):
             try:
-                return Series(self._sdf.__getitem__(key), anchor=self, index=self._metadata.index_info)
+                return Series(self._sdf.__getitem__(key), anchor=self,
+                              index=self._metadata.index_info)
             except AnalysisException:
                 raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, string_types)):
