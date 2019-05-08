@@ -1432,11 +1432,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Parameters
         ----------
         func : function
-            function to apply to the (koalas) Dataframe.
+            function to apply to the Dataframe.
             ``args``, and ``kwargs`` are passed into ``func``.
             Alternatively a ``(callable, data_keyword)`` tuple where
             ``data_keyword`` is a string indicating the keyword of
-            ``callable`` that expects the Series, DataFrames or GroupBy object.
+            ``callable`` that expects the DataFrames.
         args : iterable, optional
             positional arguments passed into ``func``.
         kwargs : mapping, optional
@@ -1446,84 +1446,59 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         -------
         object : the return type of ``func``.
 
-        See Also
-        --------
-        DataFrame.apply
-        DataFrame.applymap
-        Series.map
 
         Notes
         -----
         Use ``.pipe`` when chaining together functions that expect
         Series, DataFrames or GroupBy objects. For example, given
 
-        >>> df = ks.DataFrame({'num_legs': [2, 4], 'num_wings': [2, 0]},
-        ...                   index=['falcon', 'dog'])
-        >>> def print_arguments_and_return_first(*args, **kwargs):
-        ...    print(args, kwargs)
-        ...    return args[0]
-        >>> f = g = h = print_arguments_and_return_first
+        >>> df = ks.DataFrame({'category': ['A', 'A', 'B'],
+        ...                    'a': [1, 2, 3],
+        ...                    'b': [4, 5, 6]})
+        >>> def keep_category_a(df):
+        ...    return df[df['category'] == 'A']
+        >>> def add_one(df, column):
+        ...    return df.assign(c=df[column] + 1)
+        >>> def multiply(df, column1, column2):
+        ...    return df.assign(d=df[column1] * df[column2])
+
 
         instead of writing
 
-        >>> f(g(h(df), arg1="a"), arg2="b", arg3="c")
-        (        num_legs  num_wings
-        falcon         2          2
-        dog            4          0,) {}
-        (        num_legs  num_wings
-        falcon         2          2
-        dog            4          0,) {'arg1': 'a'}
-        (        num_legs  num_wings
-        falcon         2          2
-        dog            4          0,) {'arg2': 'b', 'arg3': 'c'}
-                num_legs  num_wings
-        falcon         2          2
-        dog            4          0
+        >>> multiply(add_one(keep_category_a(df), column="a"), column1="b", column2="c")
+          category  a  b  c   d
+        0        A  1  4  2   8
+        1        A  2  5  3  15
 
 
         You can write
 
-        >>> (df.pipe(h)
-        ...    .pipe(g, arg1="a")
-        ...    .pipe(f, arg2="b", arg3="c")
+        >>> (df.pipe(keep_category_a)
+        ...    .pipe(add_one, column="a")
+        ...    .pipe(multiply, column1="b", column2="c")
         ... )
-        (        num_legs  num_wings
-        falcon         2          2
-        dog            4          0,) {}
-        (        num_legs  num_wings
-        falcon         2          2
-        dog            4          0,) {'arg1': 'a'}
-        (        num_legs  num_wings
-        falcon         2          2
-        dog            4          0,) {'arg2': 'b', 'arg3': 'c'}
-                num_legs  num_wings
-        falcon         2          2
-        dog            4          0
+          category  a  b  c   d
+        0        A  1  4  2   8
+        1        A  2  5  3  15
 
 
         If you have a function that takes the data as (say) the second
         argument, pass a tuple indicating which keyword expects the
-        data. For example, suppose ``f`` takes its data as ``arg2``:
+        data. For example, suppose ``f`` takes its data as ``df``:
 
-        >>> def f(arg1, arg2, **kwargs):
-        ...     print((arg1, arg2), kwargs)
-        ...     return arg2
-        >>> (df.pipe(h)
-        ...    .pipe(g, arg1="a")
-        ...    .pipe((f, 'arg2'), arg1="a", arg3="c")
-        ...  )
-        (        num_legs  num_wings
-        falcon         2          2
-        dog            4          0,) {}
-        (        num_legs  num_wings
-        falcon         2          2
-        dog            4          0,) {'arg1': 'a'}
-        ('a',         num_legs  num_wings
-        falcon         2          2
-        dog            4          0) {'arg3': 'c'}
-                num_legs  num_wings
-        falcon         2          2
-        dog            4          0
+        >>> def multiply_2(column1, df, column2):
+        ...     return df.assign(d=df[column1] * df[column2])
+
+
+        Then you can write
+
+        >>> (df.pipe(keep_category_a)
+        ...    .pipe(add_one, column="a")
+        ...    .pipe((multiply_2, 'df'), column1="b", column2="c")
+        ... )
+          category  a  b  c   d
+        0        A  1  4  2   8
+        1        A  2  5  3  15
         """
 
         if isinstance(func, tuple):
