@@ -171,8 +171,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         kdf = self.kdf
 
         self.assert_eq(kdf.to_clipboard(), pdf.to_clipboard())
-        self.assert_eq(kdf.to_clipboard(excel=False, sep=";"),
-                       pdf.to_clipboard(excel=False, sep=";"))
-        self.assert_eq(kdf.to_clipboard(index=False),
-                       pdf.to_clipboard(index=False))
-
+        self.assert_eq(kdf.to_clipboard(excel=False),
+                       pdf.to_clipboard(excel=False))
+        self.assert_eq(kdf.to_clipboard(sep=";", index=False),
+                       pdf.to_clipboard(sep=";", index=False))
