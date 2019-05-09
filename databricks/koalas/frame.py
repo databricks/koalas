@@ -1549,7 +1549,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             how = 'full'
         if how not in ('inner', 'left', 'right', 'full'):
             raise ValueError("The 'how' parameter has to be amongst the following values: ",
-                             "['inner', 'left', 'right', 'full', 'outer']")
+                             "['inner', 'left', 'right', 'outer']")
 
         if on is None:
             # FIXME Move index string to constant?
