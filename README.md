@@ -211,7 +211,7 @@ scientists.
 
 ### How can I contribute to Koalas?
 
-See [CONTRIBUTING.md](https://github.com/databricks/koalas/master/CONTRIBUTING.md).
+See [CONTRIBUTING.md](https://github.com/databricks/koalas/blob/master/CONTRIBUTING.md).
 
 ### Why a new project (instead of putting this in Apache Spark itself)?
 
