@@ -429,14 +429,15 @@ class Series(_Frame):
         Examples
         --------
         >>> s = ks.Series([1, 2, 3, 4])
-        >>> s.to_dict()
-        {0: 1, 1: 2, 2: 3, 3: 4}
+        >>> s_dict = s.to_dict()
+        >>> sorted(s_dict.items())
+        [(0, 1), (1, 2), (2, 3), (3, 4)]
         >>> from collections import OrderedDict, defaultdict
         >>> s.to_dict(OrderedDict)
         OrderedDict([(0, 1), (1, 2), (2, 3), (3, 4)])
         >>> dd = defaultdict(list)
-        >>> s.to_dict(dd)
-        defaultdict(<class 'list'>, {0: 1, 1: 2, 2: 3, 3: 4})
+        >>> s.to_dict(dd)  # doctest: +ELLIPSIS
+        defaultdict(<class 'list'>, {...})
         """
         # Make sure locals() call is at the top of the function so we don't capture local variables.
         args = locals()

@@ -315,7 +315,8 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
     3  1  0  0
 
     >>> df = ks.DataFrame({'A': ['a', 'b', 'a'], 'B': ['b', 'a', 'c'],
-    ...                    'C': [1, 2, 3]})
+    ...                    'C': [1, 2, 3]},
+    ...                   columns=['A', 'B', 'C'])
 
     >>> ks.get_dummies(df, prefix=['col1', 'col2'])
        C  col1_a  col1_b  col2_a  col2_b  col2_c
