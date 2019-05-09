@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import os
 import string
 
 import pandas as pd
@@ -71,12 +72,35 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
         got = self.strip_all_whitespace(self.kdf.to_html(max_rows=2))
         self.assert_eq(got, expected)
 
+    @staticmethod
+    def setup_location(directory):
+        """Helper function to set up a temporary directory within test folder."""
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+    @staticmethod
+    def teardown_location(location1, location2, directory):
+        """Helper function to remove the temporary directory and it's contents."""
+        if os.path.isfile(location1):
+            os.remove(location1)
+        if os.path.isfile(location2):
+            os.remove(location2)
+        if os.path.exists(directory):
+            os.rmdir(directory)
+
     def test_to_excel(self):
         pdf = self.pdf
         kdf = self.kdf
-        excel_writer = "output.xlsx"
 
-        self.assert_eq(kdf.to_excel(excel_writer), pdf.to_excel(excel_writer))
+        directory = "./databricks/koalas/tests/temp/"
+        pandas_location = directory + "output1.xlsx"
+        koalas_location = directory + "output2.xlsx"
+        self.setup_location(directory)
+
+        kdf.to_excel(koalas_location)
+        pdf.to_excel(pandas_location)
+        self.assert_eq(pd.read_excel(koalas_location, index_col=0),
+                       pd.read_excel(pandas_location, index_col=0))
 
         pdf = pd.DataFrame({
             'a': [1, None, 3],
@@ -85,8 +109,10 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf = koalas.from_pandas(pdf)
 
-        self.assert_eq(kdf.to_excel(excel_writer, na_rep='null'),
-                       pdf.to_excel(excel_writer, na_rep='null'))
+        kdf.to_excel(koalas_location, na_rep='null')
+        pdf.to_excel(pandas_location, na_rep='null')
+        self.assert_eq(pd.read_excel(koalas_location, index_col=0),
+                       pd.read_excel(pandas_location, index_col=0))
 
         pdf = pd.DataFrame({
             'a': [1.0, 2.0, 3.0],
@@ -95,9 +121,19 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf = koalas.from_pandas(pdf)
 
-        self.assert_eq(kdf.to_excel(excel_writer, float_format='%.1f'),
-                       pdf.to_excel(excel_writer, float_format='%.1f'))
-        self.assert_eq(kdf.to_excel(excel_writer, header=False),
-                       pdf.to_excel(excel_writer, header=False))
-        self.assert_eq(kdf.to_excel(excel_writer, index=False),
-                       pdf.to_excel(excel_writer, index=False))
+        kdf.to_excel(koalas_location, float_format='%.1f')
+        pdf.to_excel(pandas_location, float_format='%.1f')
+        self.assert_eq(pd.read_excel(koalas_location, index_col=0),
+                       pd.read_excel(pandas_location, index_col=0))
+
+        kdf.to_excel(koalas_location, header=False)
+        pdf.to_excel(pandas_location, header=False)
+        self.assert_eq(pd.read_excel(koalas_location, index_col=0),
+                       pd.read_excel(pandas_location, index_col=0))
+
+        kdf.to_excel(koalas_location, index=False)
+        pdf.to_excel(pandas_location, index=False)
+        self.assert_eq(pd.read_excel(koalas_location, index_col=0),
+                       pd.read_excel(pandas_location, index_col=0))
+
+        self.teardown_location(pandas_location, koalas_location, directory)
