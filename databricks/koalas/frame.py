@@ -966,7 +966,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         With all data written to the file it is necessary to save the changes.
         Note that creating an `ExcelWriter` object with a file name that already
         exists will result in the contents of the existing file being erased.
-        
+
         Parameters
         ----------
         excel_writer : str or ExcelWriter object
@@ -1044,7 +1044,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df1.to_excel('output1.xlsx', engine='xlsxwriter')  # doctest: +SKIP
         """
-        
+
         # Make sure locals() call is at the top of the function so we don't capture local variables.
         args = locals()
         kdf = self
