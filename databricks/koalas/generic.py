@@ -59,7 +59,8 @@ class _Frame(object):
         Examples
         --------
 
-        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]})
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
 
         On a DataFrame:
 
@@ -86,7 +87,8 @@ class _Frame(object):
         Examples
         --------
 
-        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]})
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
 
         On a DataFrame:
 
@@ -113,7 +115,8 @@ class _Frame(object):
         Examples
         --------
 
-        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]})
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
 
         On a DataFrame:
 
@@ -141,7 +144,8 @@ class _Frame(object):
         Examples
         --------
 
-        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]})
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
 
         On a DataFrame:
 
@@ -170,7 +174,8 @@ class _Frame(object):
         Examples
         --------
 
-        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]})
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
 
         On a DataFrame:
 
@@ -197,7 +202,8 @@ class _Frame(object):
         Examples
         --------
 
-        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]})
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
 
         On a DataFrame:
 
@@ -224,7 +230,8 @@ class _Frame(object):
         Examples
         --------
 
-        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]})
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
 
         On a DataFrame:
 
@@ -251,7 +258,8 @@ class _Frame(object):
         Examples
         --------
 
-        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]})
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
 
         On a DataFrame:
 
@@ -291,7 +299,8 @@ class _Frame(object):
         ...     'a': [4, 5, 6, 7],
         ...     'b': [10, 20, 30, 40],
         ...     'c': [100, 50, -30, -50]
-        ... })
+        ...   },
+        ...   columns=['a', 'b', 'c'])
         >>> df.abs()
            a   b    c
         0  4  10  100
