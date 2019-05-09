@@ -92,7 +92,7 @@ We use Google Groups for mailling list: https://groups.google.com/forum/#!forum/
 
 ## Development Guide
 
-See [CONTRIBUTING.md](https://github.com/databricks/koalas/master/CONTRIBUTING.md).
+See [CONTRIBUTING.md](https://github.com/databricks/koalas/blob/master/CONTRIBUTING.md).
 
 
 ## Design Principles
