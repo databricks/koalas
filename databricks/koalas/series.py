@@ -731,9 +731,9 @@ class Series(_Frame):
         """
         Invoke function on values of Series.
 
-        Can be a Python function that only works on the series.
+        Can be a Python function that only works on the Series.
 
-        .. note:: unlike Pandas, it is required for `func` to specify return type hint.
+        .. note:: unlike pandas, it is required for `func` to specify return type hint.
 
         Parameters
         ----------
@@ -750,7 +750,7 @@ class Series(_Frame):
 
         Examples
         --------
-        Create a series with typical summer temperatures for each city.
+        Create a Series with typical summer temperatures for each city.
 
         >>> s = ks.Series([20, 21, 12],
         ...               index=['London', 'New York', 'Helsinki'])
@@ -775,7 +775,7 @@ class Series(_Frame):
 
         Define a custom function that needs additional positional
         arguments and pass these additional arguments using the
-        ``args`` keyword by using `pandas_wraps`.
+        ``args`` keyword
 
         >>> def subtract_custom_value(x, custom_value) -> np.int64:
         ...     return x - custom_value
@@ -788,7 +788,7 @@ class Series(_Frame):
 
 
         Define a custom function that takes keyword arguments
-        and pass these arguments to ``apply``  by using `pandas_wraps`.
+        and pass these arguments to ``apply``
 
         >>> def add_custom_values(x, **kwargs) -> np.int64:
         ...     for month in kwargs:
@@ -802,7 +802,7 @@ class Series(_Frame):
         Name: add_custom_values(0), dtype: int64
 
 
-        Use a function from the Numpy library by using `pandas_wraps`.
+        Use a function from the Numpy library
 
         >>> def numpy_log(col) -> np.float64:
         ...     return np.log(col)
