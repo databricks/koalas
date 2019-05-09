@@ -73,7 +73,7 @@ class DataFrame(_Frame):
     Constructing DataFrame from a dictionary.
 
     >>> d = {'col1': [1, 2], 'col2': [3, 4]}
-    >>> df = ks.DataFrame(data=d)
+    >>> df = ks.DataFrame(data=d, columns=['col1', 'col2'])
     >>> df
        col1  col2
     0     1     3
@@ -81,7 +81,7 @@ class DataFrame(_Frame):
 
     Constructing DataFrame from Pandas DataFrame
 
-    >>> df = ks.DataFrame(pd.DataFrame(data=d))
+    >>> df = ks.DataFrame(pd.DataFrame(data=d), columns=['col1', 'col2'])
     >>> df
        col1  col2
     0     1     3
