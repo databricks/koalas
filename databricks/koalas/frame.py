@@ -54,8 +54,8 @@ class DataFrame(_Frame):
         Dict can contain Series, arrays, constants, or list-like objects
         If data is a dict, argument order is maintained for Python 3.6
         and later.
-        Note that if `data` is a Pandas DataFrame other arguments are ignored.
-        If data is a Spark DataFrame, all other arguments except `index` is ignored.
+        Note that if `data` is a Pandas DataFrame, other arguments should not be used
+        If `data` is a Spark DataFrame, all other arguments except `index` should not be used.
     index : Index or array-like
         Index to use for resulting frame. Will default to RangeIndex if
         no indexing information part of input data and no index provided
@@ -81,7 +81,7 @@ class DataFrame(_Frame):
 
     Constructing DataFrame from Pandas DataFrame
 
-    >>> df = ks.DataFrame(pd.DataFrame(data=d), columns=['col1', 'col2'])
+    >>> df = ks.DataFrame(pd.DataFrame(data=d, columns=['col1', 'col2']))
     >>> df
        col1  col2
     0     1     3
@@ -116,8 +116,15 @@ class DataFrame(_Frame):
     """
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
         if isinstance(data, pd.DataFrame):
+            assert index is None
+            assert columns is None
+            assert dtype is None
+            assert not copy
             self._init_from_pandas(data)
         elif isinstance(data, spark.DataFrame):
+            assert columns is None
+            assert dtype is None
+            assert not copy
             self._init_from_spark(data, index)
         else:
             pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)

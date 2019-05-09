@@ -98,15 +98,15 @@ class Series(_Frame):
         Contains data stored in Series
         If data is a dict, argument order is maintained for Python 3.6
         and later.
-        Note that if `data` is a Pandas Series other arguments are ignored.
-        If data is a Spark Column, all other arguments except `index` is ignored.
+        Note that if `data` is a Pandas Series, other arguments should not be used.
+        If `data` is a Spark Column, all other arguments except `index` should not be used.
     index : array-like or Index (1d)
         Values must be hashable and have the same length as `data`.
         Non-unique index values are allowed. Will default to
         RangeIndex (0, 1, 2, ..., n) if not provided. If both a dict and index
         sequence are used, the index will override the keys found in the
         dict.
-        If `data` is a Spark DataFrame, `index` is expected to be `Metadata`s `index_info`..
+        If `data` is a Spark DataFrame, `index` is expected to be `Metadata`s `index_info`.
     dtype : numpy.dtype or None
         If None, dtype will be inferred
     copy : boolean, default False
@@ -116,8 +116,18 @@ class Series(_Frame):
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False,
                  anchor=None):
         if isinstance(data, pd.Series):
+            assert index is None
+            assert dtype is None
+            assert name is None
+            assert not copy
+            assert anchor is None
+            assert not fastpath
             self._init_from_pandas(data)
         elif isinstance(data, spark.Column):
+            assert dtype is None
+            assert name is None
+            assert not copy
+            assert not fastpath
             self._init_from_spark(data, anchor, index)
         else:
             s = pd.Series(
