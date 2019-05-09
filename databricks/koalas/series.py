@@ -484,7 +484,7 @@ class Series(_Frame):
 
     notna = notnull
 
-    @derived_from(pd.Series)
+    # TODO: inline documentation with Pandas'
     def dropna(self, axis=0, inplace=False, **kwargs):
         ks = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:

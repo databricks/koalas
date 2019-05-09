@@ -173,7 +173,7 @@ class DataFrame(_Frame):
         the column name and the content as a Series.
 
         Returns
-        ------
+        -------
         label : object
             The column names for the DataFrame being iterated over.
         content : Series
@@ -841,7 +841,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Determine rows which contain missing values are removed.
             * 0, or 'index' : Drop rows which contain missing values.
             .. dropna currently only works for axis=0 or axis='index'
-               axis=1 is yet to be implemented.
+            axis=1 is yet to be implemented.
         how : {'any', 'all'}, default 'any'
             Determine if row or column is removed from DataFrame, when we have
             at least one NA or all NA.
@@ -1446,13 +1446,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
 
     def pipe(self, func, *args, **kwargs):
-        """
-        Apply func(self, *args, **kwargs).
+        r"""
+        Apply func(self, \*args, \*\*kwargs).
 
         Parameters
         ----------
         func : function
-            function to apply to the Dataframe.
+            function to apply to the DataFrame.
             ``args``, and ``kwargs`` are passed into ``func``.
             Alternatively a ``(callable, data_keyword)`` tuple where
             ``data_keyword`` is a string indicating the keyword of
@@ -1465,7 +1465,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Returns
         -------
         object : the return type of ``func``.
-
 
         Notes
         -----
