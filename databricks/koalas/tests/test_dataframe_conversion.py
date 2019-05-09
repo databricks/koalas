@@ -70,3 +70,30 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
             """)
         got = self.strip_all_whitespace(self.kdf.to_html(max_rows=2))
         self.assert_eq(got, expected)
+
+    def test_to_excel(self):
+        pdf = self.pdf
+        kdf = self.kdf
+        excel_writer = "output.xlsx"
+
+        self.assert_eq(kdf.to_excel(excel_writer), pdf.to_excel(excel_writer))
+
+        pdf = pd.DataFrame({
+            'a': [1, None, 3],
+            'b': ["one", "two", None],
+        }, index=[0, 1, 3])
+
+        kdf = koalas.from_pandas(pdf)
+
+        self.assert_eq(kdf.to_excel(excel_writer, na_rep='null'), pdf.to_excel(excel_writer, na_rep='null'))
+
+        pdf = pd.DataFrame({
+            'a': [1.0, 2.0, 3.0],
+            'b': [4.0, 5.0, 6.0],
+        }, index=[0, 1, 3])
+
+        kdf = koalas.from_pandas(pdf)
+
+        self.assert_eq(kdf.to_excel(excel_writer, float_format='%.1f'), pdf.to_excel(excel_writer, float_format='%.1f'))
+        self.assert_eq(kdf.to_excel(excel_writer, header=False), pdf.to_excel(excel_writer, header=False))
+        self.assert_eq(kdf.to_excel(excel_writer, index=False), pdf.to_excel(excel_writer, index=False))
