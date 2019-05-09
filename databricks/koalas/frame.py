@@ -17,8 +17,9 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
+import warnings
 from functools import partial, reduce
-from typing import Any, List, Union
+from typing import Any, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -32,6 +33,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
 from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.dask.utils import derived_from
+from databricks.koalas.exceptions import SparkPandasMergeError
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
@@ -1605,6 +1607,124 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         (2, 3)
         """
         return len(self), len(self.columns)
+
+    def merge(self, right: 'DataFrame', how: str = 'inner', on: str = None,
+              left_index: bool = False, right_index: bool = False,
+              suffixes: Tuple[str, str] = ('_x', '_y')) -> 'DataFrame':
+        """
+        Merge DataFrame objects with a database-style join.
+
+        Parameters
+        ----------
+        right: Object to merge with.
+        how: Type of merge to be performed.
+            {‘left’, ‘right’, ‘outer’, ‘inner’}, default ‘inner’
+
+            left: use only keys from left frame, similar to a SQL left outer join; preserve key
+                order.
+            right: use only keys from right frame, similar to a SQL right outer join; preserve key
+                order.
+            outer: use union of keys from both frames, similar to a SQL full outer join; sort keys
+                lexicographically.
+            inner: use intersection of keys from both frames, similar to a SQL inner join;
+                preserve the order of the left keys.
+        on: Column or index level names to join on. These must be found in both DataFrames. If on
+            is None and not merging on indexes then this defaults to the intersection of the
+            columns in both DataFrames.
+        left_index: Use the index from the left DataFrame as the join key(s). If it is a
+            MultiIndex, the number of keys in the other DataFrame (either the index or a number of
+            columns) must match the number of levels.
+        right_index: Use the index from the right DataFrame as the join key. Same caveats as
+            left_index.
+        suffixes: Suffix to apply to overlapping column names in the left and right side,
+            respectively.
+
+        Returns
+        -------
+        DataFrame
+            A DataFrame of the two merged objects.
+
+        Examples
+        --------
+        >>> left_kdf = ks.DataFrame({'A': [1, 2]})
+        >>> right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
+
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True)
+           A  B
+        0  2  x
+
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left')
+           A     B
+        0  1  None
+        1  2     x
+
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right')
+             A  B
+        0  2.0  x
+        1  NaN  y
+
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer')
+             A     B
+        0  1.0  None
+        1  2.0     x
+        2  NaN     y
+
+        Notes
+        -----
+        As described in #263, joining string columns currently returns None for missing values
+            instead of NaN.
+        """
+        if on is None and not left_index and not right_index:
+            raise SparkPandasMergeError("At least 'on' or 'left_index' and 'right_index' have ",
+                                        "to be set")
+        if on is not None and (left_index or right_index):
+            raise SparkPandasMergeError("Only 'on' or 'left_index' and 'right_index' can be set")
+
+        if how == 'full':
+            warnings.warn("Warning: While Koalas will accept 'full', you should use 'outer' " +
+                          "instead to be compatible with the pandas merge API", UserWarning)
+        if how == 'outer':
+            # 'outer' in pandas equals 'full' in Spark
+            how = 'full'
+        if how not in ('inner', 'left', 'right', 'full'):
+            raise ValueError("The 'how' parameter has to be amongst the following values: ",
+                             "['inner', 'left', 'right', 'outer']")
+
+        if on is None:
+            # FIXME Move index string to constant?
+            on = '__index_level_0__'
+
+        left_table = self._sdf.alias('left_table')
+        right_table = right._sdf.alias('right_table')
+
+        # Unpack suffixes tuple for convenience
+        left_suffix = suffixes[0]
+        right_suffix = suffixes[1]
+
+        # Append suffixes to columns with the same name to avoid conflicts later
+        duplicate_columns = list(self.columns & right.columns)
+        if duplicate_columns:
+            for duplicate_column_name in duplicate_columns:
+                left_table = left_table.withColumnRenamed(duplicate_column_name,
+                                                          duplicate_column_name + left_suffix)
+                right_table = right_table.withColumnRenamed(duplicate_column_name,
+                                                            duplicate_column_name + right_suffix)
+
+        join_condition = (left_table[on] == right_table[on] if on not in duplicate_columns
+                          else left_table[on + left_suffix] == right_table[on + right_suffix])
+        joined_table = left_table.join(right_table, join_condition, how=how)
+
+        if on in duplicate_columns:
+            # Merge duplicate key columns
+            joined_table = joined_table.withColumnRenamed(on + left_suffix, on)
+            joined_table = joined_table.drop(on + right_suffix)
+
+        # Remove auxiliary index
+        # FIXME Move index string to constant?
+        joined_table = joined_table.drop('__index_level_0__')
+
+        kdf = DataFrame(joined_table)
+        return kdf
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series

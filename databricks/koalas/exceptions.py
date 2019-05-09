@@ -67,3 +67,7 @@ class PandasNotImplementedError(NotImplementedError):
             msg = "The property `{0}.{1}` is not implemented yet." \
                 .format(class_name, property_name)
         super(NotImplementedError, self).__init__(msg)
+
+
+class SparkPandasMergeError(Exception):
+    pass
