@@ -183,8 +183,8 @@ class DataFrame(_Frame):
         --------
         >>> df = ks.DataFrame({'species': ['bear', 'bear', 'marsupial'],
         ...                    'population': [1864, 22000, 80000]},
-        ...                     index=['panda', 'polar', 'koala'])
-        >>> df = df[['species', 'population']]
+        ...                   index=['panda', 'polar', 'koala'],
+        ...                   columns=['species', 'population'])
         >>> df
                  species  population
         panda       bear        1864
@@ -384,7 +384,7 @@ class DataFrame(_Frame):
 
         Examples
         --------
-        >>> df = ks.DataFrame({'col1': [1, 2, 3], 'col2': [4, 5, 6]})
+        >>> df = ks.DataFrame({'col1': [1, 2, 3], 'col2': [4, 5, 6]}, columns=['col1', 'col2'])
         >>> print(df.to_string())
            col1  col2
         0     1     4
@@ -449,8 +449,8 @@ class DataFrame(_Frame):
         --------
         >>> df = ks.DataFrame({'col1': [1, 2],
         ...                    'col2': [0.5, 0.75]},
-        ...                   index=['row1', 'row2'])
-        >>> df = df[['col1', 'col2']]
+        ...                   index=['row1', 'row2'],
+        ...                   columns=['col1', 'col2'])
         >>> df
               col1  col2
         row1     1  0.50
@@ -718,7 +718,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
+        >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4]}, columns=['col1', 'col2'])
         >>> df
            col1  col2
         0     1     3
@@ -870,8 +870,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         >>> df = ks.DataFrame({"name": ['Alfred', 'Batman', 'Catwoman'],
         ...                    "toy": [None, 'Batmobile', 'Bullwhip'],
-        ...                    "born": [None, "1940-04-25", None]})
-        >>> df = df[['name', 'toy', 'born']]
+        ...                    "born": [None, "1940-04-25", None]},
+        ...                   columns=['name', 'toy', 'born'])
         >>> df
                name        toy        born
         0    Alfred       None        None
@@ -970,7 +970,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...     'B': [2, 4, None, 3],
         ...     'C': [None, None, None, 1],
         ...     'D': [0, 1, 5, 4]
-        ...     })
+        ...     },
+        ...     columns=['A', 'B', 'C', 'D'])
         >>> df
              A    B    C  D
         0  NaN  2.0  NaN  0
@@ -1109,7 +1110,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                    'c': np.arange(3, 6).astype('i1'),
         ...                    'd': np.arange(4.0, 7.0, dtype='float64'),
         ...                    'e': [True, False, True],
-        ...                    'f': pd.date_range('20130101', periods=3)})
+        ...                    'f': pd.date_range('20130101', periods=3)},
+        ...                   columns=['a', 'b', 'c', 'd', 'e', 'f'])
         >>> df.dtypes
         a            object
         b             int64
@@ -1147,8 +1149,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({"Person":
         ...                    ["John", "Myla", "Lewis", "John", "Myla"],
         ...                    "Age": [24., np.nan, 21., 33, 26],
-        ...                    "Single": [False, True, True, True, False]})
-        >>> df = df[["Person", "Age", "Single"]]
+        ...                    "Single": [False, True, True, True, False]},
+        ...                   columns=["Person", "Age", "Single"])
         >>> df
           Person   Age  Single
         0   John  24.0   False
@@ -1196,8 +1198,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6], 'w': [7, 8]})
-        >>> df = df[['x', 'y', 'z', 'w']]
+        >>> df = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6], 'w': [7, 8]},
+        ...                   columns=['x', 'y', 'z', 'w'])
         >>> df
            x  y  z  w
         0  1  3  5  7
@@ -1254,7 +1256,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
+        >>> df = ks.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']},
+        ...                   columns=['x', 'y', 'z'])
         >>> df
            x  y  z
         0  0  a  a
@@ -1304,7 +1307,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...     'col1': ['A', 'B', None, 'D', 'C'],
         ...     'col2': [2, 9, 8, 7, 4],
         ...     'col3': [0, 9, 4, 2, 3],
-        ... })
+        ...   },
+        ...   columns=['col1', 'col2', 'col3'])
         >>> df
            col1  col2  col3
         0     A     2     0
@@ -1339,7 +1343,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...     'col1': ['A', 'A', 'B', None, 'D', 'C'],
         ...     'col2': [2, 1, 9, 8, 7, 4],
         ...     'col3': [0, 1, 9, 4, 2, 3],
-        ... })
+        ...   },
+        ...   columns=['col1', 'col2', 'col3'])
         >>> df.sort_values(by=['col1', 'col2'])
            col1  col2  col3
         1     A     1     1
@@ -1395,7 +1400,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Examples
         --------
         >>> df = ks.DataFrame({'num_legs': [2, 4], 'num_wings': [2, 0]},
-        ...                   index=['falcon', 'dog'])
+        ...                   index=['falcon', 'dog'],
+        ...                   columns=['num_legs', 'num_wings'])
         >>> df
                 num_legs  num_wings
         falcon         2          2
@@ -1468,7 +1474,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df = ks.DataFrame({'category': ['A', 'A', 'B'],
         ...                    'col1': [1, 2, 3],
-        ...                    'col2': [4, 5, 6]})
+        ...                    'col2': [4, 5, 6]},
+        ...                   columns=['category', 'col1', 'col2'])
         >>> def keep_category_a(df):
         ...    return df[df['category'] == 'A']
         >>> def add_one(df, column):

@@ -123,7 +123,8 @@ class _Frame(object):
         --------
         >>> df = ks.DataFrame({'Animal': ['Falcon', 'Falcon',
         ...                               'Parrot', 'Parrot'],
-        ...                    'Max Speed': [380., 370., 24., 26.]})
+        ...                    'Max Speed': [380., 370., 24., 26.]},
+        ...                   columns=['Animal', 'Max Speed'])
         >>> df
            Animal  Max Speed
         0  Falcon      380.0
