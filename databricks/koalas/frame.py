@@ -17,6 +17,7 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
+import warnings
 from functools import partial, reduce
 from typing import Any, List, Tuple, Union
 
@@ -1541,8 +1542,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise SparkPandasMergeError("Only 'on' or 'left_index' and 'right_index' can be set")
 
         if how == 'full':
-            print("Warning: While Koalas will accept 'full', you should use 'outer' instead to",
-                  "be compatible with the pandas merge API")
+            warnings.warn("Warning: While Koalas will accept 'full', you should use 'outer' " +
+                          "instead to be compatible with the pandas merge API", UserWarning)
         if how == 'outer':
             # 'outer' in pandas equals 'full' in Spark
             how = 'full'
