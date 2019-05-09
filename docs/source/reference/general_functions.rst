@@ -26,4 +26,4 @@ Integration with Spark and pandas
 .. autosummary::
    :toctree: api/
 
-   pandas_wrap
+   pandas_wraps
