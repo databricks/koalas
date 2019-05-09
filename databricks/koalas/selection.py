@@ -23,7 +23,6 @@ from pyspark import sql as spark
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
-from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 
 
@@ -141,7 +140,7 @@ class SparkDataFrameLocator(object):
                     sdf = sdf.where(reduce(lambda x, y: x & y, cond))
             else:
                 raiseNotImplemented("Cannot use slice for MultiIndex with Spark.")
-        elif isinstance(rows_sel, string_types):
+        elif isinstance(rows_sel, str):
             raiseNotImplemented("Cannot use a scalar value for row selection with Spark.")
         else:
             try:

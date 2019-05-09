@@ -26,7 +26,6 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType, DoubleType, NumericType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
@@ -93,7 +92,7 @@ class GroupBy(object):
 
         """
         if not isinstance(func_or_funcs, dict) or \
-            not all(isinstance(key, string_types) and isinstance(value, string_types)
+            not all(isinstance(key, str) and isinstance(value, str)
                     for key, value in func_or_funcs.items()):
             raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
                              "functions (string).")

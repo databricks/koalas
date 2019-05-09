@@ -31,8 +31,6 @@ from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
-from databricks.koalas.dask.compatibility import string_types
-from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.exceptions import SparkPandasMergeError
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
@@ -49,9 +47,73 @@ class DataFrame(_Frame):
 
     :ivar _sdf: Spark Column instance
     :ivar _metadata: Metadata related to column names and index information.
-    """
 
-    @derived_from(pd.DataFrame)
+    Parameters
+    ----------
+    data : numpy ndarray (structured or homogeneous), dict, Pandas DataFrame or Spark DataFrame
+        Dict can contain Series, arrays, constants, or list-like objects
+        If data is a dict, argument order is maintained for Python 3.6
+        and later.
+        Note that if `data` is a Pandas DataFrame other arguments are ignored.
+        If data is a Spark DataFrame, all other arguments except `index` is ignored.
+    index : Index or array-like
+        Index to use for resulting frame. Will default to RangeIndex if
+        no indexing information part of input data and no index provided
+        If `data` is a Spark DataFrame, `index` is expected to be `Metadata`.
+    columns : Index or array-like
+        Column labels to use for resulting frame. Will default to
+        RangeIndex (0, 1, 2, ..., n) if no column labels are provided
+    dtype : dtype, default None
+        Data type to force. Only a single dtype is allowed. If None, infer
+    copy : boolean, default False
+        Copy data from inputs. Only affects DataFrame / 2d ndarray input
+
+    Examples
+    --------
+    Constructing DataFrame from a dictionary.
+
+    >>> d = {'col1': [1, 2], 'col2': [3, 4]}
+    >>> df = ks.DataFrame(data=d)
+    >>> df
+       col1  col2
+    0     1     3
+    1     2     4
+
+    Constructing DataFrame from Pandas DataFrame
+
+    >>> df = ks.DataFrame(pd.DataFrame(data=d))
+    >>> df
+       col1  col2
+    0     1     3
+    1     2     4
+
+    Notice that the inferred dtype is int64.
+
+    >>> df.dtypes
+    col1    int64
+    col2    int64
+    dtype: object
+
+    To enforce a single dtype:
+
+    >>> df = ks.DataFrame(data=d, dtype=np.int8)
+    >>> df.dtypes
+    col1    int8
+    col2    int8
+    dtype: object
+
+    Constructing DataFrame from numpy ndarray:
+
+    >>> df2 = ks.DataFrame(np.random.randint(low=0, high=10, size=(5, 5)),
+    ...                    columns=['a', 'b', 'c', 'd', 'e'])
+    >>> df2  # doctest: +SKIP
+       a  b  c  d  e
+    0  3  1  4  9  8
+    1  4  8  4  8  4
+    2  7  6  5  6  7
+    3  8  7  9  1  0
+    4  2  5  4  3  9
+    """
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
         if isinstance(data, pd.DataFrame):
             self._init_from_pandas(data)
@@ -526,7 +588,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         Modify the DataFrame in place (do not create a new object)
         :return: :class:`DataFrame`
         """
-        if isinstance(keys, string_types):
+        if isinstance(keys, str):
             keys = [keys]
         else:
             keys = list(keys)
@@ -581,7 +643,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                              for i, (column, name) in enumerate(self._metadata.index_info)]
             index_info = []
         else:
-            if isinstance(level, (int, string_types)):
+            if isinstance(level, (int, str)):
                 level = [level]
             level = list(level)
 
@@ -591,7 +653,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         raise IndexError('Too many levels: Index has only {} level, not {}'
                                          .format(len(self._metadata.index_info), l + 1))
                 idx = level
-            elif all(isinstance(l, string_types) for l in level):
+            elif all(isinstance(l, str) for l in level):
                 idx = []
                 for l in level:
                     try:
@@ -973,7 +1035,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if axis == 0 or axis == 'index':
             if subset is not None:
-                if isinstance(subset, string_types):
+                if isinstance(subset, str):
                     columns = [subset]
                 else:
                     columns = list(subset)
@@ -1413,7 +1475,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4     D     7     2
         3  None     8     4
         """
-        if isinstance(by, string_types):
+        if isinstance(by, str):
             by = [by]
         if isinstance(ascending, bool):
             ascending = [ascending] * len(by)
@@ -1730,13 +1792,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         from databricks.koalas.series import Series
         if key is None:
             raise KeyError("none key")
-        if isinstance(key, string_types):
+        if isinstance(key, str):
             try:
                 return Series(self._sdf.__getitem__(key), anchor=self,
                               index=self._metadata.index_info)
             except AnalysisException:
                 raise KeyError(key)
-        if np.isscalar(key) or isinstance(key, (tuple, string_types)):
+        if np.isscalar(key) or isinstance(key, (tuple, str)):
             raise NotImplementedError(key)
         elif isinstance(key, slice):
             return self.loc[key]

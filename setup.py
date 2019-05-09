@@ -47,8 +47,7 @@ VERSION = __version__  # noqa
 setup(
     name='koalas',
     version=VERSION,
-    packages=['databricks', 'databricks.koalas', 'databricks.koalas.dask',
-              'databricks.koalas.missing'],
+    packages=['databricks', 'databricks.koalas', 'databricks.koalas.missing'],
     extras_require={
         'spark': ['pyspark>=2.4.0'],
     },
