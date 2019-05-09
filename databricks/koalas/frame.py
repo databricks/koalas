@@ -811,7 +811,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             The column names are keywords. If the values are
             callable, they are computed on the DataFrame and
             assigned to the new columns. The callable must not
-            change input DataFrame (though koalas doesn't check it).
+            change input DataFrame (though Koalas doesn't check it).
             If the values are not callable, (e.g. a Series or a literal),
             they are simply assigned.
 
@@ -841,8 +841,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         referencing an existing Series or sequence and you can also
         create multiple columns within the same assign.
 
-        >>> df.assign(temp_f=df['temp_c'] * 9 / 5 + 32,
-        ...           temp_k=df['temp_c'] + 273.15)
+        >>> assigned = df.assign(temp_f=df['temp_c'] * 9 / 5 + 32,
+        ...                      temp_k=df['temp_c'] + 273.15)
+        >>> assigned[['temp_c', 'temp_f', 'temp_k']]
                   temp_c  temp_f  temp_k
         Portland    17.0    62.6  290.15
         Berkeley    25.0    77.0  298.15
@@ -851,8 +852,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         -----
         Assigning multiple columns within the same ``assign`` is possible
         but you cannot refer to newly created or modified columns. This
-        feature is supported in Pandas for Python 3.6 and later but not in
-        Koalas. In koalas, all items are computed first, and then assigned.
+        feature is supported in pandas for Python 3.6 and later but not in
+        Koalas. In Koalas, all items are computed first, and then assigned.
         """
         from databricks.koalas.series import Series
         for k, v in kwargs.items():
