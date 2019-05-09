@@ -270,6 +270,7 @@ class Series(_Frame):
         ----------
         index : scalar
             Scalar will alter the ``Series.name`` attribute.
+
         inplace : bool, default False
             Whether to return a new Series. If True then value of copy is
             ignored.
@@ -281,12 +282,14 @@ class Series(_Frame):
 
         Examples
         --------
+
         >>> s = ks.Series([1, 2, 3])
         >>> s
         0    1
         1    2
         2    3
         Name: 0, dtype: int64
+
         >>> s.rename("my_name")  # scalar, changes Series.name
         0    1
         1    2
@@ -316,8 +319,79 @@ class Series(_Frame):
             raise KeyError('Currently supported only when the Column has a single index.')
         return self._kdf.index
 
-    @derived_from(pd.Series)
     def reset_index(self, level=None, drop=False, name=None, inplace=False):
+        """
+        Generate a new DataFrame or Series with the index reset.
+
+        This is useful when the index needs to be treated as a column,
+        or when the index is meaningless and needs to be reset
+        to the default before another operation.
+
+        Parameters
+        ----------
+        level : int, str, tuple, or list, default optional
+            For a Series with a MultiIndex, only remove the specified levels from the index.
+            Removes all levels by default.
+        drop : bool, default False
+            Just reset the index, without inserting it as a column in the new DataFrame.
+        name : object, optional
+            The name to use for the column containing the original Series values.
+            Uses self.name by default. This argument is ignored when drop is True.
+        inplace : bool, default False
+            Modify the Series in place (do not create a new object).
+
+        Returns
+        -------
+        Series or DataFrame
+            When `drop` is False (the default), a DataFrame is returned.
+            The newly created columns will come first in the DataFrame,
+            followed by the original Series values.
+            When `drop` is True, a `Series` is returned.
+            In either case, if ``inplace=True``, no value is returned.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4], name='foo',
+        ...               index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
+
+        Generate a DataFrame with default index.
+
+        >>> s.reset_index()
+          idx  foo
+        0   a    1
+        1   b    2
+        2   c    3
+        3   d    4
+
+        To specify the name of the new column use `name`.
+
+        >>> s.reset_index(name='values')
+          idx  values
+        0   a       1
+        1   b       2
+        2   c       3
+        3   d       4
+
+        To generate a new Series with the default set `drop` to True.
+
+        >>> s.reset_index(drop=True)
+        0    1
+        1    2
+        2    3
+        3    4
+        Name: foo, dtype: int64
+
+        To update the Series in place, without generating a new one
+        set `inplace` to True. Note that it also requires ``drop=True``.
+
+        >>> s.reset_index(inplace=True, drop=True)
+        >>> s
+        0    1
+        1    2
+        2    3
+        3    4
+        Name: foo, dtype: int64
+        """
         if inplace and not drop:
             raise TypeError('Cannot reset_index inplace on a Series to create a DataFrame')
 
@@ -468,8 +542,30 @@ class Series(_Frame):
     # Alias to maintain backward compatibility with Spark
     toPandas = to_pandas
 
-    @derived_from(pd.Series)
     def isnull(self):
+        """
+        Detect existing (non-missing) values.
+
+        Return a boolean same-sized object indicating if the values are NA.
+        NA values, such as None or numpy.NaN, gets mapped to True values.
+        Everything else gets mapped to False values. Characters such as empty strings '' or
+        numpy.inf are not considered NA values
+        (unless you set pandas.options.mode.use_inf_as_na = True).
+
+        Returns
+        -------
+        Series : Mask of bool values for each element in Series
+            that indicates whether an element is not an NA value.
+
+        Examples
+        --------
+        >>> ser = ks.Series([5, 6, np.NaN])
+        >>> ser.isna()  # doctest: +NORMALIZE_WHITESPACE
+        0    False
+        1    False
+        2     True
+        Name: ((0 IS NULL) OR isnan(0)), dtype: bool
+        """
         if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
             return Series(self._scol.isNull() | F.isnan(self._scol), anchor=self._kdf,
                           index=self._index_info)
@@ -478,14 +574,84 @@ class Series(_Frame):
 
     isna = isnull
 
-    @derived_from(pd.Series)
     def notnull(self):
+        """
+        Detect existing (non-missing) values.
+        Return a boolean same-sized object indicating if the values are not NA.
+        Non-missing values get mapped to True.
+        Characters such as empty strings '' or numpy.inf are not considered NA values
+        (unless you set pandas.options.mode.use_inf_as_na = True).
+        NA values, such as None or numpy.NaN, get mapped to False values.
+
+        Returns
+        -------
+        Series : Mask of bool values for each element in Series
+            that indicates whether an element is not an NA value.
+
+        Examples
+        --------
+        Show which entries in a Series are not NA.
+
+        >>> ser = pd.Series([5, 6, np.NaN])
+        >>> ser
+        0    5.0
+        1    6.0
+        2    NaN
+        dtype: float64
+
+        >>> ser.notna()
+        0     True
+        1     True
+        2    False
+        dtype: bool
+        """
         return ~self.isnull()
 
     notna = notnull
 
-    # TODO: inline documentation with Pandas'
     def dropna(self, axis=0, inplace=False, **kwargs):
+        """
+        Return a new Series with missing values removed.
+
+        Parameters
+        ----------
+        axis : {0 or 'index'}, default 0
+            There is only one axis to drop values from.
+        inplace : bool, default False
+            If True, do operation inplace and return None.
+        **kwargs
+            Not in use.
+
+        Returns
+        -------
+        Series
+            Series with NA entries dropped from it.
+
+        Examples
+        --------
+        >>> ser = ks.Series([1., 2., np.nan])
+        >>> ser
+        0    1.0
+        1    2.0
+        2    NaN
+        Name: 0, dtype: float64
+
+        Drop NA values from a Series.
+
+        >>> ser.dropna()
+        0    1.0
+        1    2.0
+        Name: 0, dtype: float64
+
+        Keep the Series with valid entries in the same variable.
+
+        >>> ser.dropna(inplace=True)
+        >>> ser
+        0    1.0
+        1    2.0
+        Name: 0, dtype: float64
+        """
+        # TODO: last two examples from Pandas produce different results.
         ks = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
             self._kdf = ks._kdf
@@ -493,8 +659,29 @@ class Series(_Frame):
         else:
             return ks
 
-    @derived_from(DataFrame)
     def head(self, n=5):
+        """
+        Return the first n rows.
+
+        This function returns the first n rows for the object based on position.
+        It is useful for quickly testing if your object has the right type of data in it.
+
+        Parameters
+        ----------
+        n : Integer, default =  5
+
+        Returns
+        -------
+        The first n rows of the caller object.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'animal':['alligator', 'bee', 'falcon', 'lion']})
+        >>> df.animal.head(2)  # doctest: +NORMALIZE_WHITESPACE
+        0     alligator
+        1     bee
+        Name: animal, dtype: object
+        """
         return _col(self.to_dataframe().head(n))
 
     # TODO: Categorical type isn't supported (due to PySpark's limitation) and
@@ -626,7 +813,7 @@ class Series(_Frame):
 
         Examples
         --------
-        >>> s = pd.Series(['lama', 'cow', 'lama', 'beetle', 'lama',
+        >>> s = ks.Series(['lama', 'cow', 'lama', 'beetle', 'lama',
         ...                'hippo'], name='animal')
         >>> s.isin(['cow', 'lama'])
         0     True

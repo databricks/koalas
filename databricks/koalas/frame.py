@@ -838,15 +838,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Parameters
         ----------
         axis : {0 or 'index'}, default 0
-            Determine rows which contain missing values are removed.
+            Determine if rows or columns which contain missing values are
+            removed.
+
             * 0, or 'index' : Drop rows which contain missing values.
-            .. dropna currently only works for axis=0 or axis='index'
-            axis=1 is yet to be implemented.
         how : {'any', 'all'}, default 'any'
             Determine if row or column is removed from DataFrame, when we have
             at least one NA or all NA.
+
             * 'any' : If any NA values are present, drop that row or column.
             * 'all' : If all values are NA, drop that row or column.
+
         thresh : int, optional
             Require that many non-NA values.
         subset : array-like, optional
