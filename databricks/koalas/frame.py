@@ -173,7 +173,7 @@ class DataFrame(_Frame):
         the column name and the content as a Series.
 
         Returns
-        ------
+        -------
         label : object
             The column names for the DataFrame being iterated over.
         content : Series
