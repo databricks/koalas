@@ -85,7 +85,8 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf = koalas.from_pandas(pdf)
 
-        self.assert_eq(kdf.to_excel(excel_writer, na_rep='null'), pdf.to_excel(excel_writer, na_rep='null'))
+        self.assert_eq(kdf.to_excel(excel_writer, na_rep='null'),
+                       pdf.to_excel(excel_writer, na_rep='null'))
 
         pdf = pd.DataFrame({
             'a': [1.0, 2.0, 3.0],
@@ -94,6 +95,9 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf = koalas.from_pandas(pdf)
 
-        self.assert_eq(kdf.to_excel(excel_writer, float_format='%.1f'), pdf.to_excel(excel_writer, float_format='%.1f'))
-        self.assert_eq(kdf.to_excel(excel_writer, header=False), pdf.to_excel(excel_writer, header=False))
-        self.assert_eq(kdf.to_excel(excel_writer, index=False), pdf.to_excel(excel_writer, index=False))
+        self.assert_eq(kdf.to_excel(excel_writer, float_format='%.1f'),
+                       pdf.to_excel(excel_writer, float_format='%.1f'))
+        self.assert_eq(kdf.to_excel(excel_writer, header=False),
+                       pdf.to_excel(excel_writer, header=False))
+        self.assert_eq(kdf.to_excel(excel_writer, index=False),
+                       pdf.to_excel(excel_writer, index=False))
