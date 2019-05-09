@@ -18,7 +18,6 @@
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
 import warnings
-from distutils.version import LooseVersion
 from functools import partial, reduce
 from typing import Any, List, Tuple, Union
 
