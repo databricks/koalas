@@ -69,7 +69,6 @@ class _MissingPandasLikeSeries(object):
     all = unsupported_function('all')
     any = unsupported_function('any')
     append = unsupported_function('append')
-    apply = unsupported_function('apply')
     argmax = unsupported_function('argmax')
     argmin = unsupported_function('argmin')
     argsort = unsupported_function('argsort')

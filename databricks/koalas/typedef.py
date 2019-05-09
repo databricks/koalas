@@ -32,7 +32,7 @@ import pyspark.sql.types as types
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 
 
-__all__ = ['Col', '_make_fun', 'pandas_wrap', 'as_spark_type',
+__all__ = ['Col', 'pandas_wraps', 'as_spark_type',
            'as_python_type', 'infer_pd_series_spark_type']
 
 
@@ -265,7 +265,7 @@ def _get_metadata(args, kwargs):
     return (s._index_info, s._kdf)
 
 
-def pandas_wrap(_function=None, return_col=None, return_scalar=None):
+def pandas_wraps(function=None, return_col=None, return_scalar=None):
     """ This annotation makes a function available for Koalas.
 
     Spark requires more information about the return types than pandas, and sometimes more
@@ -277,14 +277,14 @@ def pandas_wrap(_function=None, return_col=None, return_scalar=None):
 
     Wrapping a function with python 3's type annotations:
 
-    >>> from databricks.koalas import pandas_wrap, Col
+    >>> from databricks.koalas import pandas_wraps, Col
     >>> pdf = pd.DataFrame({"col1": [1, 2], "col2": [10, 20]}, dtype=np.int64)
     >>> df = ks.DataFrame(pdf)
 
     Consider a simple function that operates on pandas series of integers
 
     >>> def fun(col1):
-    ...     return col1.apply(lambda x: x * 2) # Arbitrary pandas code.
+    ...     return col1.apply(lambda x: x * 2)  # Arbitrary pandas code.
     >>> fun(pdf.col1)
     0    2
     1    4
@@ -294,9 +294,9 @@ def pandas_wrap(_function=None, return_col=None, return_scalar=None):
     The following function uses python built-in typing hint system to hint that this function
     returns a Series of integers:
 
-    >>> @pandas_wrap
+    >>> @pandas_wraps
     ... def fun(col1) -> Col[np.int64]:
-    ...     return col1.apply(lambda x: x * 2) # Arbitrary pandas code.
+    ...     return col1.apply(lambda x: x * 2)  # Arbitrary pandas code.
 
     This function works as before on pandas Series:
 
@@ -312,11 +312,11 @@ def pandas_wrap(_function=None, return_col=None, return_scalar=None):
     1    4
     Name: fun(col1), dtype: int64
 
-    Alternatively, the type hint can be provided as an argument to the pandas_wrap decorator:
+    Alternatively, the type hint can be provided as an argument to the `pandas_wraps` decorator:
 
-    >>> @pandas_wrap(return_col=np.int64)
+    >>> @pandas_wraps(return_col=np.int64)
     ... def fun(col1):
-    ...     return col1.apply(lambda x: x * 2) # Arbitrary pandas code.
+    ...     return col1.apply(lambda x: x * 2)  # Arbitrary pandas code.
 
     >>> fun(df.col1)
     0    2
@@ -328,7 +328,7 @@ def pandas_wrap(_function=None, return_col=None, return_scalar=None):
     It will automatically distribute argument values that are not Koalas series. Here is an
     example of function with optional series arguments and non-series arguments:
 
-    >>> @pandas_wrap(return_col=float)
+    >>> @pandas_wraps(return_col=float)
     ... def fun(col1, col2 = None, arg1="x", **kwargs):
     ...    return 2.0 * col1 if arg1 == "x" else 3.0 * col1 * col2 * kwargs['col3']
 
@@ -363,7 +363,7 @@ def pandas_wrap(_function=None, return_col=None, return_scalar=None):
         return wrapper
     if return_col is not None or return_scalar is not None:
         return function_wrapper
-    return function_wrapper(_function)
+    return function_wrapper(function)
 
 
 def _infer_return_type(f, return_col_hint=None, return_scalar_hint=None) -> X:
@@ -380,7 +380,7 @@ def _get_return_type(return_sig, return_col, return_scalar) -> X:
     if not (return_col or return_sig or return_scalar):
         raise ValueError(
             "Missing type information. It should either be provided as an argument to "
-            "pandas_wrap, or as a python typing hint")
+            "pandas_wraps, or as a python typing hint")
     if return_col is not None:
         if isinstance(return_col, Col):
             return _to_stype(return_col)

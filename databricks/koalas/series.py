@@ -17,6 +17,7 @@
 """
 A wrapper class for Spark Column to behave similar to pandas Series.
 """
+import inspect
 from functools import partial, wraps
 from typing import Any
 
@@ -725,6 +726,100 @@ class Series(_Frame):
         4
         """
         return self._reduce_for_stat_function(_Frame._count_expr)
+
+    def apply(self, func, args=(), **kwds):
+        """
+        Invoke function on values of Series.
+
+        Can be a Python function that only works on the series.
+
+        .. note:: unlike Pandas, it is required for `func` to specify return type hint.
+
+        Parameters
+        ----------
+        func : function
+            Python function to apply. Note that type hint for return type is required.
+        args : tuple
+            Positional arguments passed to func after the series value.
+        **kwds
+            Additional keyword arguments passed to func.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+        Create a series with typical summer temperatures for each city.
+
+        >>> s = ks.Series([20, 21, 12],
+        ...               index=['London', 'New York', 'Helsinki'])
+        >>> s
+        London      20
+        New York    21
+        Helsinki    12
+        Name: 0, dtype: int64
+
+
+        Square the values by defining a function and passing it as an
+        argument to ``apply()``.
+
+        >>> def square(x) -> np.int64:
+        ...     return x ** 2
+        >>> s.apply(square)
+        London      400
+        New York    441
+        Helsinki    144
+        Name: square(0), dtype: int64
+
+
+        Define a custom function that needs additional positional
+        arguments and pass these additional arguments using the
+        ``args`` keyword by using `pandas_wraps`.
+
+        >>> def subtract_custom_value(x, custom_value) -> np.int64:
+        ...     return x - custom_value
+
+        >>> s.apply(subtract_custom_value, args=(5,))
+        London      15
+        New York    16
+        Helsinki     7
+        Name: subtract_custom_value(0), dtype: int64
+
+
+        Define a custom function that takes keyword arguments
+        and pass these arguments to ``apply``  by using `pandas_wraps`.
+
+        >>> def add_custom_values(x, **kwargs) -> np.int64:
+        ...     for month in kwargs:
+        ...         x += kwargs[month]
+        ...     return x
+
+        >>> s.apply(add_custom_values, june=30, july=20, august=25)
+        London      95
+        New York    96
+        Helsinki    87
+        Name: add_custom_values(0), dtype: int64
+
+
+        Use a function from the Numpy library by using `pandas_wraps`.
+
+        >>> def numpy_log(col) -> np.float64:
+        ...     return np.log(col)
+        >>> s.apply(numpy_log)
+        London      2.995732
+        New York    3.044522
+        Helsinki    2.484907
+        Name: numpy_log(0), dtype: float64
+        """
+        spec = inspect.getfullargspec(func)
+        return_sig = spec.annotations.get("return", None)
+        if return_sig is None:
+            raise ValueError("Given function must have return type hint; however, not found.")
+
+        apply_each = wraps(func)(lambda s, *a, **k: s.apply(func, args=a, **k))
+        wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
+        return wrapped(self, *args, **kwds)
 
     def _reduce_for_stat_function(self, sfun):
         from inspect import signature
