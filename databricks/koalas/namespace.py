@@ -27,7 +27,6 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
     DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.utils import default_session
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.typedef import Col, pandas_wraps
@@ -169,7 +168,7 @@ def read_csv(path, header='infer', names=None, usecols=None,
             raise ValueError("Unknown header argument {}".format(header))
 
         if comment is not None:
-            if not isinstance(comment, string_types) or len(comment) != 1:
+            if not isinstance(comment, str) or len(comment) != 1:
                 raise ValueError("Only length-1 comment characters supported")
             reader.option("comment", comment)
 
@@ -195,7 +194,7 @@ def read_csv(path, header='infer', names=None, usecols=None,
                 cols = [field.name for i, field in enumerate(sdf.schema) if i in usecols]
                 missing = [col for col in usecols
                            if col >= len(sdf.schema) or sdf.schema[col].name not in cols]
-            elif all(isinstance(col, string_types) for col in usecols):
+            elif all(isinstance(col, str) for col in usecols):
                 cols = [field.name for field in sdf.schema if field.name in usecols]
                 missing = [col for col in usecols if col not in cols]
             else:
@@ -349,7 +348,7 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
     if sparse is not False:
         raise NotImplementedError("get_dummies currently does not support sparse")
 
-    if isinstance(columns, string_types):
+    if isinstance(columns, str):
         columns = [columns]
     if dtype is None:
         dtype = 'byte'
@@ -361,7 +360,7 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
         kdf = data.to_dataframe()
         remaining_columns = []
     else:
-        if isinstance(prefix, string_types):
+        if isinstance(prefix, str):
             raise ValueError("get_dummies currently does not support prefix as string types")
         kdf = data.copy()
         if columns is None:

@@ -31,7 +31,6 @@ from pyspark.sql.types import BooleanType, FloatType, DoubleType, LongType, Stri
     StructType, TimestampType, to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
@@ -92,9 +91,28 @@ class Series(_Frame):
     :type _kdf: ks.DataFrame
     :ivar _index_info: Each pair holds the index field name which exists in Spark fields,
       and the index name.
+
+    Parameters
+    ----------
+    data : array-like, dict, or scalar value, Pandas Series or Spark Column
+        Contains data stored in Series
+        If data is a dict, argument order is maintained for Python 3.6
+        and later.
+        Note that if `data` is a Pandas Series other arguments are ignored.
+        If data is a Spark Column, all other arguments except `index` is ignored.
+    index : array-like or Index (1d)
+        Values must be hashable and have the same length as `data`.
+        Non-unique index values are allowed. Will default to
+        RangeIndex (0, 1, 2, ..., n) if not provided. If both a dict and index
+        sequence are used, the index will override the keys found in the
+        dict.
+        If `data` is a Spark DataFrame, `index` is expected to be `Metadata`s `index_info`..
+    dtype : numpy.dtype or None
+        If None, dtype will be inferred
+    copy : boolean, default False
+        Copy input data
     """
 
-    @derived_from(pd.Series)
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False,
                  anchor=None):
         if isinstance(data, pd.Series):
@@ -750,7 +768,7 @@ class Series(_Frame):
         Examples
         --------
         >>> df = ks.DataFrame({'x':[0, 0, 1, 1, 1, np.nan]})
-        >>> df.x.value_counts() # doctest: +NORMALIZE_WHITESPACE
+        >>> df.x.value_counts()  # doctest: +NORMALIZE_WHITESPACE
         1.0    3
         0.0    2
         Name: x, dtype: int64
@@ -758,7 +776,7 @@ class Series(_Frame):
         With `normalize` set to `True`, returns the relative frequency by
         dividing all values by the sum of values.
 
-        >>> df.x.value_counts(normalize=True) # doctest: +NORMALIZE_WHITESPACE
+        >>> df.x.value_counts(normalize=True)  # doctest: +NORMALIZE_WHITESPACE
         1.0    0.6
         0.0    0.4
         Name: x, dtype: float64
@@ -766,7 +784,7 @@ class Series(_Frame):
         **dropna**
         With `dropna` set to `False` we can also see NaN index values.
 
-        >>> df.x.value_counts(dropna=False) # doctest: +NORMALIZE_WHITESPACE
+        >>> df.x.value_counts(dropna=False)  # doctest: +NORMALIZE_WHITESPACE
         1.0    3
         0.0    2
         NaN    1

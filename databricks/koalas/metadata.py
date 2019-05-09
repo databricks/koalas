@@ -22,8 +22,6 @@ from typing import List, Optional, Tuple
 
 import pandas as pd
 
-from databricks.koalas.dask.compatibility import string_types
-
 
 IndexInfo = Tuple[str, Optional[str]]
 
@@ -47,10 +45,10 @@ class Metadata(object):
                            Each pair holds the index field name which exists in Spark fields,
                            and the index name.
         """
-        assert all(isinstance(col, string_types) for col in column_fields)
+        assert all(isinstance(col, str) for col in column_fields)
         assert index_info is None \
-            or all(isinstance(index_field, string_types)
-                   and (index_name is None or isinstance(index_name, string_types))
+            or all(isinstance(index_field, str)
+                   and (index_name is None or isinstance(index_name, str))
                    for index_field, index_name in index_info)
         self._column_fields = column_fields  # type: List[str]
         self._index_info = index_info or []  # type: List[IndexInfo]
