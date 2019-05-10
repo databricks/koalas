@@ -134,6 +134,11 @@ class Series(_Frame, IndexOpsMixin):
         return Series(scol, anchor=self._kdf, index=self._index_map)
 
     @property
+    def dt(self):
+        from databricks.koalas.datetime import DatetimeMethods
+        return DatetimeMethods(self)
+
+    @property
     def dtypes(self):
         """Return the dtype object of the underlying data.
 
