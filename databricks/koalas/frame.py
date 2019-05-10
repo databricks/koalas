@@ -487,8 +487,8 @@ class DataFrame(_Frame):
         Note NaN's and None will be converted to null and datetime objects
         will be converted to UNIX timestamps.
 
-            .. note:: This method should only be used if the resulting JSON is expected
-                to be small, as all the data is loaded into the driver's memory.
+        .. note:: This method should only be used if the resulting JSON is expected
+            to be small, as all the data is loaded into the driver's memory.
 
         Parameters
         ----------
