@@ -1,9 +1,11 @@
+from databricks.koalas.dask.utils import derived_from
+from databricks.koalas.missing import _unsupported_function
 import numpy as np
 import pandas as pd
 from pandas.core.generic import _shared_docs
 from pandas.plotting._core import (
-    _gca, MPLPlot, BasePlotMethods, _get_standard_kind, _all_kinds, _dataframe_kinds, _series_kinds,
-    is_list_like, is_integer, string_types, HistPlot, _shared_doc_series_kwargs
+    _all_kinds, _dataframe_kinds, _get_standard_kind, _gca, _series_kinds, _shared_doc_series_kwargs, BasePlotMethods,
+    HistPlot, is_list_like, is_integer, MPLPlot, string_types
 )
 from pandas.util._decorators import Appender
 from pyspark.ml.feature import Bucketizer
@@ -201,93 +203,22 @@ class KoalasSeriesPlotMethods(BasePlotMethods):
                            **kwds)
     __call__.__doc__ = plot_series.__doc__
 
+    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def line(self, **kwds):
-        """
-        Line plot.
+        return _unsupported_function(class_name='pd.Series', method_name='line')
 
-        Parameters
-        ----------
-        `**kwds` : optional
-            Additional keyword arguments are documented in
-            :meth:`pandas.Series.plot`.
-
-        Returns
-        -------
-        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
-
-        Examples
-        --------
-
-        .. plot::
-            :context: close-figs
-
-            >>> s = pd.Series([1, 3, 2])
-            >>> s.plot.line()
-        """
-        return self(kind='line', **kwds)
-
+    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def bar(self, **kwds):
-        """
-        Vertical bar plot.
+        return _unsupported_function(class_name='pd.Series', method_name='bar')
 
-        Parameters
-        ----------
-        `**kwds` : optional
-            Additional keyword arguments are documented in
-            :meth:`pandas.Series.plot`.
-
-        Returns
-        -------
-        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
-        """
-        return self(kind='bar', **kwds)
-
+    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def barh(self, **kwds):
-        """
-        Horizontal bar plot.
+        return _unsupported_function(class_name='pd.Series', method_name='barh')
 
-        Parameters
-        ----------
-        `**kwds` : optional
-            Additional keyword arguments are documented in
-            :meth:`pandas.Series.plot`.
-
-        Returns
-        -------
-        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
-        """
-        return self(kind='barh', **kwds)
-
+    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def box(self, **kwds):
-        """
-        Boxplot.
+        return _unsupported_function(class_name='pd.Series', method_name='box')
 
-        Parameters
-        ----------
-        `**kwds` : optional
-            Additional keyword arguments are documented in
-            :meth:`pandas.Series.plot`.
-
-        Returns
-        -------
-        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
-        """
-        return self(kind='box', **kwds)
-
+    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def hist(self, bins=10, **kwds):
-        """
-        Histogram.
-
-        Parameters
-        ----------
-        bins : integer, default 10
-            Number of histogram bins to be used
-        `**kwds` : optional
-            Additional keyword arguments are documented in
-            :meth:`pandas.Series.plot`.
-
-        Returns
-        -------
-        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
-        """
         return self(kind='hist', bins=bins, **kwds)
