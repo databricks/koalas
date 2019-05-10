@@ -46,3 +46,27 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         ds = koalas.from_pandas(pdf)
         self.assert_eq((ds['col1'] + '_lit').to_pandas(), pdf['col1'] + '_lit')
         self.assert_eq(('_lit' + ds['col1']).to_pandas(), '_lit' + pdf['col1'])
+
+    def test_string_capitalize(self):
+        pds = pd.Series(['a', 'b', 'c'])
+        ks = koalas.from_pandas(pds)
+        result = ks.str.capitalize()
+        expected = pds.str.capitalize()
+        self.assertPandasEqual(result.toPandas(), expected)
+        self.assertPandasEqual(ks.toPandas(), pds)
+
+    def test_string_encode(self):
+        pds = pd.Series(['a', 'b', 'c'])
+        ks = koalas.from_pandas(pds)
+        result = ks.str.encode(encoding='raw_unicode_escape')
+        expected = pds.str.encode(encoding='raw_unicode_escape')
+        self.assertPandasEqual(result.toPandas(), expected)
+        self.assertPandasEqual(ks.toPandas(), pds)
+
+    def test_string_decode(self):
+        pds = pd.Series([b'a', b'b', b'c'])
+        ks = koalas.from_pandas(pds)
+        result = ks.str.decode(encoding='raw_unicode_escape')
+        expected = pds.str.decode(encoding='raw_unicode_escape')
+        self.assertPandasEqual(result.toPandas(), expected)
+        self.assertPandasEqual(ks.toPandas(), pds)

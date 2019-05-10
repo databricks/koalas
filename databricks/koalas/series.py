@@ -36,6 +36,8 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
+from databricks.koalas.selection import SparkDataFrameLocator
+from databricks.koalas.strings import StringMethods
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 
 
@@ -83,6 +85,26 @@ def _numpy_column_op(f):
             else:
                 new_args.append(arg)
         return _column_op(f)(self, *new_args)
+    return wrapper
+
+
+def _pandas_column_op(f, spark_return_type, f_name=''):
+    """
+    A decorator that wraps operations on Pandas Series as a Pandas UDF so they can be
+    applied to Koalas Series.
+
+    :param f: a function that takes a Pandas Series and returns a Pandas Series.
+    :param spark_return_type: the return type of the user-defined function. The value can be
+        either a :class:`pyspark.sql.types.DataType` object or a DDL-formatted type string.
+    :param f_name: optional parameter to name the function
+    :return: wrapped column operation for Koalas Series.
+    """
+    @wraps(f)
+    def wrapper(self, *args):
+        if f_name:
+            f.__name__ = f_name
+        udf = F.pandas_udf(f, spark_return_type)
+        return _column_op(udf)(self, *args)
     return wrapper
 
 
@@ -307,6 +329,10 @@ class Series(_Frame):
     def alias(self, name):
         """An alias for :meth:`Series.rename`."""
         return self.rename(name)
+
+    @property
+    def str(self):
+        return StringMethods(self)
 
     @property
     def schema(self) -> StructType:
