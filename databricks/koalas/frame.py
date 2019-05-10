@@ -580,8 +580,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Write object to a comma-separated values (csv) file.
 
-            .. note:: This method should only be used if the resulting CSV is expected
-                to be small, as all the data is loaded into the driver's memory.
+        .. note:: This method should only be used if the resulting CSV is expected
+            to be small, as all the data is loaded into the driver's memory.
 
         Parameters
         ----------
