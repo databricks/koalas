@@ -88,6 +88,13 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
         if os.path.exists(directory):
             os.rmdir(directory)
 
+    @staticmethod
+    def get_pandas_dataframes(koalas_location, pandas_location):
+        return {
+            'got': pd.read_excel(koalas_location, index_col=0),
+            'expected': pd.read_excel(pandas_location, index_col=0)
+        }
+
     def test_to_excel(self):
         pdf = self.pdf
         kdf = self.kdf
@@ -99,8 +106,8 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf.to_excel(koalas_location)
         pdf.to_excel(pandas_location)
-        self.assert_eq(pd.read_excel(koalas_location, index_col=0),
-                       pd.read_excel(pandas_location, index_col=0))
+        dataframes = self.get_pandas_dataframes(koalas_location, pandas_location)
+        self.assert_eq(dataframes['got'], dataframes['expected'])
 
         pdf = pd.DataFrame({
             'a': [1, None, 3],
@@ -111,8 +118,8 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf.to_excel(koalas_location, na_rep='null')
         pdf.to_excel(pandas_location, na_rep='null')
-        self.assert_eq(pd.read_excel(koalas_location, index_col=0),
-                       pd.read_excel(pandas_location, index_col=0))
+        dataframes = self.get_pandas_dataframes(koalas_location, pandas_location)
+        self.assert_eq(dataframes['got'], dataframes['expected'])
 
         pdf = pd.DataFrame({
             'a': [1.0, 2.0, 3.0],
@@ -123,17 +130,17 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf.to_excel(koalas_location, float_format='%.1f')
         pdf.to_excel(pandas_location, float_format='%.1f')
-        self.assert_eq(pd.read_excel(koalas_location, index_col=0),
-                       pd.read_excel(pandas_location, index_col=0))
+        dataframes = self.get_pandas_dataframes(koalas_location, pandas_location)
+        self.assert_eq(dataframes['got'], dataframes['expected'])
 
         kdf.to_excel(koalas_location, header=False)
         pdf.to_excel(pandas_location, header=False)
-        self.assert_eq(pd.read_excel(koalas_location, index_col=0),
-                       pd.read_excel(pandas_location, index_col=0))
+        dataframes = self.get_pandas_dataframes(koalas_location, pandas_location)
+        self.assert_eq(dataframes['got'], dataframes['expected'])
 
         kdf.to_excel(koalas_location, index=False)
         pdf.to_excel(pandas_location, index=False)
-        self.assert_eq(pd.read_excel(koalas_location, index_col=0),
-                       pd.read_excel(pandas_location, index_col=0))
+        dataframes = self.get_pandas_dataframes(koalas_location, pandas_location)
+        self.assert_eq(dataframes['got'], dataframes['expected'])
 
         self.teardown_location(pandas_location, koalas_location, directory)
