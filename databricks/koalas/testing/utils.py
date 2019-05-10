@@ -286,6 +286,7 @@ class TestUtils(object):
     @contextmanager
     def temp_excel_dir(self):
         dirpath = tempfile.mkdtemp()
+        
         def cleanup():
             shutil.rmtree(dirpath)
         with self.cd(dirpath, cleanup):
