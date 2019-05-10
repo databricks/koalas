@@ -691,8 +691,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             for i in idx:
                 info = self._metadata.index_pairs[i]
                 index_column, index_name = info
-                new_index_pairs.append((index_column,
-                                        index_name if index_name is not None else rename(index_name)))
+                new_index_pairs.append(
+                    (index_column,
+                     index_name if index_name is not None else rename(index_name)))
                 index_pairs.remove(info)
 
         if drop:

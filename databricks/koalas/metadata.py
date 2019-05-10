@@ -189,8 +189,8 @@ class Metadata(object):
     def columns(self) -> List[str]:
         """ Return all the field names including index field names. """
         index_columns = self.index_columns
-        return index_columns + [field for field in self._data_columns
-                               if field not in index_columns]
+        return index_columns + [column for column in self._data_columns
+                                if column not in index_columns]
 
     @property
     def index_pairs(self) -> List[IndexInfo]:
@@ -230,12 +230,12 @@ class Metadata(object):
         if isinstance(index, pd.MultiIndex):
             if index.names is None:
                 index_pairs = [('__index_level_{}__'.format(i), None)
-                              for i in range(len(index.levels))]
+                               for i in range(len(index.levels))]
             else:
                 index_pairs = [('__index_level_{}__'.format(i) if name is None else name, name)
-                              for i, name in enumerate(index.names)]
+                               for i, name in enumerate(index.names)]
         else:
             index_pairs = [(index.name
-                          if index.name is not None else '__index_level_0__', index.name)]
+                            if index.name is not None else '__index_level_0__', index.name)]
 
         return Metadata(data_columns=data_columns, index_pairs=index_pairs)
