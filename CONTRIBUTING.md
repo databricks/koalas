@@ -102,11 +102,11 @@ If the version is "0.1.0", tag the commit as "v0.1.0".
 Step 4. Upload the package to PyPi:
 ```bash
 rm -rf dist/koalas*
-python setup.py bdist_wheel
+python setup.py sdist bdist_wheel
 export package_version=$(python setup.py --version)
 echo $package_version
 
 python3 -m pip install --user --upgrade twine
-python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl
-python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl
+python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl dist/koalas-$package_version.tar.gz
+python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl dist/koalas-$package_version.tar.gz
 ```
