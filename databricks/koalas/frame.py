@@ -957,6 +957,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Write object to an Excel sheet.
 
+        .. note:: This method should only be used if the resulting DataFrame is expected
+                  to be small, as all the data is loaded into the driver's memory.
+
         To write a single object to an Excel .xlsx file it is only necessary to
         specify a target file name. To write to multiple sheets it is necessary to
         create an `ExcelWriter` object with a target file name, and specify a sheet
