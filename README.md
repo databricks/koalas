@@ -227,11 +227,17 @@ provides an opportunity for us to experiment with new design principles.
 
 ### How do I use this on Databricks?
 
-Databricks Runtime for Machine Learning has the right versions of dependencies setup already, so
-you just need to install Koalas from PyPi when creating a cluster.
+For the regular Databricks Runtime, you should upgrade NumPy and pandas to the appropriate versions and then install Koalas. This can be done using the Libraries tab on the cluster UI, or using dbutils in a notebook:
 
-For the regular Databricks Runtime, you will need to upgrade pandas and NumPy versions to the
-required list. 
+```python
+dbutils.library.installPyPI("numpy", "1.16.2")
+dbutils.library.installPyPI("pandas", "0.24.2")
+dbutils.library.installPyPI("koalas")
+dbutils.library.restartPython()
+```
+
+Databricks Runtime for Machine Learning has the right versions of dependencies setup already,
+so you just need to install Koalas from PyPi when creating a cluster.
 
 In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and
 Databricks Runtime for Machine Learning.
