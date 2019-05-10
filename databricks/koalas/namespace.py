@@ -17,6 +17,8 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
+import inspect
+import re
 from typing import Optional
 
 import numpy as np
@@ -25,6 +27,7 @@ import pandas as pd
 from pyspark.sql import functions as F
 from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
     DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
+from pyspark.sql import SQLContext
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session
@@ -57,12 +60,43 @@ def sql(query: str) -> DataFrame:
     ----------
     query : str
         the SQL query
-    >>> ks.sql("select * from range(10) where id > 7")
-       id
-    0   8
-    1   9
+    # >>> ks.sql("select * from range(10) where id > 7")
+    #    id
+    # 0   8
+    # 1   9
+
+    >>> kdf = ks.DataFrame({'A': [1,2,3]})
+    >>> ks.sql("select * from kdf")
+       __index_level_0__  A
+    0                  0  1
+    1                  1  2
+    2                  2  3
     """
-    return DataFrame(default_session().sql(query))
+    dataframe_name_regex = r"(?:from|FROM) (\w+)"
+    dataframe_names = re.findall(dataframe_name_regex, query)
+
+    created_tables = []
+    if dataframe_names:
+        _sql = SQLContext(default_session().sparkContext)
+
+        # Get the local variables from the caller module which is one higher in the stack
+        # TODO Check if the caller module is always exactly one higher in the stack
+        fields = inspect.stack()[1][0].f_locals
+
+        for candidate_name in dataframe_names:
+            if candidate_name in fields:
+                candidate_obj = fields[candidate_name]
+                if isinstance(candidate_obj, DataFrame):
+                    _sql.registerDataFrameAsTable(candidate_obj._sdf, candidate_name)
+                    created_tables.append(candidate_name)
+
+    query_result = DataFrame(default_session().sql(query))
+
+    # Clean up by dropping temporary tables
+    for table in created_tables:
+        _sql.dropTempTable(table)
+
+    return query_result
 
 
 def range(start: int,
