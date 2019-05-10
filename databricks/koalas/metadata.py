@@ -36,6 +36,9 @@ class Metadata(object):
     :ivar _index_pairs: list of pair holding the Spark field names for indexes,
                        and the index name to be seen in Koalas DataFrame.
 
+    .. note:: this is an internal class. It is not supposed to be exposed to users and users
+        should not directly access to it.
+
     Metadata represents the index information for a DataFrame it belongs to. For instance,
     if we have a Koalas DataFrame as below, Pandas DataFrame does not store the index as columns.
 
