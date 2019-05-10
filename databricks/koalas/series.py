@@ -516,8 +516,8 @@ class Series(_Frame):
         Write a text representation of object to the system clipboard.
         This can be pasted into Excel, for example.
 
-            .. note:: This method should only be used if the resulting DataFrame is expected
-                to be small, as all the data is loaded into the driver's memory.
+        .. note:: This method should only be used if the resulting DataFrame is expected
+            to be small, as all the data is loaded into the driver's memory.
 
         Parameters
         ----------
