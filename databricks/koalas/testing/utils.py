@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import os
 import functools
 import shutil
 import sys
@@ -271,6 +272,24 @@ class TestUtils(object):
     def temp_file(self):
         with self.temp_dir() as tmp:
             yield tempfile.mktemp(dir=tmp)
+
+    @contextmanager
+    def cd(self, newdir, cleanup=lambda: True):
+        prevdir = os.getcwd()
+        os.chdir(os.path.expanduser(newdir))
+        try:
+            yield
+        finally:
+            os.chdir(prevdir)
+            cleanup()
+
+    @contextmanager
+    def temp_excel_dir(self):
+        dirpath = tempfile.mkdtemp()
+        def cleanup():
+            shutil.rmtree(dirpath)
+        with self.cd(dirpath, cleanup):
+            yield dirpath
 
 
 class ComparisonTestBase(ReusedSQLTestCase):
