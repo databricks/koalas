@@ -107,6 +107,10 @@ export package_version=$(python setup.py --version)
 echo $package_version
 
 python3 -m pip install --user --upgrade twine
+
+# for test
 python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl dist/koalas-$package_version.tar.gz
+
+# for release
 python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl dist/koalas-$package_version.tar.gz
 ```
