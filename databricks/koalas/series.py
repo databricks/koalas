@@ -22,6 +22,7 @@ from functools import partial
 
 import numpy as np
 import pandas as pd
+from pandas.core.accessor import CachedAccessor
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -34,10 +35,10 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
+from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 from databricks.koalas.typedef import list_sanitizer
-
 
 @decorator
 def _column_op(f, self, *args):
@@ -89,6 +90,7 @@ class Series(_Frame):
     :ivar _index_info: Each pair holds the index field name which exists in Spark fields,
       and the index name.
     """
+    plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
 
     @derived_from(pd.Series)
     @dispatch_on('data')
@@ -241,6 +243,10 @@ class Series(_Frame):
     def shape(self):
         """Return a tuple of the shape of the underlying data."""
         return len(self),
+
+    @property
+    def ndim(self):
+        return 1
 
     @property
     def name(self):

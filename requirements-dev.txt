@@ -2,6 +2,7 @@
 pandas>=0.23
 pyarrow>=0.10,<0.11
 decorator
+matplotlib>=3.0.2
 
 # Documentation build
 sphinx>=2.0.1
