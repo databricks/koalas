@@ -18,6 +18,7 @@
 Utilities to deal with types. This is mostly focused on python3.
 """
 import typing
+import datetime
 from inspect import getfullargspec
 from functools import wraps
 
@@ -108,6 +109,7 @@ _base = {
     types.FloatType(): [float, 'float', np.float],
     types.DoubleType(): [np.float64, 'float64', 'double'],
     types.TimestampType(): [np.datetime64],
+    types.DateType(): [datetime.date],
     types.BooleanType(): [bool, 'boolean', 'bool', np.bool],
 }
 
@@ -361,9 +363,10 @@ def pandas_wraps(function=None, return_col=None, return_scalar=None):
             spark_return_type = sig_return.inner
             return _make_fun(f, spark_return_type, *args, **kwargs)
         return wrapper
-    if return_col is not None or return_scalar is not None:
+    if callable(function):
+        return function_wrapper(function)
+    else:
         return function_wrapper
-    return function_wrapper(function)
 
 
 def _infer_return_type(f, return_col_hint=None, return_scalar_hint=None) -> X:
