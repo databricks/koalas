@@ -152,7 +152,6 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
             self.assert_eq(dataframes['got'], dataframes['expected'])
 
     def test_to_json(self):
-
         pdf = self.pdf
         kdf = koalas.from_pandas(pdf)
 
@@ -166,4 +165,3 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
                        pdf.to_json(orient='records', lines=True))
         self.assert_eq(kdf.to_json(orient='split', index=False),
                        pdf.to_json(orient='split', index=False))
-
