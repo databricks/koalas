@@ -578,7 +578,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Currently supported only when the DataFrame has a single index.
         """
         from databricks.koalas.series import Series
-        if len(self._metadata.index_pairs) != 1:
+        if len(self._metadata.index_map) != 1:
             raise KeyError('Currently supported only when the DataFrame has a single index.')
         return Series(self._index_columns[0], anchor=self, index=[])
 
@@ -608,11 +608,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             data_columns = self._metadata.data_columns
         if append:
-            index_pairs = self._metadata.index_pairs + [(column, column) for column in keys]
+            index_map = self._metadata.index_map + [(column, column) for column in keys]
         else:
-            index_pairs = [(column, column) for column in keys]
+            index_map = [(column, column) for column in keys]
 
-        metadata = self._metadata.copy(data_columns=data_columns, index_pairs=index_pairs)
+        metadata = self._metadata.copy(data_columns=data_columns, index_map=index_map)
 
         # Sync Spark's columns as well.
         sdf = self._sdf.select(['`{}`'.format(name) for name in metadata.columns])
@@ -641,10 +641,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         Modify the DataFrame in place (do not create a new object)
         :return: :class:`DataFrame`
         """
-        if len(self._metadata.index_pairs) == 0:
+        if len(self._metadata.index_map) == 0:
             raise NotImplementedError('Can\'t reset index because there is no index.')
 
-        multi_index = len(self._metadata.index_pairs) > 1
+        multi_index = len(self._metadata.index_map) > 1
 
         def rename(index):
             if multi_index:
@@ -656,9 +656,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     return 'level_{}'.format(index)
 
         if level is None:
-            new_index_pairs = [(column, name if name is not None else rename(i))
-                               for i, (column, name) in enumerate(self._metadata.index_pairs)]
-            index_pairs = []
+            new_index_map = [(column, name if name is not None else rename(i))
+                               for i, (column, name) in enumerate(self._metadata.index_map)]
+            index_map = []
         else:
             if isinstance(level, (int, str)):
                 level = [level]
@@ -666,9 +666,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             if all(isinstance(l, int) for l in level):
                 for lev in level:
-                    if lev >= len(self._metadata.index_pairs):
+                    if lev >= len(self._metadata.index_map):
                         raise IndexError('Too many levels: Index has only {} level, not {}'
-                                         .format(len(self._metadata.index_pairs), lev + 1))
+                                         .format(len(self._metadata.index_map), lev + 1))
                 idx = level
             elif all(isinstance(lev, str) for lev in level):
                 idx = []
@@ -686,23 +686,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise ValueError('Level should be all int or all string.')
             idx.sort()
 
-            new_index_pairs = []
-            index_pairs = self._metadata.index_pairs.copy()
+            new_index_map = []
+            index_map = self._metadata.index_map.copy()
             for i in idx:
-                info = self._metadata.index_pairs[i]
+                info = self._metadata.index_map[i]
                 index_column, index_name = info
-                new_index_pairs.append(
+                new_index_map.append(
                     (index_column,
                      index_name if index_name is not None else rename(index_name)))
-                index_pairs.remove(info)
+                index_map.remove(info)
 
         if drop:
-            new_index_pairs = []
+            new_index_map = []
 
         metadata = self._metadata.copy(
-            data_columns=[column for column, _ in new_index_pairs] + self._metadata.data_columns,
-            index_pairs=index_pairs)
-        columns = [name for _, name in new_index_pairs] + self._metadata.data_columns
+            data_columns=[column for column, _ in new_index_map] + self._metadata.data_columns,
+            index_map=index_map)
+        columns = [name for _, name in new_index_map] + self._metadata.data_columns
         if inplace:
             self._metadata = metadata
             self.columns = columns
@@ -1817,7 +1817,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(key, str):
             try:
                 return Series(self._sdf.__getitem__(key), anchor=self,
-                              index=self._metadata.index_pairs)
+                              index=self._metadata.index_map)
             except AnalysisException:
                 raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, str)):
@@ -1831,7 +1831,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
-            return Series(self._sdf.__getitem__(key), anchor=self, index=self._metadata.index_pairs)
+            return Series(self._sdf.__getitem__(key), anchor=self, index=self._metadata.index_map)
         if isinstance(key, Series):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
@@ -1876,7 +1876,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_pairs)
+        return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_map)
 
     def __iter__(self):
         return self.toPandas().__iter__()

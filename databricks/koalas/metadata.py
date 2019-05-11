@@ -33,7 +33,7 @@ class Metadata(object):
     Manages column names and index information.
 
     :ivar _data_columns: list of the Spark field names to be seen as columns in Koalas DataFrame.
-    :ivar _index_pairs: list of pair holding the Spark field names for indexes,
+    :ivar _index_map: list of pair holding the Spark field names for indexes,
                        and the index name to be seen in Koalas DataFrame.
 
     .. note:: this is an internal class. It is not supposed to be exposed to users and users
@@ -47,7 +47,7 @@ class Metadata(object):
     ...     'B': [5, 6, 7, 8],
     ...     'C': [9, 10, 11, 12],
     ...     'D': [13, 14, 15, 16],
-    ...     'E':[17, 18, 19, 20]})
+    ...     'E': [17, 18, 19, 20]}, columns = ['A', 'B', 'C', 'D', 'E'])
     >>> kdf  # doctest: +NORMALIZE_WHITESPACE
        A  B   C   D   E
     0  1  5   9  13  17
@@ -79,7 +79,7 @@ class Metadata(object):
 
     * `index_names` represents the external index name
 
-    * `index_pairs` is zipped pairs of `index_columns` and `index_names`
+    * `index_map` is zipped pairs of `index_columns` and `index_names`
 
     >>> metadata = kdf._metadata
     >>> metadata.data_columns
@@ -90,7 +90,7 @@ class Metadata(object):
     ['__index_level_0__', 'A', 'B', 'C', 'D', 'E']
     >>> metadata.index_names
     [None]
-    >>> metadata.index_pairs
+    >>> metadata.index_map
     [('__index_level_0__', None)]
 
     In case that index is set to one of the existing column as below:
@@ -123,7 +123,7 @@ class Metadata(object):
     ['A', 'B', 'C', 'D', 'E']
     >>> metadata.index_names
     ['A']
-    >>> metadata.index_pairs
+    >>> metadata.index_map
     [('A', 'A')]
 
     In case that index becomes a multi index as below:
@@ -156,27 +156,27 @@ class Metadata(object):
     ['__index_level_0__', 'A', 'B', 'C', 'D', 'E']
     >>> metadata.index_names
     [None, 'A']
-    >>> metadata.index_pairs
+    >>> metadata.index_map
     [('__index_level_0__', None), ('A', 'A')]
     """
 
     def __init__(self, data_columns: List[str],
-                 index_pairs: Optional[List[IndexInfo]] = None) -> None:
+                 index_map: Optional[List[IndexInfo]] = None) -> None:
         """ Create a new metadata to manage column fields and index fields and names.
 
         :param data_columns: list of string
                               Field names to appear as columns.
-        :param index_pairs: list of string pair
+        :param index_map: list of string pair
                            Each pair holds the index field name which exists in Spark fields,
                            and the index name.
         """
         assert all(isinstance(col, str) for col in data_columns)
-        assert index_pairs is None \
+        assert index_map is None \
             or all(isinstance(index_field, str)
                    and (index_name is None or isinstance(index_name, str))
-                   for index_field, index_name in index_pairs)
+                   for index_field, index_name in index_map)
         self._data_columns = data_columns  # type: List[str]
-        self._index_pairs = index_pairs or []  # type: List[IndexInfo]
+        self._index_map = index_map or []  # type: List[IndexInfo]
 
     @property
     def data_columns(self) -> List[str]:
@@ -186,7 +186,7 @@ class Metadata(object):
     @property
     def index_columns(self) -> List[str]:
         """ Returns the managed index field names. """
-        return [index_column for index_column, _ in self._index_pairs]
+        return [index_column for index_column, _ in self._index_map]
 
     @property
     def columns(self) -> List[str]:
@@ -196,28 +196,28 @@ class Metadata(object):
                                 if column not in index_columns]
 
     @property
-    def index_pairs(self) -> List[IndexInfo]:
+    def index_map(self) -> List[IndexInfo]:
         """ Return the managed index information. """
-        return self._index_pairs
+        return self._index_map
 
     @property
     def index_names(self) -> List[Optional[str]]:
         """ Return the managed index names. """
-        return [index_name for _, index_name in self._index_pairs]
+        return [index_name for _, index_name in self._index_map]
 
     def copy(self, data_columns: Optional[List[str]] = None,
-             index_pairs: Optional[List[IndexInfo]] = None) -> 'Metadata':
+             index_map: Optional[List[IndexInfo]] = None) -> 'Metadata':
         """ Copy the metadata.
 
         :param data_columns: the new column field names. If None, then the original ones are used.
-        :param index_pairs: the new index information. If None, then the original one is used.
+        :param index_map: the new index information. If None, then the original one is used.
         :return: the copied metadata.
         """
         if data_columns is None:
             data_columns = self._data_columns
-        if index_pairs is None:
-            index_pairs = self._index_pairs
-        return Metadata(data_columns=data_columns.copy(), index_pairs=index_pairs.copy())
+        if index_map is None:
+            index_map = self._index_map
+        return Metadata(data_columns=data_columns.copy(), index_map=index_map.copy())
 
     @staticmethod
     def from_pandas(pdf: pd.DataFrame) -> 'Metadata':
@@ -229,16 +229,16 @@ class Metadata(object):
         data_columns = [str(col) for col in pdf.columns]
         index = pdf.index
 
-        index_pairs = []  # type: List[IndexInfo]
+        index_map = []  # type: List[IndexInfo]
         if isinstance(index, pd.MultiIndex):
             if index.names is None:
-                index_pairs = [('__index_level_{}__'.format(i), None)
+                index_map = [('__index_level_{}__'.format(i), None)
                                for i in range(len(index.levels))]
             else:
-                index_pairs = [('__index_level_{}__'.format(i) if name is None else name, name)
+                index_map = [('__index_level_{}__'.format(i) if name is None else name, name)
                                for i, name in enumerate(index.names)]
         else:
-            index_pairs = [(index.name
+            index_map = [(index.name
                             if index.name is not None else '__index_level_0__', index.name)]
 
-        return Metadata(data_columns=data_columns, index_pairs=index_pairs)
+        return Metadata(data_columns=data_columns, index_map=index_map)

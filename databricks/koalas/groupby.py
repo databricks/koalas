@@ -105,7 +105,7 @@ class GroupBy(object):
                      for key, value in func_or_funcs.items()]
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
         metadata = Metadata(data_columns=[key for key, _ in func_or_funcs.items()],
-                            index_pairs=[('__index_level_{}__'.format(i), s.name)
+                            index_map=[('__index_level_{}__'.format(i), s.name)
                                          for i, s in enumerate(groupkeys)])
         return DataFrame(sdf, metadata)
 
@@ -256,7 +256,7 @@ class GroupBy(object):
             sdf = sdf.select(*groupkey_cols).distinct()
         sdf = sdf.sort(*groupkey_cols)
         metadata = Metadata(data_columns=data_columns,
-                            index_pairs=[('__index_level_{}__'.format(i), s.name)
+                            index_map=[('__index_level_{}__'.format(i), s.name)
                                          for i, s in enumerate(groupkeys)])
         return DataFrame(sdf, metadata)
 
