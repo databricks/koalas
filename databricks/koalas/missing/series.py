@@ -205,7 +205,6 @@ class _MissingPandasLikeSeries(object):
     to_frame = unsupported_function('to_frame')
     to_hdf = unsupported_function('to_hdf')
     to_json = unsupported_function('to_json')
-    to_latex = unsupported_function('to_latex')
     to_list = unsupported_function('to_list')
     to_msgpack = unsupported_function('to_msgpack')
     to_period = unsupported_function('to_period')
