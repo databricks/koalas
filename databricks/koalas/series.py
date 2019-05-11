@@ -552,7 +552,7 @@ class Series(_Frame):
                  na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
                  bold_rows=False, column_format=None, longtable=None, escape=None, encoding=None,
                  decimal='.', multicolumn=None, multicolumn_format=None, multirow=None):
-        """
+        r"""
         Render an object to a LaTeX tabular environment table.
 
         Render an object to a tabular environment table. You can splice this into a LaTeX 
