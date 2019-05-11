@@ -15,3 +15,5 @@ flake8
 # Test
 pytest
 pytest-cov
+openpyxl
+xlrd

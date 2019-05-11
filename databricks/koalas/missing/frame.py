@@ -178,7 +178,6 @@ class _MissingPandasLikeDataFrame(object):
     to_clipboard = unsupported_function('to_clipboard')
     to_csv = unsupported_function('to_csv')
     to_dense = unsupported_function('to_dense')
-    to_excel = unsupported_function('to_excel')
     to_feather = unsupported_function('to_feather')
     to_gbq = unsupported_function('to_gbq')
     to_hdf = unsupported_function('to_hdf')

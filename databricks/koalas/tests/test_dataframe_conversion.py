@@ -19,10 +19,10 @@ import string
 import pandas as pd
 
 from databricks import koalas
-from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
+from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils, TestUtils
 
 
-class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
+class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
 
     @property
     def pdf(self):
@@ -70,6 +70,59 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils):
             """)
         got = self.strip_all_whitespace(self.kdf.to_html(max_rows=2))
         self.assert_eq(got, expected)
+
+    @staticmethod
+    def get_excel_dfs(koalas_location, pandas_location):
+        return {
+            'got': pd.read_excel(koalas_location, index_col=0),
+            'expected': pd.read_excel(pandas_location, index_col=0)
+        }
+
+    def test_to_excel(self):
+        with self.temp_dir() as dirpath:
+            pandas_location = dirpath + "/" + "output1.xlsx"
+            koalas_location = dirpath + "/" + "output2.xlsx"
+
+            pdf = self.pdf
+            kdf = self.kdf
+            kdf.to_excel(koalas_location)
+            pdf.to_excel(pandas_location)
+            dataframes = self.get_excel_dfs(koalas_location, pandas_location)
+            self.assert_eq(dataframes['got'], dataframes['expected'])
+
+            pdf = pd.DataFrame({
+                'a': [1, None, 3],
+                'b': ["one", "two", None],
+            }, index=[0, 1, 3])
+
+            kdf = koalas.from_pandas(pdf)
+
+            kdf.to_excel(koalas_location, na_rep='null')
+            pdf.to_excel(pandas_location, na_rep='null')
+            dataframes = self.get_excel_dfs(koalas_location, pandas_location)
+            self.assert_eq(dataframes['got'], dataframes['expected'])
+
+            pdf = pd.DataFrame({
+                'a': [1.0, 2.0, 3.0],
+                'b': [4.0, 5.0, 6.0],
+            }, index=[0, 1, 3])
+
+            kdf = koalas.from_pandas(pdf)
+
+            kdf.to_excel(koalas_location, float_format='%.1f')
+            pdf.to_excel(pandas_location, float_format='%.1f')
+            dataframes = self.get_excel_dfs(koalas_location, pandas_location)
+            self.assert_eq(dataframes['got'], dataframes['expected'])
+
+            kdf.to_excel(koalas_location, header=False)
+            pdf.to_excel(pandas_location, header=False)
+            dataframes = self.get_excel_dfs(koalas_location, pandas_location)
+            self.assert_eq(dataframes['got'], dataframes['expected'])
+
+            kdf.to_excel(koalas_location, index=False)
+            pdf.to_excel(pandas_location, index=False)
+            dataframes = self.get_excel_dfs(koalas_location, pandas_location)
+            self.assert_eq(dataframes['got'], dataframes['expected'])
 
     def test_to_latex(self):
         expected = self.strip_all_whitespace(r"""
