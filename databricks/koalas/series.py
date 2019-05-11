@@ -60,7 +60,7 @@ def _column_op(f):
         # extract Spark Column. For other arguments, they are used as are.
         args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
         scol = f(self._scol, *args)
-        return Series(scol, anchor=self._kdf, index=self._index_info)
+        return Series(scol, anchor=self._kdf, index=self._index_map)
     return wrapper
 
 
@@ -89,7 +89,7 @@ class Series(_Frame):
     :type _scol: pyspark.Column
     :ivar _kdf: Parent's Koalas DataFrame
     :type _kdf: ks.DataFrame
-    :ivar _index_info: Each pair holds the index field name which exists in Spark fields,
+    :ivar _index_map: Each pair holds the index field name which exists in Spark fields,
       and the index name.
 
     Parameters
@@ -106,7 +106,7 @@ class Series(_Frame):
         RangeIndex (0, 1, 2, ..., n) if not provided. If both a dict and index
         sequence are used, the index will override the keys found in the
         dict.
-        If `data` is a Spark DataFrame, `index` is expected to be `Metadata`s `index_info`.
+        If `data` is a Spark DataFrame, `index` is expected to be `Metadata`s `index_map`.
     dtype : numpy.dtype or None
         If None, dtype will be inferred
     copy : boolean, default False
@@ -142,23 +142,23 @@ class Series(_Frame):
         """
 
         kdf = DataFrame(pd.DataFrame(s))
-        self._init_from_spark(kdf._sdf[kdf._metadata.column_fields[0]],
-                              kdf, kdf._metadata.index_info)
+        self._init_from_spark(kdf._sdf[kdf._metadata.data_columns[0]],
+                              kdf, kdf._metadata.index_map)
 
-    def _init_from_spark(self, scol, kdf, index_info):
+    def _init_from_spark(self, scol, kdf, index_map):
         """
         Creates Koalas Series from Spark Column.
 
         :param scol: Spark Column
         :param kdf: Koalas DataFrame that should have the `scol`.
-        :param index_info: index information of this Series.
+        :param index_map: index information of this Series.
         """
-        assert index_info is not None
+        assert index_map is not None
         assert kdf is not None
         assert isinstance(kdf, ks.DataFrame), type(kdf)
         self._scol = scol
         self._kdf = kdf
-        self._index_info = index_info
+        self._index_map = index_map
 
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
@@ -195,7 +195,7 @@ class Series(_Frame):
         # Handle 'literal' + df['col']
         if isinstance(self.spark_type, StringType) and isinstance(other, str):
             return Series(F.concat(F.lit(other), self._scol), anchor=self._kdf,
-                          index=self._index_info)
+                          index=self._index_map)
         else:
             return _column_op(spark.Column.__radd__)(self, other)
 
@@ -256,7 +256,7 @@ class Series(_Frame):
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
-        return Series(self._scol.cast(spark_type), anchor=self._kdf, index=self._index_info)
+        return Series(self._scol.cast(spark_type), anchor=self._kdf, index=self._index_map)
 
     def getField(self, name):
         if not isinstance(self.schema, StructType):
@@ -266,7 +266,7 @@ class Series(_Frame):
             if name not in fnames:
                 raise AttributeError(
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
-            return Series(self._scol.getField(name), anchor=self._kdf, index=self._index_info)
+            return Series(self._scol.getField(name), anchor=self._kdf, index=self._index_map)
 
     def alias(self, name):
         """An alias for :meth:`Series.rename`."""
@@ -283,7 +283,7 @@ class Series(_Frame):
 
     @property
     def name(self):
-        return self._metadata.column_fields[0]
+        return self._metadata.data_columns[0]
 
     @name.setter
     def name(self, name):
@@ -332,7 +332,7 @@ class Series(_Frame):
             self._scol = scol
             return self
         else:
-            return Series(scol, anchor=self._kdf, index=self._index_info)
+            return Series(scol, anchor=self._kdf, index=self._index_map)
 
     @property
     def _metadata(self):
@@ -344,7 +344,7 @@ class Series(_Frame):
 
         Currently supported only when the DataFrame has a single index.
         """
-        if len(self._metadata.index_info) != 1:
+        if len(self._metadata.index_map) != 1:
             raise KeyError('Currently supported only when the Column has a single index.')
         return self._kdf.index
 
@@ -434,7 +434,7 @@ class Series(_Frame):
             if inplace:
                 self._kdf = kdf
                 self._scol = s._scol
-                self._index_info = s._index_info
+                self._index_map = s._index_map
             else:
                 return s
         else:
@@ -445,8 +445,8 @@ class Series(_Frame):
         return SparkDataFrameLocator(self)
 
     def to_dataframe(self):
-        sdf = self._kdf._sdf.select([field for field, _ in self._index_info] + [self._scol])
-        metadata = Metadata(column_fields=[sdf.schema[-1].name], index_info=self._index_info)
+        sdf = self._kdf._sdf.select([field for field, _ in self._index_map] + [self._scol])
+        metadata = Metadata(data_columns=[sdf.schema[-1].name], index_map=self._index_map)
         return DataFrame(sdf, metadata)
 
     def to_string(self, buf=None, na_rep='NaN', float_format=None, header=True,
@@ -609,9 +609,9 @@ class Series(_Frame):
         """
         if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
             return Series(self._scol.isNull() | F.isnan(self._scol), anchor=self._kdf,
-                          index=self._index_info)
+                          index=self._index_map)
         else:
-            return Series(self._scol.isNull(), anchor=self._kdf, index=self._index_info)
+            return Series(self._scol.isNull(), anchor=self._kdf, index=self._index_map)
 
     isna = isnull
 
@@ -833,7 +833,7 @@ class Series(_Frame):
         index_name = 'index' if self.name != 'index' else 'level_0'
         kdf = DataFrame(sdf)
         kdf.columns = [index_name, self.name]
-        kdf._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
+        kdf._metadata = Metadata(data_columns=[self.name], index_map=[(index_name, None)])
         return _col(kdf)
 
     def isin(self, values):
@@ -883,7 +883,7 @@ class Series(_Frame):
                             .format(values_type=type(values).__name__))
 
         return Series(self._scol.isin(list(values)).alias(self.name), anchor=self._kdf,
-                      index=self._index_info)
+                      index=self._index_map)
 
     def corr(self, other, method='pearson'):
         """
@@ -1071,7 +1071,7 @@ class Series(_Frame):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        return Series(self._scol.__getitem__(key), anchor=self._kdf, index=self._index_info)
+        return Series(self._scol.__getitem__(key), anchor=self._kdf, index=self._index_map)
 
     def __getattr__(self, item: str) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
