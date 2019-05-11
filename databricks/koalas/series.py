@@ -555,7 +555,7 @@ class Series(_Frame):
         r"""
         Render an object to a LaTeX tabular environment table.
 
-        Render an object to a tabular environment table. You can splice this into a LaTeX 
+        Render an object to a tabular environment table. You can splice this into a LaTeX
         document. Requires usepackage{booktabs}.
 
         .. note:: This method should only be used if the resulting Pandas object is expected
