@@ -418,7 +418,7 @@ def _spark_col_apply(kdf_or_ks, sfun):
     from databricks.koalas.series import Series
     if isinstance(kdf_or_ks, Series):
         ks = kdf_or_ks
-        return Series(sfun(kdf_or_ks._scol), anchor=ks._kdf, index=ks._index_info)
+        return Series(sfun(kdf_or_ks._scol), anchor=ks._kdf, index=ks._index_map)
     assert isinstance(kdf_or_ks, DataFrame)
     kdf = kdf_or_ks
     sdf = kdf._sdf

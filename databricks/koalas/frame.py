@@ -133,7 +133,7 @@ class DataFrame(_Frame):
     def _init_from_pandas(self, pdf):
         metadata = Metadata.from_pandas(pdf)
         reset_index = pdf.reset_index()
-        reset_index.columns = metadata.all_fields
+        reset_index.columns = metadata.columns
         schema = StructType([StructField(name, infer_pd_series_spark_type(col),
                                          nullable=bool(col.isnull().any()))
                              for name, col in reset_index.iteritems()])
@@ -148,14 +148,14 @@ class DataFrame(_Frame):
     def _init_from_spark(self, sdf, metadata=None):
         self._sdf = sdf
         if metadata is None:
-            self._metadata = Metadata(column_fields=self._sdf.schema.fieldNames())
+            self._metadata = Metadata(data_columns=self._sdf.schema.fieldNames())
         else:
             self._metadata = metadata
 
     @property
     def _index_columns(self):
         return [self._sdf.__getitem__(field)
-                for field in self._metadata.index_fields]
+                for field in self._metadata.index_columns]
 
     def _reduce_for_stat_function(self, sfun):
         """
@@ -578,7 +578,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Currently supported only when the DataFrame has a single index.
         """
         from databricks.koalas.series import Series
-        if len(self._metadata.index_info) != 1:
+        if len(self._metadata.index_map) != 1:
             raise KeyError('Currently supported only when the DataFrame has a single index.')
         return Series(self._index_columns[0], anchor=self, index=[])
 
@@ -604,20 +604,26 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise KeyError(key)
 
         if drop:
-            columns = [column for column in self._metadata.column_fields if column not in keys]
+            data_columns = [column for column in self._metadata.data_columns if column not in keys]
         else:
-            columns = self._metadata.column_fields
+            data_columns = self._metadata.data_columns
         if append:
-            index_info = self._metadata.index_info + [(column, column) for column in keys]
+            index_map = self._metadata.index_map + [(column, column) for column in keys]
         else:
-            index_info = [(column, column) for column in keys]
+            index_map = [(column, column) for column in keys]
 
-        metadata = self._metadata.copy(column_fields=columns, index_info=index_info)
+        metadata = self._metadata.copy(data_columns=data_columns, index_map=index_map)
+
+        # Sync Spark's columns as well.
+        sdf = self._sdf.select(['`{}`'.format(name) for name in metadata.columns])
+
         if inplace:
             self._metadata = metadata
+            self._sdf = sdf
         else:
             kdf = self.copy()
             kdf._metadata = metadata
+            kdf._sdf = sdf
             return kdf
 
     def reset_index(self, level=None, drop=False, inplace=False):
@@ -635,63 +641,68 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         Modify the DataFrame in place (do not create a new object)
         :return: :class:`DataFrame`
         """
-        if len(self._metadata.index_info) == 0:
+        if len(self._metadata.index_map) == 0:
             raise NotImplementedError('Can\'t reset index because there is no index.')
 
-        multi_index = len(self._metadata.index_info) > 1
-        if multi_index:
-            rename = lambda i: 'level_{}'.format(i)
-        else:
-            rename = lambda i: \
-                'index' if 'index' not in self._metadata.column_fields else 'level_{}'.fomat(i)
+        multi_index = len(self._metadata.index_map) > 1
+
+        def rename(index):
+            if multi_index:
+                return 'level_{}'.format(index)
+            else:
+                if 'index' not in self._metadata.data_columns:
+                    return 'index'
+                else:
+                    return 'level_{}'.format(index)
 
         if level is None:
-            index_columns = [(column, name if name is not None else rename(i))
-                             for i, (column, name) in enumerate(self._metadata.index_info)]
-            index_info = []
+            new_index_map = [(column, name if name is not None else rename(i))
+                             for i, (column, name) in enumerate(self._metadata.index_map)]
+            index_map = []
         else:
             if isinstance(level, (int, str)):
                 level = [level]
             level = list(level)
 
             if all(isinstance(l, int) for l in level):
-                for l in level:
-                    if l >= len(self._metadata.index_info):
+                for lev in level:
+                    if lev >= len(self._metadata.index_map):
                         raise IndexError('Too many levels: Index has only {} level, not {}'
-                                         .format(len(self._metadata.index_info), l + 1))
+                                         .format(len(self._metadata.index_map), lev + 1))
                 idx = level
-            elif all(isinstance(l, str) for l in level):
+            elif all(isinstance(lev, str) for lev in level):
                 idx = []
                 for l in level:
                     try:
-                        i = self._metadata.index_fields.index(l)
+                        i = self._metadata.index_columns.index(l)
                         idx.append(i)
                     except ValueError:
                         if multi_index:
                             raise KeyError('Level unknown not found')
                         else:
                             raise KeyError('Level unknown must be same as name ({})'
-                                           .format(self._metadata.index_fields[0]))
+                                           .format(self._metadata.index_columns[0]))
             else:
                 raise ValueError('Level should be all int or all string.')
             idx.sort()
 
-            index_columns = []
-            index_info = self._metadata.index_info.copy()
+            new_index_map = []
+            index_map = self._metadata.index_map.copy()
             for i in idx:
-                info = self._metadata.index_info[i]
-                column_field, index_name = info
-                index_columns.append((column_field,
-                                      index_name if index_name is not None else rename(index_name)))
-                index_info.remove(info)
+                info = self._metadata.index_map[i]
+                index_column, index_name = info
+                new_index_map.append(
+                    (index_column,
+                     index_name if index_name is not None else rename(index_name)))
+                index_map.remove(info)
 
         if drop:
-            index_columns = []
+            new_index_map = []
 
         metadata = self._metadata.copy(
-            column_fields=[column for column, _ in index_columns] + self._metadata.column_fields,
-            index_info=index_info)
-        columns = [name for _, name in index_columns] + self._metadata.column_fields
+            data_columns=[column for column, _ in new_index_map] + self._metadata.data_columns,
+            index_map=index_map)
+        columns = [name for _, name in new_index_map] + self._metadata.data_columns
         if inplace:
             self._metadata = metadata
             self.columns = columns
@@ -845,19 +856,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2   0.6   0.0
         3   0.2   0.1
         """
-        sdf = self._sdf.select(['`{}`'.format(name) for name in self._metadata.all_fields])
+        sdf = self._sdf.select(['`{}`'.format(name) for name in self._metadata.columns])
         pdf = sdf.toPandas()
         if len(pdf) == 0 and len(sdf.schema) > 0:
             # TODO: push to OSS
             pdf = pdf.astype({field.name: to_arrow_type(field.dataType).to_pandas_dtype()
                               for field in sdf.schema})
-        if len(self._metadata.index_info) > 0:
+
+        index_columns = self._metadata.index_columns
+        if len(index_columns) > 0:
             append = False
-            for index_field in self._metadata.index_fields:
-                drop = index_field not in self._metadata.column_fields
+            for index_field in index_columns:
+                drop = index_field not in self._metadata.data_columns
                 pdf = pdf.set_index(index_field, drop=drop, append=append)
                 append = True
-            pdf = pdf[self._metadata.column_fields]
+            pdf = pdf[self._metadata.data_columns]
+
         index_names = self._metadata.index_names
         if len(index_names) > 0:
             if isinstance(pdf.index, pd.MultiIndex):
@@ -945,9 +959,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 sdf = sdf.withColumn(name, F.lit(c))
 
+        data_columns = self._metadata.data_columns
         metadata = self._metadata.copy(
-            column_fields=(self._metadata.column_fields +
-                           [name for name, _ in pairs if name not in self._metadata.column_fields]))
+            data_columns=(data_columns +
+                          [name for name, _ in pairs if name not in data_columns]))
         return DataFrame(sdf, metadata)
 
     def to_excel(self, excel_writer, sheet_name="Sheet1", na_rep="", float_format=None,
@@ -1152,7 +1167,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 else:
                     columns = list(subset)
                 invalids = [column for column in columns
-                            if column not in self._metadata.column_fields]
+                            if column not in self._metadata.data_columns]
                 if len(invalids) > 0:
                     raise KeyError(invalids)
             else:
@@ -1312,20 +1327,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     @property
     def columns(self):
         """The column labels of the DataFrame."""
-        return pd.Index(self._metadata.column_fields)
+        return pd.Index(self._metadata.data_columns)
 
     @columns.setter
     def columns(self, names):
-        old_names = self._metadata.column_fields
+        old_names = self._metadata.data_columns
         if len(old_names) != len(names):
             raise ValueError(
                 "Length mismatch: Expected axis has %d elements, new values have %d elements"
                 % (len(old_names), len(names)))
-        sdf = self._sdf.select(self._metadata.index_fields +
+        sdf = self._sdf.select(self._metadata.index_columns +
                                [self[old_name]._scol.alias(new_name)
                                 for (old_name, new_name) in zip(old_names, names)])
         self._sdf = sdf
-        self._metadata = self._metadata.copy(column_fields=names)
+        self._metadata = self._metadata.copy(data_columns=names)
 
     @property
     def dtypes(self):
@@ -1354,8 +1369,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         f    datetime64[ns]
         dtype: object
         """
-        return pd.Series([self[col].dtype for col in self._metadata.column_fields],
-                         index=self._metadata.column_fields)
+        return pd.Series([self[col].dtype for col in self._metadata.data_columns],
+                         index=self._metadata.data_columns)
 
     def count(self):
         """
@@ -1468,7 +1483,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 columns = [columns]
             sdf = self._sdf.drop(*columns)
             metadata = self._metadata.copy(
-                column_fields=[column for column in self.columns if column not in columns]
+                data_columns=[column for column in self.columns if column not in columns]
             )
             return DataFrame(sdf, metadata)
         else:
@@ -1663,7 +1678,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 "'DataFrame' object has no attribute %s"
                 % (set(values.keys()).difference(self.columns)))
 
-        _select_columns = self._metadata.index_fields
+        _select_columns = self._metadata.index_columns
         if isinstance(values, dict):
             for col in self.columns:
                 if col in values:
@@ -1907,7 +1922,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(key, str):
             try:
                 return Series(self._sdf.__getitem__(key), anchor=self,
-                              index=self._metadata.index_info)
+                              index=self._metadata.index_map)
             except AnalysisException:
                 raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, str)):
@@ -1921,7 +1936,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
-            return Series(self._sdf.__getitem__(key), anchor=self, index=self._metadata.index_info)
+            return Series(self._sdf.__getitem__(key), anchor=self, index=self._metadata.index_map)
         if isinstance(key, Series):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
@@ -1966,7 +1981,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_info)
+        return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_map)
 
     def __iter__(self):
         return self.toPandas().__iter__()
