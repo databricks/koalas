@@ -80,7 +80,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         }
 
     def test_to_excel(self):
-        with self.temp_excel_dir() as dirpath:
+        with self.temp_dir() as dirpath:
             pandas_location = dirpath + "/" + "output1.xlsx"
             koalas_location = dirpath + "/" + "output2.xlsx"
 
