@@ -657,7 +657,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if level is None:
             new_index_map = [(column, name if name is not None else rename(i))
-                               for i, (column, name) in enumerate(self._metadata.index_map)]
+                             for i, (column, name) in enumerate(self._metadata.index_map)]
             index_map = []
         else:
             if isinstance(level, (int, str)):

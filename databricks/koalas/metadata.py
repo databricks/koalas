@@ -25,7 +25,7 @@ import pandas as pd
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 
 
-IndexInfo = Tuple[str, Optional[str]]
+IndexMap = Tuple[str, Optional[str]]
 
 
 class Metadata(object):
@@ -161,7 +161,7 @@ class Metadata(object):
     """
 
     def __init__(self, data_columns: List[str],
-                 index_map: Optional[List[IndexInfo]] = None) -> None:
+                 index_map: Optional[List[IndexMap]] = None) -> None:
         """ Create a new metadata to manage column fields and index fields and names.
 
         :param data_columns: list of string
@@ -176,7 +176,7 @@ class Metadata(object):
                    and (index_name is None or isinstance(index_name, str))
                    for index_field, index_name in index_map)
         self._data_columns = data_columns  # type: List[str]
-        self._index_map = index_map or []  # type: List[IndexInfo]
+        self._index_map = index_map or []  # type: List[IndexMap]
 
     @property
     def data_columns(self) -> List[str]:
@@ -196,7 +196,7 @@ class Metadata(object):
                                 if column not in index_columns]
 
     @property
-    def index_map(self) -> List[IndexInfo]:
+    def index_map(self) -> List[IndexMap]:
         """ Return the managed index information. """
         return self._index_map
 
@@ -206,7 +206,7 @@ class Metadata(object):
         return [index_name for _, index_name in self._index_map]
 
     def copy(self, data_columns: Optional[List[str]] = None,
-             index_map: Optional[List[IndexInfo]] = None) -> 'Metadata':
+             index_map: Optional[List[IndexMap]] = None) -> 'Metadata':
         """ Copy the metadata.
 
         :param data_columns: the new column field names. If None, then the original ones are used.
@@ -229,16 +229,16 @@ class Metadata(object):
         data_columns = [str(col) for col in pdf.columns]
         index = pdf.index
 
-        index_map = []  # type: List[IndexInfo]
+        index_map = []  # type: List[IndexMap]
         if isinstance(index, pd.MultiIndex):
             if index.names is None:
                 index_map = [('__index_level_{}__'.format(i), None)
-                               for i in range(len(index.levels))]
+                             for i in range(len(index.levels))]
             else:
                 index_map = [('__index_level_{}__'.format(i) if name is None else name, name)
-                               for i, name in enumerate(index.names)]
+                             for i, name in enumerate(index.names)]
         else:
             index_map = [(index.name
-                            if index.name is not None else '__index_level_0__', index.name)]
+                          if index.name is not None else '__index_level_0__', index.name)]
 
         return Metadata(data_columns=data_columns, index_map=index_map)

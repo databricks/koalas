@@ -92,8 +92,8 @@ class GroupBy(object):
 
         """
         if not isinstance(func_or_funcs, dict) or \
-            not all(isinstance(key, str) and isinstance(value, str)
-                    for key, value in func_or_funcs.items()):
+                not all(isinstance(key, str) and isinstance(value, str)
+                        for key, value in func_or_funcs.items()):
             raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
                              "functions (string).")
 
@@ -106,7 +106,7 @@ class GroupBy(object):
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
         metadata = Metadata(data_columns=[key for key, _ in func_or_funcs.items()],
                             index_map=[('__index_level_{}__'.format(i), s.name)
-                                         for i, s in enumerate(groupkeys)])
+                                       for i, s in enumerate(groupkeys)])
         return DataFrame(sdf, metadata)
 
     agg = aggregate
@@ -257,7 +257,7 @@ class GroupBy(object):
         sdf = sdf.sort(*groupkey_cols)
         metadata = Metadata(data_columns=data_columns,
                             index_map=[('__index_level_{}__'.format(i), s.name)
-                                         for i, s in enumerate(groupkeys)])
+                                       for i, s in enumerate(groupkeys)])
         return DataFrame(sdf, metadata)
 
 
