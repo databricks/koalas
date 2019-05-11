@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 
-import os
 import functools
 import shutil
 import sys
