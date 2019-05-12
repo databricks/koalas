@@ -578,8 +578,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         r"""
         Render an object to a LaTeX tabular environment table.
 
-        Render an object to a tabular environment table. You can splice this into a LaTeX document.
-        Requires usepackage{booktabs}.
+        Render an object to a tabular environment table. You can splice this into a LaTeX
+        document. Requires usepackage{booktabs}.
 
         .. note:: This method should only be used if the resulting Pandas object is expected
                   to be small, as all the data is loaded into the driver's memory. If the input
@@ -637,28 +637,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             the config module.
         multirow : bool, default False
             Use multirow to enhance MultiIndex rows. Requires adding a usepackage{multirow} to your
-            LaTeX preamble. Will print centered labels (instead of top-aligned) across the
-            contained rows, separating groups via clines. The default will be read from the pandas
-            config module.
+            LaTeX preamble. Will print centered labels (instead of top-aligned) across the contained
+            rows, separating groups via clines. The default will be read from the pandas config
+            module.
 
         Returns
         -------
         str or None
-            If buf is None, returns the resulting LateX format as a string.
-            Otherwise returns None.
-
-        See Also
-        --------
-        DataFrame.to_string
-            Render a DataFrame to a console-friendly tabular output.
-        DataFrame.to_html
-            Render a DataFrame as an HTML table.
+            If buf is None, returns the resulting LateX format as a string. Otherwise returns None.
 
         Examples
         --------
         >>> df = pd.DataFrame({'name': ['Raphael', 'Donatello'],
-        ...                    'mask': ['red', 'purple'],
-        ...                    'weapon': ['sai', 'bo staff']})
+        ... 'mask': ['red', 'purple'],
+        ... 'weapon': ['sai', 'bo staff']})
         >>> df.to_latex(index=False) # doctest: +NORMALIZE_WHITESPACE
         '\\begin{tabular}{lll}\n\\toprule\n      name &    mask &    weapon
         \\\\\n\\midrule\n   Raphael &     red &       sai \\\\\n Donatello &
