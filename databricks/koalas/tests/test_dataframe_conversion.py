@@ -167,10 +167,6 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
                        pdf.to_json(orient='split', index=False))
 
     def test_to_records(self):
-        # pdf = self.pdf
-        # kdf = koalas.from_pandas(pdf)
-
-
         pdf = pd.DataFrame({
             'A': [1, 2],
             'B': [0.5, 0.75]
