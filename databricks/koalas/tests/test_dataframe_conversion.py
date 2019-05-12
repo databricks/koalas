@@ -165,3 +165,19 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
                        pdf.to_json(orient='records', lines=True))
         self.assert_eq(kdf.to_json(orient='split', index=False),
                        pdf.to_json(orient='split', index=False))
+
+    def test_to_records(self):
+        # pdf = self.pdf
+        # kdf = koalas.from_pandas(pdf)
+
+
+        pdf = pd.DataFrame({
+            'A': [1, 2],
+            'B': [0.5, 0.75]
+        }, index=['a', 'b'])
+
+        kdf = koalas.from_pandas(pdf)
+
+        self.assert_array_eq(kdf.to_records(), pdf.to_records())
+        self.assert_array_eq(kdf.to_records(index=False), pdf.to_records(index=False))
+        self.assert_array_eq(kdf.to_records(index_dtypes="<S2"), pdf.to_records(index_dtypes="<S2"))

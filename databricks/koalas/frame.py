@@ -1293,6 +1293,82 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_excel, pd.DataFrame.to_excel, args)
 
+    def to_records(self, index=True, convert_datetime64=None,
+                   column_dtypes=None, index_dtypes=None):
+        """
+        Convert DataFrame to a NumPy record array.
+
+        Index will be included as the first field of the record array if
+        requested.
+
+        Parameters
+        ----------
+        index : bool, default True
+            Include index in resulting record array, stored in 'index'
+            field or using the index label, if set.
+        convert_datetime64 : bool, default None
+            Whether to convert the index to datetime.datetime if it is a
+            DatetimeIndex.
+        column_dtypes : str, type, dict, default None
+            If a string or type, the data type to store all columns. If
+            a dictionary, a mapping of column names and indices (zero-indexed)
+            to specific data types.
+        index_dtypes : str, type, dict, default None
+            If a string or type, the data type to store all index levels. If
+            a dictionary, a mapping of index level names and indices
+            (zero-indexed) to specific data types.
+            This mapping is applied only if `index=True`.
+
+        Returns
+        -------
+        numpy.recarray
+            NumPy ndarray with the DataFrame labels as fields and each row
+            of the DataFrame as entries.
+
+        See Also
+        --------
+        DataFrame.from_records: Convert structured or record ndarray
+            to DataFrame.
+        numpy.recarray: An ndarray that allows field access using
+            attributes, analogous to typed columns in a
+            spreadsheet.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2], 'B': [0.5, 0.75]},
+        ...                   index=['a', 'b'])
+        >>> df
+           A     B
+        a  1  0.50
+        b  2  0.75
+        >>> df.to_records()
+        rec.array([('a', 1, 0.5 ), ('b', 2, 0.75)],
+                  dtype=[('index', 'O'), ('A', '<i8'), ('B', '<f8')])
+
+        The index can be excluded from the record array:
+
+        >>> df.to_records(index=False)
+        rec.array([(1, 0.5 ), (2, 0.75)],
+                  dtype=[('A', '<i8'), ('B', '<f8')])
+
+        Data types can be specified for the columns:
+
+        >>> df.to_records(column_dtypes={"A": "int32"})
+        rec.array([('a', 1, 0.5 ), ('b', 2, 0.75)],
+                  dtype=[('index', 'O'), ('A', '<i4'), ('B', '<f8')])
+
+        As well as for the index:
+
+        >>> df.to_records(index_dtypes="<S2")
+        rec.array([(b'a', 1, 0.5 ), (b'b', 2, 0.75)],
+                  dtype=[('index', 'S2'), ('A', '<i8'), ('B', '<f8')])
+        """
+        args = locals()
+        kdf = self
+
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_records, pd.DataFrame.to_records, args)
+
     @property
     def loc(self):
         return SparkDataFrameLocator(self)
