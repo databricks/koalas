@@ -28,6 +28,11 @@ Attributes
    Series.schema
    Series.shape
 
+.. autosummary::
+   :toctree:  api/
+
+   Series.str
+
 Conversion
 ----------
 .. autosummary::
