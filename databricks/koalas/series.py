@@ -101,6 +101,10 @@ def _pandas_column_op(f, spark_return_type, f_name=''):
     return wrapper
 
 
+# Needed to disambiguate Series.str and str type
+str_type = str
+
+
 class Series(_Frame):
     """
     Koala Series that corresponds to Pandas Series logically. This holds Spark Column
@@ -295,6 +299,18 @@ class Series(_Frame):
 
     @property
     def str(self):
+        """Used to access the values of the series as strings and apply several methods to it.
+        These can be accessed like Series.str.<function/property>.
+
+        Examples
+        --------
+        >>> s = ks.Series(["a", "b", "c"])
+        >>> s.str.capitalize()
+        0    A
+        1    B
+        2    C
+        Name: capitalize(0), dtype: object
+        """
         return StringMethods(self)
 
     @property
@@ -1086,7 +1102,7 @@ class Series(_Frame):
     def __getitem__(self, key):
         return Series(self._scol.__getitem__(key), anchor=self._kdf, index=self._index_map)
 
-    def __getattr__(self, item: str) -> Any:
+    def __getattr__(self, item: str_type) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
             raise AttributeError(item)
         if hasattr(_MissingPandasLikeSeries, item):
