@@ -1528,15 +1528,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         rec.array([(1, 0.5 ), (2, 0.75)],
                   dtype=[('A', '<i8'), ('B', '<f8')])
 
+        This feature is new in PANDAS_VERSION=0.24.0.
         Data types can be specified for the columns:
 
-        >>> df.to_records(column_dtypes={"A": "int32"})
+        >>> df.to_records(column_dtypes={"A": "int32"}) # doctest: +SKIP
         rec.array([('a', 1, 0.5 ), ('b', 2, 0.75)],
                   dtype=[('index', 'O'), ('A', '<i4'), ('B', '<f8')])
 
+        This feature is new in PANDAS_VERSION=0.24.0.
         As well as for the index:
 
-        >>> df.to_records(index_dtypes="<S2")
+        >>> df.to_records(index_dtypes="<S2") # doctest: +SKIP
         rec.array([(b'a', 1, 0.5 ), (b'b', 2, 0.75)],
                   dtype=[('index', 'S2'), ('A', '<i8'), ('B', '<f8')])
         """
