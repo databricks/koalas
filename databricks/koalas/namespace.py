@@ -27,7 +27,6 @@ import pandas as pd
 from pyspark.sql import functions as F
 from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
     DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
-from pyspark.sql import SQLContext
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session
@@ -77,7 +76,6 @@ def sql(query: str) -> DataFrame:
 
     created_tables = []
     if dataframe_names:
-        _sql = SQLContext(default_session().sparkContext)
 
         # Get the local variables from the caller module which is one higher in the stack
         # TODO Check if the caller module is always exactly one higher in the stack
@@ -87,14 +85,15 @@ def sql(query: str) -> DataFrame:
             if candidate_name in fields:
                 candidate_obj = fields[candidate_name]
                 if isinstance(candidate_obj, DataFrame):
-                    _sql.registerDataFrameAsTable(candidate_obj._sdf, candidate_name)
+                    candidate_obj._sdf.createTempView(candidate_name)
                     created_tables.append(candidate_name)
 
     query_result = DataFrame(default_session().sql(query))
 
     # Clean up by dropping temporary tables
+    catalog = default_session().catalog
     for table in created_tables:
-        _sql.dropTempTable(table)
+        catalog.dropTempView(table)
 
     return query_result
 
