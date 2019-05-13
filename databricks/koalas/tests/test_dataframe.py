@@ -458,3 +458,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         res = left_kdf.merge(koalas.DataFrame({'A': [3, 4]}), left_index=True, right_index=True,
                              suffixes=('_left', '_right'))
         self.assert_eq(res, pd.DataFrame({'A_left': [1, 2], 'A_right': [3, 4]}))
+
+    def test_clip(self):
+        pdf = pd.DataFrame({'A': [0, 2, 4]})
+        kdf = koalas.from_pandas(pdf)
+
+        # Assert no lower or upper
+        self.assert_eq(kdf.clip(), pdf.clip())
+        # Assert lower only
+        self.assert_eq(kdf.clip(1), pdf.clip(1))
+        # Assert upper only
+        self.assert_eq(kdf.clip(upper=3), pdf.clip(upper=3))
+        # Assert lower and upper
+        self.assert_eq(kdf.clip(1, 3), pdf.clip(1, 3))

@@ -18,6 +18,7 @@
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
 from collections.abc import Iterable
+from typing import Union
 
 import numpy as np
 
@@ -310,6 +311,59 @@ class _Frame(object):
         """
         # TODO: The first example above should not have "Name: abs(0)".
         return _spark_col_apply(self, F.abs)
+
+    def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) \
+            -> Union['ks.Series', 'ks.DataFrame']:
+        """
+        Trim values at input threshold(s).
+
+        Assigns values outside boundary to boundary values. Thresholds can be singular values or
+        array like, and in the latter case the clipping is performed element-wise in the specified
+        axis.
+
+        Parameters
+        ----------
+        lower : float or int, default None
+            Minimum threshold value. All values below this threshold will be set to it.
+        upper : float or int, default None
+            Maximum threshold value. All values above this threshold will be set to it.
+
+        Returns
+        -------
+        Series or DataFrame
+            Same type as calling object with the values outside the clip boundaries replaced
+
+        Examples
+        --------
+        >>> ks.Series([0, 2, 4]).clip(1, 3)
+        0    1
+        1    2
+        2    3
+        Name: 0, dtype: int64
+
+        >>> ks.DataFrame({'A': [0, 2, 4]}).clip(1, 3)
+           A
+        0  1
+        1  2
+        2  3
+        """
+        if lower is None and upper is None:
+            return self
+
+        is_df = isinstance(self, ks.DataFrame)
+
+        df = self if is_df else self.to_dataframe()
+        sdf = df._sdf
+
+        if lower is not None:
+            sdf = sdf.select(*(F.when(F.col(c) < lower, lower).otherwise(F.col(c)).alias(c)
+                               for c in df.columns))
+        if upper is not None:
+            sdf = sdf.select(*(F.when(F.col(c) > upper, upper).otherwise(F.col(c)).alias(c)
+                               for c in df.columns))
+
+        df = ks.DataFrame(sdf)
+        return df if is_df else df['0']
 
     # TODO: by argument only support the grouping name only for now. Documentation should
     # be updated when it's supported.
