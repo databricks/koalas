@@ -1,3 +1,4 @@
+dist: xenial   # required for Python >= 3.7
 language: python
 
 cache:
