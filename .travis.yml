@@ -22,11 +22,9 @@ matrix:
       sudo: true
       jdk:
         - oraclejdk8
-      addons:
-        apt:
-          packages:
-            - oracle-java8-installer
       env:
+        - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
+        - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
         - SPARK_VERSION=2.4.3
         - PANDAS_VERSION=0.24.2
         - PYARROW_VERSION=0.13.0
