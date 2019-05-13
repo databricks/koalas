@@ -1027,7 +1027,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  mammal       80.5
         3  mammal        NaN
         """
-        # TODO: add example of MultiIndex back.
+        # TODO: add example of MultiIndex back. See https://github.com/databricks/koalas/issues/301
         if len(self._metadata.index_map) == 0:
             raise NotImplementedError('Can\'t reset index because there is no index.')
 
