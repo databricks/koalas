@@ -175,19 +175,3 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
                        pdf.to_clipboard(excel=False))
         self.assert_eq(kdf.to_clipboard(sep=";", index=False),
                        pdf.to_clipboard(sep=";", index=False))
-
-    def test_to_latex(self):
-        expected = self.strip_all_whitespace(r"""
-            \begin{tabular}{lrr}
-            \toprule
-            {} &  a &  b \\
-            \midrule
-            0 &  1 &  4 \\
-            1 &  2 &  5 \\
-            3 &  3 &  6 \\
-            \bottomrule
-            \end{tabular}
-
-            """)
-        got = self.strip_all_whitespace(self.kdf.to_latex())
-        self.assert_eq(got, expected)
