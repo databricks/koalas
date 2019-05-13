@@ -312,8 +312,7 @@ class _Frame(object):
         # TODO: The first example above should not have "Name: abs(0)".
         return _spark_col_apply(self, F.abs)
 
-    def clip(self: Union['ks.Series', 'ks.DataFrame'],  # Use type hint to avoid mypy issues
-             lower: Union[float, int] = None, upper: Union[float, int] = None) \
+    def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) \
             -> Union['ks.Series', 'ks.DataFrame']:
         """
         Trim values at input threshold(s).
@@ -353,7 +352,7 @@ class _Frame(object):
 
         is_df = isinstance(self, ks.DataFrame)
 
-        df = self if is_df else self.to_dataframe()
+        df = self if is_df else self.to_dataframe()  # type: ignore
         sdf = df._sdf
 
         if lower is not None:
