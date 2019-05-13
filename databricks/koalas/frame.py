@@ -30,6 +30,7 @@ from pyspark.sql.types import BooleanType, StructField, StructType, to_arrow_typ
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas import hijack
 from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
 from databricks.koalas.exceptions import SparkPandasMergeError
 from databricks.koalas.generic import _Frame, max_display_count
@@ -451,8 +452,9 @@ class DataFrame(_Frame):
         else:
             kdf = self
 
+        pdf = kdf.to_pandas()
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_html, pd.DataFrame.to_html, args)
+            kdf.to_pandas(), self.to_html, hijack.to_html, args)
 
     def to_string(self, buf=None, columns=None, col_space=None, header=True,
                   index=True, na_rep='NaN', formatters=None, float_format=None,
@@ -551,8 +553,9 @@ class DataFrame(_Frame):
         else:
             kdf = self
 
+        pdf = kdf.to_pandas()
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_string, pd.DataFrame.to_string, args)
+            kdf.to_pandas(), self.to_string, hijack.to_string, args)
 
     def to_json(self, path_or_buf=None, orient=None, date_format=None,
                 double_precision=10, force_ascii=True, date_unit='ms',
@@ -2355,10 +2358,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         raise NotImplementedError(key)
 
     def __repr__(self):
-        return repr(self.head(max_display_count).to_pandas())
+        pdf = self.head(max_display_count).to_pandas()
+        if len(pdf) == max_display_count:
+            pdf.to_string = lambda *args, **kwargs: hijack.to_string(pdf, *args, **kwargs)
+        return repr(pdf)
 
     def _repr_html_(self):
-        return self.head(max_display_count).to_pandas()._repr_html_()
+        pdf = self.head(max_display_count).to_pandas()
+        if len(pdf) == max_display_count:
+            pdf.to_html = lambda *args, **kwargs: hijack.to_html(pdf, *args, **kwargs)
+        return pdf._repr_html_()
 
     def __getitem__(self, key):
         return self._pd_getitem(key)
