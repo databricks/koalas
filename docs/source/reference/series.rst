@@ -81,6 +81,7 @@ Missing data handling
    Series.notna
    Series.notnull
    Series.dropna
+   Series.fillna
 
 Serialization / IO / Conversion
 -------------------------------
