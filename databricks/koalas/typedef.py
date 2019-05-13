@@ -17,7 +17,6 @@
 """
 Utilities to deal with types. This is mostly focused on python3.
 """
-
 import typing
 from inspect import getfullargspec
 from functools import wraps
