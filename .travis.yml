@@ -22,6 +22,10 @@ matrix:
       sudo: true
       jdk:
         - oraclejdk8
+      addons:
+        apt:
+          packages:
+            - oracle-java8-installer
       env:
         - SPARK_VERSION=2.4.3
         - PANDAS_VERSION=0.24.2
