@@ -25,7 +25,8 @@ from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import DataType, DoubleType, FloatType
+from pyspark.sql.types import (DataType, DecimalType, DoubleType, FloatType, ByteType,
+                               IntegerType, LongType, ShortType)
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 
@@ -367,12 +368,22 @@ class _Frame(object):
         df = self if is_df else self.to_dataframe()  # type: ignore
         sdf = df._sdf
 
+        numeric_types = (DecimalType, DoubleType, FloatType, ByteType, IntegerType, LongType,
+                         ShortType)
+        numeric_columns = [c for c in df.columns
+                           if isinstance(sdf.schema[c].dataType, numeric_types)]
+        nonnumeric_columns = [c for c in df.columns
+                              if not isinstance(sdf.schema[c].dataType, numeric_types)]
+
         if lower is not None:
-            sdf = sdf.select(*(F.when(F.col(c) < lower, lower).otherwise(F.col(c)).alias(c)
-                               for c in df.columns))
+            sdf = sdf.select(*[F.when(F.col(c) < lower, lower).otherwise(F.col(c)).alias(c)
+                               for c in numeric_columns] + nonnumeric_columns)
         if upper is not None:
-            sdf = sdf.select(*(F.when(F.col(c) > upper, upper).otherwise(F.col(c)).alias(c)
-                               for c in df.columns))
+            sdf = sdf.select(*[F.when(F.col(c) > upper, upper).otherwise(F.col(c)).alias(c)
+                               for c in numeric_columns] + nonnumeric_columns)
+
+        # Restore initial column order
+        sdf = sdf.select(list(df.columns))
 
         df = ks.DataFrame(sdf)
         return df if is_df else df['0']
