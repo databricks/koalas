@@ -510,69 +510,14 @@ class Series(_Frame):
             kseries.to_pandas(), self.to_string, pd.Series.to_string, args)
 
     def to_clipboard(self, excel=True, sep=None, **kwargs):
-        """
-        Copy object to the system clipboard.
-
-        Write a text representation of object to the system clipboard.
-        This can be pasted into Excel, for example.
-
-        .. note:: This method should only be used if the resulting DataFrame is expected
-            to be small, as all the data is loaded into the driver's memory.
-
-        Parameters
-        ----------
-        excel : bool, default True
-            - True, use the provided separator, writing in a csv format for
-              allowing easy pasting into excel.
-            - False, write a string representation of the object to the
-              clipboard.
-
-        sep : str, default ``'\\t'``
-            Field delimiter.
-        **kwargs
-            These parameters will be passed to DataFrame.to_csv.
-
-        Notes
-        -----
-        Requirements for your platform.
-
-          - Linux : `xclip`, or `xsel` (with `gtk` or `PyQt4` modules)
-          - Windows : none
-          - OS X : none
-
-        Examples
-        --------
-        Copy the contents of a DataFrame to the clipboard.
-
-        >>> df = ks.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-        >>> df.to_clipboard(sep=',')
-        ... # Wrote the following to the system clipboard:
-        ... # 0, 1
-        ... # 1, 2
-        ... # 2, 3
-        ... # 3, 4
-        ... # 4, 5
-        ... # 5, 6
-        ... # 6, 7
-
-        We can omit the the index by passing the keyword `index` and setting
-        it to false.
-
-        >>> df.to_clipboard(sep=',', index=False)
-        ... # Wrote the following to the system clipboard:
-        ... # 1
-        ... # 2
-        ... # 3
-        ... # 4
-        ... # 5
-        ... # 6
-        ... # 7
-        """
+        # Docstring defined below by reusing DataFrame.to_clipboard's.
         args = locals()
         kseries = self
 
         return validate_arguments_and_invoke_function(
             kseries.to_pandas(), self.to_clipboard, pd.Series.to_clipboard, args)
+
+    to_clipboard.__doc__ = DataFrame.to_clipboard.__doc__
 
     def to_dict(self, into=dict):
         """

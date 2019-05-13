@@ -313,8 +313,8 @@ class DataFrame(_Frame):
         --------
         Copy the contents of a DataFrame to the clipboard.
 
-        >>> df = ks.DataFrame([[1, 2, 3], [4, 5, 6]], columns=['A', 'B', 'C'])
-        >>> df.to_clipboard(sep=',')
+        >>> df = ks.DataFrame([[1, 2, 3], [4, 5, 6]], columns=['A', 'B', 'C'])  # doctest: +SKIP
+        >>> df.to_clipboard(sep=',')  # doctest: +SKIP
         ... # Wrote the following to the system clipboard:
         ... # ,A,B,C
         ... # 0,1,2,3
@@ -323,11 +323,24 @@ class DataFrame(_Frame):
         We can omit the the index by passing the keyword `index` and setting
         it to false.
 
-        >>> df.to_clipboard(sep=',', index=False)
+        >>> df.to_clipboard(sep=',', index=False)  # doctest: +SKIP
         ... # Wrote the following to the system clipboard:
         ... # A,B,C
         ... # 1,2,3
         ... # 4,5,6
+
+        This function also works for Series:
+
+        >>> df = ks.Series([1, 2, 3, 4, 5, 6, 7], name='x')  # doctest: +SKIP
+        >>> df.to_clipboard(sep=',')  # doctest: +SKIP
+        ... # Wrote the following to the system clipboard:
+        ... # 0, 1
+        ... # 1, 2
+        ... # 2, 3
+        ... # 3, 4
+        ... # 4, 5
+        ... # 5, 6
+        ... # 6, 7
         """
 
         args = locals()
