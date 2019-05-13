@@ -1467,7 +1467,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def loc(self):
         return SparkDataFrameLocator(self)
 
-    def copy(self):
+    def copy(self) -> 'DataFrame':
+        """
+        Make a copy of this object's indices and data.
+
+        Returns
+        -------
+        copy : DataFrame
+        """
         return DataFrame(self._sdf, self._metadata.copy())
 
     def dropna(self, axis=0, how='any', thresh=None, subset=None, inplace=False):
