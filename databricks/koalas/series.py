@@ -24,7 +24,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like
-from pandas.core.accessor import CachedAccessor
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -38,7 +37,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.selection import SparkDataFrameLocator
-from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.utils import validate_arguments_and_invoke_function, lazy_property
 
 
 def _column_op(f):
@@ -114,7 +113,6 @@ class Series(_Frame):
     copy : boolean, default False
         Copy input data
     """
-    plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
 
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False,
                  anchor=None):
@@ -253,6 +251,10 @@ class Series(_Frame):
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self.schema.fields[-1].dataType
+
+    @lazy_property
+    def plot(self):
+        return KoalasSeriesPlotMethods(self)
 
     def astype(self, dtype):
         from databricks.koalas.typedef import as_spark_type

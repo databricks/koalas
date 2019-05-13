@@ -1,4 +1,3 @@
-from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.missing import _unsupported_function
 import matplotlib
 from matplotlib.axes._base import _process_plot_format
@@ -20,7 +19,77 @@ class KoalasBarPlot(BarPlot):
     def _compute_plot_data(self):
         # Simply use the first 1k elements and make it into a pandas dataframe
         # For categorical variables, it is likely called from df.x.value_counts().plot.bar()
-        self.data = self.data.head(1000).to_pandas().to_frame()
+        self.data = self.data.head(1001).to_pandas().to_frame()
+
+    def _plot(self, ax, x, y, w, start=0, log=False, **kwds):
+        if len(self.data) > 1000:
+            ax.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
+                    transform=ax.transAxes)
+
+        return ax.bar(x, y, w, bottom=start, log=log, **kwds)
+
+
+class KoalasBoxPlotSummary:
+    def __init__(self, data, colname):
+        self.data = data
+        self.colname = colname
+
+    def compute_stats(self, whis, precision):
+        # Computes mean, median, Q1 and Q3 with approx_percentile and precision
+        pdf = (self.data._kdf._sdf
+               .agg(*[F.expr('approx_percentile({}, {}, {})'.format(self.colname, q,
+                                                                    1. / precision))
+                      .alias('{}_{}%'.format(self.colname, int(q * 100)))
+                      for q in [.25, .50, .75]],
+                    F.mean(self.colname).alias('{}_mean'.format(self.colname))).toPandas())
+
+        # Computes IQR and Tukey's fences
+        iqr = '{}_iqr'.format(self.colname)
+        p75 = '{}_75%'.format(self.colname)
+        p25 = '{}_25%'.format(self.colname)
+        pdf.loc[:, iqr] = pdf.loc[:, p75] - pdf.loc[:, p25]
+        pdf.loc[:, '{}_lfence'.format(self.colname)] = pdf.loc[:, p25] - whis * pdf.loc[:, iqr]
+        pdf.loc[:, '{}_ufence'.format(self.colname)] = pdf.loc[:, p75] + whis * pdf.loc[:, iqr]
+
+        qnames = ['25%', '50%', '75%', 'mean', 'lfence', 'ufence']
+        col_summ = pdf[['{}_{}'.format(self.colname, q) for q in qnames]]
+        col_summ.columns = qnames
+        lfence, ufence = col_summ['lfence'], col_summ['ufence']
+
+        stats = {'mean': col_summ['mean'].values[0],
+                 'med': col_summ['50%'].values[0],
+                 'q1': col_summ['25%'].values[0],
+                 'q3': col_summ['75%'].values[0]}
+
+        return stats, (lfence.values[0], ufence.values[0])
+
+    def outliers(self, lfence, ufence):
+        # Builds expression to identify outliers
+        expression = F.col(self.colname).between(lfence, ufence)
+        # Creates a column to flag rows as outliers or not
+        return self.data._kdf._sdf.withColumn('__{}_outlier'.format(self.colname), ~expression)
+
+    def calc_whiskers(self, outliers):
+        # Computes min and max values of non-outliers - the whiskers
+        minmax = (outliers
+                  .filter('not __{}_outlier'.format(self.colname))
+                  .agg(F.min(self.colname).alias('min'),
+                       F.max(self.colname).alias('max'))
+                  .toPandas())
+        return minmax.iloc[0][['min', 'max']].values
+
+    def get_fliers(self, outliers):
+        # Filters only the outliers, should "showfliers" be True
+        fliers_df = outliers.filter('__{}_outlier'.format(self.colname))
+
+        # If shows fliers, takes the top 1k with highest absolute values
+        fliers = (fliers_df
+                  .select(F.abs(F.col(self.colname)).alias(self.colname))
+                  .orderBy(F.desc(self.colname))
+                  .limit(1001)
+                  .toPandas()[self.colname].values)
+
+        return fliers
 
 
 class KoalasBoxPlot(BoxPlot):
@@ -174,6 +243,8 @@ class KoalasBoxPlot(BoxPlot):
 
     def _compute_plot_data(self):
         colname = self.data.name
+        summary = KoalasBoxPlotSummary(self.data, colname)
+
         # Updates all props with the rc defaults from matplotlib
         self.kwds.update(KoalasBoxPlot.rc_defaults(**self.kwds))
 
@@ -185,61 +256,26 @@ class KoalasBoxPlot(BoxPlot):
         # This one is Koalas specific to control precision for approx_percentile
         precision = self.kwds.get('precision', 0.01)
 
-        # The code below was originally built to handle multiple columns
-        # It is currently handling a single column, though
+        # # Computes mean, median, Q1 and Q3 with approx_percentile and precision
+        col_stats, col_fences = summary.compute_stats(whis, precision)
 
-        # Computes mean, median, Q1 and Q3 with approx_percentile and precision
-        pdf = (self.data._kdf._sdf
-               .agg(*[F.expr('approx_percentile({}, {}, {})'.format(colname, q, 1. / precision))
-                      .alias('{}_{}%'.format(colname, int(q * 100)))
-                      for q in [.25, .50, .75]],
-                    F.mean(colname).alias('{}_mean'.format(colname))).toPandas())
+        # # Creates a column to flag rows as outliers or not
+        outliers = summary.outliers(*col_fences)
 
-        # Computes IQR and Tukey's fences
-        iqr = '{}_iqr'.format(colname)
-        p75 = '{}_75%'.format(colname)
-        p25 = '{}_25%'.format(colname)
-        pdf.loc[:, iqr] = pdf.loc[:, p75] - pdf.loc[:, p25]
-        pdf.loc[:, '{}_lfence'.format(colname)] = pdf.loc[:, p25] - whis * pdf.loc[:, iqr]
-        pdf.loc[:, '{}_ufence'.format(colname)] = pdf.loc[:, p75] + whis * pdf.loc[:, iqr]
-
-        qnames = ['25%', '50%', '75%', 'mean', 'lfence', 'ufence']
-        col_summ = pdf[['{}_{}'.format(colname, q) for q in qnames]]
-        col_summ.columns = qnames
-        lfence, ufence = col_summ[['lfence']], col_summ[['ufence']]
-
-        # Builds expression to identify outliers
-        expression = F.col(colname).between(lfence.iloc[0, 0], ufence.iloc[0, 0])
-        # Creates a column to flag rows as outliers or not
-        outlier = self.data._kdf._sdf.withColumn('__{}_outlier'.format(colname), ~expression)
-
-        # Computes min and max values of non-outliers - the whiskers
-        minmax = (outlier
-                  .filter('not __{}_outlier'.format(colname))
-                  .agg(F.min(colname).alias('min'),
-                       F.max(colname).alias('max'))
-                  .toPandas())
-        whiskers = minmax.iloc[0][['min', 'max']].values
-
-        # Filters only the outliers, should "showfliers" be True
-        fliers_df = outlier.filter('__{}_outlier'.format(colname))
+        # # Computes min and max values of non-outliers - the whiskers
+        whiskers = summary.calc_whiskers(outliers)
 
         if showfliers:
-            # If shows fliers, takes the top 1k with highest absolute values
-            fliers = (fliers_df
-                      .select(F.abs(F.col(colname)).alias(colname))
-                      .orderBy(F.desc(colname))
-                      .limit(1000)
-                      .toPandas()[colname].values)
+            fliers = summary.get_fliers(outliers)
         else:
             fliers = []
 
         # Builds bxpstats dict
         stats = []
-        item = {'mean': col_summ['mean'].values[0],
-                'med': col_summ['50%'].values[0],
-                'q1': col_summ['25%'].values[0],
-                'q3': col_summ['75%'].values[0],
+        item = {'mean': col_stats['mean'],
+                'med': col_stats['med'],
+                'q1': col_stats['q1'],
+                'q3': col_stats['q3'],
                 'whislo': whiskers[0],
                 'whishi': whiskers[1],
                 'fliers': fliers,
@@ -265,18 +301,54 @@ class KoalasBoxPlot(BoxPlot):
         self._set_ticklabels(ax, labels)
 
 
+class KoalasHistPlotSummary:
+    def __init__(self, data, colname):
+        self.data = data
+        self.colname = colname
+
+    def get_bins(self, n_bins):
+        boundaries = (self.data._kdf._sdf
+                      .agg(F.min(self.colname),
+                           F.max(self.colname))
+                      .rdd
+                      .map(tuple)
+                      .collect()[0])
+        # divides the boundaries into bins
+        return np.linspace(boundaries[0], boundaries[1], n_bins + 1)
+
+    def calc_histogram(self, bins):
+        bucket_name = '__{}_bucket'.format(self.colname)
+        # creates a Bucketizer to get corresponding bin of each value
+        bucketizer = Bucketizer(splits=bins,
+                                inputCol=self.colname,
+                                outputCol=bucket_name,
+                                handleInvalid="skip")
+        # after bucketing values, groups and counts them
+        result = (bucketizer
+                  .transform(self.data._kdf._sdf)
+                  .select(bucket_name)
+                  .groupby(bucket_name)
+                  .agg(F.count('*').alias('count'))
+                  .toPandas()
+                  .sort_values(by=bucket_name))
+
+        # generates a pandas DF with one row for each bin
+        # we need this as some of the bins may be empty
+        indexes = pd.DataFrame({bucket_name: np.arange(0, len(bins) - 1),
+                                'bucket': bins[:-1]})
+        # merges the bins with counts on it and fills remaining ones with zeros
+        data = indexes.merge(result, how='left', on=[bucket_name]).fillna(0)[['count']]
+        data.columns = [bucket_name]
+
+        return data
+
+
 class KoalasHistPlot(HistPlot):
     def _args_adjust(self):
         if is_integer(self.bins):
+            summary = KoalasHistPlotSummary(self.data, self.data.name)
             # computes boundaries for the column
-            boundaries = (self.data._kdf._sdf
-                          .agg(F.min(self.data._scol),
-                               F.max(self.data._scol))
-                          .rdd
-                          .map(tuple)
-                          .collect()[0])
-            # divides the boundaries into bins
-            self.bins = np.linspace(boundaries[0], boundaries[1], self.bins + 1)
+            self.bins = summary.get_bins(self.bins)
 
         if is_list_like(self.bottom):
             self.bottom = np.array(self.bottom)
@@ -299,31 +371,9 @@ class KoalasHistPlot(HistPlot):
         return patches
 
     def _compute_plot_data(self):
-        data = self.data
-        colname = data.name
-
-        bucket_name = '__{}_bucket'.format(colname)
-        # creates a Bucketizer to get corresponding bin of each value
-        bucketizer = Bucketizer(splits=self.bins,
-                                inputCol=colname,
-                                outputCol=bucket_name,
-                                handleInvalid="skip")
-        # after bucketing values, groups and counts them
-        result = (bucketizer
-                  .transform(data._kdf._sdf)
-                  .select(bucket_name)
-                  .groupby(bucket_name)
-                  .agg(F.count('*').alias('count'))
-                  .toPandas()
-                  .sort_values(by=bucket_name))
-
+        summary = KoalasHistPlotSummary(self.data, self.data.name)
         # generates a pandas DF with one row for each bin
-        # we need this as some of the bins may be empty
-        indexes = pd.DataFrame({bucket_name: np.arange(0, len(self.bins) - 1),
-                                'bucket': self.bins[:-1]})
-        # merges the bins with counts on it and fills remaining ones with zeros
-        self.data = indexes.merge(result, how='left', on=[bucket_name]).fillna(0)[['count']]
-        self.data.columns = [bucket_name]
+        self.data = summary.calc_histogram(self.bins)
 
 
 _klasses = [KoalasHistPlot, KoalasBarPlot, KoalasBoxPlot]
@@ -474,36 +524,28 @@ class KoalasSeriesPlotMethods(BasePlotMethods):
                            **kwds)
     __call__.__doc__ = plot_series.__doc__
 
-    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def line(self, **kwds):
         return _unsupported_function(class_name='pd.Series', method_name='line')
 
-    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def bar(self, **kwds):
         return self(kind='bar', **kwds)
 
-    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def barh(self, **kwds):
         return _unsupported_function(class_name='pd.Series', method_name='barh')
 
-    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def box(self, **kwds):
         return self(kind='box', **kwds)
 
-    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def hist(self, bins=10, **kwds):
         return self(kind='hist', bins=bins, **kwds)
 
-    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def kde(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.Series', method_name='kde')
 
     density = kde
 
-    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def area(self, **kwds):
         return _unsupported_function(class_name='pd.Series', method_name='area')
 
-    @derived_from(pd.plotting._core.SeriesPlotMethods)
     def pie(self, **kwds):
         return _unsupported_function(class_name='pd.Series', method_name='pie')
