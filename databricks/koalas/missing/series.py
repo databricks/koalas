@@ -112,7 +112,6 @@ class _MissingPandasLikeSeries(object):
     expanding = unsupported_function('expanding')
     factorize = unsupported_function('factorize')
     ffill = unsupported_function('ffill')
-    fillna = unsupported_function('fillna')
     filter = unsupported_function('filter')
     first = unsupported_function('first')
     first_valid_index = unsupported_function('first_valid_index')

@@ -50,6 +50,7 @@ def _column_op(f):
     :param self: Koalas Series
     :param args: arguments that the function `f` takes.
     """
+
     @wraps(f)
     def wrapper(self, *args):
         assert all((not isinstance(arg, Series)) or (arg._kdf is self._kdf) for arg in args), \
@@ -61,6 +62,7 @@ def _column_op(f):
         args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
         scol = f(self._scol, *args)
         return Series(scol, anchor=self._kdf, index=self._index_map)
+
     return wrapper
 
 
@@ -77,6 +79,7 @@ def _numpy_column_op(f):
             else:
                 new_args.append(arg)
         return _column_op(f)(self, *new_args)
+
     return wrapper
 
 
@@ -647,6 +650,69 @@ class Series(_Frame):
         return ~self.isnull()
 
     notna = notnull
+
+    def fillna(self, value=None, axis=None, inplace=False):
+        """Fill NA/NaN values.
+
+        Parameters
+        ----------
+        value : scalar, dict, Series
+            Value to use to fill holes. alternately a dict/Series of values
+            specifying which value to use for each column.
+            DataFrame is not supported.
+        axis : {0 or `index`}
+            1 and `columns` are not supported.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+
+        Returns
+        -------
+        Series
+            Series with NA entries filled.
+
+        Examples
+        --------
+        >>> s = ks.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
+        >>> s
+        0    NaN
+        1    2.0
+        2    3.0
+        3    4.0
+        4    NaN
+        5    6.0
+        Name: x, dtype: float64
+
+
+        Replace all NaN elements with 0s.
+
+        >>> s.fillna(0)
+        0    0.0
+        1    2.0
+        2    3.0
+        3    4.0
+        4    0.0
+        5    6.0
+        Name: x, dtype: float64
+
+        Replace all NaN elements in column 'x' with 0.
+
+        >>> values = {'x': 0}
+        >>> s.fillna(value=values)
+        0    0.0
+        1    2.0
+        2    3.0
+        3    4.0
+        4    0.0
+        5    6.0
+        Name: x, dtype: float64
+        """
+
+        ks = _col(self.to_dataframe().fillna(value=value, axis=axis, inplace=False))
+        if inplace:
+            self._kdf = ks._kdf
+            self._scol = ks._scol
+        else:
+            return ks
 
     def dropna(self, axis=0, inplace=False, **kwargs):
         """
