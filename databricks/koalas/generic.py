@@ -348,7 +348,7 @@ class _Frame(object):
         2  3
         """
         if lower is None and upper is None:
-            return self
+            return self  # type: ignore
 
         is_df = isinstance(self, ks.DataFrame)
 
