@@ -1601,15 +1601,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def fillna(self, value=None, axis=None, inplace=False):
         """Fill NA/NaN values.
 
-        :param value: scalar, dict, Series
-                    Value to use to fill holes. alternately a dict/Series of values
-                    specifying which value to use for each column.
-                    DataFrame is not supported.
-        :param axis: {0 or `index`}
-                    1 and `columns` are not supported.
-        :param inplace: boolean, default False
-                    Fill in place (do not create a new object)
-        :return: :class:`DataFrame`
+        Parameters
+        ----------
+        value : scalar, dict, Series
+            Value to use to fill holes. alternately a dict/Series of values
+            specifying which value to use for each column.
+            DataFrame is not supported.
+        axis : {0 or `index`}
+            1 and `columns` are not supported.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+
+        Returns
+        -------
+        DataFrame
+            DataFrame with NA entries filled.
 
         Examples
         --------
@@ -2042,6 +2048,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
            The sequence of values to test. If values is a dict,
            the keys must be the column names, which must match.
            Series and DataFrame are not supported.
+
         Returns
         -------
         DataFrame
