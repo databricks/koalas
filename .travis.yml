@@ -16,7 +16,8 @@ matrix:
         - SPARK_VERSION=2.4.3
         - PANDAS_VERSION=0.24.2
         - PYARROW_VERSION=0.10.0
-    # When we upgrade Spark 3.0 for this, remove 'oraclejdk8'.
+    # When we upgrade Spark 3.0 for this, we could try to just use JDK 11 at 'xenial'.
+    # Python 3.7 and higher are only available at this image.
     - python: 3.7
       dist: xenial
       sudo: true
