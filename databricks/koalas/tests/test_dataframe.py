@@ -471,3 +471,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.clip(upper=3), pdf.clip(upper=3))
         # Assert lower and upper
         self.assert_eq(kdf.clip(1, 3), pdf.clip(1, 3))
+
+        # Assert behavior on string values
+        str_kdf = koalas.DataFrame({'A': ['a', 'b', 'c']})
+        self.assert_eq(str_kdf.clip(1, 3), str_kdf)

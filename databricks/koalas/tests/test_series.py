@@ -239,3 +239,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks.clip(upper=3), ps.clip(upper=3))
         # Assert lower and upper
         self.assert_eq(ks.clip(1, 3), ps.clip(1, 3))
+
+        # Assert behavior on string values
+        str_ks = koalas.Series(['a', 'b', 'c'])
+        self.assert_eq(str_ks.clip(1, 3), str_ks)
