@@ -1,6 +1,6 @@
 # Dependencies in Koalas
 pandas>=0.23
-pyarrow>=0.10,<0.11
+pyarrow>=0.10
 numpy>=1.14
 
 # Documentation build
@@ -15,3 +15,5 @@ flake8
 # Test
 pytest
 pytest-cov
+openpyxl
+xlrd

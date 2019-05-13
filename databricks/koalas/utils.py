@@ -59,6 +59,12 @@ def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],
     args = input_args.copy()
     del args['self']
 
+    if 'kwargs' in args:
+        # explode kwargs
+        kwargs = args['kwargs']
+        del args['kwargs']
+        args = {**args, **kwargs}
+
     koalas_params = inspect.signature(koalas_func).parameters
     pandas_params = inspect.signature(pandas_func).parameters
 
@@ -69,7 +75,7 @@ def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],
             else:
                 raise TypeError(
                     ("The pandas version [%s] available does not support parameter '%s' " +
-                        "for function '%s'.") % (pd.__version__, param.name, pandas_func.__name__))
+                     "for function '%s'.") % (pd.__version__, param.name, pandas_func.__name__))
 
     args['self'] = pobj
     return pandas_func(**args)
@@ -88,4 +94,5 @@ def lazy_property(fn):
         if not hasattr(self, attr_name):
             setattr(self, attr_name, fn(self))
         return getattr(self, attr_name)
+
     return _lazy_property

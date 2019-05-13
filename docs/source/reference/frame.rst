@@ -117,10 +117,14 @@ Serialization / IO / Conversion
 .. autosummary::
    :toctree: api/
 
+   DataFrame.to_csv
    DataFrame.to_pandas
    DataFrame.to_html
    DataFrame.to_numpy
    DataFrame.to_koalas
    DataFrame.to_spark
    DataFrame.to_string
+   DataFrame.to_json
    DataFrame.to_dict
+   DataFrame.to_excel
+   DataFrame.to_clipboard

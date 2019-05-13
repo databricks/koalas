@@ -75,7 +75,7 @@ def to_numeric_df(kdf: 'ks.DataFrame') -> Tuple[pyspark.sql.DataFrame, List[str]
     # TODO, it should be more robust.
     accepted_types = {np.dtype(dt) for dt in [np.int8, np.int16, np.int32, np.int64,
                                               np.float32, np.float64, np.bool_]}
-    numeric_fields = [fname for fname in kdf._metadata.column_fields
+    numeric_fields = [fname for fname in kdf._metadata.data_columns
                       if kdf[fname].dtype in accepted_types]
     numeric_df = kdf._sdf.select(*numeric_fields)
     va = VectorAssembler(inputCols=numeric_fields, outputCol=CORRELATION_OUTPUT_COLUMN)

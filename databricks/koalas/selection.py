@@ -161,18 +161,18 @@ class SparkDataFrameLocator(object):
             else:
                 raiseNotImplemented("Cannot select with MultiIndex with Spark.")
         if cols_sel is None:
-            columns = [_make_col(c) for c in self._kdf._metadata.column_fields]
+            columns = [_make_col(c) for c in self._kdf._metadata.data_columns]
         elif isinstance(cols_sel, spark.Column):
             columns = [cols_sel]
         else:
             columns = [_make_col(c) for c in cols_sel]
         try:
-            kdf = DataFrame(sdf.select(self._kdf._metadata.index_fields + columns))
+            kdf = DataFrame(sdf.select(self._kdf._metadata.index_columns + columns))
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))
         kdf._metadata = self._kdf._metadata.copy(
-            column_fields=kdf._metadata.column_fields[-len(columns):])
+            data_columns=kdf._metadata.data_columns[-len(columns):])
         if cols_sel is not None and isinstance(cols_sel, spark.Column):
             from databricks.koalas.series import _col
             return _col(kdf)

@@ -133,7 +133,7 @@ class DataFrame(_Frame):
     def _init_from_pandas(self, pdf):
         metadata = Metadata.from_pandas(pdf)
         reset_index = pdf.reset_index()
-        reset_index.columns = metadata.all_fields
+        reset_index.columns = metadata.columns
         schema = StructType([StructField(name, infer_pd_series_spark_type(col),
                                          nullable=bool(col.isnull().any()))
                              for name, col in reset_index.iteritems()])
@@ -148,14 +148,14 @@ class DataFrame(_Frame):
     def _init_from_spark(self, sdf, metadata=None):
         self._sdf = sdf
         if metadata is None:
-            self._metadata = Metadata(column_fields=self._sdf.schema.fieldNames())
+            self._metadata = Metadata(data_columns=self._sdf.schema.fieldNames())
         else:
             self._metadata = metadata
 
     @property
     def _index_columns(self):
         return [self._sdf.__getitem__(field)
-                for field in self._metadata.index_fields]
+                for field in self._metadata.index_columns]
 
     def _reduce_for_stat_function(self, sfun):
         """
@@ -277,6 +277,83 @@ class DataFrame(_Frame):
         """
         cols = list(self.columns)
         return list((col_name, self[col_name]) for col_name in cols)
+
+    def to_clipboard(self, excel=True, sep=None, **kwargs):
+        """
+        Copy object to the system clipboard.
+
+        Write a text representation of object to the system clipboard.
+        This can be pasted into Excel, for example.
+
+        .. note:: This method should only be used if the resulting DataFrame is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        excel : bool, default True
+            - True, use the provided separator, writing in a csv format for
+              allowing easy pasting into excel.
+            - False, write a string representation of the object to the
+              clipboard.
+
+        sep : str, default ``'\\t'``
+            Field delimiter.
+        **kwargs
+            These parameters will be passed to DataFrame.to_csv.
+
+        Notes
+        -----
+        Requirements for your platform.
+
+          - Linux : `xclip`, or `xsel` (with `gtk` or `PyQt4` modules)
+          - Windows : none
+          - OS X : none
+
+        Examples
+        --------
+        Copy the contents of a DataFrame to the clipboard.
+
+        >>> df = ks.DataFrame([[1, 2, 3], [4, 5, 6]], columns=['A', 'B', 'C'])  # doctest: +SKIP
+        >>> df.to_clipboard(sep=',')  # doctest: +SKIP
+        ... # Wrote the following to the system clipboard:
+        ... # ,A,B,C
+        ... # 0,1,2,3
+        ... # 1,4,5,6
+
+        We can omit the the index by passing the keyword `index` and setting
+        it to false.
+
+        >>> df.to_clipboard(sep=',', index=False)  # doctest: +SKIP
+        ... # Wrote the following to the system clipboard:
+        ... # A,B,C
+        ... # 1,2,3
+        ... # 4,5,6
+
+        This function also works for Series:
+
+        >>> df = ks.Series([1, 2, 3, 4, 5, 6, 7], name='x')  # doctest: +SKIP
+        >>> df.to_clipboard(sep=',')  # doctest: +SKIP
+        ... # Wrote the following to the system clipboard:
+        ... # 0, 1
+        ... # 1, 2
+        ... # 2, 3
+        ... # 3, 4
+        ... # 4, 5
+        ... # 5, 6
+        ... # 6, 7
+        """
+
+        args = locals()
+        kdf = self
+
+        if len(args['kwargs']) > 1:
+            # explode kwargs
+            kwargs_copy = args['kwargs']
+            args = {**args, **kwargs_copy}
+        del args['kwargs']
+
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_clipboard, pd.DataFrame.to_clipboard, args)
 
     def to_html(self, buf=None, columns=None, col_space=None, header=True, index=True,
                 na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
@@ -477,6 +554,130 @@ class DataFrame(_Frame):
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_string, pd.DataFrame.to_string, args)
 
+    def to_json(self, path_or_buf=None, orient=None, date_format=None,
+                double_precision=10, force_ascii=True, date_unit='ms',
+                default_handler=None, lines=False, compression='infer',
+                index=True):
+        """
+        Convert the object to a JSON string.
+
+        Note NaN's and None will be converted to null and datetime objects
+        will be converted to UNIX timestamps.
+
+        .. note:: This method should only be used if the resulting JSON is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        path_or_buf : string or file handle, optional
+            File path or object. If not specified, the result is returned as
+            a string.
+        orient : string
+            Indication of expected JSON string format.
+
+            * Series
+
+              - default is 'index'
+              - allowed values are: {'split','records','index','table'}
+
+            * DataFrame
+
+              - default is 'columns'
+              - allowed values are:
+                {'split','records','index','columns','values','table'}
+
+            * The format of the JSON string
+
+              - 'split' : dict like {'index' -> [index],
+                'columns' -> [columns], 'data' -> [values]}
+              - 'records' : list like
+                [{column -> value}, ... , {column -> value}]
+              - 'index' : dict like {index -> {column -> value}}
+              - 'columns' : dict like {column -> {index -> value}}
+              - 'values' : just the values array
+              - 'table' : dict like {'schema': {schema}, 'data': {data}}
+                describing the data, and the data component is
+                like ``orient='records'``.
+        date_format : {None, 'epoch', 'iso'}
+            Type of date conversion. 'epoch' = epoch milliseconds,
+            'iso' = ISO8601. The default depends on the `orient`. For
+            ``orient='table'``, the default is 'iso'. For all other orients,
+            the default is 'epoch'.
+        double_precision : int, default 10
+            The number of decimal places to use when encoding
+            floating point values.
+        force_ascii : bool, default True
+            Force encoded string to be ASCII.
+        date_unit : string, default 'ms' (milliseconds)
+            The time unit to encode to, governs timestamp and ISO8601
+            precision.  One of 's', 'ms', 'us', 'ns' for second, millisecond,
+            microsecond, and nanosecond respectively.
+        default_handler : callable, default None
+            Handler to call if object cannot otherwise be converted to a
+            suitable format for JSON. Should receive a single argument which is
+            the object to convert and return a serialisable object.
+        lines : bool, default False
+            If 'orient' is 'records' write out line delimited json format. Will
+            throw ValueError if incorrect 'orient' since others are not list
+            like.
+        compression : {'infer', 'gzip', 'bz2', 'zip', 'xz', None}
+            A string representing the compression to use in the output file,
+            only used when the first argument is a filename. By default, the
+            compression is inferred from the filename.
+        index : bool, default True
+            Whether to include the index values in the JSON string. Not
+            including the index (``index=False``) is only supported when
+            orient is 'split' or 'table'.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame([['a', 'b'], ['c', 'd']],
+        ...                   index=['row 1', 'row 2'],
+        ...                   columns=['col 1', 'col 2'])
+        >>> df.to_json(orient='split')
+        '{"columns":["col 1","col 2"],\
+"index":["row 1","row 2"],\
+"data":[["a","b"],["c","d"]]}'
+
+        Encoding/decoding a Dataframe using ``'records'`` formatted JSON.
+        Note that index labels are not preserved with this encoding.
+
+        >>> df.to_json(orient='records')
+        '[{"col 1":"a","col 2":"b"},{"col 1":"c","col 2":"d"}]'
+
+        Encoding/decoding a Dataframe using ``'index'`` formatted JSON:
+
+        >>> df.to_json(orient='index')
+        '{"row 1":{"col 1":"a","col 2":"b"},"row 2":{"col 1":"c","col 2":"d"}}'
+
+        Encoding/decoding a Dataframe using ``'columns'`` formatted JSON:
+
+        >>> df.to_json(orient='columns')
+        '{"col 1":{"row 1":"a","row 2":"c"},"col 2":{"row 1":"b","row 2":"d"}}'
+
+        Encoding/decoding a Dataframe using ``'values'`` formatted JSON:
+
+        >>> df.to_json(orient='values')
+        '[["a","b"],["c","d"]]'
+
+        Encoding with Table Schema
+
+        >>> df.to_json(orient='table') # doctest: +SKIP
+        '{"schema": {"fields":[{"name":"index","type":"string"},\
+{"name":"col 1","type":"string"},\
+{"name":"col 2","type":"string"}],\
+"primaryKey":["index"],\
+"pandas_version":"0.20.0"}, \
+"data": [{"index":"row 1","col 1":"a","col 2":"b"},\
+{"index":"row 2","col 1":"c","col 2":"d"}]}'
+        """
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        kdf = self
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_json, pd.DataFrame.to_json, args)
+
     def to_dict(self, orient='dict', into=dict):
         """
         Convert the DataFrame to a dictionary.
@@ -571,6 +772,105 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_dict, pd.DataFrame.to_dict, args)
 
+    def to_csv(self, path_or_buf=None, sep=",", na_rep='', float_format=None,
+               columns=None, header=True, index=True, index_label=None,
+               mode='w', encoding=None, compression='infer', quoting=None,
+               quotechar='"', line_terminator="\n", chunksize=None,
+               tupleize_cols=None, date_format=None, doublequote=True,
+               escapechar=None, decimal='.'):
+        """
+        Write object to a comma-separated values (csv) file.
+
+        .. note:: This method should only be used if the resulting CSV is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        path_or_buf : str or file handle, default None
+            File path or object, if None is provided the result is returned as
+            a string.  If a file object is passed it should be opened with
+            `newline=''`, disabling universal newlines.
+
+        sep : str, default ','
+            String of length 1. Field delimiter for the output file.
+        na_rep : str, default ''
+            Missing data representation.
+        float_format : str, default None
+            Format string for floating point numbers.
+        columns : sequence, optional
+            Columns to write.
+        header : bool or list of str, default True
+            Write out the column names. If a list of strings is given it is
+            assumed to be aliases for the column names.
+        index : bool, default True
+            Write row names (index).
+        index_label : str or sequence, or False, default None
+            Column label for index column(s) if desired. If None is given, and
+            `header` and `index` are True, then the index names are used. A
+            sequence should be given if the object uses MultiIndex. If
+            False do not print fields for index names. Use index_label=False
+            for easier importing in R.
+        mode : str
+            Python write mode, default 'w'.
+        encoding : str, optional
+            A string representing the encoding to use in the output file,
+            defaults to 'ascii' on Python 2 and 'utf-8' on Python 3.
+        compression : str, default 'infer'
+            Compression mode among the following possible values: {'infer',
+            'gzip', 'bz2', 'zip', 'xz', None}. If 'infer' and `path_or_buf`
+            is path-like, then detect compression from the following
+            extensions: '.gz', '.bz2', '.zip' or '.xz'. (otherwise no
+            compression).
+        quoting : optional constant from csv module
+            Defaults to csv.QUOTE_MINIMAL. If you have set a `float_format`
+            then floats are converted to strings and thus csv.QUOTE_NONNUMERIC
+            will treat them as non-numeric.
+        quotechar : str, default '\"'
+            String of length 1. Character used to quote fields.
+        line_terminator : string, default '\\n'
+            The newline character or character sequence to use in the output
+            file. Defaults to `os.linesep`, which depends on the OS in which
+            this method is called ('\n' for linux, '\r\n' for Windows, i.e.).
+        chunksize : int or None
+            Rows to write at a time.
+        tupleize_cols : bool, default False
+            Write MultiIndex columns as a list of tuples (if True) or in
+            the new, expanded format, where each MultiIndex column is a row
+            in the CSV (if False).
+        date_format : str, default None
+            Format string for datetime objects.
+        doublequote : bool, default True
+            Control quoting of `quotechar` inside a field.
+        escapechar : str, default None
+            String of length 1. Character used to escape `sep` and `quotechar`
+            when appropriate.
+        decimal : str, default '.'
+            Character recognized as decimal separator. E.g. use ',' for
+            European data.
+
+        Returns
+        -------
+        None or str
+            If path_or_buf is None, returns the resulting csv format as a
+            string. Otherwise returns None.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'name': ['Raphael', 'Donatello'],
+        ...                    'mask': ['red', 'purple'],
+        ...                    'weapon': ['sai', 'bo staff']},
+        ...                     columns=['name', 'mask', 'weapon'])
+        >>> df.to_csv(index=False)
+        'name,mask,weapon\\nRaphael,red,sai\\nDonatello,purple,bo staff\\n'
+        """
+
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        kdf = self
+
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_csv, pd.DataFrame.to_csv, args)
+
     @property
     def index(self):
         """The index (row labels) Column of the DataFrame.
@@ -578,22 +878,72 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Currently supported only when the DataFrame has a single index.
         """
         from databricks.koalas.series import Series
-        if len(self._metadata.index_info) != 1:
+        if len(self._metadata.index_map) != 1:
             raise KeyError('Currently supported only when the DataFrame has a single index.')
         return Series(self._index_columns[0], anchor=self, index=[])
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
-        """Set the DataFrame index (row labels) using one or more existing columns. By default
-        yields a new object.
+        """Set the DataFrame index (row labels) using one or more existing columns.
 
-        :param keys: column label or list of column labels / arrays
-        :param drop: boolean, default True
-                     Delete columns to be used as the new index
-        :param append: boolean, default False
-                       Whether to append columns to existing index
-        :param inplace: boolean, default False
-                        Modify the DataFrame in place (do not create a new object)
-        :return: :class:`DataFrame`
+        Set the DataFrame index (row labels) using one or more existing
+        columns or arrays (of the correct length). The index can replace the
+        existing index or expand on it.
+
+        Parameters
+        ----------
+        keys : label or array-like or list of labels/arrays
+            This parameter can be either a single column key, a single array of
+            the same length as the calling DataFrame, or a list containing an
+            arbitrary combination of column keys and arrays. Here, "array"
+            encompasses :class:`Series`, :class:`Index` and ``np.ndarray``.
+        drop : bool, default True
+            Delete columns to be used as the new index.
+        append : bool, default False
+            Whether to append columns to existing index.
+        inplace : bool, default False
+            Modify the DataFrame in place (do not create a new object).
+
+        Returns
+        -------
+        DataFrame
+            Changed row labels.
+
+        See Also
+        --------
+        DataFrame.reset_index : Opposite of set_index.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'month': [1, 4, 7, 10],
+        ...                    'year': [2012, 2014, 2013, 2014],
+        ...                    'sale': [55, 40, 84, 31]},
+        ...                   columns=['month', 'year', 'sale'])
+        >>> df
+           month  year  sale
+        0      1  2012    55
+        1      4  2014    40
+        2      7  2013    84
+        3     10  2014    31
+
+        Set the index to become the 'month' column:
+
+        >>> df.set_index('month')  # doctest: +NORMALIZE_WHITESPACE
+               year  sale
+        month
+        1      2012    55
+        4      2014    40
+        7      2013    84
+        10     2014    31
+
+        Create a MultiIndex using columns 'year' and 'month':
+
+        >>> df.set_index(['year', 'month'])  # doctest: +NORMALIZE_WHITESPACE
+                    sale
+        year  month
+        2012  1     55
+        2014  4     40
+        2013  7     84
+        2014  10    31
         """
         if isinstance(keys, str):
             keys = [keys]
@@ -604,94 +954,155 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise KeyError(key)
 
         if drop:
-            columns = [column for column in self._metadata.column_fields if column not in keys]
+            data_columns = [column for column in self._metadata.data_columns if column not in keys]
         else:
-            columns = self._metadata.column_fields
+            data_columns = self._metadata.data_columns
         if append:
-            index_info = self._metadata.index_info + [(column, column) for column in keys]
+            index_map = self._metadata.index_map + [(column, column) for column in keys]
         else:
-            index_info = [(column, column) for column in keys]
+            index_map = [(column, column) for column in keys]
 
-        metadata = self._metadata.copy(column_fields=columns, index_info=index_info)
+        metadata = self._metadata.copy(data_columns=data_columns, index_map=index_map)
+
+        # Sync Spark's columns as well.
+        sdf = self._sdf.select(['`{}`'.format(name) for name in metadata.columns])
+
         if inplace:
             self._metadata = metadata
+            self._sdf = sdf
         else:
             kdf = self.copy()
             kdf._metadata = metadata
+            kdf._sdf = sdf
             return kdf
 
     def reset_index(self, level=None, drop=False, inplace=False):
-        """For DataFrame with multi-level index, return new DataFrame with labeling information in
+        """Reset the index, or a level of it.
+
+        For DataFrame with multi-level index, return new DataFrame with labeling information in
         the columns under the index names, defaulting to 'level_0', 'level_1', etc. if any are None.
         For a standard index, the index name will be used (if set), otherwise a default 'index' or
         'level_0' (if 'index' is already taken) will be used.
 
-        :param level: int, str, tuple, or list, default None
-                      Only remove the given levels from the index. Removes all levels by default
-        :param drop: boolean, default False
-                     Do not try to insert index into dataframe columns. This resets the index to the
-                     default integer index.
-        :param inplace: boolean, default False
-                        Modify the DataFrame in place (do not create a new object)
-        :return: :class:`DataFrame`
+        Parameters
+        ----------
+        level : int, str, tuple, or list, default None
+            Only remove the given levels from the index. Removes all levels by
+            default.
+        drop : bool, default False
+            Do not try to insert index into dataframe columns. This resets
+            the index to the default integer index.
+        inplace : bool, default False
+            Modify the DataFrame in place (do not create a new object).
+
+        Returns
+        -------
+        DataFrame
+            DataFrame with the new index.
+
+        See Also
+        --------
+        DataFrame.set_index : Opposite of reset_index.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([('bird', 389.0),
+        ...                    ('bird', 24.0),
+        ...                    ('mammal', 80.5),
+        ...                    ('mammal', np.nan)],
+        ...                   index=['falcon', 'parrot', 'lion', 'monkey'],
+        ...                   columns=('class', 'max_speed'))
+        >>> df
+                 class  max_speed
+        falcon    bird      389.0
+        parrot    bird       24.0
+        lion    mammal       80.5
+        monkey  mammal        NaN
+
+        When we reset the index, the old index is added as a column. Unlike pandas, Koalas
+        does not automatically add a sequential index. The following 0, 1, 2, 3 are only
+        there when we display the DataFrame.
+
+        >>> df.reset_index()
+            index   class  max_speed
+        0  falcon    bird      389.0
+        1  parrot    bird       24.0
+        2    lion  mammal       80.5
+        3  monkey  mammal        NaN
+
+        We can use the `drop` parameter to avoid the old index being added as
+        a column:
+
+        >>> df.reset_index(drop=True)
+            class  max_speed
+        0    bird      389.0
+        1    bird       24.0
+        2  mammal       80.5
+        3  mammal        NaN
         """
-        if len(self._metadata.index_info) == 0:
+        # TODO: add example of MultiIndex back. See https://github.com/databricks/koalas/issues/301
+        if len(self._metadata.index_map) == 0:
             raise NotImplementedError('Can\'t reset index because there is no index.')
 
-        multi_index = len(self._metadata.index_info) > 1
-        if multi_index:
-            rename = lambda i: 'level_{}'.format(i)
-        else:
-            rename = lambda i: \
-                'index' if 'index' not in self._metadata.column_fields else 'level_{}'.fomat(i)
+        multi_index = len(self._metadata.index_map) > 1
+
+        def rename(index):
+            if multi_index:
+                return 'level_{}'.format(index)
+            else:
+                if 'index' not in self._metadata.data_columns:
+                    return 'index'
+                else:
+                    return 'level_{}'.format(index)
 
         if level is None:
-            index_columns = [(column, name if name is not None else rename(i))
-                             for i, (column, name) in enumerate(self._metadata.index_info)]
-            index_info = []
+            new_index_map = [(column, name if name is not None else rename(i))
+                             for i, (column, name) in enumerate(self._metadata.index_map)]
+            index_map = []
         else:
             if isinstance(level, (int, str)):
                 level = [level]
             level = list(level)
 
             if all(isinstance(l, int) for l in level):
-                for l in level:
-                    if l >= len(self._metadata.index_info):
+                for lev in level:
+                    if lev >= len(self._metadata.index_map):
                         raise IndexError('Too many levels: Index has only {} level, not {}'
-                                         .format(len(self._metadata.index_info), l + 1))
+                                         .format(len(self._metadata.index_map), lev + 1))
                 idx = level
-            elif all(isinstance(l, str) for l in level):
+            elif all(isinstance(lev, str) for lev in level):
                 idx = []
                 for l in level:
                     try:
-                        i = self._metadata.index_fields.index(l)
+                        i = self._metadata.index_columns.index(l)
                         idx.append(i)
                     except ValueError:
                         if multi_index:
                             raise KeyError('Level unknown not found')
                         else:
                             raise KeyError('Level unknown must be same as name ({})'
-                                           .format(self._metadata.index_fields[0]))
+                                           .format(self._metadata.index_columns[0]))
             else:
                 raise ValueError('Level should be all int or all string.')
             idx.sort()
 
-            index_columns = []
-            index_info = self._metadata.index_info.copy()
+            new_index_map = []
+            index_map = self._metadata.index_map.copy()
             for i in idx:
-                info = self._metadata.index_info[i]
-                column_field, index_name = info
-                index_columns.append((column_field,
-                                      index_name if index_name is not None else rename(index_name)))
-                index_info.remove(info)
+                info = self._metadata.index_map[i]
+                index_column, index_name = info
+                new_index_map.append(
+                    (index_column,
+                     index_name if index_name is not None else rename(index_name)))
+                index_map.remove(info)
 
         if drop:
-            index_columns = []
+            new_index_map = []
 
         metadata = self._metadata.copy(
-            column_fields=[column for column, _ in index_columns] + self._metadata.column_fields,
-            index_info=index_info)
-        columns = [name for _, name in index_columns] + self._metadata.column_fields
+            data_columns=[column for column, _ in new_index_map] + self._metadata.data_columns,
+            index_map=index_map)
+        columns = [name for _, name in new_index_map] + self._metadata.data_columns
         if inplace:
             self._metadata = metadata
             self.columns = columns
@@ -845,19 +1256,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2   0.6   0.0
         3   0.2   0.1
         """
-        sdf = self._sdf.select(['`{}`'.format(name) for name in self._metadata.all_fields])
+        sdf = self._sdf.select(['`{}`'.format(name) for name in self._metadata.columns])
         pdf = sdf.toPandas()
         if len(pdf) == 0 and len(sdf.schema) > 0:
             # TODO: push to OSS
             pdf = pdf.astype({field.name: to_arrow_type(field.dataType).to_pandas_dtype()
                               for field in sdf.schema})
-        if len(self._metadata.index_info) > 0:
+
+        index_columns = self._metadata.index_columns
+        if len(index_columns) > 0:
             append = False
-            for index_field in self._metadata.index_fields:
-                drop = index_field not in self._metadata.column_fields
+            for index_field in index_columns:
+                drop = index_field not in self._metadata.data_columns
                 pdf = pdf.set_index(index_field, drop=drop, append=append)
                 append = True
-            pdf = pdf[self._metadata.column_fields]
+            pdf = pdf[self._metadata.data_columns]
+
         index_names = self._metadata.index_names
         if len(index_names) > 0:
             if isinstance(pdf.index, pd.MultiIndex):
@@ -945,10 +1359,116 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 sdf = sdf.withColumn(name, F.lit(c))
 
+        data_columns = self._metadata.data_columns
         metadata = self._metadata.copy(
-            column_fields=(self._metadata.column_fields +
-                           [name for name, _ in pairs if name not in self._metadata.column_fields]))
+            data_columns=(data_columns +
+                          [name for name, _ in pairs if name not in data_columns]))
         return DataFrame(sdf, metadata)
+
+    def to_excel(self, excel_writer, sheet_name="Sheet1", na_rep="", float_format=None,
+                 columns=None, header=True, index=True, index_label=None, startrow=0,
+                 startcol=0, engine=None, merge_cells=True, encoding=None, inf_rep="inf",
+                 verbose=True, freeze_panes=None):
+        """
+        Write object to an Excel sheet.
+
+        .. note:: This method should only be used if the resulting DataFrame is expected
+                  to be small, as all the data is loaded into the driver's memory.
+
+        To write a single object to an Excel .xlsx file it is only necessary to
+        specify a target file name. To write to multiple sheets it is necessary to
+        create an `ExcelWriter` object with a target file name, and specify a sheet
+        in the file to write to.
+
+        Multiple sheets may be written to by specifying unique `sheet_name`.
+        With all data written to the file it is necessary to save the changes.
+        Note that creating an `ExcelWriter` object with a file name that already
+        exists will result in the contents of the existing file being erased.
+
+        Parameters
+        ----------
+        excel_writer : str or ExcelWriter object
+            File path or existing ExcelWriter.
+        sheet_name : str, default 'Sheet1'
+            Name of sheet which will contain DataFrame.
+        na_rep : str, default ''
+            Missing data representation.
+        float_format : str, optional
+            Format string for floating point numbers. For example
+            ``float_format="%%.2f"`` will format 0.1234 to 0.12.
+        columns : sequence or list of str, optional
+            Columns to write.
+        header : bool or list of str, default True
+            Write out the column names. If a list of string is given it is
+            assumed to be aliases for the column names.
+        index : bool, default True
+            Write row names (index).
+        index_label : str or sequence, optional
+            Column label for index column(s) if desired. If not specified, and
+            `header` and `index` are True, then the index names are used. A
+            sequence should be given if the DataFrame uses MultiIndex.
+        startrow : int, default 0
+            Upper left cell row to dump data frame.
+        startcol : int, default 0
+            Upper left cell column to dump data frame.
+        engine : str, optional
+            Write engine to use, 'openpyxl' or 'xlsxwriter'. You can also set this
+            via the options ``io.excel.xlsx.writer``, ``io.excel.xls.writer``, and
+            ``io.excel.xlsm.writer``.
+        merge_cells : bool, default True
+            Write MultiIndex and Hierarchical Rows as merged cells.
+        encoding : str, optional
+            Encoding of the resulting excel file. Only necessary for xlwt,
+            other writers support unicode natively.
+        inf_rep : str, default 'inf'
+            Representation for infinity (there is no native representation for
+            infinity in Excel).
+        verbose : bool, default True
+            Display more information in the error logs.
+        freeze_panes : tuple of int (length 2), optional
+            Specifies the one-based bottommost row and rightmost column that
+            is to be frozen.
+
+        Notes
+        -----
+        Once a workbook has been saved it is not possible write further data
+        without rewriting the whole workbook.
+
+        Examples
+        --------
+        Create, write to and save a workbook:
+
+        >>> df1 = ks.DataFrame([['a', 'b'], ['c', 'd']],
+        ...                    index=['row 1', 'row 2'],
+        ...                    columns=['col 1', 'col 2'])
+        >>> df1.to_excel("output.xlsx")  # doctest: +SKIP
+
+        To specify the sheet name:
+
+        >>> df1.to_excel("output.xlsx")  # doctest: +SKIP
+        >>> df1.to_excel("output.xlsx",
+        ...              sheet_name='Sheet_name_1')  # doctest: +SKIP
+
+        If you wish to write to more than one sheet in the workbook, it is
+        necessary to specify an ExcelWriter object:
+
+        >>> with pd.ExcelWriter('output.xlsx') as writer:  # doctest: +SKIP
+        ...      df1.to_excel(writer, sheet_name='Sheet_name_1')
+        ...      df2.to_excel(writer, sheet_name='Sheet_name_2')
+
+        To set the library that is used to write the Excel file,
+        you can pass the `engine` keyword (the default engine is
+        automatically chosen depending on the file extension):
+
+        >>> df1.to_excel('output1.xlsx', engine='xlsxwriter')  # doctest: +SKIP
+        """
+
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        kdf = self
+
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_excel, pd.DataFrame.to_excel, args)
 
     @property
     def loc(self):
@@ -1047,7 +1567,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 else:
                     columns = list(subset)
                 invalids = [column for column in columns
-                            if column not in self._metadata.column_fields]
+                            if column not in self._metadata.data_columns]
                 if len(invalids) > 0:
                     raise KeyError(invalids)
             else:
@@ -1081,15 +1601,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def fillna(self, value=None, axis=None, inplace=False):
         """Fill NA/NaN values.
 
-        :param value: scalar, dict, Series
-                    Value to use to fill holes. alternately a dict/Series of values
-                    specifying which value to use for each column.
-                    DataFrame is not supported.
-        :param axis: {0 or `index`}
-                    1 and `columns` are not supported.
-        :param inplace: boolean, default False
-                    Fill in place (do not create a new object)
-        :return: :class:`DataFrame`
+        Parameters
+        ----------
+        value : scalar, dict, Series
+            Value to use to fill holes. alternately a dict/Series of values
+            specifying which value to use for each column.
+            DataFrame is not supported.
+        axis : {0 or `index`}
+            1 and `columns` are not supported.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+
+        Returns
+        -------
+        DataFrame
+            DataFrame with NA entries filled.
 
         Examples
         --------
@@ -1207,20 +1733,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     @property
     def columns(self):
         """The column labels of the DataFrame."""
-        return pd.Index(self._metadata.column_fields)
+        return pd.Index(self._metadata.data_columns)
 
     @columns.setter
     def columns(self, names):
-        old_names = self._metadata.column_fields
+        old_names = self._metadata.data_columns
         if len(old_names) != len(names):
             raise ValueError(
                 "Length mismatch: Expected axis has %d elements, new values have %d elements"
                 % (len(old_names), len(names)))
-        sdf = self._sdf.select(self._metadata.index_fields +
+        sdf = self._sdf.select(self._metadata.index_columns +
                                [self[old_name]._scol.alias(new_name)
                                 for (old_name, new_name) in zip(old_names, names)])
         self._sdf = sdf
-        self._metadata = self._metadata.copy(column_fields=names)
+        self._metadata = self._metadata.copy(data_columns=names)
 
     @property
     def dtypes(self):
@@ -1229,7 +1755,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         This returns a Series with the data type of each column. The result's index is the original
         DataFrame's columns. Columns with mixed types are stored with the object dtype.
 
-        :return: :class:`pd.Series` The data type of each column.
+        Returns
+        -------
+        pd.Series
+            The data type of each column.
 
         Examples
         --------
@@ -1249,8 +1778,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         f    datetime64[ns]
         dtype: object
         """
-        return pd.Series([self[col].dtype for col in self._metadata.column_fields],
-                         index=self._metadata.column_fields)
+        return pd.Series([self[col].dtype for col in self._metadata.data_columns],
+                         index=self._metadata.data_columns)
 
     def count(self):
         """
@@ -1363,7 +1892,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 columns = [columns]
             sdf = self._sdf.drop(*columns)
             metadata = self._metadata.copy(
-                column_fields=[column for column in self.columns if column not in columns]
+                data_columns=[column for column in self.columns if column not in columns]
             )
             return DataFrame(sdf, metadata)
         else:
@@ -1519,6 +2048,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
            The sequence of values to test. If values is a dict,
            the keys must be the column names, which must match.
            Series and DataFrame are not supported.
+
         Returns
         -------
         DataFrame
@@ -1558,7 +2088,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 "'DataFrame' object has no attribute %s"
                 % (set(values.keys()).difference(self.columns)))
 
-        _select_columns = self._metadata.index_fields
+        _select_columns = self._metadata.index_columns
         if isinstance(values, dict):
             for col in self.columns:
                 if col in values:
@@ -1802,7 +2332,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(key, str):
             try:
                 return Series(self._sdf.__getitem__(key), anchor=self,
-                              index=self._metadata.index_info)
+                              index=self._metadata.index_map)
             except AnalysisException:
                 raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, str)):
@@ -1816,7 +2346,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
-            return Series(self._sdf.__getitem__(key), anchor=self, index=self._metadata.index_info)
+            return Series(self._sdf.__getitem__(key), anchor=self, index=self._metadata.index_map)
         if isinstance(key, Series):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
@@ -1861,7 +2391,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_info)
+        return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_map)
 
     def __iter__(self):
         return self.toPandas().__iter__()
