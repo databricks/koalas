@@ -345,13 +345,6 @@ class DataFrame(_Frame):
 
         args = locals()
         kdf = self
-
-        if len(args['kwargs']) > 1:
-            # explode kwargs
-            kwargs_copy = args['kwargs']
-            args = {**args, **kwargs_copy}
-        del args['kwargs']
-
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_clipboard, pd.DataFrame.to_clipboard, args)
 
