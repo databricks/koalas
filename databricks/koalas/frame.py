@@ -870,17 +870,67 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return Series(self._index_columns[0], anchor=self, index=[])
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
-        """Set the DataFrame index (row labels) using one or more existing columns. By default
-        yields a new object.
+        """Set the DataFrame index (row labels) using one or more existing columns.
 
-        :param keys: column label or list of column labels / arrays
-        :param drop: boolean, default True
-                     Delete columns to be used as the new index
-        :param append: boolean, default False
-                       Whether to append columns to existing index
-        :param inplace: boolean, default False
-                        Modify the DataFrame in place (do not create a new object)
-        :return: :class:`DataFrame`
+        Set the DataFrame index (row labels) using one or more existing
+        columns or arrays (of the correct length). The index can replace the
+        existing index or expand on it.
+
+        Parameters
+        ----------
+        keys : label or array-like or list of labels/arrays
+            This parameter can be either a single column key, a single array of
+            the same length as the calling DataFrame, or a list containing an
+            arbitrary combination of column keys and arrays. Here, "array"
+            encompasses :class:`Series`, :class:`Index` and ``np.ndarray``.
+        drop : bool, default True
+            Delete columns to be used as the new index.
+        append : bool, default False
+            Whether to append columns to existing index.
+        inplace : bool, default False
+            Modify the DataFrame in place (do not create a new object).
+
+        Returns
+        -------
+        DataFrame
+            Changed row labels.
+
+        See Also
+        --------
+        DataFrame.reset_index : Opposite of set_index.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'month': [1, 4, 7, 10],
+        ...                    'year': [2012, 2014, 2013, 2014],
+        ...                    'sale': [55, 40, 84, 31]},
+        ...                   columns=['month', 'year', 'sale'])
+        >>> df
+           month  year  sale
+        0      1  2012    55
+        1      4  2014    40
+        2      7  2013    84
+        3     10  2014    31
+
+        Set the index to become the 'month' column:
+
+        >>> df.set_index('month')  # doctest: +NORMALIZE_WHITESPACE
+               year  sale
+        month
+        1      2012    55
+        4      2014    40
+        7      2013    84
+        10     2014    31
+
+        Create a MultiIndex using columns 'year' and 'month':
+
+        >>> df.set_index(['year', 'month'])  # doctest: +NORMALIZE_WHITESPACE
+                    sale
+        year  month
+        2012  1     55
+        2014  4     40
+        2013  7     84
+        2014  10    31
         """
         if isinstance(keys, str):
             keys = [keys]
@@ -914,20 +964,70 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return kdf
 
     def reset_index(self, level=None, drop=False, inplace=False):
-        """For DataFrame with multi-level index, return new DataFrame with labeling information in
+        """Reset the index, or a level of it.
+
+        For DataFrame with multi-level index, return new DataFrame with labeling information in
         the columns under the index names, defaulting to 'level_0', 'level_1', etc. if any are None.
         For a standard index, the index name will be used (if set), otherwise a default 'index' or
         'level_0' (if 'index' is already taken) will be used.
 
-        :param level: int, str, tuple, or list, default None
-                      Only remove the given levels from the index. Removes all levels by default
-        :param drop: boolean, default False
-                     Do not try to insert index into dataframe columns. This resets the index to the
-                     default integer index.
-        :param inplace: boolean, default False
-                        Modify the DataFrame in place (do not create a new object)
-        :return: :class:`DataFrame`
+        Parameters
+        ----------
+        level : int, str, tuple, or list, default None
+            Only remove the given levels from the index. Removes all levels by
+            default.
+        drop : bool, default False
+            Do not try to insert index into dataframe columns. This resets
+            the index to the default integer index.
+        inplace : bool, default False
+            Modify the DataFrame in place (do not create a new object).
+
+        Returns
+        -------
+        DataFrame
+            DataFrame with the new index.
+
+        See Also
+        --------
+        DataFrame.set_index : Opposite of reset_index.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([('bird', 389.0),
+        ...                    ('bird', 24.0),
+        ...                    ('mammal', 80.5),
+        ...                    ('mammal', np.nan)],
+        ...                   index=['falcon', 'parrot', 'lion', 'monkey'],
+        ...                   columns=('class', 'max_speed'))
+        >>> df
+                 class  max_speed
+        falcon    bird      389.0
+        parrot    bird       24.0
+        lion    mammal       80.5
+        monkey  mammal        NaN
+
+        When we reset the index, the old index is added as a column. Unlike pandas, Koalas
+        does not automatically add a sequential index. The following 0, 1, 2, 3 are only
+        there when we display the DataFrame.
+
+        >>> df.reset_index()
+            index   class  max_speed
+        0  falcon    bird      389.0
+        1  parrot    bird       24.0
+        2    lion  mammal       80.5
+        3  monkey  mammal        NaN
+
+        We can use the `drop` parameter to avoid the old index being added as
+        a column:
+
+        >>> df.reset_index(drop=True)
+            class  max_speed
+        0    bird      389.0
+        1    bird       24.0
+        2  mammal       80.5
+        3  mammal        NaN
         """
+        # TODO: add example of MultiIndex back. See https://github.com/databricks/koalas/issues/301
         if len(self._metadata.index_map) == 0:
             raise NotImplementedError('Can\'t reset index because there is no index.')
 
@@ -1636,7 +1736,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         This returns a Series with the data type of each column. The result's index is the original
         DataFrame's columns. Columns with mixed types are stored with the object dtype.
 
-        :return: :class:`pd.Series` The data type of each column.
+        Returns
+        -------
+        pd.Series
+            The data type of each column.
 
         Examples
         --------
