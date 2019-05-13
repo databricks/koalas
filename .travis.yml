@@ -59,6 +59,10 @@ install:
   # Show installed packages
   - conda list
 
+  # Useful for to_clipboard test
+  - export DISPLAY=:0.0
+  - sudo apt-get install xclip
+
 before_script:
   - export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
   - ./dev/lint-python

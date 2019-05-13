@@ -175,7 +175,6 @@ class _MissingPandasLikeDataFrame(object):
     swaplevel = unsupported_function('swaplevel')
     tail = unsupported_function('tail')
     take = unsupported_function('take')
-    to_clipboard = unsupported_function('to_clipboard')
     to_dense = unsupported_function('to_dense')
     to_feather = unsupported_function('to_feather')
     to_gbq = unsupported_function('to_gbq')

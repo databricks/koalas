@@ -91,3 +91,4 @@ Serialization / IO / Conversion
    Series.to_numpy
    Series.to_string
    Series.to_dict
+   Series.to_clipboard
