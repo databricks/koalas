@@ -226,6 +226,3 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*Series.*{}.*not implemented".format(name)):
                 getattr(ks, name)
-
-
-
