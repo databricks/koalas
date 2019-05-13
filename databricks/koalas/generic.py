@@ -312,7 +312,7 @@ class _Frame(object):
         # TODO: The first example above should not have "Name: abs(0)".
         return _spark_col_apply(self, F.abs)
 
-    def clip(self: Union['ks.Series', 'ks.DataFrame'],  # Use type hint on to avoid mypy issues
+    def clip(self: Union['ks.Series', 'ks.DataFrame'],  # Use type hint to avoid mypy issues
              lower: Union[float, int] = None, upper: Union[float, int] = None) \
             -> Union['ks.Series', 'ks.DataFrame']:
         """
