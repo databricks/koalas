@@ -71,12 +71,15 @@ def sql(query: str) -> DataFrame:
     1                  1  2
     2                  2  3
     """
-
     # Get the local variables from the caller module which is one higher in the stack
     # TODO Check if the caller module is always exactly one higher in the stack
     fields = inspect.stack()[1][0].f_locals
 
-    dataframes = {name: obj for name, obj in fields.items() if isinstance(obj, DataFrame)}
+    # Tokenize the SQL query to avoid creating temporary views for uninvolved DataFrames later
+    query_tokens = query.split()
+
+    dataframes = {name: obj for name, obj in fields.items()
+                  if isinstance(obj, DataFrame) and name in query_tokens}
     try:
         for df_name, df_obj in dataframes.items():
             df_obj._sdf.createTempView(df_name)
