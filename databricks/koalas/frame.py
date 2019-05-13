@@ -1006,8 +1006,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         lion    mammal       80.5
         monkey  mammal        NaN
 
-        When we reset the index, the old index is added as a column, and a
-        new sequential index is used:
+        When we reset the index, the old index is added as a column. Unlike pandas, Koalas
+        does not automatically add a sequential index. The following 0, 1, 2, 3 are only
+        there when we display the DataFrame.
 
         >>> df.reset_index()
             index   class  max_speed
