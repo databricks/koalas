@@ -328,6 +328,19 @@ class DataFrame(_Frame):
         ... # A,B,C
         ... # 1,2,3
         ... # 4,5,6
+
+        This function also works for Series:
+
+        >>> df = ks.Series([1, 2, 3, 4, 5, 6, 7], name='x')
+        >>> df.to_clipboard(sep=',')
+        ... # Wrote the following to the system clipboard:
+        ... # 0, 1
+        ... # 1, 2
+        ... # 2, 3
+        ... # 3, 4
+        ... # 4, 5
+        ... # 5, 6
+        ... # 6, 7
         """
 
         args = locals()
