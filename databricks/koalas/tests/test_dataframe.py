@@ -463,6 +463,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({'A': [0, 2, 4]})
         kdf = koalas.from_pandas(pdf)
 
+        # Assert list-like values are not accepted for 'lower' and 'upper'
+        msg = "List-like value are not supported for 'lower' and 'upper' at the moment"
+        with self.assertRaises(ValueError, msg=msg):
+            kdf.clip(lower=[1])
+        with self.assertRaises(ValueError, msg=msg):
+            kdf.clip(upper=[1])
+
         # Assert no lower or upper
         self.assert_eq(kdf.clip(), pdf.clip())
         # Assert lower only

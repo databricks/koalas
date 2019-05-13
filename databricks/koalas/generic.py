@@ -21,6 +21,7 @@ from collections.abc import Iterable
 from typing import Union
 
 import numpy as np
+from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -354,6 +355,10 @@ class _Frame(object):
         between instances of 'str' and 'int'" while ks.DataFrame({'A': ['a', 'b']}).clip(0, 1)
         will output the original DataFrame, simply ignoring the incompatible types.
         """
+        if is_list_like(lower) or is_list_like(upper):
+            raise ValueError("List-like value are not supported for 'lower' and 'upper' at the " +
+                             "moment")
+
         if lower is None and upper is None:
             return self  # type: ignore
 

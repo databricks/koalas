@@ -231,6 +231,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ps = pd.Series([0, 2, 4])
         ks = koalas.from_pandas(ps)
 
+        # Assert list-like values are not accepted for 'lower' and 'upper'
+        msg = "List-like value are not supported for 'lower' and 'upper' at the moment"
+        with self.assertRaises(ValueError, msg=msg):
+            ks.clip(lower=[1])
+        with self.assertRaises(ValueError, msg=msg):
+            ks.clip(upper=[1])
+
         # Assert no lower or upper
         self.assert_eq(ks.clip(), ps.clip())
         # Assert lower only
