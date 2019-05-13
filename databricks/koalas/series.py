@@ -509,6 +509,16 @@ class Series(_Frame):
         return validate_arguments_and_invoke_function(
             kseries.to_pandas(), self.to_string, pd.Series.to_string, args)
 
+    def to_clipboard(self, excel=True, sep=None, **kwargs):
+        # Docstring defined below by reusing DataFrame.to_clipboard's.
+        args = locals()
+        kseries = self
+
+        return validate_arguments_and_invoke_function(
+            kseries.to_pandas(), self.to_clipboard, pd.Series.to_clipboard, args)
+
+    to_clipboard.__doc__ = DataFrame.to_clipboard.__doc__
+
     def to_dict(self, into=dict):
         """
         Convert Series to {label -> value} dict or dict-like object.

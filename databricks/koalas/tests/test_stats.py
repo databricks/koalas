@@ -122,12 +122,3 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertAlmostEqual(ds.var(), s.var())
         self.assertAlmostEqual(ds.std(), s.std())
-
-
-if __name__ == "__main__":
-    try:
-        import xmlrunner
-        testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
-    except ImportError:
-        testRunner = None
-    unittest.main(testRunner=testRunner, verbosity=2)

@@ -198,7 +198,6 @@ class _MissingPandasLikeSeries(object):
     swaplevel = unsupported_function('swaplevel')
     tail = unsupported_function('tail')
     take = unsupported_function('take')
-    to_clipboard = unsupported_function('to_clipboard')
     to_csv = unsupported_function('to_csv')
     to_dense = unsupported_function('to_dense')
     to_excel = unsupported_function('to_excel')
