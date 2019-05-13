@@ -40,3 +40,24 @@ class SeriesConversionTest(ReusedSQLTestCase, SQLTestUtils):
                        ps.to_clipboard(excel=False))
         self.assert_eq(ks.to_clipboard(sep=',', index=False),
                        ps.to_clipboard(sep=',', index=False))
+
+    def test_to_latex(self):
+        ps = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
+        ks = koalas.from_pandas(ps)
+
+        result = ks.to_latex()
+        expected = """\\begin{tabular}{lr}
+\\toprule
+{} &  x \\\\
+\\midrule
+0 &  1 \\\\
+1 &  2 \\\\
+2 &  3 \\\\
+3 &  4 \\\\
+4 &  5 \\\\
+5 &  6 \\\\
+6 &  7 \\\\
+\\bottomrule
+\\end{tabular}
+"""
+        self.assert_eq(expected, result)
