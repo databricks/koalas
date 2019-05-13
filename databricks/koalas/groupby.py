@@ -26,7 +26,6 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType, DoubleType, NumericType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.dask.compatibility import string_types
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
@@ -72,7 +71,8 @@ class GroupBy(object):
 
         >>> df = ks.DataFrame({'A': [1, 1, 2, 2],
         ...                    'B': [1, 2, 3, 4],
-        ...                    'C': [0.362, 0.227, 1.267, -0.562]})
+        ...                    'C': [0.362, 0.227, 1.267, -0.562]},
+        ...                   columns=['A', 'B', 'C'])
 
         >>> df
            A  B      C
@@ -83,15 +83,17 @@ class GroupBy(object):
 
         Different aggregations per column
 
-        >>> df.groupby('A').agg({'B': 'min', 'C': 'sum'})
+        >>> aggregated = df.groupby('A').agg({'B': 'min', 'C': 'sum'})
+        >>> aggregated[['B', 'C']]  # doctest: +NORMALIZE_WHITESPACE
            B      C
-        0  1  0.589
-        1  3  0.705
+        A
+        1  1  0.589
+        2  3  0.705
 
         """
         if not isinstance(func_or_funcs, dict) or \
-            not all(isinstance(key, string_types) and isinstance(value, string_types)
-                    for key, value in func_or_funcs.items()):
+                not all(isinstance(key, str) and isinstance(value, str)
+                        for key, value in func_or_funcs.items()):
             raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
                              "functions (string).")
 
@@ -99,12 +101,13 @@ class GroupBy(object):
         groupkeys = self._groupkeys
         groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
                          for i, s in enumerate(groupkeys)]
-        gdf = sdf.groupby(*groupkey_cols).agg(func_or_funcs)
-        reordered = ['%s(%s)' % (value, key) for key, value in iter(func_or_funcs.items())]
-        kdf = DataFrame(gdf.select(reordered))
-        kdf.columns = [key for key in iter(func_or_funcs.keys())]
-
-        return kdf
+        reordered = [F.expr('{1}({0}) as {0}'.format(key, value))
+                     for key, value in func_or_funcs.items()]
+        sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
+        metadata = Metadata(data_columns=[key for key, _ in func_or_funcs.items()],
+                            index_map=[('__index_level_{}__'.format(i), s.name)
+                                       for i, s in enumerate(groupkeys)])
+        return DataFrame(sdf, metadata)
 
     agg = aggregate
 
@@ -233,7 +236,7 @@ class GroupBy(object):
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
 
-        column_fields = []
+        data_columns = []
         if len(self._agg_columns) > 0:
             stat_exprs = []
             for ks in self._agg_columns:
@@ -244,17 +247,17 @@ class GroupBy(object):
                 # value, whereas Pandas count doesn't include nan.
                 if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
                     stat_exprs.append(sfun(F.nanvl(ks._scol, F.lit(None))).alias(ks.name))
-                    column_fields.append(ks.name)
+                    data_columns.append(ks.name)
                 elif isinstance(spark_type, NumericType) or not only_numeric:
                     stat_exprs.append(sfun(ks._scol).alias(ks.name))
-                    column_fields.append(ks.name)
+                    data_columns.append(ks.name)
             sdf = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
         else:
             sdf = sdf.select(*groupkey_cols).distinct()
         sdf = sdf.sort(*groupkey_cols)
-        metadata = Metadata(column_fields=column_fields,
-                            index_info=[('__index_level_{}__'.format(i), s.name)
-                                        for i, s in enumerate(groupkeys)])
+        metadata = Metadata(data_columns=data_columns,
+                            index_map=[('__index_level_{}__'.format(i), s.name)
+                                       for i, s in enumerate(groupkeys)])
         return DataFrame(sdf, metadata)
 
 
@@ -266,13 +269,17 @@ class DataFrameGroupBy(GroupBy):
 
         if agg_columns is None:
             groupkey_names = set(s.name for s in self._groupkeys)
-            agg_columns = [col for col in self._kdf._metadata.column_fields
+            agg_columns = [col for col in self._kdf._metadata.data_columns
                            if col not in groupkey_names]
         self._agg_columns = [kdf[col] for col in agg_columns]
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeDataFrameGroupBy, item):
-            return partial(getattr(_MissingPandasLikeDataFrameGroupBy, item), self)
+            property_or_func = getattr(_MissingPandasLikeDataFrameGroupBy, item)
+            if isinstance(property_or_func, property):
+                return property_or_func.fget(self)  # type: ignore
+            else:
+                return partial(property_or_func, self)
         return self.__getitem__(item)
 
     def __getitem__(self, item):
@@ -291,7 +298,11 @@ class SeriesGroupBy(GroupBy):
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeSeriesGroupBy, item):
-            return partial(getattr(_MissingPandasLikeSeriesGroupBy, item), self)
+            property_or_func = getattr(_MissingPandasLikeSeriesGroupBy, item)
+            if isinstance(property_or_func, property):
+                return property_or_func.fget(self)  # type: ignore
+            else:
+                return partial(property_or_func, self)
         raise AttributeError(item)
 
     @property

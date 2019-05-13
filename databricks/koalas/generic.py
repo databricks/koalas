@@ -19,75 +19,296 @@ A base class to be monkey-patched to DataFrame/Column to behave similar to panda
 """
 from collections.abc import Iterable
 
-import pandas as pd
+import numpy as np
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.dask.utils import derived_from
 
 max_display_count = 1000
 
 
 class _Frame(object):
     """
-    The base class for both dataframes and series.
+    The base class for both DataFrame and Series.
     """
 
     def to_numpy(self):
         """
-        A NumPy ndarray representing the values in this DataFrame
-        :return: numpy.ndarray
-                 Numpy representation of DataFrame
+        A NumPy ndarray representing the values in this DataFrame or Series.
 
         .. note:: This method should only be used if the resulting NumPy ndarray is expected
             to be small, as all the data is loaded into the driver's memory.
-        """
-        return self.toPandas().values
 
-    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
+        Returns
+        -------
+        numpy.ndarray
+        """
+        return self.to_pandas().values
+
     def mean(self):
+        """
+        Return the mean of the values.
+
+        Returns
+        -------
+        mean : scalar for a Series, and a Series for a DataFrame.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
+
+        On a DataFrame:
+
+        >>> df.mean()
+        a    2.0
+        b    0.2
+        dtype: float64
+
+        On a Series:
+
+        >>> df['a'].mean()
+        2.0
+        """
         return self._reduce_for_stat_function(F.mean)
 
-    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only', 'min_count'])
     def sum(self):
+        """
+        Return the sum of the values.
+
+        Returns
+        -------
+        sum : scalar for a Series, and a Series for a DataFrame.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
+
+        On a DataFrame:
+
+        >>> df.sum()
+        a    6.0
+        b    0.6
+        dtype: float64
+
+        On a Series:
+
+        >>> df['a'].sum()
+        6.0
+        """
         return self._reduce_for_stat_function(F.sum)
 
-    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def skew(self):
+        """
+        Return unbiased skew normalized by N-1.
+
+        Returns
+        -------
+        skew : scalar for a Series, and a Series for a DataFrame.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
+
+        On a DataFrame:
+
+        >>> df.skew()
+        a    0.000000e+00
+        b   -3.319678e-16
+        dtype: float64
+
+        On a Series:
+
+        >>> df['a'].skew()
+        0.0
+        """
         return self._reduce_for_stat_function(F.skewness)
 
-    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def kurtosis(self):
+        """
+        Return unbiased kurtosis using Fisher’s definition of kurtosis (kurtosis of normal == 0.0).
+        Normalized by N-1.
+
+        Returns
+        -------
+        kurt : scalar for a Series, and a Series for a DataFrame.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
+
+        On a DataFrame:
+
+        >>> df.kurtosis()
+        a   -1.5
+        b   -1.5
+        dtype: float64
+
+        On a Series:
+
+        >>> df['a'].kurtosis()
+        -1.5
+        """
         return self._reduce_for_stat_function(F.kurtosis)
 
     kurt = kurtosis
 
-    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def min(self):
+        """
+        Return the minimum of the values.
+
+        Returns
+        -------
+        min : scalar for a Series, and a Series for a DataFrame.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
+
+        On a DataFrame:
+
+        >>> df.min()
+        a    1.0
+        b    0.1
+        dtype: float64
+
+        On a Series:
+
+        >>> df['a'].min()
+        1.0
+        """
         return self._reduce_for_stat_function(F.min)
 
-    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'numeric_only'])
     def max(self):
+        """
+        Return the maximum of the values.
+
+        Returns
+        -------
+        max : scalar for a Series, and a Series for a DataFrame.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
+
+        On a DataFrame:
+
+        >>> df.max()
+        a    3.0
+        b    0.3
+        dtype: float64
+
+        On a Series:
+
+        >>> df['a'].max()
+        3.0
+        """
         return self._reduce_for_stat_function(F.max)
 
-    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'ddof', 'numeric_only'])
     def std(self):
+        """
+        Return sample standard deviation.
+
+        Returns
+        -------
+        std : scalar for a Series, and a Series for a DataFrame.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
+
+        On a DataFrame:
+
+        >>> df.std()
+        a    1.0
+        b    0.1
+        dtype: float64
+
+        On a Series:
+
+        >>> df['a'].std()
+        1.0
+        """
         return self._reduce_for_stat_function(F.stddev)
 
-    @derived_from(pd.DataFrame, ua_args=['axis', 'skipna', 'level', 'ddof', 'numeric_only'])
     def var(self):
+        """
+        Return unbiased variance.
+
+        Returns
+        -------
+        var : scalar for a Series, and a Series for a DataFrame.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
+
+        On a DataFrame:
+
+        >>> df.var()
+        a    1.00
+        b    0.01
+        dtype: float64
+
+        On a Series:
+
+        >>> df['a'].var()
+        1.0
+        """
         return self._reduce_for_stat_function(F.variance)
 
-    @derived_from(pd.DataFrame)
     def abs(self):
         """
         Return a Series/DataFrame with absolute numeric value of each element.
 
-        :return: :class:`Series` or :class:`DataFrame` with the absolute value of each element.
+        Returns
+        -------
+        abs : Series/DataFrame containing the absolute value of each element.
+
+        Examples
+        --------
+        Absolute numeric values in a Series.
+
+        >>> s = ks.Series([-1.10, 2, -3.33, 4])
+        >>> s.abs()
+        0    1.10
+        1    2.00
+        2    3.33
+        3    4.00
+        Name: abs(0), dtype: float64
+
+        >>> df = ks.DataFrame({
+        ...     'a': [4, 5, 6, 7],
+        ...     'b': [10, 20, 30, 40],
+        ...     'c': [100, 50, -30, -50]
+        ...   },
+        ...   columns=['a', 'b', 'c'])
+        >>> df.abs()
+           a   b    c
+        0  4  10  100
+        1  5  20   50
+        2  6  30   30
+        3  7  40   50
         """
+        # TODO: The first example above should not have "Name: abs(0)".
         return _spark_col_apply(self, F.abs)
 
     # TODO: by argument only support the grouping name only for now. Documentation should
@@ -123,7 +344,8 @@ class _Frame(object):
         --------
         >>> df = ks.DataFrame({'Animal': ['Falcon', 'Falcon',
         ...                               'Parrot', 'Parrot'],
-        ...                    'Max Speed': [380., 370., 24., 26.]})
+        ...                    'Max Speed': [380., 370., 24., 26.]},
+        ...                   columns=['Animal', 'Max Speed'])
         >>> df
            Animal  Max Speed
         0  Falcon      380.0
@@ -164,7 +386,7 @@ class _Frame(object):
                         'got [%s]' % (df_or_s,))
 
     def compute(self):
-        """Alias of `toPandas()` to mimic dask for easily porting tests."""
+        """Alias of `to_pandas()` to mimic dask for easily porting tests."""
         return self.toPandas()
 
     @staticmethod
@@ -196,7 +418,7 @@ def _spark_col_apply(kdf_or_ks, sfun):
     from databricks.koalas.series import Series
     if isinstance(kdf_or_ks, Series):
         ks = kdf_or_ks
-        return Series(sfun(kdf_or_ks._scol), ks._kdf, ks._index_info)
+        return Series(sfun(kdf_or_ks._scol), anchor=ks._kdf, index=ks._index_map)
     assert isinstance(kdf_or_ks, DataFrame)
     kdf = kdf_or_ks
     sdf = kdf._sdf

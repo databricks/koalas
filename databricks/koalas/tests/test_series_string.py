@@ -21,7 +21,7 @@ from databricks import koalas
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
-class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
+class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
     def test_string_add_str_num(self):
         pdf = pd.DataFrame(dict(col1=['a'], col2=[1]))
         ds = koalas.from_pandas(pdf)

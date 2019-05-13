@@ -17,7 +17,9 @@
 import pandas as pd
 
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
-from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.utils import lazy_property, validate_arguments_and_invoke_function
+
+some_global_variable = 0
 
 
 class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
@@ -33,6 +35,16 @@ class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
         }, index=[0, 1, 3])
         validate_arguments_and_invoke_function(pdf, self.to_html, pd.DataFrame.to_html, args)
 
+    def to_clipboard(self, sep=',', **kwargs):
+        args = locals()
+
+        pdf = pd.DataFrame({
+            'a': [1, 2, 3],
+            'b': [4, 5, 6],
+        }, index=[0, 1, 3])
+        validate_arguments_and_invoke_function(pdf, self.to_clipboard,
+                                               pd.DataFrame.to_clipboard, args)
+
     def test_validate_arguments_and_invoke_function(self):
         # This should pass and run fine
         self.to_html()
@@ -43,3 +55,23 @@ class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
         # to a non-default value
         with self.assertRaises(TypeError):
             self.to_html(unsupported_param=1)
+
+        # Support for **kwargs
+        self.to_clipboard(sep=',', index=False)
+
+    def test_lazy_property(self):
+        obj = TestClassForLazyProp()
+        # If lazy prop is not working, the second test would fail (because it'd be 2)
+        self.assert_eq(obj.lazy_prop, 1)
+        self.assert_eq(obj.lazy_prop, 1)
+
+
+class TestClassForLazyProp:
+
+    def __init__(self):
+        self.some_variable = 0
+
+    @lazy_property
+    def lazy_prop(self):
+        self.some_variable += 1
+        return self.some_variable

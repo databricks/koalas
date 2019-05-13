@@ -1,23 +1,21 @@
 Quick Start
 ===========
 
-Koalas needs Spark. You can install it via ``pip install pyspark`` or downloading the release.
+Koalas requires Spark. You can install it using ``pip install pyspark`` or downloading the release.
 
-After that, Koalas can be installed via ``pip`` as below:
+After that, you install Koalas using ``pip``:
 
 .. code-block:: bash
 
     $ pip install koalas
 
-
-After installing the package, you can import the package:
+After installing Koalas, you import the Koalas package:
 
 .. code-block:: python
 
     import databricks.koalas as ks
 
-
-Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
+Then you can easily turn a pandas DataFrame into a Koalas DataFrame that is `API-compliant` with the former:
 
 .. code-block:: python
 
@@ -33,11 +31,10 @@ Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-complian
     # Do some operations in place:
     df['x2'] = df.x * df.x
 
-You can also create Koalas DataFrame directly from regular Python data like Pandas:
+You can also create a Koalas DataFrame directly from a Python data structure:
 
 .. code-block:: python
 
     import databricks.koalas as ks
 
     ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6]})
-

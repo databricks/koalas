@@ -95,9 +95,6 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                               index=pd.Index([1, 2, 3], name='myindex'))
             ddf = koalas.from_pandas(df)
             self.assert_eq(ddf.corr(), df.corr())
-            # self.assert_eq(ddf.cov(), df.cov())
-            # assert ddf.a.cov(ddf.b)._meta.dtype == 'f8'
-            # assert ddf.a.corr(ddf.b)._meta.dtype == 'f8'
 
     def test_stats_on_boolean_dataframe(self):
         df = pd.DataFrame({'A': [True, False, True],
@@ -125,12 +122,3 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertAlmostEqual(ds.var(), s.var())
         self.assertAlmostEqual(ds.std(), s.std())
-
-
-if __name__ == "__main__":
-    try:
-        import xmlrunner
-        testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
-    except ImportError:
-        testRunner = None
-    unittest.main(testRunner=testRunner, verbosity=2)

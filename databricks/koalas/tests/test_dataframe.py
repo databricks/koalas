@@ -20,11 +20,10 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas
+from databricks.koalas.generic import max_display_count
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
-from databricks.koalas.exceptions import PandasNotImplementedError
+from databricks.koalas.exceptions import PandasNotImplementedError, SparkPandasMergeError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
-from databricks.koalas.missing.series import _MissingPandasLikeSeries
-from databricks.koalas.series import Series
 
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
@@ -70,34 +69,47 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertEqual(ddf.a.notnull().alias("x").name, "x")
 
-    def test_empty_dataframe(self):
-        a = pd.Series([], dtype='i1')
-        b = pd.Series([], dtype='str')
-        pdf = pd.DataFrame({'a': a, 'b': b})
+    def test_repr(self):
+        # Make sure we only fetch max_display_count
+        self.assertEqual(koalas.range(1001).__repr__(),
+                         koalas.range(max_display_count).__repr__())
 
-        self.assert_eq(koalas.from_pandas(a), a)
-        self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
+    def test_repr_cache_invalidation(self):
+        # If there is any cache, inplace operations should invalidate it.
+        df = koalas.range(10)
+        df.__repr__()
+        df['a'] = df['id']
+        self.assertEqual(df.__repr__(), df.to_pandas().__repr__())
+
+    def test_repr_html(self):
+        # Make sure we only fetch max_display_count
+        self.assertEqual(koalas.range(1001)._repr_html_(),
+                         koalas.range(max_display_count)._repr_html_())
+
+    def test_repr_html_cache_invalidation(self):
+        # If there is any cache, inplace operations should invalidate it.
+        df = koalas.range(10)
+        df._repr_html_()
+        df['a'] = df['id']
+        self.assertEqual(df._repr_html_(), df.to_pandas()._repr_html_())
+
+    def test_empty_dataframe(self):
+        pdf = pd.DataFrame({'a': pd.Series([], dtype='i1'),
+                            'b': pd.Series([], dtype='str')})
+
         self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
 
         with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
-            self.assert_eq(koalas.from_pandas(a), a)
-            self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
             self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
 
     def test_all_null_dataframe(self):
-        a = pd.Series([None, None, None], dtype='float64')
-        b = pd.Series([None, None, None], dtype='str')
-        pdf = pd.DataFrame({'a': a, 'b': b})
 
-        self.assert_eq(koalas.from_pandas(a).dtype, a.dtype)
-        self.assertTrue(koalas.from_pandas(a).toPandas().isnull().all())
-        self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
+        pdf = pd.DataFrame({'a': pd.Series([None, None, None], dtype='float64'),
+                            'b': pd.Series([None, None, None], dtype='str')})
+
         self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
 
         with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
-            self.assert_eq(koalas.from_pandas(a).dtype, a.dtype)
-            self.assertTrue(koalas.from_pandas(a).toPandas().isnull().all())
-            self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
             self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
 
     def test_nullable_object(self):
@@ -135,13 +147,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.head(2), pdf.head(2))
         self.assert_eq(kdf.head(3), pdf.head(3))
-        self.assert_eq(kdf['a'].head(2), pdf['a'].head(2))
-        self.assert_eq(kdf['a'].head(3), pdf['a'].head(3))
-
-        # TODO: self.assert_eq(d.tail(2), pdf.tail(2))
-        # TODO: self.assert_eq(d.tail(3), pdf.tail(3))
-        # TODO: self.assert_eq(d['a'].tail(2), pdf['a'].tail(2))
-        # TODO: self.assert_eq(d['a'].tail(3), pdf['a'].tail(3))
 
     def test_index_head(self):
         kdf = self.kdf
@@ -150,16 +155,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(list(kdf.index.head(2).toPandas()), list(pdf.index[:2]))
         self.assert_eq(list(kdf.index.head(3).toPandas()), list(pdf.index[:3]))
 
-    def test_Series(self):
-        kdf = self.kdf
-        pdf = self.pdf
-
-        self.assertTrue(isinstance(kdf.a, Series))
-        self.assertTrue(isinstance(kdf.a + 1, Series))
-        self.assertTrue(isinstance(1 + kdf.a, Series))
-        # TODO: self.assert_eq(d + 1, pdf + 1)
-
-    def test_Index(self):
+    def test_index(self):
         for case in [pd.DataFrame(np.random.randn(10, 5), index=list('abcdefghij')),
                      pd.DataFrame(np.random.randn(10, 5),
                                   index=pd.date_range('2011-01-01', freq='D',
@@ -221,54 +217,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(['x', 'y']))
         self.assert_eq(kdf, pdf)
 
-    def test_rename_series(self):
-        ps = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-        ks = koalas.from_pandas(ps)
+    def test_drop(self):
+        kdf = koalas.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6]})
 
-        ps.name = 'renamed'
-        ks.name = 'renamed'
-        self.assertEqual(ks.name, 'renamed')
-        self.assert_eq(ks, ps)
-
-        ind = ps.index
-        dind = ks.index
-        ind.name = 'renamed'
-        dind.name = 'renamed'
-        self.assertEqual(ind.name, 'renamed')
-        self.assert_eq(list(dind.toPandas()), list(ind))
-
-    def test_rename_series_method(self):
-        # Series name
-        ps = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-        ks = koalas.from_pandas(ps)
-
-        self.assert_eq(ks.rename('y'), ps.rename('y'))
-        self.assertEqual(ks.name, 'x')  # no mutation
-        # self.assert_eq(ks.rename(), ps.rename())
-
-        ks.rename('z', inplace=True)
-        ps.rename('z', inplace=True)
-        self.assertEqual(ks.name, 'z')
-        self.assert_eq(ks, ps)
-
-        # Series index
-        ps = pd.Series(['a', 'b', 'c', 'd', 'e', 'f', 'g'], name='x')
-        # ks = koalas.from_pandas(s)
-
-        # TODO: index
-        # res = ks.rename(lambda x: x ** 2)
-        # self.assert_eq(res, ps.rename(lambda x: x ** 2))
-
-        # res = ks.rename(ps)
-        # self.assert_eq(res, ps.rename(ps))
-
-        # res = ks.rename(ks)
-        # self.assert_eq(res, ps.rename(ps))
-
-        # res = ks.rename(lambda x: x**2, inplace=True)
-        # self.assertis(res, ks)
-        # s.rename(lambda x: x**2, inplace=True)
-        # self.assert_eq(ks, ps)
+        # Assert 'labels' or 'columns' parameter is set
+        expected_error_message = "Need to specify at least one of 'labels' or 'columns'"
+        with self.assertRaisesRegex(ValueError, expected_error_message):
+            kdf.drop()
+        # Assert axis cannot be 0
+        with self.assertRaisesRegex(NotImplementedError, "Drop currently only works for axis=1"):
+            kdf.drop('x', axis=0)
+        # Assert using a str for 'labels' works
+        self.assert_eq(kdf.drop('x', axis=1), pd.DataFrame({'y': [3, 4], 'z': [5, 6]}))
+        # Assert axis is 1 by default
+        self.assert_eq(kdf.drop('x'), pd.DataFrame({'y': [3, 4], 'z': [5, 6]}))
+        # Assert using a list for 'labels' works
+        self.assert_eq(kdf.drop(['y', 'z'], axis=1), pd.DataFrame({'x': [1, 2]}))
+        # Assert using 'columns' instead of 'labels' produces the same results
+        self.assert_eq(kdf.drop(columns='x'), pd.DataFrame({'y': [3, 4], 'z': [5, 6]}))
+        self.assert_eq(kdf.drop(columns=['y', 'z']), pd.DataFrame({'x': [1, 2]}))
+        # Assert 'labels' being used when both 'labels' and 'columns' are specified
+        expected_output = pd.DataFrame({'y': [3, 4], 'z': [5, 6]})
+        self.assert_eq(kdf.drop(labels=['x'], columns=['y']), expected_output)
 
     def test_dropna(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
@@ -276,10 +246,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                             'z': [1, 2, 3, 4, np.nan, np.nan]},
                            index=[10, 20, 30, 40, 50, 60])
         kdf = koalas.from_pandas(pdf)
-
-        self.assert_eq(kdf.x.dropna(), pdf.x.dropna())
-        self.assert_eq(kdf.y.dropna(), pdf.y.dropna())
-        self.assert_eq(kdf.z.dropna(), pdf.z.dropna())
 
         self.assert_eq(kdf.dropna(), pdf.dropna())
         self.assert_eq(kdf.dropna(how='all'), pdf.dropna(how='all'))
@@ -293,9 +259,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pdf.dropna(thresh=1, subset=['y', 'z']))
 
         ddf2 = kdf.copy()
-        x = ddf2.x
-        x.dropna(inplace=True)
-        self.assert_eq(x, pdf.x.dropna())
         ddf2.dropna(inplace=True)
         self.assert_eq(ddf2, pdf.dropna())
 
@@ -317,34 +280,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = koalas.from_pandas(pdf)
         self.assert_eq(kdf, pdf)
         self.assertTrue((kdf.dtypes == pdf.dtypes).all())
-
-    def test_value_counts(self):
-        pdf = pd.DataFrame({'x': [1, 2, 1, 3, 3, np.nan, 1, 4]})
-        kdf = koalas.from_pandas(pdf)
-
-        exp = pdf.x.value_counts()
-        res = kdf.x.value_counts()
-        self.assertEqual(res.name, exp.name)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
-
-        self.assertPandasAlmostEqual(kdf.x.value_counts(normalize=True).toPandas(),
-                                     pdf.x.value_counts(normalize=True))
-        self.assertPandasAlmostEqual(kdf.x.value_counts(ascending=True).toPandas(),
-                                     pdf.x.value_counts(ascending=True))
-        self.assertPandasAlmostEqual(kdf.x.value_counts(normalize=True, dropna=False).toPandas(),
-                                     pdf.x.value_counts(normalize=True, dropna=False))
-        self.assertPandasAlmostEqual(kdf.x.value_counts(ascending=True, dropna=False).toPandas(),
-                                     pdf.x.value_counts(ascending=True, dropna=False))
-
-        with self.assertRaisesRegex(NotImplementedError,
-                                    "value_counts currently does not support bins"):
-            kdf.x.value_counts(bins=3)
-
-        s = pdf.x
-        s.name = 'index'
-        ds = kdf.x
-        ds.name = 'index'
-        self.assertPandasAlmostEqual(ds.value_counts().toPandas(), s.value_counts())
 
     def test_fillna(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
@@ -383,8 +318,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                            index=[10, 20, 30, 40, 50, 60])
         kdf = koalas.from_pandas(pdf)
 
-        self.assert_eq(kdf.x.notnull(), pdf.x.notnull())
-        self.assert_eq(kdf.x.isnull(), pdf.x.isnull())
         self.assert_eq(kdf.notnull(), pdf.notnull())
         self.assert_eq(kdf.isnull(), pdf.isnull())
 
@@ -395,12 +328,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = koalas.from_pandas(pdf)
 
         self.assert_eq(pd.to_datetime(pdf), koalas.to_datetime(kdf))
-
-        s = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
-        ds = koalas.from_pandas(s)
-
-        self.assert_eq(pd.to_datetime(s, infer_datetime_format=True),
-                       koalas.to_datetime(ds, infer_datetime_format=True))
 
     def test_sort_values(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
@@ -429,14 +356,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         missing_functions = inspect.getmembers(_MissingPandasLikeDataFrame, inspect.isfunction)
         for name, _ in missing_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "DataFrame.*{}.*not implemented".format(name)):
+                                        "method.*DataFrame.*{}.*not implemented".format(name)):
                 getattr(kdf, name)()
 
-        missing_functions = inspect.getmembers(_MissingPandasLikeSeries, inspect.isfunction)
-        for name, _ in missing_functions:
+        missing_properties = inspect.getmembers(_MissingPandasLikeDataFrame,
+                                                lambda o: isinstance(o, property))
+        for name, _ in missing_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "Series.*{}.*not implemented".format(name)):
-                getattr(kdf.a, name)()
+                                        "property.*DataFrame.*{}.*not implemented".format(name)):
+                getattr(kdf, name)
 
     def test_to_numpy(self):
         pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
@@ -447,11 +375,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = koalas.from_pandas(pdf)
 
         np.testing.assert_equal(kdf.to_numpy(), pdf.values)
-
-        s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
-
-        ddf = koalas.from_pandas(s)
-        np.testing.assert_equal(ddf.to_numpy(), s.values)
 
     def test_to_pandas(self):
         kdf = self.kdf
@@ -474,7 +397,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(AttributeError, msg):
             kdf.isin({"e": [5, 7], "a": [1, 6]})
 
-        msg = "Dataframe and Series are not supported"
+        msg = "DataFrame and Series are not supported"
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.isin(df)
 
@@ -482,11 +405,56 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(TypeError, msg):
             kdf.isin(1)
 
-        # Test list sanitizer
-        msg = "List contains unsupported type <class 'pandas.core.frame.DataFrame'>"
-        with self.assertRaisesRegex(TypeError, msg):
-            kdf.isin([df, df])
+    def test_merge(self):
+        left_kdf = koalas.DataFrame({'A': [1, 2]})
+        right_kdf = koalas.DataFrame({'B': ['x', 'y']}, index=[1, 2])
 
-        msg = "List contains unsupported type <class 'pandas.core.frame.DataFrame'>"
-        with self.assertRaisesRegex(TypeError, msg):
-            kdf.isin({"a": [5, df]})
+        # Assert only 'on' or 'left_index' and 'right_index' parameters are set
+        msg = "At least 'on' or 'left_index' and 'right_index' have to be set"
+        with self.assertRaises(SparkPandasMergeError, msg=msg):
+            left_kdf.merge(right_kdf)
+        msg = "Only 'on' or 'left_index' and 'right_index' can be set"
+        with self.assertRaises(SparkPandasMergeError, msg=msg):
+            left_kdf.merge(right_kdf, on='id', left_index=True)
+
+        # Assert a valid option for the 'how' parameter is used
+        msg = ("The 'how' parameter has to be amongst the following values: ['inner', 'left', " +
+               "'right', 'full', 'outer']")
+        with self.assertRaises(ValueError, msg=msg):
+            left_kdf.merge(right_kdf, how='foo', left_index=True, right_index=True)
+
+        # Assert inner join
+        res = left_kdf.merge(right_kdf, left_index=True, right_index=True)
+        self.assert_eq(res, pd.DataFrame({'A': [2], 'B': ['x']}))
+
+        # Assert inner join on non-default column
+        left_kdf_with_id = koalas.DataFrame({'A': [1, 2], 'id': [0, 1]})
+        right_kdf_with_id = koalas.DataFrame({'B': ['x', 'y'], 'id': [0, 1]}, index=[1, 2])
+        res = left_kdf_with_id.merge(right_kdf_with_id, on='id')
+        # Explicitly set columns to also assure their correct order with Python 3.5
+        self.assert_eq(res, pd.DataFrame({'A': [1, 2], 'id': [0, 1], 'B': ['x', 'y']},
+                                         columns=['A', 'id', 'B']))
+
+        # Assert left join
+        res = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left')
+        # FIXME Replace None with np.nan once #263 is solved
+        self.assert_eq(res, pd.DataFrame({'A': [1, 2], 'B': [None, 'x']}))
+
+        # Assert right join
+        res = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right')
+        self.assert_eq(res, pd.DataFrame({'A': [2, np.nan], 'B': ['x', 'y']}))
+
+        # Assert full outer join
+        res = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer')
+        # FIXME Replace None with np.nan once #263 is solved
+        self.assert_eq(res, pd.DataFrame({'A': [1, 2, np.nan], 'B': [None, 'x', 'y']}))
+
+        # Assert full outer join also works with 'full' keyword
+        res = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='full')
+        # FIXME Replace None with np.nan once #263 is solved
+        self.assert_eq(res, pd.DataFrame({'A': [1, 2, np.nan], 'B': [None, 'x', 'y']}))
+
+        # Assert suffixes create the expected column names
+        res = left_kdf.merge(koalas.DataFrame({'A': [3, 4]}), left_index=True, right_index=True,
+                             suffixes=('_left', '_right'))
+        self.assert_eq(res, pd.DataFrame({'A_left': [1, 2], 'A_right': [3, 4]}))

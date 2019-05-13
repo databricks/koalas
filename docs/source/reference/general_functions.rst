@@ -11,6 +11,7 @@ Data manipulations
    :toctree: api/
 
    get_dummies
+   sql
 
 Top-level dealing with datetimelike
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -18,3 +19,11 @@ Top-level dealing with datetimelike
    :toctree: api/
 
    to_datetime
+
+
+Integration with Spark and pandas
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   pandas_wraps

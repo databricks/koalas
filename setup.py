@@ -47,16 +47,15 @@ VERSION = __version__  # noqa
 setup(
     name='koalas',
     version=VERSION,
-    packages=['databricks', 'databricks.koalas', 'databricks.koalas.dask',
-              'databricks.koalas.missing'],
+    packages=['databricks', 'databricks.koalas', 'databricks.koalas.missing'],
     extras_require={
         'spark': ['pyspark>=2.4.0'],
     },
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*',
     install_requires=[
         'pandas>=0.23',
-        'decorator',
-        'pyarrow>=0.10,<0.11',  # See https://github.com/databricks/koalas/issues/26
+        'pyarrow>=0.10',
+        'numpy>=1.14',
     ],
     maintainer="Databricks",
     maintainer_email="koalas@databricks.com",

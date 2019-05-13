@@ -51,13 +51,23 @@ class SparkPandasNotImplementedError(NotImplementedError):
 
 class PandasNotImplementedError(NotImplementedError):
 
-    def __init__(self, class_name, method_name, arg_name=None):
+    def __init__(self, class_name, method_name=None, arg_name=None, property_name=None):
+        assert (method_name is None) != (property_name is None)
         self.class_name = class_name
         self.method_name = method_name
         self.arg_name = arg_name
-        if arg_name is not None:
-            msg = "The method `{0}.{1}()` does not support `{2}` parameter" \
-                .format(class_name, method_name, arg_name)
+        if method_name is not None:
+            if arg_name is not None:
+                msg = "The method `{0}.{1}()` does not support `{2}` parameter" \
+                    .format(class_name, method_name, arg_name)
+            else:
+                msg = "The method `{0}.{1}()` is not implemented yet." \
+                    .format(class_name, method_name)
         else:
-            msg = "The method `{0}.{1}()` is not implemented yet.".format(class_name, method_name)
+            msg = "The property `{0}.{1}` is not implemented yet." \
+                .format(class_name, property_name)
         super(NotImplementedError, self).__init__(msg)
+
+
+class SparkPandasMergeError(Exception):
+    pass
