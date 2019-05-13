@@ -71,22 +71,15 @@ def sql(query: str) -> DataFrame:
     1                  1  2
     2                  2  3
     """
-    dataframe_name_regex = r"(?:from|FROM) (\w+)"
-    dataframe_names = re.findall(dataframe_name_regex, query)
-
     created_tables = []
-    if dataframe_names:
+    # Get the local variables from the caller module which is one higher in the stack
+    # TODO Check if the caller module is always exactly one higher in the stack
+    fields = inspect.stack()[1][0].f_locals
 
-        # Get the local variables from the caller module which is one higher in the stack
-        # TODO Check if the caller module is always exactly one higher in the stack
-        fields = inspect.stack()[1][0].f_locals
-
-        for candidate_name in dataframe_names:
-            if candidate_name in fields:
-                candidate_obj = fields[candidate_name]
-                if isinstance(candidate_obj, DataFrame):
-                    candidate_obj._sdf.createTempView(candidate_name)
-                    created_tables.append(candidate_name)
+    for candidate_name, candidate_obj in fields.items():
+        if isinstance(candidate_obj, DataFrame):
+            candidate_obj._sdf.createTempView(candidate_name)
+            created_tables.append(candidate_name)
 
     query_result = DataFrame(default_session().sql(query))
 
