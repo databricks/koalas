@@ -756,6 +756,34 @@ class Series(_Frame):
         sdf = self.to_dataframe()._sdf
         return _col(DataFrame(sdf.select(self._scol).distinct()))
 
+    def nunique(self, dropna: bool = True) -> int:
+        """
+        Return number of unique elements in the object.
+
+        Excludes NA values by default.
+
+        Parameters
+        ----------
+        dropna : Don’t include NaN in the count.
+
+        Returns
+        -------
+        The number of unique values as an int.
+
+        Examples
+        --------
+        >>> ks.Series([1, 2, 3, np.nan]).nunique()
+        3
+
+        >>> ks.Series([1, 2, 3, np.nan]).nunique(dropna=False)
+        4
+        """
+        sdf = self.to_dataframe()._sdf
+        distinct_count = sdf.select(F.countDistinct(self._scol)).toPandas().iloc[0, 0]
+        if not dropna and self.isnull().sum() > 0:
+            distinct_count += 1
+        return distinct_count
+
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
         """
