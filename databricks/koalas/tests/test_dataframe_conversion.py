@@ -106,9 +106,6 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         }
 
     def test_to_excel(self):
-        if pd.__version__ < '0.24.0':
-            pass
-
         with self.temp_dir() as dirpath:
             pandas_location = dirpath + "/" + "output1.xlsx"
             koalas_location = dirpath + "/" + "output2.xlsx"
@@ -180,6 +177,9 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
                        pdf.to_clipboard(sep=";", index=False))
 
     def test_to_records(self):
+        if pd.__version__ < '0.24.0':
+            pass
+
         pdf = pd.DataFrame({
             'A': [1, 2],
             'B': [0.5, 0.75]
