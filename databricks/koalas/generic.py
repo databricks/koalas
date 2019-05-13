@@ -346,6 +346,13 @@ class _Frame(object):
         0  1
         1  2
         2  3
+
+        Notes
+        -----
+        One difference between this implementation and pandas is that running
+        pd.DataFrame({'A': ['a', 'b']}).clip(0, 1) will crash with "TypeError: '<=' not supported
+        between instances of 'str' and 'int'" while ks.DataFrame({'A': ['a', 'b']}).clip(0, 1)
+        will output the original DataFrame, simply ignoring the incompatible types.
         """
         if lower is None and upper is None:
             return self  # type: ignore
