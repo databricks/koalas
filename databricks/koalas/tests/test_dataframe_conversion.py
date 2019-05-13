@@ -15,12 +15,19 @@
 #
 
 import string
+import unittest
 
 import numpy as np
 import pandas as pd
 
 from databricks import koalas
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils, TestUtils
+
+try:
+    import openpyxl
+    has_openpyxl = True
+except ModuleNotFoundError:
+    has_openpyxl = False
 
 
 class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
@@ -105,6 +112,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
             'expected': pd.read_excel(pandas_location, index_col=0)
         }
 
+    @unittest.skipIf(not has_openpyxl, "This test requires to have 'openpyxl' package.")
     def test_to_excel(self):
         with self.temp_dir() as dirpath:
             pandas_location = dirpath + "/" + "output1.xlsx"
