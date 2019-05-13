@@ -71,22 +71,27 @@ def sql(query: str) -> DataFrame:
     1                  1  2
     2                  2  3
     """
-    created_tables = []
+
     # Get the local variables from the caller module which is one higher in the stack
     # TODO Check if the caller module is always exactly one higher in the stack
     fields = inspect.stack()[1][0].f_locals
 
-    for candidate_name, candidate_obj in fields.items():
-        if isinstance(candidate_obj, DataFrame):
-            candidate_obj._sdf.createTempView(candidate_name)
-            created_tables.append(candidate_name)
+    dataframes = {name: obj for name, obj in fields.items() if isinstance(obj, DataFrame)}
+    try:
+        for df_name, df_obj in dataframes.items():
+            df_obj._sdf.createTempView(df_name)
 
-    query_result = DataFrame(default_session().sql(query))
-
-    # Clean up by dropping temporary tables
-    catalog = default_session().catalog
-    for table in created_tables:
-        catalog.dropTempView(table)
+        query_result = DataFrame(default_session().sql(query))
+    except Exception as e:
+        # Simply propagate PySpark exceptions
+        raise e
+    finally:
+        # Clean up by dropping temporary tables
+        registered_table_names = [t.name for t in default_session().catalog.listTables()
+                                  if t.isTemporary]
+        for df_name in dataframes:
+            if df_name in registered_table_names:
+                default_session().catalog.dropTempView(df_name)
 
     return query_result
 
