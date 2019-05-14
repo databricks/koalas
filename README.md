@@ -227,7 +227,7 @@ provides an opportunity for us to experiment with new design principles.
 
 ### How do I use this on Databricks?
 
-For the regular Databricks Runtime, you should upgrade NumPy and pandas to the appropriate versions and then install Koalas. This can be done using the Libraries tab on the cluster UI, or using dbutils in a notebook:
+Koalas requires Databricks Runtime 5.x or above. For the regular Databricks Runtime, you should upgrade NumPy and pandas to the appropriate versions and then install Koalas. This can be done using the Libraries tab on the cluster UI, or using dbutils in a notebook:
 
 ```python
 dbutils.library.installPyPI("numpy", "1.16.2")
