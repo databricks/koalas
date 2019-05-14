@@ -17,6 +17,7 @@
 """
 A wrapper class for Spark Column to behave similar to pandas Series.
 """
+import re
 import inspect
 from functools import partial, wraps
 from typing import Any
@@ -37,6 +38,12 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.utils import validate_arguments_and_invoke_function
+
+
+# This regular expression pattern is complied and defined here to avoid to compile the same
+# pattern every time it is used in _repr_ in Series.
+# This pattern basically seeks the footer string from Pandas'
+REPR_PATTERN = re.compile(r"Length: (?P<length>[0-9]+)")
 
 
 def _column_op(f):
@@ -1086,7 +1093,18 @@ class Series(_Frame):
         return self._pandas_orig_repr()
 
     def __repr__(self):
-        return repr(self.head(max_display_count).to_pandas())
+        pdf = self.head(max_display_count + 1).to_pandas()
+        pdf_length = len(pdf)
+        repr_string = repr(pdf[:max_display_count])
+        if pdf_length > max_display_count:
+            rest, prev_footer = repr_string.rsplit("\n", 1)
+            match = REPR_PATTERN.search(prev_footer)
+            if match is not None:
+                length = match.group("length")
+                footer = ("\n{prev_footer}\nShowing only the first {length}"
+                          .format(length=length, prev_footer=prev_footer))
+                return rest + footer
+        return repr_string
 
     def __dir__(self):
         if not isinstance(self.schema, StructType):

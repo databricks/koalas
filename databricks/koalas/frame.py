@@ -42,8 +42,8 @@ from databricks.koalas.typedef import infer_pd_series_spark_type
 
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
-# pattern every time it is used in _repr_ and _repr_html_ in DataFrames.
-# Two patterns basically seeks the footer string from Pandas'
+# pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
+# Two patterns basically seek the footer string from Pandas'
 REPR_PATTERN = re.compile(r"\n\n\[(?P<rows>[0-9]+) rows x (?P<columns>[0-9]+) columns\]$")
 REPR_HTML_PATTERN = re.compile(
     r"\n\<p\>(?P<rows>[0-9]+) rows × (?P<columns>[0-9]+) columns\<\/p\>\n\<\/div\>$")
@@ -2372,7 +2372,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if match is not None:
                 nrows = match.group("rows")
                 ncols = match.group("columns")
-                footer = ("\n\n[showing only the first {nrows} rows x {ncols} columns]"
+                footer = ("\n\n[Showing only the first {nrows} rows x {ncols} columns]"
                           .format(nrows=nrows, ncols=ncols))
                 return REPR_PATTERN.sub(footer, repr_string)
         return repr_string
@@ -2387,7 +2387,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 nrows = match.group("rows")
                 ncols = match.group("columns")
                 by = chr(215)
-                footer = ('\n<p>showing only the first {rows} rows {by} {cols} columns</p>\n</div>'
+                footer = ('\n<p>Showing only the first {rows} rows {by} {cols} columns</p>\n</div>'
                           .format(rows=nrows,
                                   by=by,
                                   cols=ncols))

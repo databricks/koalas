@@ -20,21 +20,26 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase
 
 class ReprTests(ReusedSQLTestCase):
 
-    def test_repr(self):
+    def test_repr_dataframe(self):
         kdf = ks.range(max_display_count)
-        self.assertTrue("showing only the first" not in repr(kdf))
+        self.assertTrue("Showing only the first" not in repr(kdf))
         self.assert_eq(repr(kdf), repr(kdf.to_pandas()))
 
         kdf = ks.range(max_display_count + 1)
-        self.assertTrue("showing only the first" in repr(kdf))
-        self.assertEqual(
-            repr(kdf).split("\n")[:10],
-            repr(kdf.to_pandas()).split("\n")[:10])
+        self.assertTrue("Showing only the first" in repr(kdf))
+
+    def test_repr_series(self):
+        kser = ks.range(max_display_count).id
+        self.assertTrue("Showing only the first" not in repr(kser))
+        self.assert_eq(repr(kser), repr(kser.to_pandas()))
+
+        kser = ks.range(max_display_count + 1).id
+        self.assertTrue("Showing only the first" in repr(kser))
 
     def test_html_repr(self):
         kdf = ks.range(max_display_count)
-        self.assertTrue("showing only the first" not in kdf._repr_html_())
+        self.assertTrue("Showing only the first" not in kdf._repr_html_())
         self.assertEqual(kdf._repr_html_(), kdf.to_pandas()._repr_html_())
 
         kdf = ks.range(max_display_count + 1)
-        self.assertTrue("showing only the first" in kdf._repr_html_())
+        self.assertTrue("Showing only the first" in kdf._repr_html_())
