@@ -1093,10 +1093,10 @@ class Series(_Frame):
         return self._pandas_orig_repr()
 
     def __repr__(self):
-        pdf = self.head(max_display_count + 1).to_pandas()
-        pdf_length = len(pdf)
-        repr_string = repr(pdf[:max_display_count])
-        if pdf_length > max_display_count:
+        pser = self.head(max_display_count + 1).to_pandas()
+        pser_length = len(pser)
+        repr_string = repr(pser.iloc[:max_display_count])
+        if pser_length > max_display_count:
             rest, prev_footer = repr_string.rsplit("\n", 1)
             match = REPR_PATTERN.search(prev_footer)
             if match is not None:

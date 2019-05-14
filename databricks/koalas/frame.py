@@ -2366,7 +2366,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def __repr__(self):
         pdf = self.head(max_display_count + 1).to_pandas()
         pdf_length = len(pdf)
-        repr_string = repr(pdf[:max_display_count])
+        repr_string = repr(pdf.iloc[:max_display_count])
         if pdf_length > max_display_count:
             match = REPR_PATTERN.search(repr_string)
             if match is not None:
