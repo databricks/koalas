@@ -1,6 +1,6 @@
 # Contributing Guide <!-- omit in toc -->
 
-This document gives guidance to developers if they plan to contribute to Koalas. The largest amount of work consists simply in implementing the pandas API in Spark terms, which is usually straightforward.
+This document gives guidance to developers if they plan to contribute to Koalas. The largest amount of work consists simply of implementing the pandas API using Spark's built-in functions, which is usually straightforward.
 
 - [Step-by-step Guide](#step-by-step-guide)
 - [Environment Setup](#environment-setup)
@@ -11,7 +11,7 @@ This document gives guidance to developers if they plan to contribute to Koalas.
 
 ## Step-by-step Guide
 
-1. Read and understand the [Design Principles](https://github.com/databricks/koalas/blob/master/README.md#design-principles) for the project. Contributions should match these projects.
+1. Read and understand the [Design Principles](https://github.com/databricks/koalas/blob/master/README.md#design-principles) for the project. Contributions should follow these principles.
 
 2. Signaling your work: If you are working on something, comment on the relevant ticket that you are doing so to avoid multiple people taking on the same work at the same time. It is also a good practice to signal that your work has stalled or you have moved on and want somebody else to take over.
 
@@ -21,7 +21,9 @@ This document gives guidance to developers if they plan to contribute to Koalas.
 
 5. Run existing and new test cases to make sure they still pass. Also run the linter `dev/lint-python`.
 
-6. Submit a pull request, and be responsive to code review feedback from other community members.
+6. Build the docs (`make html` in `docs` directory) and verify the docs related to your change look OK.
+
+7. Submit a pull request, and be responsive to code review feedback from other community members.
 
 That's it. Your contribution, once merged, will be available in the next release.
 
