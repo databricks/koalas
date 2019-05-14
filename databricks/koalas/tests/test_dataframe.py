@@ -22,7 +22,7 @@ import pandas as pd
 from databricks import koalas
 from databricks.koalas.generic import max_display_count
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
-from databricks.koalas.exceptions import PandasNotImplementedError, SparkPandasMergeError
+from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 
 
@@ -411,10 +411,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert only 'on' or 'left_index' and 'right_index' parameters are set
         msg = "At least 'on' or 'left_index' and 'right_index' have to be set"
-        with self.assertRaises(SparkPandasMergeError, msg=msg):
+        with self.assertRaises(ValueError, msg=msg):
             left_kdf.merge(right_kdf)
         msg = "Only 'on' or 'left_index' and 'right_index' can be set"
-        with self.assertRaises(SparkPandasMergeError, msg=msg):
+        with self.assertRaises(ValueError, msg=msg):
             left_kdf.merge(right_kdf, on='id', left_index=True)
 
         # Assert a valid option for the 'how' parameter is used

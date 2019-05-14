@@ -31,7 +31,6 @@ from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
-from databricks.koalas.exceptions import SparkPandasMergeError
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
@@ -2373,10 +2372,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             instead of NaN.
         """
         if on is None and not left_index and not right_index:
-            raise SparkPandasMergeError("At least 'on' or 'left_index' and 'right_index' have ",
-                                        "to be set")
+            raise ValueError("At least 'on' or 'left_index' and 'right_index' have to be set")
         if on is not None and (left_index or right_index):
-            raise SparkPandasMergeError("Only 'on' or 'left_index' and 'right_index' can be set")
+            raise ValueError("Only 'on' or 'left_index' and 'right_index' can be set")
 
         if how == 'full':
             warnings.warn("Warning: While Koalas will accept 'full', you should use 'outer' " +
