@@ -178,18 +178,16 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
                        pdf.to_clipboard(sep=";", index=False))
 
     def test_to_records(self):
-        if LooseVersion(pd.__version__) < LooseVersion("0.24.0"):
-            return
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+            pdf = pd.DataFrame({
+                'A': [1, 2],
+                'B': [0.5, 0.75]
+            }, index=['a', 'b'])
 
-        pdf = pd.DataFrame({
-            'A': [1, 2],
-            'B': [0.5, 0.75]
-        }, index=['a', 'b'])
+            kdf = koalas.from_pandas(pdf)
 
-        kdf = koalas.from_pandas(pdf)
-
-        self.assert_array_eq(kdf.to_records(), pdf.to_records())
-        self.assert_array_eq(kdf.to_records(index=False),
-                             pdf.to_records(index=False))
-        self.assert_array_eq(kdf.to_records(index_dtypes="<S2"),
-                             pdf.to_records(index_dtypes="<S2"))
+            self.assert_array_eq(kdf.to_records(), pdf.to_records())
+            self.assert_array_eq(kdf.to_records(index=False),
+                                 pdf.to_records(index=False))
+            self.assert_array_eq(kdf.to_records(index_dtypes="<S2"),
+                                 pdf.to_records(index_dtypes="<S2"))
