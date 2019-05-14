@@ -160,11 +160,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ks = koalas.from_pandas(ps)
 
         self.assert_eq(ks.fillna(0), ps.fillna(0))
-        self.assert_eq(ks.fillna({'x': 0}), ps.fillna(0))
-
-        s_nan = pd.Series([0], index=['x'], dtype=int)
-        self.assert_eq(ks.fillna(s_nan),
-                       ps.fillna(0))
 
         ks.fillna(0, inplace=True)
         ps.fillna(0, inplace=True)
