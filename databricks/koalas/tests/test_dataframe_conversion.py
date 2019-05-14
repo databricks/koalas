@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas
+from distutils.version import LooseVersion
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils, TestUtils
 
 
@@ -177,7 +178,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
                        pdf.to_clipboard(sep=";", index=False))
 
     def test_to_records(self):
-        if pd.__version__ < '0.24.0':
+        if LooseVersion(pd.__version__) < LooseVersion("0.24.0"):
             pass
 
         pdf = pd.DataFrame({

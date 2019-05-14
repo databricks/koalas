@@ -28,6 +28,7 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import BooleanType, StructField, StructType, to_arrow_type
 from pyspark.sql.utils import AnalysisException
+from distutils.version import LooseVersion
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
@@ -1471,6 +1472,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Index will be included as the first field of the record array if
         requested.
 
+        .. note:: This method should only be used if the resulting CSV is expected
+            to be small, as all the data is loaded into the driver's memory.
+
         Parameters
         ----------
         index : bool, default True
@@ -1535,6 +1539,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         rec.array([(b'a', 1, 0.5 ), (b'b', 2, 0.75)],
                   dtype=[('index', 'S2'), ('A', '<i8'), ('B', '<f8')])
         """
+        if LooseVersion(pd.__version__) < LooseVersion("0.24.0"):
+            del args['column_dtypes']
+            del args['index_dtypes']
+
         args = locals()
         kdf = self
 
