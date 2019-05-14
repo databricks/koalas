@@ -50,7 +50,6 @@ def _column_op(f):
     :param self: Koalas Series
     :param args: arguments that the function `f` takes.
     """
-
     @wraps(f)
     def wrapper(self, *args):
         assert all((not isinstance(arg, Series)) or (arg._kdf is self._kdf) for arg in args), \
@@ -62,7 +61,6 @@ def _column_op(f):
         args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
         scol = f(self._scol, *args)
         return Series(scol, anchor=self._kdf, index=self._index_map)
-
     return wrapper
 
 
@@ -79,7 +77,6 @@ def _numpy_column_op(f):
             else:
                 new_args.append(arg)
         return _column_op(f)(self, *new_args)
-
     return wrapper
 
 
