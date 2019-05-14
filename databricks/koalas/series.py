@@ -653,10 +653,8 @@ class Series(_Frame):
 
         Parameters
         ----------
-        value : scalar, dict, Series
-            Value to use to fill holes. alternately a dict/Series of values
-            specifying which value to use for each column.
-            DataFrame is not supported.
+        value : scalar
+            Value to use to fill holes.
         axis : {0 or `index`}
             1 and `columns` are not supported.
         inplace : boolean, default False
@@ -679,22 +677,9 @@ class Series(_Frame):
         5    6.0
         Name: x, dtype: float64
 
-
         Replace all NaN elements with 0s.
 
         >>> s.fillna(0)
-        0    0.0
-        1    2.0
-        2    3.0
-        3    4.0
-        4    0.0
-        5    6.0
-        Name: x, dtype: float64
-
-        Replace all NaN elements in column 'x' with 0.
-
-        >>> values = {'x': 0}
-        >>> s.fillna(value=values)
         0    0.0
         1    2.0
         2    3.0
