@@ -40,3 +40,19 @@ class SeriesConversionTest(ReusedSQLTestCase, SQLTestUtils):
                        ps.to_clipboard(excel=False))
         self.assert_eq(ks.to_clipboard(sep=',', index=False),
                        ps.to_clipboard(sep=',', index=False))
+
+    def test_to_latex(self):
+        ps = self.ps
+        ks = self.ks
+
+        self.assert_eq(ks.to_latex(), ps.to_latex())
+        self.assert_eq(ks.to_latex(col_space=2), ps.to_latex(col_space=2))
+        self.assert_eq(ks.to_latex(header=True), ps.to_latex(header=True))
+        self.assert_eq(ks.to_latex(index=False), ps.to_latex(index=False))
+        self.assert_eq(ks.to_latex(na_rep='-'), ps.to_latex(na_rep='-'))
+        self.assert_eq(ks.to_latex(float_format='%.1f'), ps.to_latex(float_format='%.1f'))
+        self.assert_eq(ks.to_latex(sparsify=False), ps.to_latex(sparsify=False))
+        self.assert_eq(ks.to_latex(index_names=False), ps.to_latex(index_names=False))
+        self.assert_eq(ks.to_latex(bold_rows=True), ps.to_latex(bold_rows=True))
+        self.assert_eq(ks.to_latex(encoding='ascii'), ps.to_latex(encoding='ascii'))
+        self.assert_eq(ks.to_latex(decimal=','), ps.to_latex(decimal=','))

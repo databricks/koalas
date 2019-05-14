@@ -558,6 +558,18 @@ class Series(_Frame):
         return validate_arguments_and_invoke_function(
             kseries.to_pandas(), self.to_dict, pd.Series.to_dict, args)
 
+    def to_latex(self, buf=None, columns=None, col_space=None, header=True, index=True,
+                 na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
+                 bold_rows=False, column_format=None, longtable=None, escape=None, encoding=None,
+                 decimal='.', multicolumn=None, multicolumn_format=None, multirow=None):
+
+        args = locals()
+        kseries = self
+        return validate_arguments_and_invoke_function(
+            kseries.to_pandas(), self.to_latex, pd.Series.to_latex, args)
+
+    to_latex.__doc__ = DataFrame.to_latex.__doc__
+
     def to_pandas(self):
         """
         Return a pandas Series.
