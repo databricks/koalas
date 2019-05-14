@@ -106,7 +106,7 @@ class LocIndexer(object):
     - A list or array of labels, e.g. ``['a', 'b', 'c']``.
 
       .. note:: With a list or array of labels for row selection,
-          Koalas does not preserve the given order but preserves the data order.
+          Koalas behaves just a filter without reordering by the labels.
 
     - A slice object with labels, e.g. ``'a':'f'``.
 
@@ -153,7 +153,12 @@ class LocIndexer(object):
     databricks.koalas.exceptions.SparkPandasNotImplementedError: ...
 
     List of labels. Note using ``[[]]`` returns a DataFrame.
-    Also note that Koalas preserves the data order not the given labels order.
+    Also note that Koalas behaves just a filter without reordering by the labels.
+
+    >>> df.loc[['viper', 'sidewinder']]
+                max_speed  shield
+    viper               4       5
+    sidewinder          7       8
 
     >>> df.loc[['sidewinder', 'viper']]
                 max_speed  shield
