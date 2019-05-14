@@ -667,6 +667,54 @@ class Series(_Frame):
 
     notna = notnull
 
+    def fillna(self, value=None, axis=None, inplace=False):
+        """Fill NA/NaN values.
+
+        Parameters
+        ----------
+        value : scalar
+            Value to use to fill holes.
+        axis : {0 or `index`}
+            1 and `columns` are not supported.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+
+        Returns
+        -------
+        Series
+            Series with NA entries filled.
+
+        Examples
+        --------
+        >>> s = ks.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
+        >>> s
+        0    NaN
+        1    2.0
+        2    3.0
+        3    4.0
+        4    NaN
+        5    6.0
+        Name: x, dtype: float64
+
+        Replace all NaN elements with 0s.
+
+        >>> s.fillna(0)
+        0    0.0
+        1    2.0
+        2    3.0
+        3    4.0
+        4    0.0
+        5    6.0
+        Name: x, dtype: float64
+        """
+
+        ks = _col(self.to_dataframe().fillna(value=value, axis=axis, inplace=False))
+        if inplace:
+            self._kdf = ks._kdf
+            self._scol = ks._scol
+        else:
+            return ks
+
     def dropna(self, axis=0, inplace=False, **kwargs):
         """
         Return a new Series with missing values removed.

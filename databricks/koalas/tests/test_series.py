@@ -150,6 +150,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(TypeError, msg):
             ds.isin(1)
 
+    def test_fillna(self):
+        ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
+        ks = koalas.from_pandas(ps)
+
+        self.assert_eq(ks.fillna(0), ps.fillna(0))
+
+        ks.fillna(0, inplace=True)
+        ps.fillna(0, inplace=True)
+        self.assert_eq(ks, ps)
+
     def test_dropna(self):
         ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
 
