@@ -1,7 +1,8 @@
 # Contributing Guide <!-- omit in toc -->
 
-This document gives guidance to developers if they plan to contribute to Koalas. The largest amount of work consists simply of implementing the pandas API using Spark's built-in functions, which is usually straightforward.
+This document gives guidance to developers if they plan to contribute to Koalas.
 
+- [Types of Contributions](#types-of-contributions)
 - [Step-by-step Guide](#step-by-step-guide)
 - [Environment Setup](#environment-setup)
 - [Running Tests](#running-tests)
@@ -9,7 +10,22 @@ This document gives guidance to developers if they plan to contribute to Koalas.
 - [Coding Conventions](#coding-conventions)
 - [Release Instructions](#release-instructions)
 
-## Step-by-step Guide
+## Types of Contributions
+
+The largest amount of work consists simply of implementing the pandas API using Spark's built-in functions, which is usually straightforward. But there are many different forms of contributions in addition to writing code:
+
+1. Use the project and provide feedback, by creating new tickets or commenting on existing relevant tickets.
+
+2. Review existing pull requests.
+
+3. Improve the project's documentation.
+
+4. Write blog posts or tutorial articles evangelizing Koalas and help new users learn Koalas.
+
+5. Give a talk about Koalas at your local meetup or a conference.
+
+
+## Step-by-step Guide For Code Contributions
 
 1. Read and understand the [Design Principles](https://github.com/databricks/koalas/blob/master/README.md#design-principles) for the project. Contributions should follow these principles.
 
