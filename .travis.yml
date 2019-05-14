@@ -6,11 +6,6 @@ cache:
 
 matrix:
   include:
-#    - python: "2.7"
-#      env:
-#        - SPARK_VERSION=2.3.2
-#        - PANDAS_VERSION=0.19.2
-#        - PYARROW_VERSION=0.8.0
     - python: "3.5"
       env:
         - SPARK_VERSION=2.3.3
@@ -21,8 +16,16 @@ matrix:
         - SPARK_VERSION=2.4.3
         - PANDAS_VERSION=0.24.2
         - PYARROW_VERSION=0.10.0
-    - python: "3.6"
+    # When we upgrade Spark 3.0 for this, we could try to just use JDK 11 at 'xenial'.
+    # Python 3.7 and higher are only available at this image.
+    - python: 3.7
+      dist: xenial
+      sudo: true
+      jdk:
+        - oraclejdk8
       env:
+        - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
+        - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
         - SPARK_VERSION=2.4.3
         - PANDAS_VERSION=0.24.2
         - PYARROW_VERSION=0.13.0
