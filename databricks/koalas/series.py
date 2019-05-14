@@ -355,6 +355,31 @@ class Series(_Frame):
             raise KeyError('Currently supported only when the Column has a single index.')
         return self._kdf.index
 
+    @property
+    def is_unique(self):
+        """
+        Return boolean if values in the object are unique
+
+        .. note:: if the values contain `None`, the result is `False`.
+
+        Returns
+        -------
+        is_unique : boolean
+
+        >>> ks.Series([1, 2, 3]).is_unique
+        True
+        >>> ks.Series([1, 2, 2]).is_unique
+        False
+        >>> ks.Series([1, 2, 3, None]).is_unique
+        False
+        """
+        sdf = self._kdf._sdf.select(self._scol)
+        # Note that we compare the distinct count of values ignoring None
+        # to the count of values containing None.
+        # Therefore, it results to False if there is None.
+        return sdf.select(
+            F.countDistinct(self._scol) == F.count(F.lit(1))).collect()[0][0]
+
     def reset_index(self, level=None, drop=False, name=None, inplace=False):
         """
         Generate a new DataFrame or Series with the index reset.
@@ -758,12 +783,12 @@ class Series(_Frame):
         Name: 0, dtype: float64
         """
         # TODO: last two examples from Pandas produce different results.
-        ks = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
+        kser = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
-            self._kdf = ks._kdf
-            self._scol = ks._scol
+            self._kdf = kser._kdf
+            self._scol = kser._scol
         else:
-            return ks
+            return kser
 
     def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) -> 'Series':
         """

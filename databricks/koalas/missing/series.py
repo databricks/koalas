@@ -49,7 +49,6 @@ class _MissingPandasLikeSeries(object):
     is_monotonic = unsupported_property('is_monotonic')
     is_monotonic_decreasing = unsupported_property('is_monotonic_decreasing')
     is_monotonic_increasing = unsupported_property('is_monotonic_increasing')
-    is_unique = unsupported_property('is_unique')
     itemsize = unsupported_property('itemsize')
     ix = unsupported_property('ix')
     nbytes = unsupported_property('nbytes')
