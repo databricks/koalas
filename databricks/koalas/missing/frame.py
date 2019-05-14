@@ -14,20 +14,39 @@
 # limitations under the License.
 #
 
-from databricks.koalas.missing import _unsupported_function
+from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
 def unsupported_function(method_name):
     return _unsupported_function(class_name='pd.DataFrame', method_name=method_name)
 
 
+def unsupported_property(property_name):
+    return _unsupported_property(class_name='pd.DataFrame', property_name=property_name)
+
+
 class _MissingPandasLikeDataFrame(object):
 
+    # Properties
+    T = unsupported_property('T')
+    at = unsupported_property('at')
+    axes = unsupported_property('axes')
+    blocks = unsupported_property('blocks')
+    empty = unsupported_property('empty')
+    ftypes = unsupported_property('ftypes')
+    iat = unsupported_property('iat')
+    iloc = unsupported_property('iloc')
+    is_copy = unsupported_property('is_copy')
+    ix = unsupported_property('ix')
+    ndim = unsupported_property('ndim')
+    size = unsupported_property('size')
+    style = unsupported_property('style')
+    values = unsupported_property('values')
+
+    # Functions
     add = unsupported_function('add')
     add_prefix = unsupported_function('add_prefix')
     add_suffix = unsupported_function('add_suffix')
-    agg = unsupported_function('agg')
-    aggregate = unsupported_function('aggregate')
     align = unsupported_function('align')
     all = unsupported_function('all')
     any = unsupported_function('any')
@@ -71,7 +90,6 @@ class _MissingPandasLikeDataFrame(object):
     ewm = unsupported_function('ewm')
     expanding = unsupported_function('expanding')
     ffill = unsupported_function('ffill')
-    fillna = unsupported_function('fillna')
     filter = unsupported_function('filter')
     first = unsupported_function('first')
     first_valid_index = unsupported_function('first_valid_index')
@@ -89,7 +107,6 @@ class _MissingPandasLikeDataFrame(object):
     info = unsupported_function('info')
     insert = unsupported_function('insert')
     interpolate = unsupported_function('interpolate')
-    isin = unsupported_function('isin')
     items = unsupported_function('items')
     iterrows = unsupported_function('iterrows')
     itertuples = unsupported_function('itertuples')
@@ -105,7 +122,6 @@ class _MissingPandasLikeDataFrame(object):
     median = unsupported_function('median')
     melt = unsupported_function('melt')
     memory_usage = unsupported_function('memory_usage')
-    merge = unsupported_function('merge')
     mod = unsupported_function('mod')
     mode = unsupported_function('mode')
     mul = unsupported_function('mul')
@@ -159,16 +175,10 @@ class _MissingPandasLikeDataFrame(object):
     swaplevel = unsupported_function('swaplevel')
     tail = unsupported_function('tail')
     take = unsupported_function('take')
-    to_clipboard = unsupported_function('to_clipboard')
-    to_csv = unsupported_function('to_csv')
     to_dense = unsupported_function('to_dense')
-    to_dict = unsupported_function('to_dict')
-    to_excel = unsupported_function('to_excel')
     to_feather = unsupported_function('to_feather')
     to_gbq = unsupported_function('to_gbq')
     to_hdf = unsupported_function('to_hdf')
-    to_json = unsupported_function('to_json')
-    to_latex = unsupported_function('to_latex')
     to_msgpack = unsupported_function('to_msgpack')
     to_panel = unsupported_function('to_panel')
     to_parquet = unsupported_function('to_parquet')
@@ -178,7 +188,6 @@ class _MissingPandasLikeDataFrame(object):
     to_sparse = unsupported_function('to_sparse')
     to_sql = unsupported_function('to_sql')
     to_stata = unsupported_function('to_stata')
-    to_string = unsupported_function('to_string')
     to_timestamp = unsupported_function('to_timestamp')
     to_xarray = unsupported_function('to_xarray')
     transform = unsupported_function('transform')

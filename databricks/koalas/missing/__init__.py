@@ -23,3 +23,12 @@ def _unsupported_function(class_name, method_name):
         raise PandasNotImplementedError(class_name=class_name, method_name=method_name)
 
     return unsupported_function
+
+
+def _unsupported_property(class_name, property_name):
+
+    @property
+    def unsupported_property(self):
+        raise PandasNotImplementedError(class_name=class_name, property_name=property_name)
+
+    return unsupported_property

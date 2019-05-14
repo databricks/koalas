@@ -14,13 +14,24 @@
 # limitations under the License.
 #
 
-import pandas as pd
+from typing import List, Tuple, TYPE_CHECKING
+
 import numpy as np
+import pandas as pd
+import pyspark
+
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.stat import Correlation
 
 
-def corr(kdf, method='pearson'):
+if TYPE_CHECKING:
+    import databricks.koalas as ks
+
+
+CORRELATION_OUTPUT_COLUMN = '_correlation_output'
+
+
+def corr(kdf: 'ks.DataFrame', method: str = 'pearson') -> pd.DataFrame:
     """
     The correlation matrix of all the numerical columns of this dataframe.
 
@@ -31,10 +42,15 @@ def corr(kdf, method='pearson'):
                    * pearson : standard correlation coefficient
                    * spearman : Spearman rank correlation
     :return: :class:`pandas.DataFrame`
+
+    >>> ks.DataFrame({'A': [0, 1], 'B': [1, 0], 'C': ['x', 'y']}).corr()
+         A    B
+    A  1.0 -1.0
+    B -1.0  1.0
     """
-    assert method in ('pearson', 'spearman'), method
+    assert method in ('pearson', 'spearman')
     ndf, fields = to_numeric_df(kdf)
-    corr = Correlation.corr(ndf, "_1", method)
+    corr = Correlation.corr(ndf, CORRELATION_OUTPUT_COLUMN, method)
     pcorr = corr.toPandas()
     arr = pcorr.iloc[0, 0].toArray()
     arr = pd.DataFrame(arr)
@@ -43,22 +59,25 @@ def corr(kdf, method='pearson'):
     return arr
 
 
-def to_numeric_df(kdf):
+def to_numeric_df(kdf: 'ks.DataFrame') -> Tuple[pyspark.sql.DataFrame, List[str]]:
     """
     Takes a dataframe and turns it into a dataframe containing a single numerical
     vector of doubles. This dataframe has a single field called '_1'.
 
     TODO: index is not preserved currently
-    :param df:
+    :param kdf: the koalas dataframe.
     :return: a pair of dataframe, list of strings (the name of the columns
              that were converted to numerical types)
+
+    >>> to_numeric_df(ks.DataFrame({'A': [0, 1], 'B': [1, 0], 'C': ['x', 'y']}))
+    (DataFrame[_correlation_output: vector], ['A', 'B'])
     """
     # TODO, it should be more robust.
     accepted_types = {np.dtype(dt) for dt in [np.int8, np.int16, np.int32, np.int64,
                                               np.float32, np.float64, np.bool_]}
-    numeric_fields = [fname for fname in kdf._metadata.column_fields
+    numeric_fields = [fname for fname in kdf._metadata.data_columns
                       if kdf[fname].dtype in accepted_types]
     numeric_df = kdf._sdf.select(*numeric_fields)
-    va = VectorAssembler(inputCols=numeric_fields, outputCol="_1")
-    v = va.transform(numeric_df).select("_1")
+    va = VectorAssembler(inputCols=numeric_fields, outputCol=CORRELATION_OUTPUT_COLUMN)
+    v = va.transform(numeric_df).select(CORRELATION_OUTPUT_COLUMN)
     return v, numeric_fields

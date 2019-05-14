@@ -1,4 +1,4 @@
-API References
+API Reference
 ============================================
 
 .. toctree::
@@ -8,3 +8,4 @@ API References
     general_functions
     series
     frame
+    groupby

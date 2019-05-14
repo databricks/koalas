@@ -32,6 +32,13 @@ Conversion
 
    Series.astype
 
+Function application, GroupBy & Window
+--------------------------------------
+.. autosummary::
+   :toctree: api/
+
+   Series.groupby
+
 .. _api.series.stats:
 
 Computations / Descriptive Stats
@@ -60,6 +67,7 @@ Reindexing / Selection / Label manipulation
    :toctree: api/
 
    Series.head
+   Series.isin
    Series.rename
    Series.reset_index
 
@@ -69,12 +77,19 @@ Missing data handling
    :toctree: api/
 
    Series.isna
+   Series.isnull
    Series.notna
+   Series.notnull
    Series.dropna
 
 Serialization / IO / Conversion
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 .. autosummary::
    :toctree: api/
 
+   Series.to_pandas
    Series.to_numpy
+   Series.to_string
+   Series.to_dict
+   Series.to_clipboard
+   Series.to_latex

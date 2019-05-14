@@ -6,11 +6,6 @@ cache:
 
 matrix:
   include:
-#    - python: "2.7"
-#      env:
-#        - SPARK_VERSION=2.3.2
-#        - PANDAS_VERSION=0.19.2
-#        - PYARROW_VERSION=0.8.0
     - python: "3.5"
       env:
         - SPARK_VERSION=2.3.3
@@ -18,12 +13,25 @@ matrix:
         - PYARROW_VERSION=0.10.0
     - python: "3.6"
       env:
-        - SPARK_VERSION=2.4.1
+        - SPARK_VERSION=2.4.3
         - PANDAS_VERSION=0.24.2
         - PYARROW_VERSION=0.10.0
+    # When we upgrade Spark 3.0 for this, we could try to just use JDK 11 at 'xenial'.
+    # Python 3.7 and higher are only available at this image.
+    - python: 3.7
+      dist: xenial
+      sudo: true
+      jdk:
+        - oraclejdk8
+      env:
+        - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
+        - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
+        - SPARK_VERSION=2.4.3
+        - PANDAS_VERSION=0.24.2
+        - PYARROW_VERSION=0.13.0
 
 before_install:
- - ./bin/download_travis_dependencies.sh
+ - ./dev/download_travis_dependencies.sh
 
 # See this page: http://conda.pydata.org/docs/travis.html
 install:
@@ -48,9 +56,15 @@ install:
   - conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
   - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION
   - conda activate test-environment
+  - conda install -c conda-forge --yes codecov
   - conda install -c conda-forge --yes --file requirements-dev.txt
 
+  # Show installed packages
   - conda list
+
+  # Useful for to_clipboard test
+  - export DISPLAY=:0.0
+  - sudo apt-get install xclip
 
 before_script:
   - export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
@@ -58,3 +72,8 @@ before_script:
 
 script:
   - ./dev/pytest
+
+# Push the results back to codecov
+after_success:
+  - codecov
+

@@ -213,8 +213,3 @@ Apache Software Foundation License 2.0
 dev/lint-python
 dev/tox.ini
 
-
-BSD 3-Clause
-------------
-
-databricks/koalas/dask/*.py

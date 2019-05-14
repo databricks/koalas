@@ -17,28 +17,36 @@
 """
 A wrapper class for Spark Column to behave similar to pandas Series.
 """
-from decorator import decorator, dispatch_on
-from functools import partial
+import re
+import inspect
+from functools import partial, wraps
+from typing import Any
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import FloatType, DoubleType, LongType, StructType, TimestampType, \
-    to_arrow_type
+from pyspark.sql.types import BooleanType, FloatType, DoubleType, LongType, StringType, \
+    StructType, TimestampType, to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.dask.utils import derived_from
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.selection import SparkDataFrameLocator
+from databricks.koalas.utils import validate_arguments_and_invoke_function
 
 
-@decorator
-def _column_op(f, self, *args):
+# This regular expression pattern is complied and defined here to avoid to compile the same
+# pattern every time it is used in _repr_ in Series.
+# This pattern basically seeks the footer string from Pandas'
+REPR_PATTERN = re.compile(r"Length: (?P<length>[0-9]+)")
+
+
+def _column_op(f):
     """
     A decorator that wraps APIs taking/returning Spark Column so that Koalas Series can be
     supported too. If this decorator is used for the `f` function that takes Spark Column and
@@ -49,30 +57,34 @@ def _column_op(f, self, *args):
     :param self: Koalas Series
     :param args: arguments that the function `f` takes.
     """
+    @wraps(f)
+    def wrapper(self, *args):
+        assert all((not isinstance(arg, Series)) or (arg._kdf is self._kdf) for arg in args), \
+            "Cannot combine column argument because it comes from a different dataframe"
 
-    assert all((not isinstance(arg, Series)) or (arg._kdf is self._kdf) for arg in args), \
-        "Cannot combine column argument because it comes from a different dataframe"
-
-    # It is possible for the function `f` takes other arguments than Spark Column.
-    # To cover this case, explicitly check if the argument is Koalas Series and
-    # extract Spark Column. For other arguments, they are used as are.
-    args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
-    scol = f(self._scol, *args)
-    return Series(scol, self._kdf, self._index_info)
+        # It is possible for the function `f` takes other arguments than Spark Column.
+        # To cover this case, explicitly check if the argument is Koalas Series and
+        # extract Spark Column. For other arguments, they are used as are.
+        args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
+        scol = f(self._scol, *args)
+        return Series(scol, anchor=self._kdf, index=self._index_map)
+    return wrapper
 
 
-@decorator
-def _numpy_column_op(f, self, *args):
-    # PySpark does not support NumPy type out of the box. For now, we convert NumPy types
-    # into some primitive types understandable in PySpark.
-    new_args = []
-    for arg in args:
-        # TODO: This is a quick hack to support NumPy type. We should revisit this.
-        if isinstance(self.spark_type, LongType) and isinstance(arg, np.timedelta64):
-            new_args.append(float(arg / np.timedelta64(1, 's')))
-        else:
-            new_args.append(arg)
-    return _column_op(f)(self, *new_args)
+def _numpy_column_op(f):
+    @wraps(f)
+    def wrapper(self, *args):
+        # PySpark does not support NumPy type out of the box. For now, we convert NumPy types
+        # into some primitive types understandable in PySpark.
+        new_args = []
+        for arg in args:
+            # TODO: This is a quick hack to support NumPy type. We should revisit this.
+            if isinstance(self.spark_type, LongType) and isinstance(arg, np.timedelta64):
+                new_args.append(float(arg / np.timedelta64(1, 's')))
+            else:
+                new_args.append(arg)
+        return _column_op(f)(self, *new_args)
+    return wrapper
 
 
 class Series(_Frame):
@@ -81,19 +93,55 @@ class Series(_Frame):
     internally.
 
     :ivar _scol: Spark Column instance
+    :type _scol: pyspark.Column
     :ivar _kdf: Parent's Koalas DataFrame
-    :ivar _index_info: Each pair holds the index field name which exists in Spark fields,
+    :type _kdf: ks.DataFrame
+    :ivar _index_map: Each pair holds the index field name which exists in Spark fields,
       and the index name.
+
+    Parameters
+    ----------
+    data : array-like, dict, or scalar value, Pandas Series or Spark Column
+        Contains data stored in Series
+        If data is a dict, argument order is maintained for Python 3.6
+        and later.
+        Note that if `data` is a Pandas Series, other arguments should not be used.
+        If `data` is a Spark Column, all other arguments except `index` should not be used.
+    index : array-like or Index (1d)
+        Values must be hashable and have the same length as `data`.
+        Non-unique index values are allowed. Will default to
+        RangeIndex (0, 1, 2, ..., n) if not provided. If both a dict and index
+        sequence are used, the index will override the keys found in the
+        dict.
+        If `data` is a Spark DataFrame, `index` is expected to be `Metadata`s `index_map`.
+    dtype : numpy.dtype or None
+        If None, dtype will be inferred
+    copy : boolean, default False
+        Copy input data
     """
 
-    @derived_from(pd.Series)
-    @dispatch_on('data')
-    def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False):
-        s = pd.Series(data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
-        self._init_from_pandas(s)
+    def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False,
+                 anchor=None):
+        if isinstance(data, pd.Series):
+            assert index is None
+            assert dtype is None
+            assert name is None
+            assert not copy
+            assert anchor is None
+            assert not fastpath
+            self._init_from_pandas(data)
+        elif isinstance(data, spark.Column):
+            assert dtype is None
+            assert name is None
+            assert not copy
+            assert not fastpath
+            self._init_from_spark(data, anchor, index)
+        else:
+            s = pd.Series(
+                data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
+            self._init_from_pandas(s)
 
-    @__init__.register(pd.Series)
-    def _init_from_pandas(self, s, *args):
+    def _init_from_pandas(self, s):
         """
         Creates Koalas Series from Pandas Series.
 
@@ -101,26 +149,39 @@ class Series(_Frame):
         """
 
         kdf = DataFrame(pd.DataFrame(s))
-        self._init_from_spark(kdf._sdf[kdf._metadata.column_fields[0]],
-                              kdf, kdf._metadata.index_info)
+        self._init_from_spark(kdf._sdf[kdf._metadata.data_columns[0]],
+                              kdf, kdf._metadata.index_map)
 
-    @__init__.register(spark.Column)
-    def _init_from_spark(self, scol, kdf, index_info, *args):
+    def _init_from_spark(self, scol, kdf, index_map):
         """
         Creates Koalas Series from Spark Column.
 
         :param scol: Spark Column
         :param kdf: Koalas DataFrame that should have the `scol`.
-        :param index_info: index information of this Series.
+        :param index_map: index information of this Series.
         """
-        assert index_info is not None
+        assert index_map is not None
+        assert kdf is not None
+        assert isinstance(kdf, ks.DataFrame), type(kdf)
         self._scol = scol
         self._kdf = kdf
-        self._index_info = index_info
+        self._index_map = index_map
 
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
-    __add__ = _column_op(spark.Column.__add__)
+
+    def __add__(self, other):
+        if isinstance(self.spark_type, StringType):
+            # Concatenate string columns
+            if isinstance(other, Series) and isinstance(other.spark_type, StringType):
+                return _column_op(F.concat)(self, other)
+            # Handle df['col'] + 'literal'
+            elif isinstance(other, str):
+                return _column_op(F.concat)(self, F.lit(other))
+            else:
+                raise TypeError('string addition can only be applied to string series or literals.')
+        else:
+            return _column_op(spark.Column.__add__)(self, other)
 
     def __sub__(self, other):
         # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
@@ -136,7 +197,15 @@ class Series(_Frame):
     __div__ = _numpy_column_op(spark.Column.__div__)
     __truediv__ = _numpy_column_op(spark.Column.__truediv__)
     __mod__ = _column_op(spark.Column.__mod__)
-    __radd__ = _column_op(spark.Column.__radd__)
+
+    def __radd__(self, other):
+        # Handle 'literal' + df['col']
+        if isinstance(self.spark_type, StringType) and isinstance(other, str):
+            return Series(F.concat(F.lit(other), self._scol), anchor=self._kdf,
+                          index=self._index_map)
+        else:
+            return _column_op(spark.Column.__radd__)(self, other)
+
     __rsub__ = _column_op(spark.Column.__rsub__)
     __rmul__ = _column_op(spark.Column.__rmul__)
     __rdiv__ = _numpy_column_op(spark.Column.__rdiv__)
@@ -194,7 +263,7 @@ class Series(_Frame):
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
-        return Series(self._scol.cast(spark_type), self._kdf, self._index_info)
+        return Series(self._scol.cast(spark_type), anchor=self._kdf, index=self._index_map)
 
     def getField(self, name):
         if not isinstance(self.schema, StructType):
@@ -204,10 +273,10 @@ class Series(_Frame):
             if name not in fnames:
                 raise AttributeError(
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
-            return Series(self._scol.getField(name), self._kdf, self._index_info)
+            return Series(self._scol.getField(name), anchor=self._kdf, index=self._index_map)
 
-    # TODO: automate the process here
     def alias(self, name):
+        """An alias for :meth:`Series.rename`."""
         return self.rename(name)
 
     @property
@@ -221,34 +290,31 @@ class Series(_Frame):
 
     @property
     def name(self):
-        return self._metadata.column_fields[0]
+        return self._metadata.data_columns[0]
 
     @name.setter
     def name(self, name):
         self.rename(name, inplace=True)
 
-    # TODO: Check the following:
-    #  1. function, changes labels
-    #  2.  mapping, changes labels
+    # TODO: Functionality and documentation should be matched. Currently, changing index labels
+    # taking dictionary and function to change index are not supported.
     def rename(self, index=None, **kwargs):
         """
-        Alter axes input function or functions. Function / dict values must be unique (1-to-1).
-        Labels not contained in a dict / Series will be left as-is.
-        Extra labels listed don’t throw an error.
-        Alternatively, change Series.name with a scalar value (Series only).
+        Alter Series name.
 
         Parameters
         ----------
-        index : scalar, list-like, dict-like or function, optional
+        index : scalar
+            Scalar will alter the ``Series.name`` attribute.
 
-            Scalar or list-like will alter the Series.name attribute,
-            and raise on DataFrame or Panel.
-            dict-like or functions are transformations to apply to that axis’ values
+        inplace : bool, default False
+            Whether to return a new Series. If True then value of copy is
+            ignored.
 
-        **kwargs : Not in Use
         Returns
-        --------
-        renamed : Series (new object)
+        -------
+        Series
+            Series with name altered.
 
         Examples
         --------
@@ -260,17 +326,11 @@ class Series(_Frame):
         2    3
         Name: 0, dtype: int64
 
-        >>> s.rename("my_name") # scalar, changes Series.name
+        >>> s.rename("my_name")  # scalar, changes Series.name
         0    1
         1    2
         2    3
         Name: my_name, dtype: int64
-
-        >>> s.rename("myname", inplace=True)
-        0    1
-        1    2
-        2    3
-        Name: myname, dtype: int64
         """
         if index is None:
             return self
@@ -279,7 +339,7 @@ class Series(_Frame):
             self._scol = scol
             return self
         else:
-            return Series(scol, self._kdf, self._index_info)
+            return Series(scol, anchor=self._kdf, index=self._index_map)
 
     @property
     def _metadata(self):
@@ -291,7 +351,7 @@ class Series(_Frame):
 
         Currently supported only when the DataFrame has a single index.
         """
-        if len(self._metadata.index_info) != 1:
+        if len(self._metadata.index_map) != 1:
             raise KeyError('Currently supported only when the Column has a single index.')
         return self._kdf.index
 
@@ -305,45 +365,41 @@ class Series(_Frame):
 
         Parameters
         ----------
-
         level : int, str, tuple, or list, default optional
-
             For a Series with a MultiIndex, only remove the specified levels from the index.
             Removes all levels by default.
         drop : bool, default False
-
             Just reset the index, without inserting it as a column in the new DataFrame.
         name : object, optional
-
             The name to use for the column containing the original Series values.
             Uses self.name by default. This argument is ignored when drop is True.
         inplace : bool, default False
-
             Modify the Series in place (do not create a new object).
-
 
         Returns
         -------
-
         Series or DataFrame
-
-        When drop is False (the default), a DataFrame is returned.
-        The newly created columns will come first in the DataFrame,
-        followed by the original Series values.
-        When drop is True, a Series is returned.
-        In either case, if inplace=True, no value is returned.
-
+            When `drop` is False (the default), a DataFrame is returned.
+            The newly created columns will come first in the DataFrame,
+            followed by the original Series values.
+            When `drop` is True, a `Series` is returned.
+            In either case, if ``inplace=True``, no value is returned.
 
         Examples
         --------
         >>> s = ks.Series([1, 2, 3, 4], name='foo',
-        ...         index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
+        ...               index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
+
+        Generate a DataFrame with default index.
+
         >>> s.reset_index()
           idx  foo
         0   a    1
         1   b    2
         2   c    3
         3   d    4
+
+        To specify the name of the new column use `name`.
 
         >>> s.reset_index(name='values')
           idx  values
@@ -352,12 +408,17 @@ class Series(_Frame):
         2   c       3
         3   d       4
 
+        To generate a new Series with the default set `drop` to True.
+
         >>> s.reset_index(drop=True)
         0    1
         1    2
         2    3
         3    4
         Name: foo, dtype: int64
+
+        To update the Series in place, without generating a new one
+        set `inplace` to True. Note that it also requires ``drop=True``.
 
         >>> s.reset_index(inplace=True, drop=True)
         >>> s
@@ -366,7 +427,6 @@ class Series(_Frame):
         2    3
         3    4
         Name: foo, dtype: int64
-
         """
         if inplace and not drop:
             raise TypeError('Cannot reset_index inplace on a Series to create a DataFrame')
@@ -381,7 +441,7 @@ class Series(_Frame):
             if inplace:
                 self._kdf = kdf
                 self._scol = s._scol
-                self._index_info = s._index_info
+                self._index_map = s._index_map
             else:
                 return s
         else:
@@ -392,12 +452,153 @@ class Series(_Frame):
         return SparkDataFrameLocator(self)
 
     def to_dataframe(self):
-        sdf = self._kdf._sdf.select([field for field, _ in self._index_info] + [self._scol])
-        metadata = Metadata(column_fields=[sdf.schema[-1].name], index_info=self._index_info)
+        sdf = self._kdf._sdf.select([field for field, _ in self._index_map] + [self._scol])
+        metadata = Metadata(data_columns=[sdf.schema[-1].name], index_map=self._index_map)
         return DataFrame(sdf, metadata)
 
-    def toPandas(self):
+    def to_string(self, buf=None, na_rep='NaN', float_format=None, header=True,
+                  index=True, length=False, dtype=False, name=False,
+                  max_rows=None):
+        """
+        Render a string representation of the Series.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory. If the input
+                  is large, set max_rows parameter.
+
+        Parameters
+        ----------
+        buf : StringIO-like, optional
+            buffer to write to
+        na_rep : string, optional
+            string representation of NAN to use, default 'NaN'
+        float_format : one-parameter function, optional
+            formatter function to apply to columns' elements if they are floats
+            default None
+        header : boolean, default True
+            Add the Series header (index name)
+        index : bool, optional
+            Add index (row) labels, default True
+        length : boolean, default False
+            Add the Series length
+        dtype : boolean, default False
+            Add the Series dtype
+        name : boolean, default False
+            Add the Series name if not None
+        max_rows : int, optional
+            Maximum number of rows to show before truncating. If None, show
+            all.
+
+        Returns
+        -------
+        formatted : string (if not buffer passed)
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)], columns=['dogs', 'cats'])
+        >>> print(df['dogs'].to_string())
+        0    0.2
+        1    0.0
+        2    0.6
+        3    0.2
+
+        >>> print(df['dogs'].to_string(max_rows=2))
+        0    0.2
+        1    0.0
+        """
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        if max_rows is not None:
+            kseries = self.head(max_rows)
+        else:
+            kseries = self
+
+        return validate_arguments_and_invoke_function(
+            kseries.to_pandas(), self.to_string, pd.Series.to_string, args)
+
+    def to_clipboard(self, excel=True, sep=None, **kwargs):
+        # Docstring defined below by reusing DataFrame.to_clipboard's.
+        args = locals()
+        kseries = self
+
+        return validate_arguments_and_invoke_function(
+            kseries.to_pandas(), self.to_clipboard, pd.Series.to_clipboard, args)
+
+    to_clipboard.__doc__ = DataFrame.to_clipboard.__doc__
+
+    def to_dict(self, into=dict):
+        """
+        Convert Series to {label -> value} dict or dict-like object.
+
+        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        into : class, default dict
+            The collections.abc.Mapping subclass to use as the return
+            object. Can be the actual class or an empty
+            instance of the mapping type you want.  If you want a
+            collections.defaultdict, you must pass it initialized.
+
+        Returns
+        -------
+        collections.abc.Mapping
+            Key-value representation of Series.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4])
+        >>> s_dict = s.to_dict()
+        >>> sorted(s_dict.items())
+        [(0, 1), (1, 2), (2, 3), (3, 4)]
+        >>> from collections import OrderedDict, defaultdict
+        >>> s.to_dict(OrderedDict)
+        OrderedDict([(0, 1), (1, 2), (2, 3), (3, 4)])
+        >>> dd = defaultdict(list)
+        >>> s.to_dict(dd)  # doctest: +ELLIPSIS
+        defaultdict(<class 'list'>, {...})
+        """
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        kseries = self
+        return validate_arguments_and_invoke_function(
+            kseries.to_pandas(), self.to_dict, pd.Series.to_dict, args)
+
+    def to_latex(self, buf=None, columns=None, col_space=None, header=True, index=True,
+                 na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
+                 bold_rows=False, column_format=None, longtable=None, escape=None, encoding=None,
+                 decimal='.', multicolumn=None, multicolumn_format=None, multirow=None):
+
+        args = locals()
+        kseries = self
+        return validate_arguments_and_invoke_function(
+            kseries.to_pandas(), self.to_latex, pd.Series.to_latex, args)
+
+    to_latex.__doc__ = DataFrame.to_latex.__doc__
+
+    def to_pandas(self):
+        """
+        Return a pandas Series.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory. If the input
+                  is large, set max_rows parameter.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)], columns=['dogs', 'cats'])
+        >>> df['dogs'].to_pandas()
+        0    0.2
+        1    0.0
+        2    0.6
+        3    0.2
+        Name: dogs, dtype: float64
+        """
         return _col(self.to_dataframe().toPandas())
+
+    # Alias to maintain backward compatibility with Spark
+    toPandas = to_pandas
 
     def isnull(self):
         """
@@ -411,35 +612,29 @@ class Series(_Frame):
 
         Returns
         -------
-        Series: Mask of bool values for each element in Series
-               that indicates whether an element is not an NA value.
+        Series : Mask of bool values for each element in Series
+            that indicates whether an element is not an NA value.
 
         Examples
         --------
-
-        >>> df = ks.DataFrame({'age': [5, 6, np.NaN],
-        ...    'born': [pd.NaT, pd.Timestamp('1939-05-27'),
-        ...             pd.Timestamp('1940-04-25')],
-        ...    'name': ['Alfred', 'Batman', ''],
-        ...    'toy': [None, 'Batmobile', 'Joker']})
-        >>> df.age.isnull() # doctest: +NORMALIZE_WHITESPACE
+        >>> ser = ks.Series([5, 6, np.NaN])
+        >>> ser.isna()  # doctest: +NORMALIZE_WHITESPACE
         0    False
         1    False
         2     True
-        Name: ((age IS NULL) OR isnan(age)), dtype: bool
-
+        Name: ((0 IS NULL) OR isnan(0)), dtype: bool
         """
         if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
-            return Series(self._scol.isNull() | F.isnan(self._scol), self._kdf, self._index_info)
+            return Series(self._scol.isNull() | F.isnan(self._scol), anchor=self._kdf,
+                          index=self._index_map)
         else:
-            return Series(self._scol.isNull(), self._kdf, self._index_info)
+            return Series(self._scol.isNull(), anchor=self._kdf, index=self._index_map)
 
     isna = isnull
 
     def notnull(self):
         """
         Detect existing (non-missing) values.
-
         Return a boolean same-sized object indicating if the values are not NA.
         Non-missing values get mapped to True.
         Characters such as empty strings '' or numpy.inf are not considered NA values
@@ -448,22 +643,25 @@ class Series(_Frame):
 
         Returns
         -------
-        Series: Mask of bool values for each element in Series
-               that indicates whether an element is not an NA value.
+        Series : Mask of bool values for each element in Series
+            that indicates whether an element is not an NA value.
 
         Examples
         --------
+        Show which entries in a Series are not NA.
 
-        >>> df = ks.DataFrame({'age': [5, 6, np.NaN],
-        ...    'born': [pd.NaT, pd.Timestamp('1939-05-27'),
-        ...             pd.Timestamp('1940-04-25')],
-        ...    'name': ['Alfred', 'Batman', ''],
-        ...    'toy': [None, 'Batmobile', 'Joker']})
-        >>> df.name.notnull() # doctest: +NORMALIZE_WHITESPACE
+        >>> ser = pd.Series([5, 6, np.NaN])
+        >>> ser
+        0    5.0
+        1    6.0
+        2    NaN
+        dtype: float64
+
+        >>> ser.notna()
         0     True
         1     True
-        2     True
-        Name: (NOT (name IS NULL)), dtype: bool
+        2    False
+        dtype: bool
         """
         return ~self.isnull()
 
@@ -475,19 +673,15 @@ class Series(_Frame):
 
         Parameters
         ----------
-
-        axis : {0 or ‘index’}, default 0
+        axis : {0 or 'index'}, default 0
             There is only one axis to drop values from.
-
         inplace : bool, default False
             If True, do operation inplace and return None.
-
         **kwargs
             Not in use.
 
         Returns
         -------
-
         Series
             Series with NA entries dropped from it.
 
@@ -500,34 +694,22 @@ class Series(_Frame):
         2    NaN
         Name: 0, dtype: float64
 
+        Drop NA values from a Series.
+
         >>> ser.dropna()
         0    1.0
         1    2.0
         Name: 0, dtype: float64
+
+        Keep the Series with valid entries in the same variable.
 
         >>> ser.dropna(inplace=True)
         >>> ser
         0    1.0
         1    2.0
         Name: 0, dtype: float64
-
-        >>> ser = pd.Series([np.NaN, 2, pd.NaT, '', None, 'I stay'])
-        >>> ser # doctest: +NORMALIZE_WHITESPACE
-        0       NaN
-        1         2
-        2       NaT
-        3
-        4      None
-        5    I stay
-        dtype: object
-
-        >>> ser.dropna() # doctest: +NORMALIZE_WHITESPACE
-        1         2
-        3
-        5    I stay
-        dtype: object
-
         """
+        # TODO: last two examples from Pandas produce different results.
         ks = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
             self._kdf = ks._kdf
@@ -552,7 +734,6 @@ class Series(_Frame):
 
         Examples
         --------
-
         >>> df = ks.DataFrame({'animal':['alligator', 'bee', 'falcon', 'lion']})
         >>> df.animal.head(2)  # doctest: +NORMALIZE_WHITESPACE
         0     alligator
@@ -561,9 +742,38 @@ class Series(_Frame):
         """
         return _col(self.to_dataframe().head(n))
 
+    # TODO: Categorical type isn't supported (due to PySpark's limitation) and
+    # some doctests related with timestamps were not added.
     def unique(self):
-        # Pandas wants a series/array-like object
-        return _col(self.to_dataframe().unique())
+        """
+        Return unique values of Series object.
+
+        Uniques are returned in order of appearance. Hash table-based unique,
+        therefore does NOT sort.
+
+        .. note:: This method returns newly creased Series whereas Pandas returns
+                  the unique values as a NumPy array.
+
+        Returns
+        -------
+        Returns the unique values as a Series.
+
+        See Examples section.
+
+        Examples
+        --------
+        >>> ks.Series([2, 1, 3, 3], name='A').unique()
+        0    1
+        1    3
+        2    2
+        Name: A, dtype: int64
+
+        >>> ks.Series([pd.Timestamp('2016-01-01') for _ in range(3)]).unique()
+        0   2016-01-01
+        Name: 0, dtype: datetime64[ns]
+        """
+        sdf = self.to_dataframe()._sdf
+        return _col(DataFrame(sdf.select(self._scol).distinct()))
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
@@ -597,7 +807,7 @@ class Series(_Frame):
         Examples
         --------
         >>> df = ks.DataFrame({'x':[0, 0, 1, 1, 1, np.nan]})
-        >>> df.x.value_counts() # doctest: +NORMALIZE_WHITESPACE
+        >>> df.x.value_counts()  # doctest: +NORMALIZE_WHITESPACE
         1.0    3
         0.0    2
         Name: x, dtype: int64
@@ -605,7 +815,7 @@ class Series(_Frame):
         With `normalize` set to `True`, returns the relative frequency by
         dividing all values by the sum of values.
 
-        >>> df.x.value_counts(normalize=True) # doctest: +NORMALIZE_WHITESPACE
+        >>> df.x.value_counts(normalize=True)  # doctest: +NORMALIZE_WHITESPACE
         1.0    0.6
         0.0    0.4
         Name: x, dtype: float64
@@ -613,7 +823,7 @@ class Series(_Frame):
         **dropna**
         With `dropna` set to `False` we can also see NaN index values.
 
-        >>> df.x.value_counts(dropna=False) # doctest: +NORMALIZE_WHITESPACE
+        >>> df.x.value_counts(dropna=False)  # doctest: +NORMALIZE_WHITESPACE
         1.0    3
         0.0    2
         NaN    1
@@ -640,8 +850,57 @@ class Series(_Frame):
         index_name = 'index' if self.name != 'index' else 'level_0'
         kdf = DataFrame(sdf)
         kdf.columns = [index_name, self.name]
-        kdf._metadata = Metadata(column_fields=[self.name], index_info=[(index_name, None)])
+        kdf._metadata = Metadata(data_columns=[self.name], index_map=[(index_name, None)])
         return _col(kdf)
+
+    def isin(self, values):
+        """
+        Check whether `values` are contained in Series.
+
+        Return a boolean Series showing whether each element in the Series
+        matches an element in the passed sequence of `values` exactly.
+
+        Parameters
+        ----------
+        values : list or set
+            The sequence of values to test.
+
+        Returns
+        -------
+        isin : Series (bool dtype)
+
+        Examples
+        --------
+        >>> s = ks.Series(['lama', 'cow', 'lama', 'beetle', 'lama',
+        ...                'hippo'], name='animal')
+        >>> s.isin(['cow', 'lama'])
+        0     True
+        1     True
+        2     True
+        3    False
+        4     True
+        5    False
+        Name: animal, dtype: bool
+
+        Passing a single string as ``s.isin('lama')`` will raise an error. Use
+        a list of one element instead:
+
+        >>> s.isin(['lama'])
+        0     True
+        1    False
+        2     True
+        3    False
+        4     True
+        5    False
+        Name: animal, dtype: bool
+        """
+        if not is_list_like(values):
+            raise TypeError("only list-like objects are allowed to be passed"
+                            " to isin(), you passed a [{values_type}]"
+                            .format(values_type=type(values).__name__))
+
+        return Series(self._scol.isin(list(values)).alias(self.name), anchor=self._kdf,
+                      index=self._index_map)
 
     def corr(self, other, method='pearson'):
         """
@@ -693,30 +952,171 @@ class Series(_Frame):
         Returns
         -------
         nobs : int
+
+        Examples
+        --------
+        Constructing DataFrame from a dictionary:
+
+        >>> df = ks.DataFrame({"Person":
+        ...                    ["John", "Myla", "Lewis", "John", "Myla"],
+        ...                    "Age": [24., np.nan, 21., 33, 26]})
+
+        Notice the uncounted NA values:
+
+        >>> df['Person'].count()
+        5
+
+        >>> df['Age'].count()
+        4
         """
-        return self._reduce_for_stat_function(F.count)
+        return self._reduce_for_stat_function(_Frame._count_expr)
+
+    def apply(self, func, args=(), **kwds):
+        """
+        Invoke function on values of Series.
+
+        Can be a Python function that only works on the Series.
+
+        .. note:: unlike pandas, it is required for `func` to specify return type hint.
+
+        Parameters
+        ----------
+        func : function
+            Python function to apply. Note that type hint for return type is required.
+        args : tuple
+            Positional arguments passed to func after the series value.
+        **kwds
+            Additional keyword arguments passed to func.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+        Create a Series with typical summer temperatures for each city.
+
+        >>> s = ks.Series([20, 21, 12],
+        ...               index=['London', 'New York', 'Helsinki'])
+        >>> s
+        London      20
+        New York    21
+        Helsinki    12
+        Name: 0, dtype: int64
+
+
+        Square the values by defining a function and passing it as an
+        argument to ``apply()``.
+
+        >>> def square(x) -> np.int64:
+        ...     return x ** 2
+        >>> s.apply(square)
+        London      400
+        New York    441
+        Helsinki    144
+        Name: square(0), dtype: int64
+
+
+        Define a custom function that needs additional positional
+        arguments and pass these additional arguments using the
+        ``args`` keyword
+
+        >>> def subtract_custom_value(x, custom_value) -> np.int64:
+        ...     return x - custom_value
+
+        >>> s.apply(subtract_custom_value, args=(5,))
+        London      15
+        New York    16
+        Helsinki     7
+        Name: subtract_custom_value(0), dtype: int64
+
+
+        Define a custom function that takes keyword arguments
+        and pass these arguments to ``apply``
+
+        >>> def add_custom_values(x, **kwargs) -> np.int64:
+        ...     for month in kwargs:
+        ...         x += kwargs[month]
+        ...     return x
+
+        >>> s.apply(add_custom_values, june=30, july=20, august=25)
+        London      95
+        New York    96
+        Helsinki    87
+        Name: add_custom_values(0), dtype: int64
+
+
+        Use a function from the Numpy library
+
+        >>> def numpy_log(col) -> np.float64:
+        ...     return np.log(col)
+        >>> s.apply(numpy_log)
+        London      2.995732
+        New York    3.044522
+        Helsinki    2.484907
+        Name: numpy_log(0), dtype: float64
+        """
+        spec = inspect.getfullargspec(func)
+        return_sig = spec.annotations.get("return", None)
+        if return_sig is None:
+            raise ValueError("Given function must have return type hint; however, not found.")
+
+        apply_each = wraps(func)(lambda s, *a, **k: s.apply(func, args=a, **k))
+        wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
+        return wrapped(self, *args, **kwds)
 
     def _reduce_for_stat_function(self, sfun):
-        return _unpack_scalar(self._kdf._sdf.select(sfun(self._scol)))
+        from inspect import signature
+        num_args = len(signature(sfun).parameters)
+        col_sdf = self._scol
+        col_type = self.schema[self.name].dataType
+        if isinstance(col_type, BooleanType) and sfun.__name__ not in ('min', 'max'):
+            # Stat functions cannot be used with boolean values by default
+            # Thus, cast to integer (true to 1 and false to 0)
+            # Exclude the min and max methods though since those work with booleans
+            col_sdf = col_sdf.cast('integer')
+        if num_args == 1:
+            # Only pass in the column if sfun accepts only one arg
+            col_sdf = sfun(col_sdf)
+        else:  # must be 2
+            assert num_args == 2
+            # Pass in both the column and its data type if sfun accepts two args
+            col_sdf = sfun(col_sdf, col_type)
+        return _unpack_scalar(self._kdf._sdf.select(col_sdf))
 
     def __len__(self):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        return Series(self._scol.__getitem__(key), self._kdf, self._index_info)
+        return Series(self._scol.__getitem__(key), anchor=self._kdf, index=self._index_map)
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
             raise AttributeError(item)
         if hasattr(_MissingPandasLikeSeries, item):
-            return partial(getattr(_MissingPandasLikeSeries, item), self)
+            property_or_func = getattr(_MissingPandasLikeSeries, item)
+            if isinstance(property_or_func, property):
+                return property_or_func.fget(self)  # type: ignore
+            else:
+                return partial(property_or_func, self)
         return self.getField(item)
 
     def __str__(self):
         return self._pandas_orig_repr()
 
     def __repr__(self):
-        return repr(self.head(max_display_count).toPandas())
+        pser = self.head(max_display_count + 1).to_pandas()
+        pser_length = len(pser)
+        repr_string = repr(pser.iloc[:max_display_count])
+        if pser_length > max_display_count:
+            rest, prev_footer = repr_string.rsplit("\n", 1)
+            match = REPR_PATTERN.search(prev_footer)
+            if match is not None:
+                length = match.group("length")
+                footer = ("\n{prev_footer}\nShowing only the first {length}"
+                          .format(length=length, prev_footer=prev_footer))
+                return rest + footer
+        return repr_string
 
     def __dir__(self):
         if not isinstance(self.schema, StructType):

@@ -34,7 +34,9 @@ Conversion
 
    DataFrame.copy
    DataFrame.isna
+   DataFrame.isnull
    DataFrame.notna
+   DataFrame.notnull
 
 Indexing, iteration
 ~~~~~~~~~~~~~~~~~~~
@@ -84,6 +86,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.head
    DataFrame.reset_index
    DataFrame.set_index
+   DataFrame.isin
 
 .. _api.dataframe.missing:
 
@@ -93,6 +96,7 @@ Missing data handling
    :toctree: api/
 
    DataFrame.dropna
+   DataFrame.fillna
 
 Reshaping, sorting, transposing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -113,5 +117,15 @@ Serialization / IO / Conversion
 .. autosummary::
    :toctree: api/
 
+   DataFrame.to_csv
+   DataFrame.to_pandas
    DataFrame.to_html
    DataFrame.to_numpy
+   DataFrame.to_koalas
+   DataFrame.to_spark
+   DataFrame.to_string
+   DataFrame.to_json
+   DataFrame.to_dict
+   DataFrame.to_excel
+   DataFrame.to_clipboard
+   DataFrame.to_latex

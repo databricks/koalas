@@ -45,3 +45,6 @@ _build
 
 # mypy cache
 .mypy_cache/
+
+# Coverage
+.coverage

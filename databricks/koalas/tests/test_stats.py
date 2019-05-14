@@ -47,16 +47,6 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             getattr(ddf.A, funcname)()
             getattr(ddf, funcname)()
 
-    def test_count(self):
-        df = pd.DataFrame({'A': [1, 2, 3, 4],
-                           'B': [1.0, 2.1, 3, 4]})
-        ddf = koalas.from_pandas(df)
-
-        # NOTE: This does not patch the pandas API, but maintains compat with spark
-        self.assertEqual(ddf.count(), len(df))
-
-        self.assertEqual(ddf.A.count(), df.A.count())
-
     def test_abs(self):
         df = pd.DataFrame({'A': [1, -2, 3, -4, 5],
                            'B': [1., -2, 3, -4, 5],
@@ -105,15 +95,30 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                               index=pd.Index([1, 2, 3], name='myindex'))
             ddf = koalas.from_pandas(df)
             self.assert_eq(ddf.corr(), df.corr())
-            # self.assert_eq(ddf.cov(), df.cov())
-            # assert ddf.a.cov(ddf.b)._meta.dtype == 'f8'
-            # assert ddf.a.corr(ddf.b)._meta.dtype == 'f8'
 
+    def test_stats_on_boolean_dataframe(self):
+        df = pd.DataFrame({'A': [True, False, True],
+                           'B': [False, False, True]})
+        ddf = koalas.from_pandas(df)
 
-if __name__ == "__main__":
-    try:
-        import xmlrunner
-        testRunner = xmlrunner.XMLTestRunner(output='target/test-reports')
-    except ImportError:
-        testRunner = None
-    unittest.main(testRunner=testRunner, verbosity=2)
+        pd.testing.assert_series_equal(ddf.min(), df.min())
+        pd.testing.assert_series_equal(ddf.max(), df.max())
+
+        pd.testing.assert_series_equal(ddf.sum(), df.sum())
+        pd.testing.assert_series_equal(ddf.mean(), df.mean())
+
+        pd.testing.assert_series_equal(ddf.var(), df.var())
+        pd.testing.assert_series_equal(ddf.std(), df.std())
+
+    def test_stats_on_boolean_series(self):
+        s = pd.Series([True, False, True])
+        ds = koalas.from_pandas(s)
+
+        self.assertEqual(ds.min(), s.min())
+        self.assertEqual(ds.max(), s.max())
+
+        self.assertEqual(ds.sum(), s.sum())
+        self.assertEqual(ds.mean(), s.mean())
+
+        self.assertAlmostEqual(ds.var(), s.var())
+        self.assertAlmostEqual(ds.std(), s.std())
