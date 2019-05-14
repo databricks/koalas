@@ -20,7 +20,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 import re
 import inspect
 from functools import partial, wraps
-from typing import Any
+from typing import Any, Union
 
 import numpy as np
 import pandas as pd
@@ -716,6 +716,41 @@ class Series(_Frame):
             self._scol = ks._scol
         else:
             return ks
+
+    def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) -> 'Series':
+        """
+        Trim values at input threshold(s).
+
+        Assigns values outside boundary to boundary values.
+
+        Parameters
+        ----------
+        lower : float or int, default None
+            Minimum threshold value. All values below this threshold will be set to it.
+        upper : float or int, default None
+            Maximum threshold value. All values above this threshold will be set to it.
+
+        Returns
+        -------
+        Series
+            Series with the values outside the clip boundaries replaced
+
+        Examples
+        --------
+        >>> ks.Series([0, 2, 4]).clip(1, 3)
+        0    1
+        1    2
+        2    3
+        Name: 0, dtype: int64
+
+        Notes
+        -----
+        One difference between this implementation and pandas is that running
+        pd.Series(['a', 'b']).clip(0, 1) will crash with "TypeError: '<=' not supported between
+        instances of 'str' and 'int'" while ks.Series(['a', 'b']).clip(0, 1) will output the
+        original Series, simply ignoring the incompatible types.
+        """
+        return _col(self.to_dataframe().clip(lower, upper))
 
     def head(self, n=5):
         """

@@ -63,7 +63,6 @@ class _MissingPandasLikeDataFrame(object):
     bfill = unsupported_function('bfill')
     bool = unsupported_function('bool')
     boxplot = unsupported_function('boxplot')
-    clip = unsupported_function('clip')
     clip_lower = unsupported_function('clip_lower')
     clip_upper = unsupported_function('clip_upper')
     combine = unsupported_function('combine')
