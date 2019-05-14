@@ -150,6 +150,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(TypeError, msg):
             ds.isin(1)
 
+    def test_fillna(self):
+        ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
+        ks = koalas.from_pandas(ps)
+
+        self.assert_eq(ks.fillna(0), ps.fillna(0))
+
+        ks.fillna(0, inplace=True)
+        ps.fillna(0, inplace=True)
+        self.assert_eq(ks, ps)
+
     def test_dropna(self):
         ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
 
@@ -221,3 +231,27 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*Series.*{}.*not implemented".format(name)):
                 getattr(ks, name)
+
+    def test_clip(self):
+        ps = pd.Series([0, 2, 4])
+        ks = koalas.from_pandas(ps)
+
+        # Assert list-like values are not accepted for 'lower' and 'upper'
+        msg = "List-like value are not supported for 'lower' and 'upper' at the moment"
+        with self.assertRaises(ValueError, msg=msg):
+            ks.clip(lower=[1])
+        with self.assertRaises(ValueError, msg=msg):
+            ks.clip(upper=[1])
+
+        # Assert no lower or upper
+        self.assert_eq(ks.clip(), ps.clip())
+        # Assert lower only
+        self.assert_eq(ks.clip(1), ps.clip(1))
+        # Assert upper only
+        self.assert_eq(ks.clip(upper=3), ps.clip(upper=3))
+        # Assert lower and upper
+        self.assert_eq(ks.clip(1, 3), ps.clip(1, 3))
+
+        # Assert behavior on string values
+        str_ks = koalas.Series(['a', 'b', 'c'])
+        self.assert_eq(str_ks.clip(1, 3), str_ks)
