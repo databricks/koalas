@@ -18,15 +18,12 @@
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
 from collections.abc import Iterable
-from typing import Union
 
 import numpy as np
-from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import (DataType, DecimalType, DoubleType, FloatType, ByteType,
-                               IntegerType, LongType, ShortType)
+from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 
@@ -313,80 +310,6 @@ class _Frame(object):
         """
         # TODO: The first example above should not have "Name: abs(0)".
         return _spark_col_apply(self, F.abs)
-
-    def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) \
-            -> Union['ks.Series', 'ks.DataFrame']:
-        """
-        Trim values at input threshold(s).
-
-        Assigns values outside boundary to boundary values. Thresholds can be singular values or
-        array like, and in the latter case the clipping is performed element-wise in the specified
-        axis.
-
-        Parameters
-        ----------
-        lower : float or int, default None
-            Minimum threshold value. All values below this threshold will be set to it.
-        upper : float or int, default None
-            Maximum threshold value. All values above this threshold will be set to it.
-
-        Returns
-        -------
-        Series or DataFrame
-            Same type as calling object with the values outside the clip boundaries replaced
-
-        Examples
-        --------
-        >>> ks.Series([0, 2, 4]).clip(1, 3)
-        0    1
-        1    2
-        2    3
-        Name: 0, dtype: int64
-
-        >>> ks.DataFrame({'A': [0, 2, 4]}).clip(1, 3)
-           A
-        0  1
-        1  2
-        2  3
-
-        Notes
-        -----
-        One difference between this implementation and pandas is that running
-        pd.DataFrame({'A': ['a', 'b']}).clip(0, 1) will crash with "TypeError: '<=' not supported
-        between instances of 'str' and 'int'" while ks.DataFrame({'A': ['a', 'b']}).clip(0, 1)
-        will output the original DataFrame, simply ignoring the incompatible types.
-        """
-        if is_list_like(lower) or is_list_like(upper):
-            raise ValueError("List-like value are not supported for 'lower' and 'upper' at the " +
-                             "moment")
-
-        if lower is None and upper is None:
-            return self  # type: ignore
-
-        is_df = isinstance(self, ks.DataFrame)
-
-        df = self if is_df else self.to_dataframe()  # type: ignore
-        sdf = df._sdf
-
-        numeric_types = (DecimalType, DoubleType, FloatType, ByteType, IntegerType, LongType,
-                         ShortType)
-        numeric_columns = [c for c in df.columns
-                           if isinstance(sdf.schema[c].dataType, numeric_types)]
-        nonnumeric_columns = [c for c in df.columns
-                              if not isinstance(sdf.schema[c].dataType, numeric_types)]
-
-        if lower is not None:
-            sdf = sdf.select(*[F.when(F.col(c) < lower, lower).otherwise(F.col(c)).alias(c)
-                               for c in numeric_columns] + nonnumeric_columns)
-        if upper is not None:
-            sdf = sdf.select(*[F.when(F.col(c) > upper, upper).otherwise(F.col(c)).alias(c)
-                               for c in numeric_columns] + nonnumeric_columns)
-
-        # Restore initial column order
-        sdf = sdf.select(list(df.columns))
-
-        df = ks.DataFrame(sdf)
-        return df if is_df else df['0']
 
     # TODO: by argument only support the grouping name only for now. Documentation should
     # be updated when it's supported.
