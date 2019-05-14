@@ -19,12 +19,13 @@ Date/Time related functions on Koalas Series
 """
 
 import functools
-from pyspark.sql.types import DateType, TimestampType, LongType, StringType
 
-from databricks.koalas.series import Series
-from databricks.koalas.utils import lazy_property
-
+import databricks.koalas as ks
 import pyspark.sql.functions as F
+from pyspark.sql.types import DateType, TimestampType, LongType, StringType
+from databricks.koalas.series import Series, _column_op
+from databricks.koalas.typedef import pandas_wraps
+from databricks.koalas.utils import lazy_property
 
 
 def defer_to_pandas(output_type):
@@ -61,7 +62,7 @@ def defer_to_spark(output_type):
     return decorator
 
 
-class DatetimeMethods:
+class DatetimeMethods(object):
     """Date/Time methods for Koalas Series"""
     def __init__(self, series):
         if not isinstance(series.spark_type, (DateType, TimestampType)):
@@ -129,26 +130,50 @@ class DatetimeMethods:
         raise NotImplementedError()
 
     @lazy_property
-    @defer_to_spark(output_type=LongType())
-    def week(col):
-        return F.weekofyear(col)
+    def week(self) -> ks.Series:
+        """
+        The week ordinal of the year.
+        :return:
+        """
+        return _column_op(
+            lambda col: F.weekofyear(col).cast(LongType())
+        )(self._data)
 
     @lazy_property
-    @defer_to_spark(output_type=LongType())
-    def weekofyear(col):
-        return F.weekofyear(col)
+    def weekofyear(self) -> ks.Series:
+        """
+        The week ordinal of the year.
+        """
+        return _column_op(
+            lambda col: F.weekofyear(col).cast(LongType())
+        )(self._data)
 
     @lazy_property
-    @defer_to_pandas(output_type=LongType())
-    def dayofweek(s):
-        return s.dt.dayofweek
+    def dayofweek(self) -> ks.Series:
+        """
+        The day of the week with Monday=0, Sunday=6.
+        """
+        return pandas_wraps(
+            function=lambda s: s.dt.dayofyear,
+            return_col=StringType()
+        )(self._data)
 
     @lazy_property
-    @defer_to_spark(output_type=LongType())
-    def dayofyear(col):
-        return F.dayofyear(col)
+    def dayofyear(self) -> ks.Series:
+        """
+        The ordinal day of the year.
+        """
+        return pandas_wraps(
+            function=lambda s: s.dt.dayofyear,
+            return_col=StringType()
+        )(self._data)
 
     # Methods
-    @defer_to_pandas(output_type=StringType())
-    def strftime(s, date_format):
-        return s.dt.strftime(date_format)
+    def strftime(self, date_format) -> ks.Series:
+        """
+        Convert to String Series using specified date_format.
+        """
+        return pandas_wraps(
+            function=lambda x: x.dt.strftime(date_format),
+            return_col=StringType()
+        )(self._data)

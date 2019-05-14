@@ -114,3 +114,26 @@ Serialization / IO / Conversion
    Series.to_json
    Series.to_csv
    Series.to_excel
+
+Datetime Methods
+----------------
+.. currentmodule:: databricks.koalas.datetime
+
+.. autosummary::
+   :toctree: api/
+
+   DatetimeMethods.date
+   DatetimeMethods.year
+   DatetimeMethods.month
+   DatetimeMethods.week
+   DatetimeMethods.weekofyear
+   DatetimeMethods.day
+   DatetimeMethods.dayofweek
+   DatetimeMethods.dayofyear
+   DatetimeMethods.hour
+   DatetimeMethods.minute
+   DatetimeMethods.second
+   DatetimeMethods.millisecond
+   DatetimeMethods.microsecond
+
+   DatetimeMethods.strftime
