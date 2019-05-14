@@ -179,7 +179,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
 
     def test_to_records(self):
         if LooseVersion(pd.__version__) < LooseVersion("0.24.0"):
-            pass
+            return
 
         pdf = pd.DataFrame({
             'A': [1, 2],
