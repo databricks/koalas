@@ -127,8 +127,6 @@ class _MissingPandasLikeDataFrame(object):
     mul = unsupported_function('mul')
     multiply = unsupported_function('multiply')
     ne = unsupported_function('ne')
-    nlargest = unsupported_function('nlargest')
-    nsmallest = unsupported_function('nsmallest')
     nunique = unsupported_function('nunique')
     pct_change = unsupported_function('pct_change')
     pivot = unsupported_function('pivot')
