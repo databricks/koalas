@@ -44,6 +44,19 @@ def _unfold(key, ks):
     If ks parameter is not None, the key should be row selection and the column selection will be
     the Spark Column in the ks parameter. Otherwise check the key contains column selection, and
     the selection is acceptable.
+
+    >>> s = ks.Series([1, 2, 3], name='a')
+    >>> _unfold(slice(1, 2), s)
+    (slice(1, 2, None), Column<b'a'>)
+
+    >>> _unfold((slice(1, 2), slice(None)), None)
+    (slice(1, 2, None), None)
+
+    >>> _unfold((slice(1, 2), s), None)
+    (slice(1, 2, None), Column<b'a'>)
+
+    >>> _unfold((slice(1, 2), 'col'), None)
+    (slice(1, 2, None), Column<b'col'>)
     """
     from databricks.koalas.series import Series
     if ks is not None:
