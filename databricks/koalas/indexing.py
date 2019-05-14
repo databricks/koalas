@@ -38,7 +38,7 @@ def _make_col(c):
             description="Can only convert a string to a column type.")
 
 
-def _unfold(key, ks):
+def _unfold(key, kseries):
     """ Return row selection and column selection pair.
 
     If ks parameter is not None, the key should be row selection and the column selection will be
@@ -59,13 +59,13 @@ def _unfold(key, ks):
     (slice(1, 2, None), Column<b'col'>)
     """
     from databricks.koalas.series import Series
-    if ks is not None:
+    if kseries is not None:
         if isinstance(key, tuple):
             if len(key) > 1:
                 raise SparkPandasIndexingError('Too many indexers')
             key = key[0]
         rows_sel = key
-        cols_sel = ks._scol
+        cols_sel = kseries._scol
     elif isinstance(key, tuple):
         if len(key) != 2:
             raise SparkPandasIndexingError("Only accepts pairs of candidates")
