@@ -15,11 +15,12 @@
 #
 
 """
-A locator for PandasLikeDataFrame.
+A loc indexer for Koalas DataFrame/Series.
 """
 from functools import reduce
 
 from pyspark import sql as spark
+from pyspark.sql import functions as F
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
@@ -31,28 +32,27 @@ def _make_col(c):
     if isinstance(c, Series):
         return c._scol
     elif isinstance(c, str):
-        from pyspark.sql.functions import col
-        return col(c)
+        return F.col(c)
     else:
         raise SparkPandasNotImplementedError(
             description="Can only convert a string to a column type.")
 
 
-def _unfold(key, col):
+def _unfold(key, ks):
     """ Return row selection and column selection pair.
 
-    If col parameter is not None, the key should be row selection and the column selection will be
-    the col parameter itself. Otherwise check the key contains column selection, and the selection
-    is acceptable.
+    If ks parameter is not None, the key should be row selection and the column selection will be
+    the Spark Column in the ks parameter. Otherwise check the key contains column selection, and
+    the selection is acceptable.
     """
     from databricks.koalas.series import Series
-    if col is not None:
+    if ks is not None:
         if isinstance(key, tuple):
             if len(key) > 1:
                 raise SparkPandasIndexingError('Too many indexers')
             key = key[0]
         rows_sel = key
-        cols_sel = col._scol
+        cols_sel = ks._scol
     elif isinstance(key, tuple):
         if len(key) != 2:
             raise SparkPandasIndexingError("Only accepts pairs of candidates")
@@ -75,12 +75,169 @@ def _unfold(key, col):
     return rows_sel, cols_sel
 
 
-class SparkDataFrameLocator(object):
+class LocIndexer(object):
     """
-    A locator to slice a group of rows and columns by conditional and label(s).
+    Access a group of rows and columns by label(s) or a boolean Series.
 
-    Allowed inputs are a slice with all indices or conditional for rows, and string(s) or
-    :class:`Column`(s) for cols.
+    ``.loc[]`` is primarily label based, but may also be used with a
+    conditional boolean Series derived from the DataFrame or Series.
+
+    Allowed inputs are:
+
+    - A single label, e.g. ``5`` or ``'a'``, (note that ``5`` is
+      interpreted as a *label* of the index, and **never** as an
+      integer position along the index) for column selection.
+
+      .. warning:: A single label for row selection is not allowed
+
+    - A list or array of labels, e.g. ``['a', 'b', 'c']``.
+
+      .. warning:: With a list or array of labels for row selection,
+          Koalas does not preserve the given order but preserves the data order.
+
+    - A slice object with labels, e.g. ``'a':'f'``.
+
+      .. warning:: Note that contrary to usual python slices, **both** the
+          start and the stop are included
+
+      .. warning:: The step of the slice is not allowed
+
+      .. warning:: With a slice, Koalas works as a filter between the range
+
+    - A conditional boolean Series derived from the DataFrame or Series
+
+    Not allowed inputs which pandas allows are:
+
+    - A boolean array of the same length as the axis being sliced,
+      e.g. ``[True, False, True]``.
+    - A ``callable`` function with one argument (the calling Series, DataFrame
+      or Panel) and that returns valid output for indexing (one of the above)
+
+    .. warning:: MultiIndex is not supported yet.
+
+    See Also
+    --------
+    Series.loc : Access group of values using labels.
+
+    Examples
+    --------
+    **Getting values**
+
+    >>> df = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+    ...                   index=['cobra', 'viper', 'sidewinder'],
+    ...                   columns=['max_speed', 'shield'])
+    >>> df
+                max_speed  shield
+    cobra               1       2
+    viper               4       5
+    sidewinder          7       8
+
+    A single label for row selection is not allowed.
+
+    >>> df.loc['viper']
+    Traceback (most recent call last):
+     ...
+    databricks.koalas.exceptions.SparkPandasNotImplementedError: ...
+
+    List of labels. Note using ``[[]]`` returns a DataFrame.
+    Also note that Koalas preserves the data order not the given labels order.
+
+    >>> df.loc[['sidewinder', 'viper']]
+                max_speed  shield
+    viper               4       5
+    sidewinder          7       8
+
+    Single label for column
+
+    >>> df.loc[['cobra'], 'shield']
+    cobra    2
+    Name: shield, dtype: int64
+
+    List of labels for column. Note using list returns a DataFrame.
+
+    >>> df.loc[['cobra'], ['shield']]
+           shield
+    cobra       2
+
+    Slice with labels for row and single label for column. As mentioned
+    above, note that both the start and stop of the slice are included.
+
+    Also note that the row for 'sidewinder' is included since 'sidewinder'
+    is between 'cobra' and 'viper'.
+
+    >>> df.loc['cobra':'viper', 'max_speed']
+    cobra         1
+    viper         4
+    sidewinder    7
+    Name: max_speed, dtype: int64
+
+    Conditional that returns a boolean Series
+
+    >>> df.loc[df['shield'] > 6]
+                max_speed  shield
+    sidewinder          7       8
+
+    Conditional that returns a boolean Series with column labels specified
+
+    >>> df.loc[df['shield'] > 6, ['max_speed']]
+                max_speed
+    sidewinder          7
+
+    **Setting values**
+
+    Setting value for all items matching the list of labels is not allowed
+
+    >>> df.loc[['viper', 'sidewinder'], ['shield']] = 50
+    Traceback (most recent call last):
+     ...
+    databricks.koalas.exceptions.SparkPandasNotImplementedError: ...
+
+    Setting value for an entire row is not allowed
+
+    >>> df.loc['cobra'] = 10
+    Traceback (most recent call last):
+     ...
+    databricks.koalas.exceptions.SparkPandasNotImplementedError: ...
+
+    Set value for an entire column
+
+    >>> df.loc[:, 'max_speed'] = 30
+    >>> df
+                max_speed  shield
+    cobra              30       2
+    viper              30       5
+    sidewinder         30       8
+
+    Set value with Series
+
+    >>> df.loc[:, 'shield'] = df['shield'] * 2
+    >>> df
+                max_speed  shield
+    cobra              30       4
+    viper              30      10
+    sidewinder         30      16
+
+    **Getting values on a DataFrame with an index that has integer labels**
+
+    Another example using integers for the index
+
+    >>> df = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+    ...                   index=[7, 8, 9],
+    ...                   columns=['max_speed', 'shield'])
+    >>> df
+       max_speed  shield
+    7          1       2
+    8          4       5
+    9          7       8
+
+    Slice with integer labels for rows. As mentioned above, note that both
+    the start and stop of the slice are included.
+
+    >>> df.loc[7:9]
+       max_speed  shield
+    7          1       2
+    8          4       5
+    9          7       8
     """
 
     def __init__(self, df_or_s):
@@ -98,7 +255,6 @@ class SparkDataFrameLocator(object):
             self._ks = df_or_s
 
     def __getitem__(self, key):
-        from pyspark.sql.functions import lit
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series
 
@@ -132,9 +288,9 @@ class SparkDataFrameLocator(object):
                 index_data_type = index_column.schema[0].dataType
                 cond = []
                 if start is not None:
-                    cond.append(index_column._scol >= lit(start).cast(index_data_type))
+                    cond.append(index_column._scol >= F.lit(start).cast(index_data_type))
                 if stop is not None:
-                    cond.append(index_column._scol <= lit(stop).cast(index_data_type))
+                    cond.append(index_column._scol <= F.lit(stop).cast(index_data_type))
 
                 if len(cond) > 0:
                     sdf = sdf.where(reduce(lambda x, y: x & y, cond))
@@ -148,16 +304,16 @@ class SparkDataFrameLocator(object):
             except TypeError:
                 raiseNotImplemented("Cannot use a scalar value for row selection with Spark.")
             if len(rows_sel) == 0:
-                sdf = sdf.where(lit(False))
+                sdf = sdf.where(F.lit(False))
             elif len(self._kdf._index_columns) == 1:
                 index_column = self._kdf.index
                 index_data_type = index_column.schema[0].dataType
                 if len(rows_sel) == 1:
                     sdf = sdf.where(
-                        index_column._scol == lit(rows_sel[0]).cast(index_data_type))
+                        index_column._scol == F.lit(rows_sel[0]).cast(index_data_type))
                 else:
                     sdf = sdf.where(index_column._scol.isin(
-                        [lit(r).cast(index_data_type) for r in rows_sel]))
+                        [F.lit(r).cast(index_data_type) for r in rows_sel]))
             else:
                 raiseNotImplemented("Cannot select with MultiIndex with Spark.")
         if cols_sel is None:
@@ -181,10 +337,13 @@ class SparkDataFrameLocator(object):
 
     def __setitem__(self, key, value):
         from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series
+        from databricks.koalas.series import Series, _col
 
         if (not isinstance(key, tuple)) or (len(key) != 2):
-            raise NotImplementedError("Only accepts pairs of candidates")
+            raise SparkPandasNotImplementedError(
+                description="Only accepts pairs of candidates",
+                pandas_function=".loc[..., ...] = ...",
+                spark_target_function="withColumn, select")
 
         rows_sel, cols_sel = key
 
@@ -198,12 +357,10 @@ class SparkDataFrameLocator(object):
         if not isinstance(cols_sel, str):
             raise ValueError("""only column names can be assigned""")
 
-        if isinstance(value, Series):
-            self._kdf[cols_sel] = value
-        elif isinstance(value, DataFrame) and len(value.columns) == 1:
-            from pyspark.sql.functions import _spark_col
-            self._kdf[cols_sel] = _spark_col(value.columns[0])
-        elif isinstance(value, DataFrame) and len(value.columns) != 1:
-            raise ValueError("Only a dataframe with one column can be assigned")
+        if isinstance(value, DataFrame):
+            if len(value.columns) == 1:
+                self._kdf[cols_sel] = _col(value)
+            else:
+                raise ValueError("Only a dataframe with one column can be assigned")
         else:
-            raise ValueError("Only a column or dataframe with single column can be assigned")
+            self._kdf[cols_sel] = value
