@@ -41,6 +41,9 @@ from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.typedef import infer_pd_series_spark_type
 
 
+# These regular expression patterns are complied and defined here to avoid to compile the same
+# pattern every time it is used in _repr_ and _repr_html_ in DataFrames.
+# Two patterns basically seeks the footer string from Pandas'
 REPR_PATTERN = re.compile(r"\n\n\[(?P<rows>[0-9]+) rows x (?P<columns>[0-9]+) columns\]$")
 REPR_HTML_PATTERN = re.compile(
     r"\n\<p\>(?P<rows>[0-9]+) rows × (?P<columns>[0-9]+) columns\<\/p\>\n\<\/div\>$")
@@ -2361,9 +2364,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         raise NotImplementedError(key)
 
     def __repr__(self):
-        pdf = self.head(max_display_count).to_pandas()
-        repr_string = repr(pdf)
-        if len(pdf) == max_display_count:
+        pdf = self.head(max_display_count + 1).to_pandas()
+        pdf_length = len(pdf)
+        repr_string = repr(pdf[:max_display_count])
+        if pdf_length > max_display_count:
             match = REPR_PATTERN.search(repr_string)
             if match is not None:
                 nrows = match.group("rows")
@@ -2374,9 +2378,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return repr_string
 
     def _repr_html_(self):
-        pdf = self.head(max_display_count).to_pandas()
-        repr_html = pdf._repr_html_()
-        if len(pdf) == max_display_count:
+        pdf = self.head(max_display_count + 1).to_pandas()
+        pdf_length = len(pdf)
+        repr_html = pdf[:max_display_count]._repr_html_()
+        if pdf_length > max_display_count:
             match = REPR_HTML_PATTERN.search(repr_html)
             if match is not None:
                 nrows = match.group("rows")
