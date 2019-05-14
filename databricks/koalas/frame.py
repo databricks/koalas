@@ -939,11 +939,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         str or None
             If buf is None, returns the resulting LateX format as a string. Otherwise returns None.
 
+        See Also
+        --------
+        DataFrame.to_string : Render a DataFrame to a console-friendly
+            tabular output.
+        DataFrame.to_html : Render a DataFrame as an HTML table.
+
+
         Examples
         --------
         >>> df = pd.DataFrame({'name': ['Raphael', 'Donatello'],
         ... 'mask': ['red', 'purple'],
-        ... 'weapon': ['sai', 'bo staff']})
+        ... 'weapon': ['sai', 'bo staff']},
+        ... columns=['name', 'mask', 'weapon'])
         >>> df.to_latex(index=False) # doctest: +NORMALIZE_WHITESPACE
         '\\begin{tabular}{lll}\n\\toprule\n name & mask & weapon
         \\\\\n\\midrule\n Raphael & red & sai \\\\\n Donatello &
