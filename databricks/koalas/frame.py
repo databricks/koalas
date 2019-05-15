@@ -20,7 +20,7 @@ A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 import re
 import warnings
 from functools import partial, reduce
-from typing import Any, List, Tuple, Union
+from typing import Any, Optional, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -38,7 +38,6 @@ from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.typedef import infer_pd_series_spark_type
 
 
@@ -1572,10 +1571,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_excel, pd.DataFrame.to_excel, args)
 
-    @property
-    def loc(self):
-        return SparkDataFrameLocator(self)
-
     def copy(self) -> 'DataFrame':
         """
         Make a copy of this object's indices and data.
@@ -2662,6 +2657,86 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf = DataFrame(joined_table)
         return kdf
 
+    def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
+               random_state: Optional[int] = None) -> 'DataFrame':
+        """
+        Return a random sample of items from an axis of object.
+
+        Please call this function using named argument by specifing the ``frac`` argument.
+
+        You can use `random_state` for reproducibility. However, note that different from pandas,
+        specifying a seed in Koalas/Spark does not guarantee the sampled rows will be fixed. The
+        result set depends on not only the seed, but also how the data is distributed across
+        machines and to some extent network randomness when shuffle operations are involved. Even
+        in the simplest case, the result set will depend on the system's CPU core count.
+
+        Parameters
+        ----------
+        n : int, optional
+            Number of items to return. This is currently NOT supported. Use frac instead.
+        frac : float, optional
+            Fraction of axis items to return.
+        replace : bool, default False
+            Sample with or without replacement.
+        random_state : int, optional
+            Seed for the random number generator (if int).
+
+        Returns
+        -------
+        Series or DataFrame
+            A new object of same type as caller containing the sampled items.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'num_legs': [2, 4, 8, 0],
+        ...                    'num_wings': [2, 0, 0, 0],
+        ...                    'num_specimen_seen': [10, 2, 1, 8]},
+        ...                   index=['falcon', 'dog', 'spider', 'fish'],
+        ...                   columns=['num_legs', 'num_wings', 'num_specimen_seen'])
+        >>> df  # doctest: +SKIP
+                num_legs  num_wings  num_specimen_seen
+        falcon         2          2                 10
+        dog            4          0                  2
+        spider         8          0                  1
+        fish           0          0                  8
+
+        A random 25% sample of the ``DataFrame``.
+        Note that we use `random_state` to ensure the reproducibility of
+        the examples.
+
+        >>> df.sample(frac=0.25, random_state=1)  # doctest: +SKIP
+                num_legs  num_wings  num_specimen_seen
+        falcon         2          2                 10
+        fish           0          0                  8
+
+        Extract 25% random elements from the ``Series`` ``df['num_legs']``, with replacement,
+        so the same items could appear more than once.
+
+        >>> df['num_legs'].sample(frac=0.4, replace=True, random_state=1)  # doctest: +SKIP
+        falcon    2
+        spider    8
+        spider    8
+        Name: num_legs, dtype: int64
+
+        Specifying the exact number of items to return is not supported at the moment.
+
+        >>> df.sample(n=5)  # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+            ...
+        NotImplementedError: Function sample currently does not support specifying ...
+        """
+        # Note: we don't run any of the doctests because the result can change depending on the
+        # system's core count.
+        if n is not None:
+            raise NotImplementedError("Function sample currently does not support specifying "
+                                      "exact number of items to return. Use frac instead.")
+
+        if frac is None:
+            raise ValueError("frac must be specified.")
+
+        sdf = self._sdf.sample(withReplacement=replace, fraction=frac, seed=random_state)
+        return DataFrame(sdf, self._metadata.copy())
+
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
         if key is None:
@@ -2754,9 +2829,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 return partial(property_or_func, self)
         return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_map)
-
-    def __iter__(self):
-        return self.toPandas().__iter__()
 
     def __len__(self):
         return self._sdf.count()

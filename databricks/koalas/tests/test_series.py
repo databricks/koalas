@@ -255,3 +255,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # Assert behavior on string values
         str_ks = koalas.Series(['a', 'b', 'c'])
         self.assert_eq(str_ks.clip(1, 3), str_ks)
+
+    def test_is_unique(self):
+        # We can't use pandas' is_unique for comparison. pandas 0.23 ignores None
+        pser = pd.Series([1, 2, 2, None, None])
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(False, kser.is_unique)
+
+        pser = pd.Series([1, None, None])
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(False, kser.is_unique)
+
+        pser = pd.Series([1])
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(pser.is_unique, kser.is_unique)
+
+        pser = pd.Series([1, 1, 1])
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(pser.is_unique, kser.is_unique)

@@ -24,6 +24,9 @@ Attributes
    :toctree: api/
 
    Series.dtype
+   Series.name
+   Series.schema
+   Series.shape
 
 Conversion
 ----------
@@ -31,6 +34,13 @@ Conversion
    :toctree: api/
 
    Series.astype
+
+Indexing, iteration
+-------------------
+.. autosummary::
+   :toctree: api/
+
+   Series.loc
 
 Function application, GroupBy & Window
 --------------------------------------
@@ -47,6 +57,7 @@ Computations / Descriptive Stats
    :toctree: api/
 
    Series.abs
+   Series.clip
    Series.corr
    Series.count
    Series.kurt
@@ -70,6 +81,7 @@ Reindexing / Selection / Label manipulation
    Series.isin
    Series.rename
    Series.reset_index
+   Series.sample
 
 Missing data handling
 ---------------------

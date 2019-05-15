@@ -45,7 +45,6 @@ Indexing, iteration
 
    DataFrame.head
    DataFrame.loc
-   DataFrame.__iter__
    DataFrame.iteritems
    DataFrame.get
 
@@ -65,6 +64,7 @@ Computations / Descriptive Stats
    :toctree: api/
 
    DataFrame.abs
+   DataFrame.clip
    DataFrame.corr
    DataFrame.count
    DataFrame.kurt
@@ -87,6 +87,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.reset_index
    DataFrame.set_index
    DataFrame.isin
+   DataFrame.sample
 
 .. _api.dataframe.missing:
 

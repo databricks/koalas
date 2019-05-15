@@ -20,7 +20,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 import re
 import inspect
 from functools import partial, wraps
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -36,7 +36,6 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
-from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 
 
@@ -259,6 +258,36 @@ class Series(_Frame):
         return self.schema.fields[-1].dataType
 
     def astype(self, dtype):
+        """
+        Cast a Koalas object to a specified dtype ``dtype``.
+
+        Parameters
+        ----------
+        dtype : data type
+            Use a numpy.dtype or Python type to cast entire pandas object to
+            the same type.
+
+        Returns
+        -------
+        casted : same type as caller
+
+        See Also
+        --------
+        to_datetime : Convert argument to datetime.
+
+        Examples
+        --------
+        >>> ser = ks.Series([1, 2], dtype='int32')
+        >>> ser
+        0    1
+        1    2
+        Name: 0, dtype: int32
+
+        >>> ser.astype('int64')
+        0    1
+        1    2
+        Name: 0, dtype: int64
+        """
         from databricks.koalas.typedef import as_spark_type
         spark_type = as_spark_type(dtype)
         if not spark_type:
@@ -280,7 +309,8 @@ class Series(_Frame):
         return self.rename(name)
 
     @property
-    def schema(self):
+    def schema(self) -> StructType:
+        """Return the underlying Spark DataFrame's schema."""
         return self.to_dataframe()._sdf.schema
 
     @property
@@ -289,7 +319,8 @@ class Series(_Frame):
         return len(self),
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """Return name of the Series."""
         return self._metadata.data_columns[0]
 
     @name.setter
@@ -354,6 +385,36 @@ class Series(_Frame):
         if len(self._metadata.index_map) != 1:
             raise KeyError('Currently supported only when the Column has a single index.')
         return self._kdf.index
+
+    @property
+    def is_unique(self):
+        """
+        Return boolean if values in the object are unique
+
+        Returns
+        -------
+        is_unique : boolean
+
+        >>> ks.Series([1, 2, 3]).is_unique
+        True
+        >>> ks.Series([1, 2, 2]).is_unique
+        False
+        >>> ks.Series([1, 2, 3, None]).is_unique
+        True
+        """
+        sdf = self._kdf._sdf.select(self._scol)
+        col = self._scol
+
+        # Here we check:
+        #   1. the distinct count without nulls and count without nulls for non-null values
+        #   2. count null values and see if null is a distinct value.
+        #
+        # This workaround is in order to calculate the distinct count including nulls in
+        # single pass. Note that COUNT(DISTINCT expr) in Spark is designed to ignore nulls.
+        return sdf.select(
+            (F.count(col) == F.countDistinct(col)) &
+            (F.count(F.when(col.isNull(), 1).otherwise(None)) <= 1)
+        ).collect()[0][0]
 
     def reset_index(self, level=None, drop=False, name=None, inplace=False):
         """
@@ -447,11 +508,7 @@ class Series(_Frame):
         else:
             return kdf
 
-    @property
-    def loc(self):
-        return SparkDataFrameLocator(self)
-
-    def to_dataframe(self):
+    def to_dataframe(self) -> spark.DataFrame:
         sdf = self._kdf._sdf.select([field for field, _ in self._index_map] + [self._scol])
         metadata = Metadata(data_columns=[sdf.schema[-1].name], index_map=self._index_map)
         return DataFrame(sdf, metadata)
@@ -758,12 +815,12 @@ class Series(_Frame):
         Name: 0, dtype: float64
         """
         # TODO: last two examples from Pandas produce different results.
-        ks = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
+        kser = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
-            self._kdf = ks._kdf
-            self._scol = ks._scol
+            self._kdf = kser._kdf
+            self._scol = kser._scol
         else:
-            return ks
+            return kser
 
     def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) -> 'Series':
         """
@@ -1053,6 +1110,13 @@ class Series(_Frame):
         4
         """
         return self._reduce_for_stat_function(_Frame._count_expr)
+
+    def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
+               random_state: Optional[int] = None) -> 'Series':
+        return _col(self.to_dataframe().sample(
+            n=n, frac=frac, replace=replace, random_state=random_state))
+
+    sample.__doc__ = DataFrame.sample.__doc__
 
     def apply(self, func, args=(), **kwds):
         """

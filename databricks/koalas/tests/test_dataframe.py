@@ -488,3 +488,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Assert behavior on string values
         str_kdf = koalas.DataFrame({'A': ['a', 'b', 'c']})
         self.assert_eq(str_kdf.clip(1, 3), str_kdf)
+
+    def test_sample(self):
+        pdf = pd.DataFrame({'A': [0, 2, 4]})
+        kdf = koalas.from_pandas(pdf)
+
+        # Make sure the tests run, but we can't check the result because they are non-deterministic.
+        kdf.sample(frac=0.1)
+        kdf.sample(frac=0.2, replace=True)
+        kdf.sample(frac=0.2, random_state=5)
+        kdf['A'].sample(frac=0.2)
+        kdf['A'].sample(frac=0.2, replace=True)
+        kdf['A'].sample(frac=0.2, random_state=5)
+
+        with self.assertRaises(ValueError):
+            kdf.sample()
+        with self.assertRaises(NotImplementedError):
+            kdf.sample(n=1)

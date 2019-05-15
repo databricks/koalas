@@ -155,7 +155,6 @@ class _MissingPandasLikeDataFrame(object):
     rpow = unsupported_function('rpow')
     rsub = unsupported_function('rsub')
     rtruediv = unsupported_function('rtruediv')
-    sample = unsupported_function('sample')
     select = unsupported_function('select')
     select_dtypes = unsupported_function('select_dtypes')
     sem = unsupported_function('sem')
