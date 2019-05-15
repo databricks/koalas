@@ -354,6 +354,36 @@ class Series(_Frame):
             raise KeyError('Currently supported only when the Column has a single index.')
         return self._kdf.index
 
+    @property
+    def is_unique(self):
+        """
+        Return boolean if values in the object are unique
+
+        Returns
+        -------
+        is_unique : boolean
+
+        >>> ks.Series([1, 2, 3]).is_unique
+        True
+        >>> ks.Series([1, 2, 2]).is_unique
+        False
+        >>> ks.Series([1, 2, 3, None]).is_unique
+        True
+        """
+        sdf = self._kdf._sdf.select(self._scol)
+        col = self._scol
+
+        # Here we check:
+        #   1. the distinct count without nulls and count without nulls for non-null values
+        #   2. count null values and see if null is a distinct value.
+        #
+        # This workaround is in order to calculate the distinct count including nulls in
+        # single pass. Note that COUNT(DISTINCT expr) in Spark is designed to ignore nulls.
+        return sdf.select(
+            (F.count(col) == F.countDistinct(col)) &
+            (F.count(F.when(col.isNull(), 1).otherwise(None)) <= 1)
+        ).collect()[0][0]
+
     def reset_index(self, level=None, drop=False, name=None, inplace=False):
         """
         Generate a new DataFrame or Series with the index reset.
@@ -753,12 +783,12 @@ class Series(_Frame):
         Name: 0, dtype: float64
         """
         # TODO: last two examples from Pandas produce different results.
-        ks = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
+        kser = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
-            self._kdf = ks._kdf
-            self._scol = ks._scol
+            self._kdf = kser._kdf
+            self._scol = kser._scol
         else:
-            return ks
+            return kser
 
     def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) -> 'Series':
         """
