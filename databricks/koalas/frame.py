@@ -2663,9 +2663,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return partial(property_or_func, self)
         return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_map)
 
-    def __iter__(self):
-        return self.toPandas().__iter__()
-
     def __len__(self):
         return self._sdf.count()
 
