@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -33,27 +33,29 @@ from databricks.koalas.typedef import Col, pandas_wraps
 from databricks.koalas.series import Series
 
 
-def from_pandas(pdf):
-    """Create a Koalas DataFrame from a pandas DataFrame.
+def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['ks.Series', 'ks.DataFrame']:
+    """Create a Koalas DataFrame or Series from a pandas DataFrame or Series.
 
-    This is similar to Spark's `DataFrame.createDataFrame()` with pandas DataFrame,
-    but this also picks the index in the given pandas DataFrame.
+    This is similar to Spark's `SparkSession.createDataFrame()` with pandas DataFrame,
+    but this also works with pandas Series and picks the index.
 
     Parameters
     ----------
-    pdf : pandas.DataFrame
-        pandas DataFrame to read.
+    pobj : pandas.DataFrame or pandas.Series
+        pandas DataFrame or Series to read.
 
     Returns
     -------
-    DataFrame
+    Series or DataFrame
+        If a pandas Series is passed in, this function returns a Koalas Series.
+        If a pandas DataFrame is passed in, this function returns a Koalas DataFrame.
     """
-    if isinstance(pdf, pd.Series):
-        return Series(pdf)
-    elif isinstance(pdf, pd.DataFrame):
-        return DataFrame(pdf)
+    if isinstance(pobj, pd.Series):
+        return Series(pobj)
+    elif isinstance(pobj, pd.DataFrame):
+        return DataFrame(pobj)
     else:
-        raise ValueError("Unknown data type: {}".format(type(pdf)))
+        raise ValueError("Unknown data type: {}".format(type(pobj)))
 
 
 def sql(query: str) -> DataFrame:
