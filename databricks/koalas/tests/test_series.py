@@ -262,9 +262,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = koalas.from_pandas(pser)
         self.assertEqual(False, kser.is_unique)
 
-        pser = pd.Series([1, None])
+        pser = pd.Series([1, None, None])
         kser = koalas.from_pandas(pser)
-        self.assertEqual(True, kser.is_unique)
+        self.assertEqual(False, kser.is_unique)
 
         pser = pd.Series([1])
         kser = koalas.from_pandas(pser)
