@@ -279,7 +279,8 @@ class Series(_Frame):
         return self.rename(name)
 
     @property
-    def schema(self):
+    def schema(self) -> StructType:
+        """Return the underlying Spark DataFrame's schema."""
         return self.to_dataframe()._sdf.schema
 
     @property
@@ -288,7 +289,8 @@ class Series(_Frame):
         return len(self),
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """Return name of the Series."""
         return self._metadata.data_columns[0]
 
     @name.setter
@@ -476,7 +478,7 @@ class Series(_Frame):
         else:
             return kdf
 
-    def to_dataframe(self):
+    def to_dataframe(self) -> spark.DataFrame:
         sdf = self._kdf._sdf.select([field for field, _ in self._index_map] + [self._scol])
         metadata = Metadata(data_columns=[sdf.schema[-1].name], index_map=self._index_map)
         return DataFrame(sdf, metadata)

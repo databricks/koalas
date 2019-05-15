@@ -24,6 +24,9 @@ Attributes
    :toctree: api/
 
    Series.dtype
+   Series.name
+   Series.schema
+   Series.shape
 
 Conversion
 ----------
