@@ -101,21 +101,9 @@ class LocIndexer(object):
       interpreted as a *label* of the index, and **never** as an
       integer position along the index) for column selection.
 
-      .. note:: A single label for row selection is not allowed
-
     - A list or array of labels, e.g. ``['a', 'b', 'c']``.
 
-      .. note:: With a list or array of labels for row selection,
-          Koalas behaves just a filter without reordering by the labels.
-
     - A slice object with labels, e.g. ``'a':'f'``.
-
-      .. note:: Note that contrary to usual python slices, **both** the
-          start and the stop are included
-
-      .. note:: The step of the slice is not allowed
-
-      .. note:: With a slice, Koalas works as a filter between the range
 
     - A conditional boolean Series derived from the DataFrame or Series
 
@@ -127,6 +115,13 @@ class LocIndexer(object):
       or Panel) and that returns valid output for indexing (one of the above)
 
     .. note:: MultiIndex is not supported yet.
+
+    .. note:: Note that contrary to usual python slices, **both** the
+        start and the stop are included, and the step of the slice is not allowed.
+        In addition, with a slice, Koalas works as a filter between the range.
+
+    .. note:: With a list or array of labels for row selection,
+        Koalas behaves as a filter without reordering by the labels.
 
     See Also
     --------
