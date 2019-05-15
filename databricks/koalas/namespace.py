@@ -341,8 +341,8 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
     >>> ks.to_datetime('13000101', format='%Y%m%d', errors='coerce')
     NaT
 
-    Passing infer_datetime_format=True does not affect performance much
-    in Koalas unlike Pandas.
+    Passing infer_datetime_format=True can often-times speedup a parsing
+    if its not an ISO8601 format exactly, but in a regular format.
 
     >>> s = ks.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 1000)
     >>> s.head()
@@ -355,14 +355,14 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
 
     >>> import timeit
     >>> timeit.timeit(
-    ...    lambda: ks.to_datetime(s, infer_datetime_format=True),
-    ...    number = 1)  # doctest: +SKIP
-    0.015939311000000345
+    ...    lambda: repr(ks.to_datetime(s, infer_datetime_format=True)),
+    ...    number = 1)
+    0.35832712500000063
 
     >>> timeit.timeit(
-    ...    lambda: ks.to_datetime(s, infer_datetime_format=False),
-    ...    number = 1)  # doctest: +SKIP
-    0.014520141000000208
+    ...    lambda: repr(ks.to_datetime(s, infer_datetime_format=False)),
+    ...    number = 1)
+    0.8895321660000004
     """
     if isinstance(arg, Series):
         return _to_datetime1(
