@@ -2210,15 +2210,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return kdf
 
     # TODO: Not Supported:  keep = First
-    def nlargest(self, n, columns, keep='first'):
+    def nlargest(self, n: int, columns: 'list or str', keep: str = 'first') -> 'DataFrame':
         """
         Return the first `n` rows ordered by `columns` in descending order.
+
         Return the first `n` rows with the largest values in `columns`, in
         descending order. The columns that are not specified are returned as
         well, but not used for ordering.
+
         This method is equivalent to
         ``df.sort_values(columns, ascending=False).head(n)``, but more
-        performant.
+        performant in Pandas.
+        In Koalas, thanks to Spark's lazy execution and query optimizer,
+        the two would have same performance.
 
         Parameters
         ----------
@@ -2226,7 +2230,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Number of rows to return.
         columns : label or list of labels
             Column label(s) to order by.
-        keep : Not yet supported
+        keep : keep :  {‘first’, ‘last’, ‘all’}, default ‘first’
+            Only 'first' is supported
 
         Returns
         -------
@@ -2243,6 +2248,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Notes
         -----
+
         This function cannot be used with all column types. For example, when
         specifying columns with `object` or `category` dtypes, ``TypeError`` is
         raised.
@@ -2274,30 +2280,36 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         In the following example, we will use ``nlargest`` to select the three
         rows having the largest values in column "population".
 
-        >>> df.nlargest(3, 'population')
+        >>> df.nlargest(n=3, columns='population')
                 population      GDP alpha-2
         France    65000000  2583560      FR
         Italy     59000000  1937894      IT
         Malta       434001    12011      MT
 
-        >>> df.nlargest(3, ['population', 'GDP'])
+        >>> df.nlargest(n=3, columns=['population', 'GDP'])
                 population      GDP alpha-2
         France    65000000  2583560      FR
         Italy     59000000  1937894      IT
         Malta       434001    12011      MT
         """
+        if keep != 'first':
+            raise NotImplementedError("nlargest method currently only works for keep='first'")
         return self.sort_values(by=columns, ascending=False).head(n=n)
 
     # TODO: Not Supported:  keep = First
-    def nsmallest(self, n, columns, keep='first'):
+    def nsmallest(self, n: int, columns: 'list or str', keep: str = 'first') -> 'DataFrame':
         """
         Return the first `n` rows ordered by `columns` in ascending order.
+
         Return the first `n` rows with the smallest values in `columns`, in
         ascending order. The columns that are not specified are returned as
         well, but not used for ordering.
+
         This method is equivalent to
         ``df.sort_values(columns, ascending=True).head(n)``, but more
         performant.
+        In Koalas, thanks to Spark's lazy execution and query optimizer,
+        the two would have same performance.
 
         Parameters
         ----------
@@ -2305,8 +2317,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Number of items to retrieve.
         columns : list or str
             Column name or names to order by.
-        keep : Not yet supported
-
+        keep : keep :  {‘first’, ‘last’, ‘all’}, default ‘first’
+            Only 'first' is supported
         Returns
         -------
         DataFrame
@@ -2345,7 +2357,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         In the following example, we will use ``nsmallest`` to select the
         three rows having the smallest values in column "a".
 
-        >>> df.nsmallest(3, 'population')
+        >>> df.nsmallest(n=3, columns='population')
                   population  GDP alpha-2
         Anguilla       11300  311      AI
         Nauru          11300  182      NR
@@ -2354,12 +2366,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         To order by the largest values in column "a" and then "c", we can
         specify multiple columns like in the next example.
 
-        >>> df.nsmallest(3, ['population', 'GDP'])
+        >>> df.nsmallest(n=3, columns=['population', 'GDP'])
                   population  GDP alpha-2
         Nauru          11300  182      NR
         Anguilla       11300  311      AI
         Tuvalu         11301   38      TV
         """
+        if keep != 'first':
+            raise NotImplementedError("nsmallest method currently only works for keep='first'")
         return self.sort_values(by=columns, ascending=True).head(n=n)
 
     def isin(self, values):
