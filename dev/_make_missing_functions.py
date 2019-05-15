@@ -62,7 +62,8 @@ def inspect_missing_functions(original_type, target_type):
                     modified.append((name, original_signature, target_signature))
                 continue
 
-        if func.__doc__ and ('.. deprecated::' in func.__doc__):
+        docstring = func.__doc__
+        if docstring and ('.. deprecated::' in docstring):
             deprecated.append((name, original_signature))
         else:
             missing.append((name, original_signature))
@@ -241,6 +242,7 @@ def _main():
         print('MODIFIED functions for {}'.format(original_type.__name__))
         for name, original, target in modified:
             print(make_modified_function_def(original_type, name, original, target))
+        print()
 
 
 if __name__ == '__main__':
