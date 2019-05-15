@@ -225,6 +225,8 @@ function sphinx_test {
     echo "starting $SPHINX_BUILD tests..."
     pushd docs &> /dev/null
     make clean &> /dev/null
+    # Remove previously generated rst files
+    rm -fr $DIR/../docs/source/reference/api/*
     # Treat warnings as errors so we stop correctly
     SPHINX_REPORT=$( (SPHINXOPTS="-a -W" make html) 2>&1)
     SPHINX_STATUS=$?
