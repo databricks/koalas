@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -33,20 +33,22 @@ from databricks.koalas.typedef import Col, pandas_wraps
 from databricks.koalas.series import Series
 
 
-def from_pandas(pdf):
-    """Create a Koalas DataFrame from a pandas DataFrame.
+def from_pandas(pdf: Union[pd.DataFrame, pd.Series]) -> Union[ks.Series, ks.DataFrame]:
+    """Create a Koalas DataFrame or Series from a pandas DataFrame or Series.
 
     This is similar to Spark's `DataFrame.createDataFrame()` with pandas DataFrame,
-    but this also picks the index in the given pandas DataFrame.
+    but this also picks the index in the given pandas DataFrame or Series.
 
     Parameters
     ----------
-    pdf : pandas.DataFrame
-        pandas DataFrame to read.
+    pdf : pandas.DataFrame or pandas.Series
+        pandas DataFrame or Series to read.
 
     Returns
     -------
-    DataFrame
+    Series or DataFrame
+        If a pandas Series is passed in, this function returns a Koalas Series.
+        IF a pandas DataFrame is passed in, this function returns a Koalas DataFrame.
     """
     if isinstance(pdf, pd.Series):
         return Series(pdf)
