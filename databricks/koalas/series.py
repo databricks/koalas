@@ -258,6 +258,36 @@ class Series(_Frame):
         return self.schema.fields[-1].dataType
 
     def astype(self, dtype):
+        """
+        Cast a Koalas object to a specified dtype ``dtype``.
+
+        Parameters
+        ----------
+        dtype : data type
+            Use a numpy.dtype or Python type to cast entire pandas object to
+            the same type.
+
+        Returns
+        -------
+        casted : same type as caller
+
+        See Also
+        --------
+        to_datetime : Convert argument to datetime.
+
+        Examples
+        --------
+        >>> ser = ks.Series([1, 2], dtype='int32')
+        >>> ser
+        0    1
+        1    2
+        Name: 0, dtype: int32
+
+        >>> ser.astype('int64')
+        0    1
+        1    2
+        Name: 0, dtype: int64
+        """
         from databricks.koalas.typedef import as_spark_type
         spark_type = as_spark_type(dtype)
         if not spark_type:
