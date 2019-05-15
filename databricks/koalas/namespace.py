@@ -356,12 +356,12 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
     >>> import timeit
     >>> timeit.timeit(
     ...    lambda: repr(ks.to_datetime(s, infer_datetime_format=True)),
-    ...    number = 1)
+    ...    number = 1)  # doctest: +SKIP
     0.35832712500000063
 
     >>> timeit.timeit(
     ...    lambda: repr(ks.to_datetime(s, infer_datetime_format=False)),
-    ...    number = 1)
+    ...    number = 1)  # doctest: +SKIP
     0.8895321660000004
     """
     if isinstance(arg, Series):
