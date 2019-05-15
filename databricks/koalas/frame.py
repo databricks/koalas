@@ -2566,8 +2566,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # Note: we don't run any of the doctests because the result can change depending on the
         # system's core count.
         if n is not None:
-            raise NotImplementedError("sample function currently does not support specifying "
+            raise NotImplementedError("Function sample currently does not support specifying "
                                       "exact number of items to return. Use frac instead.")
+
+        if frac is None:
+            raise ValueError("frac must be specified.")
 
         sdf = self._sdf.sample(withReplacement=replace, fraction=frac, seed=random_state)
         return DataFrame(sdf, self._metadata.copy())
