@@ -178,7 +178,6 @@ class _MissingPandasLikeSeries(object):
     rpow = unsupported_function('rpow')
     rsub = unsupported_function('rsub')
     rtruediv = unsupported_function('rtruediv')
-    sample = unsupported_function('sample')
     searchsorted = unsupported_function('searchsorted')
     select = unsupported_function('select')
     sem = unsupported_function('sem')

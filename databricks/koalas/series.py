@@ -20,7 +20,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 import re
 import inspect
 from functools import partial, wraps
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -1078,6 +1078,13 @@ class Series(_Frame):
         4
         """
         return self._reduce_for_stat_function(_Frame._count_expr)
+
+    def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
+               random_state: Optional[int] = None) -> 'Series':
+        return _col(self.to_dataframe().sample(
+            n=n, frac=frac, replace=replace, random_state=random_state))
+
+    sample.__doc__ = DataFrame.sample.__doc__
 
     def apply(self, func, args=(), **kwds):
         """
