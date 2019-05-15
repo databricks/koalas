@@ -17,12 +17,14 @@
 from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
-def unsupported_function(method_name):
-    return _unsupported_function(class_name='pd.DataFrame', method_name=method_name)
+def unsupported_function(method_name, deprecated=False):
+    return _unsupported_function(class_name='pd.DataFrame', method_name=method_name,
+                                 deprecated=deprecated)
 
 
-def unsupported_property(property_name):
-    return _unsupported_property(class_name='pd.DataFrame', property_name=property_name)
+def unsupported_property(property_name, deprecated=False):
+    return _unsupported_property(class_name='pd.DataFrame', property_name=property_name,
+                                 deprecated=deprecated)
 
 
 class _MissingPandasLikeDataFrame(object):
@@ -63,8 +65,6 @@ class _MissingPandasLikeDataFrame(object):
     bfill = unsupported_function('bfill')
     bool = unsupported_function('bool')
     boxplot = unsupported_function('boxplot')
-    clip_lower = unsupported_function('clip_lower')
-    clip_upper = unsupported_function('clip_upper')
     combine = unsupported_function('combine')
     combine_first = unsupported_function('combine_first')
     compound = unsupported_function('compound')
@@ -199,3 +199,7 @@ class _MissingPandasLikeDataFrame(object):
     update = unsupported_function('update')
     where = unsupported_function('where')
     xs = unsupported_function('xs')
+
+    # Deprecated functions
+    clip_lower = unsupported_function('clip_lower', deprecated=True)
+    clip_upper = unsupported_function('clip_upper', deprecated=True)
