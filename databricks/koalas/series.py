@@ -274,7 +274,6 @@ class Series(_Frame):
         See Also
         --------
         to_datetime : Convert argument to datetime.
-        numpy.ndarray.astype : Cast a numpy array to a specified type.
 
         Examples
         --------
@@ -283,6 +282,7 @@ class Series(_Frame):
         0    1
         1    2
         Name: 0, dtype: int32
+
         >>> ser.astype('int64')
         0    1
         1    2
