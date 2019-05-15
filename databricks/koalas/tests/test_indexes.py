@@ -14,10 +14,12 @@
 # limitations under the License.
 #
 
+from distutils.version import LooseVersion
 import inspect
 
 import numpy as np
 import pandas as pd
+import pyspark
 
 import databricks.koalas as ks
 from databricks.koalas.exceptions import PandasNotImplementedError
@@ -57,8 +59,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pind = self.pdf.set_index('b', append=True).index
         kind = self.kdf.set_index('b', append=True).index
 
-        self.assert_eq(kind.to_series(), pind.to_series())
-        self.assert_eq(kind.to_series(name='a'), pind.to_series(name='a'))
+        if LooseVersion(pyspark.__version__) < LooseVersion('2.4'):
+            # PySpark < 2.4 does not support struct type with arrow enabled.
+            with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
+                self.assert_eq(kind.to_series(), pind.to_series())
+                self.assert_eq(kind.to_series(name='a'), pind.to_series(name='a'))
+        else:
+            self.assert_eq(kind.to_series(), pind.to_series())
+            self.assert_eq(kind.to_series(name='a'), pind.to_series(name='a'))
 
     def test_index_names(self):
         kdf = self.kdf
