@@ -36,7 +36,6 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
-from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 
 
@@ -446,10 +445,6 @@ class Series(_Frame):
                 return s
         else:
             return kdf
-
-    @property
-    def loc(self):
-        return SparkDataFrameLocator(self)
 
     def to_dataframe(self):
         sdf = self._kdf._sdf.select([field for field, _ in self._index_map] + [self._scol])

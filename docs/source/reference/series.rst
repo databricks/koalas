@@ -32,6 +32,13 @@ Conversion
 
    Series.astype
 
+Indexing, iteration
+-------------------
+.. autosummary::
+   :toctree: api/
+
+   Series.loc
+
 Function application, GroupBy & Window
 --------------------------------------
 .. autosummary::

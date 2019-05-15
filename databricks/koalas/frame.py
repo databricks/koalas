@@ -38,7 +38,6 @@ from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.typedef import infer_pd_series_spark_type
 
 
@@ -1571,10 +1570,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_excel, pd.DataFrame.to_excel, args)
-
-    @property
-    def loc(self):
-        return SparkDataFrameLocator(self)
 
     def copy(self) -> 'DataFrame':
         """
