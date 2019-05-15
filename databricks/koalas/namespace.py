@@ -33,15 +33,15 @@ from databricks.koalas.typedef import Col, pandas_wraps
 from databricks.koalas.series import Series
 
 
-def from_pandas(pdf: Union[pd.DataFrame, pd.Series]) -> Union[ks.Series, ks.DataFrame]:
+def from_pandas(pobj: Union[pd.DataFrame, pd.Series]) -> Union[ks.Series, ks.DataFrame]:
     """Create a Koalas DataFrame or Series from a pandas DataFrame or Series.
 
-    This is similar to Spark's `DataFrame.createDataFrame()` with pandas DataFrame,
-    but this also picks the index in the given pandas DataFrame or Series.
+    This is similar to Spark's `SparkSession.createDataFrame()` with pandas DataFrame,
+    but this also works with pandas Series and picks the index.
 
     Parameters
     ----------
-    pdf : pandas.DataFrame or pandas.Series
+    pobj : pandas.DataFrame or pandas.Series
         pandas DataFrame or Series to read.
 
     Returns
@@ -50,12 +50,12 @@ def from_pandas(pdf: Union[pd.DataFrame, pd.Series]) -> Union[ks.Series, ks.Data
         If a pandas Series is passed in, this function returns a Koalas Series.
         If a pandas DataFrame is passed in, this function returns a Koalas DataFrame.
     """
-    if isinstance(pdf, pd.Series):
-        return Series(pdf)
-    elif isinstance(pdf, pd.DataFrame):
-        return DataFrame(pdf)
+    if isinstance(pobj, pd.Series):
+        return Series(pobj)
+    elif isinstance(pobj, pd.DataFrame):
+        return DataFrame(pobj)
     else:
-        raise ValueError("Unknown data type: {}".format(type(pdf)))
+        raise ValueError("Unknown data type: {}".format(type(pobj)))
 
 
 def sql(query: str) -> DataFrame:
