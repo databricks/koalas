@@ -45,7 +45,6 @@ Indexing, iteration
 
    DataFrame.head
    DataFrame.loc
-   DataFrame.__iter__
    DataFrame.iteritems
    DataFrame.get
 
