@@ -2502,6 +2502,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Please call this function using named argument by specifing the ``frac`` argument.
 
+        You can use `random_state` for reproducibility. However, note that different from pandas,
+        specifying a seed in Koalas/Spark does not guarantee the sampled rows will be fixed. The
+        result set depends on not only the seed, but also how the data is distributed across
+        machines and to some extent network randomness when shuffle operations are involved. Even
+        in the simplest case, the result set will depend on the system's CPU core count.
+
         Parameters
         ----------
         n : int, optional
@@ -2525,7 +2531,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                    'num_specimen_seen': [10, 2, 1, 8]},
         ...                   index=['falcon', 'dog', 'spider', 'fish'],
         ...                   columns=['num_legs', 'num_wings', 'num_specimen_seen'])
-        >>> df
+        >>> df  # doctest: +SKIP
                 num_legs  num_wings  num_specimen_seen
         falcon         2          2                 10
         dog            4          0                  2
@@ -2536,7 +2542,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Note that we use `random_state` to ensure the reproducibility of
         the examples.
 
-        >>> df.sample(frac=0.25, random_state=1)
+        >>> df.sample(frac=0.25, random_state=1)  # doctest: +SKIP
                 num_legs  num_wings  num_specimen_seen
         falcon         2          2                 10
         fish           0          0                  8
@@ -2544,7 +2550,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Extract 25% random elements from the ``Series`` ``df['num_legs']``, with replacement,
         so the same items could appear more than once.
 
-        >>> df['num_legs'].sample(frac=0.4, replace=True, random_state=1)
+        >>> df['num_legs'].sample(frac=0.4, replace=True, random_state=1)  # doctest: +SKIP
         falcon    2
         spider    8
         spider    8
@@ -2557,6 +2563,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ...
         NotImplementedError: sample function currently does not support ...
         """
+        # Note: we don't run any of the doctests because the result can change depending on the
+        # system's core count.
         if n is not None:
             raise NotImplementedError("sample function currently does not support specifying "
                                       "exact number of items to return. Use frac instead.")
