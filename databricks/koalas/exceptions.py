@@ -73,7 +73,7 @@ class PandasNotImplementedError(NotImplementedError):
             if deprecated:
                 msg = ("The property `{0}.{1}()` is deprecated in pandas and will therefore " +
                        "not be supported in Koalas.") \
-                          .format(class_name, property_name)
+                    .format(class_name, property_name)
             else:
                 msg = "The property `{0}.{1}()` is not implemented yet." \
                     .format(class_name, property_name)
