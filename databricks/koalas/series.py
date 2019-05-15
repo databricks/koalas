@@ -360,8 +360,6 @@ class Series(_Frame):
         """
         Return boolean if values in the object are unique
 
-        .. note:: if the values contain `None`, the result is `False`.
-
         Returns
         -------
         is_unique : boolean
@@ -371,14 +369,21 @@ class Series(_Frame):
         >>> ks.Series([1, 2, 2]).is_unique
         False
         >>> ks.Series([1, 2, 3, None]).is_unique
-        False
+        True
         """
         sdf = self._kdf._sdf.select(self._scol)
-        # Note that we compare the distinct count of values ignoring None
-        # to the count of values containing None.
-        # Therefore, it results to False if there is None.
+        col = self._scol
+
+        # Here we check:
+        #   1. the distinct count without nulls and count without nulls for non-null values
+        #   2. count null values and see if null is a distinct value.
+        #
+        # This workaround is in order to calculate the distinct count including nulls in
+        # single pass. Note that COUNT(DISTINCT expr) in Spark is designed to ignore nulls.
         return sdf.select(
-            F.countDistinct(self._scol) == F.count(F.lit(1))).collect()[0][0]
+            (F.count(col) == F.countDistinct(col)) &
+            (F.count(F.when(col.isNull(), 1).otherwise(None)) <= 1)
+        ).collect()[0][0]
 
     def reset_index(self, level=None, drop=False, name=None, inplace=False):
         """
