@@ -27,6 +27,7 @@ import pandas as pd
 
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
+from databricks.koalas.indexes import Index, MultiIndex
 from databricks.koalas.series import Series
 
 
@@ -55,7 +56,9 @@ def _main():
     for original_type, target_type in [(pd.DataFrame, DataFrame),
                                        (pd.Series, Series),
                                        (pd.core.groupby.DataFrameGroupBy, DataFrameGroupBy),
-                                       (pd.core.groupby.SeriesGroupBy, SeriesGroupBy)]:
+                                       (pd.core.groupby.SeriesGroupBy, SeriesGroupBy),
+                                       (pd.Index, Index),
+                                       (pd.MultiIndex, MultiIndex)]:
         missing = inspect_missing_properties(original_type, target_type)
 
         print('MISSING properties for {}'.format(original_type.__name__))

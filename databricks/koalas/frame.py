@@ -161,11 +161,6 @@ class DataFrame(_Frame):
         else:
             self._metadata = metadata
 
-    @property
-    def _index_columns(self):
-        return [self._sdf.__getitem__(field)
-                for field in self._metadata.index_columns]
-
     def _reduce_for_stat_function(self, sfun):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
@@ -976,12 +971,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def index(self):
         """The index (row labels) Column of the DataFrame.
 
-        Currently supported only when the DataFrame has a single index.
+        Currently not supported when the DataFrame has no index.
         """
-        from databricks.koalas.series import Series
-        if len(self._metadata.index_map) != 1:
-            raise KeyError('Currently supported only when the DataFrame has a single index.')
-        return Series(self._index_columns[0], anchor=self, index=[])
+        from databricks.koalas.indexes import Index, MultiIndex
+        if len(self._metadata.index_map) == 0:
+            raise KeyError('Currently not supported when the DataFrame has no index.')
+        elif len(self._metadata.index_map) == 1:
+            return Index(self)
+        else:
+            return MultiIndex(self)
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns.

@@ -27,6 +27,7 @@ from pyspark.sql import SparkSession, SQLContext
 
 from databricks import koalas
 from databricks.koalas.frame import DataFrame
+from databricks.koalas.indexes import Index
 from databricks.koalas.series import Series
 
 
@@ -251,7 +252,7 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
 
     @staticmethod
     def _to_pandas(df):
-        if isinstance(df, (DataFrame, Series)):
+        if isinstance(df, (DataFrame, Series, Index)):
             return df.toPandas()
         else:
             return df

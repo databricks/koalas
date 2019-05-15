@@ -291,13 +291,13 @@ class LocIndexer(object):
             if rows_sel == slice(None):
                 # If slice is None - select everything, so nothing to do
                 pass
-            elif len(self._kdf._index_columns) == 0:
+            elif len(self._kdf._metadata.index_columns) == 0:
                 raiseNotImplemented("Cannot use slice for Spark if no index provided.")
-            elif len(self._kdf._index_columns) == 1:
+            elif len(self._kdf._metadata.index_columns) == 1:
                 start = rows_sel.start
                 stop = rows_sel.stop
 
-                index_column = self._kdf.index
+                index_column = self._kdf.index.to_series()
                 index_data_type = index_column.schema[0].dataType
                 cond = []
                 if start is not None:
@@ -318,8 +318,8 @@ class LocIndexer(object):
                 raiseNotImplemented("Cannot use a scalar value for row selection with Spark.")
             if len(rows_sel) == 0:
                 sdf = sdf.where(F.lit(False))
-            elif len(self._kdf._index_columns) == 1:
-                index_column = self._kdf.index
+            elif len(self._kdf._metadata.index_columns) == 1:
+                index_column = self._kdf.index.to_series()
                 index_data_type = index_column.schema[0].dataType
                 if len(rows_sel) == 1:
                     sdf = sdf.where(
