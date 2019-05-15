@@ -48,7 +48,7 @@ def from_pandas(pdf: Union[pd.DataFrame, pd.Series]) -> Union[ks.Series, ks.Data
     -------
     Series or DataFrame
         If a pandas Series is passed in, this function returns a Koalas Series.
-        IF a pandas DataFrame is passed in, this function returns a Koalas DataFrame.
+        If a pandas DataFrame is passed in, this function returns a Koalas DataFrame.
     """
     if isinstance(pdf, pd.Series):
         return Series(pdf)
