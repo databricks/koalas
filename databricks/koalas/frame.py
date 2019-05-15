@@ -20,7 +20,7 @@ A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 import re
 import warnings
 from functools import partial, reduce
-from typing import Any, List, Tuple, Union
+from typing import Any, Optional, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -2494,6 +2494,75 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         kdf = DataFrame(joined_table)
         return kdf
+
+    def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
+               random_state: Optional[int] = None) -> 'DataFrame':
+        """
+        Return a random sample of items from an axis of object.
+
+        Please call this function using named argument by specifing the ``frac`` argument.
+
+        Parameters
+        ----------
+        n : int, optional
+            Number of items to return. This is currently NOT supported. Use frac instead.
+        frac : float, optional
+            Fraction of axis items to return.
+        replace : bool, default False
+            Sample with or without replacement.
+        random_state : int, optional
+            Seed for the random number generator (if int).
+
+        Returns
+        -------
+        Series or DataFrame
+            A new object of same type as caller containing the sampled items.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'num_legs': [2, 4, 8, 0],
+        ...                    'num_wings': [2, 0, 0, 0],
+        ...                    'num_specimen_seen': [10, 2, 1, 8]},
+        ...                   index=['falcon', 'dog', 'spider', 'fish'],
+        ...                   columns=['num_legs', 'num_wings', 'num_specimen_seen'])
+        >>> df
+                num_legs  num_wings  num_specimen_seen
+        falcon         2          2                 10
+        dog            4          0                  2
+        spider         8          0                  1
+        fish           0          0                  8
+
+        A random 25% sample of the ``DataFrame``.
+        Note that we use `random_state` to ensure the reproducibility of
+        the examples.
+
+        >>> df.sample(frac=0.25, random_state=1)
+                num_legs  num_wings  num_specimen_seen
+        falcon         2          2                 10
+        fish           0          0                  8
+
+        Extract 25% random elements from the ``Series`` ``df['num_legs']``, with replacement,
+        so the same items could appear more than once.
+
+        >>> df['num_legs'].sample(frac=0.4, replace=True, random_state=1)
+        falcon    2
+        spider    8
+        spider    8
+        Name: num_legs, dtype: int64
+
+        Specifying the exact number of items to return is not supported at the moment.
+
+        >>> df.sample(n=5)  # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+            ...
+        NotImplementedError: sample function currently does not support ...
+        """
+        if n is not None:
+            raise NotImplementedError("sample function currently does not support specifying "
+                                      "exact number of items to return. Use frac instead.")
+
+        sdf = self._sdf.sample(withReplacement=replace, fraction=frac, seed=random_state)
+        return DataFrame(sdf, self._metadata.copy())
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series

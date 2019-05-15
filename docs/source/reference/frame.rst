@@ -65,6 +65,7 @@ Computations / Descriptive Stats
    :toctree: api/
 
    DataFrame.abs
+   DataFrame.clip
    DataFrame.corr
    DataFrame.count
    DataFrame.kurt
@@ -87,6 +88,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.reset_index
    DataFrame.set_index
    DataFrame.isin
+   DataFrame.sample
 
 .. _api.dataframe.missing:
 
