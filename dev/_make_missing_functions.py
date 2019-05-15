@@ -44,6 +44,7 @@ def inspect_missing_functions(original_type, target_type):
              and its original and modified signature.
     """
     missing = []
+    deprecated = []
     modified = []
 
     for name, func in inspect.getmembers(original_type, inspect.isfunction):
@@ -61,9 +62,12 @@ def inspect_missing_functions(original_type, target_type):
                     modified.append((name, original_signature, target_signature))
                 continue
 
-        missing.append((name, original_signature))
+        if func.__doc__ and ('.. deprecated::' in func.__doc__):
+            deprecated.append((name, original_signature))
+        else:
+            missing.append((name, original_signature))
 
-    return missing, modified
+    return missing, deprecated, modified
 
 
 def format_arguments(arguments, prefix_len, suffix_len):
@@ -221,12 +225,17 @@ def _main():
                                        (pd.Series, Series),
                                        (pd.core.groupby.DataFrameGroupBy, DataFrameGroupBy),
                                        (pd.core.groupby.SeriesGroupBy, SeriesGroupBy)]:
-        missing, modified = inspect_missing_functions(original_type, target_type)
+        missing, deprecated, modified = inspect_missing_functions(original_type, target_type)
 
         print('MISSING functions for {}'.format(original_type.__name__))
         for name, signature in missing:
             # print(make_misssing_function(original_type, name, signature))
             print("""    {0} = unsupported_function('{0}')""".format(name))
+
+        print()
+        print('DEPRECATED functions for {}'.format(original_type.__name__))
+        for name, signature in deprecated:
+            print("""    {0} = unsupported_function('{0}', deprecated=True)""".format(name))
 
         print()
         print('MODIFIED functions for {}'.format(original_type.__name__))
