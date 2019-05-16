@@ -1182,6 +1182,41 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     notna = notnull
 
+    def nunique(self, axis=0, dropna=True):
+        """
+        Return number of unique elements in the object.
+
+        Excludes NA values by default.
+
+        Parameters
+        ----------
+        axis : Can only be set to 0 at the moment.
+        dropna : Don’t include NaN in the count.
+
+        Returns
+        -------
+        The number of unique values as an int.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'A': [1, 2, 3], 'B': [np.nan, 3, np.nan]}).nunique()
+        0    3
+        1    1
+        dtype: int64
+
+        >>> ks.DataFrame({'A': [1, 2, 3], 'B': [np.nan, 3, np.nan]}).nunique(dropna=False)
+        0    3
+        1    2
+        dtype: int64
+        """
+        if axis != 0:
+            raise ValueError("The 'nunique' method only works with axis=0 at the moment")
+        res = self._sdf.select(*(F.countDistinct(Column(c)).alias(c)for c in self.columns))
+        res = res.toPandas().T.iloc[:, 0]
+        if not dropna:
+            res += self.isnull().sum().clip(upper=1)
+        return res
+
     def to_koalas(self):
         """
         Converts the existing DataFrame into a Koalas DataFrame.
