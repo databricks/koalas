@@ -50,23 +50,23 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kdf.index, pdf.index)
 
     def test_to_series(self):
-        pind = self.pdf.index
-        kind = self.kdf.index
+        pidx = self.pdf.index
+        kidx = self.kdf.index
 
-        self.assert_eq(kind.to_series(), pind.to_series())
-        self.assert_eq(kind.to_series(name='a'), pind.to_series(name='a'))
+        self.assert_eq(kidx.to_series(), pidx.to_series())
+        self.assert_eq(kidx.to_series(name='a'), pidx.to_series(name='a'))
 
-        pind = self.pdf.set_index('b', append=True).index
-        kind = self.kdf.set_index('b', append=True).index
+        pidx = self.pdf.set_index('b', append=True).index
+        kidx = self.kdf.set_index('b', append=True).index
 
         if LooseVersion(pyspark.__version__) < LooseVersion('2.4'):
             # PySpark < 2.4 does not support struct type with arrow enabled.
             with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
-                self.assert_eq(kind.to_series(), pind.to_series())
-                self.assert_eq(kind.to_series(name='a'), pind.to_series(name='a'))
+                self.assert_eq(kidx.to_series(), pidx.to_series())
+                self.assert_eq(kidx.to_series(name='a'), pidx.to_series(name='a'))
         else:
-            self.assert_eq(kind.to_series(), pind.to_series())
-            self.assert_eq(kind.to_series(name='a'), pind.to_series(name='a'))
+            self.assert_eq(kidx.to_series(), pidx.to_series())
+            self.assert_eq(kidx.to_series(name='a'), pidx.to_series(name='a'))
 
     def test_index_names(self):
         kdf = self.kdf
@@ -79,13 +79,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(kdf.index.name, pdf.index.name)
         self.assertEqual(kdf.index.names, pdf.index.names)
 
-        pind = pdf.index
-        kind = kdf.index
-        pind.name = 'renamed'
-        kind.name = 'renamed'
-        self.assertEqual(kind.name, pind.name)
-        self.assertEqual(kind.names, pind.names)
-        self.assert_eq(kind, pind)
+        pidx = pdf.index
+        kidx = kdf.index
+        pidx.name = 'renamed'
+        kidx.name = 'renamed'
+        self.assertEqual(kidx.name, pidx.name)
+        self.assertEqual(kidx.names, pidx.names)
+        self.assert_eq(kidx, pidx)
 
     def test_multi_index_names(self):
         arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
@@ -95,17 +95,17 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assertEqual(kdf.index.names, pdf.index.names)
 
-        pind = pdf.index
-        kind = kdf.index
-        pind.names = ['renamed_number', 'renamed_color']
-        kind.names = ['renamed_number', 'renamed_color']
-        self.assertEqual(kind.names, pind.names)
-        self.assert_eq(kind, pind)
+        pidx = pdf.index
+        kidx = kdf.index
+        pidx.names = ['renamed_number', 'renamed_color']
+        kidx.names = ['renamed_number', 'renamed_color']
+        self.assertEqual(kidx.names, pidx.names)
+        self.assert_eq(kidx, pidx)
 
         with self.assertRaises(PandasNotImplementedError):
-            kind.name
+            kidx.name
         with self.assertRaises(PandasNotImplementedError):
-            kind.name = 'renamed'
+            kidx.name = 'renamed'
 
     def test_missing(self):
         kdf = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
