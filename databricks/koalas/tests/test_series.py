@@ -92,12 +92,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(ks.name, 'renamed')
         self.assert_eq(ks, ps)
 
-        pind = ps.index
-        kind = ks.index
-        pind.name = 'renamed'
-        kind.name = 'renamed'
-        self.assertEqual(kind.name, 'renamed')
-        self.assert_eq(kind, pind)
+        pidx = ps.index
+        kidx = ks.index
+        pidx.name = 'renamed'
+        kidx.name = 'renamed'
+        self.assertEqual(kidx.name, 'renamed')
+        self.assert_eq(kidx, pidx)
 
     def test_rename_method(self):
         # Series name
