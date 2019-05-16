@@ -228,4 +228,3 @@ class _MissingPandasLikeSeries(object):
     to_csv = unsupported_function('to_csv', deprecated=True)
     valid = unsupported_function('valid', deprecated=True)
     where = unsupported_function('where', deprecated=True)
-
