@@ -1283,7 +1283,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     notna = notnull
 
-    def nunique(self, axis=0, dropna=True):
+    def nunique(self, axis: int = 0, dropna: bool = True) -> 'ks.Series':
         """
         Return number of unique elements in the object.
 
