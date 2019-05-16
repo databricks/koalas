@@ -63,7 +63,8 @@ def inspect_missing_functions(original_type, target_type):
                 continue
 
         docstring = func.__doc__
-        if docstring and ('.. deprecated::' in docstring):
+        # Use line break and indent to only cover deprecated method, not deprecated parameters
+        if docstring and ('\n        .. deprecated::' in docstring):
             deprecated.append((name, original_signature))
         else:
             missing.append((name, original_signature))
