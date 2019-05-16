@@ -325,12 +325,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert NaNs are dropped by default
         nunique_result = kdf.nunique()
-        self.assert_eq(nunique_result, pd.Series([3, 1]))
+        self.assert_eq(nunique_result, pd.Series([3, 1], index=['A', 'B'], name='0'))
         self.assert_eq(nunique_result, pdf.nunique())
 
         # Assert including NaN values
         nunique_result = kdf.nunique(dropna=False)
-        self.assert_eq(nunique_result, pd.Series([3, 2]))
+        self.assert_eq(nunique_result, pd.Series([3, 2], index=['A', 'B'], name='0'))
         self.assert_eq(nunique_result, pdf.nunique(dropna=False))
 
 

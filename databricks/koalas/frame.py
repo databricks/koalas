@@ -1301,14 +1301,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Examples
         --------
         >>> ks.DataFrame({'A': [1, 2, 3], 'B': [np.nan, 3, np.nan]}).nunique()
-        0    3
-        1    1
-        dtype: int64
+        A    3
+        B    1
+        Name: 0, dtype: int64
 
         >>> ks.DataFrame({'A': [1, 2, 3], 'B': [np.nan, 3, np.nan]}).nunique(dropna=False)
-        0    3
-        1    2
-        dtype: int64
+        A    3
+        B    2
+        Name: 0, dtype: int64
         """
         if axis != 0:
             raise ValueError("The 'nunique' method only works with axis=0 at the moment")
