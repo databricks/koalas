@@ -125,6 +125,12 @@ class Series(_Frame, IndexOpsMixin):
         self._index_map = index_map
 
     def _with_new_scol(self, scol: spark.Column) -> 'Series':
+        """
+        Copy Koalas Series with the new Spark Column.
+
+        :param scol: the new Spark Column
+        :return: the copied Series
+        """
         return Series(scol, anchor=self._kdf, index=self._index_map)
 
     @property

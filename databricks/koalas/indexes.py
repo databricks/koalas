@@ -26,6 +26,7 @@ from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
@@ -36,8 +37,25 @@ from databricks.koalas.series import Series
 
 class Index(IndexOpsMixin):
     """
-    :ivar _kdf: The parent dataframe that is used to perform the groupby
+    Koala Index that corresponds to Pandas Index logically. This might hold Spark Column
+    internally.
+
+    :ivar _kdf: The parent dataframe
     :type _kdf: DataFrame
+    :ivar _scol: Spark Column instance
+    :type _scol: pyspark.Column
+
+    See Also
+    --------
+    MultiIndex : A multi-level, or hierarchical, Index.
+
+    Examples
+    --------
+    >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, 3]).index
+    Int64Index([1, 2, 3], dtype='int64')
+
+    >>> ks.DataFrame({'a': [1, 2, 3]}, index=list('abc')).index
+    Index(['a', 'b', 'c'], dtype='object')
     """
 
     def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None) -> None:
@@ -50,14 +68,36 @@ class Index(IndexOpsMixin):
             self._scol = scol
 
     def _with_new_scol(self, scol: spark.Column) -> 'Index':
+        """
+        Copy Koalas Index with the new Spark Column.
+
+        :param scol: the new Spark Column
+        :return: the copied Index
+        """
         return Index(self._kdf, scol)
 
     @property
     def _columns(self) -> List[spark.Column]:
+        """ Returns spark Columns corresponding to index columns. """
         kdf = self._kdf
         return [kdf._sdf[field] for field in kdf._metadata.index_columns]
 
     def to_pandas(self) -> pd.Index:
+        """
+        Return a pandas Series.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory. If the input
+                  is large, set max_rows parameter.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'],
+        ...                   index=list('abcd'))
+        >>> df['dogs'].index.to_pandas()
+        Index(['a', 'b', 'c', 'd'], dtype='object')
+        """
         return self._kdf[[]].to_pandas().index
 
     toPandas = to_pandas
@@ -69,6 +109,7 @@ class Index(IndexOpsMixin):
 
     @property
     def name(self) -> str:
+        """Return name of the Index."""
         return self.names[0]
 
     @name.setter
@@ -77,6 +118,7 @@ class Index(IndexOpsMixin):
 
     @property
     def names(self) -> List[str]:
+        """Return names of the Index."""
         return self._kdf._metadata.index_names
 
     @names.setter
@@ -90,6 +132,32 @@ class Index(IndexOpsMixin):
         self._kdf._metadata = metadata.copy(index_map=list(zip(metadata.index_columns, names)))
 
     def to_series(self, name: str = None) -> Series:
+        """
+        Create a Series with both index and values equal to the index keys
+        useful with map for returning an indexer based on an index.
+
+        Parameters
+        ----------
+        name : string, optional
+            name of resulting Series. If None, defaults to name of original
+            index
+
+        Returns
+        -------
+        Series : dtype will be based on the type of the Index values.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'],
+        ...                   index=list('abcd'))
+        >>> df['dogs'].index.to_series()
+        a    a
+        b    b
+        c    c
+        d    d
+        Name: __index_level_0__, dtype: object
+        """
         kdf = self._kdf
         scol = self._scol
         return Series(scol if name is None else scol.alias(name),
@@ -126,6 +194,12 @@ class MultiIndex(Index):
             self._scol = scol
 
     def _with_new_scol(self, scol: spark.Column) -> 'MultiIndex':
+        """
+        Copy Koalas MultiIndex with the new Spark Column.
+
+        :param scol: the new Spark Column
+        :return: the copied MultiIndex
+        """
         return MultiIndex(self._kdf, scol)
 
     @property

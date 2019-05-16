@@ -85,6 +85,7 @@ class IndexOpsMixin(object):
     :type spark_type: spark.types.DataType
 
     def _with_new_scol(self, scol: spark.Column) -> IndexOpsMixin
+        Creates new object with the new column
     """
 
     # arithmetic operators
