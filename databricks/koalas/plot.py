@@ -16,15 +16,23 @@ from pyspark.sql import functions as F
 
 
 class KoalasBarPlot(BarPlot):
-    def _compute_plot_data(self):
+    max_rows = 1000
+
+    def __init__(self, data, **kwargs):
         # Simply use the first 1k elements and make it into a pandas dataframe
         # For categorical variables, it is likely called from df.x.value_counts().plot.bar()
-        self.data = self.data.head(1001).to_pandas().to_frame()
+        data = data.head(KoalasBarPlot.max_rows + 1).to_pandas().to_frame()
+        self.partial = False
+        if len(data) > KoalasBarPlot.max_rows:
+            self.partial = True
+            data = data.iloc[:KoalasBarPlot.max_rows]
+        super().__init__(data, **kwargs)
 
     def _plot(self, ax, x, y, w, start=0, log=False, **kwds):
-        if len(self.data) > 1000:
+        if self.partial:
             ax.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
                     transform=ax.transAxes)
+            self.data = self.data.iloc[:KoalasBarPlot.max_rows]
 
         return ax.bar(x, y, w, bottom=start, log=log, **kwds)
 
@@ -95,9 +103,9 @@ class KoalasBoxPlotSummary:
 class KoalasBoxPlot(BoxPlot):
     @staticmethod
     def rc_defaults(notch=None, vert=None, whis=None,
-                patch_artist=None, bootstrap=None, meanline=None,
-                showmeans=None, showcaps=None, showbox=None,
-                showfliers=None, **kwargs):
+                    patch_artist=None, bootstrap=None, meanline=None,
+                    showmeans=None, showcaps=None, showbox=None,
+                    showfliers=None, **kwargs):
         # Missing arguments default to rcParams.
         if whis is None:
             whis = matplotlib.rcParams['boxplot.whiskers']
@@ -289,6 +297,12 @@ class KoalasBoxPlot(BoxPlot):
         ax = self._get_ax(0)
         kwds = self.kwds.copy()
 
+        for stats in bxpstats:
+            if len(stats['fliers']) > 1000:
+                stats['fliers'] = stats['fliers'][:1000]
+                ax.text(1, 1, 'showing top 1,000 fliers only', size=6, ha='right', va='bottom',
+                        transform=ax.transAxes)
+
         ret, bp = self._plot(ax, bxpstats, column_num=0,
                              return_type=self.return_type, **kwds)
         self.maybe_color_bp(bp)
@@ -463,8 +477,7 @@ def _plot(data, x=None, y=None, subplots=False,
                 label_kw = kwds['label'] if 'label' in kwds else False
                 for kw in ['xerr', 'yerr']:
                     if (kw in kwds) and \
-                        (isinstance(kwds[kw], string_types) or
-                            is_integer(kwds[kw])):
+                       (isinstance(kwds[kw], string_types) or is_integer(kwds[kw])):
                         try:
                             kwds[kw] = data[kwds[kw]]
                         except (IndexError, KeyError, TypeError):

@@ -53,7 +53,6 @@ class _MissingPandasLikeSeries(object):
     itemsize = unsupported_property('itemsize')
     ix = unsupported_property('ix')
     nbytes = unsupported_property('nbytes')
-    ndim = unsupported_property('ndim')
     real = unsupported_property('real')
     size = unsupported_property('size')
     strides = unsupported_property('strides')
