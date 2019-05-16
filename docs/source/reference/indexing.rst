@@ -22,14 +22,30 @@ Properties
    Index.name
    Index.names
 
+Missing Values
+~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.isna
+   Index.notna
+
 Conversion
 ~~~~~~~~~~
 .. autosummary::
    :toctree: api/
 
+   Index.astype
    Index.to_series
 
 .. _api.multiindex:
+
+Selecting
+~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.isin
 
 MultiIndex
 ----------

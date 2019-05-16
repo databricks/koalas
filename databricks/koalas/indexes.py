@@ -19,30 +19,38 @@ Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 """
 
 from functools import partial
-from typing import Any, List
+from typing import Any, List, Optional
 
-import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 
 from databricks.koalas.exceptions import PandasNotImplementedError
+from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import max_display_count
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
 
 
-class Index(object):
+class Index(IndexOpsMixin):
     """
     :ivar _kdf: The parent dataframe that is used to perform the groupby
     :type _kdf: DataFrame
     """
 
-    def __init__(self, kdf: DataFrame) -> None:
+    def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None) -> None:
         assert len(kdf._metadata._index_map) == 1
-        self._kdf = kdf
+        if scol is None:
+            self._kdf = kdf
+            self._scol = self._columns[0]
+        else:
+            self._kdf = kdf.copy()
+            self._scol = scol
+
+    def _with_new_scol(self, scol: spark.Column) -> 'Index':
+        return Index(self._kdf, scol)
 
     @property
     def _columns(self) -> List[spark.Column]:
@@ -55,8 +63,9 @@ class Index(object):
     toPandas = to_pandas
 
     @property
-    def dtype(self) -> np.dtype:
-        return self.to_series().dtype
+    def spark_type(self):
+        """ Returns the data type as defined by Spark, as a Spark DataType object."""
+        return self.to_series().dataType
 
     @property
     def name(self) -> str:
@@ -82,7 +91,7 @@ class Index(object):
 
     def to_series(self, name: str = None) -> Series:
         kdf = self._kdf
-        scol = self._columns[0]
+        scol = self._scol
         return Series(scol if name is None else scol.alias(name),
                       anchor=kdf,
                       index=kdf._metadata.index_map)
@@ -108,9 +117,16 @@ class Index(object):
 
 class MultiIndex(Index):
 
-    def __init__(self, kdf: DataFrame):
+    def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None):
         assert len(kdf._metadata._index_map) > 1
         self._kdf = kdf
+        if scol is None:
+            self._scol = F.struct(self._columns)
+        else:
+            self._scol = scol
+
+    def _with_new_scol(self, scol: spark.Column) -> 'MultiIndex':
+        return MultiIndex(self._kdf, scol)
 
     @property
     def name(self) -> str:
@@ -119,13 +135,6 @@ class MultiIndex(Index):
     @name.setter
     def name(self, name: str) -> None:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
-
-    def to_series(self, name: str = None) -> Series:
-        kdf = self._kdf
-        scol = F.struct(self._columns)
-        return Series(scol if name is None else scol.alias(name),
-                      anchor=kdf,
-                      index=kdf._metadata.index_map)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):

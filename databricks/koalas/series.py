@@ -24,14 +24,13 @@ from typing import Any, Optional, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, FloatType, DoubleType, LongType, StringType, \
-    StructType, TimestampType, to_arrow_type
+from pyspark.sql.types import BooleanType, StructType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
@@ -45,48 +44,7 @@ from databricks.koalas.utils import validate_arguments_and_invoke_function
 REPR_PATTERN = re.compile(r"Length: (?P<length>[0-9]+)")
 
 
-def _column_op(f):
-    """
-    A decorator that wraps APIs taking/returning Spark Column so that Koalas Series can be
-    supported too. If this decorator is used for the `f` function that takes Spark Column and
-    returns Spark Column, decorated `f` takes Koalas Series as well and returns Koalas
-    Series.
-
-    :param f: a function that takes Spark Column and returns Spark Column.
-    :param self: Koalas Series
-    :param args: arguments that the function `f` takes.
-    """
-    @wraps(f)
-    def wrapper(self, *args):
-        assert all((not isinstance(arg, Series)) or (arg._kdf is self._kdf) for arg in args), \
-            "Cannot combine column argument because it comes from a different dataframe"
-
-        # It is possible for the function `f` takes other arguments than Spark Column.
-        # To cover this case, explicitly check if the argument is Koalas Series and
-        # extract Spark Column. For other arguments, they are used as are.
-        args = [arg._scol if isinstance(arg, Series) else arg for arg in args]
-        scol = f(self._scol, *args)
-        return Series(scol, anchor=self._kdf, index=self._index_map)
-    return wrapper
-
-
-def _numpy_column_op(f):
-    @wraps(f)
-    def wrapper(self, *args):
-        # PySpark does not support NumPy type out of the box. For now, we convert NumPy types
-        # into some primitive types understandable in PySpark.
-        new_args = []
-        for arg in args:
-            # TODO: This is a quick hack to support NumPy type. We should revisit this.
-            if isinstance(self.spark_type, LongType) and isinstance(arg, np.timedelta64):
-                new_args.append(float(arg / np.timedelta64(1, 's')))
-            else:
-                new_args.append(arg)
-        return _column_op(f)(self, *new_args)
-    return wrapper
-
-
-class Series(_Frame):
+class Series(_Frame, IndexOpsMixin):
     """
     Koala Series that corresponds to Pandas Series logically. This holds Spark Column
     internally.
@@ -166,133 +124,13 @@ class Series(_Frame):
         self._kdf = kdf
         self._index_map = index_map
 
-    # arithmetic operators
-    __neg__ = _column_op(spark.Column.__neg__)
-
-    def __add__(self, other):
-        if isinstance(self.spark_type, StringType):
-            # Concatenate string columns
-            if isinstance(other, Series) and isinstance(other.spark_type, StringType):
-                return _column_op(F.concat)(self, other)
-            # Handle df['col'] + 'literal'
-            elif isinstance(other, str):
-                return _column_op(F.concat)(self, F.lit(other))
-            else:
-                raise TypeError('string addition can only be applied to string series or literals.')
-        else:
-            return _column_op(spark.Column.__add__)(self, other)
-
-    def __sub__(self, other):
-        # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
-        # behaviors. Pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
-        if isinstance(other, Series) and isinstance(self.spark_type, TimestampType):
-            if not isinstance(other.spark_type, TimestampType):
-                raise TypeError('datetime subtraction can only be applied to datetime series.')
-            return self.astype('bigint') - other.astype('bigint')
-        else:
-            return _column_op(spark.Column.__sub__)(self, other)
-
-    __mul__ = _column_op(spark.Column.__mul__)
-    __div__ = _numpy_column_op(spark.Column.__div__)
-    __truediv__ = _numpy_column_op(spark.Column.__truediv__)
-    __mod__ = _column_op(spark.Column.__mod__)
-
-    def __radd__(self, other):
-        # Handle 'literal' + df['col']
-        if isinstance(self.spark_type, StringType) and isinstance(other, str):
-            return Series(F.concat(F.lit(other), self._scol), anchor=self._kdf,
-                          index=self._index_map)
-        else:
-            return _column_op(spark.Column.__radd__)(self, other)
-
-    __rsub__ = _column_op(spark.Column.__rsub__)
-    __rmul__ = _column_op(spark.Column.__rmul__)
-    __rdiv__ = _numpy_column_op(spark.Column.__rdiv__)
-    __rtruediv__ = _numpy_column_op(spark.Column.__rtruediv__)
-    __rmod__ = _column_op(spark.Column.__rmod__)
-    __pow__ = _column_op(spark.Column.__pow__)
-    __rpow__ = _column_op(spark.Column.__rpow__)
-
-    # logistic operators
-    __eq__ = _column_op(spark.Column.__eq__)
-    __ne__ = _column_op(spark.Column.__ne__)
-    __lt__ = _column_op(spark.Column.__lt__)
-    __le__ = _column_op(spark.Column.__le__)
-    __ge__ = _column_op(spark.Column.__ge__)
-    __gt__ = _column_op(spark.Column.__gt__)
-
-    # `and`, `or`, `not` cannot be overloaded in Python,
-    # so use bitwise operators as boolean operators
-    __and__ = _column_op(spark.Column.__and__)
-    __or__ = _column_op(spark.Column.__or__)
-    __invert__ = _column_op(spark.Column.__invert__)
-    __rand__ = _column_op(spark.Column.__rand__)
-    __ror__ = _column_op(spark.Column.__ror__)
-
-    @property
-    def dtype(self):
-        """Return the dtype object of the underlying data.
-
-        Examples
-        --------
-        >>> s = ks.Series([1, 2, 3])
-        >>> s.dtype
-        dtype('int64')
-
-        >>> s = ks.Series(list('abc'))
-        >>> s.dtype
-        dtype('O')
-
-        >>> s = ks.Series(pd.date_range('20130101', periods=3))
-        >>> s.dtype
-        dtype('<M8[ns]')
-        """
-        if type(self.spark_type) == TimestampType:
-            return np.dtype('datetime64[ns]')
-        else:
-            return np.dtype(to_arrow_type(self.spark_type).to_pandas_dtype())
+    def _with_new_scol(self, scol: spark.Column) -> 'Series':
+        return Series(scol, anchor=self._kdf, index=self._index_map)
 
     @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self.schema.fields[-1].dataType
-
-    def astype(self, dtype):
-        """
-        Cast a Koalas object to a specified dtype ``dtype``.
-
-        Parameters
-        ----------
-        dtype : data type
-            Use a numpy.dtype or Python type to cast entire pandas object to
-            the same type.
-
-        Returns
-        -------
-        casted : same type as caller
-
-        See Also
-        --------
-        to_datetime : Convert argument to datetime.
-
-        Examples
-        --------
-        >>> ser = ks.Series([1, 2], dtype='int32')
-        >>> ser
-        0    1
-        1    2
-        Name: 0, dtype: int32
-
-        >>> ser.astype('int64')
-        0    1
-        1    2
-        Name: 0, dtype: int64
-        """
-        from databricks.koalas.typedef import as_spark_type
-        spark_type = as_spark_type(dtype)
-        if not spark_type:
-            raise ValueError("Type {} not understood".format(dtype))
-        return Series(self._scol.cast(spark_type), anchor=self._kdf, index=self._index_map)
 
     def getField(self, name):
         if not isinstance(self.schema, StructType):
@@ -661,73 +499,6 @@ class Series(_Frame):
     # Alias to maintain backward compatibility with Spark
     toPandas = to_pandas
 
-    def isnull(self):
-        """
-        Detect existing (non-missing) values.
-
-        Return a boolean same-sized object indicating if the values are NA.
-        NA values, such as None or numpy.NaN, gets mapped to True values.
-        Everything else gets mapped to False values. Characters such as empty strings '' or
-        numpy.inf are not considered NA values
-        (unless you set pandas.options.mode.use_inf_as_na = True).
-
-        Returns
-        -------
-        Series : Mask of bool values for each element in Series
-            that indicates whether an element is not an NA value.
-
-        Examples
-        --------
-        >>> ser = ks.Series([5, 6, np.NaN])
-        >>> ser.isna()  # doctest: +NORMALIZE_WHITESPACE
-        0    False
-        1    False
-        2     True
-        Name: ((0 IS NULL) OR isnan(0)), dtype: bool
-        """
-        if isinstance(self.schema[self.name].dataType, (FloatType, DoubleType)):
-            return Series(self._scol.isNull() | F.isnan(self._scol), anchor=self._kdf,
-                          index=self._index_map)
-        else:
-            return Series(self._scol.isNull(), anchor=self._kdf, index=self._index_map)
-
-    isna = isnull
-
-    def notnull(self):
-        """
-        Detect existing (non-missing) values.
-        Return a boolean same-sized object indicating if the values are not NA.
-        Non-missing values get mapped to True.
-        Characters such as empty strings '' or numpy.inf are not considered NA values
-        (unless you set pandas.options.mode.use_inf_as_na = True).
-        NA values, such as None or numpy.NaN, get mapped to False values.
-
-        Returns
-        -------
-        Series : Mask of bool values for each element in Series
-            that indicates whether an element is not an NA value.
-
-        Examples
-        --------
-        Show which entries in a Series are not NA.
-
-        >>> ser = pd.Series([5, 6, np.NaN])
-        >>> ser
-        0    5.0
-        1    6.0
-        2    NaN
-        dtype: float64
-
-        >>> ser.notna()
-        0     True
-        1     True
-        2    False
-        dtype: bool
-        """
-        return ~self.isnull()
-
-    notna = notnull
-
     def fillna(self, value=None, axis=None, inplace=False):
         """Fill NA/NaN values.
 
@@ -996,55 +767,6 @@ class Series(_Frame):
         kdf.columns = [index_name, self.name]
         kdf._metadata = Metadata(data_columns=[self.name], index_map=[(index_name, None)])
         return _col(kdf)
-
-    def isin(self, values):
-        """
-        Check whether `values` are contained in Series.
-
-        Return a boolean Series showing whether each element in the Series
-        matches an element in the passed sequence of `values` exactly.
-
-        Parameters
-        ----------
-        values : list or set
-            The sequence of values to test.
-
-        Returns
-        -------
-        isin : Series (bool dtype)
-
-        Examples
-        --------
-        >>> s = ks.Series(['lama', 'cow', 'lama', 'beetle', 'lama',
-        ...                'hippo'], name='animal')
-        >>> s.isin(['cow', 'lama'])
-        0     True
-        1     True
-        2     True
-        3    False
-        4     True
-        5    False
-        Name: animal, dtype: bool
-
-        Passing a single string as ``s.isin('lama')`` will raise an error. Use
-        a list of one element instead:
-
-        >>> s.isin(['lama'])
-        0     True
-        1    False
-        2     True
-        3    False
-        4     True
-        5    False
-        Name: animal, dtype: bool
-        """
-        if not is_list_like(values):
-            raise TypeError("only list-like objects are allowed to be passed"
-                            " to isin(), you passed a [{values_type}]"
-                            .format(values_type=type(values).__name__))
-
-        return Series(self._scol.isin(list(values)).alias(self.name), anchor=self._kdf,
-                      index=self._index_map)
 
     def corr(self, other, method='pearson'):
         """
