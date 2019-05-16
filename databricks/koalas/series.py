@@ -230,8 +230,6 @@ class Series(_Frame, IndexOpsMixin):
         --------
         Index
         """
-        if len(self._metadata.index_map) == 0:
-            raise KeyError('Currently not supported when the Column has no index.')
         return self._kdf.index
 
     @property

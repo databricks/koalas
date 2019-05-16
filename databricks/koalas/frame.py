@@ -979,7 +979,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.indexes import Index, MultiIndex
         if len(self._metadata.index_map) == 0:
-            raise KeyError('Currently not supported when the DataFrame has no index.')
+            return None
         elif len(self._metadata.index_map) == 1:
             return Index(self)
         else:
