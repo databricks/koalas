@@ -36,7 +36,6 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
-from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.strings import StringMethods
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 

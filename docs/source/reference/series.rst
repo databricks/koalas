@@ -33,6 +33,11 @@ Attributes
 
    Series.str
 
+.. autosummary::
+   :toctree:  api/
+
+   Series.str
+
 Conversion
 ----------
 .. autosummary::
