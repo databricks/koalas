@@ -44,11 +44,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         # TODO: self.assert_eq(d + 1, pdf + 1)
 
-    def test_repr(self):
-        # Make sure we only fetch max_display_count
-        self.assertEqual(koalas.range(1001)['id'].__repr__(),
-                         koalas.range(max_display_count)['id'].__repr__())
-
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
         s = koalas.range(10)['id']
@@ -155,6 +150,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(TypeError, msg):
             ds.isin(1)
 
+    def test_fillna(self):
+        ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
+        ks = koalas.from_pandas(ps)
+
+        self.assert_eq(ks.fillna(0), ps.fillna(0))
+
+        ks.fillna(0, inplace=True)
+        ps.fillna(0, inplace=True)
+        self.assert_eq(ks, ps)
+
     def test_dropna(self):
         ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
 
@@ -240,3 +245,45 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*Series.*{}.*not implemented".format(name)):
                 getattr(ks, name)
+
+    def test_clip(self):
+        ps = pd.Series([0, 2, 4])
+        ks = koalas.from_pandas(ps)
+
+        # Assert list-like values are not accepted for 'lower' and 'upper'
+        msg = "List-like value are not supported for 'lower' and 'upper' at the moment"
+        with self.assertRaises(ValueError, msg=msg):
+            ks.clip(lower=[1])
+        with self.assertRaises(ValueError, msg=msg):
+            ks.clip(upper=[1])
+
+        # Assert no lower or upper
+        self.assert_eq(ks.clip(), ps.clip())
+        # Assert lower only
+        self.assert_eq(ks.clip(1), ps.clip(1))
+        # Assert upper only
+        self.assert_eq(ks.clip(upper=3), ps.clip(upper=3))
+        # Assert lower and upper
+        self.assert_eq(ks.clip(1, 3), ps.clip(1, 3))
+
+        # Assert behavior on string values
+        str_ks = koalas.Series(['a', 'b', 'c'])
+        self.assert_eq(str_ks.clip(1, 3), str_ks)
+
+    def test_is_unique(self):
+        # We can't use pandas' is_unique for comparison. pandas 0.23 ignores None
+        pser = pd.Series([1, 2, 2, None, None])
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(False, kser.is_unique)
+
+        pser = pd.Series([1, None, None])
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(False, kser.is_unique)
+
+        pser = pd.Series([1])
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(pser.is_unique, kser.is_unique)
+
+        pser = pd.Series([1, 1, 1])
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(pser.is_unique, kser.is_unique)

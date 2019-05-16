@@ -1,7 +1,8 @@
 # Contributing Guide <!-- omit in toc -->
 
-This document gives guidance to developers if they plan to contribute to Koalas. The largest amount of work consists simply in implementing the pandas API in Spark terms, which is usually straightforward.
+This document gives guidance to developers if they plan to contribute to Koalas.
 
+- [Types of Contributions](#types-of-contributions)
 - [Step-by-step Guide](#step-by-step-guide)
 - [Environment Setup](#environment-setup)
 - [Running Tests](#running-tests)
@@ -9,9 +10,24 @@ This document gives guidance to developers if they plan to contribute to Koalas.
 - [Coding Conventions](#coding-conventions)
 - [Release Instructions](#release-instructions)
 
-## Step-by-step Guide
+## Types of Contributions
 
-1. Read and understand the [Design Principles](https://github.com/databricks/koalas/blob/master/README.md#design-principles) for the project. Contributions should match these projects.
+The largest amount of work consists simply of implementing the pandas API using Spark's built-in functions, which is usually straightforward. But there are many different forms of contributions in addition to writing code:
+
+1. Use the project and provide feedback, by creating new tickets or commenting on existing relevant tickets.
+
+2. Review existing pull requests.
+
+3. Improve the project's documentation.
+
+4. Write blog posts or tutorial articles evangelizing Koalas and help new users learn Koalas.
+
+5. Give a talk about Koalas at your local meetup or a conference.
+
+
+## Step-by-step Guide For Code Contributions
+
+1. Read and understand the [Design Principles](https://github.com/databricks/koalas/blob/master/README.md#design-principles) for the project. Contributions should follow these principles.
 
 2. Signaling your work: If you are working on something, comment on the relevant ticket that you are doing so to avoid multiple people taking on the same work at the same time. It is also a good practice to signal that your work has stalled or you have moved on and want somebody else to take over.
 
@@ -21,7 +37,9 @@ This document gives guidance to developers if they plan to contribute to Koalas.
 
 5. Run existing and new test cases to make sure they still pass. Also run the linter `dev/lint-python`.
 
-6. Submit a pull request, and be responsive to code review feedback from other community members.
+6. Build the docs (`make html` in `docs` directory) and verify the docs related to your change look OK.
+
+7. Submit a pull request, and be responsive to code review feedback from other community members.
 
 That's it. Your contribution, once merged, will be available in the next release.
 
