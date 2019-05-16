@@ -17,24 +17,27 @@
 from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
-def unsupported_function(method_name):
-    return _unsupported_function(class_name='pd.Series', method_name=method_name)
+def unsupported_function(method_name, deprecated=False):
+    return _unsupported_function(class_name='pd.Series', method_name=method_name,
+                                 deprecated=deprecated)
 
 
-def unsupported_property(property_name):
-    return _unsupported_property(class_name='pd.Series', property_name=property_name)
+def unsupported_property(property_name, deprecated=False):
+    return _unsupported_property(class_name='pd.Series', property_name=property_name,
+                                 deprecated=deprecated)
 
 
 class _MissingPandasLikeSeries(object):
 
     # Properties
     T = unsupported_property('T')
+    argmax = unsupported_function('argmax')
+    argmin = unsupported_function('argmin')
     array = unsupported_property('array')
     asobject = unsupported_property('asobject')
     at = unsupported_property('at')
     axes = unsupported_property('axes')
     base = unsupported_property('base')
-    blocks = unsupported_property('blocks')
     data = unsupported_property('data')
     dtypes = unsupported_property('dtypes')
     empty = unsupported_property('empty')
@@ -49,7 +52,6 @@ class _MissingPandasLikeSeries(object):
     is_monotonic = unsupported_property('is_monotonic')
     is_monotonic_decreasing = unsupported_property('is_monotonic_decreasing')
     is_monotonic_increasing = unsupported_property('is_monotonic_increasing')
-    is_unique = unsupported_property('is_unique')
     itemsize = unsupported_property('itemsize')
     ix = unsupported_property('ix')
     nbytes = unsupported_property('nbytes')
@@ -57,6 +59,9 @@ class _MissingPandasLikeSeries(object):
     size = unsupported_property('size')
     strides = unsupported_property('strides')
     values = unsupported_property('values')
+
+    # Deprecated properties
+    blocks = unsupported_property('blocks', deprecated=True)
 
     # Functions
     add = unsupported_function('add')
@@ -71,8 +76,6 @@ class _MissingPandasLikeSeries(object):
     argmax = unsupported_function('argmax')
     argmin = unsupported_function('argmin')
     argsort = unsupported_function('argsort')
-    as_blocks = unsupported_function('as_blocks')
-    as_matrix = unsupported_function('as_matrix')
     asfreq = unsupported_function('asfreq')
     asof = unsupported_function('asof')
     at_time = unsupported_function('at_time')
@@ -81,14 +84,9 @@ class _MissingPandasLikeSeries(object):
     between_time = unsupported_function('between_time')
     bfill = unsupported_function('bfill')
     bool = unsupported_function('bool')
-    clip = unsupported_function('clip')
-    clip_lower = unsupported_function('clip_lower')
-    clip_upper = unsupported_function('clip_upper')
     combine = unsupported_function('combine')
     combine_first = unsupported_function('combine_first')
     compound = unsupported_function('compound')
-    compress = unsupported_function('compress')
-    convert_objects = unsupported_function('convert_objects')
     copy = unsupported_function('copy')
     cov = unsupported_function('cov')
     cummax = unsupported_function('cummax')
@@ -111,7 +109,6 @@ class _MissingPandasLikeSeries(object):
     expanding = unsupported_function('expanding')
     factorize = unsupported_function('factorize')
     ffill = unsupported_function('ffill')
-    fillna = unsupported_function('fillna')
     filter = unsupported_function('filter')
     first = unsupported_function('first')
     first_valid_index = unsupported_function('first_valid_index')
@@ -119,8 +116,6 @@ class _MissingPandasLikeSeries(object):
     ge = unsupported_function('ge')
     get = unsupported_function('get')
     get_dtype_counts = unsupported_function('get_dtype_counts')
-    get_ftype_counts = unsupported_function('get_ftype_counts')
-    get_value = unsupported_function('get_value')
     get_values = unsupported_function('get_values')
     gt = unsupported_function('gt')
     hist = unsupported_function('hist')
@@ -147,7 +142,6 @@ class _MissingPandasLikeSeries(object):
     multiply = unsupported_function('multiply')
     ne = unsupported_function('ne')
     nlargest = unsupported_function('nlargest')
-    nonzero = unsupported_function('nonzero')
     nsmallest = unsupported_function('nsmallest')
     nunique = unsupported_function('nunique')
     pct_change = unsupported_function('pct_change')
@@ -165,7 +159,6 @@ class _MissingPandasLikeSeries(object):
     rdiv = unsupported_function('rdiv')
     rdivmod = unsupported_function('rdivmod')
     reindex = unsupported_function('reindex')
-    reindex_axis = unsupported_function('reindex_axis')
     reindex_like = unsupported_function('reindex_like')
     rename_axis = unsupported_function('rename_axis')
     reorder_levels = unsupported_function('reorder_levels')
@@ -180,12 +173,9 @@ class _MissingPandasLikeSeries(object):
     rpow = unsupported_function('rpow')
     rsub = unsupported_function('rsub')
     rtruediv = unsupported_function('rtruediv')
-    sample = unsupported_function('sample')
     searchsorted = unsupported_function('searchsorted')
-    select = unsupported_function('select')
     sem = unsupported_function('sem')
     set_axis = unsupported_function('set_axis')
-    set_value = unsupported_function('set_value')
     shift = unsupported_function('shift')
     slice_shift = unsupported_function('slice_shift')
     sort_index = unsupported_function('sort_index')
@@ -203,7 +193,6 @@ class _MissingPandasLikeSeries(object):
     to_frame = unsupported_function('to_frame')
     to_hdf = unsupported_function('to_hdf')
     to_json = unsupported_function('to_json')
-    to_latex = unsupported_function('to_latex')
     to_list = unsupported_function('to_list')
     to_msgpack = unsupported_function('to_msgpack')
     to_period = unsupported_function('to_period')
@@ -222,7 +211,21 @@ class _MissingPandasLikeSeries(object):
     tz_localize = unsupported_function('tz_localize')
     unstack = unsupported_function('unstack')
     update = unsupported_function('update')
-    valid = unsupported_function('valid')
     view = unsupported_function('view')
     where = unsupported_function('where')
     xs = unsupported_function('xs')
+
+    # Deprecated functions
+    as_blocks = unsupported_function('as_blocks', deprecated=True)
+    as_matrix = unsupported_function('as_matrix', deprecated=True)
+    clip_lower = unsupported_function('clip_lower', deprecated=True)
+    clip_upper = unsupported_function('clip_upper', deprecated=True)
+    compress = unsupported_function('compress', deprecated=True)
+    convert_objects = unsupported_function('convert_objects', deprecated=True)
+    get_ftype_counts = unsupported_function('get_ftype_counts', deprecated=True)
+    get_value = unsupported_function('get_value', deprecated=True)
+    nonzero = unsupported_function('nonzero', deprecated=True)
+    reindex_axis = unsupported_function('reindex_axis', deprecated=True)
+    select = unsupported_function('select', deprecated=True)
+    set_value = unsupported_function('set_value', deprecated=True)
+    valid = unsupported_function('valid', deprecated=True)

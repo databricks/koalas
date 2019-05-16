@@ -22,7 +22,7 @@ import pandas as pd
 from databricks import koalas
 from databricks.koalas.generic import max_display_count
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
-from databricks.koalas.exceptions import PandasNotImplementedError, SparkPandasMergeError
+from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 
 
@@ -69,22 +69,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertEqual(ddf.a.notnull().alias("x").name, "x")
 
-    def test_repr(self):
-        # Make sure we only fetch max_display_count
-        self.assertEqual(koalas.range(1001).__repr__(),
-                         koalas.range(max_display_count).__repr__())
-
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
         df = koalas.range(10)
         df.__repr__()
         df['a'] = df['id']
         self.assertEqual(df.__repr__(), df.to_pandas().__repr__())
-
-    def test_repr_html(self):
-        # Make sure we only fetch max_display_count
-        self.assertEqual(koalas.range(1001)._repr_html_(),
-                         koalas.range(max_display_count)._repr_html_())
 
     def test_repr_html_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
@@ -354,16 +344,33 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = self.kdf
 
         missing_functions = inspect.getmembers(_MissingPandasLikeDataFrame, inspect.isfunction)
-        for name, _ in missing_functions:
+        unsupported_functions = [name for (name, type_) in missing_functions
+                                 if type_.__name__ == 'unsupported_function']
+        for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*DataFrame.*{}.*not implemented".format(name)):
                 getattr(kdf, name)()
 
+        deprecated_functions = [name for (name, type_) in missing_functions
+                                if type_.__name__ == 'deprecated_function']
+        for name in deprecated_functions:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "method.*DataFrame.*{}.*is deprecated".format(name)):
+                getattr(kdf, name)()
+
         missing_properties = inspect.getmembers(_MissingPandasLikeDataFrame,
                                                 lambda o: isinstance(o, property))
-        for name, _ in missing_properties:
+        unsupported_properties = [name for (name, type_) in missing_properties
+                                  if type_.fget.__name__ == 'unsupported_property']
+        for name in unsupported_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*DataFrame.*{}.*not implemented".format(name)):
+                getattr(kdf, name)
+        deprecated_properties = [name for (name, type_) in missing_properties
+                                 if type_.fget.__name__ == 'deprecated_property']
+        for name in deprecated_properties:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "property.*DataFrame.*{}.*is deprecated".format(name)):
                 getattr(kdf, name)
 
     def test_to_numpy(self):
@@ -411,10 +418,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert only 'on' or 'left_index' and 'right_index' parameters are set
         msg = "At least 'on' or 'left_index' and 'right_index' have to be set"
-        with self.assertRaises(SparkPandasMergeError, msg=msg):
+        with self.assertRaises(ValueError, msg=msg):
             left_kdf.merge(right_kdf)
         msg = "Only 'on' or 'left_index' and 'right_index' can be set"
-        with self.assertRaises(SparkPandasMergeError, msg=msg):
+        with self.assertRaises(ValueError, msg=msg):
             left_kdf.merge(right_kdf, on='id', left_index=True)
 
         # Assert a valid option for the 'how' parameter is used
@@ -458,3 +465,44 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         res = left_kdf.merge(koalas.DataFrame({'A': [3, 4]}), left_index=True, right_index=True,
                              suffixes=('_left', '_right'))
         self.assert_eq(res, pd.DataFrame({'A_left': [1, 2], 'A_right': [3, 4]}))
+
+    def test_clip(self):
+        pdf = pd.DataFrame({'A': [0, 2, 4]})
+        kdf = koalas.from_pandas(pdf)
+
+        # Assert list-like values are not accepted for 'lower' and 'upper'
+        msg = "List-like value are not supported for 'lower' and 'upper' at the moment"
+        with self.assertRaises(ValueError, msg=msg):
+            kdf.clip(lower=[1])
+        with self.assertRaises(ValueError, msg=msg):
+            kdf.clip(upper=[1])
+
+        # Assert no lower or upper
+        self.assert_eq(kdf.clip(), pdf.clip())
+        # Assert lower only
+        self.assert_eq(kdf.clip(1), pdf.clip(1))
+        # Assert upper only
+        self.assert_eq(kdf.clip(upper=3), pdf.clip(upper=3))
+        # Assert lower and upper
+        self.assert_eq(kdf.clip(1, 3), pdf.clip(1, 3))
+
+        # Assert behavior on string values
+        str_kdf = koalas.DataFrame({'A': ['a', 'b', 'c']})
+        self.assert_eq(str_kdf.clip(1, 3), str_kdf)
+
+    def test_sample(self):
+        pdf = pd.DataFrame({'A': [0, 2, 4]})
+        kdf = koalas.from_pandas(pdf)
+
+        # Make sure the tests run, but we can't check the result because they are non-deterministic.
+        kdf.sample(frac=0.1)
+        kdf.sample(frac=0.2, replace=True)
+        kdf.sample(frac=0.2, random_state=5)
+        kdf['A'].sample(frac=0.2)
+        kdf['A'].sample(frac=0.2, replace=True)
+        kdf['A'].sample(frac=0.2, random_state=5)
+
+        with self.assertRaises(ValueError):
+            kdf.sample()
+        with self.assertRaises(NotImplementedError):
+            kdf.sample(n=1)
