@@ -381,6 +381,10 @@ class Series(_Frame):
         """The index (axis labels) Column of the Series.
 
         Currently not supported when the DataFrame has no index.
+
+        See Also
+        --------
+        Index
         """
         if len(self._metadata.index_map) == 0:
             raise KeyError('Currently not supported when the Column has no index.')

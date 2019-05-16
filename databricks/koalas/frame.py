@@ -972,6 +972,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """The index (row labels) Column of the DataFrame.
 
         Currently not supported when the DataFrame has no index.
+
+        See Also
+        --------
+        Index
         """
         from databricks.koalas.indexes import Index, MultiIndex
         if len(self._metadata.index_map) == 0:
