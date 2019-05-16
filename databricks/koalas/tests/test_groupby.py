@@ -151,7 +151,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                                         .format(name)):
                 getattr(kdf.groupby('a'), name)
         deprecated_properties = [name for (name, type_) in missing_properties
-                                  if type_.fget.__name__ == 'deprecated_property']
+                                 if type_.fget.__name__ == 'deprecated_property']
         for name in deprecated_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*GroupBy.*{}.*is deprecated"
@@ -169,7 +169,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                                         .format(name)):
                 getattr(kdf.a.groupby('a'), name)
         deprecated_properties = [name for (name, type_) in missing_properties
-                                  if type_.fget.__name__ == 'deprecated_property']
+                                 if type_.fget.__name__ == 'deprecated_property']
         for name in deprecated_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*GroupBy.*{}.*is deprecated"
