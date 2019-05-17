@@ -45,6 +45,7 @@ def inspect_missing_functions(original_type, target_type):
              and its original and modified signature.
     """
     missing = []
+    deprecated = []
     modified = []
 
     for name, func in inspect.getmembers(original_type, inspect.isfunction):
@@ -62,9 +63,14 @@ def inspect_missing_functions(original_type, target_type):
                     modified.append((name, original_signature, target_signature))
                 continue
 
-        missing.append((name, original_signature))
+        docstring = func.__doc__
+        # Use line break and indent to only cover deprecated method, not deprecated parameters
+        if docstring and ('\n        .. deprecated::' in docstring):
+            deprecated.append((name, original_signature))
+        else:
+            missing.append((name, original_signature))
 
-    return missing, modified
+    return missing, deprecated, modified
 
 
 def format_arguments(arguments, prefix_len, suffix_len):
@@ -224,7 +230,7 @@ def _main():
                                        (pd.core.groupby.SeriesGroupBy, SeriesGroupBy),
                                        (pd.Index, Index),
                                        (pd.MultiIndex, MultiIndex)]:
-        missing, modified = inspect_missing_functions(original_type, target_type)
+        missing, deprecated, modified = inspect_missing_functions(original_type, target_type)
 
         print('MISSING functions for {}'.format(original_type.__name__))
         for name, signature in missing:
@@ -232,9 +238,15 @@ def _main():
             print("""    {0} = unsupported_function('{0}')""".format(name))
 
         print()
+        print('DEPRECATED functions for {}'.format(original_type.__name__))
+        for name, signature in deprecated:
+            print("""    {0} = unsupported_function('{0}', deprecated=True)""".format(name))
+
+        print()
         print('MODIFIED functions for {}'.format(original_type.__name__))
         for name, original, target in modified:
             print(make_modified_function_def(original_type, name, original, target))
+        print()
 
 
 if __name__ == '__main__':

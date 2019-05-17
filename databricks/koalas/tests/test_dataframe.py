@@ -319,16 +319,33 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = self.kdf
 
         missing_functions = inspect.getmembers(_MissingPandasLikeDataFrame, inspect.isfunction)
-        for name, _ in missing_functions:
+        unsupported_functions = [name for (name, type_) in missing_functions
+                                 if type_.__name__ == 'unsupported_function']
+        for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*DataFrame.*{}.*not implemented".format(name)):
                 getattr(kdf, name)()
 
+        deprecated_functions = [name for (name, type_) in missing_functions
+                                if type_.__name__ == 'deprecated_function']
+        for name in deprecated_functions:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "method.*DataFrame.*{}.*is deprecated".format(name)):
+                getattr(kdf, name)()
+
         missing_properties = inspect.getmembers(_MissingPandasLikeDataFrame,
                                                 lambda o: isinstance(o, property))
-        for name, _ in missing_properties:
+        unsupported_properties = [name for (name, type_) in missing_properties
+                                  if type_.fget.__name__ == 'unsupported_property']
+        for name in unsupported_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*DataFrame.*{}.*not implemented".format(name)):
+                getattr(kdf, name)
+        deprecated_properties = [name for (name, type_) in missing_properties
+                                 if type_.fget.__name__ == 'deprecated_property']
+        for name in deprecated_properties:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "property.*DataFrame.*{}.*is deprecated".format(name)):
                 getattr(kdf, name)
 
     def test_to_numpy(self):
