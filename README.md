@@ -241,13 +241,6 @@ dbutils.library.installPyPI("koalas")
 dbutils.library.restartPython()
 ```
 
-If you are trying `Koalas<0.4`, you should upgrade NumPy and pandas to the appropriate versions prior to installing Koalas:
-
-```python
-dbutils.library.installPyPI("numpy", "1.16.2")
-dbutils.library.installPyPI("pandas", "0.24.2")
-```
-
 Databricks Runtime for Machine Learning has the right versions of dependencies setup already,
 so you just need to install Koalas from PyPi when creating a cluster.
 
