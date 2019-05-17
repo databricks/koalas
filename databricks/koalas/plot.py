@@ -511,6 +511,7 @@ class KoalasSeriesPlotMethods(BasePlotMethods):
 
     Examples
     --------
+    >>> s = ks.range(1002)['id']
     >>> s.plot.box()
     >>> s.plot.bar()
     >>> s.plot.hist()
