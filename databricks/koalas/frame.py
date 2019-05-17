@@ -2205,7 +2205,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return kdf
 
     # TODO: Not Supported:  keep = First
-    def nlargest(self, n: int, columns: 'list or str', keep: str = 'first') -> 'DataFrame':
+    def nlargest(self, n: int, columns: 'Any', keep: str = 'first') -> 'DataFrame':
         """
         Return the first `n` rows ordered by `columns` in descending order.
 
@@ -2292,7 +2292,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self.sort_values(by=columns, ascending=False).head(n=n)
 
     # TODO: Not Supported:  keep = First
-    def nsmallest(self, n: int, columns: 'list or str', keep: str = 'first') -> 'DataFrame':
+    def nsmallest(self, n: int, columns: 'Any', keep: str = 'first') -> 'DataFrame':
         """
         Return the first `n` rows ordered by `columns` in ascending order.
 
