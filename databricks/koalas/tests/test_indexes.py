@@ -110,28 +110,68 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
         kdf = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
 
+        # Index functions
         missing_functions = inspect.getmembers(_MissingPandasLikeIndex, inspect.isfunction)
-        for name, _ in missing_functions:
+        unsupported_functions = [name for (name, type_) in missing_functions
+                                 if type_.__name__ == 'unsupported_function']
+        for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*Index.*{}.*not implemented".format(name)):
                 getattr(kdf.set_index('a').index, name)()
 
+        deprecated_functions = [name for (name, type_) in missing_functions
+                                if type_.__name__ == 'deprecated_function']
+        for name in deprecated_functions:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "method.*Index.*{}.*is deprecated".format(name)):
+                getattr(kdf.set_index('a').index, name)()
+
+        # MultiIndex functions
         missing_functions = inspect.getmembers(_MissingPandasLikeMultiIndex, inspect.isfunction)
-        for name, _ in missing_functions:
+        unsupported_functions = [name for (name, type_) in missing_functions
+                                 if type_.__name__ == 'unsupported_function']
+        for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*Index.*{}.*not implemented".format(name)):
                 getattr(kdf.set_index(['a', 'b']).index, name)()
 
+        deprecated_functions = [name for (name, type_) in missing_functions
+                                if type_.__name__ == 'deprecated_function']
+        for name in deprecated_functions:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "method.*Index.*{}.*is deprecated".format(name)):
+                getattr(kdf.set_index(['a', 'b']).index, name)()
+
+        # Index properties
         missing_properties = inspect.getmembers(_MissingPandasLikeIndex,
                                                 lambda o: isinstance(o, property))
-        for name, _ in missing_properties:
+        unsupported_properties = [name for (name, type_) in missing_properties
+                                  if type_.fget.__name__ == 'unsupported_property']
+        for name in unsupported_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*Index.*{}.*not implemented".format(name)):
                 getattr(kdf.set_index('a').index, name)
 
+        deprecated_properties = [name for (name, type_) in missing_properties
+                                 if type_.fget.__name__ == 'deprecated_property']
+        for name in deprecated_properties:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "property.*GroupBy.*{}.*is deprecated".format(name)):
+                getattr(kdf.set_index('a').index, name)
+
+        # MultiIndex properties
         missing_properties = inspect.getmembers(_MissingPandasLikeMultiIndex,
                                                 lambda o: isinstance(o, property))
-        for name, _ in missing_properties:
+        unsupported_properties = [name for (name, type_) in missing_properties
+                                  if type_.fget.__name__ == 'unsupported_property']
+        for name in unsupported_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*Index.*{}.*not implemented".format(name)):
+                getattr(kdf.set_index(['a', 'b']).index, name)
+
+        deprecated_properties = [name for (name, type_) in missing_properties
+                                 if type_.fget.__name__ == 'deprecated_property']
+        for name in deprecated_properties:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "property.*GroupBy.*{}.*is deprecated".format(name)):
                 getattr(kdf.set_index(['a', 'b']).index, name)

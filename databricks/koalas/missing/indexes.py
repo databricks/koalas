@@ -17,12 +17,14 @@
 from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
-def unsupported_function(method_name):
-    return _unsupported_function(class_name='pd.Index', method_name=method_name)
+def unsupported_function(method_name, deprecated=False):
+    return _unsupported_function(class_name='pd.Index', method_name=method_name,
+                                 deprecated=deprecated)
 
 
-def unsupported_property(property_name):
-    return _unsupported_property(class_name='pd.Index', property_name=property_name)
+def unsupported_property(property_name, deprecated=False):
+    return _unsupported_property(class_name='pd.Index', property_name=property_name,
+                                 deprecated=deprecated)
 
 
 class _MissingPandasLikeIndex(object):
@@ -69,7 +71,6 @@ class _MissingPandasLikeIndex(object):
     factorize = unsupported_function('factorize')
     fillna = unsupported_function('fillna')
     format = unsupported_function('format')
-    get_duplicates = unsupported_function('get_duplicates')
     get_indexer = unsupported_function('get_indexer')
     get_indexer_for = unsupported_function('get_indexer_for')
     get_indexer_non_unique = unsupported_function('get_indexer_non_unique')
@@ -115,7 +116,6 @@ class _MissingPandasLikeIndex(object):
     sort = unsupported_function('sort')
     sort_values = unsupported_function('sort_values')
     sortlevel = unsupported_function('sortlevel')
-    summary = unsupported_function('summary')
     symmetric_difference = unsupported_function('symmetric_difference')
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
@@ -130,6 +130,10 @@ class _MissingPandasLikeIndex(object):
     value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
     where = unsupported_function('where')
+
+    # Deprecated functions
+    get_duplicates = unsupported_function('get_duplicates', deprecated=True)
+    summary = unsupported_function('summary', deprecated=True)
 
 
 class _MissingPandasLikeMultiIndex(object):
@@ -179,7 +183,6 @@ class _MissingPandasLikeMultiIndex(object):
     factorize = unsupported_function('factorize')
     fillna = unsupported_function('fillna')
     format = unsupported_function('format')
-    get_duplicates = unsupported_function('get_duplicates')
     get_indexer = unsupported_function('get_indexer')
     get_indexer_for = unsupported_function('get_indexer_for')
     get_indexer_non_unique = unsupported_function('get_indexer_non_unique')
@@ -233,13 +236,11 @@ class _MissingPandasLikeMultiIndex(object):
     sort = unsupported_function('sort')
     sort_values = unsupported_function('sort_values')
     sortlevel = unsupported_function('sortlevel')
-    summary = unsupported_function('summary')
     swaplevel = unsupported_function('swaplevel')
     symmetric_difference = unsupported_function('symmetric_difference')
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
     to_frame = unsupported_function('to_frame')
-    to_hierarchical = unsupported_function('to_hierarchical')
     to_list = unsupported_function('to_list')
     to_native_types = unsupported_function('to_native_types')
     to_numpy = unsupported_function('to_numpy')
@@ -251,3 +252,8 @@ class _MissingPandasLikeMultiIndex(object):
     value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
     where = unsupported_function('where')
+
+    # Deprecated functions
+    get_duplicates = unsupported_function('get_duplicates', deprecated=True)
+    summary = unsupported_function('summary', deprecated=True)
+    to_hierarchical = unsupported_function('to_hierarchical', deprecated=True)
