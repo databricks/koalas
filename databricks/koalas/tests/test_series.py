@@ -196,6 +196,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ks.name = 'index'
         self.assertPandasAlmostEqual(ks.value_counts().toPandas(), ps.value_counts())
 
+    def test_nsmallest(self):
+        sample_lst = [1, 2, 3, 4, np.nan, 6]
+        ps = pd.Series(sample_lst, name='x')
+        ks = koalas.Series(sample_lst, name='x')
+        self.assert_eq(ks.nsmallest(n=3), ps.nsmallest(n=3))
+        self.assert_eq(ks.nsmallest(), ps.nsmallest())
+        with self.assertRaises(NotImplementedError):
+            ks.nsmallest(n=5, keep='last')
+            ks.nsmallest(n=5, keep='all')
+
+    def test_nlargest(self):
+        sample_lst = [1, 2, 3, 4, np.nan, 6]
+        ps = pd.Series(sample_lst, name='x')
+        ks = koalas.Series(sample_lst, name='x')
+        self.assert_eq(ks.nlargest(n=3), ps.nlargest(n=3))
+        self.assert_eq(ks.nlargest(), ps.nlargest())
+        with self.assertRaises(NotImplementedError):
+            ks.nlargest(n=5, keep='last')
+            ks.nlargest(n=5, keep='all')
+
     def test_isnull(self):
         ps = pd.Series([1, 2, 3, 4, np.nan, 6], name='x')
         ks = koalas.from_pandas(ps)
