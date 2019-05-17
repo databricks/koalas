@@ -17,12 +17,14 @@
 from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
-def unsupported_function(method_name):
-    return _unsupported_function(class_name='pd.groupby.GroupBy', method_name=method_name)
+def unsupported_function(method_name, deprecated=False):
+    return _unsupported_function(class_name='pd.groupby.GroupBy', method_name=method_name,
+                                 deprecated=deprecated)
 
 
-def unsupported_property(property_name):
-    return _unsupported_property(class_name='pd.groupby.GroupBy', property_name=property_name)
+def unsupported_property(property_name, deprecated=False):
+    return _unsupported_property(class_name='pd.groupby.GroupBy', property_name=property_name,
+                                 deprecated=deprecated)
 
 
 class _MissingPandasLikeDataFrameGroupBy(object):
@@ -44,8 +46,10 @@ class _MissingPandasLikeDataFrameGroupBy(object):
     plot = unsupported_property('plot')
     quantile = unsupported_property('quantile')
     skew = unsupported_property('skew')
-    take = unsupported_property('take')
     tshift = unsupported_property('tshift')
+
+    # Deprecated properties
+    take = unsupported_property('take', deprecated=True)
 
     # Functions
     all = unsupported_function('all')
@@ -106,9 +110,11 @@ class _MissingPandasLikeSeriesGroupBy(object):
     plot = unsupported_property('plot')
     quantile = unsupported_property('quantile')
     skew = unsupported_property('skew')
-    take = unsupported_property('take')
     tshift = unsupported_property('tshift')
     unique = unsupported_property('unique')
+
+    # Deprecated properties
+    take = unsupported_property('take', deprecated=True)
 
     # Functions
     all = unsupported_function('all')
