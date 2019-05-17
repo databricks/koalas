@@ -25,6 +25,7 @@ from typing import Any, Optional, Union
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like
+from pandas.core.accessor import CachedAccessor
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -37,7 +38,7 @@ from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
-from databricks.koalas.utils import validate_arguments_and_invoke_function, lazy_property
+from databricks.koalas.utils import validate_arguments_and_invoke_function
 
 
 # This regular expression pattern is complied and defined here to avoid to compile the same
@@ -258,9 +259,7 @@ class Series(_Frame):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self.schema.fields[-1].dataType
 
-    @lazy_property
-    def plot(self):
-        return KoalasSeriesPlotMethods(self)
+    plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
 
     def astype(self, dtype):
         """
@@ -325,6 +324,7 @@ class Series(_Frame):
 
     @property
     def ndim(self):
+        """Returns number of dimensions of the Series."""
         return 1
 
     @property
@@ -1126,6 +1126,11 @@ class Series(_Frame):
             n=n, frac=frac, replace=replace, random_state=random_state))
 
     sample.__doc__ = DataFrame.sample.__doc__
+
+    def hist(self, bins=10, **kwds):
+        return self.plot.hist(bins, **kwds)
+
+    hist.__doc__ = KoalasSeriesPlotMethods.hist.__doc__
 
     def apply(self, func, args=(), **kwds):
         """

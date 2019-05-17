@@ -106,3 +106,20 @@ Serialization / IO / Conversion
    Series.to_dict
    Series.to_clipboard
    Series.to_latex
+
+Plotting
+-------------------------------
+``Series.plot`` is both a callable method and a namespace attribute for
+specific plotting methods of the form ``Series.plot.<kind>``.
+
+.. autosummary::
+   :toctree: api/
+
+   Series.plot.bar
+   Series.plot.box
+   Series.plot.hist
+
+.. autosummary::
+   :toctree: api/
+
+   Series.hist

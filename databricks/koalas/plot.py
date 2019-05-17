@@ -140,7 +140,8 @@ class KoalasBoxPlot(BoxPlot):
                 showbox=None, showfliers=None, boxprops=None,
                 labels=None, flierprops=None, medianprops=None,
                 meanprops=None, capprops=None, whiskerprops=None,
-                manage_xticks=True, autorange=False, zorder=None):
+                manage_xticks=True, autorange=False, zorder=None,
+                precision=None):
 
         def _update_dict(dictionary, rc_name, properties):
             """ Loads properties in the dictionary from rc file if not already
@@ -259,7 +260,7 @@ class KoalasBoxPlot(BoxPlot):
         # Gets some important kwds
         showfliers = self.kwds.get('showfliers', False)
         whis = self.kwds.get('whis', 1.5)
-        labels = self.kwds.get('labels', colname)
+        labels = self.kwds.get('labels', [colname])
 
         # This one is Koalas specific to control precision for approx_percentile
         precision = self.kwds.get('precision', 0.01)
@@ -391,7 +392,7 @@ class KoalasHistPlot(HistPlot):
 
 
 _klasses = [KoalasHistPlot, KoalasBarPlot, KoalasBoxPlot]
-_plot_klass = {klass._kind: klass for klass in _klasses}
+_plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
 
 
 @Appender(_shared_docs['plot'] % _shared_doc_series_kwargs)
@@ -510,13 +511,13 @@ class KoalasSeriesPlotMethods(BasePlotMethods):
 
     Examples
     --------
-    >>> s.plot.line()
+    >>> s.plot.box()
     >>> s.plot.bar()
     >>> s.plot.hist()
 
     Plotting methods can also be accessed by calling the accessor as a method
     with the ``kind`` argument:
-    ``s.plot(kind='line')`` is equivalent to ``s.plot.line()``
+    ``s.plot(kind='hist')`` is equivalent to ``s.plot.hist()``
     """
 
     def __call__(self, kind='line', ax=None,
@@ -541,15 +542,73 @@ class KoalasSeriesPlotMethods(BasePlotMethods):
         return _unsupported_function(class_name='pd.Series', method_name='line')
 
     def bar(self, **kwds):
+        """
+        Vertical bar plot.
+
+        Parameters
+        ----------
+        `**kwds` : optional
+            Additional keyword arguments are documented in
+            :meth:`Koalas.Series.plot`.
+
+        Returns
+        -------
+        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+        """
         return self(kind='bar', **kwds)
 
     def barh(self, **kwds):
         return _unsupported_function(class_name='pd.Series', method_name='barh')
 
     def box(self, **kwds):
+        """
+        Boxplot.
+
+        Parameters
+        ----------
+        `**kwds` : optional
+            Additional keyword arguments are documented in
+            :meth:`Koalas.Series.plot`.
+
+        `precision`: scalar, default = 0.01
+            This argument is used by Koalas to compute approximate statistics
+            for building a boxplot. Use *smaller* values to get more precise
+            statistics.
+
+        Returns
+        -------
+        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+
+        Notes
+        -----
+        There are behavior differences between Koalas and pandas.
+
+        * Koalas computes approximate statistics - expect differences between
+          pandas and Koalas boxplots, especially regarding 1st and 3rd quartiles.
+        * The `whis` argument is only supported as a single number.
+        * Koalas doesn't support the following argument(s).
+
+          * `bootstrap` argument is not supported
+          * `autorange` argument is not supported
+        """
         return self(kind='box', **kwds)
 
     def hist(self, bins=10, **kwds):
+        """
+        Histogram.
+
+        Parameters
+        ----------
+        bins : integer, default 10
+            Number of histogram bins to be used
+        `**kwds` : optional
+            Additional keyword arguments are documented in
+            :meth:`Koalas.Series.plot`.
+
+        Returns
+        -------
+        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+        """
         return self(kind='hist', bins=bins, **kwds)
 
     def kde(self, bw_method=None, ind=None, **kwds):
