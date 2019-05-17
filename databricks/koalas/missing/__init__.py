@@ -17,18 +17,27 @@
 from databricks.koalas.exceptions import PandasNotImplementedError
 
 
-def _unsupported_function(class_name, method_name):
+def _unsupported_function(class_name, method_name, deprecated=False):
 
     def unsupported_function(*args, **kwargs):
         raise PandasNotImplementedError(class_name=class_name, method_name=method_name)
 
-    return unsupported_function
+    def deprecated_function(*args, **kwargs):
+        raise PandasNotImplementedError(class_name=class_name, method_name=method_name,
+                                        deprecated=deprecated)
+
+    return deprecated_function if deprecated else unsupported_function
 
 
-def _unsupported_property(class_name, property_name):
+def _unsupported_property(class_name, property_name, deprecated=False):
 
     @property
     def unsupported_property(self):
         raise PandasNotImplementedError(class_name=class_name, property_name=property_name)
 
-    return unsupported_property
+    @property
+    def deprecated_property(self):
+        raise PandasNotImplementedError(class_name=class_name, property_name=property_name,
+                                        deprecated=deprecated)
+
+    return deprecated_property if deprecated else unsupported_property

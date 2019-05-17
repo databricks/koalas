@@ -220,16 +220,33 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ks = self.ks
 
         missing_functions = inspect.getmembers(_MissingPandasLikeSeries, inspect.isfunction)
-        for name, _ in missing_functions:
+        unsupported_functions = [name for (name, type_) in missing_functions
+                                 if type_.__name__ == 'unsupported_function']
+        for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*Series.*{}.*not implemented".format(name)):
                 getattr(ks, name)()
 
+        deprecated_functions = [name for (name, type_) in missing_functions
+                                if type_.__name__ == 'deprecated_function']
+        for name in deprecated_functions:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "method.*Series.*{}.*is deprecated".format(name)):
+                getattr(ks, name)()
+
         missing_properties = inspect.getmembers(_MissingPandasLikeSeries,
                                                 lambda o: isinstance(o, property))
-        for name, _ in missing_properties:
+        unsupported_properties = [name for (name, type_) in missing_properties
+                                  if type_.fget.__name__ == 'unsupported_property']
+        for name in unsupported_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*Series.*{}.*not implemented".format(name)):
+                getattr(ks, name)
+        deprecated_properties = [name for (name, type_) in missing_properties
+                                 if type_.fget.__name__ == 'deprecated_property']
+        for name in deprecated_properties:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "property.*Series.*{}.*is deprecated".format(name)):
                 getattr(ks, name)
 
     def test_clip(self):

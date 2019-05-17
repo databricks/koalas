@@ -102,34 +102,76 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
         kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 
+        # DataFrameGroupBy functions
         missing_functions = inspect.getmembers(_MissingPandasLikeDataFrameGroupBy,
                                                inspect.isfunction)
-        for name, _ in missing_functions:
+        unsupported_functions = [name for (name, type_) in missing_functions
+                                 if type_.__name__ == 'unsupported_function']
+        for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*GroupBy.*{}.*not implemented"
                                         .format(name)):
                 getattr(kdf.groupby('a'), name)()
 
+        deprecated_functions = [name for (name, type_) in missing_functions
+                                if type_.__name__ == 'deprecated_function']
+        for name in deprecated_functions:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "method.*GroupBy.*{}.*is deprecated"
+                                        .format(name)):
+                getattr(kdf.groupby('a'), name)()
+
+        # SeriesGroupBy functions
         missing_functions = inspect.getmembers(_MissingPandasLikeSeriesGroupBy,
                                                inspect.isfunction)
-        for name, _ in missing_functions:
+        unsupported_functions = [name for (name, type_) in missing_functions
+                                 if type_.__name__ == 'unsupported_function']
+        for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*GroupBy.*{}.*not implemented"
                                         .format(name)):
                 getattr(kdf.a.groupby('a'), name)()
 
+        deprecated_functions = [name for (name, type_) in missing_functions
+                                if type_.__name__ == 'deprecated_function']
+        for name in deprecated_functions:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "method.*GroupBy.*{}.*is deprecated"
+                                        .format(name)):
+                getattr(kdf.a.groupby('a'), name)()
+
+        # DataFrameGroupBy properties
         missing_properties = inspect.getmembers(_MissingPandasLikeDataFrameGroupBy,
                                                 lambda o: isinstance(o, property))
-        for name, _ in missing_properties:
+        unsupported_properties = [name for (name, type_) in missing_properties
+                                  if type_.fget.__name__ == 'unsupported_property']
+        for name in unsupported_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*GroupBy.*{}.*not implemented"
                                         .format(name)):
                 getattr(kdf.groupby('a'), name)
+        deprecated_properties = [name for (name, type_) in missing_properties
+                                 if type_.fget.__name__ == 'deprecated_property']
+        for name in deprecated_properties:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "property.*GroupBy.*{}.*is deprecated"
+                                        .format(name)):
+                getattr(kdf.groupby('a'), name)
 
+        # SeriesGroupBy properties
         missing_properties = inspect.getmembers(_MissingPandasLikeSeriesGroupBy,
                                                 lambda o: isinstance(o, property))
-        for name, _ in missing_properties:
+        unsupported_properties = [name for (name, type_) in missing_properties
+                                  if type_.fget.__name__ == 'unsupported_property']
+        for name in unsupported_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*GroupBy.*{}.*not implemented"
+                                        .format(name)):
+                getattr(kdf.a.groupby('a'), name)
+        deprecated_properties = [name for (name, type_) in missing_properties
+                                 if type_.fget.__name__ == 'deprecated_property']
+        for name in deprecated_properties:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "property.*GroupBy.*{}.*is deprecated"
                                         .format(name)):
                 getattr(kdf.a.groupby('a'), name)
