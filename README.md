@@ -59,7 +59,14 @@ pip install koalas
 
 If this fails to install the pyarrow dependency, you may want to try installing with Python 3.6.x, as `pip install arrow` does not work out of the box for 3.7 https://github.com/apache/arrow/issues/1125.
 
-After installing the package, you can import the package:
+If you don't have Spark environment, you should also install `pyspark` package by:
+```bash
+pip install pyspark>=2.4
+```
+
+or downloading the release.
+
+After installing the packages, you can import the package:
 ```py
 import databricks.koalas as ks
 ```
@@ -227,13 +234,18 @@ provides an opportunity for us to experiment with new design principles.
 
 ### How do I use this on Databricks?
 
-Koalas requires Databricks Runtime 5.x or above. For the regular Databricks Runtime, you should upgrade NumPy and pandas to the appropriate versions and then install Koalas. This can be done using the Libraries tab on the cluster UI, or using dbutils in a notebook:
+Koalas requires Databricks Runtime 5.x or above. For the regular Databricks Runtime, you can install Koalas using the Libraries tab on the cluster UI, or using dbutils in a notebook:
+
+```python
+dbutils.library.installPyPI("koalas")
+dbutils.library.restartPython()
+```
+
+If you are trying `Koalas<0.4`, you should upgrade NumPy and pandas to the appropriate versions prior to installing Koalas:
 
 ```python
 dbutils.library.installPyPI("numpy", "1.16.2")
 dbutils.library.installPyPI("pandas", "0.24.2")
-dbutils.library.installPyPI("koalas")
-dbutils.library.restartPython()
 ```
 
 Databricks Runtime for Machine Learning has the right versions of dependencies setup already,
