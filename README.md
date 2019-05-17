@@ -241,8 +241,5 @@ dbutils.library.installPyPI("koalas")
 dbutils.library.restartPython()
 ```
 
-Databricks Runtime for Machine Learning has the right versions of dependencies setup already,
-so you just need to install Koalas from PyPi when creating a cluster.
-
 In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and
 Databricks Runtime for Machine Learning.
