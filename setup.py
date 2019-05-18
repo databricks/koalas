@@ -46,6 +46,7 @@ setup(
         'pandas>=0.23',
         'pyarrow>=0.10',
         'numpy>=1.14',
+        'matplotlib>=3.0.0',
     ],
     maintainer="Databricks",
     maintainer_email="koalas@databricks.com",
