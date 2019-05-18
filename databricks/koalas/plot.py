@@ -509,13 +509,6 @@ class KoalasSeriesPlotMethods(BasePlotMethods):
     """
     Series plotting accessor and method.
 
-    Examples
-    --------
-    >>> s = ks.range(1002)['id']
-    >>> ax1 = s.plot.box()
-    >>> ax2 = s.plot.bar()
-    >>> ax3 = s.plot.hist()
-
     Plotting methods can also be accessed by calling the accessor as a method
     with the ``kind`` argument:
     ``s.plot(kind='hist')`` is equivalent to ``s.plot.hist()``
