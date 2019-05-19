@@ -34,6 +34,7 @@ Conversion
 
    DataFrame.copy
    DataFrame.isna
+   DataFrame.astype
    DataFrame.isnull
    DataFrame.notna
    DataFrame.notnull

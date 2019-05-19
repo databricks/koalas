@@ -257,7 +257,7 @@ class Series(_Frame):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self.schema.fields[-1].dataType
 
-    def astype(self, dtype):
+    def astype(self, dtype) -> 'Series':
         """
         Cast a Koalas object to a specified dtype ``dtype``.
 

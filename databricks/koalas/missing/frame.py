@@ -61,7 +61,6 @@ class _MissingPandasLikeDataFrame(object):
     applymap = unsupported_function('applymap')
     asfreq = unsupported_function('asfreq')
     asof = unsupported_function('asof')
-    astype = unsupported_function('astype')
     at_time = unsupported_function('at_time')
     between_time = unsupported_function('between_time')
     bfill = unsupported_function('bfill')
