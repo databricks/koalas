@@ -7,6 +7,20 @@ Machine Learning utilities
 
 MLflow
 ~~~~~~
+
+Arbitrary MLflow models can be used with Koalas dataframes,
+provided the implement the 'pyfunc' flavor. This is the case
+for most frameworks supported by MLflow (scikit-learn, pytorch,
+tensorflow, ...). See comprehensive example in 'load_model' for
+more information.
+
+.. note::
+   The MLflow package must be installed in order to use this module.
+   If MLflow is not installed in your environment already, you
+   can install it with the following command:
+
+   pip install koalas[mlflow]
+
 .. autosummary::
    :toctree: ml/
 
