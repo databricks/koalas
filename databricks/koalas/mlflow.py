@@ -152,7 +152,7 @@ def load_model(path, run_id=None, predict_type='infer') -> PythonModelWrapper:
     >>> y = model.predict(df[features])
     >>> #df["y"] = y # Will fail with a message about dataframes not aligned.
 
-    This is being tracked in the issue ticket XXX.
+    This is being tracked in the issue ticket https://github.com/databricks/koalas/issues/354.
 
     """
     return PythonModelWrapper(path, run_id, predict_type)
