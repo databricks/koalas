@@ -26,6 +26,8 @@ from databricks.koalas.utils import lazy_property, default_session
 from databricks.koalas import Series, DataFrame
 from databricks.koalas.typedef import as_spark_type
 
+__all__ = ["PythonModelWrapper", "load_model"]
+
 
 class PythonModelWrapper(object):
     """
@@ -150,5 +152,6 @@ def load_model(path, run_id=None, predict_type='infer') -> PythonModelWrapper:
     >>> #df["y"] = y # Will fail with a message about dataframes not aligned.
 
     This is being tracked in the issue ticket XXX.
+
     """
     return PythonModelWrapper(path, run_id, predict_type)
