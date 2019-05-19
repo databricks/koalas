@@ -59,10 +59,9 @@ install:
   - conda config --env --add pinned_packages python=$TRAVIS_PYTHON_VERSION
   - conda config --env --add pinned_packages pandas==$PANDAS_VERSION
   - conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
+  - conda config --env --add pinned_packages mlflow==$MLFLOW_VERSION
   - conda install -c conda-forge --yes codecov
   - conda install -c conda-forge --yes --file requirements-dev.txt
-  - # MLflow is not published yet on conda
-  - pip install mlflow>=$MLFLOW_VERSION
 
   # Show installed packages
   - conda list
