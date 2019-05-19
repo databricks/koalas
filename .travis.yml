@@ -59,6 +59,7 @@ install:
   - conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
   - conda install -c conda-forge --yes codecov
   - conda install -c conda-forge --yes --file requirements-dev.txt
+  - pip install mlflow
 
   # Show installed packages
   - conda list
