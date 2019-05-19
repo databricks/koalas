@@ -17,9 +17,10 @@
 """
 A wrapper class for Spark Column to behave similar to pandas Series.
 """
+import re
 import inspect
 from functools import partial, wraps
-from typing import Any
+from typing import Any, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -35,8 +36,13 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
-from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.utils import validate_arguments_and_invoke_function
+
+
+# This regular expression pattern is complied and defined here to avoid to compile the same
+# pattern every time it is used in _repr_ in Series.
+# This pattern basically seeks the footer string from Pandas'
+REPR_PATTERN = re.compile(r"Length: (?P<length>[0-9]+)")
 
 
 def _column_op(f):
@@ -251,7 +257,37 @@ class Series(_Frame):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self.schema.fields[-1].dataType
 
-    def astype(self, dtype):
+    def astype(self, dtype) -> 'Series':
+        """
+        Cast a Koalas object to a specified dtype ``dtype``.
+
+        Parameters
+        ----------
+        dtype : data type
+            Use a numpy.dtype or Python type to cast entire pandas object to
+            the same type.
+
+        Returns
+        -------
+        casted : same type as caller
+
+        See Also
+        --------
+        to_datetime : Convert argument to datetime.
+
+        Examples
+        --------
+        >>> ser = ks.Series([1, 2], dtype='int32')
+        >>> ser
+        0    1
+        1    2
+        Name: 0, dtype: int32
+
+        >>> ser.astype('int64')
+        0    1
+        1    2
+        Name: 0, dtype: int64
+        """
         from databricks.koalas.typedef import as_spark_type
         spark_type = as_spark_type(dtype)
         if not spark_type:
@@ -273,7 +309,8 @@ class Series(_Frame):
         return self.rename(name)
 
     @property
-    def schema(self):
+    def schema(self) -> StructType:
+        """Return the underlying Spark DataFrame's schema."""
         return self.to_dataframe()._sdf.schema
 
     @property
@@ -282,7 +319,8 @@ class Series(_Frame):
         return len(self),
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """Return name of the Series."""
         return self._metadata.data_columns[0]
 
     @name.setter
@@ -347,6 +385,36 @@ class Series(_Frame):
         if len(self._metadata.index_map) != 1:
             raise KeyError('Currently supported only when the Column has a single index.')
         return self._kdf.index
+
+    @property
+    def is_unique(self):
+        """
+        Return boolean if values in the object are unique
+
+        Returns
+        -------
+        is_unique : boolean
+
+        >>> ks.Series([1, 2, 3]).is_unique
+        True
+        >>> ks.Series([1, 2, 2]).is_unique
+        False
+        >>> ks.Series([1, 2, 3, None]).is_unique
+        True
+        """
+        sdf = self._kdf._sdf.select(self._scol)
+        col = self._scol
+
+        # Here we check:
+        #   1. the distinct count without nulls and count without nulls for non-null values
+        #   2. count null values and see if null is a distinct value.
+        #
+        # This workaround is in order to calculate the distinct count including nulls in
+        # single pass. Note that COUNT(DISTINCT expr) in Spark is designed to ignore nulls.
+        return sdf.select(
+            (F.count(col) == F.countDistinct(col)) &
+            (F.count(F.when(col.isNull(), 1).otherwise(None)) <= 1)
+        ).collect()[0][0]
 
     def reset_index(self, level=None, drop=False, name=None, inplace=False):
         """
@@ -440,11 +508,7 @@ class Series(_Frame):
         else:
             return kdf
 
-    @property
-    def loc(self):
-        return SparkDataFrameLocator(self)
-
-    def to_dataframe(self):
+    def to_dataframe(self) -> spark.DataFrame:
         sdf = self._kdf._sdf.select([field for field, _ in self._index_map] + [self._scol])
         metadata = Metadata(data_columns=[sdf.schema[-1].name], index_map=self._index_map)
         return DataFrame(sdf, metadata)
@@ -558,6 +622,18 @@ class Series(_Frame):
         return validate_arguments_and_invoke_function(
             kseries.to_pandas(), self.to_dict, pd.Series.to_dict, args)
 
+    def to_latex(self, buf=None, columns=None, col_space=None, header=True, index=True,
+                 na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
+                 bold_rows=False, column_format=None, longtable=None, escape=None, encoding=None,
+                 decimal='.', multicolumn=None, multicolumn_format=None, multirow=None):
+
+        args = locals()
+        kseries = self
+        return validate_arguments_and_invoke_function(
+            kseries.to_pandas(), self.to_latex, pd.Series.to_latex, args)
+
+    to_latex.__doc__ = DataFrame.to_latex.__doc__
+
     def to_pandas(self):
         """
         Return a pandas Series.
@@ -648,6 +724,54 @@ class Series(_Frame):
 
     notna = notnull
 
+    def fillna(self, value=None, axis=None, inplace=False):
+        """Fill NA/NaN values.
+
+        Parameters
+        ----------
+        value : scalar
+            Value to use to fill holes.
+        axis : {0 or `index`}
+            1 and `columns` are not supported.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+
+        Returns
+        -------
+        Series
+            Series with NA entries filled.
+
+        Examples
+        --------
+        >>> s = ks.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
+        >>> s
+        0    NaN
+        1    2.0
+        2    3.0
+        3    4.0
+        4    NaN
+        5    6.0
+        Name: x, dtype: float64
+
+        Replace all NaN elements with 0s.
+
+        >>> s.fillna(0)
+        0    0.0
+        1    2.0
+        2    3.0
+        3    4.0
+        4    0.0
+        5    6.0
+        Name: x, dtype: float64
+        """
+
+        ks = _col(self.to_dataframe().fillna(value=value, axis=axis, inplace=False))
+        if inplace:
+            self._kdf = ks._kdf
+            self._scol = ks._scol
+        else:
+            return ks
+
     def dropna(self, axis=0, inplace=False, **kwargs):
         """
         Return a new Series with missing values removed.
@@ -691,12 +815,47 @@ class Series(_Frame):
         Name: 0, dtype: float64
         """
         # TODO: last two examples from Pandas produce different results.
-        ks = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
+        kser = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
-            self._kdf = ks._kdf
-            self._scol = ks._scol
+            self._kdf = kser._kdf
+            self._scol = kser._scol
         else:
-            return ks
+            return kser
+
+    def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) -> 'Series':
+        """
+        Trim values at input threshold(s).
+
+        Assigns values outside boundary to boundary values.
+
+        Parameters
+        ----------
+        lower : float or int, default None
+            Minimum threshold value. All values below this threshold will be set to it.
+        upper : float or int, default None
+            Maximum threshold value. All values above this threshold will be set to it.
+
+        Returns
+        -------
+        Series
+            Series with the values outside the clip boundaries replaced
+
+        Examples
+        --------
+        >>> ks.Series([0, 2, 4]).clip(1, 3)
+        0    1
+        1    2
+        2    3
+        Name: 0, dtype: int64
+
+        Notes
+        -----
+        One difference between this implementation and pandas is that running
+        pd.Series(['a', 'b']).clip(0, 1) will crash with "TypeError: '<=' not supported between
+        instances of 'str' and 'int'" while ks.Series(['a', 'b']).clip(0, 1) will output the
+        original Series, simply ignoring the incompatible types.
+        """
+        return _col(self.to_dataframe().clip(lower, upper))
 
     def head(self, n=5):
         """
@@ -952,6 +1111,13 @@ class Series(_Frame):
         """
         return self._reduce_for_stat_function(_Frame._count_expr)
 
+    def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
+               random_state: Optional[int] = None) -> 'Series':
+        return _col(self.to_dataframe().sample(
+            n=n, frac=frac, replace=replace, random_state=random_state))
+
+    sample.__doc__ = DataFrame.sample.__doc__
+
     def apply(self, func, args=(), **kwds):
         """
         Invoke function on values of Series.
@@ -1086,7 +1252,18 @@ class Series(_Frame):
         return self._pandas_orig_repr()
 
     def __repr__(self):
-        return repr(self.head(max_display_count).to_pandas())
+        pser = self.head(max_display_count + 1).to_pandas()
+        pser_length = len(pser)
+        repr_string = repr(pser.iloc[:max_display_count])
+        if pser_length > max_display_count:
+            rest, prev_footer = repr_string.rsplit("\n", 1)
+            match = REPR_PATTERN.search(prev_footer)
+            if match is not None:
+                length = match.group("length")
+                footer = ("\n{prev_footer}\nShowing only the first {length}"
+                          .format(length=length, prev_footer=prev_footer))
+                return rest + footer
+        return repr_string
 
     def __dir__(self):
         if not isinstance(self.schema, StructType):

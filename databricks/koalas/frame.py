@@ -17,28 +17,38 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
+import re
 import warnings
 from functools import partial, reduce
-from typing import Any, List, Tuple, Union
+from typing import Any, Optional, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like, \
+    is_dict_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.types import BooleanType, StructField, StructType, to_arrow_type
+from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
+                               IntegerType, LongType, ShortType, StructField, StructType,
+                               to_arrow_type)
 from pyspark.sql.utils import AnalysisException
 from distutils.version import LooseVersion
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
-from databricks.koalas.exceptions import SparkPandasMergeError
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.selection import SparkDataFrameLocator
 from databricks.koalas.typedef import infer_pd_series_spark_type
+
+
+# These regular expression patterns are complied and defined here to avoid to compile the same
+# pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
+# Two patterns basically seek the footer string from Pandas'
+REPR_PATTERN = re.compile(r"\n\n\[(?P<rows>[0-9]+) rows x (?P<columns>[0-9]+) columns\]$")
+REPR_HTML_PATTERN = re.compile(
+    r"\n\<p\>(?P<rows>[0-9]+) rows × (?P<columns>[0-9]+) columns\<\/p\>\n\<\/div\>$")
 
 
 class DataFrame(_Frame):
@@ -864,6 +874,105 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_csv, pd.DataFrame.to_csv, args)
+
+    def to_latex(self, buf=None, columns=None, col_space=None, header=True, index=True,
+                 na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
+                 bold_rows=False, column_format=None, longtable=None, escape=None, encoding=None,
+                 decimal='.', multicolumn=None, multicolumn_format=None, multirow=None):
+        r"""
+        Render an object to a LaTeX tabular environment table.
+
+        Render an object to a tabular environment table. You can splice this into a LaTeX
+        document. Requires usepackage{booktabs}.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory. If the input
+                  is large, consider alternative formats.
+
+        Parameters
+        ----------
+        buf : file descriptor or None
+            Buffer to write to. If None, the output is returned as a string.
+        columns : list of label, optional
+            The subset of columns to write. Writes all columns by default.
+        col_space : int, optional
+            The minimum width of each column.
+        header : bool or list of str, default True
+            Write out the column names. If a list of strings is given, it is assumed to be aliases
+            for the column names.
+        index : bool, default True
+            Write row names (index).
+        na_rep : str, default ‘NaN’
+            Missing data representation.
+        formatters : list of functions or dict of {str: function}, optional
+            Formatter functions to apply to columns’ elements by position or name. The result of
+            each function must be a unicode string. List must be of length equal to the number of
+            columns.
+        float_format : str, optional
+            Format string for floating point numbers.
+        sparsify : bool, optional
+            Set to False for a DataFrame with a hierarchical index to print every multiindex key at
+            each row. By default, the value will be read from the config module.
+        index_names : bool, default True
+            Prints the names of the indexes.
+        bold_rows : bool, default False
+            Make the row labels bold in the output.
+        column_format : str, optional
+            The columns format as specified in LaTeX table format e.g. ‘rcl’ for 3 columns. By
+            default, ‘l’ will be used for all columns except columns of numbers, which default
+            to ‘r’.
+        longtable : bool, optional
+            By default, the value will be read from the pandas config module. Use a longtable
+            environment instead of tabular. Requires adding a usepackage{longtable} to your LaTeX
+            preamble.
+        escape : bool, optional
+            By default, the value will be read from the pandas config module. When set to False
+            prevents from escaping latex special characters in column names.
+        encoding : str, optional
+            A string representing the encoding to use in the output file, defaults to ‘ascii’ on
+            Python 2 and ‘utf-8’ on Python 3.
+        decimal : str, default ‘.’
+            Character recognized as decimal separator, e.g. ‘,’ in Europe.
+        multicolumn : bool, default True
+            Use multicolumn to enhance MultiIndex columns. The default will be read from the config
+            module.
+        multicolumn_format : str, default ‘l’
+            The alignment for multicolumns, similar to column_format The default will be read from
+            the config module.
+        multirow : bool, default False
+            Use multirow to enhance MultiIndex rows. Requires adding a usepackage{multirow} to your
+            LaTeX preamble. Will print centered labels (instead of top-aligned) across the contained
+            rows, separating groups via clines. The default will be read from the pandas config
+            module.
+
+        Returns
+        -------
+        str or None
+            If buf is None, returns the resulting LateX format as a string. Otherwise returns None.
+
+        See Also
+        --------
+        DataFrame.to_string : Render a DataFrame to a console-friendly
+            tabular output.
+        DataFrame.to_html : Render a DataFrame as an HTML table.
+
+
+        Examples
+        --------
+        >>> df = pd.DataFrame({'name': ['Raphael', 'Donatello'],
+        ... 'mask': ['red', 'purple'],
+        ... 'weapon': ['sai', 'bo staff']},
+        ... columns=['name', 'mask', 'weapon'])
+        >>> df.to_latex(index=False) # doctest: +NORMALIZE_WHITESPACE
+        '\\begin{tabular}{lll}\n\\toprule\n name & mask & weapon
+        \\\\\n\\midrule\n Raphael & red & sai \\\\\n Donatello &
+        purple & bo staff \\\\\n\\bottomrule\n\\end{tabular}\n'
+        """
+
+        args = locals()
+        kdf = self
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_latex, pd.DataFrame.to_latex, args)
 
     @property
     def index(self):
@@ -1761,6 +1870,68 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(sdf, self._metadata.copy())
 
+    def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) \
+            -> 'DataFrame':
+        """
+        Trim values at input threshold(s).
+
+        Assigns values outside boundary to boundary values.
+
+        Parameters
+        ----------
+        lower : float or int, default None
+            Minimum threshold value. All values below this threshold will be set to it.
+        upper : float or int, default None
+            Maximum threshold value. All values above this threshold will be set to it.
+
+        Returns
+        -------
+        DataFrame
+            DataFrame with the values outside the clip boundaries replaced.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'A': [0, 2, 4]}).clip(1, 3)
+           A
+        0  1
+        1  2
+        2  3
+
+        Notes
+        -----
+        One difference between this implementation and pandas is that running
+        pd.DataFrame({'A': ['a', 'b']}).clip(0, 1) will crash with "TypeError: '<=' not supported
+        between instances of 'str' and 'int'" while ks.DataFrame({'A': ['a', 'b']}).clip(0, 1)
+        will output the original DataFrame, simply ignoring the incompatible types.
+        """
+        if is_list_like(lower) or is_list_like(upper):
+            raise ValueError("List-like value are not supported for 'lower' and 'upper' at the " +
+                             "moment")
+
+        if lower is None and upper is None:
+            return self
+
+        sdf = self._sdf
+
+        numeric_types = (DecimalType, DoubleType, FloatType, ByteType, IntegerType, LongType,
+                         ShortType)
+        numeric_columns = [c for c in self.columns
+                           if isinstance(sdf.schema[c].dataType, numeric_types)]
+        nonnumeric_columns = [c for c in self.columns
+                              if not isinstance(sdf.schema[c].dataType, numeric_types)]
+
+        if lower is not None:
+            sdf = sdf.select(*[F.when(F.col(c) < lower, lower).otherwise(F.col(c)).alias(c)
+                               for c in numeric_columns] + nonnumeric_columns)
+        if upper is not None:
+            sdf = sdf.select(*[F.when(F.col(c) > upper, upper).otherwise(F.col(c)).alias(c)
+                               for c in numeric_columns] + nonnumeric_columns)
+
+        # Restore initial column order
+        sdf = sdf.select(list(self.columns))
+
+        return ks.DataFrame(sdf)
+
     def head(self, n=5):
         """
         Return the first `n` rows.
@@ -2360,10 +2531,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             instead of NaN.
         """
         if on is None and not left_index and not right_index:
-            raise SparkPandasMergeError("At least 'on' or 'left_index' and 'right_index' have ",
-                                        "to be set")
+            raise ValueError("At least 'on' or 'left_index' and 'right_index' have to be set")
         if on is not None and (left_index or right_index):
-            raise SparkPandasMergeError("Only 'on' or 'left_index' and 'right_index' can be set")
+            raise ValueError("Only 'on' or 'left_index' and 'right_index' can be set")
 
         if how == 'full':
             warnings.warn("Warning: While Koalas will accept 'full', you should use 'outer' " +
@@ -2411,6 +2581,158 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf = DataFrame(joined_table)
         return kdf
 
+    def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
+               random_state: Optional[int] = None) -> 'DataFrame':
+        """
+        Return a random sample of items from an axis of object.
+
+        Please call this function using named argument by specifing the ``frac`` argument.
+
+        You can use `random_state` for reproducibility. However, note that different from pandas,
+        specifying a seed in Koalas/Spark does not guarantee the sampled rows will be fixed. The
+        result set depends on not only the seed, but also how the data is distributed across
+        machines and to some extent network randomness when shuffle operations are involved. Even
+        in the simplest case, the result set will depend on the system's CPU core count.
+
+        Parameters
+        ----------
+        n : int, optional
+            Number of items to return. This is currently NOT supported. Use frac instead.
+        frac : float, optional
+            Fraction of axis items to return.
+        replace : bool, default False
+            Sample with or without replacement.
+        random_state : int, optional
+            Seed for the random number generator (if int).
+
+        Returns
+        -------
+        Series or DataFrame
+            A new object of same type as caller containing the sampled items.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'num_legs': [2, 4, 8, 0],
+        ...                    'num_wings': [2, 0, 0, 0],
+        ...                    'num_specimen_seen': [10, 2, 1, 8]},
+        ...                   index=['falcon', 'dog', 'spider', 'fish'],
+        ...                   columns=['num_legs', 'num_wings', 'num_specimen_seen'])
+        >>> df  # doctest: +SKIP
+                num_legs  num_wings  num_specimen_seen
+        falcon         2          2                 10
+        dog            4          0                  2
+        spider         8          0                  1
+        fish           0          0                  8
+
+        A random 25% sample of the ``DataFrame``.
+        Note that we use `random_state` to ensure the reproducibility of
+        the examples.
+
+        >>> df.sample(frac=0.25, random_state=1)  # doctest: +SKIP
+                num_legs  num_wings  num_specimen_seen
+        falcon         2          2                 10
+        fish           0          0                  8
+
+        Extract 25% random elements from the ``Series`` ``df['num_legs']``, with replacement,
+        so the same items could appear more than once.
+
+        >>> df['num_legs'].sample(frac=0.4, replace=True, random_state=1)  # doctest: +SKIP
+        falcon    2
+        spider    8
+        spider    8
+        Name: num_legs, dtype: int64
+
+        Specifying the exact number of items to return is not supported at the moment.
+
+        >>> df.sample(n=5)  # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+            ...
+        NotImplementedError: Function sample currently does not support specifying ...
+        """
+        # Note: we don't run any of the doctests because the result can change depending on the
+        # system's core count.
+        if n is not None:
+            raise NotImplementedError("Function sample currently does not support specifying "
+                                      "exact number of items to return. Use frac instead.")
+
+        if frac is None:
+            raise ValueError("frac must be specified.")
+
+        sdf = self._sdf.sample(withReplacement=replace, fraction=frac, seed=random_state)
+        return DataFrame(sdf, self._metadata.copy())
+
+    def astype(self, dtype) -> 'DataFrame':
+        """
+        Cast a pandas object to a specified dtype ``dtype``.
+
+        Parameters
+        ----------
+        dtype : data type, or dict of column name -> data type
+            Use a numpy.dtype or Python type to cast entire pandas object to
+            the same type. Alternatively, use {col: dtype, ...}, where col is a
+            column label and dtype is a numpy.dtype or Python type to cast one
+            or more of the DataFrame's columns to column-specific types.
+
+        Returns
+        -------
+        casted : same type as caller
+
+        See Also
+        --------
+        to_datetime : Convert argument to datetime.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 2, 3], 'b': [1, 2, 3]}, dtype='int64')
+        >>> df
+           a  b
+        0  1  1
+        1  2  2
+        2  3  3
+
+        Convert to float type:
+
+        >>> df.astype('float')
+             a    b
+        0  1.0  1.0
+        1  2.0  2.0
+        2  3.0  3.0
+
+        Convert to int64 type back:
+
+        >>> df.astype('int64')
+           a  b
+        0  1  1
+        1  2  2
+        2  3  3
+
+        Convert column a to float type:
+
+        >>> df.astype({'a': float})
+             a  b
+        0  1.0  1
+        1  2.0  2
+        2  3.0  3
+
+        """
+        results = []
+        if is_dict_like(dtype):
+            for col_name in dtype.keys():
+                if col_name not in self.columns:
+                    raise KeyError('Only a column name can be used for the '
+                                   'key in a dtype mappings argument.')
+            for col_name, col in self.iteritems():
+                if col_name in dtype:
+                    results.append(col.astype(dtype=dtype[col_name]))
+                else:
+                    results.append(col)
+        else:
+            for col_name, col in self.iteritems():
+                results.append(col.astype(dtype=dtype))
+        sdf = self._sdf.select(
+            self._metadata.index_columns + list(map(lambda ser: ser._scol, results)))
+        return DataFrame(sdf, self._metadata.copy())
+
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
         if key is None:
@@ -2441,10 +2763,35 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         raise NotImplementedError(key)
 
     def __repr__(self):
-        return repr(self.head(max_display_count).to_pandas())
+        pdf = self.head(max_display_count + 1).to_pandas()
+        pdf_length = len(pdf)
+        repr_string = repr(pdf.iloc[:max_display_count])
+        if pdf_length > max_display_count:
+            match = REPR_PATTERN.search(repr_string)
+            if match is not None:
+                nrows = match.group("rows")
+                ncols = match.group("columns")
+                footer = ("\n\n[Showing only the first {nrows} rows x {ncols} columns]"
+                          .format(nrows=nrows, ncols=ncols))
+                return REPR_PATTERN.sub(footer, repr_string)
+        return repr_string
 
     def _repr_html_(self):
-        return self.head(max_display_count).to_pandas()._repr_html_()
+        pdf = self.head(max_display_count + 1).to_pandas()
+        pdf_length = len(pdf)
+        repr_html = pdf[:max_display_count]._repr_html_()
+        if pdf_length > max_display_count:
+            match = REPR_HTML_PATTERN.search(repr_html)
+            if match is not None:
+                nrows = match.group("rows")
+                ncols = match.group("columns")
+                by = chr(215)
+                footer = ('\n<p>Showing only the first {rows} rows {by} {cols} columns</p>\n</div>'
+                          .format(rows=nrows,
+                                  by=by,
+                                  cols=ncols))
+                return REPR_HTML_PATTERN.sub(footer, repr_html)
+        return repr_html
 
     def __getitem__(self, key):
         return self._pd_getitem(key)
@@ -2478,9 +2825,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 return partial(property_or_func, self)
         return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_map)
-
-    def __iter__(self):
-        return self.toPandas().__iter__()
 
     def __len__(self):
         return self._sdf.count()

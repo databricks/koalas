@@ -177,6 +177,22 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         self.assert_eq(kdf.to_clipboard(sep=";", index=False),
                        pdf.to_clipboard(sep=";", index=False))
 
+    def test_to_latex(self):
+        pdf = self.pdf
+        kdf = self.kdf
+
+        self.assert_eq(kdf.to_latex(), pdf.to_latex())
+        self.assert_eq(kdf.to_latex(col_space=2), pdf.to_latex(col_space=2))
+        self.assert_eq(kdf.to_latex(header=True), pdf.to_latex(header=True))
+        self.assert_eq(kdf.to_latex(index=False), pdf.to_latex(index=False))
+        self.assert_eq(kdf.to_latex(na_rep='-'), pdf.to_latex(na_rep='-'))
+        self.assert_eq(kdf.to_latex(float_format='%.1f'), pdf.to_latex(float_format='%.1f'))
+        self.assert_eq(kdf.to_latex(sparsify=False), pdf.to_latex(sparsify=False))
+        self.assert_eq(kdf.to_latex(index_names=False), pdf.to_latex(index_names=False))
+        self.assert_eq(kdf.to_latex(bold_rows=True), pdf.to_latex(bold_rows=True))
+        self.assert_eq(kdf.to_latex(encoding='ascii'), pdf.to_latex(encoding='ascii'))
+        self.assert_eq(kdf.to_latex(decimal=','), pdf.to_latex(decimal=','))
+
     def test_to_records(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
             pdf = pd.DataFrame({
