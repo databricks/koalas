@@ -1658,10 +1658,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_records, pd.DataFrame.to_records, args)
 
-    @property
-    def loc(self):
-        return SparkDataFrameLocator(self)
-
     def copy(self) -> 'DataFrame':
         """
         Make a copy of this object's indices and data.
