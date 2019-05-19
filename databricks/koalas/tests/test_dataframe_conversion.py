@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas
+from distutils.version import LooseVersion
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils, TestUtils
 
 
@@ -191,3 +192,18 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         self.assert_eq(kdf.to_latex(bold_rows=True), pdf.to_latex(bold_rows=True))
         self.assert_eq(kdf.to_latex(encoding='ascii'), pdf.to_latex(encoding='ascii'))
         self.assert_eq(kdf.to_latex(decimal=','), pdf.to_latex(decimal=','))
+
+    def test_to_records(self):
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+            pdf = pd.DataFrame({
+                'A': [1, 2],
+                'B': [0.5, 0.75]
+            }, index=['a', 'b'])
+
+            kdf = koalas.from_pandas(pdf)
+
+            self.assert_array_eq(kdf.to_records(), pdf.to_records())
+            self.assert_array_eq(kdf.to_records(index=False),
+                                 pdf.to_records(index=False))
+            self.assert_array_eq(kdf.to_records(index_dtypes="<S2"),
+                                 pdf.to_records(index_dtypes="<S2"))

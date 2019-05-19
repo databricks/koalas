@@ -177,7 +177,6 @@ class _MissingPandasLikeDataFrame(object):
     to_parquet = unsupported_function('to_parquet')
     to_period = unsupported_function('to_period')
     to_pickle = unsupported_function('to_pickle')
-    to_records = unsupported_function('to_records')
     to_sparse = unsupported_function('to_sparse')
     to_sql = unsupported_function('to_sql')
     to_stata = unsupported_function('to_stata')

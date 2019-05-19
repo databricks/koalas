@@ -130,4 +130,5 @@ Serialization / IO / Conversion
    DataFrame.to_dict
    DataFrame.to_excel
    DataFrame.to_clipboard
+   DataFrame.to_records
    DataFrame.to_latex
