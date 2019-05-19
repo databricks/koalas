@@ -83,9 +83,6 @@ def _numpy_column_op(f):
             else:
                 new_args.append(arg)
         return _column_op(f)(self, *new_args)
-
-    s = ""
-    s.format()
     return wrapper
 
 

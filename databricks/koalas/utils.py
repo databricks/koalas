@@ -17,7 +17,7 @@
 Commonly used utils in Koalas.
 """
 
-from typing import Callable, Dict, Union, TypeVar
+from typing import Callable, Dict, Union
 
 from pyspark import sql as spark
 import pandas as pd
