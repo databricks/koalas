@@ -11,13 +11,11 @@ matrix:
         - SPARK_VERSION=2.3.3
         - PANDAS_VERSION=0.23.4
         - PYARROW_VERSION=0.10.0
-        - MLFLOW_VERSION=0.9.0
     - python: "3.6"
       env:
         - SPARK_VERSION=2.4.3
         - PANDAS_VERSION=0.24.2
         - PYARROW_VERSION=0.10.0
-        - MLFLOW_VERSION=0.9.0
     # When we upgrade Spark 3.0 for this, we could try to just use JDK 11 at 'xenial'.
     # Python 3.7 and higher are only available at this image.
     - python: 3.7
@@ -31,7 +29,6 @@ matrix:
         - SPARK_VERSION=2.4.3
         - PANDAS_VERSION=0.24.2
         - PYARROW_VERSION=0.13.0
-        - MLFLOW_VERSION=0.9.0
 
 before_install:
  - ./dev/download_travis_dependencies.sh
@@ -60,7 +57,6 @@ install:
   - conda config --env --add pinned_packages python=$TRAVIS_PYTHON_VERSION
   - conda config --env --add pinned_packages pandas==$PANDAS_VERSION
   - conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
-  - conda config --env --add pinned_packages mlflow==$MLFLOW_VERSION
   - conda install -c conda-forge --yes codecov
   - conda install -c conda-forge --yes --file requirements-dev.txt
 
