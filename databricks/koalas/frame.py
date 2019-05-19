@@ -1580,8 +1580,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Index will be included as the first field of the record array if
         requested.
 
-        .. note:: This method should only be used if the resulting CSV is expected
-            to be small, as all the data is loaded into the driver's memory.
+        .. note:: This method should only be used if the resulting NumPy ndarray is
+            expected to be small, as all the data is loaded into the driver's memory.
 
         Parameters
         ----------
@@ -1623,8 +1623,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
            A     B
         a  1  0.50
         b  2  0.75
-
-        Data types (dtypes) are new in Pandas 0.24.0.
 
         >>> df.to_records() # doctest: +SKIP
         rec.array([('a', 1, 0.5 ), ('b', 2, 0.75)],
