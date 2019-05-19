@@ -1654,10 +1654,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         args = locals()
         kdf = self
 
-        if LooseVersion(pd.__version__) < LooseVersion("0.24.0"):
-            del args['column_dtypes']
-            del args['index_dtypes']
-
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_records, pd.DataFrame.to_records, args)
 
