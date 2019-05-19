@@ -62,7 +62,7 @@ install:
   - conda install -c conda-forge --yes codecov
   - conda install -c conda-forge --yes --file requirements-dev.txt
   - # MLflow is not published yet on conda
-  - pip install mlflow=$MLFLOW_VERSION
+  - pip install mlflow>=$MLFLOW_VERSION
 
   # Show installed packages
   - conda list
