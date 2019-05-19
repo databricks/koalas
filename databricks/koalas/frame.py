@@ -32,7 +32,6 @@ from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, F
                                IntegerType, LongType, ShortType, StructField, StructType,
                                to_arrow_type)
 from pyspark.sql.utils import AnalysisException
-from distutils.version import LooseVersion
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
