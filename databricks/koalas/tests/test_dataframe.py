@@ -344,7 +344,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
                             'b': [7, 6, 5, 4, 3, 2, 1]})
         kdf = koalas.from_pandas(pdf)
-        with self.assertRaisesRegex(NotImplementedError, "nlargest method currently only works for keep='first'"):
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "nlargest method currently only works for keep='first'"):
             kdf.nlargest(n=5, columns='a', keep='last')
 
         self.assert_eq(kdf.nlargest(n=5, columns='a'), pdf.nlargest(5, columns='a'))
@@ -354,7 +356,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
                             'b': [7, 6, 5, 4, 3, 2, 1]})
         kdf = koalas.from_pandas(pdf)
-        with self.assertRaisesRegex(NotImplementedError, "nsmallest method currently only works for keep='first'"):
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "nsmallest method currently only works for keep='first'"):
             kdf.nsmallest(n=5, columns='a', keep='last')
         self.assert_eq(kdf.nsmallest(n=5, columns='a'), pdf.nsmallest(5, columns='a'))
         self.assert_eq(kdf.nsmallest(n=5, columns=['a', 'b']), pdf.nsmallest(5, columns=['a', 'b']))
