@@ -113,7 +113,8 @@ def load_model(path, run_id=None, predict_type='infer') -> PythonModelWrapper:
     >>> from mlflow.tracking import MlflowClient
     >>> import mlflow.sklearn
     >>> client = MlflowClient()
-    >>> mlflow.set_experiment("my_experiment")
+    >>> print('doctest_ignore'); mlflow.set_experiment("my_experiment") # doctest: +ELLIPSIS
+    doctest_ignore...
     >>> exp = client.get_experiment_by_name("my_experiment")
 
     We aim at learning this numerical function using a simple linear regressor.
