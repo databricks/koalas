@@ -2250,42 +2250,33 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame({'population': [59000000, 65000000, 434001,
-        ...                                   434000, 434000, 337000, 11300,
-        ...                                   11301, 11300],
-        ...                    'GDP': [1937894, 2583560 , 12011, 4520, 12128,
-        ...                            17036, 182, 38, 311],
-        ...                    'alpha-2': ["IT", "FR", "MT", "MV", "BN",
-        ...                                "IS", "NR", "TV", "AI"]},
-        ...                   index=["Italy", "France", "Malta",
-        ...                          "Maldives", "Brunei", "Iceland",
-        ...                          "Nauru", "Tuvalu", "Anguilla"])
+        >>> df = ks.DataFrame({'X': [1, 2, 3, 5, 6, 7, np.nan],
+        ...                    'Y': [6, 7, 8, 9, 10, 11, 12]})
         >>> df
-                  population      GDP alpha-2
-        Italy       59000000  1937894      IT
-        France      65000000  2583560      FR
-        Malta         434001    12011      MT
-        Maldives      434000     4520      MV
-        Brunei        434000    12128      BN
-        Iceland       337000    17036      IS
-        Nauru          11300      182      NR
-        Tuvalu         11301       38      TV
-        Anguilla       11300      311      AI
+             X   Y
+        0  1.0   6
+        1  2.0   7
+        2  3.0   8
+        3  5.0   9
+        4  6.0  10
+        5  7.0  11
+        6  NaN  12
 
         In the following example, we will use ``nlargest`` to select the three
         rows having the largest values in column "population".
 
-        >>> df.nlargest(n=3, columns='population')
-                population      GDP alpha-2
-        France    65000000  2583560      FR
-        Italy     59000000  1937894      IT
-        Malta       434001    12011      MT
+        >>> df.nlargest(n=3, columns='X')
+             X   Y
+        5  7.0  11
+        4  6.0  10
+        3  5.0   9
 
-        >>> df.nlargest(n=3, columns=['population', 'GDP'])
-                population      GDP alpha-2
-        France    65000000  2583560      FR
-        Italy     59000000  1937894      IT
-        Malta       434001    12011      MT
+        >>> df.nlargest(n=3, columns=['Y', 'X'])
+             X   Y
+        6  NaN  12
+        5  7.0  11
+        4  6.0  10
+
         """
         if keep != 'first':
             raise NotImplementedError("nlargest method currently only works for keep='first'")
@@ -2327,45 +2318,35 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame({'population': [59000000, 65000000, 434000,
-        ...                                   434000, 434000, 337000, 11300,
-        ...                                   11301, 11300],
-        ...                    'GDP': [1937894, 2583560 , 12011, 4520, 12128,
-        ...                            17036, 182, 38, 311],
-        ...                    'alpha-2': ["IT", "FR", "MT", "MV", "BN",
-        ...                                "IS", "NR", "TV", "AI"]},
-        ...                   index=["Italy", "France", "Malta",
-        ...                          "Maldives", "Brunei", "Iceland",
-        ...                          "Nauru", "Tuvalu", "Anguilla"])
+        >>> df = ks.DataFrame({'X': [1, 2, 3, 5, 6, 7, np.nan],
+        ...                    'Y': [6, 7, 8, 9, 10, 11, 12]})
         >>> df
-                  population      GDP alpha-2
-        Italy       59000000  1937894      IT
-        France      65000000  2583560      FR
-        Malta         434000    12011      MT
-        Maldives      434000     4520      MV
-        Brunei        434000    12128      BN
-        Iceland       337000    17036      IS
-        Nauru          11300      182      NR
-        Tuvalu         11301       38      TV
-        Anguilla       11300      311      AI
+             X   Y
+        0  1.0   6
+        1  2.0   7
+        2  3.0   8
+        3  5.0   9
+        4  6.0  10
+        5  7.0  11
+        6  NaN  12
 
         In the following example, we will use ``nsmallest`` to select the
         three rows having the smallest values in column "a".
 
-        >>> df.nsmallest(n=3, columns='population')
-                  population  GDP alpha-2
-        Anguilla       11300  311      AI
-        Nauru          11300  182      NR
-        Tuvalu         11301   38      TV
+        >>> df.nsmallest(n=3, columns='X') # doctest: +NORMALIZE_WHITESPACE
+             X   Y
+        0  1.0   6
+        1  2.0   7
+        2  3.0   8
 
         To order by the largest values in column "a" and then "c", we can
         specify multiple columns like in the next example.
 
-        >>> df.nsmallest(n=3, columns=['population', 'GDP'])
-                  population  GDP alpha-2
-        Nauru          11300  182      NR
-        Anguilla       11300  311      AI
-        Tuvalu         11301   38      TV
+        >>> df.nsmallest(n=3, columns=['Y', 'X']) # doctest: +NORMALIZE_WHITESPACE
+             X   Y
+        0  1.0   6
+        1  2.0   7
+        2  3.0   8
         """
         if keep != 'first':
             raise NotImplementedError("nsmallest method currently only works for keep='first'")
