@@ -31,6 +31,7 @@ matrix:
         - SPARK_VERSION=2.4.3
         - PANDAS_VERSION=0.24.2
         - PYARROW_VERSION=0.13.0
+        - MLFLOW_VERSION=0.9.0
 
 before_install:
  - ./dev/download_travis_dependencies.sh
