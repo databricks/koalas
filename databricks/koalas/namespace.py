@@ -17,8 +17,6 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-import inspect
-import re
 from typing import Optional
 
 import numpy as np
@@ -56,61 +54,6 @@ def from_pandas(pdf):
         return DataFrame(pdf)
     else:
         raise ValueError("Unknown data type: {}".format(type(pdf)))
-
-
-def sql(query: str) -> DataFrame:
-    """
-    Execute a SQL query and return the result as a Koalas DataFrame.
-
-    Parameters
-    ----------
-    query : str
-        the SQL query
-
-    Returns
-    -------
-    DataFrame
-
-    Examples
-    --------
-    >>> ks.sql("select * from range(10) where id > 7")
-       id
-    0   8
-    1   9
-
-    >>> kdf = ks.DataFrame({'A': [1,2,3]})
-    >>> ks.sql("select * from kdf")
-       __index_level_0__  A
-    0                  0  1
-    1                  1  2
-    2                  2  3
-    """
-    # Get the local variables from the caller module which is one higher in the stack
-    # TODO Check if the caller module is always exactly one higher in the stack
-    fields = inspect.stack()[1][0].f_locals
-
-    # Tokenize the SQL query to avoid creating temporary views for uninvolved DataFrames later
-    query_tokens = query.split()
-
-    dataframes = {name: obj for name, obj in fields.items()
-                  if isinstance(obj, DataFrame) and name in query_tokens}
-    try:
-        for df_name, df_obj in dataframes.items():
-            df_obj._sdf.createTempView(df_name)
-
-        query_result = DataFrame(default_session().sql(query))
-    except Exception as e:
-        # Simply propagate PySpark exceptions
-        raise e
-    finally:
-        # Clean up by dropping temporary tables
-        registered_table_names = [t.name for t in default_session().catalog.listTables()
-                                  if t.isTemporary]
-        for df_name in dataframes:
-            if df_name in registered_table_names:
-                default_session().catalog.dropTempView(df_name)
-
-    return query_result
 
 
 def range(start: int,
