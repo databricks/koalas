@@ -41,6 +41,7 @@ Indexing, iteration
    :toctree: api/
 
    Series.loc
+   Series.iloc
 
 Function application, GroupBy & Window
 --------------------------------------
