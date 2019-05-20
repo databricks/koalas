@@ -1385,6 +1385,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     # Alias to maintain backward compatibility with Spark
     toPandas = to_pandas
 
+    def __iter__(self):
+        pass
+
     def assign(self, **kwargs):
         """
         Assign new columns to a DataFrame.
