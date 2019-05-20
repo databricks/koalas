@@ -438,6 +438,12 @@ class Series(_Frame):
         >>> ks.Series([True, False]).all()
         False
 
+        >>> ks.Series([0, 1]).all()
+        False
+
+        >>> ks.Series([1, 2, 3]).all()
+        True
+
         >>> ks.Series([True, True, None]).all()
         True
 
@@ -455,12 +461,22 @@ class Series(_Frame):
             raise ValueError('axis should be either 0 or "index" currently.')
 
         sdf = self._kdf._sdf.select(self._scol)
-        sdf = self._kdf._sdf.select(self._scol)
-        ret = sdf.select(F.expr("every(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
-        if ret is None:
-            return True
-        else:
-            return ret
+        col = self._scol
+
+        # any and every was added as of Spark 3.0
+        # ret = sdf.select(F.expr("every(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
+        # if ret is None:
+        #     return True
+        # else:
+        #     return ret
+
+        # Note that we're ignoring `None`s here for now.
+        # Here we check the count without nulls is the same with the number of `True`s
+        # in order to mimic `all`.
+        return sdf.select(
+            (F.count(col)) ==
+            (F.count(F.when(col.cast('boolean'), 1).otherwise(None)))
+        ).collect()[0][0]
 
     # TODO: axis, skipna, and many arguments should be implemented.
     def any(self, axis: int = 0) -> bool:
@@ -492,6 +508,12 @@ class Series(_Frame):
         >>> ks.Series([True, False]).any()
         True
 
+        >>> ks.Series([0, 0]).any()
+        False
+
+        >>> ks.Series([0, 1, 2]).any()
+        True
+
         >>> ks.Series([False, False, None]).any()
         False
 
@@ -509,11 +531,20 @@ class Series(_Frame):
             raise ValueError('axis should be either 0 or "index" currently.')
 
         sdf = self._kdf._sdf.select(self._scol)
-        ret = sdf.select(F.expr("any(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
-        if ret is None:
-            return False
-        else:
-            return ret
+        col = self._scol
+
+        # any and every was added as of Spark 3.0
+        # ret = sdf.select(F.expr("any(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
+        # if ret is None:
+        #     return False
+        # else:
+        #     return ret
+
+        # Note that we're ignoring `None`s here for now.
+        # Here we check if the count of `True`s is more than one in order to mimic `any`.
+        return sdf.select(
+            (F.count(F.when(col.cast('boolean'), 1).otherwise(None)) >= 1)
+        ).collect()[0][0]
 
     def reset_index(self, level=None, drop=False, name=None, inplace=False):
         """
