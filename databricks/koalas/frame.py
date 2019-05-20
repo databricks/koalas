@@ -1859,8 +1859,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         except (KeyError, ValueError, IndexError):
             return default
 
-    def sort_values(self, by: str, ascending: bool = True, inplace: bool = False,
-                    na_position: str = 'last') -> 'DataFrame':
+    def sort_values(self, by: Union[str, List[str]], ascending: Union[bool, List[bool]] = True,
+                    inplace: bool = False, na_position: str = 'last') -> Union['DataFrame', None]:
         """
         Sort by the values along either axis.
 
@@ -1957,6 +1957,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if inplace:
             self._sdf = kdf._sdf
             self._metadata = kdf._metadata
+            return None
         else:
             return kdf
 

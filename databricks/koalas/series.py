@@ -1004,7 +1004,7 @@ class Series(_Frame):
         return _col(kdf)
 
     def sort_values(self, ascending: bool = True, inplace: bool = False,
-                    na_position: str = 'last') -> 'Series':
+                    na_position: str = 'last') -> Union['Series', None]:
         """
         Sort by the values.
 
@@ -1031,6 +1031,7 @@ class Series(_Frame):
             self._kdf = ks_.to_dataframe()
             self._scol = ks_._scol
             self._index_map = ks_._index_map
+            return None
         else:
             return ks_
 
