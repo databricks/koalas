@@ -1312,10 +1312,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if axis != 0:
             raise ValueError("The 'nunique' method only works with axis=0 at the moment")
-        res = self._sdf.select(*(F.countDistinct(Column(c)).alias(c)for c in self.columns))
+        if dropna:
+            res = self._sdf.select([F.countDistinct(Column(c))
+                                   .alias(c)
+                                    for c in self.columns])
+        else:
+            res = self._sdf.select([(F.countDistinct(Column(c))
+                                     + F.when(F.count(F.when(F.col(c).isNull(), 1).otherwise(None))
+                                              >= 1, 1).otherwise(0))
+                                   .alias(c)
+                                    for c in self.columns])
         res = res.toPandas().T.iloc[:, 0]
-        if not dropna:
-            res += self.isnull().sum().clip(upper=1)
         return res
 
     def to_koalas(self):
