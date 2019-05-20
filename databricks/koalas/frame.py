@@ -1297,7 +1297,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        The number of unique values as an int.
+        The number of unique values per column as a Koalas Series.
 
         Examples
         --------
@@ -1323,8 +1323,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                               >= 1, 1).otherwise(0))
                                    .alias(c)
                                     for c in self.columns])
+        # TODO: Find a way to avoid converting to pandas and back
         res = res.toPandas().T.iloc[:, 0]
-        return res
+        return ks.Series(res)
 
     def to_koalas(self):
         """
