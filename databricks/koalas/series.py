@@ -1006,10 +1006,9 @@ class Series(_Frame):
     def sort_values(self, ascending: bool = True, inplace: bool = False,
                     na_position: str = 'last') -> 'Series':
         """
-        Sort Series by index labels.
+        Sort by the values.
 
-        Returns a new Series sorted by label if inplace argument is False, otherwise updates the
-        original series and returns None.
+        Sort a Series in ascending or descending order by some criterion.
 
         Parameters
         ----------
@@ -1024,7 +1023,7 @@ class Series(_Frame):
 
         Returns
         -------
-        sorted_obj : Series
+        sorted_obj : Series ordered by values.
         """
         ks_ = _col(self.to_dataframe().sort_values(by=self.name, ascending=ascending,
                                                    na_position=na_position))
