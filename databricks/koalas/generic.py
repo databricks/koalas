@@ -284,10 +284,6 @@ class _Frame(object):
         Return the number of rows if Series. Otherwise return the number of
         rows times number of columns if DataFrame.
 
-        See Also
-        --------
-        ndarray.size : Number of elements in the array.
-
         Examples
         --------
         >>> s = ks.Series({'a': 1, 'b': 2, 'c': None})
