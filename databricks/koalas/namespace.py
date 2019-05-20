@@ -18,6 +18,8 @@
 Wrappers around spark that correspond to common pandas functions.
 """
 from typing import Optional, Union
+from collections.abc import Iterable
+import itertools
 
 import numpy as np
 import pandas as pd
@@ -30,7 +32,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.utils import default_session
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.typedef import Col, pandas_wraps
-from databricks.koalas.series import Series
+from databricks.koalas.series import Series, _col
 
 
 def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'DataFrame']:
@@ -513,6 +515,238 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
             remaining_columns.append(kdf[column].isnull().astype(dtype).rename(column_name('nan')))
 
     return kdf[remaining_columns]
+
+
+# TODO: there are many parameters to implement and support. See Pandas's pd.concat.
+def concat(objs, axis=0, join='outer', ignore_index=False):
+    """
+    Concatenate pandas objects along a particular axis with optional set logic
+    along the other axes.
+
+    Parameters
+    ----------
+    objs : a sequence of Series or DataFrame
+        Any None objects will be dropped silently unless
+        they are all None in which case a ValueError will be raised
+    axis : {0/'index'}, default 0
+        The axis to concatenate along.
+    join : {'inner', 'outer'}, default 'outer'
+        How to handle indexes on other axis(es)
+    ignore_index : boolean, default False
+        If True, do not use the index values along the concatenation axis. The
+        resulting axis will be labeled 0, ..., n - 1. This is useful if you are
+        concatenating objects where the concatenation axis does not have
+        meaningful indexing information. Note the index values on the other
+        axes are still respected in the join.
+
+    Returns
+    -------
+    concatenated : object, type of objs
+        When concatenating all ``Series`` along the index (axis=0), a
+        ``Series`` is returned. When ``objs`` contains at least one
+        ``DataFrame``, a ``DataFrame`` is returned.
+
+    See Also
+    --------
+    DataFrame.merge
+
+    Examples
+    --------
+    Combine two ``Series``.
+
+    >>> s1 = ks.Series(['a', 'b'])
+    >>> s2 = ks.Series(['c', 'd'])
+    >>> ks.concat([s1, s2])
+    0    a
+    1    b
+    0    c
+    1    d
+    Name: 0, dtype: object
+
+    Clear the existing index and reset it in the result
+    by setting the ``ignore_index`` option to ``True``.
+
+    >>> ks.concat([s1, s2], ignore_index=True)
+    0    a
+    1    b
+    2    c
+    3    d
+    Name: 0, dtype: object
+
+    Combine two ``DataFrame`` objects with identical columns.
+
+    >>> df1 = ks.DataFrame([['a', 1], ['b', 2]],
+    ...                    columns=['letter', 'number'])
+    >>> df1
+      letter  number
+    0      a       1
+    1      b       2
+    >>> df2 = ks.DataFrame([['c', 3], ['d', 4]],
+    ...                    columns=['letter', 'number'])
+    >>> df2
+      letter  number
+    0      c       3
+    1      d       4
+    >>> ks.concat([df1, df2])
+      letter  number
+    0      a       1
+    1      b       2
+    0      c       3
+    1      d       4
+
+    Combine ``DataFrame`` and ``Series`` objects with different columns.
+
+    >>> ks.concat([df2, s1, s2])
+          0 letter  number
+    0  None      c     3.0
+    1  None      d     4.0
+    0     a   None     NaN
+    1     b   None     NaN
+    0     c   None     NaN
+    1     d   None     NaN
+
+    Combine ``DataFrame`` objects with overlapping columns
+    and return everything. Columns outside the intersection will
+    be filled with ``None`` values.
+
+    >>> df3 = ks.DataFrame([['c', 3, 'cat'], ['d', 4, 'dog']],
+    ...                    columns=['letter', 'number', 'animal'])
+    >>> df3
+      letter  number animal
+    0      c       3    cat
+    1      d       4    dog
+    >>> ks.concat([df1, df3])
+      animal letter  number
+    0   None      a       1
+    1   None      b       2
+    0    cat      c       3
+    1    dog      d       4
+
+    Combine ``DataFrame`` objects with overlapping columns
+    and return only those that are shared by passing ``inner`` to
+    the ``join`` keyword argument.
+
+    >>> ks.concat([df1, df3], join="inner")
+      letter  number
+    0      a       1
+    1      b       2
+    0      c       3
+    1      d       4
+    """
+    if not isinstance(objs, (dict, Iterable)):
+        raise TypeError('first argument must be an iterable of koalas '
+                        'objects, you passed an object of type '
+                        '"{name}"'.format(name=type(objs).__name__))
+
+    if axis not in [0, 'index']:
+        raise ValueError('axis should be either 0 or "index" currently.')
+
+    if all(map(lambda obj: obj is None, objs)):
+        raise ValueError("All objects passed were None")
+    objs = list(filter(lambda obj: obj is not None, objs))
+
+    for obj in objs:
+        if not isinstance(obj, (Series, DataFrame)):
+            raise TypeError('cannot concatenate object of type '"'{name}"'; only ks.Series '
+                            'and ks.DataFrame are valid'.format(name=type(objs).__name__))
+
+    # Series, Series ...
+    # We should return Series if objects are all Series.
+    should_return_series = all(map(lambda obj: isinstance(obj, Series), objs))
+
+    # DataFrame, Series ... & Series, Series ...
+    # In this case, we should return DataFrame.
+    new_objs = []
+    for obj in objs:
+        if isinstance(obj, Series):
+            obj = obj.to_dataframe()
+        new_objs.append(obj)
+    objs = new_objs
+
+    # DataFrame, DataFrame, ...
+    # All Series are converted into DataFrame and then compute concat.
+    if not ignore_index:
+        indices_of_kdfs = [kdf._metadata.index_map for kdf in objs]
+        index_of_first_kdf = indices_of_kdfs[0]
+        for index_of_kdf in indices_of_kdfs:
+            if index_of_first_kdf != index_of_kdf:
+                raise ValueError(
+                    'Index type and names should be same in the objects to concatenate. '
+                    'You passed different indices '
+                    '{index_of_first_kdf} and {index_of_kdf}'.format(
+                        index_of_first_kdf=index_of_first_kdf, index_of_kdf=index_of_kdf))
+
+    columns_of_kdfs = [kdf._metadata.columns for kdf in objs]
+    first_kdf = objs[0]
+    if ignore_index:
+        columns_of_first_kdf = first_kdf._metadata.data_columns
+    else:
+        columns_of_first_kdf = first_kdf._metadata.columns
+    if all(current_kdf == columns_of_first_kdf for current_kdf in columns_of_kdfs):
+        # If all columns are in the same order and values, use it.
+        kdfs = objs
+    else:
+        if ignore_index:
+            columns_to_apply = [kdf._metadata.data_columns for kdf in objs]
+        else:
+            columns_to_apply = [kdf._metadata.columns for kdf in objs]
+
+        if join == "inner":
+            interested_columns = set.intersection(*map(set, columns_to_apply))
+            # Keep the column order with its firsts DataFrame.
+            interested_columns = list(map(
+                lambda c: columns_of_first_kdf[columns_of_first_kdf.index(c)],
+                interested_columns))
+
+            kdfs = []
+            for kdf in objs:
+                sdf = kdf._sdf.select(interested_columns)
+                if ignore_index:
+                    kdfs.append(DataFrame(sdf))
+                else:
+                    kdfs.append(DataFrame(sdf, first_kdf._metadata.copy()))
+        elif join == "outer":
+            # If there are columns unmatched, just sort the column names.
+            merged_columns = set(
+                itertools.chain.from_iterable(columns_to_apply))
+
+            kdfs = []
+            for kdf in objs:
+                if ignore_index:
+                    columns_to_add = merged_columns - set(kdf._metadata.data_columns)
+                else:
+                    columns_to_add = merged_columns - set(kdf._metadata.columns)
+
+                # TODO: NaN and None difference for missing values. pandas seems filling NaN.
+                kdf = kdf.assign(**dict(zip(columns_to_add, [None] * len(columns_to_add))))
+
+                if ignore_index:
+                    sdf = kdf._sdf.select(sorted(kdf._metadata.data_columns))
+                else:
+                    sdf = kdf._sdf.select(
+                        kdf._metadata.index_columns + sorted(kdf._metadata.data_columns))
+
+                kdf = DataFrame(sdf, kdf._metadata.copy(
+                    data_columns=sorted(kdf._metadata.data_columns)))
+                kdfs.append(kdf)
+        else:
+            raise ValueError(
+                "Only can inner (intersect) or outer (union) join the other axis.")
+
+    concatenated = kdfs[0]._sdf
+    for kdf in kdfs[1:]:
+        concatenated = concatenated.unionByName(kdf._sdf)
+
+    if ignore_index:
+        result_kdf = DataFrame(concatenated.select(kdfs[0]._metadata.data_columns))
+    else:
+        result_kdf = DataFrame(concatenated, kdfs[0]._metadata.copy())
+
+    if should_return_series:
+        # If all input were Series, we should return Series.
+        return _col(result_kdf)
+    else:
+        return result_kdf
 
 
 # @pandas_wraps(return_col=np.datetime64)

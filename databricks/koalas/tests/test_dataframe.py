@@ -19,8 +19,7 @@ import inspect
 import numpy as np
 import pandas as pd
 
-from databricks import koalas
-from databricks.koalas.generic import max_display_count
+from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
@@ -37,7 +36,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     @property
     def kdf(self):
-        return koalas.from_pandas(self.pdf)
+        return ks.from_pandas(self.pdf)
 
     def test_dataframe(self):
         kdf = self.kdf
@@ -64,21 +63,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             'a': [1, 2, 3, 4, 5, 6, 7, 8, 9],
             'b': [4, 5, 6, 3, 2, 1, 0, 0, 0],
         })
-        ddf = koalas.from_pandas(df)
+        ddf = ks.from_pandas(df)
         self.assert_eq(df[['a', 'b']], ddf[['a', 'b']])
 
         self.assertEqual(ddf.a.notnull().alias("x").name, "x")
 
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
-        df = koalas.range(10)
+        df = ks.range(10)
         df.__repr__()
         df['a'] = df['id']
         self.assertEqual(df.__repr__(), df.to_pandas().__repr__())
 
     def test_repr_html_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
-        df = koalas.range(10)
+        df = ks.range(10)
         df._repr_html_()
         df['a'] = df['id']
         self.assertEqual(df._repr_html_(), df.to_pandas()._repr_html_())
@@ -87,20 +86,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({'a': pd.Series([], dtype='i1'),
                             'b': pd.Series([], dtype='str')})
 
-        self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
+        self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
         with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
-            self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
+            self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
     def test_all_null_dataframe(self):
 
         pdf = pd.DataFrame({'a': pd.Series([None, None, None], dtype='float64'),
                             'b': pd.Series([None, None, None], dtype='str')})
 
-        self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
+        self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
         with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
-            self.assertRaises(ValueError, lambda: koalas.from_pandas(pdf))
+            self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
     def test_nullable_object(self):
         pdf = pd.DataFrame({'a': list('abc') + [np.nan],
@@ -110,11 +109,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                             'e': [True, False, True, np.nan],
                             'f': list(pd.date_range('20130101', periods=3)) + [np.nan]})
 
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf, pdf)
 
         with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
-            kdf = koalas.from_pandas(pdf)
+            kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf, pdf)
 
     def test_assign(self):
@@ -150,7 +149,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                      pd.DataFrame(np.random.randn(10, 5),
                                   index=pd.date_range('2011-01-01', freq='D',
                                                       periods=10))]:
-            ddf = koalas.from_pandas(case)
+            ddf = ks.from_pandas(case)
             self.assert_eq(list(ddf.index.toPandas()), list(case.index))
 
     def test_attributes(self):
@@ -160,9 +159,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertNotIn('foo', dir(kdf))
         self.assertRaises(AttributeError, lambda: kdf.foo)
 
-        kdf = koalas.DataFrame({'a b c': [1, 2, 3]})
+        kdf = ks.DataFrame({'a b c': [1, 2, 3]})
         self.assertNotIn('a b c', dir(kdf))
-        kdf = koalas.DataFrame({'a': [1, 2], 5: [1, 2]})
+        kdf = ks.DataFrame({'a': [1, 2], 5: [1, 2]})
         self.assertIn('a', dir(kdf))
         self.assertNotIn(5, dir(kdf))
 
@@ -181,13 +180,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         idx = pd.Index([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], name='x')
         df = pd.DataFrame(np.random.randn(10, 5), idx)
-        ddf = koalas.from_pandas(df)
+        ddf = ks.from_pandas(df)
         self.assertEqual(ddf.index.name, 'x')
 
     def test_rename_columns(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7],
                             'b': [7, 6, 5, 4, 3, 2, 1]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         kdf.columns = ['x', 'y']
         pdf.columns = ['x', 'y']
@@ -200,7 +199,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Multi-index columns
         pdf = pd.DataFrame({('A', '0'): [1, 2, 2, 3], ('B', 1): [1, 2, 3, 4]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         pdf.columns = ['x', 'y']
         kdf.columns = ['x', 'y']
@@ -208,7 +207,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf, pdf)
 
     def test_drop(self):
-        kdf = koalas.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6]})
+        kdf = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6]})
 
         # Assert 'labels' or 'columns' parameter is set
         expected_error_message = "Need to specify at least one of 'labels' or 'columns'"
@@ -235,7 +234,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                             'y': [1, 2, np.nan, 4, np.nan, np.nan],
                             'z': [1, 2, 3, 4, np.nan, np.nan]},
                            index=[10, 20, 30, 40, 50, 60])
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.dropna(), pdf.dropna())
         self.assert_eq(kdf.dropna(how='all'), pdf.dropna(how='all'))
@@ -267,7 +266,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                             'd': np.arange(4.0, 7.0, dtype='float64'),
                             'e': [True, False, True],
                             'f': pd.date_range('20130101', periods=3)})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf, pdf)
         self.assertTrue((kdf.dtypes == pdf.dtypes).all())
 
@@ -277,7 +276,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                             'z': [1, 2, 3, 4, np.nan, np.nan]},
                            index=[10, 20, 30, 40, 50, 60])
 
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf.fillna(-1), pdf.fillna(-1))
@@ -306,23 +305,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_isnull(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
                            index=[10, 20, 30, 40, 50, 60])
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.notnull(), pdf.notnull())
         self.assert_eq(kdf.isnull(), pdf.isnull())
 
-    def test_to_datetime(self):
-        pdf = pd.DataFrame({'year': [2015, 2016],
-                            'month': [2, 3],
-                            'day': [4, 5]})
-        kdf = koalas.from_pandas(pdf)
-
-        self.assert_eq(pd.to_datetime(pdf), koalas.to_datetime(kdf))
-
     def test_sort_values(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
                             'b': [7, 6, 5, 4, 3, 2, 1]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(repr(kdf.sort_values('b')), repr(pdf.sort_values('b')))
         self.assert_eq(repr(kdf.sort_values(['b', 'a'])), repr(pdf.sort_values(['b', 'a'])))
         self.assert_eq(
@@ -379,7 +370,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                             'c': ["one", "three", "six", "seven", "one", "5"]},
                            index=[10, 20, 30, 40, 50, 60])
 
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         np.testing.assert_equal(kdf.to_numpy(), pdf.values)
 
@@ -395,7 +386,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                            'c': ["one", "three", "six", "seven", "one", "5"]},
                           index=[10, 20, 30, 40, 50, 60])
 
-        kdf = koalas.from_pandas(df)
+        kdf = ks.from_pandas(df)
         self.assert_eq(kdf.isin([4, 'six']), df.isin([4, 'six']))
         self.assert_eq(kdf.isin({"a": [2, 8], "c": ['three', "one"]}),
                        df.isin({"a": [2, 8], "c": ['three', "one"]}))
@@ -413,8 +404,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.isin(1)
 
     def test_merge(self):
-        left_kdf = koalas.DataFrame({'A': [1, 2]})
-        right_kdf = koalas.DataFrame({'B': ['x', 'y']}, index=[1, 2])
+        left_kdf = ks.DataFrame({'A': [1, 2]})
+        right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
 
         # Assert only 'on' or 'left_index' and 'right_index' parameters are set
         msg = "At least 'on' or 'left_index' and 'right_index' have to be set"
@@ -435,8 +426,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(res, pd.DataFrame({'A': [2], 'B': ['x']}))
 
         # Assert inner join on non-default column
-        left_kdf_with_id = koalas.DataFrame({'A': [1, 2], 'id': [0, 1]})
-        right_kdf_with_id = koalas.DataFrame({'B': ['x', 'y'], 'id': [0, 1]}, index=[1, 2])
+        left_kdf_with_id = ks.DataFrame({'A': [1, 2], 'id': [0, 1]})
+        right_kdf_with_id = ks.DataFrame({'B': ['x', 'y'], 'id': [0, 1]}, index=[1, 2])
         res = left_kdf_with_id.merge(right_kdf_with_id, on='id')
         # Explicitly set columns to also assure their correct order with Python 3.5
         self.assert_eq(res, pd.DataFrame({'A': [1, 2], 'id': [0, 1], 'B': ['x', 'y']},
@@ -462,13 +453,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(res, pd.DataFrame({'A': [1, 2, np.nan], 'B': [None, 'x', 'y']}))
 
         # Assert suffixes create the expected column names
-        res = left_kdf.merge(koalas.DataFrame({'A': [3, 4]}), left_index=True, right_index=True,
+        res = left_kdf.merge(ks.DataFrame({'A': [3, 4]}), left_index=True, right_index=True,
                              suffixes=('_left', '_right'))
         self.assert_eq(res, pd.DataFrame({'A_left': [1, 2], 'A_right': [3, 4]}))
 
     def test_clip(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         # Assert list-like values are not accepted for 'lower' and 'upper'
         msg = "List-like value are not supported for 'lower' and 'upper' at the moment"
@@ -487,12 +478,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.clip(1, 3), pdf.clip(1, 3))
 
         # Assert behavior on string values
-        str_kdf = koalas.DataFrame({'A': ['a', 'b', 'c']})
+        str_kdf = ks.DataFrame({'A': ['a', 'b', 'c']})
         self.assert_eq(str_kdf.clip(1, 3), str_kdf)
 
     def test_sample(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         # Make sure the tests run, but we can't check the result because they are non-deterministic.
         kdf.sample(frac=0.1)
