@@ -34,6 +34,7 @@ Conversion
 
    DataFrame.copy
    DataFrame.isna
+   DataFrame.astype
    DataFrame.isnull
    DataFrame.notna
    DataFrame.notnull
@@ -45,7 +46,6 @@ Indexing, iteration
 
    DataFrame.head
    DataFrame.loc
-   DataFrame.__iter__
    DataFrame.iteritems
    DataFrame.get
 
@@ -65,6 +65,7 @@ Computations / Descriptive Stats
    :toctree: api/
 
    DataFrame.abs
+   DataFrame.clip
    DataFrame.corr
    DataFrame.count
    DataFrame.kurt
@@ -87,6 +88,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.reset_index
    DataFrame.set_index
    DataFrame.isin
+   DataFrame.sample
 
 .. _api.dataframe.missing:
 
@@ -128,3 +130,5 @@ Serialization / IO / Conversion
    DataFrame.to_dict
    DataFrame.to_excel
    DataFrame.to_clipboard
+   DataFrame.to_records
+   DataFrame.to_latex

@@ -26,6 +26,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.indexing import LocIndexer
 
 max_display_count = 1000
 
@@ -384,6 +385,12 @@ class _Frame(object):
             return SeriesGroupBy(col, col_by)
         raise TypeError('Constructor expects DataFrame or Series; however, '
                         'got [%s]' % (df_or_s,))
+
+    @property
+    def loc(self):
+        return LocIndexer(self)
+
+    loc.__doc__ = LocIndexer.__doc__
 
     def compute(self):
         """Alias of `to_pandas()` to mimic dask for easily porting tests."""

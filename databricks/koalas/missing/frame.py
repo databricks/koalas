@@ -17,12 +17,14 @@
 from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
-def unsupported_function(method_name):
-    return _unsupported_function(class_name='pd.DataFrame', method_name=method_name)
+def unsupported_function(method_name, deprecated=False):
+    return _unsupported_function(class_name='pd.DataFrame', method_name=method_name,
+                                 deprecated=deprecated)
 
 
-def unsupported_property(property_name):
-    return _unsupported_property(class_name='pd.DataFrame', property_name=property_name)
+def unsupported_property(property_name, deprecated=False):
+    return _unsupported_property(class_name='pd.DataFrame', property_name=property_name,
+                                 deprecated=deprecated)
 
 
 class _MissingPandasLikeDataFrame(object):
@@ -31,7 +33,6 @@ class _MissingPandasLikeDataFrame(object):
     T = unsupported_property('T')
     at = unsupported_property('at')
     axes = unsupported_property('axes')
-    blocks = unsupported_property('blocks')
     empty = unsupported_property('empty')
     ftypes = unsupported_property('ftypes')
     iat = unsupported_property('iat')
@@ -43,33 +44,31 @@ class _MissingPandasLikeDataFrame(object):
     style = unsupported_property('style')
     values = unsupported_property('values')
 
+    # Deprecated properties
+    blocks = unsupported_property('blocks', deprecated=True)
+
     # Functions
     add = unsupported_function('add')
     add_prefix = unsupported_function('add_prefix')
     add_suffix = unsupported_function('add_suffix')
+    agg = unsupported_function('agg')
+    aggregate = unsupported_function('aggregate')
     align = unsupported_function('align')
     all = unsupported_function('all')
     any = unsupported_function('any')
     append = unsupported_function('append')
     apply = unsupported_function('apply')
     applymap = unsupported_function('applymap')
-    as_blocks = unsupported_function('as_blocks')
-    as_matrix = unsupported_function('as_matrix')
     asfreq = unsupported_function('asfreq')
     asof = unsupported_function('asof')
-    astype = unsupported_function('astype')
     at_time = unsupported_function('at_time')
     between_time = unsupported_function('between_time')
     bfill = unsupported_function('bfill')
     bool = unsupported_function('bool')
     boxplot = unsupported_function('boxplot')
-    clip = unsupported_function('clip')
-    clip_lower = unsupported_function('clip_lower')
-    clip_upper = unsupported_function('clip_upper')
     combine = unsupported_function('combine')
     combine_first = unsupported_function('combine_first')
     compound = unsupported_function('compound')
-    convert_objects = unsupported_function('convert_objects')
     corrwith = unsupported_function('corrwith')
     cov = unsupported_function('cov')
     cummax = unsupported_function('cummax')
@@ -96,8 +95,6 @@ class _MissingPandasLikeDataFrame(object):
     floordiv = unsupported_function('floordiv')
     ge = unsupported_function('ge')
     get_dtype_counts = unsupported_function('get_dtype_counts')
-    get_ftype_counts = unsupported_function('get_ftype_counts')
-    get_value = unsupported_function('get_value')
     get_values = unsupported_function('get_values')
     gt = unsupported_function('gt')
     hist = unsupported_function('hist')
@@ -158,12 +155,9 @@ class _MissingPandasLikeDataFrame(object):
     rpow = unsupported_function('rpow')
     rsub = unsupported_function('rsub')
     rtruediv = unsupported_function('rtruediv')
-    sample = unsupported_function('sample')
-    select = unsupported_function('select')
     select_dtypes = unsupported_function('select_dtypes')
     sem = unsupported_function('sem')
     set_axis = unsupported_function('set_axis')
-    set_value = unsupported_function('set_value')
     shift = unsupported_function('shift')
     slice_shift = unsupported_function('slice_shift')
     sort_index = unsupported_function('sort_index')
@@ -179,13 +173,10 @@ class _MissingPandasLikeDataFrame(object):
     to_feather = unsupported_function('to_feather')
     to_gbq = unsupported_function('to_gbq')
     to_hdf = unsupported_function('to_hdf')
-    to_latex = unsupported_function('to_latex')
     to_msgpack = unsupported_function('to_msgpack')
-    to_panel = unsupported_function('to_panel')
     to_parquet = unsupported_function('to_parquet')
     to_period = unsupported_function('to_period')
     to_pickle = unsupported_function('to_pickle')
-    to_records = unsupported_function('to_records')
     to_sparse = unsupported_function('to_sparse')
     to_sql = unsupported_function('to_sql')
     to_stata = unsupported_function('to_stata')
@@ -202,3 +193,15 @@ class _MissingPandasLikeDataFrame(object):
     update = unsupported_function('update')
     where = unsupported_function('where')
     xs = unsupported_function('xs')
+
+    # Deprecated functions
+    as_blocks = unsupported_function('as_blocks', deprecated=True)
+    as_matrix = unsupported_function('as_matrix', deprecated=True)
+    clip_lower = unsupported_function('clip_lower', deprecated=True)
+    clip_upper = unsupported_function('clip_upper', deprecated=True)
+    convert_objects = unsupported_function('convert_objects', deprecated=True)
+    get_ftype_counts = unsupported_function('get_ftype_counts', deprecated=True)
+    get_value = unsupported_function('get_value', deprecated=True)
+    select = unsupported_function('select', deprecated=True)
+    set_value = unsupported_function('set_value', deprecated=True)
+    to_panel = unsupported_function('to_panel', deprecated=True)

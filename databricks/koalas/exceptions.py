@@ -51,7 +51,8 @@ class SparkPandasNotImplementedError(NotImplementedError):
 
 class PandasNotImplementedError(NotImplementedError):
 
-    def __init__(self, class_name, method_name=None, arg_name=None, property_name=None):
+    def __init__(self, class_name, method_name=None, arg_name=None, property_name=None,
+                 deprecated=False):
         assert (method_name is None) != (property_name is None)
         self.class_name = class_name
         self.method_name = method_name
@@ -61,13 +62,19 @@ class PandasNotImplementedError(NotImplementedError):
                 msg = "The method `{0}.{1}()` does not support `{2}` parameter" \
                     .format(class_name, method_name, arg_name)
             else:
-                msg = "The method `{0}.{1}()` is not implemented yet." \
-                    .format(class_name, method_name)
+                if deprecated:
+                    msg = ("The method `{0}.{1}()` is deprecated in pandas and will therefore " +
+                           "not be supported in Koalas.") \
+                        .format(class_name, method_name)
+                else:
+                    msg = "The method `{0}.{1}()` is not implemented yet." \
+                        .format(class_name, method_name)
         else:
-            msg = "The property `{0}.{1}` is not implemented yet." \
-                .format(class_name, property_name)
+            if deprecated:
+                msg = ("The property `{0}.{1}()` is deprecated in pandas and will therefore " +
+                       "not be supported in Koalas.") \
+                    .format(class_name, property_name)
+            else:
+                msg = "The property `{0}.{1}()` is not implemented yet." \
+                    .format(class_name, property_name)
         super(NotImplementedError, self).__init__(msg)
-
-
-class SparkPandasMergeError(Exception):
-    pass

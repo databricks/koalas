@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -33,27 +33,29 @@ from databricks.koalas.typedef import Col, pandas_wraps
 from databricks.koalas.series import Series
 
 
-def from_pandas(pdf):
-    """Create a Koalas DataFrame from a pandas DataFrame.
+def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'DataFrame']:
+    """Create a Koalas DataFrame or Series from a pandas DataFrame or Series.
 
-    This is similar to Spark's `DataFrame.createDataFrame()` with pandas DataFrame,
-    but this also picks the index in the given pandas DataFrame.
+    This is similar to Spark's `SparkSession.createDataFrame()` with pandas DataFrame,
+    but this also works with pandas Series and picks the index.
 
     Parameters
     ----------
-    pdf : pandas.DataFrame
-        pandas DataFrame to read.
+    pobj : pandas.DataFrame or pandas.Series
+        pandas DataFrame or Series to read.
 
     Returns
     -------
-    DataFrame
+    Series or DataFrame
+        If a pandas Series is passed in, this function returns a Koalas Series.
+        If a pandas DataFrame is passed in, this function returns a Koalas DataFrame.
     """
-    if isinstance(pdf, pd.Series):
-        return Series(pdf)
-    elif isinstance(pdf, pd.DataFrame):
-        return DataFrame(pdf)
+    if isinstance(pobj, pd.Series):
+        return Series(pobj)
+    elif isinstance(pobj, pd.DataFrame):
+        return DataFrame(pobj)
     else:
-        raise ValueError("Unknown data type: {}".format(type(pdf)))
+        raise ValueError("Unknown data type: {}".format(type(pobj)))
 
 
 def range(start: int,
@@ -253,6 +255,92 @@ def read_parquet(path, columns=None):
 
 
 def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
+    """
+    Convert argument to datetime.
+
+    Parameters
+    ----------
+    arg : integer, float, string, datetime, list, tuple, 1-d array, Series
+           or DataFrame/dict-like
+
+    errors : {'ignore', 'raise', 'coerce'}, default 'raise'
+
+        - If 'raise', then invalid parsing will raise an exception
+        - If 'coerce', then invalid parsing will be set as NaT
+        - If 'ignore', then invalid parsing will return the input
+    format : string, default None
+        strftime to parse time, eg "%d/%m/%Y", note that "%f" will parse
+        all the way up to nanoseconds.
+    infer_datetime_format : boolean, default False
+        If True and no `format` is given, attempt to infer the format of the
+        datetime strings, and if it can be inferred, switch to a faster
+        method of parsing them. In some cases this can increase the parsing
+        speed by ~5-10x.
+
+    Returns
+    -------
+    ret : datetime if parsing succeeded.
+        Return type depends on input:
+
+        - list-like: DatetimeIndex
+        - Series: Series of datetime64 dtype
+        - scalar: Timestamp
+
+        In case when it is not possible to return designated types (e.g. when
+        any element of input is before Timestamp.min or after Timestamp.max)
+        return will have datetime.datetime type (or corresponding
+        array/Series).
+
+    Examples
+    --------
+    Assembling a datetime from multiple columns of a DataFrame. The keys can be
+    common abbreviations like ['year', 'month', 'day', 'minute', 'second',
+    'ms', 'us', 'ns']) or plurals of the same
+
+    >>> df = ks.DataFrame({'year': [2015, 2016],
+    ...                    'month': [2, 3],
+    ...                    'day': [4, 5]})
+    >>> ks.to_datetime(df)
+    0   2015-02-04
+    1   2016-03-05
+    Name: _to_datetime2(arg_day=day, arg_month=month, arg_year=year), dtype: datetime64[ns]
+
+    If a date does not meet the `timestamp limitations
+    <http://pandas.pydata.org/pandas-docs/stable/timeseries.html
+    #timeseries-timestamp-limits>`_, passing errors='ignore'
+    will return the original input instead of raising any exception.
+
+    Passing errors='coerce' will force an out-of-bounds date to NaT,
+    in addition to forcing non-dates (or non-parseable dates) to NaT.
+
+    >>> ks.to_datetime('13000101', format='%Y%m%d', errors='ignore')
+    datetime.datetime(1300, 1, 1, 0, 0)
+    >>> ks.to_datetime('13000101', format='%Y%m%d', errors='coerce')
+    NaT
+
+    Passing infer_datetime_format=True can often-times speedup a parsing
+    if its not an ISO8601 format exactly, but in a regular format.
+
+    >>> s = ks.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 1000)
+    >>> s.head()
+    0    3/11/2000
+    1    3/12/2000
+    2    3/13/2000
+    3    3/11/2000
+    4    3/12/2000
+    Name: 0, dtype: object
+
+    >>> import timeit
+    >>> timeit.timeit(
+    ...    lambda: repr(ks.to_datetime(s, infer_datetime_format=True)),
+    ...    number = 1)  # doctest: +SKIP
+    0.35832712500000063
+
+    >>> timeit.timeit(
+    ...    lambda: repr(ks.to_datetime(s, infer_datetime_format=False)),
+    ...    number = 1)  # doctest: +SKIP
+    0.8895321660000004
+    """
     if isinstance(arg, Series):
         return _to_datetime1(
             arg,
@@ -275,6 +363,8 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
             errors=errors,
             format=format,
             infer_datetime_format=infer_datetime_format)
+    return pd.to_datetime(
+        arg, errors=errors, format=format, infer_datetime_format=infer_datetime_format)
 
 
 def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None, sparse=False,
