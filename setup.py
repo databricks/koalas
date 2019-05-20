@@ -18,23 +18,13 @@
 
 import sys
 from setuptools import setup
+from os import path
 
-DESCRIPTION = "Pandas DataFrame API on Apache Spark"
+DESCRIPTION = "Koalas: pandas API on Apache Spark"
 
-LONG_DESCRIPTION = """
-Koalas makes data scientists more productive when interacting with big data,
-by augmenting Apache Spark's Python DataFrame API to be compatible with
-Pandas'.
-
-Pandas is the de facto standard (single-node) dataframe implementation in
-Python, while Spark is the de facto standard for big data processing.
-With this package, data scientists can:
-
-- Be immediately productive with Spark, with no learning curve, if one
-  is already familiar with Pandas.
-- Have a single codebase that works both with Pandas (tests, smaller datasets)
-  and with Spark (distributed datasets).
-"""
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    LONG_DESCRIPTION = f.read()
 
 try:
     exec(open('databricks/koalas/version.py').read())
@@ -51,7 +41,7 @@ setup(
     extras_require={
         'spark': ['pyspark>=2.4.0'],
     },
-    python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*',
+    python_requires='>=3.5',
     install_requires=[
         'pandas>=0.23',
         'pyarrow>=0.10',
@@ -63,9 +53,15 @@ setup(
     url="https://github.com/databricks/koalas",
     project_urls={
         'Bug Tracker': 'https://github.com/databricks/koalas/issues',
-        # 'Documentation': '',
+        'Documentation': 'https://koalas.readthedocs.io/',
         'Source Code': 'https://github.com/databricks/koalas'
     },
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
+    long_description_content_type='text/markdown',
+    classifiers=[
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+    ],
 )

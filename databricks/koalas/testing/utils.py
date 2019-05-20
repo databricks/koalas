@@ -250,6 +250,9 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
             else:
                 self.assertEqual(lpdf, rpdf)
 
+    def assert_array_eq(self, left, right):
+        self.assertTrue((left == right).all())
+
     @staticmethod
     def _to_pandas(df):
         if isinstance(df, (DataFrame, Series, Index)):

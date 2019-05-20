@@ -24,7 +24,8 @@ from typing import Any, Optional, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like, \
+    is_dict_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
@@ -1573,6 +1574,88 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_excel, pd.DataFrame.to_excel, args)
 
+    def to_records(self, index=True, convert_datetime64=None,
+                   column_dtypes=None, index_dtypes=None):
+        """
+        Convert DataFrame to a NumPy record array.
+
+        Index will be included as the first field of the record array if
+        requested.
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is
+            expected to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        index : bool, default True
+            Include index in resulting record array, stored in 'index'
+            field or using the index label, if set.
+        convert_datetime64 : bool, default None
+            Whether to convert the index to datetime.datetime if it is a
+            DatetimeIndex.
+        column_dtypes : str, type, dict, default None
+            If a string or type, the data type to store all columns. If
+            a dictionary, a mapping of column names and indices (zero-indexed)
+            to specific data types.
+        index_dtypes : str, type, dict, default None
+            If a string or type, the data type to store all index levels. If
+            a dictionary, a mapping of index level names and indices
+            (zero-indexed) to specific data types.
+            This mapping is applied only if `index=True`.
+
+        Returns
+        -------
+        numpy.recarray
+            NumPy ndarray with the DataFrame labels as fields and each row
+            of the DataFrame as entries.
+
+        See Also
+        --------
+        DataFrame.from_records: Convert structured or record ndarray
+            to DataFrame.
+        numpy.recarray: An ndarray that allows field access using
+            attributes, analogous to typed columns in a
+            spreadsheet.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2], 'B': [0.5, 0.75]},
+        ...                   index=['a', 'b'])
+        >>> df
+           A     B
+        a  1  0.50
+        b  2  0.75
+
+        >>> df.to_records() # doctest: +SKIP
+        rec.array([('a', 1, 0.5 ), ('b', 2, 0.75)],
+                  dtype=[('index', 'O'), ('A', '<i8'), ('B', '<f8')])
+
+        The index can be excluded from the record array:
+
+        >>> df.to_records(index=False) # doctest: +SKIP
+        rec.array([(1, 0.5 ), (2, 0.75)],
+                  dtype=[('A', '<i8'), ('B', '<f8')])
+
+        Specification of dtype for columns is new in Pandas 0.24.0.
+        Data types can be specified for the columns:
+
+        >>> df.to_records(column_dtypes={"A": "int32"}) # doctest: +SKIP
+        rec.array([('a', 1, 0.5 ), ('b', 2, 0.75)],
+                  dtype=[('index', 'O'), ('A', '<i4'), ('B', '<f8')])
+
+        Specification of dtype for index is new in Pandas 0.24.0.
+        Data types can also be specified for the index:
+
+        >>> df.to_records(index_dtypes="<S2") # doctest: +SKIP
+        rec.array([(b'a', 1, 0.5 ), (b'b', 2, 0.75)],
+                  dtype=[('index', 'S2'), ('A', '<i8'), ('B', '<f8')])
+        """
+        args = locals()
+        kdf = self
+
+        return validate_arguments_and_invoke_function(
+            kdf.to_pandas(), self.to_records, pd.DataFrame.to_records, args)
+
     def copy(self) -> 'DataFrame':
         """
         Make a copy of this object's indices and data.
@@ -2570,6 +2653,78 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("frac must be specified.")
 
         sdf = self._sdf.sample(withReplacement=replace, fraction=frac, seed=random_state)
+        return DataFrame(sdf, self._metadata.copy())
+
+    def astype(self, dtype) -> 'DataFrame':
+        """
+        Cast a pandas object to a specified dtype ``dtype``.
+
+        Parameters
+        ----------
+        dtype : data type, or dict of column name -> data type
+            Use a numpy.dtype or Python type to cast entire pandas object to
+            the same type. Alternatively, use {col: dtype, ...}, where col is a
+            column label and dtype is a numpy.dtype or Python type to cast one
+            or more of the DataFrame's columns to column-specific types.
+
+        Returns
+        -------
+        casted : same type as caller
+
+        See Also
+        --------
+        to_datetime : Convert argument to datetime.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 2, 3], 'b': [1, 2, 3]}, dtype='int64')
+        >>> df
+           a  b
+        0  1  1
+        1  2  2
+        2  3  3
+
+        Convert to float type:
+
+        >>> df.astype('float')
+             a    b
+        0  1.0  1.0
+        1  2.0  2.0
+        2  3.0  3.0
+
+        Convert to int64 type back:
+
+        >>> df.astype('int64')
+           a  b
+        0  1  1
+        1  2  2
+        2  3  3
+
+        Convert column a to float type:
+
+        >>> df.astype({'a': float})
+             a  b
+        0  1.0  1
+        1  2.0  2
+        2  3.0  3
+
+        """
+        results = []
+        if is_dict_like(dtype):
+            for col_name in dtype.keys():
+                if col_name not in self.columns:
+                    raise KeyError('Only a column name can be used for the '
+                                   'key in a dtype mappings argument.')
+            for col_name, col in self.iteritems():
+                if col_name in dtype:
+                    results.append(col.astype(dtype=dtype[col_name]))
+                else:
+                    results.append(col)
+        else:
+            for col_name, col in self.iteritems():
+                results.append(col.astype(dtype=dtype))
+        sdf = self._sdf.select(
+            self._metadata.index_columns + list(map(lambda ser: ser._scol, results)))
         return DataFrame(sdf, self._metadata.copy())
 
     def _pd_getitem(self, key):

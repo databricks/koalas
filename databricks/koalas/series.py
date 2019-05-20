@@ -138,6 +138,43 @@ class Series(_Frame, IndexOpsMixin):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self.schema.fields[-1].dataType
 
+    def astype(self, dtype) -> 'Series':
+        """
+        Cast a Koalas object to a specified dtype ``dtype``.
+
+        Parameters
+        ----------
+        dtype : data type
+            Use a numpy.dtype or Python type to cast entire pandas object to
+            the same type.
+
+        Returns
+        -------
+        casted : same type as caller
+
+        See Also
+        --------
+        to_datetime : Convert argument to datetime.
+
+        Examples
+        --------
+        >>> ser = ks.Series([1, 2], dtype='int32')
+        >>> ser
+        0    1
+        1    2
+        Name: 0, dtype: int32
+
+        >>> ser.astype('int64')
+        0    1
+        1    2
+        Name: 0, dtype: int64
+        """
+        from databricks.koalas.typedef import as_spark_type
+        spark_type = as_spark_type(dtype)
+        if not spark_type:
+            raise ValueError("Type {} not understood".format(dtype))
+        return Series(self._scol.cast(spark_type), anchor=self._kdf, index=self._index_map)
+
     def getField(self, name):
         if not isinstance(self.schema, StructType):
             raise AttributeError("Not a struct: {}".format(self.schema))
