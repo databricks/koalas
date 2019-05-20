@@ -2,8 +2,9 @@ import _string
 from typing import Dict, Any, Set, Optional
 import pymysql
 import inspect
+import pandas as pd
 
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, DataFrame as SDataFrame
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session
@@ -91,6 +92,19 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     0  0
     1  1
 
+    Mixing Koalas and pandas dataframes in a join operation:
+
+    >>> sql('''
+    ...   SELECT m1.a, m2.b
+    ...   FROM {table1} m1 INNER JOIN {table2} m2
+    ...   ON m1.key = m2.key''',
+    ...   table1=ks.DataFrame({"a": [1,2], "key": ["a", "b"]}),
+    ...   table2=pd.DataFrame({"b": [3,4,5], "key": ["a", "b", "b"]}))
+       a  b
+    0  2  4
+    1  2  5
+    2  1  3
+
     """
     if globals is None:
         globals = _get_ipython_scope()
@@ -129,13 +143,19 @@ def _get_ipython_scope():
         return None
 
 
+class ValidationError(Exception):
+    def __init__(self, message, error):
+        super().__init__(message)
+        self.inner_error = error
+
+
 class SQLProcessor(object):
 
     def __init__(self, scope: Dict[str, Any], statement: str, session: SparkSession):
         self._scope = scope
         self._statement = statement
         # All the temporary views created when executing this statement
-        self._temp_views = set()  # type: Set[str]
+        self._temp_views = {}  # type: Dict[str, SDataFrame]
         self._cached_vars = {}  # type: Dict[str, Any]
         self._normalized_statement = None  # type: Optional[str]
         self._session = session
@@ -152,7 +172,9 @@ class SQLProcessor(object):
             sdf = self._session.sql(self._normalized_statement)
         except Exception as e:
             # Simply propagate PySpark exceptions
-            raise e
+            s = ("Could not execute statement: normalized_statement='{}' "
+                 "temp_views={}".format(self._normalized_statement, self._temp_views))
+            raise ValidationError(s, e)
         finally:
             for v in self._temp_views:
                 self._session.catalog.dropTempView(v)
@@ -179,6 +201,8 @@ class SQLProcessor(object):
             return str(var)
         if isinstance(var, Series):
             return self._convert_var(var.to_dataframe())
+        if isinstance(var, pd.DataFrame):
+            return self._convert_var(ks.DataFrame(var))
         if isinstance(var, DataFrame):
             df_id = "koalas_" + str(id(var))
             if df_id not in self._temp_views:
@@ -187,6 +211,7 @@ class SQLProcessor(object):
                 # TODO: document this
                 sdf = sdf[list(var.columns)]
                 sdf.createOrReplaceTempView(df_id)
+                self._temp_views[df_id] = sdf
             return df_id
         if isinstance(var, str):
             return pymysql.escape_string(str)
