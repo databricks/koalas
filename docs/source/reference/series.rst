@@ -97,6 +97,13 @@ Missing data handling
    Series.dropna
    Series.fillna
 
+Reshaping, sorting, transposing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Series.sort_values
+
 Serialization / IO / Conversion
 -------------------------------
 .. autosummary::

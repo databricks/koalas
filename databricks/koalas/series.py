@@ -1003,6 +1003,38 @@ class Series(_Frame):
         kdf._metadata = Metadata(data_columns=[self.name], index_map=[(index_name, None)])
         return _col(kdf)
 
+    def sort_values(self, ascending: bool = True, inplace: bool = False,
+                    na_position: str = 'last') -> 'Series':
+        """
+        Sort Series by index labels.
+
+        Returns a new Series sorted by label if inplace argument is False, otherwise updates the
+        original series and returns None.
+
+        Parameters
+        ----------
+        ascending : bool or list of bool, default True
+             Sort ascending vs. descending. Specify list for multiple sort
+             orders.  If this is a list of bools, must match the length of
+             the by.
+        inplace : bool, default False
+             if True, perform operation in-place
+        na_position : {'first', 'last'}, default 'last'
+             `first` puts NaNs at the beginning, `last` puts NaNs at the end
+
+        Returns
+        -------
+        sorted_obj : Series
+        """
+        ks_ = _col(self.to_dataframe().sort_values(by=self.name, ascending=ascending,
+                                                   na_position=na_position))
+        if inplace:
+            self._kdf = ks_.to_dataframe()
+            self._scol = ks_._scol
+            self._index_map = ks_._index_map
+        else:
+            return ks_
+
     def isin(self, values):
         """
         Check whether `values` are contained in Series.

@@ -1859,7 +1859,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         except (KeyError, ValueError, IndexError):
             return default
 
-    def sort_values(self, by, ascending=True, inplace=False, na_position='last'):
+    def sort_values(self, by: str, ascending: bool = True, inplace: bool = False,
+                    na_position: str = 'last') -> 'DataFrame':
         """
         Sort by the values along either axis.
 
