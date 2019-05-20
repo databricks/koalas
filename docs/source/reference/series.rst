@@ -108,3 +108,4 @@ Serialization / IO / Conversion
    Series.to_latex
    Series.to_json
    Series.to_csv
+   Series.to_excel

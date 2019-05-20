@@ -189,7 +189,6 @@ class _MissingPandasLikeSeries(object):
     tail = unsupported_function('tail')
     take = unsupported_function('take')
     to_dense = unsupported_function('to_dense')
-    to_excel = unsupported_function('to_excel')
     to_frame = unsupported_function('to_frame')
     to_hdf = unsupported_function('to_hdf')
     to_list = unsupported_function('to_list')
