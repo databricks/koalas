@@ -938,10 +938,14 @@ class Series(_Frame):
         4
         """
         sdf = self.to_dataframe()._sdf
-        distinct_count = sdf.select(F.countDistinct(self._scol)).toPandas().iloc[0, 0]
-        if not dropna and self.isnull().sum() > 0:
-            distinct_count += 1
-        return distinct_count
+        if dropna:
+            distinct_count = sdf.select(F.countDistinct(self._scol))
+        else:
+            distinct_count = sdf.select(F.countDistinct(self._scol)
+                                        + F.when(F.count(F.when(self._scol.isNull(), 1)
+                                                         .otherwise(None))
+                                                 >= 1, 1).otherwise(0))
+        return distinct_count.toPandas().iloc[0, 0]
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
