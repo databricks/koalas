@@ -1,5 +1,5 @@
 import _string
-from typing import Dict, Any
+from typing import Dict, Any, Set, Optional
 import pymysql
 import inspect
 
@@ -135,9 +135,9 @@ class SQLProcessor(object):
         self._scope = scope
         self._statement = statement
         # All the temporary views created when executing this statement
-        self._temp_views = set()
-        self._cached_vars = {}
-        self._normalized_statement = None
+        self._temp_views = set()  # type: Set[str]
+        self._cached_vars = {}  # type: Dict[str, Any]
+        self._normalized_statement = None  # type: Optional[str]
         self._session = session
 
     def execute(self) -> DataFrame:
