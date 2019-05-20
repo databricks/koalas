@@ -314,13 +314,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({'year': [2015, 2016],
                             'month': [2, 3],
                             'day': [4, 5]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pd.to_datetime(pdf), koalas.to_datetime(kdf))
+        self.assert_eq(pd.to_datetime(pdf), ks.to_datetime(kdf))
 
     def test_nunique(self):
         pdf = pd.DataFrame({'A': [1, 2, 3], 'B': [np.nan, 3, np.nan]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         # Assert NaNs are dropped by default
         nunique_result = kdf.nunique()
