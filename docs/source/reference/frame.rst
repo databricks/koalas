@@ -104,6 +104,7 @@ Reshaping, sorting, transposing
 .. autosummary::
    :toctree: api/
 
+   DataFrame.sort_index
    DataFrame.sort_values
 
 Combining / joining / merging

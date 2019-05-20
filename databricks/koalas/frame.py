@@ -2204,6 +2204,43 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return kdf
 
+    def sort_index(self, axis: int = 0, level: int = None, ascending: bool = True,
+                   inplace: bool = False, kind: str = None, na_position: str = 'last') \
+            -> 'DataFrame':
+        """
+        Sort object by labels (along an axis)
+
+        Parameters
+        ----------
+        axis : index, columns to direct sorting
+        level : int or level name or list of ints or list of level names
+            if not None, sort on values in specified index level(s)
+        ascending : boolean, default True
+            Sort ascending vs. descending
+        inplace : bool, default False
+            if True, perform operation in-place
+        kind : Koalas does not allow specifying the sorting algorithm at the moment, default None
+        na_position : {‘first’, ‘last’}, default ‘last’
+            first puts NaNs at the beginning, last puts NaNs at the end. Not implemented for
+            MultiIndex.
+
+        Returns
+        -------
+        sorted_obj : DataFrame
+
+        Examples
+        --------
+        >>>
+        """
+        if axis != 0:
+            raise ValueError("No other axes than 0 are supported at the moment")
+        if level is not None:
+            raise ValueError("The 'axis' argument is not supported at the moment")
+        if kind is not None:
+            raise ValueError("Specifying the sorting algorithm is supported at the moment.")
+        return self.sort_values(by='__index_level_0__', ascending=ascending, inplace=inplace,
+                                na_position=na_position)
+
     def isin(self, values):
         """
         Whether each element in the DataFrame is contained in values.

@@ -340,6 +340,26 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.sort_values('b', inplace=True), pdf.sort_values('b', inplace=True))
         self.assert_eq(repr(kdf), repr(pdf))
 
+    def test_sort_index(self):
+        pdf = pd.DataFrame({'A': [2, 1, np.nan]}, index=['b', 'a', np.nan])
+        kdf = koalas.from_pandas(pdf)
+
+        # Assert invalid parameters
+        self.assertRaises(ValueError, lambda: kdf.sort_index(axis=1))
+        self.assertRaises(ValueError, lambda: kdf.sort_index(level=42))
+        self.assertRaises(ValueError, lambda: kdf.sort_index(kind='mergesort'))
+        self.assertRaises(ValueError, lambda: kdf.sort_index(na_position='invalid'))
+
+        # Assert default behavior without parameters
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+        # Assert sorting descending
+        self.assert_eq(kdf.sort_index(ascending=False), pdf.sort_index(ascending=False))
+        # Assert sorting NA indices first
+        self.assert_eq(kdf.sort_index(na_position='first'), pdf.sort_index(na_position='first'))
+        # Assert sorting inplace
+        self.assert_eq(kdf.sort_index(inplace=True), pdf.sort_index(inplace=True))
+        self.assert_eq(kdf, pdf)
+
     def test_missing(self):
         kdf = self.kdf
 
