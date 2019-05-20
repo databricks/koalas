@@ -106,3 +106,5 @@ Serialization / IO / Conversion
    Series.to_dict
    Series.to_clipboard
    Series.to_latex
+   Series.to_json
+   Series.to_csv
