@@ -39,7 +39,6 @@ class _MissingPandasLikeSeries(object):
     axes = unsupported_property('axes')
     base = unsupported_property('base')
     data = unsupported_property('data')
-    dtypes = unsupported_property('dtypes')
     empty = unsupported_property('empty')
     flags = unsupported_property('flags')
     ftype = unsupported_property('ftype')

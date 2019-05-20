@@ -24,6 +24,7 @@ Attributes
    :toctree: api/
 
    Series.dtype
+   Series.dtypes
    Series.name
    Series.schema
    Series.shape
