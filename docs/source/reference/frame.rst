@@ -46,6 +46,7 @@ Indexing, iteration
 
    DataFrame.head
    DataFrame.loc
+   DataFrame.iteritems
    DataFrame.get
 
 Function application, GroupBy & Window
