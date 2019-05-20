@@ -40,7 +40,6 @@ class _MissingPandasLikeDataFrame(object):
     is_copy = unsupported_property('is_copy')
     ix = unsupported_property('ix')
     ndim = unsupported_property('ndim')
-    size = unsupported_property('size')
     style = unsupported_property('style')
     values = unsupported_property('values')
 

@@ -276,6 +276,30 @@ class _Frame(object):
         """
         return self._reduce_for_stat_function(F.variance)
 
+    @property
+    def size(self) -> int:
+        """
+        Return an int representing the number of elements in this object.
+
+        Return the number of rows if Series. Otherwise return the number of
+        rows times number of columns if DataFrame.
+
+        See Also
+        --------
+        ndarray.size : Number of elements in the array.
+
+        Examples
+        --------
+        >>> s = ks.Series({'a': 1, 'b': 2, 'c': None})
+        >>> s.size
+        3
+
+        >>> df = ks.DataFrame({'col1': [1, 2, None], 'col2': [3, 4, None]})
+        >>> df.size
+        3
+        """
+        return len(self)
+
     def abs(self):
         """
         Return a Series/DataFrame with absolute numeric value of each element.
