@@ -98,13 +98,14 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     >>> sql('''
     ...   SELECT m1.a, m2.b
     ...   FROM {table1} m1 INNER JOIN {table2} m2
-    ...   ON m1.key = m2.key''',
+    ...   ON m1.key = m2.key
+    ...   ORDER BY m1.a, m2.b''',
     ...   table1=ks.DataFrame({"a": [1,2], "key": ["a", "b"]}),
     ...   table2=pd.DataFrame({"b": [3,4,5], "key": ["a", "b", "b"]}))
        a  b
-    0  2  4
-    1  2  5
-    2  1  3
+    0  1  3
+    1  2  4
+    2  2  5
 
     """
     if globals is None:
