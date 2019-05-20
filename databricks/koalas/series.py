@@ -416,6 +416,105 @@ class Series(_Frame):
             (F.count(F.when(col.isNull(), 1).otherwise(None)) <= 1)
         ).collect()[0][0]
 
+    # TODO: axis, skipna, and many arguments should be implemented.
+    def all(self, axis: int = 0) -> bool:
+        """
+        Return whether all elements are True.
+
+        Returns True unless there at least one element within a series that is
+        False or equivalent (e.g. zero or empty)
+
+        Parameters
+        ----------
+        axis : {0 or 'index'}, default 0
+            Indicate which axis or axes should be reduced.
+
+            * 0 / 'index' : reduce the index, return a Series whose index is the
+              original column labels.
+
+        >>> ks.Series([True, True]).all()
+        True
+
+        >>> ks.Series([True, False]).all()
+        False
+
+        >>> ks.Series([True, True, None]).all()
+        True
+
+        >>> ks.Series([True, False, None]).all()
+        False
+
+        >>> ks.Series([]).all()
+        True
+
+        >>> ks.Series([np.nan]).all()
+        True
+        """
+
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
+
+        sdf = self._kdf._sdf.select(self._scol)
+        sdf = self._kdf._sdf.select(self._scol)
+        ret = sdf.select(F.expr("every(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
+        if ret is None:
+            return True
+        else:
+            return ret
+
+    # TODO: axis, skipna, and many arguments should be implemented.
+    def any(self, axis: int = 0) -> bool:
+        """
+        Return whether any element is True.
+
+        Returns False unless there at least one element within a series that is
+        True or equivalent (e.g. non-zero or non-empty).
+
+        Parameters
+        ----------
+        axis : {0 or 'index'}, default 0
+            Indicate which axis or axes should be reduced.
+
+            * 0 / 'index' : reduce the index, return a Series whose index is the
+              original column labels.
+
+        Examples
+        --------
+
+        **Series**
+
+        For Series input, the output is a scalar indicating whether any element
+        is True.
+
+        >>> ks.Series([False, False]).any()
+        False
+
+        >>> ks.Series([True, False]).any()
+        True
+
+        >>> ks.Series([False, False, None]).any()
+        False
+
+        >>> ks.Series([True, False, None]).any()
+        True
+
+        >>> ks.Series([]).any()
+        False
+
+        >>> ks.Series([np.nan]).any()
+        False
+        """
+
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
+
+        sdf = self._kdf._sdf.select(self._scol)
+        ret = sdf.select(F.expr("any(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
+        if ret is None:
+            return False
+        else:
+            return ret
+
     def reset_index(self, level=None, drop=False, name=None, inplace=False):
         """
         Generate a new DataFrame or Series with the index reset.

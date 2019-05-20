@@ -71,8 +71,6 @@ class _MissingPandasLikeSeries(object):
     agg = unsupported_function('agg')
     aggregate = unsupported_function('aggregate')
     align = unsupported_function('align')
-    all = unsupported_function('all')
-    any = unsupported_function('any')
     append = unsupported_function('append')
     argmax = unsupported_function('argmax')
     argmin = unsupported_function('argmin')
