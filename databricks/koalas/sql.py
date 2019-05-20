@@ -92,7 +92,8 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     0  0
     1  1
 
-    Mixing Koalas and pandas dataframes in a join operation:
+    Mixing Koalas and pandas dataframes in a join operation. Note that the index is
+    dropped.
 
     >>> sql('''
     ...   SELECT m1.a, m2.b
