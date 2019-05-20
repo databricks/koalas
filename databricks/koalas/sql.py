@@ -195,5 +195,3 @@ class SQLProcessor(object):
         if isinstance(var, (tuple, range)):
             return self._convert_var(list(var))
         raise ValueError("Cannot understand value of type {}: {}".format(type(var), str(var)))
-
-

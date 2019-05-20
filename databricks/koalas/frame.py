@@ -1112,6 +1112,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf.columns = columns
             return kdf
 
+    def astype(self):
+        pass
+
+    def cli
+
     def isnull(self):
         """
         Detects missing values for items in the current Dataframe.
