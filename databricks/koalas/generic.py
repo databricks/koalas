@@ -298,7 +298,7 @@ class _Frame(object):
         >>> df.size
         3
         """
-        return len(self)
+        return len(self)  # type: ignore
 
     def abs(self):
         """
