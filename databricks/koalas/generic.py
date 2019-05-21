@@ -27,7 +27,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.indexing import LocIndexer
+from databricks.koalas.indexing import ILocIndexer, LocIndexer
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 
 max_display_count = 1000
@@ -780,6 +780,12 @@ class _Frame(object):
             return SeriesGroupBy(col, col_by)
         raise TypeError('Constructor expects DataFrame or Series; however, '
                         'got [%s]' % (df_or_s,))
+
+    @property
+    def iloc(self):
+        return ILocIndexer(self)
+
+    iloc.__doc__ = ILocIndexer.__doc__
 
     @property
     def loc(self):
