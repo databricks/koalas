@@ -17,17 +17,16 @@
 """
 Date/Time related functions on Koalas Series
 """
-
-import functools
-
-import databricks.koalas as ks
 import pyspark.sql.functions as F
+
 from pyspark.sql.types import DateType, TimestampType, LongType, StringType
-from databricks.koalas.series import (
-    Series,
+from databricks.koalas.base import (
     _wrap_accessor_pandas,
     _wrap_accessor_spark
 )
+
+import databricks.koalas as ks
+
 from databricks.koalas.utils import lazy_property
 
 

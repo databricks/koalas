@@ -28,6 +28,8 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType, \
     to_arrow_type
 
+from databricks.koalas.typedef import pandas_wraps
+
 
 def _column_op(f):
     """
