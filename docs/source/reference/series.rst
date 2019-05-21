@@ -24,9 +24,11 @@ Attributes
    :toctree: api/
 
    Series.dtype
+   Series.dtypes
    Series.name
    Series.schema
    Series.shape
+   Series.size
 
 Conversion
 ----------
@@ -41,6 +43,7 @@ Indexing, iteration
    :toctree: api/
 
    Series.loc
+   Series.iloc
 
 Function application, GroupBy & Window
 --------------------------------------
@@ -57,6 +60,8 @@ Computations / Descriptive Stats
    :toctree: api/
 
    Series.abs
+   Series.all
+   Series.any
    Series.clip
    Series.corr
    Series.count
@@ -107,3 +112,6 @@ Serialization / IO / Conversion
    Series.to_dict
    Series.to_clipboard
    Series.to_latex
+   Series.to_json
+   Series.to_csv
+   Series.to_excel
