@@ -512,6 +512,7 @@ class ILocIndexer(object):
 
     def __getitem__(self, key):
         from databricks.koalas.frame import DataFrame
+        from databricks.koalas.indexes import Index
         from databricks.koalas.series import Series
 
         def raiseNotImplemented(description):
@@ -523,7 +524,7 @@ class ILocIndexer(object):
         rows_sel, cols_sel = _unfold(key, self._ks)
 
         sdf = self._kdf._sdf
-        if isinstance(rows_sel, Series):  # TODO: should only allow Index.
+        if isinstance(rows_sel, Index):
             sdf_for_check_schema = sdf.select(rows_sel._scol)
             assert isinstance(sdf_for_check_schema.schema.fields[0].dataType, BooleanType), \
                 (str(sdf_for_check_schema), sdf_for_check_schema.schema.fields[0].dataType)
