@@ -47,6 +47,7 @@ Indexing, iteration
 
    DataFrame.head
    DataFrame.loc
+   DataFrame.iloc
    DataFrame.iteritems
    DataFrame.get
 

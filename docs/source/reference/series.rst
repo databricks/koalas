@@ -43,6 +43,7 @@ Indexing, iteration
    :toctree: api/
 
    Series.loc
+   Series.iloc
 
 Function application, GroupBy & Window
 --------------------------------------
@@ -59,6 +60,8 @@ Computations / Descriptive Stats
    :toctree: api/
 
    Series.abs
+   Series.all
+   Series.any
    Series.clip
    Series.corr
    Series.count

@@ -14,6 +14,7 @@ This project is currently in beta and is rapidly evolving, with a weekly release
 [![codecov](https://codecov.io/gh/databricks/koalas/branch/master/graph/badge.svg)](https://codecov.io/gh/databricks/koalas)
 [![Documentation Status](https://readthedocs.org/projects/koalas/badge/?version=latest)](https://koalas.readthedocs.io/en/latest/?badge=latest)
 [![Latest Release](https://img.shields.io/pypi/v/koalas.svg)](https://pypi.org/project/koalas/)
+[![Conda Version](https://img.shields.io/conda/vn/conda-forge/koalas.svg)](https://anaconda.org/conda-forge/koalas)
 
 
 ## Table of Contents <!-- omit in toc -->
@@ -57,11 +58,21 @@ Koalas is available at the Python package index:
 pip install koalas
 ```
 
+or with the conda package manager:
+```bash
+conda install koalas -c conda-forge
+```
+
 If this fails to install the pyarrow dependency, you may want to try installing with Python 3.6.x, as `pip install arrow` does not work out of the box for 3.7 https://github.com/apache/arrow/issues/1125.
 
 If you don't have Spark environment, you should also install `pyspark` package by:
 ```bash
-pip install pyspark>=2.4
+pip install 'pyspark>=2.4'
+```
+
+or
+```bash
+conda install 'pyspark>=2.4' -c conda-forge
 ```
 
 or downloading the release.
