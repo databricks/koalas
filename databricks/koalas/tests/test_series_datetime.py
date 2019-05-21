@@ -41,6 +41,8 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         return koalas.from_pandas(self.pd_start_date)
 
     def check_func(self, func):
+        # import pdb; pdb.set_trace()
+
         mt.assert_series_equal(
             func(self.ks_start_date).to_pandas(),
             func(self.pd_start_date),

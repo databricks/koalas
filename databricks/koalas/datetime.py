@@ -23,43 +23,12 @@ import functools
 import databricks.koalas as ks
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, TimestampType, LongType, StringType
-from databricks.koalas.series import Series, _column_op
-from databricks.koalas.typedef import pandas_wraps
+from databricks.koalas.series import (
+    Series,
+    _wrap_accessor_pandas,
+    _wrap_accessor_spark
+)
 from databricks.koalas.utils import lazy_property
-
-
-def defer_to_pandas(output_type):
-    """Wraps a function that operates on pd.Series to work with DatetimeMethods.
-
-    The origin function operates on pd.Series and the wrapped function operates
-    on DatetimeMethods.
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(self, *args):
-            scol = F.pandas_udf(
-                lambda series: func(series, *args),
-                output_type
-            )(self._data._scol)
-            return Series(
-                scol, anchor=self._data._kdf, index=self._data._index_info)
-        return wrapper
-    return decorator
-
-
-def defer_to_spark(output_type):
-    """Wraps a function that operates on spark.sql.Column to work with DatetimeMethods.
-
-    The origin function operates on spark.sql.Column and the wrapped function
-    operates on DatetimeMethods.
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(self, *args):
-            scol = func(self._data._scol, *args).cast(output_type)
-            return Series(scol, anchor=self._data._kdf, index=self._data._index_info)
-        return wrapper
-    return decorator
 
 
 class DatetimeMethods(object):
@@ -73,107 +42,121 @@ class DatetimeMethods(object):
 
     # Properties
     @lazy_property
-    @defer_to_pandas(output_type=DateType())
-    def date(s):
-        return s.dt.date
+    def date(self) -> ks.Series:
+        """
+        The date part of the datetime.
+        """
+        # TODO: Hit a weird exception
+        # syntax error in attribute name: `to_date(`start_date`)` with alias
+        return _wrap_accessor_spark(
+            self, lambda col: F.to_date(col).alias('date')
+        )
 
     @lazy_property
-    def time(self):
+    def time(self) -> ks.Series:
         raise NotImplementedError()
 
     @lazy_property
-    def timetz(self):
+    def timetz(self) -> ks.Series:
         raise NotImplementedError()
 
     @lazy_property
-    @defer_to_spark(output_type=LongType())
-    def year(col):
-        return F.year(col)
+    def year(self) -> ks.Series:
+        """
+        The year of the datetime.
+        `"""
+        return _wrap_accessor_spark(self, F.year, LongType())
 
     @lazy_property
-    @defer_to_spark(output_type=LongType())
-    def month(col):
-        return F.month(col)
+    def month(self) -> ks.Series:
+        """
+        The month of the timestamp as January = 1 December = 12.
+        """
+        return _wrap_accessor_spark(self, F.month, LongType())
 
     @lazy_property
-    @defer_to_spark(output_type=LongType())
-    def day(col):
-        return F.dayofmonth(col)
+    def day(self) -> ks.Series:
+        """
+        The days of the datetime.
+        """
+        return _wrap_accessor_spark(self, F.dayofmonth, LongType())
 
     @lazy_property
-    @defer_to_spark(output_type=LongType())
-    def hour(col):
-        return F.hour(col)
+    def hour(self) -> ks.Series:
+        """
+        The hours of the datetime.
+        """
+        return _wrap_accessor_spark(self, F.hour, LongType())
 
     @lazy_property
-    @defer_to_spark(output_type=LongType())
-    def minute(col):
-        return F.minute(col)
+    def minute(self) -> ks.Series:
+        """
+        The minutes of the datetime.
+        """
+        return _wrap_accessor_spark(self, F.minute, LongType())
 
     @lazy_property
-    @defer_to_spark(output_type=LongType())
-    def second(col):
-        return F.second(col)
+    def second(self) -> ks.Series:
+        """
+        The seconds of the datetime.
+        """
+        return _wrap_accessor_spark(self, F.second, LongType())
 
     @lazy_property
-    @defer_to_spark(output_type=LongType())
-    def millisecond(col):
-        return F.millisecond(col)
+    def millisecond(self) -> ks.Series:
+        """
+        The milliseconds of the datetime.
+        """
+        return _wrap_accessor_pandas(
+            self, lambda x: x.dt.millisecond, LongType())
 
     @lazy_property
-    @defer_to_pandas(output_type=LongType())
-    def microsecond(s):
-        return s.dt.microsecond
+    def microsecond(self) -> ks.Series:
+        """
+        The microseconds of the datetime.
+        """
+        return _wrap_accessor_pandas(
+            self, lambda x: x.dt.microsecond, LongType())
 
     @lazy_property
-    def nanosecond(self):
+    def nanosecond(self) -> ks.Series:
         raise NotImplementedError()
 
     @lazy_property
     def week(self) -> ks.Series:
         """
         The week ordinal of the year.
-        :return:
         """
-        return _column_op(
-            lambda col: F.weekofyear(col).cast(LongType())
-        )(self._data)
+        return _wrap_accessor_spark(self, F.weekofyear, LongType())
 
     @lazy_property
     def weekofyear(self) -> ks.Series:
         """
         The week ordinal of the year.
         """
-        return _column_op(
-            lambda col: F.weekofyear(col).cast(LongType())
-        )(self._data)
+        return _wrap_accessor_spark(self, F.weekofyear, LongType())
 
     @lazy_property
     def dayofweek(self) -> ks.Series:
         """
         The day of the week with Monday=0, Sunday=6.
         """
-        return pandas_wraps(
-            function=lambda s: s.dt.dayofyear,
-            return_col=StringType()
-        )(self._data)
+        return _wrap_accessor_pandas(self, lambda s: s.dt.dayofweek, LongType())
 
     @lazy_property
     def dayofyear(self) -> ks.Series:
         """
-        The ordinal day of the year.
+        The day ordinal of the year.
         """
-        return pandas_wraps(
-            function=lambda s: s.dt.dayofyear,
-            return_col=StringType()
-        )(self._data)
+        return _wrap_accessor_pandas(self, lambda s: s.dt.dayofyear, LongType())
 
     # Methods
     def strftime(self, date_format) -> ks.Series:
         """
-        Convert to String Series using specified date_format.
+        Convert to a String Series using specified date_format.
         """
-        return pandas_wraps(
-            function=lambda x: x.dt.strftime(date_format),
-            return_col=StringType()
-        )(self._data)
+        return _wrap_accessor_pandas(
+            self,
+            lambda x: x.dt.strftime(date_format),
+            StringType()
+        )

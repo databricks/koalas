@@ -18,6 +18,7 @@
 Utilities to deal with types. This is mostly focused on python3.
 """
 import typing
+import datetime
 from inspect import getfullargspec
 from functools import wraps
 
@@ -108,6 +109,7 @@ _base = {
     types.FloatType(): [float, 'float', np.float],
     types.DoubleType(): [np.float64, 'float64', 'double'],
     types.TimestampType(): [np.datetime64],
+    types.DateType(): [datetime.date],
     types.BooleanType(): [bool, 'boolean', 'bool', np.bool],
 }
 

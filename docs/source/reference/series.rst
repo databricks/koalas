@@ -117,8 +117,9 @@ Serialization / IO / Conversion
 
 Datetime Methods
 ----------------
-.. currentmodule:: databricks.koalas.datetime
+Methods accessible through `Series.dt`
 
+.. currentmodule:: databricks.koalas.datetime
 .. autosummary::
    :toctree: api/
 
