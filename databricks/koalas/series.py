@@ -1225,6 +1225,128 @@ class Series(_Frame):
         c = df.corr(method=method)
         return c.loc["corr_arg1", "corr_arg2"]
 
+    def nsmallest(self, n: int = 5) -> 'Series':
+        """
+        Return the smallest `n` elements.
+
+        Parameters
+        ----------
+        n : int, default 5
+            Return this many ascending sorted values.
+
+        Returns
+        -------
+        Series
+            The `n` smallest values in the Series, sorted in increasing order.
+
+        See Also
+        --------
+        Series.nlargest: Get the `n` largest elements.
+        Series.sort_values: Sort Series by values.
+        Series.head: Return the first `n` rows.
+
+        Notes
+        -----
+        Faster than ``.sort_values().head(n)`` for small `n` relative to
+        the size of the ``Series`` object.
+        In Koalas, thanks to Spark's lazy execution and query optimizer,
+        the two would have same performance.
+
+        Examples
+        --------
+        >>> data = [1, 2, 3, 4, np.nan ,6, 7, 8]
+        >>> s = ks.Series(data)
+        >>> s
+        0    1.0
+        1    2.0
+        2    3.0
+        3    4.0
+        4    NaN
+        5    6.0
+        6    7.0
+        7    8.0
+        Name: 0, dtype: float64
+
+        The `n` largest elements where ``n=5`` by default.
+
+        >>> s.nsmallest()
+        0    1.0
+        1    2.0
+        2    3.0
+        3    4.0
+        5    6.0
+        Name: 0, dtype: float64
+
+        >>> s.nsmallest(3)
+        0    1.0
+        1    2.0
+        2    3.0
+        Name: 0, dtype: float64
+        """
+        return _col(self._kdf.nsmallest(n=n, columns=self.name))
+
+    def nlargest(self, n: int = 5) -> 'Series':
+        """
+        Return the largest `n` elements.
+
+        Parameters
+        ----------
+        n : int, default 5
+
+        Returns
+        -------
+        Series
+            The `n` largest values in the Series, sorted in decreasing order.
+
+        See Also
+        --------
+        Series.nsmallest: Get the `n` smallest elements.
+        Series.sort_values: Sort Series by values.
+        Series.head: Return the first `n` rows.
+
+        Notes
+        -----
+        Faster than ``.sort_values(ascending=False).head(n)`` for small `n`
+        relative to the size of the ``Series`` object.
+
+        In Koalas, thanks to Spark's lazy execution and query optimizer,
+        the two would have same performance.
+
+        Examples
+        --------
+        >>> data = [1, 2, 3, 4, np.nan ,6, 7, 8]
+        >>> s = ks.Series(data)
+        >>> s
+        0    1.0
+        1    2.0
+        2    3.0
+        3    4.0
+        4    NaN
+        5    6.0
+        6    7.0
+        7    8.0
+        Name: 0, dtype: float64
+
+        The `n` largest elements where ``n=5`` by default.
+
+        >>> s.nlargest()
+        7    8.0
+        6    7.0
+        5    6.0
+        3    4.0
+        2    3.0
+        Name: 0, dtype: float64
+
+        >>> s.nlargest(n=3)
+        7    8.0
+        6    7.0
+        5    6.0
+        Name: 0, dtype: float64
+
+
+        """
+        return _col(self._kdf.nlargest(n=n, columns=self.name))
+
     def count(self):
         """
         Return number of non-NA/null observations in the Series.

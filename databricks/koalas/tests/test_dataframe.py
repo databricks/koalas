@@ -331,6 +331,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.sort_values('b', inplace=True), pdf.sort_values('b', inplace=True))
         self.assert_eq(repr(kdf), repr(pdf))
 
+    def test_nlargest(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
+                            'b': [7, 6, 5, 4, 3, 2, 1]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.nlargest(n=5, columns='a'), pdf.nlargest(5, columns='a'))
+        self.assert_eq(kdf.nlargest(n=5, columns=['a', 'b']), pdf.nlargest(5, columns=['a', 'b']))
+
+    def test_nsmallest(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
+                            'b': [7, 6, 5, 4, 3, 2, 1]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.nsmallest(n=5, columns='a'), pdf.nsmallest(5, columns='a'))
+        self.assert_eq(kdf.nsmallest(n=5, columns=['a', 'b']), pdf.nsmallest(5, columns=['a', 'b']))
+
     def test_missing(self):
         kdf = self.kdf
 
