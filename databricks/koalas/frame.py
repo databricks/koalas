@@ -1959,8 +1959,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return kdf
 
-    # TODO: Not Supported:  keep = First
-    def nlargest(self, n: int, columns: 'Any', keep: str = 'first') -> 'DataFrame':
+    # TODO:  add keep = First
+    def nlargest(self, n: int, columns: 'Any') -> 'DataFrame':
         """
         Return the first `n` rows ordered by `columns` in descending order.
 
@@ -1980,8 +1980,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Number of rows to return.
         columns : label or list of labels
             Column label(s) to order by.
-        keep : keep :  {‘first’, ‘last’, ‘all’}, default ‘first’
-            Only 'first' is supported
 
         Returns
         -------
@@ -2033,12 +2031,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  6.0  10
 
         """
-        if keep != 'first':
-            raise NotImplementedError("nlargest method currently only works for keep='first'")
         return self.sort_values(by=columns, ascending=False).head(n=n)
 
-    # TODO: Not Supported:  keep = First
-    def nsmallest(self, n: int, columns: 'Any', keep: str = 'first') -> 'DataFrame':
+    # TODO: add keep = First
+    def nsmallest(self, n: int, columns: 'Any') -> 'DataFrame':
         """
         Return the first `n` rows ordered by `columns` in ascending order.
 
@@ -2058,8 +2054,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Number of items to retrieve.
         columns : list or str
             Column name or names to order by.
-        keep : keep :  {‘first’, ‘last’, ‘all’}, default ‘first’
-            Only 'first' is supported
+
         Returns
         -------
         DataFrame
@@ -2103,8 +2098,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  2.0   7
         2  3.0   8
         """
-        if keep != 'first':
-            raise NotImplementedError("nsmallest method currently only works for keep='first'")
         return self.sort_values(by=columns, ascending=True).head(n=n)
 
     def isin(self, values):

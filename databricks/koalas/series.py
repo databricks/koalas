@@ -1095,7 +1095,7 @@ class Series(_Frame):
         c = df.corr(method=method)
         return c.loc["corr_arg1", "corr_arg2"]
 
-    def nsmallest(self, n: int = 5, keep: str = 'first') -> 'Series':
+    def nsmallest(self, n: int = 5) -> 'Series':
         """
         Return the smallest `n` elements.
 
@@ -1103,15 +1103,6 @@ class Series(_Frame):
         ----------
         n : int, default 5
             Return this many ascending sorted values.
-        keep : {'first', 'last', 'all'}, default 'first'
-            When there are duplicate values that cannot all fit in a
-            Series of `n` elements:
-            - ``first`` : take the first occurrences based on the index order
-            - ``last`` : take the last occurrences based on the index order
-            - ``all`` : keep all occurrences. This can result in a Series of
-                size larger than `n`.
-
-        Please note the Koalas: default behaviour is like "all"
 
         Returns
         -------
@@ -1128,6 +1119,8 @@ class Series(_Frame):
         -----
         Faster than ``.sort_values().head(n)`` for small `n` relative to
         the size of the ``Series`` object.
+        In Koalas, thanks to Spark's lazy execution and query optimizer,
+        the two would have same performance.
 
         Examples
         --------
@@ -1160,23 +1153,15 @@ class Series(_Frame):
         2    3.0
         Name: 0, dtype: float64
         """
-        return _col(self._kdf.nsmallest(n=n, columns=self.name, keep=keep))
+        return _col(self._kdf.nsmallest(n=n, columns=self.name))
 
-    def nlargest(self, n: int = 5, keep: str = 'first') -> 'Series':
+    def nlargest(self, n: int = 5) -> 'Series':
         """
         Return the largest `n` elements.
 
         Parameters
         ----------
         n : int, default 5
-        keep:
-            Return this many descending sorted values.
-            - ``first`` : take the first occurrences based on the index order
-            - ``last`` : take the last occurrences based on the index order
-            - ``all`` : keep all occurrences. This can result in a Series of
-                size larger than `n`.
-
-            Please note the Koalas: default behaviour is like "all"
 
         Returns
         -------
@@ -1230,7 +1215,7 @@ class Series(_Frame):
 
 
         """
-        return _col(self._kdf.nlargest(n=n, columns=self.name, keep=keep))
+        return _col(self._kdf.nlargest(n=n, columns=self.name))
 
     def count(self):
         """
