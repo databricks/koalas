@@ -27,6 +27,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.indexing import ILocIndexer, LocIndexer
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 
@@ -37,6 +38,12 @@ class _Frame(object):
     """
     The base class for both DataFrame and Series.
     """
+
+    @property
+    def values(self):
+        raise NotImplementedError("Koalas does not support the 'values' property. " +
+                                  "If you want to collect your data as an NumPy array, " +
+                                  "use 'to_numpy()' instead.")
 
     def to_numpy(self):
         """

@@ -40,7 +40,6 @@ class _MissingPandasLikeDataFrame(object):
     ix = unsupported_property('ix')
     ndim = unsupported_property('ndim')
     style = unsupported_property('style')
-    values = unsupported_property('values')
 
     # Deprecated properties
     blocks = unsupported_property('blocks', deprecated=True)

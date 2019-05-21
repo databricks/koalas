@@ -132,6 +132,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(ks, ps)
 
+    def test_values_property(self):
+        ks = self.ks
+        msg = ("Koalas does not support the 'values' property. If you want to collect your data " +
+               "as an NumPy array, use 'to_numpy()' instead.")
+        with self.assertRaises(NotImplementedError, msg=msg):
+            ks.values
+
     def test_to_numpy(self):
         s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
 

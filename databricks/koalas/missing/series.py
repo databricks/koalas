@@ -56,7 +56,6 @@ class _MissingPandasLikeSeries(object):
     ndim = unsupported_property('ndim')
     real = unsupported_property('real')
     strides = unsupported_property('strides')
-    values = unsupported_property('values')
 
     # Deprecated properties
     blocks = unsupported_property('blocks', deprecated=True)

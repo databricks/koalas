@@ -354,6 +354,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                         "property.*DataFrame.*{}.*is deprecated".format(name)):
                 getattr(kdf, name)
 
+    def test_values_property(self):
+        kdf = self.kdf
+        msg = ("Koalas does not support the 'values' property. If you want to collect your data " +
+               "as an NumPy array, use 'to_numpy()' instead.")
+        with self.assertRaises(NotImplementedError, msg=msg):
+            kdf.values
+
     def test_to_numpy(self):
         pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
                             'b': [1, 2, 9, 4, 2, 4],
