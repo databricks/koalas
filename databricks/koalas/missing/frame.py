@@ -40,7 +40,6 @@ class _MissingPandasLikeDataFrame(object):
     is_copy = unsupported_property('is_copy')
     ix = unsupported_property('ix')
     ndim = unsupported_property('ndim')
-    size = unsupported_property('size')
     style = unsupported_property('style')
     values = unsupported_property('values')
 
@@ -61,7 +60,6 @@ class _MissingPandasLikeDataFrame(object):
     applymap = unsupported_function('applymap')
     asfreq = unsupported_function('asfreq')
     asof = unsupported_function('asof')
-    astype = unsupported_function('astype')
     at_time = unsupported_function('at_time')
     between_time = unsupported_function('between_time')
     bfill = unsupported_function('bfill')
@@ -176,7 +174,6 @@ class _MissingPandasLikeDataFrame(object):
     to_parquet = unsupported_function('to_parquet')
     to_period = unsupported_function('to_period')
     to_pickle = unsupported_function('to_pickle')
-    to_records = unsupported_function('to_records')
     to_sparse = unsupported_function('to_sparse')
     to_sql = unsupported_function('to_sql')
     to_stata = unsupported_function('to_stata')

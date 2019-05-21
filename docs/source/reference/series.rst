@@ -24,9 +24,11 @@ Attributes
    :toctree: api/
 
    Series.dtype
+   Series.dtypes
    Series.name
    Series.schema
    Series.shape
+   Series.size
 
 Conversion
 ----------
@@ -106,3 +108,6 @@ Serialization / IO / Conversion
    Series.to_dict
    Series.to_clipboard
    Series.to_latex
+   Series.to_json
+   Series.to_csv
+   Series.to_excel

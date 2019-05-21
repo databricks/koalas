@@ -26,6 +26,7 @@ Attributes and underlying data
 
    DataFrame.dtypes
    DataFrame.shape
+   DataFrame.size
 
 Conversion
 ~~~~~~~~~~
@@ -34,6 +35,7 @@ Conversion
 
    DataFrame.copy
    DataFrame.isna
+   DataFrame.astype
    DataFrame.isnull
    DataFrame.notna
    DataFrame.notnull
@@ -129,4 +131,5 @@ Serialization / IO / Conversion
    DataFrame.to_dict
    DataFrame.to_excel
    DataFrame.to_clipboard
+   DataFrame.to_records
    DataFrame.to_latex

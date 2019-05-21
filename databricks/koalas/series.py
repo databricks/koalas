@@ -253,11 +253,21 @@ class Series(_Frame):
             return np.dtype(to_arrow_type(self.spark_type).to_pandas_dtype())
 
     @property
+    def dtypes(self):
+        """Return the dtype object of the underlying data.
+
+        >>> s = ks.Series(list('abc'))
+        >>> s.dtype == s.dtypes
+        True
+        """
+        return self.dtype
+
+    @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self.schema.fields[-1].dataType
 
-    def astype(self, dtype):
+    def astype(self, dtype) -> 'Series':
         """
         Cast a Koalas object to a specified dtype ``dtype``.
 
