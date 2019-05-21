@@ -42,7 +42,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertTrue(isinstance(ks['x'], Series))
 
-        # TODO: self.assert_eq(d + 1, pdf + 1)
+        self.assert_eq(ks + 1, self.ps + 1)
 
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
@@ -92,12 +92,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(ks.name, 'renamed')
         self.assert_eq(ks, ps)
 
-        ind = ps.index
-        dind = ks.index
-        ind.name = 'renamed'
-        dind.name = 'renamed'
-        self.assertEqual(ind.name, 'renamed')
-        self.assert_eq(list(dind.toPandas()), list(ind))
+        pidx = ps.index
+        kidx = ks.index
+        pidx.name = 'renamed'
+        kidx.name = 'renamed'
+        self.assertEqual(kidx.name, 'renamed')
+        self.assert_eq(kidx, pidx)
 
     def test_rename_method(self):
         # Series name

@@ -137,21 +137,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.head(2), pdf.head(2))
         self.assert_eq(kdf.head(3), pdf.head(3))
 
-    def test_index_head(self):
-        kdf = self.kdf
-        pdf = self.pdf
-
-        self.assert_eq(list(kdf.index.head(2).toPandas()), list(pdf.index[:2]))
-        self.assert_eq(list(kdf.index.head(3).toPandas()), list(pdf.index[:3]))
-
-    def test_index(self):
-        for case in [pd.DataFrame(np.random.randn(10, 5), index=list('abcdefghij')),
-                     pd.DataFrame(np.random.randn(10, 5),
-                                  index=pd.date_range('2011-01-01', freq='D',
-                                                      periods=10))]:
-            ddf = ks.from_pandas(case)
-            self.assert_eq(list(ddf.index.toPandas()), list(case.index))
-
     def test_attributes(self):
         kdf = self.kdf
 
@@ -173,15 +158,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(kdf['a'].name, 'a')
         self.assertEqual((kdf['a'] + 1).name, '(a + 1)')  # TODO: 'a'
         self.assertEqual((kdf['a'] + kdf['b']).name, '(a + b)')  # TODO: None
-
-    def test_index_names(self):
-        # kdf = self.kdf
-        # TODO?: self.assertIsNone(kdf.index.name)
-
-        idx = pd.Index([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], name='x')
-        df = pd.DataFrame(np.random.randn(10, 5), idx)
-        ddf = ks.from_pandas(df)
-        self.assertEqual(ddf.index.name, 'x')
 
     def test_rename_columns(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7],
