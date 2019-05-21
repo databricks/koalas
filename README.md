@@ -67,12 +67,12 @@ If this fails to install the pyarrow dependency, you may want to try installing 
 
 If you don't have Spark environment, you should also install `pyspark` package by:
 ```bash
-pip install pyspark>=2.4
+pip install 'pyspark>=2.4'
 ```
 
 or
 ```bash
-conda install pyspark>=2.4 -c conda-forge
+conda install 'pyspark>=2.4' -c conda-forge
 ```
 
 or downloading the release.
