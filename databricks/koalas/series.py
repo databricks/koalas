@@ -846,6 +846,77 @@ class Series(_Frame, IndexOpsMixin):
         Returns
         -------
         sorted_obj : Series ordered by values.
+
+        Examples
+        --------
+        >>> s = ks.Series([np.nan, 1, 3, 10, 5])
+        >>> s
+        0     NaN
+        1     1.0
+        2     3.0
+        3    10.0
+        4     5.0
+        Name: 0, dtype: float64
+
+        Sort values ascending order (default behaviour)
+
+        >>> s.sort_values(ascending=True)
+        1     1.0
+        2     3.0
+        4     5.0
+        3    10.0
+        0     NaN
+        Name: 0, dtype: float64
+
+        Sort values descending order
+
+        >>> s.sort_values(ascending=False)
+        3    10.0
+        4     5.0
+        2     3.0
+        1     1.0
+        0     NaN
+        Name: 0, dtype: float64
+
+        Sort values inplace
+
+        >>> s.sort_values(ascending=False, inplace=True)
+        >>> s
+        3    10.0
+        4     5.0
+        2     3.0
+        1     1.0
+        0     NaN
+        Name: 0, dtype: float64
+
+        Sort values putting NAs first
+
+        >>> s.sort_values(na_position='first')
+        0     NaN
+        1     1.0
+        2     3.0
+        4     5.0
+        3    10.0
+        Name: 0, dtype: float64
+
+        Sort a series of strings
+
+        >>> s = ks.Series(['z', 'b', 'd', 'a', 'c'])
+        >>> s
+        0    z
+        1    b
+        2    d
+        3    a
+        4    c
+        Name: 0, dtype: object
+
+        >>> s.sort_values()
+        3    a
+        1    b
+        4    c
+        2    d
+        0    z
+        Name: 0, dtype: object
         """
         ks_ = _col(self.to_dataframe().sort_values(by=self.name, ascending=ascending,
                                                    na_position=na_position))
