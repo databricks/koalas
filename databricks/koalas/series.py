@@ -24,6 +24,7 @@ from typing import Any, Optional, Union
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
