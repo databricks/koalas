@@ -175,3 +175,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*GroupBy.*{}.*is deprecated".format(name)):
                 getattr(kdf.set_index(['a', 'b']).index, name)
+
+    def test_multi_index_not_supported(self):
+        kdf = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
+
+        with self.assertRaisesRegex(TypeError,
+                                    "cannot perform any with this index type"):
+            kdf.set_index(['a', 'b']).index.any()
+
+        with self.assertRaisesRegex(TypeError,
+                                    "cannot perform all with this index type"):
+            kdf.set_index(['a', 'b']).index.all()

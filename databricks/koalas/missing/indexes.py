@@ -50,8 +50,6 @@ class _MissingPandasLikeIndex(object):
     values = unsupported_property('values')
 
     # Functions
-    all = unsupported_function('all')
-    any = unsupported_function('any')
     append = unsupported_function('append')
     argmax = unsupported_function('argmax')
     argmin = unsupported_function('argmin')
@@ -161,8 +159,6 @@ class _MissingPandasLikeMultiIndex(object):
     values = unsupported_property('values')
 
     # Functions
-    all = unsupported_function('all')
-    any = unsupported_function('any')
     append = unsupported_function('append')
     argmax = unsupported_function('argmax')
     argmin = unsupported_function('argmin')

@@ -202,6 +202,12 @@ class MultiIndex(Index):
         """
         return MultiIndex(self._kdf, scol)
 
+    def any(self, *args, **kwargs):
+        raise TypeError("cannot perform any with this index type: MultiIndex")
+
+    def all(self, *args, **kwargs):
+        raise TypeError("cannot perform all with this index type: MultiIndex")
+
     @property
     def name(self) -> str:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
