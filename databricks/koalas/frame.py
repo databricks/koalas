@@ -2035,7 +2035,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  6.0  10
 
         """
-        return self.sort_values(by=columns, ascending=False).head(n=n)
+        kdf = self.sort_values(by=columns, ascending=False)  # type: Optional[DataFrame]
+        assert kdf is not None
+        return kdf.head(n=n)
 
     # TODO: add keep = First
     def nsmallest(self, n: int, columns: 'Any') -> 'DataFrame':
@@ -2046,10 +2048,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ascending order. The columns that are not specified are returned as
         well, but not used for ordering.
 
-        This method is equivalent to
-        ``df.sort_values(columns, ascending=True).head(n)``, but more
-        performant.
-        In Koalas, thanks to Spark's lazy execution and query optimizer,
+        This method is equivalent to ``df.sort_values(columns, ascending=True).head(n)``,
+        but more performant. In Koalas, thanks to Spark's lazy execution and query optimizer,
         the two would have same performance.
 
         Parameters
@@ -2102,7 +2102,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  2.0   7
         2  3.0   8
         """
-        return self.sort_values(by=columns, ascending=True).head(n=n)
+        kdf = self.sort_values(by=columns, ascending=True)  # type: Optional[DataFrame]
+        assert kdf is not None
+        return kdf.head(n=n)
 
     def isin(self, values):
         """
