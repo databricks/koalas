@@ -1117,6 +1117,11 @@ class Series(_Frame, IndexOpsMixin):
         wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
         return wrapped(self, *args, **kwds)
 
+    def describe(self) -> 'Series':
+        return _col(self.to_dataframe().describe())
+
+    describe.__doc__ = DataFrame.describe.__doc__
+
     def _reduce_for_stat_function(self, sfun):
         from inspect import signature
         num_args = len(signature(sfun).parameters)
