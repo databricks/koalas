@@ -2541,7 +2541,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return DataFrame(sdf, self._metadata.copy())
 
     # TODO: percentiles, include, and exclude should be implemented.
-    def describe(self):
+    def describe(self) -> 'DataFrame':
         """
         Generate descriptive statistics that summarize the central tendency,
         dispersion and shape of a dataset's distribution, excluding
