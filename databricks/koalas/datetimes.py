@@ -155,7 +155,7 @@ class DatetimeMethods(object):
         Examples
         --------
         >>> s = ks.from_pandas(pd.date_range('2016-12-31', '2017-01-08', freq='D').to_series())
-        >>> s.dt.dayofweek()
+        >>> s.dt.dayofweek
         2016-12-31    5
         2017-01-01    6
         2017-01-02    0
