@@ -119,7 +119,7 @@ Datetime Methods
 ----------------
 Methods accessible through `Series.dt`
 
-.. currentmodule:: databricks.koalas.datetime
+.. currentmodule:: databricks.koalas.datetimes
 .. autosummary::
    :toctree: api/
 
@@ -130,6 +130,7 @@ Methods accessible through `Series.dt`
    DatetimeMethods.weekofyear
    DatetimeMethods.day
    DatetimeMethods.dayofweek
+   DatetimeMethods.weekday
    DatetimeMethods.dayofyear
    DatetimeMethods.hour
    DatetimeMethods.minute

@@ -135,7 +135,8 @@ class Series(_Frame, IndexOpsMixin):
 
     @property
     def dt(self):
-        from databricks.koalas.datetime import DatetimeMethods
+        from databricks.koalas.datetimes import DatetimeMethods
+
         return DatetimeMethods(self)
 
     @property
