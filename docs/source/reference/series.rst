@@ -65,6 +65,7 @@ Computations / Descriptive Stats
    Series.clip
    Series.corr
    Series.count
+   Series.describe
    Series.kurt
    Series.max
    Series.mean
