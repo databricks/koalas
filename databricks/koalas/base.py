@@ -19,7 +19,7 @@ Base and utility classes for Koalas objects.
 """
 
 from functools import wraps
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -351,7 +351,7 @@ class IndexOpsMixin(object):
     notna = notnull
 
     # TODO: axis, skipna, and many arguments should be implemented.
-    def all(self, axis: int = 0) -> bool:
+    def all(self, axis: Union[int, str] = 0) -> bool:
         """
         Return whether all elements are True.
 
@@ -408,7 +408,7 @@ class IndexOpsMixin(object):
             return ret
 
     # TODO: axis, skipna, and many arguments should be implemented.
-    def any(self, axis: int = 0) -> bool:
+    def any(self, axis: Union[int, str] = 0) -> bool:
         """
         Return whether any element is True.
 
