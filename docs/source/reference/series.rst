@@ -43,6 +43,7 @@ Indexing, iteration
    :toctree: api/
 
    Series.loc
+   Series.iloc
 
 Function application, GroupBy & Window
 --------------------------------------
@@ -59,6 +60,8 @@ Computations / Descriptive Stats
    :toctree: api/
 
    Series.abs
+   Series.all
+   Series.any
    Series.clip
    Series.corr
    Series.count
@@ -118,3 +121,27 @@ Serialization / IO / Conversion
    Series.to_json
    Series.to_csv
    Series.to_excel
+
+Datetime Methods
+----------------
+Methods accessible through `Series.dt`
+
+.. currentmodule:: databricks.koalas.datetime
+.. autosummary::
+   :toctree: api/
+
+   DatetimeMethods.date
+   DatetimeMethods.year
+   DatetimeMethods.month
+   DatetimeMethods.week
+   DatetimeMethods.weekofyear
+   DatetimeMethods.day
+   DatetimeMethods.dayofweek
+   DatetimeMethods.dayofyear
+   DatetimeMethods.hour
+   DatetimeMethods.minute
+   DatetimeMethods.second
+   DatetimeMethods.millisecond
+   DatetimeMethods.microsecond
+
+   DatetimeMethods.strftime

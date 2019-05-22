@@ -18,18 +18,36 @@ import unittest
 
 import numpy as np
 import pandas as pd
+import pandas.testing as mt
 
 from databricks import koalas
-from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
-class SeriesDatetimeTest(ReusedSQLTestCase, TestUtils):
+class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
 
     @property
     def pdf1(self):
         date1 = pd.Series(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M'))
         date2 = pd.Series(pd.date_range('2013-3-11 21:45:00', periods=3, freq='W'))
         return pd.DataFrame(dict(start_date=date1, end_date=date2))
+
+    @property
+    def pd_start_date(self):
+        return self.pdf1['start_date']
+
+    @property
+    def ks_start_date(self):
+        return koalas.from_pandas(self.pd_start_date)
+
+    def check_func(self, func):
+        # import pdb; pdb.set_trace()
+
+        mt.assert_series_equal(
+            func(self.ks_start_date).to_pandas(),
+            func(self.pd_start_date),
+            check_names=False
+        )
 
     @unittest.skip(
         "It fails in certain OSs presumably due to different "
@@ -49,3 +67,52 @@ class SeriesDatetimeTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 (kdf['end_date'] - kdf['start_date']) / duration,
                 (pdf['end_date'] - pdf['start_date']) / duration)
+
+    @unittest.skip("It is currently failed probably for the same reason in 'test_subtraction'")
+    def test_date(self):
+        self.check_func(lambda x: x.dt.date)
+
+    def test_time(self):
+        with self.assertRaises(NotImplementedError):
+            self.check_func(lambda x: x.dt.time)
+
+    def test_timetz(self):
+        with self.assertRaises(NotImplementedError):
+            self.check_func(lambda x: x.dt.timetz)
+
+    def test_year(self):
+        self.check_func(lambda x: x.dt.year)
+
+    def test_month(self):
+        self.check_func(lambda x: x.dt.month)
+
+    def test_day(self):
+        self.check_func(lambda x: x.dt.day)
+
+    def test_hour(self):
+        self.check_func(lambda x: x.dt.hour)
+
+    def test_minute(self):
+        self.check_func(lambda x: x.dt.minute)
+
+    def test_second(self):
+        self.check_func(lambda x: x.dt.second)
+
+    def test_microsecond(self):
+        self.check_func(lambda x: x.dt.microsecond)
+
+    def test_nanosecond(self):
+        with self.assertRaises(NotImplementedError):
+            self.check_func(lambda x: x.dt.nanosecond)
+
+    def test_week(self):
+        self.check_func(lambda x: x.dt.week)
+
+    def test_weekofyear(self):
+        self.check_func(lambda x: x.dt.weekofyear)
+
+    def test_dayofweek(self):
+        self.check_func(lambda x: x.dt.dayofweek)
+
+    def test_strftime(self):
+        self.check_func(lambda x: x.dt.strftime('%Y-%m-%d'))
