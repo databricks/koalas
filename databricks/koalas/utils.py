@@ -17,6 +17,7 @@
 Commonly used utils in Koalas.
 """
 
+import functools
 from typing import Callable, Dict, Union
 
 from pyspark import sql as spark
@@ -90,6 +91,7 @@ def lazy_property(fn):
     attr_name = '_lazy_' + fn.__name__
 
     @property
+    @functools.wraps(fn)
     def _lazy_property(self):
         if not hasattr(self, attr_name):
             setattr(self, attr_name, fn(self))

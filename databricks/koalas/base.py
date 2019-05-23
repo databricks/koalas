@@ -19,6 +19,7 @@ Base and utility classes for Koalas objects.
 """
 
 from functools import wraps
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -27,6 +28,9 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType, \
     to_arrow_type
+
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.typedef import pandas_wraps
 
 
 def _column_op(f):
@@ -71,6 +75,25 @@ def _numpy_column_op(f):
     return wrapper
 
 
+def _wrap_accessor_spark(accessor, fn, return_type=None):
+    """
+    Wrap an accessor property or method, e.g., Series.dt.date with a spark function.
+    """
+    if return_type:
+        return _column_op(
+            lambda col: fn(col).cast(return_type)
+        )(accessor._data)
+    else:
+        return _column_op(fn)(accessor._data)
+
+
+def _wrap_accessor_pandas(accessor, fn, return_type):
+    """
+    Wrap an accessor property or method, e.g, Series.dt.date with a pandas function.
+    """
+    return pandas_wraps(fn, return_col=return_type)(accessor._data)
+
+
 class IndexOpsMixin(object):
     """common ops mixin to support a unified interface / docs for Series / Index
 
@@ -87,6 +110,9 @@ class IndexOpsMixin(object):
     def _with_new_scol(self, scol: spark.Column) -> IndexOpsMixin
         Creates new object with the new column
     """
+    def __init__(self, kdf, scol):
+        self._kdf = kdf
+        self._scol = scol
 
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
@@ -323,3 +349,125 @@ class IndexOpsMixin(object):
         return ~self.isnull()
 
     notna = notnull
+
+    # TODO: axis, skipna, and many arguments should be implemented.
+    def all(self, axis: Union[int, str] = 0) -> bool:
+        """
+        Return whether all elements are True.
+
+        Returns True unless there at least one element within a series that is
+        False or equivalent (e.g. zero or empty)
+
+        Parameters
+        ----------
+        axis : {0 or 'index'}, default 0
+            Indicate which axis or axes should be reduced.
+
+            * 0 / 'index' : reduce the index, return a Series whose index is the
+              original column labels.
+
+        >>> ks.Series([True, True]).all()
+        True
+
+        >>> ks.Series([True, False]).all()
+        False
+
+        >>> ks.Series([0, 1]).all()
+        False
+
+        >>> ks.Series([1, 2, 3]).all()
+        True
+
+        >>> ks.Series([True, True, None]).all()
+        True
+
+        >>> ks.Series([True, False, None]).all()
+        False
+
+        >>> ks.Series([]).all()
+        True
+
+        >>> ks.Series([np.nan]).all()
+        True
+        """
+
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
+
+        sdf = self._kdf._sdf.select(self._scol)
+        col = self._scol
+
+        # Note that we're ignoring `None`s here for now.
+        # any and every was added as of Spark 3.0
+        # ret = sdf.select(F.expr("every(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
+        # Here we use min as its alternative:
+        ret = sdf.select(F.min(F.coalesce(col.cast('boolean'), F.lit(True)))).collect()[0][0]
+        if ret is None:
+            return True
+        else:
+            return ret
+
+    # TODO: axis, skipna, and many arguments should be implemented.
+    def any(self, axis: Union[int, str] = 0) -> bool:
+        """
+        Return whether any element is True.
+
+        Returns False unless there at least one element within a series that is
+        True or equivalent (e.g. non-zero or non-empty).
+
+        Parameters
+        ----------
+        axis : {0 or 'index'}, default 0
+            Indicate which axis or axes should be reduced.
+
+            * 0 / 'index' : reduce the index, return a Series whose index is the
+              original column labels.
+
+        Examples
+        --------
+
+        **Series**
+
+        For Series input, the output is a scalar indicating whether any element
+        is True.
+
+        >>> ks.Series([False, False]).any()
+        False
+
+        >>> ks.Series([True, False]).any()
+        True
+
+        >>> ks.Series([0, 0]).any()
+        False
+
+        >>> ks.Series([0, 1, 2]).any()
+        True
+
+        >>> ks.Series([False, False, None]).any()
+        False
+
+        >>> ks.Series([True, False, None]).any()
+        True
+
+        >>> ks.Series([]).any()
+        False
+
+        >>> ks.Series([np.nan]).any()
+        False
+        """
+
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
+
+        sdf = self._kdf._sdf.select(self._scol)
+        col = self._scol
+
+        # Note that we're ignoring `None`s here for now.
+        # any and every was added as of Spark 3.0
+        # ret = sdf.select(F.expr("any(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
+        # Here we use max as its alternative:
+        ret = sdf.select(F.max(F.coalesce(col.cast('boolean'), F.lit(False)))).collect()[0][0]
+        if ret is None:
+            return False
+        else:
+            return ret
