@@ -2555,8 +2555,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Parameters
         ----------
         percentiles : list of ``float`` in range (0.0, 1.0), default [0.25, 0.5, 0.75]
-            A list of percentiles to be computed. 
-            Use an empty list if no percentiles should be computed. 
+            A list of percentiles to be computed.
+            Use an empty list if no percentiles should be computed.
 
         Returns
         -------
@@ -2657,7 +2657,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if len(exprs) == 0:
             raise ValueError("Cannot describe a DataFrame without columns")
 
-        formatted_perc =  ["{:.0%}".format(p) for p in percentiles]
+        formatted_perc = ["{:.0%}".format(p) for p in percentiles]
         stats = ["count", "mean", "stddev", "min", *formatted_perc, "max"]
 
         sdf = self._sdf.select(*exprs).summary(stats)
