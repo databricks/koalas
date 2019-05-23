@@ -141,6 +141,12 @@ def load_model(path, run_id=None, predict_type='infer') -> PythonModelWrapper:
         x1   x2  prediction
     0  2.0  4.0    1.355551
 
+    The model also works on pandas DataFrames as expected:
+
+    >>> model.predict(prediction_df.toPandas())
+        x1   x2  prediction
+    0  2.0  4.0    1.355551
+
     Notes
     -----
     Currently, the model prediction can only be merged back with the existing dataframe.
