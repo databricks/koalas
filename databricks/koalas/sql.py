@@ -157,12 +157,24 @@ class SQLProcessor(object):
         self._scope = scope
         self._statement = statement
         # All the temporary views created when executing this statement
+        # The key is the name of the variable in {}
+        # The value is the cached Spark Dataframe.
         self._temp_views = {}  # type: Dict[str, SDataFrame]
+        # All the other variables, converted to a normalized form.
+        # The normalized form is typically a string
         self._cached_vars = {}  # type: Dict[str, Any]
+        # The SQL statement after:
+        # - all the dataframes have been have been registered as temporary views
+        # - all the values have been converted normalized to equivalent SQL representations
         self._normalized_statement = None  # type: Optional[str]
         self._session = session
 
     def execute(self) -> DataFrame:
+        """
+        Returns a dataframe for which the SQL statement has been executed by
+        the underlying SQL engine.
+        :return:
+        """
         blocks = _string.formatter_parser(self._statement)
         # TODO: use a string builder
         res = ""
@@ -183,6 +195,13 @@ class SQLProcessor(object):
         return DataFrame(sdf)
 
     def _convert(self, key) -> Any:
+        """
+        Given a {} key, returns an equivalent SQL representation.
+        This conversion perfoms all the necessary escaping so that the string
+        returned can be directly injected into the SQL statement.
+        :param key:
+        :return:
+        """
         # Already cached?
         if key in self._cached_vars:
             return self._cached_vars[key]
