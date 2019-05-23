@@ -1862,7 +1862,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return default
 
     def sort_values(self, by: Union[str, List[str]], ascending: Union[bool, List[bool]] = True,
-                    inplace: bool = False, na_position: str = 'last') -> Union['DataFrame', None]:
+                    inplace: bool = False, na_position: str = 'last') -> Optional['DataFrame']:
         """
         Sort by the values along either axis.
 
