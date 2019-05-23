@@ -72,6 +72,7 @@ class _MissingPandasLikeDataFrame(object):
     cummin = unsupported_function('cummin')
     cumprod = unsupported_function('cumprod')
     cumsum = unsupported_function('cumsum')
+    describe = unsupported_function('describe')
     diff = unsupported_function('diff')
     div = unsupported_function('div')
     divide = unsupported_function('divide')

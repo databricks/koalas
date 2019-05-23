@@ -70,7 +70,6 @@ Computations / Descriptive Stats
    DataFrame.clip
    DataFrame.corr
    DataFrame.count
-   DataFrame.describe
    DataFrame.kurt
    DataFrame.kurtosis
    DataFrame.max
