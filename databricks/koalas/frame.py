@@ -2657,7 +2657,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if len(exprs) == 0:
             raise ValueError("Cannot describe a DataFrame without columns")
 
-        if any((p <= 0.0)|(p >= 1.0) for p in percentiles):
+        if any((p <= 0.0) | (p >= 1.0) for p in percentiles):
             raise ValueError("Percentiles not in range (0.0, 1.0)")
 
         formatted_perc = ["{:.0%}".format(p) for p in percentiles]
