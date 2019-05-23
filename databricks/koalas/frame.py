@@ -2552,6 +2552,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         will vary depending on what is provided. Refer to the notes
         below for more detail.
 
+        Parameters
+        ----------
+        percentiles : a list of percentiles to be computed for the summary.
+            Use an empty list if no percentiles should be computed. 
+
         Returns
         -------
         Series or DataFrame
@@ -2568,7 +2573,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Notes
         -----
         For numeric data, the result's index will include ``count``,
-        ``mean``, ``stddev``, ``min``, ``max``.
+        ``mean``, ``stddev``, ``min``,``25%``,``50%``,``75%``, ``max``.
 
         Currently only numeric data is supported.
 
@@ -2582,6 +2587,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         mean      2.0
         stddev    1.0
         min       1.0
+        25%       1.0
+        50%       2.0
+        75%       3.0
         max       3.0
         Name: 0, dtype: float64
 
@@ -2598,6 +2606,25 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         mean         2.0       5.0
         stddev       1.0       1.0
         min          1.0       4.0
+        25%          1.0       4.0
+        50%          2.0       5.0
+        75%          3.0       6.0
+        max          3.0       6.0
+
+        Describing a ``DataFrame`` and selecting custom percentiles.
+
+        >>> df = ks.DataFrame({'numeric1': [1, 2, 3],
+        ...                    'numeric2': [4.0, 5.0, 6.0]
+        ...                   },
+        ...                   columns=['numeric1', 'numeric2', 'object'])
+        >>> df.describe(percentiles = [0.15, 0.85])
+                numeric1  numeric2
+        count        3.0       3.0
+        mean         2.0       5.0
+        stddev       1.0       1.0
+        min          1.0       4.0
+        15%          1.0       4.0
+        85%          3.0       6.0
         max          3.0       6.0
 
         Describing a column from a ``DataFrame`` by accessing it as
@@ -2608,6 +2635,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         mean      2.0
         stddev    1.0
         min       1.0
+        25%       1.0
+        50%       2.0
+        75%       3.0
         max       3.0
         Name: numeric1, dtype: float64
         """
@@ -2627,10 +2657,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("Cannot describe a DataFrame without columns")
 
         formatted_perc =  ["{:.0%}".format(p) for p in percentiles]
-        stats = ["count", "mean", "stddev", "min",*formatted_perc, "max"]
+        stats = ["count", "mean", "stddev", "min", *formatted_perc, "max"]
 
         sdf = self._sdf.select(*exprs).summary(stats)
-        
+
         return DataFrame(sdf, index=Metadata(data_columns=data_columns,
                                              index_map=[('summary', None)])).astype('float64')
 
