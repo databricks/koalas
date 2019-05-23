@@ -323,3 +323,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([1, 1, 1])
         kser = koalas.from_pandas(pser)
         self.assertEqual(pser.is_unique, kser.is_unique)
+
+    def test_to_list(self):
+
+        self.assertEqual(self.ks.to_list(), self.ps.to_list())

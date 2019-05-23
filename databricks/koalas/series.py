@@ -557,6 +557,22 @@ class Series(_Frame, IndexOpsMixin):
     # Alias to maintain backward compatibility with Spark
     toPandas = to_pandas
 
+    def to_list(self):
+        """
+        Return a list of the values.
+
+        These are each a scalar type, which is a Python scalar
+        (for str, int, float) or a pandas scalar
+        (for Timestamp/Timedelta/Interval/Period)
+
+        .. note:: This method should only be used if the resulting list is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        """
+        return self.to_pandas().to_list()
+
+    tolist = to_list
+
     def fillna(self, value=None, axis=None, inplace=False):
         """Fill NA/NaN values.
 
