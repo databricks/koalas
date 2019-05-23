@@ -24,9 +24,11 @@ Attributes
    :toctree: api/
 
    Series.dtype
+   Series.dtypes
    Series.name
    Series.schema
    Series.shape
+   Series.size
 
 Conversion
 ----------
@@ -41,6 +43,7 @@ Indexing, iteration
    :toctree: api/
 
    Series.loc
+   Series.iloc
 
 Function application, GroupBy & Window
 --------------------------------------
@@ -57,9 +60,12 @@ Computations / Descriptive Stats
    :toctree: api/
 
    Series.abs
+   Series.all
+   Series.any
    Series.clip
    Series.corr
    Series.count
+   Series.describe
    Series.kurt
    Series.max
    Series.mean
@@ -95,6 +101,13 @@ Missing data handling
    Series.dropna
    Series.fillna
 
+Reshaping, sorting, transposing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Series.sort_values
+
 Serialization / IO / Conversion
 -------------------------------
 .. autosummary::
@@ -106,3 +119,31 @@ Serialization / IO / Conversion
    Series.to_dict
    Series.to_clipboard
    Series.to_latex
+   Series.to_json
+   Series.to_csv
+   Series.to_excel
+
+Datetime Methods
+----------------
+Methods accessible through `Series.dt`
+
+.. currentmodule:: databricks.koalas.datetimes
+.. autosummary::
+   :toctree: api/
+
+   DatetimeMethods.date
+   DatetimeMethods.year
+   DatetimeMethods.month
+   DatetimeMethods.week
+   DatetimeMethods.weekofyear
+   DatetimeMethods.day
+   DatetimeMethods.dayofweek
+   DatetimeMethods.weekday
+   DatetimeMethods.dayofyear
+   DatetimeMethods.hour
+   DatetimeMethods.minute
+   DatetimeMethods.second
+   DatetimeMethods.millisecond
+   DatetimeMethods.microsecond
+
+   DatetimeMethods.strftime

@@ -27,6 +27,7 @@ import pandas as pd
 
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
+from databricks.koalas.indexes import Index, MultiIndex
 from databricks.koalas.series import Series
 
 
@@ -37,6 +38,7 @@ def inspect_missing_properties(original_type, target_type):
     :return: the missing property name.
     """
     missing = []
+    deprecated = []
 
     for name, func in inspect.getmembers(original_type, lambda o: isinstance(o, property)):
         # Skip the private attributes
@@ -46,21 +48,33 @@ def inspect_missing_properties(original_type, target_type):
         if hasattr(target_type, name) and isinstance(getattr(target_type, name), property):
             continue
 
-        missing.append(name)
+        docstring = func.fget.__doc__
+        if docstring and ('.. deprecated::' in docstring):
+            deprecated.append(name)
+        else:
+            missing.append(name)
 
-    return missing
+    return missing, deprecated
 
 
 def _main():
     for original_type, target_type in [(pd.DataFrame, DataFrame),
                                        (pd.Series, Series),
                                        (pd.core.groupby.DataFrameGroupBy, DataFrameGroupBy),
-                                       (pd.core.groupby.SeriesGroupBy, SeriesGroupBy)]:
-        missing = inspect_missing_properties(original_type, target_type)
+                                       (pd.core.groupby.SeriesGroupBy, SeriesGroupBy),
+                                       (pd.Index, Index),
+                                       (pd.MultiIndex, MultiIndex)]:
+        missing, deprecated = inspect_missing_properties(original_type, target_type)
 
         print('MISSING properties for {}'.format(original_type.__name__))
         for name in missing:
             print("""    {0} = unsupported_property('{0}')""".format(name))
+
+        print()
+        print('DEPRECATED properties for {}'.format(original_type.__name__))
+        for name in deprecated:
+            print("""    {0} = unsupported_property('{0}', deprecated=True)""".format(name))
+        print()
 
 
 if __name__ == '__main__':

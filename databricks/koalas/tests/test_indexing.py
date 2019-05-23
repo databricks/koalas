@@ -20,8 +20,8 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from databricks import koalas
-from databricks.koalas.exceptions import SparkPandasIndexingError
+from databricks import koalas as ks
+from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 from databricks.koalas.testing.utils import ComparisonTestBase, ReusedSQLTestCase, compare_both
 
 
@@ -98,10 +98,10 @@ class BasicIndexingTest(ComparisonTestBase):
     def test_from_pandas_with_explicit_index(self):
         pdf = self.pdf
 
-        df1 = koalas.from_pandas(pdf.set_index('month'))
+        df1 = ks.from_pandas(pdf.set_index('month'))
         self.assertPandasEqual(df1.toPandas(), pdf.set_index('month'))
 
-        df2 = koalas.from_pandas(pdf.set_index(['year', 'month']))
+        df2 = ks.from_pandas(pdf.set_index(['year', 'month']))
         self.assertPandasEqual(df2.toPandas(), pdf.set_index(['year', 'month']))
 
     def test_limitations(self):
@@ -124,7 +124,7 @@ class IndexingTest(ReusedSQLTestCase):
 
     @property
     def kdf(self):
-        return koalas.from_pandas(self.pdf)
+        return ks.from_pandas(self.pdf)
 
     def test_loc(self):
         kdf = self.kdf
@@ -160,12 +160,12 @@ class IndexingTest(ReusedSQLTestCase):
 
     def test_loc_non_informative_index(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4]}, index=[10, 20, 30, 40])
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.loc[20:30], pdf.loc[20:30])
 
         pdf = pd.DataFrame({'x': [1, 2, 3, 4]}, index=[10, 20, 20, 40])
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.loc[20:20], pdf.loc[20:20])
 
     def test_loc_with_series(self):
@@ -236,7 +236,7 @@ class IndexingTest(ReusedSQLTestCase):
         pdf = pd.DataFrame(np.random.randn(20, 5),
                            index=list('abcdefghijklmnopqrst'),
                            columns=list('ABCDE'))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.loc[['a'], 'A'], pdf.loc[['a'], 'A'])
         self.assert_eq(kdf.loc[['a'], ['A']], pdf.loc[['a'], ['A']])
@@ -252,7 +252,7 @@ class IndexingTest(ReusedSQLTestCase):
         pdf = pd.DataFrame(np.random.randn(20, 5),
                            index=list('abcdefghijklmnopqrst'),
                            columns=list('AABCD'))
-        pdf = koalas.from_pandas(pdf)
+        pdf = ks.from_pandas(pdf)
 
         # TODO?: self.assert_eq(pdf.loc[['a'], 'A'], pdf.loc[['a'], 'A'])
         # TODO?: self.assert_eq(pdf.loc[['a'], ['A']], pdf.loc[['a'], ['A']])
@@ -277,7 +277,7 @@ class IndexingTest(ReusedSQLTestCase):
                             'B': [9, 8, 7, 6, 5, 4, 3, 2, 1],
                             'C': [True, False, True] * 3},
                            columns=list('ABC'))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf['A'], pdf['A'])
 
         self.assert_eq(kdf[['A', 'B']], pdf[['A', 'B']])
@@ -290,7 +290,7 @@ class IndexingTest(ReusedSQLTestCase):
 
         # not str/unicode
         # TODO?: pdf = pd.DataFrame(np.random.randn(10, 5))
-        # TODO?: kdf = koalas.from_pandas(pdf)
+        # TODO?: kdf = ks.from_pandas(pdf)
         # TODO?: self.assert_eq(kdf[0], pdf[0])
         # TODO?: self.assert_eq(kdf[[1, 2]], pdf[[1, 2]])
 
@@ -302,7 +302,7 @@ class IndexingTest(ReusedSQLTestCase):
                             'B': [9, 8, 7, 6, 5, 4, 3, 2, 1],
                             'C': [True, False, True] * 3},
                            index=list('abcdefghi'))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf['a':'e'], pdf['a':'e'])
         self.assert_eq(kdf['a':'b'], pdf['a':'b'])
         self.assert_eq(kdf['f':], pdf['f':])
@@ -310,14 +310,14 @@ class IndexingTest(ReusedSQLTestCase):
     def test_loc_on_numpy_datetimes(self):
         pdf = pd.DataFrame({'x': [1, 2, 3]},
                            index=list(map(np.datetime64, ['2014', '2015', '2016'])))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.loc['2014':'2015'], pdf.loc['2014':'2015'])
 
     def test_loc_on_pandas_datetimes(self):
         pdf = pd.DataFrame({'x': [1, 2, 3]},
                            index=list(map(pd.Timestamp, ['2014', '2015', '2016'])))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.loc['2014':'2015'], pdf.loc['2014':'2015'])
 
@@ -326,7 +326,7 @@ class IndexingTest(ReusedSQLTestCase):
         datetime_index = pd.date_range('2016-01-01', '2016-01-31', freq='12h')
         datetime_index.freq = None  # FORGET FREQUENCY
         pdf = pd.DataFrame({'num': range(len(datetime_index))}, index=datetime_index)
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         slice_ = slice('2016-01-03', '2016-01-05')
         result = kdf.loc[slice_, :]
@@ -337,7 +337,7 @@ class IndexingTest(ReusedSQLTestCase):
     def test_loc_timestamp_str(self):
         pdf = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                            index=pd.date_range('2011-01-01', freq='H', periods=100))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         # partial string slice
         # TODO?: self.assert_eq(pdf.loc['2011-01-02'],
@@ -353,7 +353,7 @@ class IndexingTest(ReusedSQLTestCase):
 
         pdf = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                            index=pd.date_range('2011-01-01', freq='M', periods=100))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         # TODO?: self.assert_eq(pdf.loc['2011-01'], kdf.loc['2011-01'])
         # TODO?: self.assert_eq(pdf.loc['2011'], kdf.loc['2011'])
 
@@ -371,7 +371,7 @@ class IndexingTest(ReusedSQLTestCase):
     def test_getitem_timestamp_str(self):
         pdf = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                            index=pd.date_range('2011-01-01', freq='H', periods=100))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         # partial string slice
         # TODO?: self.assert_eq(pdf['2011-01-02'],
@@ -381,7 +381,7 @@ class IndexingTest(ReusedSQLTestCase):
 
         pdf = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                            index=pd.date_range('2011-01-01', freq='M', periods=100))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         # TODO?: self.assert_eq(pdf['2011-01'], kdf['2011-01'])
         # TODO?: self.assert_eq(pdf['2011'], kdf['2011'])
@@ -393,7 +393,7 @@ class IndexingTest(ReusedSQLTestCase):
     def test_getitem_period_str(self):
         pdf = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                            index=pd.period_range('2011-01-01', freq='H', periods=100))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         # partial string slice
         # TODO?: self.assert_eq(pdf['2011-01-02'],
@@ -403,10 +403,81 @@ class IndexingTest(ReusedSQLTestCase):
 
         pdf = pd.DataFrame({'A': np.random.randn(100), 'B': np.random.randn(100)},
                            index=pd.period_range('2011-01-01', freq='M', periods=100))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         # TODO?: self.assert_eq(pdf['2011-01'], kdf['2011-01'])
         # TODO?: self.assert_eq(pdf['2011'], kdf['2011'])
 
         self.assert_eq(pdf['2011-01':'2012-05'], kdf['2011-01':'2012-05'])
         self.assert_eq(pdf['2011':'2015'], kdf['2011':'2015'])
+
+    def test_iloc(self):
+        pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})
+        kdf = ks.from_pandas(pdf)
+
+        for indexer in [0,
+                        [0],
+                        [0, 1],
+                        [1, 0],
+                        [False, True, True],
+                        slice(0, 1)]:
+            self.assert_eq(kdf.iloc[:, indexer], pdf.iloc[:, indexer])
+            self.assert_eq(kdf.iloc[:1, indexer], pdf.iloc[:1, indexer])
+            self.assert_eq(kdf.iloc[:-1, indexer], pdf.iloc[:-1, indexer])
+            self.assert_eq(kdf.iloc[kdf.index == 2, indexer], pdf.iloc[pdf.index == 2, indexer])
+
+    def test_iloc_series(self):
+        pseries = pd.Series([1, 2, 3])
+        kseries = ks.from_pandas(pseries)
+
+        self.assert_eq(kseries.iloc[:], pseries.iloc[:])
+        self.assert_eq(kseries.iloc[:1], pseries.iloc[:1])
+        self.assert_eq(kseries.iloc[:-1], pseries.iloc[:-1])
+
+    def test_iloc_raises(self):
+        pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})
+        kdf = ks.from_pandas(pdf)
+
+        with self.assertRaisesRegex(SparkPandasNotImplementedError,
+                                    'Cannot use start or step with Spark.'):
+            kdf.iloc[0:]
+
+        with self.assertRaisesRegex(SparkPandasNotImplementedError,
+                                    'Cannot use start or step with Spark.'):
+            kdf.iloc[:2:2]
+
+        with self.assertRaisesRegex(SparkPandasNotImplementedError,
+                                    '.iloc requires numeric slice or conditional boolean Index'):
+            kdf.iloc[[0, 1], :]
+
+        with self.assertRaisesRegex(SparkPandasNotImplementedError,
+                                    '.iloc requires numeric slice or conditional boolean Index'):
+            kdf.A.iloc[[0, 1]]
+
+        with self.assertRaisesRegex(SparkPandasIndexingError,
+                                    'Only accepts pairs of candidates'):
+            kdf.iloc[[0, 1], [0, 1], [1, 2]]
+
+        with self.assertRaisesRegex(SparkPandasIndexingError,
+                                    'Too many indexers'):
+            kdf.A.iloc[[0, 1], [0, 1]]
+
+        with self.assertRaisesRegex(TypeError,
+                                    'cannot do slice indexing with these indexers'):
+            kdf.iloc[:'b', :]
+
+        with self.assertRaisesRegex(TypeError,
+                                    'cannot do slice indexing with these indexers'):
+            kdf.iloc[:, :'b']
+
+        with self.assertRaisesRegex(TypeError,
+                                    'cannot perform reduce with flexible type'):
+            kdf.iloc[:, ['A']]
+
+        with self.assertRaisesRegex(ValueError,
+                                    'Location based indexing can only have'):
+            kdf.iloc[:, 'A']
+
+        with self.assertRaisesRegex(IndexError,
+                                    'index 5 is out of bounds'):
+            kdf.iloc[:, [5, 6]]

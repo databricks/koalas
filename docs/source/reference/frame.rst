@@ -26,6 +26,7 @@ Attributes and underlying data
 
    DataFrame.dtypes
    DataFrame.shape
+   DataFrame.size
 
 Conversion
 ~~~~~~~~~~
@@ -34,6 +35,7 @@ Conversion
 
    DataFrame.copy
    DataFrame.isna
+   DataFrame.astype
    DataFrame.isnull
    DataFrame.notna
    DataFrame.notnull
@@ -45,6 +47,7 @@ Indexing, iteration
 
    DataFrame.head
    DataFrame.loc
+   DataFrame.iloc
    DataFrame.iteritems
    DataFrame.get
 
@@ -67,6 +70,7 @@ Computations / Descriptive Stats
    DataFrame.clip
    DataFrame.corr
    DataFrame.count
+   DataFrame.describe
    DataFrame.kurt
    DataFrame.kurtosis
    DataFrame.max
@@ -130,4 +134,5 @@ Serialization / IO / Conversion
    DataFrame.to_dict
    DataFrame.to_excel
    DataFrame.to_clipboard
+   DataFrame.to_records
    DataFrame.to_latex

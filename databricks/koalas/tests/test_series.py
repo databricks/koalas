@@ -42,7 +42,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertTrue(isinstance(ks['x'], Series))
 
-        # TODO: self.assert_eq(d + 1, pdf + 1)
+        self.assert_eq(ks + 1, self.ps + 1)
 
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
@@ -92,12 +92,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(ks.name, 'renamed')
         self.assert_eq(ks, ps)
 
-        ind = ps.index
-        dind = ks.index
-        ind.name = 'renamed'
-        dind.name = 'renamed'
-        self.assertEqual(ind.name, 'renamed')
-        self.assert_eq(list(dind.toPandas()), list(ind))
+        pidx = ps.index
+        kidx = ks.index
+        pidx.name = 'renamed'
+        kidx.name = 'renamed'
+        self.assertEqual(kidx.name, 'renamed')
+        self.assert_eq(kidx, pidx)
 
     def test_rename_method(self):
         # Series name
@@ -131,6 +131,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # self.assertis(res, ks)
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(ks, ps)
+
+    def test_values_property(self):
+        ks = self.ks
+        msg = ("Koalas does not support the 'values' property. If you want to collect your data " +
+               "as an NumPy array, use 'to_numpy()' instead.")
+        with self.assertRaises(NotImplementedError, msg=msg):
+            ks.values
 
     def test_to_numpy(self):
         s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
@@ -196,6 +203,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ks.name = 'index'
         self.assertPandasAlmostEqual(ks.value_counts().toPandas(), ps.value_counts())
 
+    def test_nsmallest(self):
+        sample_lst = [1, 2, 3, 4, np.nan, 6]
+        ps = pd.Series(sample_lst, name='x')
+        ks = koalas.Series(sample_lst, name='x')
+        self.assert_eq(ks.nsmallest(n=3), ps.nsmallest(n=3))
+        self.assert_eq(ks.nsmallest(), ps.nsmallest())
+
+    def test_nlargest(self):
+        sample_lst = [1, 2, 3, 4, np.nan, 6]
+        ps = pd.Series(sample_lst, name='x')
+        ks = koalas.Series(sample_lst, name='x')
+        self.assert_eq(ks.nlargest(n=3), ps.nlargest(n=3))
+        self.assert_eq(ks.nlargest(), ps.nlargest())
+
     def test_isnull(self):
         ps = pd.Series([1, 2, 3, 4, np.nan, 6], name='x')
         ks = koalas.from_pandas(ps)
@@ -209,6 +230,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks.notnull(), ps.notnull())
         self.assert_eq(ks.isnull(), ps.isnull())
 
+    def test_sort_values(self):
+        ps = pd.Series([1, 2, 3, 4, 5, None, 7], name='0')
+        ks = koalas.from_pandas(ps)
+        self.assert_eq(repr(ks.sort_values()), repr(ps.sort_values()))
+        self.assert_eq(repr(ks.sort_values(ascending=False)),
+                       repr(ps.sort_values(ascending=False)))
+        self.assert_eq(repr(ks.sort_values(na_position='first')),
+                       repr(ps.sort_values(na_position='first')))
+        self.assertRaises(ValueError, lambda: ks.sort_values(na_position='invalid'))
+        self.assert_eq(ks.sort_values(inplace=True), ps.sort_values(inplace=True))
+        self.assert_eq(repr(ks), repr(ps))
+
     def test_to_datetime(self):
         ps = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
         ks = koalas.from_pandas(ps)
@@ -220,16 +253,33 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ks = self.ks
 
         missing_functions = inspect.getmembers(_MissingPandasLikeSeries, inspect.isfunction)
-        for name, _ in missing_functions:
+        unsupported_functions = [name for (name, type_) in missing_functions
+                                 if type_.__name__ == 'unsupported_function']
+        for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*Series.*{}.*not implemented".format(name)):
                 getattr(ks, name)()
 
+        deprecated_functions = [name for (name, type_) in missing_functions
+                                if type_.__name__ == 'deprecated_function']
+        for name in deprecated_functions:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "method.*Series.*{}.*is deprecated".format(name)):
+                getattr(ks, name)()
+
         missing_properties = inspect.getmembers(_MissingPandasLikeSeries,
                                                 lambda o: isinstance(o, property))
-        for name, _ in missing_properties:
+        unsupported_properties = [name for (name, type_) in missing_properties
+                                  if type_.fget.__name__ == 'unsupported_property']
+        for name in unsupported_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*Series.*{}.*not implemented".format(name)):
+                getattr(ks, name)
+        deprecated_properties = [name for (name, type_) in missing_properties
+                                 if type_.fget.__name__ == 'deprecated_property']
+        for name in deprecated_properties:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "property.*Series.*{}.*is deprecated".format(name)):
                 getattr(ks, name)
 
     def test_clip(self):
