@@ -118,6 +118,11 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
             dataframes = self.get_excel_dfs(koalas_location, pandas_location)
             self.assert_eq(dataframes['got'], dataframes['expected'])
 
+            kdf.a.to_excel(koalas_location)
+            pdf.a.to_excel(pandas_location)
+            dataframes = self.get_excel_dfs(koalas_location, pandas_location)
+            self.assert_eq(dataframes['got'], dataframes['expected'])
+
             pdf = pd.DataFrame({
                 'a': [1, None, 3],
                 'b': ["one", "two", None],

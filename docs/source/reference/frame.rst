@@ -26,6 +26,7 @@ Attributes and underlying data
 
    DataFrame.dtypes
    DataFrame.shape
+   DataFrame.size
 
 Conversion
 ~~~~~~~~~~
@@ -46,6 +47,7 @@ Indexing, iteration
 
    DataFrame.head
    DataFrame.loc
+   DataFrame.iloc
    DataFrame.iteritems
    DataFrame.get
 
@@ -68,6 +70,7 @@ Computations / Descriptive Stats
    DataFrame.clip
    DataFrame.corr
    DataFrame.count
+   DataFrame.describe
    DataFrame.kurt
    DataFrame.kurtosis
    DataFrame.max

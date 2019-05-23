@@ -42,7 +42,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertTrue(isinstance(ks['x'], Series))
 
-        # TODO: self.assert_eq(d + 1, pdf + 1)
+        self.assert_eq(ks + 1, self.ps + 1)
 
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
@@ -92,12 +92,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(ks.name, 'renamed')
         self.assert_eq(ks, ps)
 
-        ind = ps.index
-        dind = ks.index
-        ind.name = 'renamed'
-        dind.name = 'renamed'
-        self.assertEqual(ind.name, 'renamed')
-        self.assert_eq(list(dind.toPandas()), list(ind))
+        pidx = ps.index
+        kidx = ks.index
+        pidx.name = 'renamed'
+        kidx.name = 'renamed'
+        self.assertEqual(kidx.name, 'renamed')
+        self.assert_eq(kidx, pidx)
 
     def test_rename_method(self):
         # Series name
@@ -131,6 +131,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # self.assertis(res, ks)
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(ks, ps)
+
+    def test_values_property(self):
+        ks = self.ks
+        msg = ("Koalas does not support the 'values' property. If you want to collect your data " +
+               "as an NumPy array, use 'to_numpy()' instead.")
+        with self.assertRaises(NotImplementedError, msg=msg):
+            ks.values
 
     def test_to_numpy(self):
         s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
@@ -195,6 +202,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ps.name = 'index'
         ks.name = 'index'
         self.assertPandasAlmostEqual(ks.value_counts().toPandas(), ps.value_counts())
+
+    def test_nsmallest(self):
+        sample_lst = [1, 2, 3, 4, np.nan, 6]
+        ps = pd.Series(sample_lst, name='x')
+        ks = koalas.Series(sample_lst, name='x')
+        self.assert_eq(ks.nsmallest(n=3), ps.nsmallest(n=3))
+        self.assert_eq(ks.nsmallest(), ps.nsmallest())
+
+    def test_nlargest(self):
+        sample_lst = [1, 2, 3, 4, np.nan, 6]
+        ps = pd.Series(sample_lst, name='x')
+        ks = koalas.Series(sample_lst, name='x')
+        self.assert_eq(ks.nlargest(n=3), ps.nlargest(n=3))
+        self.assert_eq(ks.nlargest(), ps.nlargest())
 
     def test_isnull(self):
         ps = pd.Series([1, 2, 3, 4, np.nan, 6], name='x')
