@@ -1965,7 +1965,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def sort_index(self, axis: int = 0, level: int = None, ascending: bool = True,
                    inplace: bool = False, kind: str = None, na_position: str = 'last') \
-            -> 'DataFrame':
+            -> Optional['DataFrame']:
         """
         Sort object by labels (along an axis)
 
@@ -1989,7 +1989,32 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>>
+        >>> df = ks.DataFrame({'A': [2, 1, np.nan]}, index=['b', 'a', np.nan])
+
+        >>> df.sort_index()
+               A
+        a    1.0
+        b    2.0
+        NaN  NaN
+
+        >>> df.sort_index(ascending=False)
+               A
+        b    2.0
+        a    1.0
+        NaN  NaN
+
+        >>> df.sort_index(na_position='first')
+               A
+        NaN  NaN
+        a    1.0
+        b    2.0
+
+        >>> df.sort_index(inplace=True)
+        >>> df
+               A
+        a    1.0
+        b    2.0
+        NaN  NaN
         """
         if axis != 0:
             raise ValueError("No other axes than 0 are supported at the moment")
