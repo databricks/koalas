@@ -346,11 +346,11 @@ def pandas_wraps(function=None, return_col=None, return_scalar=None):
 
     Notes
     -----
-    The arguments provided to the function must be picklable, or an error will be raised by Spark:
+    The arguments provided to the function must be picklable, or an error will be raised by Spark.
+    The example below fails.
 
     >>> import sys
-    >>> # fun(df.col1, arg1=sys.stdout)  # Will fail!
-
+    >>> fun(df.col1, arg1=sys.stdout)  # doctest: +SKIP
     """
     def function_wrapper(f):
         @wraps(f)

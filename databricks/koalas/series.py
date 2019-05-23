@@ -136,7 +136,8 @@ class Series(_Frame, IndexOpsMixin):
 
     @property
     def dt(self):
-        from databricks.koalas.datetime import DatetimeMethods
+        from databricks.koalas.datetimes import DatetimeMethods
+
         return DatetimeMethods(self)
 
     @property
@@ -1268,6 +1269,11 @@ class Series(_Frame, IndexOpsMixin):
         apply_each = wraps(func)(lambda s, *a, **k: s.apply(func, args=a, **k))
         wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
         return wrapped(self, *args, **kwds)
+
+    def describe(self) -> 'Series':
+        return _col(self.to_dataframe().describe())
+
+    describe.__doc__ = DataFrame.describe.__doc__
 
     def _reduce_for_stat_function(self, sfun):
         from inspect import signature

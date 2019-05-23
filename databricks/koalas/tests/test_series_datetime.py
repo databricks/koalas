@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 import pandas.testing as mt
 
-from databricks import koalas
+from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
@@ -38,7 +38,7 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
 
     @property
     def ks_start_date(self):
-        return koalas.from_pandas(self.pd_start_date)
+        return ks.from_pandas(self.pd_start_date)
 
     def check_func(self, func):
         # import pdb; pdb.set_trace()
@@ -54,14 +54,14 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         "timezone behaviours inherited from C library.")
     def test_subtraction(self):
         pdf = self.pdf1
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         kdf['diff_seconds'] = kdf['end_date'] - kdf['start_date'] - 1
 
         self.assertEqual(list(kdf['diff_seconds'].toPandas()), [35545499, 33644699, 31571099])
 
     def test_div(self):
         pdf = self.pdf1
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         for u in 'D', 's', 'ms':
             duration = np.timedelta64(1, u)
             self.assert_eq(
@@ -116,3 +116,8 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_strftime(self):
         self.check_func(lambda x: x.dt.strftime('%Y-%m-%d'))
+
+    def test_unsupported_type(self):
+        self.assertRaisesRegex(ValueError,
+                               'Cannot call DatetimeMethods on type LongType',
+                               lambda: ks.Series([0]).dt)

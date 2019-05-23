@@ -65,6 +65,7 @@ Computations / Descriptive Stats
    Series.clip
    Series.corr
    Series.count
+   Series.describe
    Series.kurt
    Series.max
    Series.mean
@@ -126,7 +127,7 @@ Datetime Methods
 ----------------
 Methods accessible through `Series.dt`
 
-.. currentmodule:: databricks.koalas.datetime
+.. currentmodule:: databricks.koalas.datetimes
 .. autosummary::
    :toctree: api/
 
@@ -137,6 +138,7 @@ Methods accessible through `Series.dt`
    DatetimeMethods.weekofyear
    DatetimeMethods.day
    DatetimeMethods.dayofweek
+   DatetimeMethods.weekday
    DatetimeMethods.dayofyear
    DatetimeMethods.hour
    DatetimeMethods.minute

@@ -29,8 +29,8 @@ from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
-                               IntegerType, LongType, ShortType, StructField, StructType,
-                               to_arrow_type)
+                               IntegerType, LongType, NumericType, ShortType, StructField,
+                               StructType, to_arrow_type)
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -2543,6 +2543,96 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf.select(
             self._metadata.index_columns + list(map(lambda ser: ser._scol, results)))
         return DataFrame(sdf, self._metadata.copy())
+
+    # TODO: percentiles, include, and exclude should be implemented.
+    def describe(self) -> 'DataFrame':
+        """
+        Generate descriptive statistics that summarize the central tendency,
+        dispersion and shape of a dataset's distribution, excluding
+        ``NaN`` values.
+
+        Analyzes both numeric and object series, as well
+        as ``DataFrame`` column sets of mixed data types. The output
+        will vary depending on what is provided. Refer to the notes
+        below for more detail.
+
+        Returns
+        -------
+        Series or DataFrame
+            Summary statistics of the Series or Dataframe provided.
+
+        See Also
+        --------
+        DataFrame.count: Count number of non-NA/null observations.
+        DataFrame.max: Maximum of the values in the object.
+        DataFrame.min: Minimum of the values in the object.
+        DataFrame.mean: Mean of the values.
+        DataFrame.std: Standard deviation of the obersvations.
+
+        Notes
+        -----
+        For numeric data, the result's index will include ``count``,
+        ``mean``, ``stddev``, ``min``, ``max``.
+
+        Currently only numeric data is supported.
+
+        Examples
+        --------
+        Describing a numeric ``Series``.
+
+        >>> s = ks.Series([1, 2, 3])
+        >>> s.describe()
+        count     3.0
+        mean      2.0
+        stddev    1.0
+        min       1.0
+        max       3.0
+        Name: 0, dtype: float64
+
+        Describing a ``DataFrame``. Only numeric fields are returned.
+
+        >>> df = ks.DataFrame({'numeric1': [1, 2, 3],
+        ...                    'numeric2': [4.0, 5.0, 6.0],
+        ...                    'object': ['a', 'b', 'c']
+        ...                   },
+        ...                   columns=['numeric1', 'numeric2', 'object'])
+        >>> df.describe()
+                numeric1  numeric2
+        count        3.0       3.0
+        mean         2.0       5.0
+        stddev       1.0       1.0
+        min          1.0       4.0
+        max          3.0       6.0
+
+        Describing a column from a ``DataFrame`` by accessing it as
+        an attribute.
+
+        >>> df.numeric1.describe()
+        count     3.0
+        mean      2.0
+        stddev    1.0
+        min       1.0
+        max       3.0
+        Name: numeric1, dtype: float64
+        """
+        exprs = []
+        data_columns = []
+        for col in self.columns:
+            kseries = self[col]
+            spark_type = kseries.spark_type
+            if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
+                exprs.append(F.nanvl(kseries._scol, F.lit(None)).alias(kseries.name))
+                data_columns.append(kseries.name)
+            elif isinstance(spark_type, NumericType):
+                exprs.append(kseries._scol)
+                data_columns.append(kseries.name)
+
+        if len(exprs) == 0:
+            raise ValueError("Cannot describe a DataFrame without columns")
+
+        sdf = self._sdf.select(*exprs).describe()
+        return DataFrame(sdf, index=Metadata(data_columns=data_columns,
+                                             index_map=[('summary', None)])).astype('float64')
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
