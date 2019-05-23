@@ -2554,7 +2554,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        percentiles : a list of percentiles to be computed for the summary.
+        percentiles : list of ``float`` in range (0.0, 1.0), default [0.25, 0.5, 0.75]
+            A list of percentiles to be computed. 
             Use an empty list if no percentiles should be computed. 
 
         Returns
@@ -2573,7 +2574,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Notes
         -----
         For numeric data, the result's index will include ``count``,
-        ``mean``, ``stddev``, ``min``,``25%``,``50%``,``75%``, ``max``.
+        ``mean``, ``stddev``, ``min``, ``25%``, ``50%``, ``75%``, ``max``.
 
         Currently only numeric data is supported.
 
