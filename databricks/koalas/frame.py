@@ -2617,7 +2617,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'numeric1': [1, 2, 3],
         ...                    'numeric2': [4.0, 5.0, 6.0]
         ...                   },
-        ...                   columns=['numeric1', 'numeric2', 'object'])
+        ...                   columns=['numeric1', 'numeric2'])
         >>> df.describe(percentiles = [0.15, 0.85])
                 numeric1  numeric2
         count        3.0       3.0
@@ -2656,6 +2656,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if len(exprs) == 0:
             raise ValueError("Cannot describe a DataFrame without columns")
+
+        if any((p <= 0.0)|(p >= 1.0) for p in percentiles):
+            raise ValueError("Percentiles not in range (0.0, 1.0)")
 
         formatted_perc = ["{:.0%}".format(p) for p in percentiles]
         stats = ["count", "mean", "stddev", "min", *formatted_perc, "max"]
