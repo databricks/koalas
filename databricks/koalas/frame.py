@@ -2541,7 +2541,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return DataFrame(sdf, self._metadata.copy())
 
     # TODO: percentiles, include, and exclude should be implemented.
-    def describe(self) -> 'DataFrame':
+    def describe(self, percentiles=[0.25, 0.5, 0.75]) -> 'DataFrame':
         """
         Generate descriptive statistics that summarize the central tendency,
         dispersion and shape of a dataset's distribution, excluding
@@ -2626,7 +2626,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if len(exprs) == 0:
             raise ValueError("Cannot describe a DataFrame without columns")
 
-        sdf = self._sdf.select(*exprs).describe()
+        formatted_perc =  ["{:.0%}".format(p) for p in percentiles]
+        stats = ["count", "mean", "stddev", "min",*formatted_perc, "max"]
+
+        sdf = self._sdf.select(*exprs).summary(stats)
+        
         return DataFrame(sdf, index=Metadata(data_columns=data_columns,
                                              index_map=[('summary', None)])).astype('float64')
 
