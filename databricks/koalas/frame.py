@@ -1861,7 +1861,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         except (KeyError, ValueError, IndexError):
             return default
 
-    def sort_values(self, by, ascending=True, inplace=False, na_position='last'):
+    def sort_values(self, by: Union[str, List[str]], ascending: Union[bool, List[bool]] = True,
+                    inplace: bool = False, na_position: str = 'last') -> Optional['DataFrame']:
         """
         Sort by the values along either axis.
 
@@ -1958,6 +1959,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if inplace:
             self._sdf = kdf._sdf
             self._metadata = kdf._metadata
+            return None
         else:
             return kdf
 
@@ -2033,7 +2035,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  6.0  10
 
         """
-        return self.sort_values(by=columns, ascending=False).head(n=n)
+        kdf = self.sort_values(by=columns, ascending=False)  # type: Optional[DataFrame]
+        assert kdf is not None
+        return kdf.head(n=n)
 
     # TODO: add keep = First
     def nsmallest(self, n: int, columns: 'Any') -> 'DataFrame':
@@ -2044,10 +2048,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ascending order. The columns that are not specified are returned as
         well, but not used for ordering.
 
-        This method is equivalent to
-        ``df.sort_values(columns, ascending=True).head(n)``, but more
-        performant.
-        In Koalas, thanks to Spark's lazy execution and query optimizer,
+        This method is equivalent to ``df.sort_values(columns, ascending=True).head(n)``,
+        but more performant. In Koalas, thanks to Spark's lazy execution and query optimizer,
         the two would have same performance.
 
         Parameters
@@ -2100,7 +2102,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  2.0   7
         2  3.0   8
         """
-        return self.sort_values(by=columns, ascending=True).head(n=n)
+        kdf = self.sort_values(by=columns, ascending=True)  # type: Optional[DataFrame]
+        assert kdf is not None
+        return kdf.head(n=n)
 
     def isin(self, values):
         """

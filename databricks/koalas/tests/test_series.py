@@ -230,6 +230,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks.notnull(), ps.notnull())
         self.assert_eq(ks.isnull(), ps.isnull())
 
+    def test_sort_values(self):
+        ps = pd.Series([1, 2, 3, 4, 5, None, 7], name='0')
+        ks = koalas.from_pandas(ps)
+        self.assert_eq(repr(ks.sort_values()), repr(ps.sort_values()))
+        self.assert_eq(repr(ks.sort_values(ascending=False)),
+                       repr(ps.sort_values(ascending=False)))
+        self.assert_eq(repr(ks.sort_values(na_position='first')),
+                       repr(ps.sort_values(na_position='first')))
+        self.assertRaises(ValueError, lambda: ks.sort_values(na_position='invalid'))
+        self.assert_eq(ks.sort_values(inplace=True), ps.sort_values(inplace=True))
+        self.assert_eq(repr(ks), repr(ps))
+
     def test_to_datetime(self):
         ps = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
         ks = koalas.from_pandas(ps)

@@ -24,6 +24,7 @@ from typing import Any, Optional, Union
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -824,6 +825,109 @@ class Series(_Frame, IndexOpsMixin):
         kdf.columns = [index_name, self.name]
         kdf._metadata = Metadata(data_columns=[self.name], index_map=[(index_name, None)])
         return _col(kdf)
+
+    def sort_values(self, ascending: bool = True, inplace: bool = False,
+                    na_position: str = 'last') -> Union['Series', None]:
+        """
+        Sort by the values.
+
+        Sort a Series in ascending or descending order by some criterion.
+
+        Parameters
+        ----------
+        ascending : bool or list of bool, default True
+             Sort ascending vs. descending. Specify list for multiple sort
+             orders.  If this is a list of bools, must match the length of
+             the by.
+        inplace : bool, default False
+             if True, perform operation in-place
+        na_position : {'first', 'last'}, default 'last'
+             `first` puts NaNs at the beginning, `last` puts NaNs at the end
+
+        Returns
+        -------
+        sorted_obj : Series ordered by values.
+
+        Examples
+        --------
+        >>> s = ks.Series([np.nan, 1, 3, 10, 5])
+        >>> s
+        0     NaN
+        1     1.0
+        2     3.0
+        3    10.0
+        4     5.0
+        Name: 0, dtype: float64
+
+        Sort values ascending order (default behaviour)
+
+        >>> s.sort_values(ascending=True)
+        1     1.0
+        2     3.0
+        4     5.0
+        3    10.0
+        0     NaN
+        Name: 0, dtype: float64
+
+        Sort values descending order
+
+        >>> s.sort_values(ascending=False)
+        3    10.0
+        4     5.0
+        2     3.0
+        1     1.0
+        0     NaN
+        Name: 0, dtype: float64
+
+        Sort values inplace
+
+        >>> s.sort_values(ascending=False, inplace=True)
+        >>> s
+        3    10.0
+        4     5.0
+        2     3.0
+        1     1.0
+        0     NaN
+        Name: 0, dtype: float64
+
+        Sort values putting NAs first
+
+        >>> s.sort_values(na_position='first')
+        0     NaN
+        1     1.0
+        2     3.0
+        4     5.0
+        3    10.0
+        Name: 0, dtype: float64
+
+        Sort a series of strings
+
+        >>> s = ks.Series(['z', 'b', 'd', 'a', 'c'])
+        >>> s
+        0    z
+        1    b
+        2    d
+        3    a
+        4    c
+        Name: 0, dtype: object
+
+        >>> s.sort_values()
+        3    a
+        1    b
+        4    c
+        2    d
+        0    z
+        Name: 0, dtype: object
+        """
+        ks_ = _col(self.to_dataframe().sort_values(by=self.name, ascending=ascending,
+                                                   na_position=na_position))
+        if inplace:
+            self._kdf = ks_.to_dataframe()
+            self._scol = ks_._scol
+            self._index_map = ks_._index_map
+            return None
+        else:
+            return ks_
 
     def corr(self, other, method='pearson'):
         """
