@@ -171,7 +171,6 @@ class _MissingPandasLikeSeries(object):
     set_axis = unsupported_function('set_axis')
     shift = unsupported_function('shift')
     slice_shift = unsupported_function('slice_shift')
-    sort_index = unsupported_function('sort_index')
     squeeze = unsupported_function('squeeze')
     sub = unsupported_function('sub')
     subtract = unsupported_function('subtract')
