@@ -929,55 +929,6 @@ class Series(_Frame, IndexOpsMixin):
         else:
             return ks_
 
-    def isin(self, values):
-        """
-        Check whether `values` are contained in Series.
-
-        Return a boolean Series showing whether each element in the Series
-        matches an element in the passed sequence of `values` exactly.
-
-        Parameters
-        ----------
-        values : list or set
-            The sequence of values to test.
-
-        Returns
-        -------
-        isin : Series (bool dtype)
-
-        Examples
-        --------
-        >>> s = ks.Series(['lama', 'cow', 'lama', 'beetle', 'lama',
-        ...                'hippo'], name='animal')
-        >>> s.isin(['cow', 'lama'])
-        0     True
-        1     True
-        2     True
-        3    False
-        4     True
-        5    False
-        Name: animal, dtype: bool
-
-        Passing a single string as ``s.isin('lama')`` will raise an error. Use
-        a list of one element instead:
-
-        >>> s.isin(['lama'])
-        0     True
-        1    False
-        2     True
-        3    False
-        4     True
-        5    False
-        Name: animal, dtype: bool
-        """
-        if not is_list_like(values):
-            raise TypeError("only list-like objects are allowed to be passed"
-                            " to isin(), you passed a [{values_type}]"
-                            .format(values_type=type(values).__name__))
-
-        return Series(self._scol.isin(list(values)).alias(self.name), anchor=self._kdf,
-                      index=self._index_map)
-
     def corr(self, other, method='pearson'):
         """
         Compute correlation with `other` Series, excluding missing values.
