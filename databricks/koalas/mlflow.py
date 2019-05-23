@@ -110,19 +110,21 @@ def load_model(path, run_id=None, predict_type='infer') -> PythonModelWrapper:
 
     We first initialize our MLflow environment:
 
-    >>> from mlflow.tracking import MlflowClient
+    >>> from mlflow.tracking import MlflowClient, set_tracking_uri
     >>> import mlflow.sklearn
+    >>> from tempfile import mkdtemp
+    >>> d = mkdtemp("koalas_mlflow")
+    >>> set_tracking_uri("file:%s"%d)
     >>> client = MlflowClient()
-    >>> print('doctest_ignore'); mlflow.set_experiment("my_experiment") # doctest: +ELLIPSIS
-    doctest_ignore...
-    >>> exp = client.get_experiment_by_name("my_experiment")
+    >>> exp = mlflow.create_experiment("my_experiment")
+    >>> mlflow.set_experiment("my_experiment")
 
     We aim at learning this numerical function using a simple linear regressor.
 
     >>> from sklearn.linear_model import LinearRegression
     >>> train = pd.DataFrame({"x1": np.arange(8), "x2": np.arange(8)**2,
     ...                       "y": np.log(2 + np.arange(8))})
-    >>> train_x = train.drop(["y"], axis=1)
+    >>> train_x = train[["x1", "x2"]]
     >>> train_y = train[["y"]]
     >>> with mlflow.start_run():
     ...     lr = LinearRegression()
@@ -133,7 +135,7 @@ def load_model(path, run_id=None, predict_type='infer') -> PythonModelWrapper:
     Now that our model is logged using MLflow, we load it back and apply it on a Koalas dataframe:
 
     >>> from databricks.koalas.mlflow import load_model
-    >>> run_info = client.list_run_infos(exp.experiment_id)[-1]
+    >>> run_info = client.list_run_infos(exp)[-1]
     >>> model = load_model("model", run_id = run_info.run_uuid)
     >>> prediction_df = ks.DataFrame({"x1": [2.0], "x2": [4.0]})
     >>> prediction_df["prediction"] = model.predict(prediction_df)
@@ -143,9 +145,8 @@ def load_model(path, run_id=None, predict_type='infer') -> PythonModelWrapper:
 
     The model also works on pandas DataFrames as expected:
 
-    >>> model.predict(prediction_df.toPandas())
-        x1   x2  prediction
-    0  2.0  4.0    1.355551
+    >>> model.predict(prediction_df[["x1", "x2"]].toPandas())
+    array([[1.35555142]])
 
     Notes
     -----
@@ -156,7 +157,8 @@ def load_model(path, run_id=None, predict_type='infer') -> PythonModelWrapper:
     >>> df = ks.DataFrame({"x1": [2.0], "x2": [3.0], "z": [-1]})
     >>> features = ["x1", "x2"]
     >>> y = model.predict(df[features])
-    >>> #df["y"] = y # Will fail with a message about dataframes not aligned.
+    >>> # Will fail with a message about dataframes not aligned.
+    >>> df["y"] = y   # doctest: +SKIP
 
     This is being tracked in the issue ticket https://github.com/databricks/koalas/issues/354.
 

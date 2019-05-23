@@ -40,7 +40,7 @@ setup(
     packages=['databricks', 'databricks.koalas', 'databricks.koalas.missing'],
     extras_require={
         'spark': ['pyspark>=2.4.0'],
-        'mlflow': ['mlflow>=0.2.0'],
+        'mlflow': ['mlflow>=0.9.0'],
     },
     python_requires='>=3.5',
     install_requires=[
