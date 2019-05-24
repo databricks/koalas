@@ -106,6 +106,7 @@ Reshaping, sorting, transposing
 .. autosummary::
    :toctree: api/
 
+   Series.sort_index
    Series.sort_values
 
 Serialization / IO / Conversion

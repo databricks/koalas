@@ -1963,6 +1963,78 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return kdf
 
+    def sort_index(self, axis: int = 0, level: int = None, ascending: bool = True,
+                   inplace: bool = False, kind: str = None, na_position: str = 'last') \
+            -> Optional['DataFrame']:
+        """
+        Sort object by labels (along an axis)
+
+        Parameters
+        ----------
+        axis : index, columns to direct sorting. Currently, only axis = 0 is supported.
+        level : int or level name or list of ints or list of level names
+            if not None, sort on values in specified index level(s)
+        ascending : boolean, default True
+            Sort ascending vs. descending
+        inplace : bool, default False
+            if True, perform operation in-place
+        kind : str, default None
+            Koalas does not allow specifying the sorting algorithm at the moment, default None
+        na_position : {‘first’, ‘last’}, default ‘last’
+            first puts NaNs at the beginning, last puts NaNs at the end. Not implemented for
+            MultiIndex.
+
+        Returns
+        -------
+        sorted_obj : DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [2, 1, np.nan]}, index=['b', 'a', np.nan])
+
+        >>> df.sort_index()
+               A
+        a    1.0
+        b    2.0
+        NaN  NaN
+
+        >>> df.sort_index(ascending=False)
+               A
+        b    2.0
+        a    1.0
+        NaN  NaN
+
+        >>> df.sort_index(na_position='first')
+               A
+        NaN  NaN
+        a    1.0
+        b    2.0
+
+        >>> df.sort_index(inplace=True)
+        >>> df
+               A
+        a    1.0
+        b    2.0
+        NaN  NaN
+
+
+        >>> ks.DataFrame({'A': range(4), 'B': range(4)[::-1]},
+        ...              index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]]).sort_index()
+             A  B
+        a 0  3  0
+          1  2  1
+        b 0  1  2
+          1  0  3
+        """
+        if axis != 0:
+            raise ValueError("No other axes than 0 are supported at the moment")
+        if level is not None:
+            raise ValueError("The 'axis' argument is not supported at the moment")
+        if kind is not None:
+            raise ValueError("Specifying the sorting algorithm is supported at the moment.")
+        return self.sort_values(by=self._metadata.index_columns, ascending=ascending,
+                                inplace=inplace, na_position=na_position)
+
     # TODO:  add keep = First
     def nlargest(self, n: int, columns: 'Any') -> 'DataFrame':
         """
