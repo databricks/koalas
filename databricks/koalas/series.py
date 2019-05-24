@@ -989,8 +989,8 @@ class Series(_Frame, IndexOpsMixin):
             raise ValueError("The 'axis' argument is not supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-        ks_ = _col(self.to_dataframe().sort_values(by='__index_level_0__', ascending=ascending,
-                                                   na_position=na_position))
+        ks_ = _col(self.to_dataframe().sort_values(by=self._metadata.index_columns[0],
+                                                   ascending=ascending, na_position=na_position))
         if inplace:
             self._kdf = ks_.to_dataframe()
             self._scol = ks_._scol

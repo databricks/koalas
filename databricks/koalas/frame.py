@@ -2023,8 +2023,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'axis' argument is not supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-        return self.sort_values(by='__index_level_0__', ascending=ascending, inplace=inplace,
-                                na_position=na_position)
+        return self.sort_values(by=self._metadata.index_columns[0], ascending=ascending,
+                                inplace=inplace, na_position=na_position)
 
     # TODO:  add keep = First
     def nlargest(self, n: int, columns: 'Any') -> 'DataFrame':
