@@ -944,7 +944,8 @@ class Series(_Frame, IndexOpsMixin):
             Sort ascending vs. descending
         inplace : bool, default False
             if True, perform operation in-place
-        kind : Koalas does not allow specifying the sorting algorithm at the moment, default None
+        kind : str, default None
+            Koalas does not allow specifying the sorting algorithm at the moment, default None
         na_position : {‘first’, ‘last’}, default ‘last’
             first puts NaNs at the beginning, last puts NaNs at the end. Not implemented for
             MultiIndex.
