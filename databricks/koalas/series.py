@@ -755,9 +755,9 @@ class Series(_Frame, IndexOpsMixin):
 
         Parameters
         ----------
-        dropna : bool, default: True
+        dropna : bool, default True
             Don’t include NaN in the count.
-        approximate: bool, default: False
+        approximate: bool, default False
             If False, will use the exact algorithm and return the exact number of unique.
             If True, it uses Spark's approximate algorithm, which is faster in most circumstances.
             Note: this parameter is specific to Spark and is not found in pandas.
