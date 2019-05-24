@@ -2618,13 +2618,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                    'numeric2': [4.0, 5.0, 6.0]
         ...                   },
         ...                   columns=['numeric1', 'numeric2'])
-        >>> df.describe(percentiles = [0.15, 0.85])
+        >>> df.describe(percentiles = [0.85, 0.15])
                 numeric1  numeric2
         count        3.0       3.0
         mean         2.0       5.0
         stddev       1.0       1.0
         min          1.0       4.0
         15%          1.0       4.0
+        50%          2.0       5.0
         85%          3.0       6.0
         max          3.0       6.0
 
@@ -2639,6 +2640,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         25%       1.0
         50%       2.0
         75%       3.0
+        max       3.0
+        Name: numeric1, dtype: float64
+
+        Describing a column from a ``DataFrame`` by accessing it as
+        an attribute and selecting custom percentiles.
+
+        >>> df.numeric1.describe(percentiles = [0.85, 0.15])
+        count     3.0
+        mean      2.0
+        stddev    1.0
+        min       1.0
+        15%       1.0
+        50%       2.0
+        85%       3.0
         max       3.0
         Name: numeric1, dtype: float64
         """
@@ -2657,10 +2672,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if len(exprs) == 0:
             raise ValueError("Cannot describe a DataFrame without columns")
 
-        if any((p <= 0.0) or (p >= 1.0) for p in percentiles):
-            raise ValueError("Percentiles not in range (0.0, 1.0)")
-
         if percentiles:
+            if any((p <= 0.0) or (p >= 1.0) for p in percentiles):
+                raise ValueError("Percentiles not in range (0.0, 1.0)")
             # appending 50% if not in percentiles already
             perc_list = (percentiles + [0.5]) if 0.5 not in percentiles else percentiles
         else:
