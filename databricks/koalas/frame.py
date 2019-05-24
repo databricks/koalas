@@ -2541,7 +2541,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return DataFrame(sdf, self._metadata.copy())
 
     # TODO: percentiles, include, and exclude should be implemented.
-    def describe(self, percentiles=[0.25, 0.5, 0.75]) -> 'DataFrame':
+    def describe(self, percentiles=None) -> 'DataFrame':
         """
         Generate descriptive statistics that summarize the central tendency,
         dispersion and shape of a dataset's distribution, excluding
@@ -2660,7 +2660,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if any((p <= 0.0) or (p >= 1.0) for p in percentiles):
             raise ValueError("Percentiles not in range (0.0, 1.0)")
 
-        formatted_perc = ["{:.0%}".format(p) for p in percentiles]
+        if percentiles:
+            # appending 50% if not in percentiles already
+            perc_list = (percentiles + [0.5]) if 0.5 not in percentiles else percentiles
+        else:
+            perc_list = [0.25, 0.5, 0.75]
+
+        formatted_perc = ["{:.0%}".format(p) for p in sorted(perc_list)]
         stats = ["count", "mean", "stddev", "min", *formatted_perc, "max"]
 
         sdf = self._sdf.select(*exprs).summary(stats)
