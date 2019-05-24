@@ -1063,7 +1063,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     notna = notnull
 
-    def nunique(self, axis: int = 0, dropna: bool = True) -> pd.Series:
+    def nunique(self, axis: int = 0, dropna: bool = True, approximate: bool = False) -> pd.Series:
         """
         Return number of unique elements in the object.
 
@@ -1071,8 +1071,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        axis : Can only be set to 0 at the moment.
-        dropna : Don’t include NaN in the count.
+        axis : int, default: 0
+            Can only be set to 0 at the moment.
+        dropna : bool, default: True
+            Don’t include NaN in the count.
+        approximate: bool, default: False
+            If False, will use the exact algorithm and return the exact number of unique.
+            If True, it uses Spark's approximate algorithm, which is faster in most circumstances.
+            Note: this parameter is specific to Spark and is not found in pandas.
 
         Returns
         -------
@@ -1092,12 +1098,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if axis != 0:
             raise ValueError("The 'nunique' method only works with axis=0 at the moment")
+        count_fn = F.approx_count_distinct if approximate else F.countDistinct
         if dropna:
-            res = self._sdf.select([F.countDistinct(Column(c))
+            res = self._sdf.select([count_fn(Column(c))
                                    .alias(c)
                                     for c in self.columns])
         else:
-            res = self._sdf.select([(F.countDistinct(Column(c))
+            res = self._sdf.select([(count_fn(Column(c))
                                      + F.when(F.count(F.when(F.col(c).isNull(), 1).otherwise(None))
                                               >= 1, 1).otherwise(0))
                                    .alias(c)

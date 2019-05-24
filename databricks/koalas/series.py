@@ -747,7 +747,7 @@ class Series(_Frame, IndexOpsMixin):
         sdf = self.to_dataframe()._sdf
         return _col(DataFrame(sdf.select(self._scol).distinct()))
 
-    def nunique(self, dropna: bool = True) -> int:
+    def nunique(self, dropna: bool = True, approximate: bool = False) -> int:
         """
         Return number of unique elements in the object.
 
@@ -755,7 +755,12 @@ class Series(_Frame, IndexOpsMixin):
 
         Parameters
         ----------
-        dropna : Don’t include NaN in the count.
+        dropna : bool, default: True
+            Don’t include NaN in the count.
+        approximate: bool, default: False
+            If False, will use the exact algorithm and return the exact number of unique.
+            If True, it uses Spark's approximate algorithm, which is faster in most circumstances.
+            Note: this parameter is specific to Spark and is not found in pandas.
 
         Returns
         -------
@@ -770,10 +775,11 @@ class Series(_Frame, IndexOpsMixin):
         4
         """
         sdf = self.to_dataframe()._sdf
+        count_fn = F.approx_count_distinct if approximate else F.countDistinct
         if dropna:
-            distinct_count = sdf.select(F.countDistinct(self._scol))
+            distinct_count = sdf.select(count_fn(self._scol))
         else:
-            distinct_count = sdf.select(F.countDistinct(self._scol)
+            distinct_count = sdf.select(count_fn(self._scol)
                                         + F.when(F.count(F.when(self._scol.isNull(), 1)
                                                          .otherwise(None))
                                                  >= 1, 1).otherwise(0))
