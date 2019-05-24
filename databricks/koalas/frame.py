@@ -2449,7 +2449,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         left_index_columns = set(left._metadata.index_columns)
         right_index_columns = set(right._metadata.index_columns)
 
-        # TODO: in some case, we can remain indexes.
+        # TODO: in some case, we can keep indexes.
         exprs = []
         for col in left_table.columns:
             if col in left_index_columns:
