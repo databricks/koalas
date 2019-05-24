@@ -24,7 +24,7 @@ from typing import Any, Optional, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like, \
+from pandas.api.types import is_bool, is_datetime64_dtype, is_datetime64tz_dtype, is_list_like, \
     is_dict_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
@@ -2275,7 +2275,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return len(self), len(self.columns)
 
-    def merge(self, right: 'DataFrame', how: str = 'inner', on: str = None,
+    def merge(left, right: 'DataFrame', how: str = 'inner',
+              on: Optional[Union[str, List[str]]] = None,
+              left_on: Optional[Union[str, List[str]]] = None,
+              right_on: Optional[Union[str, List[str]]] = None,
               left_index: bool = False, right_index: bool = False,
               suffixes: Tuple[str, str] = ('_x', '_y')) -> 'DataFrame':
         """
@@ -2298,6 +2301,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         on: Column or index level names to join on. These must be found in both DataFrames. If on
             is None and not merging on indexes then this defaults to the intersection of the
             columns in both DataFrames.
+        left_on: Column or index level names to join on in the left DataFrame. Can also
+            be an array or list of arrays of the length of the left DataFrame.
+            These arrays are treated as if they are columns.
+        right_on: Column or index level names to join on in the right DataFrame. Can also
+            be an array or list of arrays of the length of the right DataFrame.
+            These arrays are treated as if they are columns.
         left_index: Use the index from the left DataFrame as the join key(s). If it is a
             MultiIndex, the number of keys in the other DataFrame (either the index or a number of
             columns) must match the number of levels.
@@ -2313,6 +2322,38 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
+        >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
+        ...                     'value': [1, 2, 3, 5]},
+        ...                    columns=['lkey', 'value'])
+        >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+        ...                     'value': [5, 6, 7, 8]},
+        ...                    columns=['rkey', 'value'])
+        >>> df1
+          lkey  value
+        0  foo      1
+        1  bar      2
+        2  baz      3
+        3  foo      5
+        >>> df2
+          rkey  value
+        0  foo      5
+        1  bar      6
+        2  baz      7
+        3  foo      8
+
+        Merge df1 and df2 on the lkey and rkey columns. The value columns have
+        the default suffixes, _x and _y, appended.
+
+        >>> merged = df1.merge(df2, left_on='lkey', right_on='rkey')
+        >>> merged.sort_values(by=['lkey', 'value_x', 'rkey', 'value_y'])
+          lkey  value_x rkey  value_y
+        0  bar        2  bar        6
+        1  baz        3  baz        7
+        2  foo        1  foo        5
+        3  foo        1  foo        8
+        4  foo        5  foo        5
+        5  foo        5  foo        8
+
         >>> left_kdf = ks.DataFrame({'A': [1, 2]})
         >>> right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
 
@@ -2341,10 +2382,39 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         As described in #263, joining string columns currently returns None for missing values
             instead of NaN.
         """
-        if on is None and not left_index and not right_index:
-            raise ValueError("At least 'on' or 'left_index' and 'right_index' have to be set")
-        if on is not None and (left_index or right_index):
-            raise ValueError("Only 'on' or 'left_index' and 'right_index' can be set")
+        _to_list = lambda o: o if o is None or is_list_like(o) else [o]
+
+        if on:
+            if left_on or right_on:
+                raise ValueError('Can only pass argument "on" OR "left_on" and "right_on", '
+                                 'not a combination of both.')
+            left_keys = _to_list(on)
+            right_keys = _to_list(on)
+        else:
+            # TODO: need special handling for multi-index.
+            if left_index:
+                left_keys = left._metadata.index_columns
+            else:
+                left_keys = _to_list(left_on)
+            if right_index:
+                right_keys = right._metadata.index_columns
+            else:
+                right_keys = _to_list(right_on)
+
+            if left_keys and not right_keys:
+                raise ValueError('Must pass right_on or right_index=True')
+            if right_keys and not left_keys:
+                raise ValueError('Must pass left_on or left_index=True')
+            if not left_keys and not right_keys:
+                common = list(left.columns.intersection(right.columns))
+                if len(common) == 0:
+                    raise ValueError(
+                        'No common columns to perform merge on. Merge options: '
+                        'left_on=None, right_on=None, left_index=False, right_index=False')
+                left_keys = common
+                right_keys = common
+            if len(left_keys) != len(right_keys):  # type: ignore
+                raise ValueError('len(left_keys) must equal len(right_keys)')
 
         if how == 'full':
             warnings.warn("Warning: While Koalas will accept 'full', you should use 'outer' " +
@@ -2356,41 +2426,55 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'how' parameter has to be amongst the following values: ",
                              "['inner', 'left', 'right', 'outer']")
 
-        if on is None:
-            # FIXME Move index string to constant?
-            on = '__index_level_0__'
-
-        left_table = self._sdf.alias('left_table')
+        left_table = left._sdf.alias('left_table')
         right_table = right._sdf.alias('right_table')
+
+        left_key_columns = [left_table[col] for col in left_keys]  # type: ignore
+        right_key_columns = [right_table[col] for col in right_keys]  # type: ignore
+
+        join_condition = reduce(lambda x, y: x & y,
+                                [lkey == rkey for lkey, rkey
+                                 in zip(left_key_columns, right_key_columns)])
+
+        joined_table = left_table.join(right_table, join_condition, how=how)
 
         # Unpack suffixes tuple for convenience
         left_suffix = suffixes[0]
         right_suffix = suffixes[1]
 
         # Append suffixes to columns with the same name to avoid conflicts later
-        duplicate_columns = list(self.columns & right.columns)
-        if duplicate_columns:
-            for duplicate_column_name in duplicate_columns:
-                left_table = left_table.withColumnRenamed(duplicate_column_name,
-                                                          duplicate_column_name + left_suffix)
-                right_table = right_table.withColumnRenamed(duplicate_column_name,
-                                                            duplicate_column_name + right_suffix)
+        duplicate_columns = (set(left._metadata.data_columns)
+                             & set(right._metadata.data_columns))
 
-        join_condition = (left_table[on] == right_table[on] if on not in duplicate_columns
-                          else left_table[on + left_suffix] == right_table[on + right_suffix])
-        joined_table = left_table.join(right_table, join_condition, how=how)
+        left_index_columns = set(left._metadata.index_columns)
+        right_index_columns = set(right._metadata.index_columns)
 
-        if on in duplicate_columns:
-            # Merge duplicate key columns
-            joined_table = joined_table.withColumnRenamed(on + left_suffix, on)
-            joined_table = joined_table.drop(on + right_suffix)
+        # TODO: in some case, we can remain indexes.
+        exprs = []
+        for col in left_table.columns:
+            if col in left_index_columns:
+                continue
+            scol = left_table[col]
+            if col in duplicate_columns:
+                if col in left_keys and col in right_keys:
+                    pass
+                else:
+                    col = col + left_suffix
+                    scol = scol.alias(col)
+            exprs.append(scol)
+        for col in right_table.columns:
+            if col in right_index_columns:
+                continue
+            scol = right_table[col]
+            if col in duplicate_columns:
+                if col in left_keys and col in right_keys:
+                    continue
+                else:
+                    col = col + right_suffix
+                    scol = scol.alias(col)
+            exprs.append(scol)
 
-        # Remove auxiliary index
-        # FIXME Move index string to constant?
-        joined_table = joined_table.drop('__index_level_0__')
-
-        kdf = DataFrame(joined_table)
-        return kdf
+        return DataFrame(joined_table.select(*exprs))
 
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
                random_state: Optional[int] = None) -> 'DataFrame':

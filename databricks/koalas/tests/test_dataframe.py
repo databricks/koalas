@@ -18,6 +18,7 @@ import inspect
 
 import numpy as np
 import pandas as pd
+from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
@@ -401,58 +402,105 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.isin(1)
 
     def test_merge(self):
-        left_kdf = ks.DataFrame({'A': [1, 2]})
-        right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
+        left_pdf = pd.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo', 'bar', 'l'],
+                                 'value': [1, 2, 3, 5, 6, 7],
+                                 'x': list('abcdef')},
+                                columns=['lkey', 'value', 'x'])
+        right_pdf = pd.DataFrame({'rkey': ['baz', 'foo', 'bar', 'baz', 'foo', 'r'],
+                                  'value': [4, 5, 6, 7, 8, 9],
+                                  'y': list('efghij')},
+                                 columns=['rkey', 'value', 'y'])
 
-        # Assert only 'on' or 'left_index' and 'right_index' parameters are set
-        msg = "At least 'on' or 'left_index' and 'right_index' have to be set"
-        with self.assertRaises(ValueError, msg=msg):
-            left_kdf.merge(right_kdf)
-        msg = "Only 'on' or 'left_index' and 'right_index' can be set"
-        with self.assertRaises(ValueError, msg=msg):
-            left_kdf.merge(right_kdf, on='id', left_index=True)
+        left_kdf = ks.from_pandas(left_pdf)
+        right_kdf = ks.from_pandas(right_pdf)
 
-        # Assert a valid option for the 'how' parameter is used
-        msg = ("The 'how' parameter has to be amongst the following values: ['inner', 'left', " +
-               "'right', 'full', 'outer']")
-        with self.assertRaises(ValueError, msg=msg):
-            left_kdf.merge(right_kdf, how='foo', left_index=True, right_index=True)
+        def check(op):
+            k_res = op(left_kdf, right_kdf)
+            k_res = k_res.sort_values(by=list(k_res.columns))
+            p_res = op(left_pdf, right_pdf)
+            p_res = p_res.sort_values(by=list(p_res.columns))
+            p_res = p_res.reset_index(drop=True)
+            self.assert_eq(k_res, p_res)
 
-        # Assert inner join
-        res = left_kdf.merge(right_kdf, left_index=True, right_index=True)
-        self.assert_eq(res, pd.DataFrame({'A': [2], 'B': ['x']}))
+        check(lambda left, right: left.merge(right))
+        check(lambda left, right: left.merge(right, on='value'))
+        check(lambda left, right: left.merge(right, left_on='lkey', right_on='rkey'))
+        check(lambda left, right: left.set_index('lkey').merge(right.set_index('rkey')))
+        check(lambda left, right: left.set_index('lkey').merge(right,
+                                                               left_index=True, right_on='rkey'))
+        check(lambda left, right: left.merge(right.set_index('rkey'),
+                                             left_on='lkey', right_index=True))
+        check(lambda left, right: left.set_index('lkey').merge(right.set_index('rkey'),
+                                                               left_index=True, right_index=True))
 
-        # Assert inner join on non-default column
-        left_kdf_with_id = ks.DataFrame({'A': [1, 2], 'id': [0, 1]})
-        right_kdf_with_id = ks.DataFrame({'B': ['x', 'y'], 'id': [0, 1]}, index=[1, 2])
-        res = left_kdf_with_id.merge(right_kdf_with_id, on='id')
-        # Explicitly set columns to also assure their correct order with Python 3.5
-        self.assert_eq(res, pd.DataFrame({'A': [1, 2], 'id': [0, 1], 'B': ['x', 'y']},
-                                         columns=['A', 'id', 'B']))
+        # MultiIndex
+        check(lambda left, right: left.merge(right,
+                                             left_on=['lkey', 'value'], right_on=['rkey', 'value']))
+        check(lambda left, right: left.set_index(['lkey', 'value'])
+              .merge(right, left_index=True, right_on=['rkey', 'value']))
+        check(lambda left, right: left.merge(
+            right.set_index(['rkey', 'value']), left_on=['lkey', 'value'], right_index=True))
+        # TODO: when both left_index=True and right_index=True with multi-index
+        # check(lambda left, right: left.set_index(['lkey', 'value']).merge(
+        #     right.set_index(['rkey', 'value']), left_index=True, right_index=True))
 
-        # Assert left join
-        res = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left')
-        # FIXME Replace None with np.nan once #263 is solved
-        self.assert_eq(res, pd.DataFrame({'A': [1, 2], 'B': [None, 'x']}))
+        # join types
+        for how in ['inner', 'left', 'right', 'outer']:
+            check(lambda left, right: left.merge(right, left_on='lkey', right_on='rkey', how=how))
 
-        # Assert right join
-        res = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right')
-        self.assert_eq(res, pd.DataFrame({'A': [2, np.nan], 'B': ['x', 'y']}))
+        # suffix
+        check(lambda left, right: left.merge(right, left_on='lkey', right_on='rkey',
+                                             suffixes=['_left', '_right']))
 
-        # Assert full outer join
-        res = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer')
-        # FIXME Replace None with np.nan once #263 is solved
-        self.assert_eq(res, pd.DataFrame({'A': [1, 2, np.nan], 'B': [None, 'x', 'y']}))
+    def test_merge_raises(self):
+        left = ks.DataFrame({'value': [1, 2, 3, 5, 6],
+                             'x': list('abcde')},
+                            columns=['value', 'x'],
+                            index=['foo', 'bar', 'baz', 'foo', 'bar'])
+        right = ks.DataFrame({'value': [4, 5, 6, 7, 8],
+                              'y': list('fghij')},
+                             columns=['value', 'y'],
+                             index=['baz', 'foo', 'bar', 'baz', 'foo'])
 
-        # Assert full outer join also works with 'full' keyword
-        res = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='full')
-        # FIXME Replace None with np.nan once #263 is solved
-        self.assert_eq(res, pd.DataFrame({'A': [1, 2, np.nan], 'B': [None, 'x', 'y']}))
+        with self.assertRaisesRegex(ValueError,
+                                    'No common columns to perform merge on'):
+            left[['x']].merge(right[['y']])
 
-        # Assert suffixes create the expected column names
-        res = left_kdf.merge(ks.DataFrame({'A': [3, 4]}), left_index=True, right_index=True,
-                             suffixes=('_left', '_right'))
-        self.assert_eq(res, pd.DataFrame({'A_left': [1, 2], 'A_right': [3, 4]}))
+        with self.assertRaisesRegex(ValueError,
+                                    'not a combination of both'):
+            left.merge(right, on='value', left_on='x')
+
+        with self.assertRaisesRegex(ValueError,
+                                    'Must pass right_on or right_index=True'):
+            left.merge(right, left_on='x')
+
+        with self.assertRaisesRegex(ValueError,
+                                    'Must pass right_on or right_index=True'):
+            left.merge(right, left_index=True)
+
+        with self.assertRaisesRegex(ValueError,
+                                    'Must pass left_on or left_index=True'):
+            left.merge(right, right_on='y')
+
+        with self.assertRaisesRegex(ValueError,
+                                    'Must pass left_on or left_index=True'):
+            left.merge(right, right_index=True)
+
+        with self.assertRaisesRegex(ValueError,
+                                    'len\\(left_keys\\) must equal len\\(right_keys\\)'):
+            left.merge(right, left_on='value', right_on=['value', 'y'])
+
+        with self.assertRaisesRegex(ValueError,
+                                    'len\\(left_keys\\) must equal len\\(right_keys\\)'):
+            left.merge(right, left_on=['value', 'x'], right_on='value')
+
+        with self.assertRaisesRegex(ValueError,
+                                    "['inner', 'left', 'right', 'full', 'outer']"):
+            left.merge(right, left_index=True, right_index=True, how='foo')
+
+        with self.assertRaisesRegex(AnalysisException,
+                                    'Cannot resolve column name "id"'):
+            left.merge(right, on='id')
 
     def test_clip(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})
