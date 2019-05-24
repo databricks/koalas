@@ -20,8 +20,8 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas
+from distutils.version import LooseVersion
 from databricks.koalas import Series
-from databricks.koalas.generic import max_display_count
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
@@ -323,3 +323,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([1, 1, 1])
         kser = koalas.from_pandas(pser)
         self.assertEqual(pser.is_unique, kser.is_unique)
+
+    def test_to_list(self):
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+            self.assertEqual(self.ks.to_list(), self.ps.to_list())
