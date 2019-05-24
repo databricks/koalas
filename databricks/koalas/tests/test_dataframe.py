@@ -308,7 +308,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(repr(kdf), repr(pdf))
 
     def test_sort_index(self):
-        pdf = pd.DataFrame({'A': [2, 1, np.nan]}, index=['b', 'a', np.nan])
+        pdf = pd.DataFrame({'A': [2, 1, np.nan], 'B': [np.nan, 0, np.nan]}, index=['b', 'a', np.nan])
         kdf = ks.from_pandas(pdf)
 
         # Assert invalid parameters
