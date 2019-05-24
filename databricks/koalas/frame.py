@@ -2554,9 +2554,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        percentiles : list of ``float`` in range (0.0, 1.0), default [0.25, 0.5, 0.75]
+        percentiles : list of ``float`` in range [0.0, 1.0], default None
             A list of percentiles to be computed.
-            Use an empty list if no percentiles should be computed.
 
         Returns
         -------
@@ -2672,15 +2671,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if len(exprs) == 0:
             raise ValueError("Cannot describe a DataFrame without columns")
 
-        if percentiles:
-            if any((p <= 0.0) or (p >= 1.0) for p in percentiles):
-                raise ValueError("Percentiles not in range (0.0, 1.0)")
+        if percentiles is not None:
+            if any((p < 0.0) or (p > 1.0) for p in percentiles):
+                raise ValueError("Percentiles should all be in the interval [0, 1]")
             # appending 50% if not in percentiles already
-            perc_list = (percentiles + [0.5]) if 0.5 not in percentiles else percentiles
+            percentiles = (percentiles + [0.5]) if 0.5 not in percentiles else percentiles
         else:
-            perc_list = [0.25, 0.5, 0.75]
+            percentiles = [0.25, 0.5, 0.75]
 
-        formatted_perc = ["{:.0%}".format(p) for p in sorted(perc_list)]
+        formatted_perc = ["{:.0%}".format(p) for p in sorted(percentiles)]
         stats = ["count", "mean", "stddev", "min", *formatted_perc, "max"]
 
         sdf = self._sdf.select(*exprs).summary(stats)
