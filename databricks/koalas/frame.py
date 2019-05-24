@@ -24,7 +24,7 @@ from typing import Any, Optional, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_bool, is_datetime64_dtype, is_datetime64tz_dtype, is_list_like, \
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like, \
     is_dict_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
