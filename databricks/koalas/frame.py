@@ -1063,7 +1063,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     notna = notnull
 
-    def nunique(self, axis: int = 0, dropna: bool = True) -> 'ks.Series':
+    def nunique(self, axis: int = 0, dropna: bool = True) -> pd.Series:
         """
         Return number of unique elements in the object.
 
@@ -1076,7 +1076,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        The number of unique values per column as a Koalas Series.
+        The number of unique values per column as a pandas Series.
 
         Examples
         --------
@@ -1102,9 +1102,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                               >= 1, 1).otherwise(0))
                                    .alias(c)
                                     for c in self.columns])
-        # TODO: Find a way to avoid converting to pandas and back
-        res = res.toPandas().T.iloc[:, 0]
-        return ks.Series(res)
+        return res.toPandas().T.iloc[:, 0]
 
     def to_koalas(self):
         """
