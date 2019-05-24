@@ -1971,7 +1971,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        axis : index, columns to direct sorting
+        axis : index, columns to direct sorting. Currently, only axis = 0 is supported.
         level : int or level name or list of ints or list of level names
             if not None, sort on values in specified index level(s)
         ascending : boolean, default True
