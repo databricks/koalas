@@ -253,20 +253,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: ks.sort_index(na_position='invalid'))
 
         # Assert default behavior without parameters
-        self.assert_eq(repr(ks.sort_index()), repr(ps.sort_index()))
+        self.assert_eq(ks.sort_index(), ps.sort_index(), almost=True)
         # Assert sorting descending
-        self.assert_eq(repr(ks.sort_index(ascending=False)), repr(ps.sort_index(ascending=False)))
+        self.assert_eq(ks.sort_index(ascending=False), ps.sort_index(ascending=False), almost=True)
         # Assert sorting NA indices first
-        self.assert_eq(repr(ks.sort_index(na_position='first')),
-                       repr(ps.sort_index(na_position='first')))
+        self.assert_eq(ks.sort_index(na_position='first'), ps.sort_index(na_position='first'),
+                       almost=True)
         # Assert sorting inplace
-        self.assert_eq(ks.sort_index(inplace=True), ps.sort_index(inplace=True))
-        self.assert_eq(repr(ks), repr(ps))
+        self.assertEqual(ks.sort_index(inplace=True), ps.sort_index(inplace=True))
+        self.assert_eq(ks, ps, almost=True)
 
         # Assert multi-indices
         ps = pd.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0')
         ks = koalas.from_pandas(ps)
-        self.assert_eq(repr(ks.sort_index()), repr(ps.sort_index()))
+        self.assert_eq(ks.sort_index(), ps.sort_index(), almost=True)
 
     def test_to_datetime(self):
         ps = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
