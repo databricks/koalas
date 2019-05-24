@@ -982,6 +982,13 @@ class Series(_Frame, IndexOpsMixin):
         b      2.0
         NaN    NaN
         Name: 0, dtype: float64
+
+        >>> ks.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0').sort_index()
+        a  0    3
+           1    2
+        b  0    1
+           1    0
+        Name: 0, dtype: int64
         """
         if axis != 0:
             raise ValueError("No other axes than 0 are supported at the moment")
@@ -989,7 +996,7 @@ class Series(_Frame, IndexOpsMixin):
             raise ValueError("The 'axis' argument is not supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-        ks_ = _col(self.to_dataframe().sort_values(by=self._metadata.index_columns[0],
+        ks_ = _col(self.to_dataframe().sort_values(by=self._metadata.index_columns,
                                                    ascending=ascending, na_position=na_position))
         if inplace:
             self._kdf = ks_.to_dataframe()

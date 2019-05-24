@@ -2016,6 +2016,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         a    1.0
         b    2.0
         NaN  NaN
+
+
+        >>> ks.DataFrame({'A': range(4), 'B': range(4)[::-1]},
+        ...              index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]]).sort_index()
+             A  B
+        a 0  3  0
+          1  2  1
+        b 0  1  2
+          1  0  3
         """
         if axis != 0:
             raise ValueError("No other axes than 0 are supported at the moment")
@@ -2023,7 +2032,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'axis' argument is not supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-        return self.sort_values(by=self._metadata.index_columns[0], ascending=ascending,
+        return self.sort_values(by=self._metadata.index_columns, ascending=ascending,
                                 inplace=inplace, na_position=na_position)
 
     # TODO:  add keep = First

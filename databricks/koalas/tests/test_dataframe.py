@@ -328,6 +328,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.sort_index(inplace=True), pdf.sort_index(inplace=True))
         self.assert_eq(kdf, pdf)
 
+        # Assert multi-indices
+        pdf = pd.DataFrame({'A': range(4), 'B': range(4)[::-1]},
+                           index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(repr(kdf.sort_index()), repr(pdf.sort_index()))
+
     def test_nlargest(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
                             'b': [7, 6, 5, 4, 3, 2, 1]})
