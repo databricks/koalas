@@ -144,7 +144,8 @@ class AtIndexer(object):
         if sdf.count() < 1:
             raise KeyError("'%s" % row)
 
-        return DataFrame(sdf).to_pandas().iloc[:, 0].values
+        values = DataFrame(sdf).to_pandas().iloc[:, 0].values
+        return values[0] if len(values) == 1 else values
 
 
 class LocIndexer(object):

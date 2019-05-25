@@ -146,8 +146,8 @@ class IndexingTest(ReusedSQLTestCase):
         np.testing.assert_array_equal(kdf.at[9, 'b'], pdf.at[9, 'b'])
 
         # Assert .at for Series
-        self.assert_eq(test_series.at['b'], 6)
-        self.assert_eq(test_series.at['b'], pdf.loc[3].at['b'])
+        self.assertEqual(test_series.at['b'], 6)
+        self.assertEqual(test_series.at['b'], pdf.loc[3].at['b'])
 
         # Assert invalid column or index names result in a KeyError like with pandas
         with self.assertRaises(KeyError, msg='x'):
