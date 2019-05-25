@@ -24,12 +24,13 @@ from typing import Any, Optional, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like, \
+    is_dict_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
-                               IntegerType, LongType, ShortType, StructField, StructType,
-                               to_arrow_type)
+                               IntegerType, LongType, NumericType, ShortType, StructField,
+                               StructType, to_arrow_type)
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -160,11 +161,6 @@ class DataFrame(_Frame):
             self._metadata = Metadata(data_columns=self._sdf.schema.fieldNames())
         else:
             self._metadata = metadata
-
-    @property
-    def _index_columns(self):
-        return [self._sdf.__getitem__(field)
-                for field in self._metadata.index_columns]
 
     def _reduce_for_stat_function(self, sfun):
         """
@@ -556,130 +552,6 @@ class DataFrame(_Frame):
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_string, pd.DataFrame.to_string, args)
 
-    def to_json(self, path_or_buf=None, orient=None, date_format=None,
-                double_precision=10, force_ascii=True, date_unit='ms',
-                default_handler=None, lines=False, compression='infer',
-                index=True):
-        """
-        Convert the object to a JSON string.
-
-        Note NaN's and None will be converted to null and datetime objects
-        will be converted to UNIX timestamps.
-
-        .. note:: This method should only be used if the resulting JSON is expected
-            to be small, as all the data is loaded into the driver's memory.
-
-        Parameters
-        ----------
-        path_or_buf : string or file handle, optional
-            File path or object. If not specified, the result is returned as
-            a string.
-        orient : string
-            Indication of expected JSON string format.
-
-            * Series
-
-              - default is 'index'
-              - allowed values are: {'split','records','index','table'}
-
-            * DataFrame
-
-              - default is 'columns'
-              - allowed values are:
-                {'split','records','index','columns','values','table'}
-
-            * The format of the JSON string
-
-              - 'split' : dict like {'index' -> [index],
-                'columns' -> [columns], 'data' -> [values]}
-              - 'records' : list like
-                [{column -> value}, ... , {column -> value}]
-              - 'index' : dict like {index -> {column -> value}}
-              - 'columns' : dict like {column -> {index -> value}}
-              - 'values' : just the values array
-              - 'table' : dict like {'schema': {schema}, 'data': {data}}
-                describing the data, and the data component is
-                like ``orient='records'``.
-        date_format : {None, 'epoch', 'iso'}
-            Type of date conversion. 'epoch' = epoch milliseconds,
-            'iso' = ISO8601. The default depends on the `orient`. For
-            ``orient='table'``, the default is 'iso'. For all other orients,
-            the default is 'epoch'.
-        double_precision : int, default 10
-            The number of decimal places to use when encoding
-            floating point values.
-        force_ascii : bool, default True
-            Force encoded string to be ASCII.
-        date_unit : string, default 'ms' (milliseconds)
-            The time unit to encode to, governs timestamp and ISO8601
-            precision.  One of 's', 'ms', 'us', 'ns' for second, millisecond,
-            microsecond, and nanosecond respectively.
-        default_handler : callable, default None
-            Handler to call if object cannot otherwise be converted to a
-            suitable format for JSON. Should receive a single argument which is
-            the object to convert and return a serialisable object.
-        lines : bool, default False
-            If 'orient' is 'records' write out line delimited json format. Will
-            throw ValueError if incorrect 'orient' since others are not list
-            like.
-        compression : {'infer', 'gzip', 'bz2', 'zip', 'xz', None}
-            A string representing the compression to use in the output file,
-            only used when the first argument is a filename. By default, the
-            compression is inferred from the filename.
-        index : bool, default True
-            Whether to include the index values in the JSON string. Not
-            including the index (``index=False``) is only supported when
-            orient is 'split' or 'table'.
-
-        Examples
-        --------
-
-        >>> df = ks.DataFrame([['a', 'b'], ['c', 'd']],
-        ...                   index=['row 1', 'row 2'],
-        ...                   columns=['col 1', 'col 2'])
-        >>> df.to_json(orient='split')
-        '{"columns":["col 1","col 2"],\
-"index":["row 1","row 2"],\
-"data":[["a","b"],["c","d"]]}'
-
-        Encoding/decoding a Dataframe using ``'records'`` formatted JSON.
-        Note that index labels are not preserved with this encoding.
-
-        >>> df.to_json(orient='records')
-        '[{"col 1":"a","col 2":"b"},{"col 1":"c","col 2":"d"}]'
-
-        Encoding/decoding a Dataframe using ``'index'`` formatted JSON:
-
-        >>> df.to_json(orient='index')
-        '{"row 1":{"col 1":"a","col 2":"b"},"row 2":{"col 1":"c","col 2":"d"}}'
-
-        Encoding/decoding a Dataframe using ``'columns'`` formatted JSON:
-
-        >>> df.to_json(orient='columns')
-        '{"col 1":{"row 1":"a","row 2":"c"},"col 2":{"row 1":"b","row 2":"d"}}'
-
-        Encoding/decoding a Dataframe using ``'values'`` formatted JSON:
-
-        >>> df.to_json(orient='values')
-        '[["a","b"],["c","d"]]'
-
-        Encoding with Table Schema
-
-        >>> df.to_json(orient='table') # doctest: +SKIP
-        '{"schema": {"fields":[{"name":"index","type":"string"},\
-{"name":"col 1","type":"string"},\
-{"name":"col 2","type":"string"}],\
-"primaryKey":["index"],\
-"pandas_version":"0.20.0"}, \
-"data": [{"index":"row 1","col 1":"a","col 2":"b"},\
-{"index":"row 2","col 1":"c","col 2":"d"}]}'
-        """
-        # Make sure locals() call is at the top of the function so we don't capture local variables.
-        args = locals()
-        kdf = self
-        return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_json, pd.DataFrame.to_json, args)
-
     def to_dict(self, orient='dict', into=dict):
         """
         Convert the DataFrame to a dictionary.
@@ -773,105 +645,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf = self
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_dict, pd.DataFrame.to_dict, args)
-
-    def to_csv(self, path_or_buf=None, sep=",", na_rep='', float_format=None,
-               columns=None, header=True, index=True, index_label=None,
-               mode='w', encoding=None, compression='infer', quoting=None,
-               quotechar='"', line_terminator="\n", chunksize=None,
-               tupleize_cols=None, date_format=None, doublequote=True,
-               escapechar=None, decimal='.'):
-        """
-        Write object to a comma-separated values (csv) file.
-
-        .. note:: This method should only be used if the resulting CSV is expected
-            to be small, as all the data is loaded into the driver's memory.
-
-        Parameters
-        ----------
-        path_or_buf : str or file handle, default None
-            File path or object, if None is provided the result is returned as
-            a string.  If a file object is passed it should be opened with
-            `newline=''`, disabling universal newlines.
-
-        sep : str, default ','
-            String of length 1. Field delimiter for the output file.
-        na_rep : str, default ''
-            Missing data representation.
-        float_format : str, default None
-            Format string for floating point numbers.
-        columns : sequence, optional
-            Columns to write.
-        header : bool or list of str, default True
-            Write out the column names. If a list of strings is given it is
-            assumed to be aliases for the column names.
-        index : bool, default True
-            Write row names (index).
-        index_label : str or sequence, or False, default None
-            Column label for index column(s) if desired. If None is given, and
-            `header` and `index` are True, then the index names are used. A
-            sequence should be given if the object uses MultiIndex. If
-            False do not print fields for index names. Use index_label=False
-            for easier importing in R.
-        mode : str
-            Python write mode, default 'w'.
-        encoding : str, optional
-            A string representing the encoding to use in the output file,
-            defaults to 'ascii' on Python 2 and 'utf-8' on Python 3.
-        compression : str, default 'infer'
-            Compression mode among the following possible values: {'infer',
-            'gzip', 'bz2', 'zip', 'xz', None}. If 'infer' and `path_or_buf`
-            is path-like, then detect compression from the following
-            extensions: '.gz', '.bz2', '.zip' or '.xz'. (otherwise no
-            compression).
-        quoting : optional constant from csv module
-            Defaults to csv.QUOTE_MINIMAL. If you have set a `float_format`
-            then floats are converted to strings and thus csv.QUOTE_NONNUMERIC
-            will treat them as non-numeric.
-        quotechar : str, default '\"'
-            String of length 1. Character used to quote fields.
-        line_terminator : string, default '\\n'
-            The newline character or character sequence to use in the output
-            file. Defaults to `os.linesep`, which depends on the OS in which
-            this method is called ('\n' for linux, '\r\n' for Windows, i.e.).
-        chunksize : int or None
-            Rows to write at a time.
-        tupleize_cols : bool, default False
-            Write MultiIndex columns as a list of tuples (if True) or in
-            the new, expanded format, where each MultiIndex column is a row
-            in the CSV (if False).
-        date_format : str, default None
-            Format string for datetime objects.
-        doublequote : bool, default True
-            Control quoting of `quotechar` inside a field.
-        escapechar : str, default None
-            String of length 1. Character used to escape `sep` and `quotechar`
-            when appropriate.
-        decimal : str, default '.'
-            Character recognized as decimal separator. E.g. use ',' for
-            European data.
-
-        Returns
-        -------
-        None or str
-            If path_or_buf is None, returns the resulting csv format as a
-            string. Otherwise returns None.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame({'name': ['Raphael', 'Donatello'],
-        ...                    'mask': ['red', 'purple'],
-        ...                    'weapon': ['sai', 'bo staff']},
-        ...                     columns=['name', 'mask', 'weapon'])
-        >>> df.to_csv(index=False)
-        'name,mask,weapon\\nRaphael,red,sai\\nDonatello,purple,bo staff\\n'
-        """
-
-        # Make sure locals() call is at the top of the function so we don't capture local variables.
-        args = locals()
-        kdf = self
-
-        return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_csv, pd.DataFrame.to_csv, args)
 
     def to_latex(self, buf=None, columns=None, col_space=None, header=True, index=True,
                  na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
@@ -976,12 +749,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def index(self):
         """The index (row labels) Column of the DataFrame.
 
-        Currently supported only when the DataFrame has a single index.
+        Currently not supported when the DataFrame has no index.
+
+        See Also
+        --------
+        Index
         """
-        from databricks.koalas.series import Series
-        if len(self._metadata.index_map) != 1:
-            raise KeyError('Currently supported only when the DataFrame has a single index.')
-        return Series(self._index_columns[0], anchor=self, index=[])
+        from databricks.koalas.indexes import Index, MultiIndex
+        if len(self._metadata.index_map) == 0:
+            return None
+        elif len(self._metadata.index_map) == 1:
+            return Index(self)
+        else:
+            return MultiIndex(self)
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns.
@@ -1466,110 +1246,87 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                           [name for name, _ in pairs if name not in data_columns]))
         return DataFrame(sdf, metadata)
 
-    def to_excel(self, excel_writer, sheet_name="Sheet1", na_rep="", float_format=None,
-                 columns=None, header=True, index=True, index_label=None, startrow=0,
-                 startcol=0, engine=None, merge_cells=True, encoding=None, inf_rep="inf",
-                 verbose=True, freeze_panes=None):
+    def to_records(self, index=True, convert_datetime64=None,
+                   column_dtypes=None, index_dtypes=None):
         """
-        Write object to an Excel sheet.
+        Convert DataFrame to a NumPy record array.
 
-        .. note:: This method should only be used if the resulting DataFrame is expected
-                  to be small, as all the data is loaded into the driver's memory.
+        Index will be included as the first field of the record array if
+        requested.
 
-        To write a single object to an Excel .xlsx file it is only necessary to
-        specify a target file name. To write to multiple sheets it is necessary to
-        create an `ExcelWriter` object with a target file name, and specify a sheet
-        in the file to write to.
-
-        Multiple sheets may be written to by specifying unique `sheet_name`.
-        With all data written to the file it is necessary to save the changes.
-        Note that creating an `ExcelWriter` object with a file name that already
-        exists will result in the contents of the existing file being erased.
+        .. note:: This method should only be used if the resulting NumPy ndarray is
+            expected to be small, as all the data is loaded into the driver's memory.
 
         Parameters
         ----------
-        excel_writer : str or ExcelWriter object
-            File path or existing ExcelWriter.
-        sheet_name : str, default 'Sheet1'
-            Name of sheet which will contain DataFrame.
-        na_rep : str, default ''
-            Missing data representation.
-        float_format : str, optional
-            Format string for floating point numbers. For example
-            ``float_format="%%.2f"`` will format 0.1234 to 0.12.
-        columns : sequence or list of str, optional
-            Columns to write.
-        header : bool or list of str, default True
-            Write out the column names. If a list of string is given it is
-            assumed to be aliases for the column names.
         index : bool, default True
-            Write row names (index).
-        index_label : str or sequence, optional
-            Column label for index column(s) if desired. If not specified, and
-            `header` and `index` are True, then the index names are used. A
-            sequence should be given if the DataFrame uses MultiIndex.
-        startrow : int, default 0
-            Upper left cell row to dump data frame.
-        startcol : int, default 0
-            Upper left cell column to dump data frame.
-        engine : str, optional
-            Write engine to use, 'openpyxl' or 'xlsxwriter'. You can also set this
-            via the options ``io.excel.xlsx.writer``, ``io.excel.xls.writer``, and
-            ``io.excel.xlsm.writer``.
-        merge_cells : bool, default True
-            Write MultiIndex and Hierarchical Rows as merged cells.
-        encoding : str, optional
-            Encoding of the resulting excel file. Only necessary for xlwt,
-            other writers support unicode natively.
-        inf_rep : str, default 'inf'
-            Representation for infinity (there is no native representation for
-            infinity in Excel).
-        verbose : bool, default True
-            Display more information in the error logs.
-        freeze_panes : tuple of int (length 2), optional
-            Specifies the one-based bottommost row and rightmost column that
-            is to be frozen.
+            Include index in resulting record array, stored in 'index'
+            field or using the index label, if set.
+        convert_datetime64 : bool, default None
+            Whether to convert the index to datetime.datetime if it is a
+            DatetimeIndex.
+        column_dtypes : str, type, dict, default None
+            If a string or type, the data type to store all columns. If
+            a dictionary, a mapping of column names and indices (zero-indexed)
+            to specific data types.
+        index_dtypes : str, type, dict, default None
+            If a string or type, the data type to store all index levels. If
+            a dictionary, a mapping of index level names and indices
+            (zero-indexed) to specific data types.
+            This mapping is applied only if `index=True`.
 
-        Notes
-        -----
-        Once a workbook has been saved it is not possible write further data
-        without rewriting the whole workbook.
+        Returns
+        -------
+        numpy.recarray
+            NumPy ndarray with the DataFrame labels as fields and each row
+            of the DataFrame as entries.
+
+        See Also
+        --------
+        DataFrame.from_records: Convert structured or record ndarray
+            to DataFrame.
+        numpy.recarray: An ndarray that allows field access using
+            attributes, analogous to typed columns in a
+            spreadsheet.
 
         Examples
         --------
-        Create, write to and save a workbook:
+        >>> df = ks.DataFrame({'A': [1, 2], 'B': [0.5, 0.75]},
+        ...                   index=['a', 'b'])
+        >>> df
+           A     B
+        a  1  0.50
+        b  2  0.75
 
-        >>> df1 = ks.DataFrame([['a', 'b'], ['c', 'd']],
-        ...                    index=['row 1', 'row 2'],
-        ...                    columns=['col 1', 'col 2'])
-        >>> df1.to_excel("output.xlsx")  # doctest: +SKIP
+        >>> df.to_records() # doctest: +SKIP
+        rec.array([('a', 1, 0.5 ), ('b', 2, 0.75)],
+                  dtype=[('index', 'O'), ('A', '<i8'), ('B', '<f8')])
 
-        To specify the sheet name:
+        The index can be excluded from the record array:
 
-        >>> df1.to_excel("output.xlsx")  # doctest: +SKIP
-        >>> df1.to_excel("output.xlsx",
-        ...              sheet_name='Sheet_name_1')  # doctest: +SKIP
+        >>> df.to_records(index=False) # doctest: +SKIP
+        rec.array([(1, 0.5 ), (2, 0.75)],
+                  dtype=[('A', '<i8'), ('B', '<f8')])
 
-        If you wish to write to more than one sheet in the workbook, it is
-        necessary to specify an ExcelWriter object:
+        Specification of dtype for columns is new in Pandas 0.24.0.
+        Data types can be specified for the columns:
 
-        >>> with pd.ExcelWriter('output.xlsx') as writer:  # doctest: +SKIP
-        ...      df1.to_excel(writer, sheet_name='Sheet_name_1')
-        ...      df2.to_excel(writer, sheet_name='Sheet_name_2')
+        >>> df.to_records(column_dtypes={"A": "int32"}) # doctest: +SKIP
+        rec.array([('a', 1, 0.5 ), ('b', 2, 0.75)],
+                  dtype=[('index', 'O'), ('A', '<i4'), ('B', '<f8')])
 
-        To set the library that is used to write the Excel file,
-        you can pass the `engine` keyword (the default engine is
-        automatically chosen depending on the file extension):
+        Specification of dtype for index is new in Pandas 0.24.0.
+        Data types can also be specified for the index:
 
-        >>> df1.to_excel('output1.xlsx', engine='xlsxwriter')  # doctest: +SKIP
+        >>> df.to_records(index_dtypes="<S2") # doctest: +SKIP
+        rec.array([(b'a', 1, 0.5 ), (b'b', 2, 0.75)],
+                  dtype=[('index', 'S2'), ('A', '<i8'), ('B', '<f8')])
         """
-
-        # Make sure locals() call is at the top of the function so we don't capture local variables.
         args = locals()
         kdf = self
 
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_excel, pd.DataFrame.to_excel, args)
+            kdf.to_pandas(), self.to_records, pd.DataFrame.to_records, args)
 
     def copy(self) -> 'DataFrame':
         """
@@ -2104,7 +1861,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         except (KeyError, ValueError, IndexError):
             return default
 
-    def sort_values(self, by, ascending=True, inplace=False, na_position='last'):
+    def sort_values(self, by: Union[str, List[str]], ascending: Union[bool, List[bool]] = True,
+                    inplace: bool = False, na_position: str = 'last') -> Optional['DataFrame']:
         """
         Sort by the values along either axis.
 
@@ -2201,8 +1959,224 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if inplace:
             self._sdf = kdf._sdf
             self._metadata = kdf._metadata
+            return None
         else:
             return kdf
+
+    def sort_index(self, axis: int = 0, level: int = None, ascending: bool = True,
+                   inplace: bool = False, kind: str = None, na_position: str = 'last') \
+            -> Optional['DataFrame']:
+        """
+        Sort object by labels (along an axis)
+
+        Parameters
+        ----------
+        axis : index, columns to direct sorting. Currently, only axis = 0 is supported.
+        level : int or level name or list of ints or list of level names
+            if not None, sort on values in specified index level(s)
+        ascending : boolean, default True
+            Sort ascending vs. descending
+        inplace : bool, default False
+            if True, perform operation in-place
+        kind : str, default None
+            Koalas does not allow specifying the sorting algorithm at the moment, default None
+        na_position : {‘first’, ‘last’}, default ‘last’
+            first puts NaNs at the beginning, last puts NaNs at the end. Not implemented for
+            MultiIndex.
+
+        Returns
+        -------
+        sorted_obj : DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [2, 1, np.nan]}, index=['b', 'a', np.nan])
+
+        >>> df.sort_index()
+               A
+        a    1.0
+        b    2.0
+        NaN  NaN
+
+        >>> df.sort_index(ascending=False)
+               A
+        b    2.0
+        a    1.0
+        NaN  NaN
+
+        >>> df.sort_index(na_position='first')
+               A
+        NaN  NaN
+        a    1.0
+        b    2.0
+
+        >>> df.sort_index(inplace=True)
+        >>> df
+               A
+        a    1.0
+        b    2.0
+        NaN  NaN
+
+
+        >>> ks.DataFrame({'A': range(4), 'B': range(4)[::-1]},
+        ...              index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]]).sort_index()
+             A  B
+        a 0  3  0
+          1  2  1
+        b 0  1  2
+          1  0  3
+        """
+        if axis != 0:
+            raise ValueError("No other axes than 0 are supported at the moment")
+        if level is not None:
+            raise ValueError("The 'axis' argument is not supported at the moment")
+        if kind is not None:
+            raise ValueError("Specifying the sorting algorithm is supported at the moment.")
+        return self.sort_values(by=self._metadata.index_columns, ascending=ascending,
+                                inplace=inplace, na_position=na_position)
+
+    # TODO:  add keep = First
+    def nlargest(self, n: int, columns: 'Any') -> 'DataFrame':
+        """
+        Return the first `n` rows ordered by `columns` in descending order.
+
+        Return the first `n` rows with the largest values in `columns`, in
+        descending order. The columns that are not specified are returned as
+        well, but not used for ordering.
+
+        This method is equivalent to
+        ``df.sort_values(columns, ascending=False).head(n)``, but more
+        performant in Pandas.
+        In Koalas, thanks to Spark's lazy execution and query optimizer,
+        the two would have same performance.
+
+        Parameters
+        ----------
+        n : int
+            Number of rows to return.
+        columns : label or list of labels
+            Column label(s) to order by.
+
+        Returns
+        -------
+        DataFrame
+            The first `n` rows ordered by the given columns in descending
+            order.
+
+        See Also
+        --------
+        DataFrame.nsmallest : Return the first `n` rows ordered by `columns` in
+            ascending order.
+        DataFrame.sort_values : Sort DataFrame by the values.
+        DataFrame.head : Return the first `n` rows without re-ordering.
+
+        Notes
+        -----
+
+        This function cannot be used with all column types. For example, when
+        specifying columns with `object` or `category` dtypes, ``TypeError`` is
+        raised.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'X': [1, 2, 3, 5, 6, 7, np.nan],
+        ...                    'Y': [6, 7, 8, 9, 10, 11, 12]})
+        >>> df
+             X   Y
+        0  1.0   6
+        1  2.0   7
+        2  3.0   8
+        3  5.0   9
+        4  6.0  10
+        5  7.0  11
+        6  NaN  12
+
+        In the following example, we will use ``nlargest`` to select the three
+        rows having the largest values in column "population".
+
+        >>> df.nlargest(n=3, columns='X')
+             X   Y
+        5  7.0  11
+        4  6.0  10
+        3  5.0   9
+
+        >>> df.nlargest(n=3, columns=['Y', 'X'])
+             X   Y
+        6  NaN  12
+        5  7.0  11
+        4  6.0  10
+
+        """
+        kdf = self.sort_values(by=columns, ascending=False)  # type: Optional[DataFrame]
+        assert kdf is not None
+        return kdf.head(n=n)
+
+    # TODO: add keep = First
+    def nsmallest(self, n: int, columns: 'Any') -> 'DataFrame':
+        """
+        Return the first `n` rows ordered by `columns` in ascending order.
+
+        Return the first `n` rows with the smallest values in `columns`, in
+        ascending order. The columns that are not specified are returned as
+        well, but not used for ordering.
+
+        This method is equivalent to ``df.sort_values(columns, ascending=True).head(n)``,
+        but more performant. In Koalas, thanks to Spark's lazy execution and query optimizer,
+        the two would have same performance.
+
+        Parameters
+        ----------
+        n : int
+            Number of items to retrieve.
+        columns : list or str
+            Column name or names to order by.
+
+        Returns
+        -------
+        DataFrame
+
+        See Also
+        --------
+        DataFrame.nlargest : Return the first `n` rows ordered by `columns` in
+            descending order.
+        DataFrame.sort_values : Sort DataFrame by the values.
+        DataFrame.head : Return the first `n` rows without re-ordering.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'X': [1, 2, 3, 5, 6, 7, np.nan],
+        ...                    'Y': [6, 7, 8, 9, 10, 11, 12]})
+        >>> df
+             X   Y
+        0  1.0   6
+        1  2.0   7
+        2  3.0   8
+        3  5.0   9
+        4  6.0  10
+        5  7.0  11
+        6  NaN  12
+
+        In the following example, we will use ``nsmallest`` to select the
+        three rows having the smallest values in column "a".
+
+        >>> df.nsmallest(n=3, columns='X') # doctest: +NORMALIZE_WHITESPACE
+             X   Y
+        0  1.0   6
+        1  2.0   7
+        2  3.0   8
+
+        To order by the largest values in column "a" and then "c", we can
+        specify multiple columns like in the next example.
+
+        >>> df.nsmallest(n=3, columns=['Y', 'X']) # doctest: +NORMALIZE_WHITESPACE
+             X   Y
+        0  1.0   6
+        1  2.0   7
+        2  3.0   8
+        """
+        kdf = self.sort_values(by=columns, ascending=True)  # type: Optional[DataFrame]
+        assert kdf is not None
+        return kdf.head(n=n)
 
     def isin(self, values):
         """
@@ -2373,7 +2347,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return len(self), len(self.columns)
 
-    def merge(self, right: 'DataFrame', how: str = 'inner', on: str = None,
+    def merge(left, right: 'DataFrame', how: str = 'inner',
+              on: Optional[Union[str, List[str]]] = None,
+              left_on: Optional[Union[str, List[str]]] = None,
+              right_on: Optional[Union[str, List[str]]] = None,
               left_index: bool = False, right_index: bool = False,
               suffixes: Tuple[str, str] = ('_x', '_y')) -> 'DataFrame':
         """
@@ -2396,6 +2373,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         on: Column or index level names to join on. These must be found in both DataFrames. If on
             is None and not merging on indexes then this defaults to the intersection of the
             columns in both DataFrames.
+        left_on: Column or index level names to join on in the left DataFrame. Can also
+            be an array or list of arrays of the length of the left DataFrame.
+            These arrays are treated as if they are columns.
+        right_on: Column or index level names to join on in the right DataFrame. Can also
+            be an array or list of arrays of the length of the right DataFrame.
+            These arrays are treated as if they are columns.
         left_index: Use the index from the left DataFrame as the join key(s). If it is a
             MultiIndex, the number of keys in the other DataFrame (either the index or a number of
             columns) must match the number of levels.
@@ -2411,6 +2394,38 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
+        >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
+        ...                     'value': [1, 2, 3, 5]},
+        ...                    columns=['lkey', 'value'])
+        >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+        ...                     'value': [5, 6, 7, 8]},
+        ...                    columns=['rkey', 'value'])
+        >>> df1
+          lkey  value
+        0  foo      1
+        1  bar      2
+        2  baz      3
+        3  foo      5
+        >>> df2
+          rkey  value
+        0  foo      5
+        1  bar      6
+        2  baz      7
+        3  foo      8
+
+        Merge df1 and df2 on the lkey and rkey columns. The value columns have
+        the default suffixes, _x and _y, appended.
+
+        >>> merged = df1.merge(df2, left_on='lkey', right_on='rkey')
+        >>> merged.sort_values(by=['lkey', 'value_x', 'rkey', 'value_y'])
+          lkey  value_x rkey  value_y
+        0  bar        2  bar        6
+        1  baz        3  baz        7
+        2  foo        1  foo        5
+        3  foo        1  foo        8
+        4  foo        5  foo        5
+        5  foo        5  foo        8
+
         >>> left_kdf = ks.DataFrame({'A': [1, 2]})
         >>> right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
 
@@ -2439,10 +2454,39 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         As described in #263, joining string columns currently returns None for missing values
             instead of NaN.
         """
-        if on is None and not left_index and not right_index:
-            raise ValueError("At least 'on' or 'left_index' and 'right_index' have to be set")
-        if on is not None and (left_index or right_index):
-            raise ValueError("Only 'on' or 'left_index' and 'right_index' can be set")
+        _to_list = lambda o: o if o is None or is_list_like(o) else [o]
+
+        if on:
+            if left_on or right_on:
+                raise ValueError('Can only pass argument "on" OR "left_on" and "right_on", '
+                                 'not a combination of both.')
+            left_keys = _to_list(on)
+            right_keys = _to_list(on)
+        else:
+            # TODO: need special handling for multi-index.
+            if left_index:
+                left_keys = left._metadata.index_columns
+            else:
+                left_keys = _to_list(left_on)
+            if right_index:
+                right_keys = right._metadata.index_columns
+            else:
+                right_keys = _to_list(right_on)
+
+            if left_keys and not right_keys:
+                raise ValueError('Must pass right_on or right_index=True')
+            if right_keys and not left_keys:
+                raise ValueError('Must pass left_on or left_index=True')
+            if not left_keys and not right_keys:
+                common = list(left.columns.intersection(right.columns))
+                if len(common) == 0:
+                    raise ValueError(
+                        'No common columns to perform merge on. Merge options: '
+                        'left_on=None, right_on=None, left_index=False, right_index=False')
+                left_keys = common
+                right_keys = common
+            if len(left_keys) != len(right_keys):  # type: ignore
+                raise ValueError('len(left_keys) must equal len(right_keys)')
 
         if how == 'full':
             warnings.warn("Warning: While Koalas will accept 'full', you should use 'outer' " +
@@ -2454,41 +2498,55 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'how' parameter has to be amongst the following values: ",
                              "['inner', 'left', 'right', 'outer']")
 
-        if on is None:
-            # FIXME Move index string to constant?
-            on = '__index_level_0__'
-
-        left_table = self._sdf.alias('left_table')
+        left_table = left._sdf.alias('left_table')
         right_table = right._sdf.alias('right_table')
+
+        left_key_columns = [left_table[col] for col in left_keys]  # type: ignore
+        right_key_columns = [right_table[col] for col in right_keys]  # type: ignore
+
+        join_condition = reduce(lambda x, y: x & y,
+                                [lkey == rkey for lkey, rkey
+                                 in zip(left_key_columns, right_key_columns)])
+
+        joined_table = left_table.join(right_table, join_condition, how=how)
 
         # Unpack suffixes tuple for convenience
         left_suffix = suffixes[0]
         right_suffix = suffixes[1]
 
         # Append suffixes to columns with the same name to avoid conflicts later
-        duplicate_columns = list(self.columns & right.columns)
-        if duplicate_columns:
-            for duplicate_column_name in duplicate_columns:
-                left_table = left_table.withColumnRenamed(duplicate_column_name,
-                                                          duplicate_column_name + left_suffix)
-                right_table = right_table.withColumnRenamed(duplicate_column_name,
-                                                            duplicate_column_name + right_suffix)
+        duplicate_columns = (set(left._metadata.data_columns)
+                             & set(right._metadata.data_columns))
 
-        join_condition = (left_table[on] == right_table[on] if on not in duplicate_columns
-                          else left_table[on + left_suffix] == right_table[on + right_suffix])
-        joined_table = left_table.join(right_table, join_condition, how=how)
+        left_index_columns = set(left._metadata.index_columns)
+        right_index_columns = set(right._metadata.index_columns)
 
-        if on in duplicate_columns:
-            # Merge duplicate key columns
-            joined_table = joined_table.withColumnRenamed(on + left_suffix, on)
-            joined_table = joined_table.drop(on + right_suffix)
+        # TODO: in some case, we can keep indexes.
+        exprs = []
+        for col in left_table.columns:
+            if col in left_index_columns:
+                continue
+            scol = left_table[col]
+            if col in duplicate_columns:
+                if col in left_keys and col in right_keys:
+                    pass
+                else:
+                    col = col + left_suffix
+                    scol = scol.alias(col)
+            exprs.append(scol)
+        for col in right_table.columns:
+            if col in right_index_columns:
+                continue
+            scol = right_table[col]
+            if col in duplicate_columns:
+                if col in left_keys and col in right_keys:
+                    continue
+                else:
+                    col = col + right_suffix
+                    scol = scol.alias(col)
+            exprs.append(scol)
 
-        # Remove auxiliary index
-        # FIXME Move index string to constant?
-        joined_table = joined_table.drop('__index_level_0__')
-
-        kdf = DataFrame(joined_table)
-        return kdf
+        return DataFrame(joined_table.select(*exprs))
 
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
                random_state: Optional[int] = None) -> 'DataFrame':
@@ -2569,6 +2627,168 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf.sample(withReplacement=replace, fraction=frac, seed=random_state)
         return DataFrame(sdf, self._metadata.copy())
+
+    def astype(self, dtype) -> 'DataFrame':
+        """
+        Cast a pandas object to a specified dtype ``dtype``.
+
+        Parameters
+        ----------
+        dtype : data type, or dict of column name -> data type
+            Use a numpy.dtype or Python type to cast entire pandas object to
+            the same type. Alternatively, use {col: dtype, ...}, where col is a
+            column label and dtype is a numpy.dtype or Python type to cast one
+            or more of the DataFrame's columns to column-specific types.
+
+        Returns
+        -------
+        casted : same type as caller
+
+        See Also
+        --------
+        to_datetime : Convert argument to datetime.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 2, 3], 'b': [1, 2, 3]}, dtype='int64')
+        >>> df
+           a  b
+        0  1  1
+        1  2  2
+        2  3  3
+
+        Convert to float type:
+
+        >>> df.astype('float')
+             a    b
+        0  1.0  1.0
+        1  2.0  2.0
+        2  3.0  3.0
+
+        Convert to int64 type back:
+
+        >>> df.astype('int64')
+           a  b
+        0  1  1
+        1  2  2
+        2  3  3
+
+        Convert column a to float type:
+
+        >>> df.astype({'a': float})
+             a  b
+        0  1.0  1
+        1  2.0  2
+        2  3.0  3
+
+        """
+        results = []
+        if is_dict_like(dtype):
+            for col_name in dtype.keys():
+                if col_name not in self.columns:
+                    raise KeyError('Only a column name can be used for the '
+                                   'key in a dtype mappings argument.')
+            for col_name, col in self.iteritems():
+                if col_name in dtype:
+                    results.append(col.astype(dtype=dtype[col_name]))
+                else:
+                    results.append(col)
+        else:
+            for col_name, col in self.iteritems():
+                results.append(col.astype(dtype=dtype))
+        sdf = self._sdf.select(
+            self._metadata.index_columns + list(map(lambda ser: ser._scol, results)))
+        return DataFrame(sdf, self._metadata.copy())
+
+    # TODO: percentiles, include, and exclude should be implemented.
+    def describe(self) -> 'DataFrame':
+        """
+        Generate descriptive statistics that summarize the central tendency,
+        dispersion and shape of a dataset's distribution, excluding
+        ``NaN`` values.
+
+        Analyzes both numeric and object series, as well
+        as ``DataFrame`` column sets of mixed data types. The output
+        will vary depending on what is provided. Refer to the notes
+        below for more detail.
+
+        Returns
+        -------
+        Series or DataFrame
+            Summary statistics of the Series or Dataframe provided.
+
+        See Also
+        --------
+        DataFrame.count: Count number of non-NA/null observations.
+        DataFrame.max: Maximum of the values in the object.
+        DataFrame.min: Minimum of the values in the object.
+        DataFrame.mean: Mean of the values.
+        DataFrame.std: Standard deviation of the obersvations.
+
+        Notes
+        -----
+        For numeric data, the result's index will include ``count``,
+        ``mean``, ``stddev``, ``min``, ``max``.
+
+        Currently only numeric data is supported.
+
+        Examples
+        --------
+        Describing a numeric ``Series``.
+
+        >>> s = ks.Series([1, 2, 3])
+        >>> s.describe()
+        count     3.0
+        mean      2.0
+        stddev    1.0
+        min       1.0
+        max       3.0
+        Name: 0, dtype: float64
+
+        Describing a ``DataFrame``. Only numeric fields are returned.
+
+        >>> df = ks.DataFrame({'numeric1': [1, 2, 3],
+        ...                    'numeric2': [4.0, 5.0, 6.0],
+        ...                    'object': ['a', 'b', 'c']
+        ...                   },
+        ...                   columns=['numeric1', 'numeric2', 'object'])
+        >>> df.describe()
+                numeric1  numeric2
+        count        3.0       3.0
+        mean         2.0       5.0
+        stddev       1.0       1.0
+        min          1.0       4.0
+        max          3.0       6.0
+
+        Describing a column from a ``DataFrame`` by accessing it as
+        an attribute.
+
+        >>> df.numeric1.describe()
+        count     3.0
+        mean      2.0
+        stddev    1.0
+        min       1.0
+        max       3.0
+        Name: numeric1, dtype: float64
+        """
+        exprs = []
+        data_columns = []
+        for col in self.columns:
+            kseries = self[col]
+            spark_type = kseries.spark_type
+            if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
+                exprs.append(F.nanvl(kseries._scol, F.lit(None)).alias(kseries.name))
+                data_columns.append(kseries.name)
+            elif isinstance(spark_type, NumericType):
+                exprs.append(kseries._scol)
+                data_columns.append(kseries.name)
+
+        if len(exprs) == 0:
+            raise ValueError("Cannot describe a DataFrame without columns")
+
+        sdf = self._sdf.select(*exprs).describe()
+        return DataFrame(sdf, index=Metadata(data_columns=data_columns,
+                                             index_map=[('summary', None)])).astype('float64')
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series

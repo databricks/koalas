@@ -16,6 +16,8 @@
 
 import base64
 from io import BytesIO
+import matplotlib
+matplotlib.use('agg')
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd

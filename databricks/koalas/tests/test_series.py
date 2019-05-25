@@ -20,8 +20,8 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas
+from distutils.version import LooseVersion
 from databricks.koalas import Series
-from databricks.koalas.generic import max_display_count
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
@@ -42,7 +42,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertTrue(isinstance(ks['x'], Series))
 
-        # TODO: self.assert_eq(d + 1, pdf + 1)
+        self.assert_eq(ks + 1, self.ps + 1)
 
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
@@ -92,12 +92,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(ks.name, 'renamed')
         self.assert_eq(ks, ps)
 
-        ind = ps.index
-        dind = ks.index
-        ind.name = 'renamed'
-        dind.name = 'renamed'
-        self.assertEqual(ind.name, 'renamed')
-        self.assert_eq(list(dind.toPandas()), list(ind))
+        pidx = ps.index
+        kidx = ks.index
+        pidx.name = 'renamed'
+        kidx.name = 'renamed'
+        self.assertEqual(kidx.name, 'renamed')
+        self.assert_eq(kidx, pidx)
 
     def test_rename_method(self):
         # Series name
@@ -131,6 +131,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # self.assertis(res, ks)
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(ks, ps)
+
+    def test_values_property(self):
+        ks = self.ks
+        msg = ("Koalas does not support the 'values' property. If you want to collect your data " +
+               "as an NumPy array, use 'to_numpy()' instead.")
+        with self.assertRaises(NotImplementedError, msg=msg):
+            ks.values
 
     def test_to_numpy(self):
         s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
@@ -196,6 +203,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ks.name = 'index'
         self.assertPandasAlmostEqual(ks.value_counts().toPandas(), ps.value_counts())
 
+    def test_nsmallest(self):
+        sample_lst = [1, 2, 3, 4, np.nan, 6]
+        ps = pd.Series(sample_lst, name='x')
+        ks = koalas.Series(sample_lst, name='x')
+        self.assert_eq(ks.nsmallest(n=3), ps.nsmallest(n=3))
+        self.assert_eq(ks.nsmallest(), ps.nsmallest())
+
+    def test_nlargest(self):
+        sample_lst = [1, 2, 3, 4, np.nan, 6]
+        ps = pd.Series(sample_lst, name='x')
+        ks = koalas.Series(sample_lst, name='x')
+        self.assert_eq(ks.nlargest(n=3), ps.nlargest(n=3))
+        self.assert_eq(ks.nlargest(), ps.nlargest())
+
     def test_isnull(self):
         ps = pd.Series([1, 2, 3, 4, np.nan, 6], name='x')
         ks = koalas.from_pandas(ps)
@@ -208,6 +229,44 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(ks.notnull(), ps.notnull())
         self.assert_eq(ks.isnull(), ps.isnull())
+
+    def test_sort_values(self):
+        ps = pd.Series([1, 2, 3, 4, 5, None, 7], name='0')
+        ks = koalas.from_pandas(ps)
+        self.assert_eq(repr(ks.sort_values()), repr(ps.sort_values()))
+        self.assert_eq(repr(ks.sort_values(ascending=False)),
+                       repr(ps.sort_values(ascending=False)))
+        self.assert_eq(repr(ks.sort_values(na_position='first')),
+                       repr(ps.sort_values(na_position='first')))
+        self.assertRaises(ValueError, lambda: ks.sort_values(na_position='invalid'))
+        self.assert_eq(ks.sort_values(inplace=True), ps.sort_values(inplace=True))
+        self.assert_eq(repr(ks), repr(ps))
+
+    def test_sort_index(self):
+        ps = pd.Series([2, 1, np.nan], index=['b', 'a', np.nan], name='0')
+        ks = koalas.from_pandas(ps)
+
+        # Assert invalid parameters
+        self.assertRaises(ValueError, lambda: ks.sort_index(axis=1))
+        self.assertRaises(ValueError, lambda: ks.sort_index(level=42))
+        self.assertRaises(ValueError, lambda: ks.sort_index(kind='mergesort'))
+        self.assertRaises(ValueError, lambda: ks.sort_index(na_position='invalid'))
+
+        # Assert default behavior without parameters
+        self.assert_eq(ks.sort_index(), ps.sort_index(), almost=True)
+        # Assert sorting descending
+        self.assert_eq(ks.sort_index(ascending=False), ps.sort_index(ascending=False), almost=True)
+        # Assert sorting NA indices first
+        self.assert_eq(ks.sort_index(na_position='first'), ps.sort_index(na_position='first'),
+                       almost=True)
+        # Assert sorting inplace
+        self.assertEqual(ks.sort_index(inplace=True), ps.sort_index(inplace=True))
+        self.assert_eq(ks, ps, almost=True)
+
+        # Assert multi-indices
+        ps = pd.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0')
+        ks = koalas.from_pandas(ps)
+        self.assert_eq(ks.sort_index(), ps.sort_index(), almost=True)
 
     def test_to_datetime(self):
         ps = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
@@ -290,3 +349,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([1, 1, 1])
         kser = koalas.from_pandas(pser)
         self.assertEqual(pser.is_unique, kser.is_unique)
+
+    def test_to_list(self):
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+            self.assertEqual(self.ks.to_list(), self.ps.to_list())
