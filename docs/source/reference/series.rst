@@ -125,6 +125,23 @@ Serialization / IO / Conversion
    Series.to_csv
    Series.to_excel
 
+Plotting
+-------------------------------
+``Series.plot`` is both a callable method and a namespace attribute for
+specific plotting methods of the form ``Series.plot.<kind>``.
+
+.. autosummary::
+   :toctree: api/
+
+   Series.plot.bar
+   Series.plot.box
+   Series.plot.hist
+
+.. autosummary::
+   :toctree: api/
+
+   Series.hist
+
 Datetime Methods
 ----------------
 Methods accessible through `Series.dt`
@@ -147,22 +164,4 @@ Methods accessible through `Series.dt`
    DatetimeMethods.second
    DatetimeMethods.millisecond
    DatetimeMethods.microsecond
-
    DatetimeMethods.strftime
-
-Plotting
--------------------------------
-``Series.plot`` is both a callable method and a namespace attribute for
-specific plotting methods of the form ``Series.plot.<kind>``.
-
-.. autosummary::
-   :toctree: api/
-
-   Series.plot.bar
-   Series.plot.box
-   Series.plot.hist
-
-.. autosummary::
-   :toctree: api/
-
-   Series.hist
