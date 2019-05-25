@@ -86,10 +86,12 @@ class PythonModelWrapper(object):
         if isinstance(data, pd.DataFrame):
             return self._model.predict(data)
         if isinstance(data, DataFrame):
-            # cols = [data._sdf[n] for n in data.columns]
-            # return_col = self._model_udf(*cols)
-            s = F.struct(*data.columns)
-            return_col = self._model_udf(s)
+            cols = [data._sdf[n] for n in data.columns]
+            return_col = self._model_udf(*cols)
+            # TODO: the columns should be named according to the mlflow spec
+            # However, this is only possible with spark >= 2.4.3
+            # s = F.struct(*data.columns)
+            # return_col = self._model_udf(s)
             return Series(data=return_col, anchor=data, index=data._metadata.index_map)
 
 
@@ -167,12 +169,20 @@ def load_model(path, run_id=None, predict_type='infer') -> PythonModelWrapper:
     For example, this code will not work:
 
     >>> df = ks.DataFrame({"x1": [2.0], "x2": [3.0], "z": [-1]})
-    >>> features = ["x1", "x2"]
-    >>> y = model.predict(df[features])
+    >>> features = df[["x1", "x2"]]
+    >>> y = model.predict(features)
+    >>> # Works:
+    >>> features["y"] = y   # doctest: +SKIP
     >>> # Will fail with a message about dataframes not aligned.
     >>> df["y"] = y   # doctest: +SKIP
 
-    This is being tracked in the issue ticket https://github.com/databricks/koalas/issues/354.
+    A current workaround is to use the .merge() function, using the feature values
+    as merging keys.
 
+    >>> features['y'] = y
+    >>> everything = df.merge(features, on=['x1', 'x2'])
+    >>> everything
+        x1   x2  z         y
+    0  2.0  3.0 -1  1.376932
     """
     return PythonModelWrapper(path, run_id, predict_type)
