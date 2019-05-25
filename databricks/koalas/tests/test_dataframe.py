@@ -307,6 +307,33 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.sort_values('b', inplace=True), pdf.sort_values('b', inplace=True))
         self.assert_eq(repr(kdf), repr(pdf))
 
+    def test_sort_index(self):
+        pdf = pd.DataFrame({'A': [2, 1, np.nan], 'B': [np.nan, 0, np.nan]},
+                           index=['b', 'a', np.nan])
+        kdf = ks.from_pandas(pdf)
+
+        # Assert invalid parameters
+        self.assertRaises(ValueError, lambda: kdf.sort_index(axis=1))
+        self.assertRaises(ValueError, lambda: kdf.sort_index(level=42))
+        self.assertRaises(ValueError, lambda: kdf.sort_index(kind='mergesort'))
+        self.assertRaises(ValueError, lambda: kdf.sort_index(na_position='invalid'))
+
+        # Assert default behavior without parameters
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+        # Assert sorting descending
+        self.assert_eq(kdf.sort_index(ascending=False), pdf.sort_index(ascending=False))
+        # Assert sorting NA indices first
+        self.assert_eq(kdf.sort_index(na_position='first'), pdf.sort_index(na_position='first'))
+        # Assert sorting inplace
+        self.assertEqual(kdf.sort_index(inplace=True), pdf.sort_index(inplace=True))
+        self.assert_eq(kdf, pdf)
+
+        # Assert multi-indices
+        pdf = pd.DataFrame({'A': range(4), 'B': range(4)[::-1]},
+                           index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+
     def test_nlargest(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
                             'b': [7, 6, 5, 4, 3, 2, 1]})

@@ -154,7 +154,6 @@ class _MissingPandasLikeDataFrame(object):
     set_axis = unsupported_function('set_axis')
     shift = unsupported_function('shift')
     slice_shift = unsupported_function('slice_shift')
-    sort_index = unsupported_function('sort_index')
     squeeze = unsupported_function('squeeze')
     stack = unsupported_function('stack')
     sub = unsupported_function('sub')

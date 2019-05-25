@@ -1863,7 +1863,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         except (KeyError, ValueError, IndexError):
             return default
 
-    def sort_values(self, by, ascending=True, inplace=False, na_position='last'):
+    def sort_values(self, by: Union[str, List[str]], ascending: Union[bool, List[bool]] = True,
+                    inplace: bool = False, na_position: str = 'last') -> Optional['DataFrame']:
         """
         Sort by the values along either axis.
 
@@ -1960,8 +1961,81 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if inplace:
             self._sdf = kdf._sdf
             self._metadata = kdf._metadata
+            return None
         else:
             return kdf
+
+    def sort_index(self, axis: int = 0, level: int = None, ascending: bool = True,
+                   inplace: bool = False, kind: str = None, na_position: str = 'last') \
+            -> Optional['DataFrame']:
+        """
+        Sort object by labels (along an axis)
+
+        Parameters
+        ----------
+        axis : index, columns to direct sorting. Currently, only axis = 0 is supported.
+        level : int or level name or list of ints or list of level names
+            if not None, sort on values in specified index level(s)
+        ascending : boolean, default True
+            Sort ascending vs. descending
+        inplace : bool, default False
+            if True, perform operation in-place
+        kind : str, default None
+            Koalas does not allow specifying the sorting algorithm at the moment, default None
+        na_position : {‘first’, ‘last’}, default ‘last’
+            first puts NaNs at the beginning, last puts NaNs at the end. Not implemented for
+            MultiIndex.
+
+        Returns
+        -------
+        sorted_obj : DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [2, 1, np.nan]}, index=['b', 'a', np.nan])
+
+        >>> df.sort_index()
+               A
+        a    1.0
+        b    2.0
+        NaN  NaN
+
+        >>> df.sort_index(ascending=False)
+               A
+        b    2.0
+        a    1.0
+        NaN  NaN
+
+        >>> df.sort_index(na_position='first')
+               A
+        NaN  NaN
+        a    1.0
+        b    2.0
+
+        >>> df.sort_index(inplace=True)
+        >>> df
+               A
+        a    1.0
+        b    2.0
+        NaN  NaN
+
+
+        >>> ks.DataFrame({'A': range(4), 'B': range(4)[::-1]},
+        ...              index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]]).sort_index()
+             A  B
+        a 0  3  0
+          1  2  1
+        b 0  1  2
+          1  0  3
+        """
+        if axis != 0:
+            raise ValueError("No other axes than 0 are supported at the moment")
+        if level is not None:
+            raise ValueError("The 'axis' argument is not supported at the moment")
+        if kind is not None:
+            raise ValueError("Specifying the sorting algorithm is supported at the moment.")
+        return self.sort_values(by=self._metadata.index_columns, ascending=ascending,
+                                inplace=inplace, na_position=na_position)
 
     # TODO:  add keep = First
     def nlargest(self, n: int, columns: 'Any') -> 'DataFrame':
@@ -2035,7 +2109,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  6.0  10
 
         """
-        return self.sort_values(by=columns, ascending=False).head(n=n)
+        kdf = self.sort_values(by=columns, ascending=False)  # type: Optional[DataFrame]
+        assert kdf is not None
+        return kdf.head(n=n)
 
     # TODO: add keep = First
     def nsmallest(self, n: int, columns: 'Any') -> 'DataFrame':
@@ -2046,10 +2122,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ascending order. The columns that are not specified are returned as
         well, but not used for ordering.
 
-        This method is equivalent to
-        ``df.sort_values(columns, ascending=True).head(n)``, but more
-        performant.
-        In Koalas, thanks to Spark's lazy execution and query optimizer,
+        This method is equivalent to ``df.sort_values(columns, ascending=True).head(n)``,
+        but more performant. In Koalas, thanks to Spark's lazy execution and query optimizer,
         the two would have same performance.
 
         Parameters
@@ -2102,7 +2176,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  2.0   7
         2  3.0   8
         """
-        return self.sort_values(by=columns, ascending=True).head(n=n)
+        kdf = self.sort_values(by=columns, ascending=True)  # type: Optional[DataFrame]
+        assert kdf is not None
+        return kdf.head(n=n)
 
     def isin(self, values):
         """

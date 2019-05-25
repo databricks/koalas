@@ -556,6 +556,22 @@ class Series(_Frame, IndexOpsMixin):
     # Alias to maintain backward compatibility with Spark
     toPandas = to_pandas
 
+    def to_list(self):
+        """
+        Return a list of the values.
+
+        These are each a scalar type, which is a Python scalar
+        (for str, int, float) or a pandas scalar
+        (for Timestamp/Timedelta/Interval/Period)
+
+        .. note:: This method should only be used if the resulting list is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        """
+        return self.to_pandas().to_list()
+
+    tolist = to_list
+
     def fillna(self, value=None, axis=None, inplace=False):
         """Fill NA/NaN values.
 
@@ -824,6 +840,186 @@ class Series(_Frame, IndexOpsMixin):
         kdf.columns = [index_name, self.name]
         kdf._metadata = Metadata(data_columns=[self.name], index_map=[(index_name, None)])
         return _col(kdf)
+
+    def sort_values(self, ascending: bool = True, inplace: bool = False,
+                    na_position: str = 'last') -> Union['Series', None]:
+        """
+        Sort by the values.
+
+        Sort a Series in ascending or descending order by some criterion.
+
+        Parameters
+        ----------
+        ascending : bool or list of bool, default True
+             Sort ascending vs. descending. Specify list for multiple sort
+             orders.  If this is a list of bools, must match the length of
+             the by.
+        inplace : bool, default False
+             if True, perform operation in-place
+        na_position : {'first', 'last'}, default 'last'
+             `first` puts NaNs at the beginning, `last` puts NaNs at the end
+
+        Returns
+        -------
+        sorted_obj : Series ordered by values.
+
+        Examples
+        --------
+        >>> s = ks.Series([np.nan, 1, 3, 10, 5])
+        >>> s
+        0     NaN
+        1     1.0
+        2     3.0
+        3    10.0
+        4     5.0
+        Name: 0, dtype: float64
+
+        Sort values ascending order (default behaviour)
+
+        >>> s.sort_values(ascending=True)
+        1     1.0
+        2     3.0
+        4     5.0
+        3    10.0
+        0     NaN
+        Name: 0, dtype: float64
+
+        Sort values descending order
+
+        >>> s.sort_values(ascending=False)
+        3    10.0
+        4     5.0
+        2     3.0
+        1     1.0
+        0     NaN
+        Name: 0, dtype: float64
+
+        Sort values inplace
+
+        >>> s.sort_values(ascending=False, inplace=True)
+        >>> s
+        3    10.0
+        4     5.0
+        2     3.0
+        1     1.0
+        0     NaN
+        Name: 0, dtype: float64
+
+        Sort values putting NAs first
+
+        >>> s.sort_values(na_position='first')
+        0     NaN
+        1     1.0
+        2     3.0
+        4     5.0
+        3    10.0
+        Name: 0, dtype: float64
+
+        Sort a series of strings
+
+        >>> s = ks.Series(['z', 'b', 'd', 'a', 'c'])
+        >>> s
+        0    z
+        1    b
+        2    d
+        3    a
+        4    c
+        Name: 0, dtype: object
+
+        >>> s.sort_values()
+        3    a
+        1    b
+        4    c
+        2    d
+        0    z
+        Name: 0, dtype: object
+        """
+        ks_ = _col(self.to_dataframe().sort_values(by=self.name, ascending=ascending,
+                                                   na_position=na_position))
+        if inplace:
+            self._kdf = ks_.to_dataframe()
+            self._scol = ks_._scol
+            self._index_map = ks_._index_map
+            return None
+        else:
+            return ks_
+
+    def sort_index(self, axis: int = 0, level: int = None, ascending: bool = True,
+                   inplace: bool = False, kind: str = None, na_position: str = 'last') \
+            -> Optional['Series']:
+        """
+        Sort object by labels (along an axis)
+
+        Parameters
+        ----------
+        axis : index, columns to direct sorting. Currently, only axis = 0 is supported.
+        level : int or level name or list of ints or list of level names
+            if not None, sort on values in specified index level(s)
+        ascending : boolean, default True
+            Sort ascending vs. descending
+        inplace : bool, default False
+            if True, perform operation in-place
+        kind : str, default None
+            Koalas does not allow specifying the sorting algorithm at the moment, default None
+        na_position : {‘first’, ‘last’}, default ‘last’
+            first puts NaNs at the beginning, last puts NaNs at the end. Not implemented for
+            MultiIndex.
+
+        Returns
+        -------
+        sorted_obj : Series
+
+        Examples
+        --------
+        >>> df = ks.Series([2, 1, np.nan], index=['b', 'a', np.nan])
+
+        >>> df.sort_index()
+        a      1.0
+        b      2.0
+        NaN    NaN
+        Name: 0, dtype: float64
+
+        >>> df.sort_index(ascending=False)
+        b      2.0
+        a      1.0
+        NaN    NaN
+        Name: 0, dtype: float64
+
+        >>> df.sort_index(na_position='first')
+        NaN    NaN
+        a      1.0
+        b      2.0
+        Name: 0, dtype: float64
+
+        >>> df.sort_index(inplace=True)
+        >>> df
+        a      1.0
+        b      2.0
+        NaN    NaN
+        Name: 0, dtype: float64
+
+        >>> ks.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0').sort_index()
+        a  0    3
+           1    2
+        b  0    1
+           1    0
+        Name: 0, dtype: int64
+        """
+        if axis != 0:
+            raise ValueError("No other axes than 0 are supported at the moment")
+        if level is not None:
+            raise ValueError("The 'axis' argument is not supported at the moment")
+        if kind is not None:
+            raise ValueError("Specifying the sorting algorithm is supported at the moment.")
+        ks_ = _col(self.to_dataframe().sort_values(by=self._metadata.index_columns,
+                                                   ascending=ascending, na_position=na_position))
+        if inplace:
+            self._kdf = ks_.to_dataframe()
+            self._scol = ks_._scol
+            self._index_map = ks_._index_map
+            return None
+        else:
+            return ks_
 
     def corr(self, other, method='pearson'):
         """
