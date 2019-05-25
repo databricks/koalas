@@ -82,6 +82,71 @@ def _unfold(key, kseries):
     return rows_sel, cols_sel
 
 
+class AtIndexer(object):
+    """
+    Access a single value for a row/column label pair.
+    Similar to ``loc``, in that both provide label-based lookups. Use ``at`` if you only need to
+    get a single value in a DataFrame or Series.
+
+    Unlike pandas, Koalas only allows using ``at`` to get values but not to set them.
+
+    Raises
+    ------
+    KeyError
+        When label does not exist in DataFrame
+
+    Examples
+    --------
+    >>> kdf = ks.DataFrame([[0, 2, 3], [0, 4, 1], [10, 20, 30]],
+    ...                    index=[4, 5, 6], columns=['A', 'B', 'C'])
+    >>> kdf
+        A   B   C
+    4   0   2   3
+    5   0   4   1
+    6  10  20  30
+
+    Get value at specified row/column pair
+
+    >>> kdf.at[4, 'B']
+    2
+    """
+    def __init__(self, df_or_s):
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series
+        assert isinstance(df_or_s, (DataFrame, Series)), \
+            'unexpected argument type: {}'.format(type(df_or_s))
+        if isinstance(df_or_s, DataFrame):
+            self._kdf = df_or_s
+            self._ks = None
+        else:
+            # If df_or_col is Column, store both the DataFrame anchored to the Column and
+            # the Column itself.
+            self._kdf = df_or_s._kdf
+            self._ks = df_or_s
+
+    def __getitem__(self, key):
+        from databricks.koalas.frame import DataFrame
+
+        if self._ks is None and len(key) != 2:
+            raise TypeError("Use DataFrame.at like .at[row_index, column_name]")
+        if self._ks is not None and len(key) != 1:
+            raise TypeError("Use Series.at like .at[column_name]")
+
+        column = key[1] if len(key) > 1 else self._ks.name
+        if column is not None and column not in self._kdf._metadata.data_columns:
+            raise KeyError("'%s" % column)
+        series = self._ks if self._ks is not None else self._kdf[column]
+
+        row = key[0]
+        sdf = (series._kdf._sdf
+               .where(F.col(self._kdf._metadata.index_columns[0]) == row)
+               .select(column))
+        if sdf.count() < 1:
+            raise KeyError("'%s" % row)
+
+        return DataFrame(sdf).to_pandas().iloc[:, 0].values
+
+
 class LocIndexer(object):
     """
     Access a group of rows and columns by label(s) or a boolean Series.

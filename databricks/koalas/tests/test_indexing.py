@@ -126,6 +126,39 @@ class IndexingTest(ReusedSQLTestCase):
     def kdf(self):
         return ks.from_pandas(self.pdf)
 
+    def test_at(self):
+        pdf = self.pdf
+        kdf = self.kdf
+        # Create the equivalent of pdf.loc[3] as a Koalas Series
+        # This is necessary because .loc[n] does not currently work with Koalas DataFrames (#383)
+        test_series = ks.Series([3, 6], index=['a', 'b'], name='3')
+
+        # Assert invalided signatures raise TypeError
+        with self.assertRaises(TypeError, msg="Use DataFrame.at like .at[row_index, column_name]"):
+            kdf.at[3]
+        with self.assertRaises(TypeError, msg="Use Series.at like .at[column_name]"):
+            test_series.at[3, 'b']
+
+        # Assert .at for DataFrames
+        self.assertEqual(kdf.at[3, 'b'], 6)
+        self.assertEqual(kdf.at[3, 'b'], pdf.at[3, 'b'])
+        np.testing.assert_array_equal(kdf.at[9, 'b'], np.array([0, 0, 0]))
+        np.testing.assert_array_equal(kdf.at[9, 'b'], pdf.at[9, 'b'])
+
+        # Assert .at for Series
+        self.assert_eq(test_series.at['b'], 6)
+        self.assert_eq(test_series.at['b'], pdf.loc[3].at['b'])
+
+        # Assert invalid column or index names result in a KeyError like with pandas
+        with self.assertRaises(KeyError, msg='x'):
+            kdf.at[3, 'x']
+        with self.assertRaises(KeyError, msg=99):
+            kdf.at[99, 'b']
+
+        # Assert setting values fails
+        with self.assertRaises(TypeError):
+            kdf.at[3, 'b'] = 10
+
     def test_loc(self):
         kdf = self.kdf
         pdf = self.pdf
