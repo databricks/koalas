@@ -120,7 +120,7 @@ def load_model(path, run_id=None, predict_type='infer') -> PythonModelWrapper:
     --------
     Here is a full example that creates a model with scikit-learn and saves the model with
      MLflow. The model is then loaded as a predictor that can be applied on a Koalas
-     dataframe.
+     Dataframe.
 
     We first initialize our MLflow environment:
 
