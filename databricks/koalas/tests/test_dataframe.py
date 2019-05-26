@@ -778,3 +778,45 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaises(NotImplementedError):
             left_kdf.update(right_kdf, join='right')
+
+    def test_pivot_table(self):
+
+        pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
+                            'b': [1, 2, 2, 4, 2, 4],
+                            'c': [1, 2, 9, 4, 7, 4]},
+                           index=[10, 20, 30, 40, 50, 60])
+
+        kdf = ks.from_pandas(pdf)
+
+        msg = "values should be string or list of columns."
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.pivot_table(index=['c'], columns="a", values=5)
+
+        msg = "index should be a None or a list of columns."
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.pivot_table(index="c", columns="a", values="b")
+
+        pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
+                            'b': [1, 2, 2, 4, 2, 4],
+                            'e': [1, 2, 2, 4, 2, 4],
+                            'c': [1, 2, 9, 4, 7, 4]},
+                           index=[10, 20, 30, 40, 50, 60])
+        kdf = ks.from_pandas(pdf)
+
+        msg = "pivot_table doesn't support aggfuct as dict and without index."
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            kdf.pivot_table(columns="a", values=['b', 'e'], aggfunc={'b': 'mean', 'e': 'sum'})
+
+        msg = "columns should be string."
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.pivot_table(columns=["a"], values=['b'], aggfunc={'b': 'mean', 'e': 'sum'})
+
+        msg = "Columns in aggfunc must be the same as values."
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.pivot_table(index=['e', 'c'], columns="a", values='b',
+                            aggfunc={'b': 'mean', 'e': 'sum'})
+
+        msg = "Columns in aggfunc must be the same as values."
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.pivot_table(index=['e', 'c'], columns="a", values='b',
+                            aggfunc={'b': 'mean', 'e': 'sum'})

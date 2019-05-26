@@ -2467,6 +2467,58 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._internal.copy(sdf=self._sdf.limit(n)))
 
+    def pivot_table(self, values=None, index=None, columns=None,
+                    aggfunc='mean', fill_value=None):
+
+        if not isinstance(columns, str):
+            raise ValueError("columns should be string.")
+
+        if not isinstance(values, str) and not isinstance(values, list):
+            raise ValueError('values should be string or list of columns.')
+
+        if not isinstance(aggfunc, str) and (not isinstance(aggfunc, dict) or not all(
+                isinstance(key, str) and isinstance(value, str) for key, value in aggfunc.items())):
+            raise ValueError("aggfunc must be a dict mapping from column name (string) "
+                             "to aggregate functions (string).")
+
+        if isinstance(aggfunc, dict) and index is None:
+            raise NotImplementedError("pivot_table doesn't support aggfuct"
+                                      " as dict and without index.")
+
+        if isinstance(aggfunc, str):
+
+            agg_cols = [F.expr('{1}({0}) as {0}'.format(values, aggfunc))]
+
+        elif isinstance(aggfunc, dict):
+            agg_cols = [F.expr('{1}({0}) as {0}'.format(key, value))
+                        for key, value in aggfunc.items()]
+            agg_columns = [key for key, value in aggfunc.items()]
+
+            if set(agg_columns) != set(values):
+                raise ValueError("Columns in aggfunc must be the same as values.")
+
+        if index is None:
+
+            sdf = self._sdf.groupBy().pivot(pivot_col=columns).agg(*agg_cols)
+
+        elif isinstance(index, list):
+            sdf = self._sdf.groupBy(index).pivot(pivot_col=columns).agg(*agg_cols)
+        else:
+            raise ValueError("index should be a None or a list of columns.")
+
+        if fill_value is not None and isinstance(fill_value, (int, float)):
+            sdf = sdf.fillna(fill_value)
+
+        if index is not None:
+            return DataFrame(sdf).set_index(index)
+        else:
+            if isinstance(values, list):
+                index_values = values[-1]
+            else:
+                index_values = values
+
+            return DataFrame(sdf.withColumn(columns, F.lit(index_values))).set_index(columns)
+
     @property
     def columns(self):
         """The column labels of the DataFrame."""
