@@ -141,7 +141,6 @@ class _MissingPandasLikeMultiIndex(object):
     base = unsupported_property('base')
     codes = unsupported_property('codes')
     data = unsupported_property('data')
-    empty = unsupported_property('empty')
     flags = unsupported_property('flags')
     has_duplicates = unsupported_property('has_duplicates')
     is_all_dates = unsupported_property('is_all_dates')
