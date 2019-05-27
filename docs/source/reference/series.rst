@@ -51,6 +51,7 @@ Function application, GroupBy & Window
    :toctree: api/
 
    Series.groupby
+   Series.pipe
 
 .. _api.series.stats:
 
