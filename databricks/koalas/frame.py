@@ -27,7 +27,7 @@ import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like, \
     is_dict_like
 from pyspark import sql as spark
-from pyspark.sql import functions as F, Column
+from pyspark.sql import functions as F, Column, DataFrame as SDataFrame
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType, StructField,
                                StructType, to_arrow_type)
@@ -56,7 +56,9 @@ class DataFrame(_Frame):
     internally.
 
     :ivar _sdf: Spark Column instance
+    :type _sdf: SDataFrame
     :ivar _metadata: Metadata related to column names and index information.
+    :type _metadata: Metadata
 
     Parameters
     ----------
