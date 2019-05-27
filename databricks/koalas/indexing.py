@@ -132,6 +132,10 @@ class AtIndexer(object):
         if self._ks is not None and len(key) != 1:
             raise TypeError("Use Series.at like .at[row_index]")
 
+        # TODO Maybe extend to multilevel indices in the future
+        if len(self._kdf._metadata.index_columns) != 1:
+            raise ValueError("'.at' only supports indices with level 1 right now")
+
         column = key[1] if len(key) > 1 else self._ks.name
         if column is not None and column not in self._kdf._metadata.data_columns:
             raise KeyError("'%s" % column)
