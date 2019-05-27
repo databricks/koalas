@@ -56,6 +56,7 @@ Function application, GroupBy & Window
 .. autosummary::
    :toctree: api/
 
+   DataFrame.applymap
    DataFrame.pipe
    DataFrame.groupby
 
