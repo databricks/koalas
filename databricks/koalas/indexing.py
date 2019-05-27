@@ -138,7 +138,7 @@ class AtIndexer(object):
 
         column = key[1] if len(key) > 1 else self._ks.name
         if column is not None and column not in self._kdf._metadata.data_columns:
-            raise KeyError("'%s" % column)
+            raise KeyError("%s" % column)
         series = self._ks if self._ks is not None else self._kdf[column]
 
         row = key[0]
@@ -147,7 +147,7 @@ class AtIndexer(object):
                .select(column)
                .toPandas())
         if len(pdf) < 1:
-            raise KeyError("'%s" % row)
+            raise KeyError("%s" % row)
 
         values = pdf.iloc[:, 0].values
         return values[0] if len(values) == 1 else values
