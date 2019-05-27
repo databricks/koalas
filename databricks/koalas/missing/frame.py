@@ -53,7 +53,6 @@ class _MissingPandasLikeDataFrame(object):
     align = unsupported_function('align')
     all = unsupported_function('all')
     any = unsupported_function('any')
-    append = unsupported_function('append')
     apply = unsupported_function('apply')
     applymap = unsupported_function('applymap')
     asfreq = unsupported_function('asfreq')

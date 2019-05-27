@@ -529,6 +529,34 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                     'Cannot resolve column name "id"'):
             left.merge(right, on='id')
 
+    def test_append(self):
+        pdf = pd.DataFrame([[1, 2], [3, 4]], columns=list('AB'))
+        kdf = ks.from_pandas(pdf)
+        other_pdf = pd.DataFrame([[3, 4], [5, 6]], columns=list('BC'), index=[2, 3])
+        other_kdf = ks.from_pandas(other_pdf)
+
+        self.assert_eq(kdf.append(kdf), pdf.append(pdf))
+        self.assert_eq(kdf.append(kdf, ignore_index=True), pdf.append(pdf, ignore_index=True))
+
+        # Assert DataFrames with non-matching columns
+        self.assert_eq(kdf.append(other_kdf), pdf.append(other_pdf))
+
+        # Assert appending a Series fails
+        msg = "DataFrames.append() does not support appending Series to DataFrames"
+        with self.assertRaises(ValueError, msg=msg):
+            kdf.append(kdf['A'])
+
+        # Assert using the sort parameter raises an exception
+        msg = "The 'sort' parameter is currently not supported"
+        with self.assertRaises(ValueError, msg=msg):
+            kdf.append(kdf, sort=True)
+
+        # Assert using 'verify_integrity' only raises an exception for overlapping indices
+        kdf.append(other_kdf, verify_integrity=True)
+        msg = "Indices have overlapping values"
+        with self.assertRaises(ValueError, msg=msg):
+            kdf.append(kdf, verify_integrity=True)
+
     def test_clip(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})
         kdf = ks.from_pandas(pdf)

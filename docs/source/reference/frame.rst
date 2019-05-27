@@ -116,6 +116,7 @@ Combining / joining / merging
 .. autosummary::
    :toctree: api/
 
+   DataFrame.append
    DataFrame.assign
 
 Serialization / IO / Conversion

@@ -2548,6 +2548,96 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(joined_table.select(*exprs))
 
+    def append(self, other: 'DataFrame', ignore_index: bool = False,
+               verify_integrity: bool = False, sort: bool = None) -> 'DataFrame':
+        """
+        Append rows of other to the end of caller, returning a new object.
+
+        Columns in other that are not in the caller are added as new columns.
+
+        Parameters
+        ----------
+        other : DataFrame or Series/dict-like object, or list of these
+            The data to append.
+
+        ignore_index : boolean, default False
+            If True, do not use the index labels.
+
+        verify_integrity : boolean, default False
+            If True, raise ValueError on creating index with duplicates.
+
+        sort : boolean, default None
+            Currently not supported.
+
+        Returns
+        -------
+        appended : DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[1, 2], [3, 4]], columns=list('AB'))
+
+        >>> df.append(df)
+           A  B
+        0  1  2
+        1  3  4
+        0  1  2
+        1  3  4
+
+        >>> df.append(df, ignore_index=True)
+           A  B
+        0  1  2
+        1  3  4
+        2  1  2
+        3  3  4
+        """
+        if isinstance(other, ks.Series):
+            raise ValueError("DataFrames.append() does not support appending Series to DataFrames")
+        if sort is not None:
+            raise ValueError("The 'sort' parameter is currently not supported")
+
+        self_sdf = self._sdf
+        other_sdf = other._sdf
+
+        index_columns = self._metadata.index_columns
+        if len(index_columns) != len(other._metadata.index_columns):
+            raise ValueError("Both DataFrames have to have the same number of index levels")
+        # TODO Maybe extend to multilevel indices in the future
+        if len(index_columns) != 1 or len(other._metadata.index_columns) != 1:
+            raise ValueError("DataFrames.append() only supports indices with level 1 right now")
+
+        if verify_integrity:
+            if (self_sdf.select(index_columns[0])
+                    .intersect(other_sdf.select(index_columns[0]))
+                    .count()) > 0:
+                raise ValueError("Indices have overlapping values")
+
+        # Keep schema before it gets modified by adding columns
+        self_schema_fields = self_sdf._schema.fields
+        for schema_field in other_sdf._schema.fields:
+            col_name, col_type = schema_field.name, schema_field.dataType
+            if col_name not in (index_columns + self._metadata.data_columns):
+                self_sdf = self_sdf.withColumn(col_name, F.lit(None).cast(col_type))
+        for schema_field in self_schema_fields:
+            col_name, col_type = schema_field.name, schema_field.dataType
+            if col_name not in (index_columns + other._metadata.data_columns):
+                other_sdf = other_sdf.withColumn(col_name, F.lit(None).cast(col_type))
+
+        # Make sure both DataFrames have the same column order
+        common_column_names = (self._metadata.data_columns +
+                               [col_name for col_name in other._metadata.data_columns
+                                if col_name not in self._metadata.data_columns])
+        self_sdf = self_sdf.select(index_columns + common_column_names)
+        other_sdf = other_sdf.select(index_columns + common_column_names)
+
+        union = self_sdf.union(other_sdf)
+
+        # Indices have to be fixed manually though
+        index = Metadata(data_columns=common_column_names,
+                         index_map=[(col_name, None) for col_name in self._metadata.index_columns]
+                         if not ignore_index else None)
+        return ks.DataFrame(union, index=index)
+
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
                random_state: Optional[int] = None) -> 'DataFrame':
         """

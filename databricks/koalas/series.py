@@ -1212,6 +1212,61 @@ class Series(_Frame, IndexOpsMixin):
         """
         return self._reduce_for_stat_function(_Frame._count_expr)
 
+    def append(self, to_append: 'Series', ignore_index: bool = False,
+               verify_integrity: bool = False) -> 'Series':
+        """
+        Concatenate two or more Series.
+
+        Parameters
+        ----------
+        to_append : Series or list/tuple of Series
+        ignore_index : boolean, default False
+            If True, do not use the index labels.
+        verify_integrity : boolean, default False
+            If True, raise Exception on creating index with duplicates
+
+        Returns
+        -------
+        appended : Series
+
+        Examples
+        --------
+        >>> s1 = ks.Series([1, 2, 3])
+        >>> s2 = ks.Series([4, 5, 6])
+        >>> s3 = ks.Series([4, 5, 6], index=[3,4,5])
+
+        >>> s1.append(s2)
+        0    1
+        1    2
+        2    3
+        0    4
+        1    5
+        2    6
+        Name: 0, dtype: int64
+
+        >>> s1.append(s3)
+        0    1
+        1    2
+        2    3
+        3    4
+        4    5
+        5    6
+        Name: 0, dtype: int64
+
+        With ignore_index set to True:
+
+        >>> s1.append(s2, ignore_index=True)
+        0    1
+        1    2
+        2    3
+        3    4
+        4    5
+        5    6
+        Name: 0, dtype: int64
+        """
+        return _col(self.to_dataframe().append(to_append.to_dataframe(), ignore_index,
+                                               verify_integrity))
+
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
                random_state: Optional[int] = None) -> 'Series':
         return _col(self.to_dataframe().sample(
