@@ -142,13 +142,14 @@ class AtIndexer(object):
         series = self._ks if self._ks is not None else self._kdf[column]
 
         row = key[0]
-        sdf = (series._kdf._sdf
+        pdf = (series._kdf._sdf
                .where(F.col(self._kdf._metadata.index_columns[0]) == row)
-               .select(column))
-        if sdf.count() < 1:
+               .select(column)
+               .toPandas())
+        if len(pdf) < 1:
             raise KeyError("'%s" % row)
 
-        values = DataFrame(sdf).to_pandas().iloc[:, 0].values
+        values = pdf.iloc[:, 0].values
         return values[0] if len(values) == 1 else values
 
 
