@@ -88,7 +88,10 @@ class AtIndexer(object):
     Similar to ``loc``, in that both provide label-based lookups. Use ``at`` if you only need to
     get a single value in a DataFrame or Series.
 
-    Unlike pandas, Koalas only allows using ``at`` to get values but not to set them.
+    .. note:: Unlike pandas, Koalas only allows using ``at`` to get values but not to set them.
+
+    .. note:: Warning: If ``row_index`` matches a lot of rows, large amounts of data will be
+        fetched, potentially causing your machine to run out of memory.
 
     Raises
     ------
