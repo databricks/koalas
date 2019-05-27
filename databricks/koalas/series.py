@@ -154,6 +154,91 @@ class Series(_Frame, IndexOpsMixin):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self.schema.fields[-1].dataType
 
+    # TODO: arg should support Series
+    def map(self, arg):
+        """
+        Map values of Series according to input correspondence.
+
+        Used for substituting each value in a Series with another value,
+        that may be derived from a function, a ``dict``.
+
+        Parameters
+        ----------
+        arg : function or dict
+            Mapping correspondence.
+
+        Returns
+        -------
+        Series
+            Same index as caller.
+
+        See Also
+        --------
+        Series.apply : For applying more complex functions on a Series.
+        DataFrame.applymap : Apply a function elementwise on a whole DataFrame.
+
+        Notes
+        -----
+        When ``arg`` is a dictionary, values in Series that are not in the
+        dictionary (as keys) are converted to ``None``. However, if the
+        dictionary is a ``dict`` subclass that defines ``__missing__`` (i.e.
+        provides a method for default values), then this default is used
+        rather than ``None``.
+
+        Examples
+        --------
+        >>> s = ks.Series(['cat', 'dog', None, 'rabbit'])
+        >>> s
+        0       cat
+        1       dog
+        2      None
+        3    rabbit
+        Name: 0, dtype: object
+
+        ``map`` accepts a ``dict``. Values that are not found
+        in the ``dict`` are converted to ``NaN``, unless the dict has a default
+        value (e.g. ``defaultdict``):
+
+        >>> s.map({'cat': 'kitten', 'dog': 'puppy'})
+        0    kitten
+        1     puppy
+        2      None
+        3      None
+        Name: 0, dtype: object
+
+        It also accepts a function:
+
+        >>> def format(x) -> str:
+        ...     return 'I am a {}'.format(x)
+        >>> s.map(format)
+        0       I am a cat
+        1       I am a dog
+        2      I am a None
+        3    I am a rabbit
+        Name: 0, dtype: object
+        """
+        if isinstance(arg, dict):
+            is_start = True
+            # In case dictionary is empty.
+            current = F.when(F.lit(False), F.lit(None))
+
+            for to_replace, value in arg.items():
+                if is_start:
+                    current = F.when(self._scol == F.lit(to_replace), value)
+                    is_start = False
+                else:
+                    current = current.when(self._scol == F.lit(to_replace), value)
+
+            if hasattr(arg, "__missing__"):
+                tmp_val = arg[np._NoValue]
+                del arg[np._NoValue]  # Remove in case it's set in defaultdict.
+                current = current.otherwise(F.lit(tmp_val))
+            else:
+                current = current.otherwise(F.lit(None))
+            return Series(current, anchor=self._kdf, index=self._index_map).rename(self.name)
+        else:
+            return self.apply(arg)
+
     def astype(self, dtype) -> 'Series':
         """
         Cast a Koalas object to a specified dtype ``dtype``.
@@ -1262,7 +1347,7 @@ class Series(_Frame, IndexOpsMixin):
         London      400
         New York    441
         Helsinki    144
-        Name: square(0), dtype: int64
+        Name: 0, dtype: int64
 
 
         Define a custom function that needs additional positional
@@ -1276,7 +1361,7 @@ class Series(_Frame, IndexOpsMixin):
         London      15
         New York    16
         Helsinki     7
-        Name: subtract_custom_value(0), dtype: int64
+        Name: 0, dtype: int64
 
 
         Define a custom function that takes keyword arguments
@@ -1291,7 +1376,7 @@ class Series(_Frame, IndexOpsMixin):
         London      95
         New York    96
         Helsinki    87
-        Name: add_custom_values(0), dtype: int64
+        Name: 0, dtype: int64
 
 
         Use a function from the Numpy library
@@ -1302,8 +1387,9 @@ class Series(_Frame, IndexOpsMixin):
         London      2.995732
         New York    3.044522
         Helsinki    2.484907
-        Name: numpy_log(0), dtype: float64
+        Name: 0, dtype: float64
         """
+        assert callable(func), "the first argument should be a callable function."
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
         if return_sig is None:
@@ -1311,7 +1397,7 @@ class Series(_Frame, IndexOpsMixin):
 
         apply_each = wraps(func)(lambda s, *a, **k: s.apply(func, args=a, **k))
         wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
-        return wrapped(self, *args, **kwds)
+        return wrapped(self, *args, **kwds).rename(self.name)
 
     def describe(self) -> 'Series':
         return _col(self.to_dataframe().describe())

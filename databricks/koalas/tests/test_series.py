@@ -15,6 +15,7 @@
 #
 
 import inspect
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -353,3 +354,17 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_to_list(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
             self.assertEqual(self.ks.to_list(), self.ps.to_list())
+
+    def test_map(self):
+        pser = pd.Series(['cat', 'dog', None, 'rabbit'])
+        kser = koalas.from_pandas(pser)
+        # Currently Koalas doesn't return NaN as Pandas does.
+        self.assertEqual(
+            repr(kser.map({})),
+            repr(pser.map({}).replace({pd.np.nan: None}).rename(0)))
+
+        d = defaultdict(lambda: "abc")
+        self.assertTrue("abc" in repr(kser.map(d)))
+        self.assertEqual(
+            repr(kser.map(d)),
+            repr(pser.map(d).rename(0)))
