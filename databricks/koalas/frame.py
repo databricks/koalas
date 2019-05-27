@@ -765,6 +765,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return MultiIndex(self)
 
+    @property
+    def empty(self):
+        """
+        Returns true if the current DataFrame is empty. Otherwise, returns false.
+
+        Examples
+        --------
+        >>> ks.range(10).empty
+        False
+
+        >>> ks.range(0).empty
+        True
+        """
+        return self._sdf.rdd.isEmpty()
+
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns.
 

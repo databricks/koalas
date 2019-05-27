@@ -29,6 +29,7 @@ Attributes
    Series.schema
    Series.shape
    Series.size
+   Series.empty
 
 Conversion
 ----------
