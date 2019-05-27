@@ -130,7 +130,7 @@ class AtIndexer(object):
         if self._ks is None and len(key) != 2:
             raise TypeError("Use DataFrame.at like .at[row_index, column_name]")
         if self._ks is not None and len(key) != 1:
-            raise TypeError("Use Series.at like .at[column_name]")
+            raise TypeError("Use Series.at like .at[row_index]")
 
         column = key[1] if len(key) > 1 else self._ks.name
         if column is not None and column not in self._kdf._metadata.data_columns:
