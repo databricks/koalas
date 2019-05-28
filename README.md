@@ -1,6 +1,6 @@
 
 
-# Koalas: pandas API on Spark <!-- omit in toc -->
+# Koalas: pandas API on Apache Spark <!-- omit in toc -->
 
 The Koalas project makes data scientists more productive when interacting with big data, by implementing the pandas DataFrame API on top of Apache Spark.
 
