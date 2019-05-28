@@ -46,11 +46,8 @@ That's it. Your contribution, once merged, will be available in the next release
 
 ## Environment Setup
 
-**Conda**
-
 We recommend setting up a Conda environment for development:
 ```bash
-# Python 3.6+ is required
 conda create --name koalas-dev-env python=3.6
 conda activate koalas-dev-env
 conda install -c conda-forge pyspark=2.4
@@ -63,14 +60,6 @@ Once setup, make sure you switch to `koalas-dev-env` before development:
 conda activate koalas-dev-env
 ```
 
-**pip**
-
-You can use `pip` alternatively if your Python is 3.5+.
-```bash
-pip install pyspark=2.4
-pip install -r requirements-dev.txt
-pip install -e .  # installs koalas from current checkout
-```
 
 ## Running Tests
 
