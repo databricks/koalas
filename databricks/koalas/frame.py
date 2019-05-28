@@ -2540,8 +2540,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._metadata.index_columns + list(map(lambda ser: ser._scol, results)))
         return DataFrame(sdf, self._metadata.copy())
 
-    # TODO: percentiles, include, and exclude should be implemented.
-    def describe(self, percentiles=None) -> 'DataFrame':
+    # TODO: include, and exclude should be implemented.
+    def describe(self, percentiles: Optional[List[float]] = None) -> 'DataFrame':
         """
         Generate descriptive statistics that summarize the central tendency,
         dispersion and shape of a dataset's distribution, excluding
@@ -2554,7 +2554,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        percentiles : list of ``float`` in range [0.0, 1.0], default None
+        percentiles : list of ``float`` in range [0.0, 1.0], default [0.25, 0.5, 0.75]
             A list of percentiles to be computed.
 
         Returns
@@ -2684,7 +2684,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf.select(*exprs).summary(stats)
 
-        return DataFrame(sdf, index=Metadata(data_columns=data_columns,
+        return DataFrame(sdf.replace("stddev","std"), index=Metadata(data_columns=data_columns,
                                              index_map=[('summary', None)])).astype('float64')
 
     def _pd_getitem(self, key):

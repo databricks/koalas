@@ -1117,7 +1117,7 @@ class Series(_Frame, IndexOpsMixin):
         wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
         return wrapped(self, *args, **kwds)
 
-    def describe(self, percentiles=None) -> 'Series':
+    def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
         return _col(self.to_dataframe().describe(percentiles))
 
     describe.__doc__ = DataFrame.describe.__doc__
