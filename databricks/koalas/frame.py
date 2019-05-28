@@ -40,6 +40,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.typedef import infer_pd_series_spark_type
+from contextlib import contextmanager
 
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
@@ -1110,6 +1111,35 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return self
         else:
             return DataFrame(self)
+
+    @contextmanager
+    def cache(self):
+        """
+        Yields and caches the current DataFrame as a Spark DataFrame.
+
+        The Spark DataFrame is yielded as a protected resource which gets uncached after execution
+        goes of the context.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'])
+        >>> df
+           dogs  cats
+        0   0.2   0.3
+        1   0.0   0.6
+        2   0.6   0.0
+        3   0.2   0.1
+        >>> with df.cache() as cached_df:
+        ...     print(cached_df.columns)
+        ...
+        ['__index_level_0__', 'dogs', 'cats']
+        """
+        sdf = self.to_spark()
+        try:
+            yield sdf.cache()
+        finally:
+            sdf.unpersist()
 
     def to_spark(self):
         """
