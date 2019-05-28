@@ -20,7 +20,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 import re
 import inspect
 from functools import partial, wraps
-from typing import Any, Optional, Union
+from typing import Any, Optional, List, Union
 
 import numpy as np
 import pandas as pd
