@@ -2583,14 +2583,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> s = ks.Series([1, 2, 3])
         >>> s.describe()
-        count      3.0
-        mean       2.0
-        std        1.0
-        min        1.0
-        25%        1.0
-        50%        2.0
-        75%        3.0
-        max        3.0
+        count    3.0
+        mean     2.0
+        std      1.0
+        min      1.0
+        25%      1.0
+        50%      2.0
+        75%      3.0
+        max      3.0
         Name: 0, dtype: float64
 
         Describing a ``DataFrame``. Only numeric fields are returned.
@@ -2601,15 +2601,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                   },
         ...                   columns=['numeric1', 'numeric2', 'object'])
         >>> df.describe()
-                numeric1  numeric2
-        count        3.0       3.0
-        mean         2.0       5.0
-        std          1.0       1.0
-        min          1.0       4.0
-        25%          1.0       4.0
-        50%          2.0       5.0
-        75%          3.0       6.0
-        max          3.0       6.0
+               numeric1  numeric2
+        count       3.0       3.0
+        mean        2.0       5.0
+        std         1.0       1.0
+        min         1.0       4.0
+        25%         1.0       4.0
+        50%         2.0       5.0
+        75%         3.0       6.0
+        max         3.0       6.0
 
         Describing a ``DataFrame`` and selecting custom percentiles.
 
@@ -2618,42 +2618,42 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                   },
         ...                   columns=['numeric1', 'numeric2'])
         >>> df.describe(percentiles = [0.85, 0.15])
-                numeric1  numeric2
-        count        3.0       3.0
-        mean         2.0       5.0
-        std          1.0       1.0
-        min          1.0       4.0
-        15%          1.0       4.0
-        50%          2.0       5.0
-        85%          3.0       6.0
-        max          3.0       6.0
+               numeric1  numeric2
+        count       3.0       3.0
+        mean        2.0       5.0
+        std         1.0       1.0
+        min         1.0       4.0
+        15%         1.0       4.0
+        50%         2.0       5.0
+        85%         3.0       6.0
+        max         3.0       6.0
 
         Describing a column from a ``DataFrame`` by accessing it as
         an attribute.
 
         >>> df.numeric1.describe()
-        count     3.0
-        mean      2.0
-        std       1.0
-        min       1.0
-        25%       1.0
-        50%       2.0
-        75%       3.0
-        max       3.0
+        count    3.0
+        mean     2.0
+        std      1.0
+        min      1.0
+        25%      1.0
+        50%      2.0
+        75%      3.0
+        max      3.0
         Name: numeric1, dtype: float64
 
         Describing a column from a ``DataFrame`` by accessing it as
         an attribute and selecting custom percentiles.
 
         >>> df.numeric1.describe(percentiles = [0.85, 0.15])
-        count     3.0
-        mean      2.0
-        std       1.0
-        min       1.0
-        15%       1.0
-        50%       2.0
-        85%       3.0
-        max       3.0
+        count    3.0
+        mean     2.0
+        std      1.0
+        min      1.0
+        15%      1.0
+        50%      2.0
+        85%      3.0
+        max      3.0
         Name: numeric1, dtype: float64
         """
         exprs = []
