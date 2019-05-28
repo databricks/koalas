@@ -63,11 +63,9 @@ install:
   # one of the dependency requires Python 3.6 Conda specifically.
   - if [[ $TRAVIS_PYTHON_VERSION == "3.5" ]]; then
       pip install -r requirements-dev.txt;
-      # Show installed packages
       pip list;
     else
       conda install -c conda-forge --yes --file requirements-dev.txt;
-      # Show installed packages
       conda list;
     fi
 
