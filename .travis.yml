@@ -58,6 +58,7 @@ install:
   - conda config --env --add pinned_packages pandas==$PANDAS_VERSION
   - conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
   - conda install -c conda-forge --yes codecov
+
   # Test PyPI installation at Python 3.5. This is also because
   # one of the dependency requires Python 3.6 Conda specifically.
   - if [[ $TRAVIS_PYTHON_VERSION == "3.5" ]]; then
@@ -67,6 +68,7 @@ install:
       conda install -c conda-forge --yes --file requirements-dev.txt;
       conda list;
     fi
+
   # Useful for to_clipboard test
   - export DISPLAY=:0.0
   - sudo apt-get install xclip
