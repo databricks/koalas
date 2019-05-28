@@ -2583,14 +2583,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> s = ks.Series([1, 2, 3])
         >>> s.describe()
-        count     3.0
-        mean      2.0
-        std       1.0
-        min       1.0
-        25%       1.0
-        50%       2.0
-        75%       3.0
-        max       3.0
+        count      3.0
+        mean       2.0
+        std        1.0
+        min        1.0
+        25%        1.0
+        50%        2.0
+        75%        3.0
+        max        3.0
         Name: 0, dtype: float64
 
         Describing a ``DataFrame``. Only numeric fields are returned.
@@ -2648,7 +2648,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.numeric1.describe(percentiles = [0.85, 0.15])
         count     3.0
         mean      2.0
-        std      1.0
+        std       1.0
         min       1.0
         15%       1.0
         50%       2.0
