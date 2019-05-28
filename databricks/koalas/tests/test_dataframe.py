@@ -779,10 +779,74 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaises(NotImplementedError):
             left_kdf.update(right_kdf, join='right')
 
+    def test_pivot_table_dtypes(self):
+        pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
+                            'b': [1, 2, 2, 4, 2, 4],
+                            'e': [1, 2, 2, 4, 2, 4],
+                            'c': [1, 2, 9, 4, 7, 4]},
+                           index=[10, 20, 30, 40, 50, 60])
+
+        kdf = ks.from_pandas(pdf)
+
+        # Skip columns comparison by reset_index
+        res_df = kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
+                                 aggfunc={'b': 'mean', 'e': 'mean'}) \
+            .dtypes.reset_index(drop=True)
+        exp_df = pdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
+                                 aggfunc={'b': 'mean', 'e': 'mean'}) \
+            .dtypes.reset_index(drop=True)
+        self.assert_eq(res_df, exp_df)
+
+        # Results don't have the same column's name
+
+        # Todo: self.assert_eq(kdf.pivot_table(columns="a", values="b").dtypes,
+        #  pdf.pivot_table(columns="a", values="b").dtypes)
+
+        # Todo: self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values="b").dtypes,
+        #  pdf.pivot_table(index=['c'], columns="a", values="b").dtypes)
+
+        # Todo: self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b").dtypes,
+        #  pdf.pivot_table(index=['e', 'c'], columns="a", values="b").dtypes)
+
+        # Todo: self.assert_eq(kdf.pivot_table(index=['e', 'c'],
+        #  columns="a", values="b", fill_value=999).dtypes, pdf.pivot_table(index=['e', 'c'],
+        #  columns="a", values="b", fill_value=999).dtypes)
+
     def test_pivot_table(self):
+        pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
+                            'b': [1, 2, 2, 4, 2, 4],
+                            'e': [1, 2, 2, 4, 2, 4],
+                            'c': [1, 2, 9, 4, 7, 4]},
+                           index=[10, 20, 30, 40, 50, 60])
+
+        kdf = ks.from_pandas(pdf)
+
+        # Checking if both DataFrames have the same results (Temporary)
+        np.testing.assert_equal(kdf.pivot_table(columns="a", values="b").to_numpy(),
+                                pdf.pivot_table(columns=["a"], values="b").to_numpy())
+
+        # Todo: self.assert_eq(kdf.pivot_table(columns="a", values="b"),
+        #  pdf.pivot_table(columns=["a"], values="b"))
+
+        # Todo: self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values="b"),
+        #  pdf.pivot_table(index=['c'], columns=["a"], values="b"))
+
+        # Todo: self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
+        #  aggfunc={'b': 'mean', 'e': 'sum'}), pdf.pivot_table(index=['c'], columns=["a"],
+        #  values=['b', 'e'], aggfunc={'b': 'mean', 'e': 'sum'}))
+
+        # Todo: self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b"),
+        #  pdf.pivot_table(index=['e', 'c'], columns="a", values="b"))
+
+        # Todo: self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b",
+        #  fill_value=999), pdf.pivot_table(index=['e', 'c'], columns="a", values="b",
+        #  fill_value=999))
+
+    def test_pivot_table_erros(self):
 
         pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
                             'b': [1, 2, 2, 4, 2, 4],
+                            'e': [1, 2, 2, 4, 2, 4],
                             'c': [1, 2, 9, 4, 7, 4]},
                            index=[10, 20, 30, 40, 50, 60])
 
@@ -795,13 +859,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "index should be a None or a list of columns."
         with self.assertRaisesRegex(ValueError, msg):
             kdf.pivot_table(index="c", columns="a", values="b")
-
-        pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
-                            'b': [1, 2, 2, 4, 2, 4],
-                            'e': [1, 2, 2, 4, 2, 4],
-                            'c': [1, 2, 9, 4, 7, 4]},
-                           index=[10, 20, 30, 40, 50, 60])
-        kdf = ks.from_pandas(pdf)
 
         msg = "pivot_table doesn't support aggfuct as dict and without index."
         with self.assertRaisesRegex(NotImplementedError, msg):
