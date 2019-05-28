@@ -89,7 +89,7 @@ class PythonModelWrapper(object):
             cols = [data._sdf[n] for n in data.columns]
             return_col = self._model_udf(*cols)
             # TODO: the columns should be named according to the mlflow spec
-            # However, this is only possible with spark >= 2.5
+            # However, this is only possible with spark >= 3.0
             # s = F.struct(*data.columns)
             # return_col = self._model_udf(s)
             return Series(data=return_col, anchor=data, index=data._metadata.index_map)
