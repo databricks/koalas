@@ -155,6 +155,7 @@ class Series(_Frame, IndexOpsMixin):
         return self.schema.fields[-1].dataType
 
     # TODO: arg should support Series
+    # TODO: NaN and None
     def map(self, arg):
         """
         Map values of Series according to input correspondence.
@@ -196,7 +197,7 @@ class Series(_Frame, IndexOpsMixin):
         Name: 0, dtype: object
 
         ``map`` accepts a ``dict``. Values that are not found
-        in the ``dict`` are converted to ``NaN``, unless the dict has a default
+        in the ``dict`` are converted to ``None``, unless the dict has a default
         value (e.g. ``defaultdict``):
 
         >>> s.map({'cat': 'kitten', 'dog': 'puppy'})
