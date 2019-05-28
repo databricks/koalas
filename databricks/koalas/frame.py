@@ -2573,7 +2573,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Notes
         -----
         For numeric data, the result's index will include ``count``,
-        ``mean``, ``stddev``, ``min``, ``25%``, ``50%``, ``75%``, ``max``.
+        ``mean``, ``std``, ``min``, ``25%``, ``50%``, ``75%``, ``max``.
 
         Currently only numeric data is supported.
 
@@ -2585,7 +2585,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> s.describe()
         count     3.0
         mean      2.0
-        stddev    1.0
+        std       1.0
         min       1.0
         25%       1.0
         50%       2.0
@@ -2604,7 +2604,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 numeric1  numeric2
         count        3.0       3.0
         mean         2.0       5.0
-        stddev       1.0       1.0
+        std          1.0       1.0
         min          1.0       4.0
         25%          1.0       4.0
         50%          2.0       5.0
@@ -2621,7 +2621,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 numeric1  numeric2
         count        3.0       3.0
         mean         2.0       5.0
-        stddev       1.0       1.0
+        std          1.0       1.0
         min          1.0       4.0
         15%          1.0       4.0
         50%          2.0       5.0
@@ -2634,7 +2634,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.numeric1.describe()
         count     3.0
         mean      2.0
-        stddev    1.0
+        std       1.0
         min       1.0
         25%       1.0
         50%       2.0
@@ -2648,7 +2648,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.numeric1.describe(percentiles = [0.85, 0.15])
         count     3.0
         mean      2.0
-        stddev    1.0
+        std      1.0
         min       1.0
         15%       1.0
         50%       2.0
