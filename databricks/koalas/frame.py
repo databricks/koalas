@@ -1063,7 +1063,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     notna = notnull
 
-    def nunique(self, axis: int = 0, dropna: bool = True, approx: bool = False) -> pd.Series:
+    def nunique(self, axis: int = 0, dropna: bool = True, approx: bool = False,
+                rsd: float = 0.05) -> pd.Series:
         """
         Return number of unique elements in the object.
 
@@ -1079,6 +1080,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             If False, will use the exact algorithm and return the exact number of unique.
             If True, it uses Spark's approximate algorithm, which is faster in most circumstances.
             Note: this parameter is specific to Spark and is not found in pandas.
+        rsd: float, default 0.05
+            Maximum estimation error allowed. Just like ``approx`` this parameter is specific to
+            Spark.
 
         Returns
         -------
@@ -1098,7 +1102,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if axis != 0:
             raise ValueError("The 'nunique' method only works with axis=0 at the moment")
-        count_fn = F.approx_count_distinct if approx else F.countDistinct
+        count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
         if dropna:
             res = self._sdf.select([count_fn(Column(c))
                                    .alias(c)

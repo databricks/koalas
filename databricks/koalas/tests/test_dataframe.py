@@ -311,6 +311,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Assert approximate counts
         self.assert_eq(ks.DataFrame({'A': range(100)}).nunique(approx=True),
                        pd.Series([103], index=['A'], name='0'))
+        self.assert_eq(ks.DataFrame({'A': range(100)}).nunique(approx=True, rsd=0.01),
+                       pd.Series([100], index=['A'], name='0'))
 
     def test_sort_values(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
