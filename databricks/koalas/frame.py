@@ -2684,7 +2684,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf.select(*exprs).summary(stats)
 
-        return DataFrame(sdf.replace("stddev", "std"), index=Metadata(data_columns=data_columns,
+        return DataFrame(sdf.replace("stddev", "std", subset='summary'), index=Metadata(data_columns=data_columns,
                          index_map=[('summary', None)])).astype('float64')
 
     def _pd_getitem(self, key):
