@@ -2762,7 +2762,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(sdf.replace("stddev", "std", subset='summary'),
                          index=Metadata(data_columns=data_columns,
-                         index_map=[('summary', None)])).astype('float64')
+                                        index_map=[('summary', None)])).astype('float64')
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
