@@ -253,6 +253,7 @@ function sphinx_test {
     make clean &> /dev/null
     # Remove previously generated rst files
     rm -fr $DIR/../docs/source/reference/api/*
+    rm -fr $DIR/../docs/source/reference/ml/*
     # Treat warnings as errors so we stop correctly
     SPHINX_REPORT=$( (SPHINXOPTS="-a -W" make html) 2>&1)
     SPHINX_STATUS=$?
