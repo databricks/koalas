@@ -57,10 +57,10 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         sdf = kdf.to_spark()
 
-        with ks.cache(pdf) as cached_df:
+        with ks.cache(kdf) as cached_df:
             assert cached_df.is_cached
 
-        with ks.cache(kdf) as cached_df:
+        with ks.cache(pdf) as cached_df:
             assert cached_df.is_cached
 
         with ks.cache(sdf) as cached_df:
