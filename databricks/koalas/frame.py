@@ -207,6 +207,10 @@ class DataFrame(_Frame):
         to every element of a DataFrame.
 
         .. note:: unlike pandas, it is required for `func` to specify return type hint.
+            See https://docs.python.org/3/library/typing.html. For instance, as below:
+
+            >>> def function() -> int:
+            ...    1
 
         Parameters
         ----------
