@@ -21,6 +21,7 @@ Properties
    Index.dtype
    Index.name
    Index.names
+   Index.empty
 
 Missing Values
 ~~~~~~~~~~~~~~

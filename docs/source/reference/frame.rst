@@ -20,6 +20,7 @@ Attributes and underlying data
 
    DataFrame.index
    DataFrame.columns
+   DataFrame.empty
 
 .. autosummary::
    :toctree: api/

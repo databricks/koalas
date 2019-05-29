@@ -33,7 +33,6 @@ class _MissingPandasLikeDataFrame(object):
     T = unsupported_property('T')
     at = unsupported_property('at')
     axes = unsupported_property('axes')
-    empty = unsupported_property('empty')
     ftypes = unsupported_property('ftypes')
     iat = unsupported_property('iat')
     is_copy = unsupported_property('is_copy')
