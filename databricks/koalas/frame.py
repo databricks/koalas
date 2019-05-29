@@ -2616,8 +2616,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._metadata.index_columns + list(map(lambda ser: ser._scol, results)))
         return DataFrame(sdf, self._metadata.copy())
 
-    # TODO: percentiles, include, and exclude should be implemented.
-    def describe(self) -> 'DataFrame':
+    # TODO: include, and exclude should be implemented.
+    def describe(self, percentiles: Optional[List[float]] = None) -> 'DataFrame':
         """
         Generate descriptive statistics that summarize the central tendency,
         dispersion and shape of a dataset's distribution, excluding
@@ -2627,6 +2627,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         as ``DataFrame`` column sets of mixed data types. The output
         will vary depending on what is provided. Refer to the notes
         below for more detail.
+
+        Parameters
+        ----------
+        percentiles : list of ``float`` in range [0.0, 1.0], default [0.25, 0.5, 0.75]
+            A list of percentiles to be computed.
 
         Returns
         -------
@@ -2644,7 +2649,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Notes
         -----
         For numeric data, the result's index will include ``count``,
-        ``mean``, ``stddev``, ``min``, ``max``.
+        ``mean``, ``std``, ``min``, ``25%``, ``50%``, ``75%``, ``max``.
 
         Currently only numeric data is supported.
 
@@ -2654,11 +2659,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> s = ks.Series([1, 2, 3])
         >>> s.describe()
-        count     3.0
-        mean      2.0
-        stddev    1.0
-        min       1.0
-        max       3.0
+        count    3.0
+        mean     2.0
+        std      1.0
+        min      1.0
+        25%      1.0
+        50%      2.0
+        75%      3.0
+        max      3.0
         Name: 0, dtype: float64
 
         Describing a ``DataFrame``. Only numeric fields are returned.
@@ -2669,22 +2677,59 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                   },
         ...                   columns=['numeric1', 'numeric2', 'object'])
         >>> df.describe()
-                numeric1  numeric2
-        count        3.0       3.0
-        mean         2.0       5.0
-        stddev       1.0       1.0
-        min          1.0       4.0
-        max          3.0       6.0
+               numeric1  numeric2
+        count       3.0       3.0
+        mean        2.0       5.0
+        std         1.0       1.0
+        min         1.0       4.0
+        25%         1.0       4.0
+        50%         2.0       5.0
+        75%         3.0       6.0
+        max         3.0       6.0
+
+        Describing a ``DataFrame`` and selecting custom percentiles.
+
+        >>> df = ks.DataFrame({'numeric1': [1, 2, 3],
+        ...                    'numeric2': [4.0, 5.0, 6.0]
+        ...                   },
+        ...                   columns=['numeric1', 'numeric2'])
+        >>> df.describe(percentiles = [0.85, 0.15])
+               numeric1  numeric2
+        count       3.0       3.0
+        mean        2.0       5.0
+        std         1.0       1.0
+        min         1.0       4.0
+        15%         1.0       4.0
+        50%         2.0       5.0
+        85%         3.0       6.0
+        max         3.0       6.0
 
         Describing a column from a ``DataFrame`` by accessing it as
         an attribute.
 
         >>> df.numeric1.describe()
-        count     3.0
-        mean      2.0
-        stddev    1.0
-        min       1.0
-        max       3.0
+        count    3.0
+        mean     2.0
+        std      1.0
+        min      1.0
+        25%      1.0
+        50%      2.0
+        75%      3.0
+        max      3.0
+        Name: numeric1, dtype: float64
+
+        Describing a column from a ``DataFrame`` by accessing it as
+        an attribute and selecting custom percentiles.
+
+        >>> df.numeric1.describe(percentiles = [0.85, 0.15])
+        count    3.0
+        mean     2.0
+        std      1.0
+        min      1.0
+        15%      1.0
+        50%      2.0
+        85%      3.0
+        max      3.0
         Name: numeric1, dtype: float64
         """
         exprs = []
@@ -2702,9 +2747,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if len(exprs) == 0:
             raise ValueError("Cannot describe a DataFrame without columns")
 
-        sdf = self._sdf.select(*exprs).describe()
-        return DataFrame(sdf, index=Metadata(data_columns=data_columns,
-                                             index_map=[('summary', None)])).astype('float64')
+        if percentiles is not None:
+            if any((p < 0.0) or (p > 1.0) for p in percentiles):
+                raise ValueError("Percentiles should all be in the interval [0, 1]")
+            # appending 50% if not in percentiles already
+            percentiles = (percentiles + [0.5]) if 0.5 not in percentiles else percentiles
+        else:
+            percentiles = [0.25, 0.5, 0.75]
+
+        formatted_perc = ["{:.0%}".format(p) for p in sorted(percentiles)]
+        stats = ["count", "mean", "stddev", "min", *formatted_perc, "max"]
+
+        sdf = self._sdf.select(*exprs).summary(stats)
+
+        return DataFrame(sdf.replace("stddev", "std", subset='summary'),
+                         index=Metadata(data_columns=data_columns,
+                         index_map=[('summary', None)])).astype('float64')
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series

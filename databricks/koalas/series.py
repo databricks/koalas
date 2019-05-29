@@ -20,7 +20,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 import re
 import inspect
 from functools import partial, wraps
-from typing import Any, Optional, Union
+from typing import Any, Optional, List, Union
 
 import numpy as np
 import pandas as pd
@@ -1313,8 +1313,8 @@ class Series(_Frame, IndexOpsMixin):
         wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
         return wrapped(self, *args, **kwds)
 
-    def describe(self) -> 'Series':
-        return _col(self.to_dataframe().describe())
+    def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
+        return _col(self.to_dataframe().describe(percentiles))
 
     describe.__doc__ = DataFrame.describe.__doc__
 
