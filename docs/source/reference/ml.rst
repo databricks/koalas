@@ -22,7 +22,7 @@ tensorflow, ...). See comprehensive examples in
    **pip install koalas[mlflow]**
 
 .. autosummary::
-   :toctree: ml/
+   :toctree: api/
 
-   databricks.koalas.mlflow.PythonModelWrapper
-   databricks.koalas.mlflow.load_model
+   PythonModelWrapper
+   load_model
