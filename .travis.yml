@@ -69,6 +69,7 @@ install:
 
 before_script:
   - export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
+  - export QT_QPA_PLATFORM="offscreen"
   - ./dev/lint-python
 
 script:
