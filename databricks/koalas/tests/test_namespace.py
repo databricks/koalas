@@ -50,3 +50,17 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaisesRegex(
             ValueError, 'axis should be either 0 or', lambda: ks.concat([kdf, kdf], axis=1))
+
+    def test_cache(self):
+        pdf = pd.DataFrame({'A': [0, 2, 4], 'B': [1, 3, 5]})
+        kdf = ks.from_pandas(pdf)
+        sdf = pd.to_spark()
+
+        with ks.cache(pdf) as cached_df:
+            assert cached_df.is_cached == True
+
+        with ks.cache(kdf) as cached_df:
+            assert cached_df.is_cached == True
+
+        with ks.cache(sdf) as cached_df:
+            assert cached_df.is_cached == True
