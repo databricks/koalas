@@ -210,13 +210,10 @@ class IndexOpsMixin(object):
         >>> ks.range(0).id.empty
         True
 
-        >>> ks.DataFrame(pd.DataFrame({}, index=list('abc'))).index.empty
+        >>> ks.DataFrame({}, index=list('abc')).index.empty
         False
         """
-        from databricks.koalas import indexes
-
-        return (isinstance(self, indexes.Index) and len(
-            self._kdf._metadata.index_columns) == 0) or self._kdf._sdf.rdd.isEmpty()
+        return self._kdf._sdf.rdd.isEmpty()
 
     def astype(self, dtype):
         """
