@@ -777,8 +777,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> ks.range(0).empty
         True
+
+        >>> ks.DataFrame(pd.DataFrame({}, index=list('abc'))).empty
+        True
         """
-        return self._sdf.rdd.isEmpty()
+        return len(self._metadata.data_columns) == 0 or self._sdf.rdd.isEmpty()
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns.

@@ -204,13 +204,19 @@ class IndexOpsMixin(object):
         """
         Returns true if the current object is empty. Otherwise, returns false.
 
-        >>> ks.range(10).id.empty
+        >>> ks.range(10).id.empty()
         False
 
-        >>> ks.range(0).id.empty
+        >>> ks.range(0).id.empty()
         True
+
+        >>> ks.DataFrame(pd.DataFrame({}, index=list('abc'))).index.empty()
+        False
         """
-        return self._kdf.empty
+        from databricks.koalas import indexes
+
+        return (isinstance(self, indexes.Index) and len(
+            self._kdf._metadata.index_columns) == 0) or self._kdf._sdf.rdd.isEmpty()
 
     def astype(self, dtype):
         """
