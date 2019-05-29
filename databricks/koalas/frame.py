@@ -210,7 +210,7 @@ class DataFrame(_Frame):
             See https://docs.python.org/3/library/typing.html. For instance, as below:
 
             >>> def function() -> int:
-            ...    1
+            ...     return 1
 
         Parameters
         ----------
