@@ -163,6 +163,11 @@ class Series(_Frame, IndexOpsMixin):
         Used for substituting each value in a Series with another value,
         that may be derived from a function, a ``dict``.
 
+        .. note:: make sure the size of the dictionary is not huge because it could
+            downgrade the performance or throw OutOfMemoryError due to a huge
+            expression within Spark. Consider the input as a functions as an
+            alternative instead in this case.
+
         Parameters
         ----------
         arg : function or dict
@@ -221,7 +226,7 @@ class Series(_Frame, IndexOpsMixin):
         if isinstance(arg, dict):
             is_start = True
             # In case dictionary is empty.
-            current = F.when(F.lit(False), F.lit(None))
+            current = F.when(F.lit(False), F.lit(None).cast(self.spark_type))
 
             for to_replace, value in arg.items():
                 if is_start:
@@ -235,7 +240,7 @@ class Series(_Frame, IndexOpsMixin):
                 del arg[np._NoValue]  # Remove in case it's set in defaultdict.
                 current = current.otherwise(F.lit(tmp_val))
             else:
-                current = current.otherwise(F.lit(None))
+                current = current.otherwise(F.lit(None).cast(self.spark_type))
             return Series(current, anchor=self._kdf, index=self._index_map).rename(self.name)
         else:
             return self.apply(arg)
