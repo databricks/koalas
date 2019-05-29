@@ -20,6 +20,7 @@ Attributes and underlying data
 
    DataFrame.index
    DataFrame.columns
+   DataFrame.empty
 
 .. autosummary::
    :toctree: api/
@@ -56,6 +57,7 @@ Function application, GroupBy & Window
 .. autosummary::
    :toctree: api/
 
+   DataFrame.applymap
    DataFrame.pipe
    DataFrame.groupby
 

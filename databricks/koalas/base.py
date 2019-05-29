@@ -199,6 +199,22 @@ class IndexOpsMixin(object):
         else:
             return np.dtype(to_arrow_type(self.spark_type).to_pandas_dtype())
 
+    @property
+    def empty(self):
+        """
+        Returns true if the current object is empty. Otherwise, returns false.
+
+        >>> ks.range(10).id.empty
+        False
+
+        >>> ks.range(0).id.empty
+        True
+
+        >>> ks.DataFrame({}, index=list('abc')).index.empty
+        False
+        """
+        return self._kdf._sdf.rdd.isEmpty()
+
     def astype(self, dtype):
         """
         Cast a Koalas object to a specified dtype ``dtype``.
