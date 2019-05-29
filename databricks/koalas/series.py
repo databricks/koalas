@@ -20,7 +20,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 import re
 import inspect
 from functools import partial, wraps
-from typing import Any, Optional, Union
+from typing import Any, Optional, List, Union
 
 import numpy as np
 import pandas as pd
@@ -44,6 +44,116 @@ from databricks.koalas.utils import validate_arguments_and_invoke_function
 # pattern every time it is used in _repr_ in Series.
 # This pattern basically seeks the footer string from Pandas'
 REPR_PATTERN = re.compile(r"Length: (?P<length>[0-9]+)")
+
+_flex_doc_SERIES = """
+Return {desc} of series and other, element-wise (binary operator `{op_name}`).
+
+Equivalent to ``{equiv}``, but with support to substitute a fill_value for
+missing data in one of the inputs.
+
+Parameters
+----------
+other : Series or scalar value
+fill_value : None or float value, default None (NaN)
+    Fill existing missing (NaN) values, and any new element needed for
+    successful Series alignment, with this value before computation.
+    If data in both corresponding Series locations is missing
+    the result will be missing.
+level : int or name
+    Broadcast across a level, matching Index values on the
+    passed MultiIndex level.
+
+Returns
+-------
+Series
+    The result of the operation.
+
+See Also
+--------
+Series.{reverse}
+
+{series_examples}
+"""
+
+_add_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [1, 1, 1, np.nan],
+...                    'b': [1, np.nan, 1, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  1.0  1.0
+b  1.0  NaN
+c  1.0  1.0
+d  NaN  NaN
+>>> df.a.add(df.b)
+a    2.0
+b    NaN
+c    2.0
+d    NaN
+Name: a, dtype: float64
+"""
+
+_sub_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [1, 1, 1, np.nan],
+...                    'b': [1, np.nan, 1, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  1.0  1.0
+b  1.0  NaN
+c  1.0  1.0
+d  NaN  NaN
+>>> df.a.subtract(df.b)
+a    0.0
+b    NaN
+c    0.0
+d    NaN
+Name: a, dtype: float64
+"""
+
+_mul_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+>>> df.a.multiply(df.b)
+a    4.0
+b    NaN
+c    8.0
+d    NaN
+Name: a, dtype: float64
+"""
+
+_div_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+>>> df.a.divide(df.b)
+a    1.0
+b    NaN
+c    2.0
+d    NaN
+Name: a, dtype: float64
+"""
 
 
 class Series(_Frame, IndexOpsMixin):
@@ -157,6 +267,194 @@ class Series(_Frame, IndexOpsMixin):
         return self.schema.fields[-1].dataType
 
     plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
+
+    # Arithmetic Operators
+    def add(self, other):
+        return (self + other).rename(self.name)
+    add.__doc__ = _flex_doc_SERIES.format(
+        desc='Addition',
+        op_name="+",
+        equiv="series + other",
+        reverse='radd',
+        series_examples=_add_example_SERIES)
+
+    def radd(self, other):
+        return (other + self).rename(self.name)
+    radd.__doc__ = _flex_doc_SERIES.format(
+        desc='Addition',
+        op_name="+",
+        equiv="other + series",
+        reverse='add',
+        series_examples=_add_example_SERIES)
+
+    def div(self, other):
+        return (self / other).rename(self.name)
+    div.__doc__ = _flex_doc_SERIES.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="series / other",
+        reverse='rdiv',
+        series_examples=_div_example_SERIES)
+
+    divide = div
+
+    def rdiv(self, other):
+        return (other / self).rename(self.name)
+    rdiv.__doc__ = _flex_doc_SERIES.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="other / series",
+        reverse='div',
+        series_examples=_div_example_SERIES)
+
+    def truediv(self, other):
+        return (self / other).rename(self.name)
+    truediv.__doc__ = _flex_doc_SERIES.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="series / other",
+        reverse='rtruediv',
+        series_examples=_div_example_SERIES)
+
+    def rtruediv(self, other):
+        return (other / self).rename(self.name)
+    rtruediv.__doc__ = _flex_doc_SERIES.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="other / series",
+        reverse='truediv',
+        series_examples=_div_example_SERIES)
+
+    def mul(self, other):
+        return (self * other).rename(self.name)
+    mul.__doc__ = _flex_doc_SERIES.format(
+        desc='Multiplication',
+        op_name="*",
+        equiv="series * other",
+        reverse='rmul',
+        series_examples=_mul_example_SERIES)
+
+    multiply = mul
+
+    def rmul(self, other):
+        return (other * self).rename(self.name)
+    rmul.__doc__ = _flex_doc_SERIES.format(
+        desc='Multiplication',
+        op_name="*",
+        equiv="other * series",
+        reverse='mul',
+        series_examples=_mul_example_SERIES)
+
+    def sub(self, other):
+        return (self - other).rename(self.name)
+    sub.__doc__ = _flex_doc_SERIES.format(
+        desc='Subtraction',
+        op_name="-",
+        equiv="series - other",
+        reverse='rsub',
+        series_examples=_sub_example_SERIES)
+
+    subtract = sub
+
+    def rsub(self, other):
+        return (other - self).rename(self.name)
+    rsub.__doc__ = _flex_doc_SERIES.format(
+        desc='Subtraction',
+        op_name="-",
+        equiv="other - series",
+        reverse='sub',
+        series_examples=_sub_example_SERIES)
+
+    # TODO: arg should support Series
+    # TODO: NaN and None
+    def map(self, arg):
+        """
+        Map values of Series according to input correspondence.
+
+        Used for substituting each value in a Series with another value,
+        that may be derived from a function, a ``dict``.
+
+        .. note:: make sure the size of the dictionary is not huge because it could
+            downgrade the performance or throw OutOfMemoryError due to a huge
+            expression within Spark. Consider the input as a functions as an
+            alternative instead in this case.
+
+        Parameters
+        ----------
+        arg : function or dict
+            Mapping correspondence.
+
+        Returns
+        -------
+        Series
+            Same index as caller.
+
+        See Also
+        --------
+        Series.apply : For applying more complex functions on a Series.
+        DataFrame.applymap : Apply a function elementwise on a whole DataFrame.
+
+        Notes
+        -----
+        When ``arg`` is a dictionary, values in Series that are not in the
+        dictionary (as keys) are converted to ``None``. However, if the
+        dictionary is a ``dict`` subclass that defines ``__missing__`` (i.e.
+        provides a method for default values), then this default is used
+        rather than ``None``.
+
+        Examples
+        --------
+        >>> s = ks.Series(['cat', 'dog', None, 'rabbit'])
+        >>> s
+        0       cat
+        1       dog
+        2      None
+        3    rabbit
+        Name: 0, dtype: object
+
+        ``map`` accepts a ``dict``. Values that are not found
+        in the ``dict`` are converted to ``None``, unless the dict has a default
+        value (e.g. ``defaultdict``):
+
+        >>> s.map({'cat': 'kitten', 'dog': 'puppy'})
+        0    kitten
+        1     puppy
+        2      None
+        3      None
+        Name: 0, dtype: object
+
+        It also accepts a function:
+
+        >>> def format(x) -> str:
+        ...     return 'I am a {}'.format(x)
+        >>> s.map(format)
+        0       I am a cat
+        1       I am a dog
+        2      I am a None
+        3    I am a rabbit
+        Name: 0, dtype: object
+        """
+        if isinstance(arg, dict):
+            is_start = True
+            # In case dictionary is empty.
+            current = F.when(F.lit(False), F.lit(None).cast(self.spark_type))
+
+            for to_replace, value in arg.items():
+                if is_start:
+                    current = F.when(self._scol == F.lit(to_replace), value)
+                    is_start = False
+                else:
+                    current = current.when(self._scol == F.lit(to_replace), value)
+
+            if hasattr(arg, "__missing__"):
+                tmp_val = arg[np._NoValue]
+                del arg[np._NoValue]  # Remove in case it's set in defaultdict.
+                current = current.otherwise(F.lit(tmp_val))
+            else:
+                current = current.otherwise(F.lit(None).cast(self.spark_type))
+            return Series(current, anchor=self._kdf, index=self._index_map).rename(self.name)
+        else:
+            return self.apply(arg)
 
     def astype(self, dtype) -> 'Series':
         """
@@ -1276,7 +1574,7 @@ class Series(_Frame, IndexOpsMixin):
         London      400
         New York    441
         Helsinki    144
-        Name: square(0), dtype: int64
+        Name: 0, dtype: int64
 
 
         Define a custom function that needs additional positional
@@ -1290,7 +1588,7 @@ class Series(_Frame, IndexOpsMixin):
         London      15
         New York    16
         Helsinki     7
-        Name: subtract_custom_value(0), dtype: int64
+        Name: 0, dtype: int64
 
 
         Define a custom function that takes keyword arguments
@@ -1305,7 +1603,7 @@ class Series(_Frame, IndexOpsMixin):
         London      95
         New York    96
         Helsinki    87
-        Name: add_custom_values(0), dtype: int64
+        Name: 0, dtype: int64
 
 
         Use a function from the Numpy library
@@ -1316,8 +1614,9 @@ class Series(_Frame, IndexOpsMixin):
         London      2.995732
         New York    3.044522
         Helsinki    2.484907
-        Name: numpy_log(0), dtype: float64
+        Name: 0, dtype: float64
         """
+        assert callable(func), "the first argument should be a callable function."
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
         if return_sig is None:
@@ -1325,10 +1624,10 @@ class Series(_Frame, IndexOpsMixin):
 
         apply_each = wraps(func)(lambda s, *a, **k: s.apply(func, args=a, **k))
         wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
-        return wrapped(self, *args, **kwds)
+        return wrapped(self, *args, **kwds).rename(self.name)
 
-    def describe(self) -> 'Series':
-        return _col(self.to_dataframe().describe())
+    def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
+        return _col(self.to_dataframe().describe(percentiles))
 
     describe.__doc__ = DataFrame.describe.__doc__
 
