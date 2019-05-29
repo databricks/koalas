@@ -43,6 +43,112 @@ from databricks.koalas.utils import validate_arguments_and_invoke_function
 # This pattern basically seeks the footer string from Pandas'
 REPR_PATTERN = re.compile(r"Length: (?P<length>[0-9]+)")
 
+_flex_doc_SERIES = """
+Return {desc} of series and other, element-wise (binary operator `{op_name}`).
+
+Equivalent to ``{equiv}``, but with support to substitute a fill_value for
+missing data in one of the inputs.
+
+Parameters
+----------
+other : Series or scalar value
+fill_value : None or float value, default None (NaN)
+    Fill existing missing (NaN) values, and any new element needed for
+    successful Series alignment, with this value before computation.
+    If data in both corresponding Series locations is missing
+    the result will be missing.
+level : int or name
+    Broadcast across a level, matching Index values on the
+    passed MultiIndex level.
+
+Returns
+-------
+Series
+    The result of the operation.
+
+See Also
+--------
+Series.{reverse}
+
+{series_examples}
+"""
+
+_add_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [1, 1, 1, np.nan],
+...                    'b': [1, np.nan, 1, np.nan]}, index=['a', 'b', 'c', 'd'])
+>>> df
+     a    b
+a  1.0  1.0
+b  1.0  NaN
+c  1.0  1.0
+d  NaN  NaN
+>>> df.a.add(df.b)
+a    2.0
+b    NaN
+c    2.0
+d    NaN
+Name: a, dtype: float64
+"""
+
+_sub_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [1, 1, 1, np.nan],
+...                    'b': [1, np.nan, 1, np.nan]}, index=['a', 'b', 'c', 'd'])
+>>> df
+     a    b
+a  1.0  1.0
+b  1.0  NaN
+c  1.0  1.0
+d  NaN  NaN
+>>> df.a.subtract(df.b)
+a    0.0
+b    NaN
+c    0.0
+d    NaN
+Name: a, dtype: float64
+"""
+
+_mul_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]}, index=['a', 'b', 'c', 'd'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+>>> df.a.multiply(df.b)
+a    4.0
+b    NaN
+c    8.0
+d    NaN
+Name: a, dtype: float64
+"""
+
+_div_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]}, index=['a', 'b', 'c', 'd'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+>>> df.a.divide(df.b)
+a    1.0
+b    NaN
+c    2.0
+d    NaN
+Name: a, dtype: float64
+"""
+
 
 class Series(_Frame, IndexOpsMixin):
     """
@@ -153,6 +259,103 @@ class Series(_Frame, IndexOpsMixin):
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self.schema.fields[-1].dataType
+
+    # Arithmetic Operators
+    def add(self, other):
+        return (self + other).rename(self.name)
+    add.__doc__ = _flex_doc_SERIES.format(
+        desc='Addition',
+        op_name="+",
+        equiv="series + other",
+        reverse='radd',
+        series_examples=_add_example_SERIES)
+
+    def radd(self, other):
+        return (other + self).rename(self.name)
+    add.__doc__ = _flex_doc_SERIES.format(
+        desc='Addition',
+        op_name="+",
+        equiv="other + series",
+        reverse='add',
+        series_examples=_add_example_SERIES)
+
+    def div(self, other):
+        return (self / other).rename(self.name)
+    div.__doc__ = _flex_doc_SERIES.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="series / other",
+        reverse='rdiv',
+        series_examples=_div_example_SERIES)
+
+    divide = div
+
+    def rdiv(self, other):
+        return (other / self).rename(self.name)
+    rdiv.__doc__ = _flex_doc_SERIES.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="other / series",
+        reverse='div',
+        series_examples=_div_example_SERIES)
+
+    def truediv(self, other):
+        return (self / other).rename(self.name)
+    truediv.__doc__ = _flex_doc_SERIES.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="series / other",
+        reverse='rtruediv',
+        series_examples=_div_example_SERIES)
+
+    def rtruediv(self, other):
+        return (other / self).rename(self.name)
+    rtruediv.__doc__ = _flex_doc_SERIES.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="other / series",
+        reverse='truediv',
+        series_examples=_div_example_SERIES)
+
+    def mul(self, other):
+        return (self * other).rename(self.name)
+    mul.__doc__ = _flex_doc_SERIES.format(
+        desc='Multiplication',
+        op_name="*",
+        equiv="series * other",
+        reverse='rmul',
+        series_examples=_mul_example_SERIES)
+
+    multiply = mul
+
+    def rmul(self, other):
+        return (other * self).rename(self.name)
+    rmul.__doc__ = _flex_doc_SERIES.format(
+        desc='Multiplication',
+        op_name="*",
+        equiv="other * series",
+        reverse='mul',
+        series_examples=_mul_example_SERIES)
+
+    def sub(self, other):
+        return (self - other).rename(self.name)
+    sub.__doc__ = _flex_doc_SERIES.format(
+        desc='Subtraction',
+        op_name="-",
+        equiv="series - other",
+        reverse='rsub',
+        series_examples=_sub_example_SERIES)
+
+    subtract = sub
+
+    def rsub(self, other):
+        return (other - self).rename(self.name)
+    rsub.__doc__ = _flex_doc_SERIES.format(
+        desc='Subtraction',
+        op_name="-",
+        equiv="other - series",
+        reverse='sub',
+        series_examples=_sub_example_SERIES)
 
     # TODO: arg should support Series
     # TODO: NaN and None
