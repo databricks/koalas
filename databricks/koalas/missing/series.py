@@ -126,7 +126,6 @@ class _MissingPandasLikeSeries(object):
     le = unsupported_function('le')
     lt = unsupported_function('lt')
     mad = unsupported_function('mad')
-    map = unsupported_function('map')
     mask = unsupported_function('mask')
     median = unsupported_function('median')
     memory_usage = unsupported_function('memory_usage')
