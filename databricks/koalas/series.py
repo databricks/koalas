@@ -77,7 +77,8 @@ _add_example_SERIES = """
 Examples
 --------
 >>> df = ks.DataFrame({'a': [1, 1, 1, np.nan],
-...                    'b': [1, np.nan, 1, np.nan]}, index=['a', 'b', 'c', 'd'])
+...                    'b': [1, np.nan, 1, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
 >>> df
      a    b
 a  1.0  1.0
@@ -96,7 +97,8 @@ _sub_example_SERIES = """
 Examples
 --------
 >>> df = ks.DataFrame({'a': [1, 1, 1, np.nan],
-...                    'b': [1, np.nan, 1, np.nan]}, index=['a', 'b', 'c', 'd'])
+...                    'b': [1, np.nan, 1, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
 >>> df
      a    b
 a  1.0  1.0
@@ -115,7 +117,8 @@ _mul_example_SERIES = """
 Examples
 --------
 >>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
-...                    'b': [2, np.nan, 2, np.nan]}, index=['a', 'b', 'c', 'd'])
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
 >>> df
      a    b
 a  2.0  2.0
@@ -134,7 +137,8 @@ _div_example_SERIES = """
 Examples
 --------
 >>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
-...                    'b': [2, np.nan, 2, np.nan]}, index=['a', 'b', 'c', 'd'])
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
 >>> df
      a    b
 a  2.0  2.0
@@ -272,7 +276,7 @@ class Series(_Frame, IndexOpsMixin):
 
     def radd(self, other):
         return (other + self).rename(self.name)
-    add.__doc__ = _flex_doc_SERIES.format(
+    radd.__doc__ = _flex_doc_SERIES.format(
         desc='Addition',
         op_name="+",
         equiv="other + series",
