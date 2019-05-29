@@ -43,7 +43,7 @@ from databricks.koalas.typedef import Col, pandas_wraps
 
 __all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
            'get_dummies', 'DataFrame', 'Series', 'Index', 'MultiIndex', 'Col', 'pandas_wraps',
-           'sql', 'range', 'concat']
+           'sql', 'range', 'concat', 'cache']
 
 
 def _auto_patch():

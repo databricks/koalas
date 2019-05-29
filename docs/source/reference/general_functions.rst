@@ -13,6 +13,7 @@ Data manipulations
    get_dummies
    sql
    concat
+   cache
 
 Top-level dealing with datetimelike
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

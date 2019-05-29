@@ -24,6 +24,7 @@ import itertools
 import numpy as np
 import pandas as pd
 
+from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
     DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
@@ -795,6 +796,67 @@ def _to_datetime2(arg_year, arg_month, arg_day,
         errors=errors,
         format=format,
         infer_datetime_format=infer_datetime_format)
+
+
+class cache:
+    """
+    Yields and caches the current pandas or koalas or spark DataFrame as a Spark DataFrame.
+
+    The Spark DataFrame is yielded as a protected resource which gets uncached after execution
+    goes of the context.
+
+    Parameters
+    ----------
+    df : koalas or pandas or Spark DataFrame.
+
+    Examples
+    --------
+    >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+    ...                  columns=['dogs', 'cats'])
+    >>> df
+       dogs  cats
+    0   0.2   0.3
+    1   0.0   0.6
+    2   0.6   0.0
+    3   0.2   0.1
+
+    Caching a koalas DataFrame.
+
+    >>> with ks.cache(df) as cached_df:
+    ...     print(cached_df.columns)
+    ...
+    ['__index_level_0__', 'dogs', 'cats']
+
+    >>> pdf = df.to_pandas()
+    >>> pdf
+       dogs  cats
+    0   0.2   0.3
+    1   0.0   0.6
+    2   0.6   0.0
+    3   0.2   0.1
+
+    Caching a pandas DataFrame.
+
+    >>> with ks.cache(pdf) as cached_df:
+    ...    print('Total count is: ', cached_df.count())
+    ...
+    Total count is:  4
+    """
+    def __init__(self, df):
+        if isinstance(df, ks.DataFrame):
+            self.df = df.to_spark()
+        elif isinstance(df, pd.DataFrame):
+            self.df = ks.from_pandas(df).to_spark()
+        elif isinstance(df, spark.DataFrame):
+            self.df = df
+        else:
+            raise ValueError("Unknown data type: {}".format(type(df)))
+
+    def __enter__(self):
+        return self.df.cache()
+
+    def __exit__(self, type, value, traceback):
+        self.df.unpersist()
 
 
 _get_dummies_default_accept_types = (
