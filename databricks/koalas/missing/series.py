@@ -138,7 +138,6 @@ class _MissingPandasLikeSeries(object):
     nonzero = unsupported_function('nonzero')
     nunique = unsupported_function('nunique')
     pct_change = unsupported_function('pct_change')
-    pipe = unsupported_function('pipe')
     pop = unsupported_function('pop')
     pow = unsupported_function('pow')
     prod = unsupported_function('prod')
