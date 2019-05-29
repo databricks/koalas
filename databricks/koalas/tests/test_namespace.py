@@ -15,6 +15,7 @@
 #
 
 import pandas as pd
+from pyspark import sql as spark
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
