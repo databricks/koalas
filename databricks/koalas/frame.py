@@ -2700,6 +2700,54 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._metadata.index_columns + list(map(lambda ser: ser._scol, results)))
         return DataFrame(sdf, self._metadata.copy())
 
+    def add_prefix(self, prefix):
+        """
+        Prefix labels with string `prefix`.
+        For Series, the row labels are prefixed.
+        For DataFrame, the column labels are prefixed.
+        Parameters
+        ----------
+        prefix : str
+           The string to add before each label.
+        Returns
+        -------
+        Series or DataFrame
+           New Series or DataFrame with updated labels.
+        See Also
+        --------
+        Series.add_suffix: Suffix row labels with string `suffix`.
+        DataFrame.add_suffix: Suffix column labels with string `suffix`.
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2, 3, 4],  'B': [3, 4, 5, 6]})
+        >>> df
+          A  B
+        0  1  3
+        1  2  4
+        2  3  5
+        3  4  6
+        >>> df.add_prefix('col_')
+            col_A  col_B
+        0       1       3
+        1       2       4
+        2       3       5
+        3       4       6
+        """
+
+        assert isinstance(prefix, str)
+        index_map = self._metadata.index_map
+        data_columns = self._metadata.data_columns
+        metadata = self._metadata.copy(data_columns=[prefix + name for name in data_columns], index_map=index_map)
+
+        sdf = self._sdf.select(self._metadata.index_columns +
+                               [self[name]._scol.alias(prefix + name)
+                                for name in self._metadata.data_columns])
+
+        kdf = self.copy()
+        kdf._metadata = metadata
+        kdf._sdf = sdf
+        return kdf
+
     # TODO: percentiles, include, and exclude should be implemented.
     def describe(self) -> 'DataFrame':
         """
