@@ -101,17 +101,22 @@ class AtIndexer(object):
     Examples
     --------
     >>> kdf = ks.DataFrame([[0, 2, 3], [0, 4, 1], [10, 20, 30]],
-    ...                    index=[4, 5, 6], columns=['A', 'B', 'C'])
+    ...                    index=[4, 5, 5], columns=['A', 'B', 'C'])
     >>> kdf
         A   B   C
     4   0   2   3
     5   0   4   1
-    6  10  20  30
+    5  10  20  30
 
     Get value at specified row/column pair
 
     >>> kdf.at[4, 'B']
     2
+
+    Get array if an index occurs multiple times
+
+    >>> kdf.to_pandas().at[5, 'B']
+    array([ 4, 20])
     """
     def __init__(self, df_or_s):
         from databricks.koalas.frame import DataFrame
