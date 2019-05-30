@@ -177,6 +177,13 @@ Datetime Properties
    Series.dt.millisecond
    Series.dt.microsecond
 
+Datetime Methods
+^^^^^^^^^^^^^^^^
+
+.. currentmodule:: databricks.koalas.series
+.. autosummary::
+   :toctree: api/
+
    Series.dt.strftime
 
 Serialization / IO / Conversion
