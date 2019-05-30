@@ -136,6 +136,8 @@ class IndexingTest(ReusedSQLTestCase):
         # Assert invalided signatures raise TypeError
         with self.assertRaises(TypeError, msg="Use DataFrame.at like .at[row_index, column_name]"):
             kdf.at[3]
+        with self.assertRaises(TypeError, msg="Use DataFrame.at like .at[row_index, column_name]"):
+            kdf.at['ab']  # 'ab' is of length 2 but str type instead of tuple
         with self.assertRaises(TypeError, msg="Use Series.at like .at[column_name]"):
             test_series.at[3, 'b']
 
