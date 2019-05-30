@@ -1109,6 +1109,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                     for c in self.columns])
         else:
             res = self._sdf.select([(count_fn(Column(c))
+                                     # If the count of null values in a column is at least 1,
+                                     # increase the total count by 1 else 0. This is like adding
+                                     # self.isnull().sum().clip(upper=1) but can be computed in a
+                                     # single Spark job when pulling it into the select statement.
                                      + F.when(F.count(F.when(F.col(c).isNull(), 1).otherwise(None))
                                               >= 1, 1).otherwise(0))
                                    .alias(c)
