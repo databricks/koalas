@@ -17,12 +17,16 @@
 """
 Date/Time related functions on Koalas Series
 """
+from typing import TYPE_CHECKING
+
 import pandas as pd
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, TimestampType, LongType, StringType
 
-import databricks.koalas as ks
 from databricks.koalas.base import _wrap_accessor_pandas, _wrap_accessor_spark
+
+if TYPE_CHECKING:
+    import databricks.koalas as ks
 
 
 class DatetimeMethods(object):
