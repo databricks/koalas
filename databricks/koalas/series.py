@@ -774,16 +774,7 @@ class Series(_Frame, IndexOpsMixin):
         >>> ks.Series([1, 2, 3, np.nan]).nunique(dropna=False)
         4
         """
-        sdf = self.to_dataframe()._sdf
-        count_fn = F.approx_count_distinct if approx else F.countDistinct
-        if dropna:
-            distinct_count = sdf.select(count_fn(self._scol))
-        else:
-            distinct_count = sdf.select(count_fn(self._scol)
-                                        + F.when(F.count(F.when(self._scol.isNull(), 1)
-                                                         .otherwise(None))
-                                                 >= 1, 1).otherwise(0))
-        return distinct_count.toPandas().iloc[0, 0]
+        return self.to_dataframe().nunique(dropna=dropna, approx=approx).iloc[0]
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
