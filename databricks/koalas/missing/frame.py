@@ -46,6 +46,7 @@ class _MissingPandasLikeDataFrame(object):
 
     # Functions
     add = unsupported_function('add')
+    add_suffix = unsupported_function('add_suffix')
     agg = unsupported_function('agg')
     aggregate = unsupported_function('aggregate')
     align = unsupported_function('align')
