@@ -287,6 +287,7 @@ def pandas_wraps(function=None, return_col=None, return_scalar=None):
 
     >>> def fun(col1):
     ...     return col1.apply(lambda x: x * 2)  # Arbitrary pandas code.
+
     >>> fun(pdf.col1)
     0    2
     1    4

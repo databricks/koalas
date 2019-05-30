@@ -232,6 +232,7 @@ class DataFrame(_Frame):
 
         >>> def str_len(x) -> int:
         ...     return len(str(x))
+
         >>> df.applymap(str_len)
            0  1
         0  3  4
@@ -239,6 +240,7 @@ class DataFrame(_Frame):
 
         >>> def power(x) -> float:
         ...     return x ** 2
+
         >>> df.applymap(power)
                    0          1
         0   1.000000   4.494400
@@ -278,6 +280,7 @@ class DataFrame(_Frame):
         --------
         >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
         ...                   columns=['dogs', 'cats'])
+
         >>> df.corr('pearson')
                   dogs      cats
         dogs  1.000000 -0.851064
@@ -660,6 +663,7 @@ class DataFrame(_Frame):
               col1  col2
         row1     1  0.50
         row2     2  0.75
+
         >>> df_dict = df.to_dict()
         >>> sorted([(key, sorted(values.items())) for key, values in df_dict.items()])
         [('col1', [('row1', 1), ('row2', 2)]), ('col2', [('row1', 0.5), ('row2', 0.75)])]
@@ -673,6 +677,7 @@ class DataFrame(_Frame):
         Name: col1, dtype: int64), ('col2', row1    0.50
         row2    0.75
         Name: col2, dtype: float64)]
+
         >>> df_dict = df.to_dict('split')
         >>> sorted(df_dict.items())  # doctest: +ELLIPSIS
         [('columns', ['col1', 'col2']), ('data', [[1..., 0.75]]), ('index', ['row1', 'row2'])]
@@ -790,15 +795,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Examples
         --------
         >>> df = pd.DataFrame({'name': ['Raphael', 'Donatello'],
-        ... 'mask': ['red', 'purple'],
-        ... 'weapon': ['sai', 'bo staff']},
-        ... columns=['name', 'mask', 'weapon'])
+        ...                    'mask': ['red', 'purple'],
+        ...                    'weapon': ['sai', 'bo staff']},
+        ...                   columns=['name', 'mask', 'weapon'])
+
         >>> df.to_latex(index=False) # doctest: +NORMALIZE_WHITESPACE
         '\\begin{tabular}{lll}\n\\toprule\n name & mask & weapon
         \\\\\n\\midrule\n Raphael & red & sai \\\\\n Donatello &
         purple & bo staff \\\\\n\\bottomrule\n\\end{tabular}\n'
         """
-
         args = locals()
         kdf = self
         return validate_arguments_and_invoke_function(
@@ -1207,6 +1212,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
         ...                   columns=['dogs', 'cats'])
+
         >>> df.to_pandas()
            dogs  cats
         0   0.2   0.3
@@ -1769,6 +1775,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                    'e': [True, False, True],
         ...                    'f': pd.date_range('20130101', periods=3)},
         ...                   columns=['a', 'b', 'c', 'd', 'e', 'f'])
+
         >>> df.dtypes
         a            object
         b             int64
@@ -2003,6 +2010,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...     'col3': [0, 1, 9, 4, 2, 3],
         ...   },
         ...   columns=['col1', 'col2', 'col3'])
+
         >>> df.sort_values(by=['col1', 'col2'])
            col1  col2  col3
         1     A     1     1
@@ -2333,6 +2341,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4],
         ...                    'col3': [5, 6]})
+
         >>> df.shape
         (2, 3)
         """
@@ -2751,6 +2760,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                    'object': ['a', 'b', 'c']
         ...                   },
         ...                   columns=['numeric1', 'numeric2', 'object'])
+
         >>> df.describe()
                numeric1  numeric2
         count       3.0       3.0
@@ -2768,6 +2778,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                    'numeric2': [4.0, 5.0, 6.0]
         ...                   },
         ...                   columns=['numeric1', 'numeric2'])
+
         >>> df.describe(percentiles = [0.85, 0.15])
                numeric1  numeric2
         count       3.0       3.0

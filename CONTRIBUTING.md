@@ -117,6 +117,45 @@ It generates HTMLs under `docs/build/html` directory. Open `docs/build/html/inde
 ## Coding Conventions
 We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
 
+## Doctest Conventions
+
+When writing doctests, usually the doctests in pandas are converted into Koalas to make sure the same codes work in Koalas, except:
+
+  - For statements for preparation used in doctests that don't fit in two lines, insert a newline to make it a separate example block in API documentation. See the examples below:
+
+    ```python
+    >>> df = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+    ...                   index=['cobra', 'viper', 'sidewinder'],
+    ...                   columns=['max_speed', 'shield'])
+
+    >>> df.call()
+    ...
+    ```
+
+    ```python
+    >>> df = ks.DataFrame({'month': [1, 4, 7, 10],
+    ...                    'year': [2012, 2014, 2013, 2014],
+    ...                    'sale': [55, 40, 84, 31]},
+    ...                   columns=['month', 'year', 'sale'])
+    >>> df
+       month  year  sale
+    0      1  2012    55
+    1      4  2014    40
+    2      7  2013    84
+    3     10  2014    31
+
+    >>> df.call()
+    ...
+    ```
+
+    ```python
+    >>> def func(x) -> str:
+    ...     s = str(x)
+    ...     return x
+
+    >>> df.call(func)
+    ...
+    ```
 
 ## Release Instructions
 Only project maintainers can do the following.

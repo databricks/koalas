@@ -74,10 +74,13 @@ class _Frame(object):
         ...                    'col1': [1, 2, 3],
         ...                    'col2': [4, 5, 6]},
         ...                   columns=['category', 'col1', 'col2'])
+
         >>> def keep_category_a(df):
         ...    return df[df['category'] == 'A']
+
         >>> def add_one(df, column):
         ...    return df.assign(col3=df[column] + 1)
+
         >>> def multiply(df, column1, column2):
         ...    return df.assign(col4=df[column1] * df[column2])
 
@@ -238,7 +241,8 @@ class _Frame(object):
         >>> df = ks.DataFrame({'name': ['Raphael', 'Donatello'],
         ...                    'mask': ['red', 'purple'],
         ...                    'weapon': ['sai', 'bo staff']},
-        ...                     columns=['name', 'mask', 'weapon'])
+        ...                    columns=['name', 'mask', 'weapon'])
+
         >>> df.to_csv(index=False)
         'name,mask,weapon\\nRaphael,red,sai\\nDonatello,purple,bo staff\\n'
         >>> df.name.to_csv()  # doctest: +ELLIPSIS
@@ -341,6 +345,7 @@ class _Frame(object):
         >>> df = ks.DataFrame([['a', 'b'], ['c', 'd']],
         ...                   index=['row 1', 'row 2'],
         ...                   columns=['col 1', 'col 2'])
+
         >>> df.to_json(orient='split')
         '{"columns":["col 1","col 2"],\
 "index":["row 1","row 2"],\
@@ -489,6 +494,7 @@ class _Frame(object):
         >>> df1 = ks.DataFrame([['a', 'b'], ['c', 'd']],
         ...                    index=['row 1', 'row 2'],
         ...                    columns=['col 1', 'col 2'])
+
         >>> df1.to_excel("output.xlsx")  # doctest: +SKIP
 
         To specify the sheet name:
@@ -791,12 +797,15 @@ class _Frame(object):
         3    4.00
         Name: abs(0), dtype: float64
 
+        Absolute numeric values in a DataFrame.
+
         >>> df = ks.DataFrame({
         ...     'a': [4, 5, 6, 7],
         ...     'b': [10, 20, 30, 40],
         ...     'c': [100, 50, -30, -50]
         ...   },
         ...   columns=['a', 'b', 'c'])
+
         >>> df.abs()
            a   b    c
         0  4  10  100
@@ -848,6 +857,7 @@ class _Frame(object):
         1  Falcon      370.0
         2  Parrot       24.0
         3  Parrot       26.0
+
         >>> df.groupby(['Animal']).mean()  # doctest: +NORMALIZE_WHITESPACE
                 Max Speed
         Animal

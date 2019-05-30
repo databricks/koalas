@@ -325,6 +325,7 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
     >>> df = ks.DataFrame({'year': [2015, 2016],
     ...                    'month': [2, 3],
     ...                    'day': [4, 5]})
+
     >>> ks.to_datetime(df)
     0   2015-02-04
     1   2016-03-05
@@ -579,6 +580,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
 
     >>> s1 = ks.Series(['a', 'b'])
     >>> s2 = ks.Series(['c', 'd'])
+
     >>> ks.concat([s1, s2])
     0    a
     1    b
@@ -610,6 +612,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
       letter  number
     0      c       3
     1      d       4
+
     >>> ks.concat([df1, df2])
       letter  number
     0      a       1
@@ -638,6 +641,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
       letter  number animal
     0      c       3    cat
     1      d       4    dog
+
     >>> ks.concat([df1, df3])
       animal letter  number
     0   None      a       1

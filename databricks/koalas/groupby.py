@@ -118,6 +118,7 @@ class GroupBy(object):
         >>> df = ks.DataFrame({'A': [1, 1, 2, 1, 2],
         ...                    'B': [np.nan, 2, 3, 4, 5],
         ...                    'C': [1, 2, 1, 1, 2]}, columns=['A', 'B', 'C'])
+
         >>> df.groupby('A').count()  # doctest: +NORMALIZE_WHITESPACE
             B  C
         A
