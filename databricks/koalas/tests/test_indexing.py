@@ -151,6 +151,10 @@ class IndexingTest(ReusedSQLTestCase):
         self.assertEqual(test_series.at['b'], 6)
         self.assertEqual(test_series.at['b'], pdf.loc[3].at['b'])
 
+        #
+        self.assertEqual(ks.Series([0, 1], index=['ab', 'cd']).at['ab'],
+                         pd.Series([0, 1], index=['ab', 'cd']).at['ab'])
+
         # Assert invalid column or index names result in a KeyError like with pandas
         with self.assertRaises(KeyError, msg='x'):
             kdf.at[3, 'x']
