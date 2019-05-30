@@ -29,6 +29,7 @@ Attributes
    Series.schema
    Series.shape
    Series.size
+   Series.empty
 
 Conversion
 ----------
@@ -45,12 +46,35 @@ Indexing, iteration
    Series.loc
    Series.iloc
 
+Binary operator functions
+-------------------------
+
+.. autosummary::
+   :toctree: api/
+
+   Series.add
+   Series.div
+   Series.divide
+   Series.mul
+   Series.multiply
+   Series.radd
+   Series.rdiv
+   Series.rmul
+   Series.rsub
+   Series.rtruediv
+   Series.sub
+   Series.subtract
+   Series.truediv
+
 Function application, GroupBy & Window
 --------------------------------------
 .. autosummary::
    :toctree: api/
 
+   Series.apply
+   Series.map
    Series.groupby
+   Series.pipe
 
 .. _api.series.stats:
 

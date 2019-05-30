@@ -15,6 +15,7 @@
 #
 
 import inspect
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -370,3 +371,17 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "Indices have overlapping values"
         with self.assertRaises(ValueError, msg=msg):
             ks1.append(ks2, verify_integrity=True)
+
+    def test_map(self):
+        pser = pd.Series(['cat', 'dog', None, 'rabbit'])
+        kser = koalas.from_pandas(pser)
+        # Currently Koalas doesn't return NaN as Pandas does.
+        self.assertEqual(
+            repr(kser.map({})),
+            repr(pser.map({}).replace({pd.np.nan: None}).rename(0)))
+
+        d = defaultdict(lambda: "abc")
+        self.assertTrue("abc" in repr(kser.map(d)))
+        self.assertEqual(
+            repr(kser.map(d)),
+            repr(pser.map(d).rename(0)))
