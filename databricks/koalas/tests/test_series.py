@@ -193,6 +193,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert approximate counts
         self.assertEqual(koalas.Series(range(100)).nunique(approx=True), 103)
+        self.assertEqual(koalas.Series(range(100)).nunique(approx=True, rsd=0.01), 100)
 
     def test_value_counts(self):
         ps = pd.Series([1, 2, 1, 3, 3, np.nan, 1, 4], name="x")

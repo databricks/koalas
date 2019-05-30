@@ -747,7 +747,7 @@ class Series(_Frame, IndexOpsMixin):
         sdf = self.to_dataframe()._sdf
         return _col(DataFrame(sdf.select(self._scol).distinct()))
 
-    def nunique(self, dropna: bool = True, approx: bool = False) -> int:
+    def nunique(self, dropna: bool = True, approx: bool = False, rsd: float = 0.05) -> int:
         """
         Return number of unique elements in the object.
 
@@ -761,6 +761,9 @@ class Series(_Frame, IndexOpsMixin):
             If False, will use the exact algorithm and return the exact number of unique.
             If True, it uses Spark's approximate algorithm, which is faster in most circumstances.
             Note: this parameter is specific to Spark and is not found in pandas.
+        rsd: float, default 0.05
+            Maximum estimation error allowed. Just like ``approx`` this parameter is specific to
+            Spark.
 
         Returns
         -------
@@ -774,7 +777,7 @@ class Series(_Frame, IndexOpsMixin):
         >>> ks.Series([1, 2, 3, np.nan]).nunique(dropna=False)
         4
         """
-        return self.to_dataframe().nunique(dropna=dropna, approx=approx).iloc[0]
+        return self.to_dataframe().nunique(dropna=dropna, approx=approx, rsd=rsd).iloc[0]
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
