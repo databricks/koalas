@@ -85,6 +85,7 @@ def _unfold(key, kseries):
 class AtIndexer(object):
     """
     Access a single value for a row/column label pair.
+    If the index is not unique, all matching pairs are returned as an array.
     Similar to ``loc``, in that both provide label-based lookups. Use ``at`` if you only need to
     get a single value in a DataFrame or Series.
 
