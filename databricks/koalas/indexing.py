@@ -128,8 +128,6 @@ class AtIndexer(object):
             self._ks = df_or_s
 
     def __getitem__(self, key):
-        from databricks.koalas.frame import DataFrame
-
         if self._ks is None and (not isinstance(key, tuple) or len(key) != 2):
             raise TypeError("Use DataFrame.at like .at[row_index, column_name]")
         if self._ks is not None and len(key) != 1:
