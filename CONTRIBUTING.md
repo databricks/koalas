@@ -169,11 +169,12 @@ There are some explicit notes to keep in mind:
     >>> df.call()
     ...
 
-    >>> df.call()
+    >>> df.call(func)
     ...
 
-    >>> df = df.call().call()
-    >>> df.call()
+    >>> df = df.call(flag=True).call()
+    >>> df.call(func, flag=True)
+    ...
     ```
 
 ## Release Instructions
