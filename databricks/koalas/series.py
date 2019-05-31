@@ -24,6 +24,7 @@ from typing import Any, Optional, List, Union
 
 import numpy as np
 import pandas as pd
+from pandas.core.accessor import CachedAccessor
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -36,6 +37,7 @@ from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.datetimes import DatetimeMethods
 
 
 # This regular expression pattern is complied and defined here to avoid to compile the same
@@ -242,12 +244,6 @@ class Series(_Frame, IndexOpsMixin):
         :return: the copied Series
         """
         return Series(scol, anchor=self._kdf, index=self._index_map)
-
-    @property
-    def dt(self):
-        from databricks.koalas.datetimes import DatetimeMethods
-
-        return DatetimeMethods(self)
 
     @property
     def dtypes(self):
@@ -1648,6 +1644,13 @@ class Series(_Frame, IndexOpsMixin):
         return _col(self.to_dataframe().describe(percentiles))
 
     describe.__doc__ = DataFrame.describe.__doc__
+
+    # ----------------------------------------------------------------------
+    # Accessor Methods
+    # ----------------------------------------------------------------------
+    dt = CachedAccessor("dt", DatetimeMethods)
+
+    # ----------------------------------------------------------------------
 
     def _reduce_for_stat_function(self, sfun):
         from inspect import signature
