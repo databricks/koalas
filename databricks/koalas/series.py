@@ -1574,7 +1574,6 @@ class Series(_Frame, IndexOpsMixin):
 
         >>> def square(x) -> np.int64:
         ...     return x ** 2
-
         >>> s.apply(square)
         London      400
         New York    441
@@ -1615,7 +1614,6 @@ class Series(_Frame, IndexOpsMixin):
 
         >>> def numpy_log(col) -> np.float64:
         ...     return np.log(col)
-
         >>> s.apply(numpy_log)
         London      2.995732
         New York    3.044522

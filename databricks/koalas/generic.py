@@ -77,10 +77,8 @@ class _Frame(object):
 
         >>> def keep_category_a(df):
         ...    return df[df['category'] == 'A']
-
         >>> def add_one(df, column):
         ...    return df.assign(col3=df[column] + 1)
-
         >>> def multiply(df, column1, column2):
         ...    return df.assign(col4=df[column1] * df[column2])
 

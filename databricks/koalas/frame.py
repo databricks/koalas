@@ -232,7 +232,6 @@ class DataFrame(_Frame):
 
         >>> def str_len(x) -> int:
         ...     return len(str(x))
-
         >>> df.applymap(str_len)
            0  1
         0  3  4
@@ -240,7 +239,6 @@ class DataFrame(_Frame):
 
         >>> def power(x) -> float:
         ...     return x ** 2
-
         >>> df.applymap(power)
                    0          1
         0   1.000000   4.494400
