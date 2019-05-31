@@ -127,7 +127,7 @@ the number of examples to show is not enough.
 
 There are some explicit notes to keep in mind:
 
-  - For statements for preparation used in doctests that don't fit in two lines, insert a newline to make it a separate example block in API documentation. See the examples below:
+  - For statements for data preparation used in doctests that don't fit in two lines, insert a newline to make it a separate example block in API documentation. See the examples below:
 
     ```python
     >>> df = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
@@ -151,15 +151,6 @@ There are some explicit notes to keep in mind:
     3     10  2014    31
 
     >>> df.call()
-    ...
-    ```
-
-    ```python
-    >>> def func(x) -> str:
-    ...     s = str(x)
-    ...     return x
-
-    >>> df.call(func)
     ...
     ```
 
