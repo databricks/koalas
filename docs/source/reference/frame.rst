@@ -86,6 +86,7 @@ Reindexing / Selection / Label manipulation
 .. autosummary::
    :toctree: api/
 
+   DataFrame.add_prefix
    DataFrame.drop
    DataFrame.head
    DataFrame.reset_index
