@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas
+from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.plot import KoalasHistPlotSummary, KoalasBoxPlotSummary
 
@@ -133,10 +134,16 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
     def test_box_plot(self):
         self.boxplot_comparison()
         self.boxplot_comparison(showfliers=True)
-        self.boxplot_comparison(showfliers=True, sym='.')
+        self.boxplot_comparison(sym='')
+        self.boxplot_comparison(sym='.', color='r')
         self.boxplot_comparison(use_index=False, labels=['Test'])
         self.boxplot_comparison(usermedians=[2.0])
         self.boxplot_comparison(conf_intervals=[(1.0, 3.0)])
+
+        val = (1, 3)
+        self.assertRaises(ValueError, lambda: self.boxplot_comparison(usermedians=[2.0, 3.0]))
+        self.assertRaises(ValueError, lambda: self.boxplot_comparison(conf_intervals=[val, val]))
+        self.assertRaises(ValueError, lambda: self.boxplot_comparison(conf_intervals=[(1,)]))
 
     def test_box_summary(self):
         kdf = self.kdf1
@@ -168,3 +175,12 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(expected_whiskers[0], whiskers[0])
         self.assert_eq(expected_whiskers[1], whiskers[1])
         self.assert_eq(expected_fliers, fliers)
+
+    def test_missing(self):
+        ks = self.kdf1['a']
+
+        unsupported_functions = ['area', 'kde', 'pie', 'barh', 'line']
+        for name in unsupported_functions:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "method.*Series.*{}.*not implemented".format(name)):
+                getattr(ks.plot, name)()

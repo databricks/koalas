@@ -469,7 +469,7 @@ class KoalasSeriesPlotMethods(BasePlotMethods):
     __call__.__doc__ = plot_series.__doc__
 
     def line(self, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='line')
+        return _unsupported_function(class_name='pd.Series', method_name='line')()
 
     def bar(self, **kwds):
         """
@@ -488,7 +488,7 @@ class KoalasSeriesPlotMethods(BasePlotMethods):
         return self(kind='bar', **kwds)
 
     def barh(self, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='barh')
+        return _unsupported_function(class_name='pd.Series', method_name='barh')()
 
     def box(self, **kwds):
         """
@@ -542,12 +542,12 @@ class KoalasSeriesPlotMethods(BasePlotMethods):
         return self(kind='hist', bins=bins, **kwds)
 
     def kde(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='kde')
+        return _unsupported_function(class_name='pd.Series', method_name='kde')()
 
     density = kde
 
     def area(self, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='area')
+        return _unsupported_function(class_name='pd.Series', method_name='area')()
 
     def pie(self, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='pie')
+        return _unsupported_function(class_name='pd.Series', method_name='pie')()
