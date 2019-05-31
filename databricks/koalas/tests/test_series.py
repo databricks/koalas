@@ -178,6 +178,24 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ks.dropna(inplace=True)
         self.assert_eq(ks, ps.dropna())
 
+    def test_nunique(self):
+        ps = pd.Series([1, 2, 1, np.nan])
+        ks = koalas.from_pandas(ps)
+
+        # Assert NaNs are dropped by default
+        nunique_result = ks.nunique()
+        self.assertEqual(nunique_result, 2)
+        self.assert_eq(nunique_result, ps.nunique())
+
+        # Assert including NaN values
+        nunique_result = ks.nunique(dropna=False)
+        self.assertEqual(nunique_result, 3)
+        self.assert_eq(nunique_result, ps.nunique(dropna=False))
+
+        # Assert approximate counts
+        self.assertEqual(koalas.Series(range(100)).nunique(approx=True), 103)
+        self.assertEqual(koalas.Series(range(100)).nunique(approx=True, rsd=0.01), 100)
+
     def test_value_counts(self):
         ps = pd.Series([1, 2, 1, 3, 3, np.nan, 1, 4], name="x")
         ks = koalas.from_pandas(ps)

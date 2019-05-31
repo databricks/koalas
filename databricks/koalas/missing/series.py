@@ -128,7 +128,6 @@ class _MissingPandasLikeSeries(object):
     mode = unsupported_function('mode')
     ne = unsupported_function('ne')
     nonzero = unsupported_function('nonzero')
-    nunique = unsupported_function('nunique')
     pct_change = unsupported_function('pct_change')
     pop = unsupported_function('pop')
     pow = unsupported_function('pow')

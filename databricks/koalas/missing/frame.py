@@ -117,7 +117,6 @@ class _MissingPandasLikeDataFrame(object):
     mul = unsupported_function('mul')
     multiply = unsupported_function('multiply')
     ne = unsupported_function('ne')
-    nunique = unsupported_function('nunique')
     pct_change = unsupported_function('pct_change')
     pivot = unsupported_function('pivot')
     pivot_table = unsupported_function('pivot_table')

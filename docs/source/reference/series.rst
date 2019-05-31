@@ -95,6 +95,7 @@ Computations / Descriptive Stats
    Series.max
    Series.mean
    Series.min
+   Series.nunique
    Series.skew
    Series.std
    Series.sum
