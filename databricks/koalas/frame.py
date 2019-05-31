@@ -2705,18 +2705,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Prefix labels with string `prefix`.
         For Series, the row labels are prefixed.
         For DataFrame, the column labels are prefixed.
+
         Parameters
         ----------
         prefix : str
            The string to add before each label.
+
         Returns
         -------
         Series or DataFrame
            New Series or DataFrame with updated labels.
+
         See Also
         --------
         Series.add_suffix: Suffix row labels with string `suffix`.
         DataFrame.add_suffix: Suffix column labels with string `suffix`.
+
         Examples
         --------
         >>> df = ks.DataFrame({'A': [1, 2, 3, 4],  'B': [3, 4, 5, 6]})
