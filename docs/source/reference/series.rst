@@ -43,6 +43,7 @@ Indexing, iteration
 .. autosummary::
    :toctree: api/
 
+   Series.at
    Series.loc
    Series.iloc
 
@@ -94,6 +95,7 @@ Computations / Descriptive Stats
    Series.max
    Series.mean
    Series.min
+   Series.nunique
    Series.skew
    Series.std
    Series.sum
@@ -140,6 +142,59 @@ Combining / joining / merging
 
    Series.append
 
+Accessors
+---------
+
+Koalas provides dtype-specific methods under various accessors.
+These are separate namespaces within :class:`Series` that only apply
+to specific data types.
+
+========= =========================
+Data Type                  Accessor
+========= =========================
+Datetime  :ref:`dt <api.series.dt>`
+========= =========================
+
+.. _api.series.dt:
+
+Datetimelike Properties
+~~~~~~~~~~~~~~~~~~~~~~~
+
+``Series.dt`` can be used to access the values of the series as
+datetimelike and return several properties.
+These can be accessed like ``Series.dt.<property>``.
+
+Datetime Properties
+^^^^^^^^^^^^^^^^^^^
+
+.. currentmodule:: databricks.koalas.series
+.. autosummary::
+   :toctree: api/
+
+   Series.dt.date
+   Series.dt.year
+   Series.dt.month
+   Series.dt.week
+   Series.dt.weekofyear
+   Series.dt.day
+   Series.dt.dayofweek
+   Series.dt.weekday
+   Series.dt.dayofyear
+   Series.dt.hour
+   Series.dt.minute
+   Series.dt.second
+   Series.dt.millisecond
+   Series.dt.microsecond
+
+Datetime Methods
+^^^^^^^^^^^^^^^^
+
+.. currentmodule:: databricks.koalas.series
+.. autosummary::
+   :toctree: api/
+
+   Series.dt.strftime
+
 Serialization / IO / Conversion
 -------------------------------
 .. autosummary::
@@ -155,28 +210,3 @@ Serialization / IO / Conversion
    Series.to_json
    Series.to_csv
    Series.to_excel
-
-Datetime Methods
-----------------
-Methods accessible through `Series.dt`
-
-.. currentmodule:: databricks.koalas.datetimes
-.. autosummary::
-   :toctree: api/
-
-   DatetimeMethods.date
-   DatetimeMethods.year
-   DatetimeMethods.month
-   DatetimeMethods.week
-   DatetimeMethods.weekofyear
-   DatetimeMethods.day
-   DatetimeMethods.dayofweek
-   DatetimeMethods.weekday
-   DatetimeMethods.dayofyear
-   DatetimeMethods.hour
-   DatetimeMethods.minute
-   DatetimeMethods.second
-   DatetimeMethods.millisecond
-   DatetimeMethods.microsecond
-
-   DatetimeMethods.strftime

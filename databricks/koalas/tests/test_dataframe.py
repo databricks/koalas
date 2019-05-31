@@ -287,6 +287,34 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.notnull(), pdf.notnull())
         self.assert_eq(kdf.isnull(), pdf.isnull())
 
+    def test_to_datetime(self):
+        pdf = pd.DataFrame({'year': [2015, 2016],
+                            'month': [2, 3],
+                            'day': [4, 5]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pd.to_datetime(pdf), ks.to_datetime(kdf))
+
+    def test_nunique(self):
+        pdf = pd.DataFrame({'A': [1, 2, 3], 'B': [np.nan, 3, np.nan]})
+        kdf = ks.from_pandas(pdf)
+
+        # Assert NaNs are dropped by default
+        nunique_result = kdf.nunique()
+        self.assert_eq(nunique_result, pd.Series([3, 1], index=['A', 'B'], name='0'))
+        self.assert_eq(nunique_result, pdf.nunique())
+
+        # Assert including NaN values
+        nunique_result = kdf.nunique(dropna=False)
+        self.assert_eq(nunique_result, pd.Series([3, 2], index=['A', 'B'], name='0'))
+        self.assert_eq(nunique_result, pdf.nunique(dropna=False))
+
+        # Assert approximate counts
+        self.assert_eq(ks.DataFrame({'A': range(100)}).nunique(approx=True),
+                       pd.Series([103], index=['A'], name='0'))
+        self.assert_eq(ks.DataFrame({'A': range(100)}).nunique(approx=True, rsd=0.01),
+                       pd.Series([100], index=['A'], name='0'))
+
     def test_sort_values(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
                             'b': [7, 6, 5, 4, 3, 2, 1]})
