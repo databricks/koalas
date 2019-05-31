@@ -429,77 +429,13 @@ def _plot(data, x=None, y=None, subplots=False,
     # function copied from pandas.plotting._core
     # and adapted to handle Koalas DataFrame and Series
 
-    from databricks.koalas.frame import DataFrame
-    from databricks.koalas.series import Series
-
     kind = _get_standard_kind(kind.lower().strip())
     if kind in _all_kinds:
         klass = _plot_klass[kind]
     else:
         raise ValueError("%r is not a valid plot kind" % kind)
 
-    if kind in _dataframe_kinds:
-        if isinstance(data, DataFrame):
-            plot_obj = klass(data, x=x, y=y, subplots=subplots, ax=ax,
-                             kind=kind, **kwds)
-        else:
-            raise ValueError("plot kind %r can only be used for data frames"
-                             % kind)
-
-    elif kind in _series_kinds:
-        if isinstance(data, DataFrame):
-            if y is None and subplots is False:
-                msg = "{0} requires either y column or 'subplots=True'"
-                raise ValueError(msg.format(kind))
-            elif y is not None:
-                if is_integer(y) and not data.columns.holds_integer():
-                    y = data.columns[y]
-                # converted to series
-                data = data[y]
-
-        plot_obj = klass(data, subplots=subplots, ax=ax, kind=kind, **kwds)
-    else:
-        if isinstance(data, DataFrame):
-            data_cols = data.columns
-            if x is not None:
-                if is_integer(x) and not data.columns.holds_integer():
-                    x = data_cols[x]
-                elif not isinstance(data[x], Series):
-                    raise ValueError("x must be a label or position")
-                data = data.set_index(x)
-
-            if y is not None:
-                # check if we have y as int or list of ints
-                int_ylist = is_list_like(y) and all(is_integer(c) for c in y)
-                int_y_arg = is_integer(y) or int_ylist
-                if int_y_arg and not data.columns.holds_integer():
-                    y = data_cols[y]
-
-                label_kw = kwds['label'] if 'label' in kwds else False
-                for kw in ['xerr', 'yerr']:
-                    if (kw in kwds) and \
-                       (isinstance(kwds[kw], string_types) or is_integer(kwds[kw])):
-                        try:
-                            kwds[kw] = data[kwds[kw]]
-                        except (IndexError, KeyError, TypeError):
-                            pass
-
-                data = data[y]
-
-                if isinstance(data, Series):
-                    label_name = label_kw or y
-                    data.name = label_name
-                else:
-                    match = is_list_like(label_kw) and len(label_kw) == len(y)
-                    if label_kw and not match:
-                        raise ValueError(
-                            "label should be list-like and same length as y"
-                        )
-                    label_name = label_kw or data.columns
-                    data.columns = label_name
-
-        plot_obj = klass(data, subplots=subplots, ax=ax, kind=kind, **kwds)
-
+    plot_obj = klass(data, subplots=subplots, ax=ax, kind=kind, **kwds)
     plot_obj.generate()
     plot_obj.draw()
     return plot_obj.result

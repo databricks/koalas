@@ -17,6 +17,11 @@
 import inspect
 from collections import defaultdict
 
+import base64
+from io import BytesIO
+import matplotlib
+matplotlib.use('agg')
+from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -368,3 +373,25 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(
             repr(kser.map(d)),
             repr(pser.map(d).rename(0)))
+
+    def test_hist(self):
+        pdf = pd.DataFrame({
+            'a': [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50],
+        }, index=[0, 1, 3, 5, 6, 8, 9, 9, 9, 10, 10])
+
+        kdf = koalas.from_pandas(pdf)
+
+        def plot_to_base64(ax):
+            bytes_data = BytesIO()
+            ax.figure.savefig(bytes_data, format='png')
+            bytes_data.seek(0)
+            b64_data = base64.b64encode(bytes_data.read())
+            plt.close(ax.figure)
+            return b64_data
+
+        _, ax1 = plt.subplots(1, 1)
+        ax1 = pdf['a'].hist()
+        _, ax2 = plt.subplots(1, 1)
+        ax2 = kdf['a'].hist()
+
+        self.assert_eq(plot_to_base64(ax1), plot_to_base64(ax2))

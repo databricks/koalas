@@ -94,6 +94,10 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         ax2 = kdf['a'].plot.hist(bins=15)
         self.compare_plots(ax1, ax2)
 
+        ax1 = pdf['a'].plot.hist(bins=3, bottom=[2, 1, 3])
+        ax2 = kdf['a'].plot.hist(bins=3, bottom=[2, 1, 3])
+        self.compare_plots(ax1, ax2)
+
     def test_hist_summary(self):
         kdf = self.kdf1
         summary = KoalasHistPlotSummary(kdf['a'], 'a')
@@ -106,14 +110,14 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pd.Series(expected_bins), pd.Series(bins))
         self.assert_eq(pd.Series(expected_histogram), histogram)
 
-    def test_box_plot(self):
+    def boxplot_comparison(self, *args, **kwargs):
         pdf = self.pdf1
         kdf = self.kdf1
 
         _, ax1 = plt.subplots(1, 1)
-        ax1 = pdf['a'].plot.box(showfliers=True)
+        ax1 = pdf['a'].plot.box(*args, **kwargs)
         _, ax2 = plt.subplots(1, 1)
-        ax2 = kdf['a'].plot.box(showfliers=True)
+        ax2 = kdf['a'].plot.box(*args, **kwargs)
 
         diffs = [np.array([0, .5, 0, .5, 0, -.5, 0, -.5, 0, .5]),
                  np.array([0, .5, 0, 0]),
@@ -125,6 +129,14 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
             if i < 3:
                 actual += diffs[i]
             self.assert_eq(pd.Series(expected), pd.Series(actual))
+
+    def test_box_plot(self):
+        self.boxplot_comparison()
+        self.boxplot_comparison(showfliers=True)
+        self.boxplot_comparison(showfliers=True, sym='.')
+        self.boxplot_comparison(use_index=False, labels=['Test'])
+        self.boxplot_comparison(usermedians=[2.0])
+        self.boxplot_comparison(conf_intervals=[(1.0, 3.0)])
 
     def test_box_summary(self):
         kdf = self.kdf1
