@@ -46,6 +46,7 @@ Indexing, iteration
 .. autosummary::
    :toctree: api/
 
+   DataFrame.at
    DataFrame.head
    DataFrame.loc
    DataFrame.iloc
@@ -78,6 +79,7 @@ Computations / Descriptive Stats
    DataFrame.max
    DataFrame.mean
    DataFrame.min
+   DataFrame.nunique
    DataFrame.skew
    DataFrame.sum
    DataFrame.std

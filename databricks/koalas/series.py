@@ -38,6 +38,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.datetimes import DatetimeMethods
 
 
 # This regular expression pattern is complied and defined here to avoid to compile the same
@@ -244,12 +245,6 @@ class Series(_Frame, IndexOpsMixin):
         :return: the copied Series
         """
         return Series(scol, anchor=self._kdf, index=self._index_map)
-
-    @property
-    def dt(self):
-        from databricks.koalas.datetimes import DatetimeMethods
-
-        return DatetimeMethods(self)
 
     @property
     def dtypes(self):
@@ -1070,6 +1065,38 @@ class Series(_Frame, IndexOpsMixin):
         sdf = self.to_dataframe()._sdf
         return _col(DataFrame(sdf.select(self._scol).distinct()))
 
+    def nunique(self, dropna: bool = True, approx: bool = False, rsd: float = 0.05) -> int:
+        """
+        Return number of unique elements in the object.
+
+        Excludes NA values by default.
+
+        Parameters
+        ----------
+        dropna : bool, default True
+            Don’t include NaN in the count.
+        approx: bool, default False
+            If False, will use the exact algorithm and return the exact number of unique.
+            If True, it uses Spark's approximate algorithm, which is faster in most circumstances.
+            Note: this parameter is specific to Spark and is not found in pandas.
+        rsd: float, default 0.05
+            Maximum estimation error allowed. Just like ``approx`` this parameter is specific to
+            Spark.
+
+        Returns
+        -------
+        The number of unique values as an int.
+
+        Examples
+        --------
+        >>> ks.Series([1, 2, 3, np.nan]).nunique()
+        3
+
+        >>> ks.Series([1, 2, 3, np.nan]).nunique(dropna=False)
+        4
+        """
+        return self.to_dataframe().nunique(dropna=dropna, approx=approx, rsd=rsd).iloc[0]
+
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
         """
@@ -1630,6 +1657,13 @@ class Series(_Frame, IndexOpsMixin):
         return _col(self.to_dataframe().describe(percentiles))
 
     describe.__doc__ = DataFrame.describe.__doc__
+
+    # ----------------------------------------------------------------------
+    # Accessor Methods
+    # ----------------------------------------------------------------------
+    dt = CachedAccessor("dt", DatetimeMethods)
+
+    # ----------------------------------------------------------------------
 
     def _reduce_for_stat_function(self, sfun):
         from inspect import signature
