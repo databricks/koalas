@@ -116,7 +116,7 @@ class AtIndexer(object):
 
     Get array if an index occurs multiple times
 
-    >>> kdf.to_pandas().at[5, 'B']
+    >>> kdf.at[5, 'B']
     array([ 4, 20])
     """
     def __init__(self, df_or_s):
