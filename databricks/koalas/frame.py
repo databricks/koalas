@@ -1157,10 +1157,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             If False, will use the exact algorithm and return the exact number of unique.
             If True, it uses the HyperLogLog approximate algorithm, which is significantly faster
             for large amount of data.
-            Note: this parameter is specific to Koalas and is not found in pandas.
+            Note: This parameter is specific to Koalas and is not found in pandas.
         rsd: float, default 0.05
             Maximum estimation error allowed in the HyperLogLog algorithm.
-            Just like ``approx`` this parameter is specific to Koalas.
+            Note: Just like ``approx`` this parameter is specific to Koalas.
 
         Returns
         -------
@@ -1182,9 +1182,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         On big data, we recommend using the approximate algorithm to speed up this function.
         The result will be very close to the exact unique count.
 
-        >>> df.nunique(approx=True)  # doctest: +SKIP
+        >>> df.nunique(approx=True)
         A    3
-        B    2
+        B    1
+        Name: 0, dtype: int64
         """
         if axis != 0:
             raise ValueError("The 'nunique' method only works with axis=0 at the moment")

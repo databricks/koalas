@@ -1071,10 +1071,10 @@ class Series(_Frame, IndexOpsMixin):
             If False, will use the exact algorithm and return the exact number of unique.
             If True, it uses the HyperLogLog approximate algorithm, which is significantly faster
             for large amount of data.
-            Note: this parameter is specific to Koalas and is not found in pandas.
+            Note: This parameter is specific to Koalas and is not found in pandas.
         rsd: float, default 0.05
             Maximum estimation error allowed in the HyperLogLog algorithm.
-            Just like ``approx`` this parameter is specific to Koalas.
+            Note: Just like ``approx`` this parameter is specific to Koalas.
 
         Returns
         -------
@@ -1091,7 +1091,7 @@ class Series(_Frame, IndexOpsMixin):
         On big data, we recommend using the approximate algorithm to speed up this function.
         The result will be very close to the exact unique count.
 
-        >>> ks.Series([1, 2, 3, np.nan]).nunique(approx=True)  # doctest: +SKIP
+        >>> ks.Series([1, 2, 3, np.nan]).nunique(approx=True)
         3
         """
         return self.to_dataframe().nunique(dropna=dropna, approx=approx, rsd=rsd).iloc[0]
