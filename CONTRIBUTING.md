@@ -119,7 +119,13 @@ We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception:
 
 ## Doctest Conventions
 
-When writing doctests, usually the doctests in pandas are converted into Koalas to make sure the same codes work in Koalas, except:
+When writing doctests, usually the doctests in pandas are converted into Koalas to make sure the same codes work in Koalas.
+In general, doctests should be grouped logically by seperating a newline. For instance, the first block is for the statements for
+preparation, the second block is for using the function with a specific argument, and third block is for another argument.
+These blocks should be consistently separated in Koalas, and more doctests should be added if the coverage of the doctests or
+the number of examples to show is not enough.
+
+There are some explicit notes to keep in mind:
 
   - For statements for preparation used in doctests that don't fit in two lines, insert a newline to make it a separate example block in API documentation. See the examples below:
 
@@ -155,6 +161,19 @@ When writing doctests, usually the doctests in pandas are converted into Koalas 
 
     >>> df.call(func)
     ...
+    ```
+
+  - For each example used in doctests, insert a newline to each example logically to make it a separate example block in API documentation. See the examples below:
+
+    ```python
+    >>> df.call()
+    ...
+
+    >>> df.call()
+    ...
+
+    >>> df = df.call().call()
+    >>> df.call()
     ```
 
 ## Release Instructions
