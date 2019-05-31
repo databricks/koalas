@@ -31,7 +31,6 @@ class _MissingPandasLikeDataFrame(object):
 
     # Properties
     T = unsupported_property('T')
-    at = unsupported_property('at')
     axes = unsupported_property('axes')
     ftypes = unsupported_property('ftypes')
     iat = unsupported_property('iat')

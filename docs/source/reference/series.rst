@@ -43,6 +43,7 @@ Indexing, iteration
 .. autosummary::
    :toctree: api/
 
+   Series.at
    Series.loc
    Series.iloc
 

@@ -46,6 +46,7 @@ Indexing, iteration
 .. autosummary::
    :toctree: api/
 
+   DataFrame.at
    DataFrame.head
    DataFrame.loc
    DataFrame.iloc

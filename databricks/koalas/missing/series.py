@@ -35,7 +35,6 @@ class _MissingPandasLikeSeries(object):
     argmin = unsupported_function('argmin')
     array = unsupported_property('array')
     asobject = unsupported_property('asobject')
-    at = unsupported_property('at')
     axes = unsupported_property('axes')
     base = unsupported_property('base')
     data = unsupported_property('data')
