@@ -408,8 +408,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             return b64_data
 
         _, ax1 = plt.subplots(1, 1)
-        ax1 = pdf['a'].hist()
+        # Using plot.hist() because pandas changes ticks props when called hist()
+        ax1 = pdf['a'].plot.hist()
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['a'].hist()
-
         self.assert_eq(plot_to_base64(ax1), plot_to_base64(ax2))
