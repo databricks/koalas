@@ -191,6 +191,55 @@ class Series(_Frame, IndexOpsMixin):
             raise ValueError("Type {} not understood".format(dtype))
         return Series(self._scol.cast(spark_type), anchor=self._kdf, index=self._index_map)
 
+    def add_prefix(self, prefix):
+        """
+        Prefix labels with string `prefix`.
+
+        For Series, the row labels are prefixed.
+
+        Parameters
+        ----------
+        prefix : str
+           The string to add before each label.
+
+        Returns
+        -------
+        Series
+           New Series with updated labels.
+
+        See Also
+        --------
+        DataFrame.add_prefix: Suffix column labels with string `prefix`.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4])
+        >>> s
+        0    1
+        1    2
+        2    3
+        3    4
+        dtype: int64
+
+        >>> s.add_prefix('item_')
+        item_0    1
+        item_1    2
+        item_2    3
+        item_3    4
+        dtype: int64
+        """
+        assert isinstance(prefix, str)
+        kdf = self.to_dataframe()
+        print(kdf.head(5))
+        print(kdf.index)
+        print(kdf._metadata.index_names)
+        print(kdf._metadata.data_columns)
+        print(kdf._metadata.index_map)
+        sdf = kdf._sdf.select([F.concat(F.lit(prefix), kdf._sdf[index_column])
+                               for index_column in kdf._metadata.index_columns] +
+                              kdf._metadata.data_columns)
+        return _col(DataFrame(sdf))
+
     def getField(self, name):
         if not isinstance(self.schema, StructType):
             raise AttributeError("Not a struct: {}".format(self.schema))

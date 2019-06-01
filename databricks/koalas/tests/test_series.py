@@ -350,6 +350,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = koalas.from_pandas(pser)
         self.assertEqual(pser.is_unique, kser.is_unique)
 
+    def test_add_prefix(self):
+        pser = pd.Series([1, 2, 3, 4])
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(pser.add_prefix('col_'), kser.add_prefix('col_'))
+
     def test_to_list(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
             self.assertEqual(self.ks.to_list(), self.ps.to_list())
+
+
+
