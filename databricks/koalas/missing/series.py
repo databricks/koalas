@@ -59,8 +59,6 @@ class _MissingPandasLikeSeries(object):
     blocks = unsupported_property('blocks', deprecated=True)
 
     # Functions
-    add_prefix = unsupported_function('add_prefix')
-    add_suffix = unsupported_function('add_suffix')
     agg = unsupported_function('agg')
     aggregate = unsupported_function('aggregate')
     align = unsupported_function('align')

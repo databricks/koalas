@@ -109,6 +109,8 @@ Reindexing / Selection / Label manipulation
 .. autosummary::
    :toctree: api/
 
+   Series.add_prefix
+   Series.add_suffix
    Series.head
    Series.isin
    Series.rename

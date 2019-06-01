@@ -386,3 +386,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(
             repr(kser.map(d)),
             repr(pser.map(d).rename(0)))
+
+    def test_add_prefix(self):
+        pser = pd.Series([1, 2, 3, 4])
+        kser = koalas.Series([1, 2, 3, 4])
+        self.assert_eq(pser.add_prefix('item_'), kser.add_prefix('item_'))
+
+    def test_add_suffix(self):
+        pser = pd.Series([1, 2, 3, 4])
+        kser = koalas.Series([1, 2, 3, 4])
+        self.assert_eq(pser.add_suffix('_item'), kser.add_suffix('_item'))
