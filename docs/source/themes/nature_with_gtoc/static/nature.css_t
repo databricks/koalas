@@ -353,6 +353,14 @@ table td.data, table th.row_heading table th.col_heading {
 }
 
 /**
+ * Avoid that tables are located in the middle
+ */
+table.align-center {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+/**
  * See also
  */
 

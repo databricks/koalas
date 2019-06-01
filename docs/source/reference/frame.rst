@@ -20,6 +20,7 @@ Attributes and underlying data
 
    DataFrame.index
    DataFrame.columns
+   DataFrame.empty
 
 .. autosummary::
    :toctree: api/
@@ -45,6 +46,7 @@ Indexing, iteration
 .. autosummary::
    :toctree: api/
 
+   DataFrame.at
    DataFrame.head
    DataFrame.loc
    DataFrame.iloc
@@ -56,6 +58,7 @@ Function application, GroupBy & Window
 .. autosummary::
    :toctree: api/
 
+   DataFrame.applymap
    DataFrame.pipe
    DataFrame.groupby
 
@@ -76,6 +79,7 @@ Computations / Descriptive Stats
    DataFrame.max
    DataFrame.mean
    DataFrame.min
+   DataFrame.nunique
    DataFrame.skew
    DataFrame.sum
    DataFrame.std
@@ -118,6 +122,7 @@ Combining / joining / merging
    :toctree: api/
 
    DataFrame.assign
+   DataFrame.merge
 
 Serialization / IO / Conversion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

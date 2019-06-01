@@ -27,7 +27,7 @@ import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like, \
     is_dict_like
 from pyspark import sql as spark
-from pyspark.sql import functions as F, Column
+from pyspark.sql import functions as F, Column, DataFrame as SDataFrame
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType, StructField,
                                StructType, to_arrow_type)
@@ -56,7 +56,9 @@ class DataFrame(_Frame):
     internally.
 
     :ivar _sdf: Spark Column instance
+    :type _sdf: SDataFrame
     :ivar _metadata: Metadata related to column names and index information.
+    :type _metadata: Metadata
 
     Parameters
     ----------
@@ -196,6 +198,63 @@ class DataFrame(_Frame):
         row = pdf.iloc[0]
         row.name = None
         return row  # Return first row as a Series
+
+    def applymap(self, func):
+        """
+        Apply a function to a Dataframe elementwise.
+
+        This method applies a function that accepts and returns a scalar
+        to every element of a DataFrame.
+
+        .. note:: unlike pandas, it is required for `func` to specify return type hint.
+            See https://docs.python.org/3/library/typing.html. For instance, as below:
+
+            >>> def function() -> int:
+            ...     return 1
+
+        Parameters
+        ----------
+        func : callable
+            Python function, returns a single value from a single value.
+
+        Returns
+        -------
+        DataFrame
+            Transformed DataFrame.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[1, 2.12], [3.356, 4.567]])
+        >>> df
+               0      1
+        0  1.000  2.120
+        1  3.356  4.567
+
+        >>> def str_len(x) -> int:
+        ...     return len(str(x))
+        >>> df.applymap(str_len)
+           0  1
+        0  3  4
+        1  5  5
+
+        >>> def power(x) -> float:
+        ...     return x ** 2
+        >>> df.applymap(power)
+                   0          1
+        0   1.000000   4.494400
+        1  11.262736  20.857489
+        """
+
+        applied = []
+        for column in self._metadata.data_columns:
+            applied.append(self[column].apply(func))
+
+        sdf = self._sdf.select(
+            self._metadata.index_columns + [c._scol for c in applied])
+
+        metadata = self._metadata.copy(data_columns=[c.name for c in applied])
+
+        return DataFrame(sdf, metadata)
 
     def corr(self, method='pearson'):
         """
@@ -763,6 +822,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return MultiIndex(self)
 
+    @property
+    def empty(self):
+        """
+        Returns true if the current DataFrame is empty. Otherwise, returns false.
+
+        Examples
+        --------
+        >>> ks.range(10).empty
+        False
+
+        >>> ks.range(0).empty
+        True
+
+        >>> ks.DataFrame({}, index=list('abc')).empty
+        True
+        """
+        return len(self._metadata.data_columns) == 0 or self._sdf.rdd.isEmpty()
+
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns.
 
@@ -1062,6 +1139,72 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return kdf
 
     notna = notnull
+
+    def nunique(self, axis: int = 0, dropna: bool = True, approx: bool = False,
+                rsd: float = 0.05) -> pd.Series:
+        """
+        Return number of unique elements in the object.
+
+        Excludes NA values by default.
+
+        Parameters
+        ----------
+        axis : int, default 0
+            Can only be set to 0 at the moment.
+        dropna : bool, default True
+            Don’t include NaN in the count.
+        approx: bool, default False
+            If False, will use the exact algorithm and return the exact number of unique.
+            If True, it uses the HyperLogLog approximate algorithm, which is significantly faster
+            for large amount of data.
+            Note: This parameter is specific to Koalas and is not found in pandas.
+        rsd: float, default 0.05
+            Maximum estimation error allowed in the HyperLogLog algorithm.
+            Note: Just like ``approx`` this parameter is specific to Koalas.
+
+        Returns
+        -------
+        The number of unique values per column as a pandas Series.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2, 3], 'B': [np.nan, 3, np.nan]})
+        >>> df.nunique()
+        A    3
+        B    1
+        Name: 0, dtype: int64
+
+        >>> df.nunique(dropna=False)
+        A    3
+        B    2
+        Name: 0, dtype: int64
+
+        On big data, we recommend using the approximate algorithm to speed up this function.
+        The result will be very close to the exact unique count.
+
+        >>> df.nunique(approx=True)
+        A    3
+        B    1
+        Name: 0, dtype: int64
+        """
+        if axis != 0:
+            raise ValueError("The 'nunique' method only works with axis=0 at the moment")
+        count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
+        if dropna:
+            res = self._sdf.select([count_fn(Column(c))
+                                   .alias(c)
+                                    for c in self.columns])
+        else:
+            res = self._sdf.select([(count_fn(Column(c))
+                                     # If the count of null values in a column is at least 1,
+                                     # increase the total count by 1 else 0. This is like adding
+                                     # self.isnull().sum().clip(upper=1) but can be computed in a
+                                     # single Spark job when pulling it into the select statement.
+                                     + F.when(F.count(F.when(F.col(c).isNull(), 1).otherwise(None))
+                                              >= 1, 1).otherwise(0))
+                                   .alias(c)
+                                    for c in self.columns])
+        return res.toPandas().T.iloc[:, 0]
 
     def to_koalas(self):
         """
@@ -2243,92 +2386,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
 
-    def pipe(self, func, *args, **kwargs):
-        r"""
-        Apply func(self, \*args, \*\*kwargs).
-
-        Parameters
-        ----------
-        func : function
-            function to apply to the DataFrame.
-            ``args``, and ``kwargs`` are passed into ``func``.
-            Alternatively a ``(callable, data_keyword)`` tuple where
-            ``data_keyword`` is a string indicating the keyword of
-            ``callable`` that expects the DataFrames.
-        args : iterable, optional
-            positional arguments passed into ``func``.
-        kwargs : mapping, optional
-            a dictionary of keyword arguments passed into ``func``.
-
-        Returns
-        -------
-        object : the return type of ``func``.
-
-        Notes
-        -----
-        Use ``.pipe`` when chaining together functions that expect
-        Series, DataFrames or GroupBy objects. For example, given
-
-        >>> df = ks.DataFrame({'category': ['A', 'A', 'B'],
-        ...                    'col1': [1, 2, 3],
-        ...                    'col2': [4, 5, 6]},
-        ...                   columns=['category', 'col1', 'col2'])
-        >>> def keep_category_a(df):
-        ...    return df[df['category'] == 'A']
-        >>> def add_one(df, column):
-        ...    return df.assign(col3=df[column] + 1)
-        >>> def multiply(df, column1, column2):
-        ...    return df.assign(col4=df[column1] * df[column2])
-
-
-        instead of writing
-
-        >>> multiply(add_one(keep_category_a(df), column="col1"), column1="col2", column2="col3")
-          category  col1  col2  col3  col4
-        0        A     1     4     2     8
-        1        A     2     5     3    15
-
-
-        You can write
-
-        >>> (df.pipe(keep_category_a)
-        ...    .pipe(add_one, column="col1")
-        ...    .pipe(multiply, column1="col2", column2="col3")
-        ... )
-          category  col1  col2  col3  col4
-        0        A     1     4     2     8
-        1        A     2     5     3    15
-
-
-        If you have a function that takes the data as (say) the second
-        argument, pass a tuple indicating which keyword expects the
-        data. For example, suppose ``f`` takes its data as ``df``:
-
-        >>> def multiply_2(column1, df, column2):
-        ...     return df.assign(col4=df[column1] * df[column2])
-
-
-        Then you can write
-
-        >>> (df.pipe(keep_category_a)
-        ...    .pipe(add_one, column="col1")
-        ...    .pipe((multiply_2, 'df'), column1="col2", column2="col3")
-        ... )
-          category  col1  col2  col3  col4
-        0        A     1     4     2     8
-        1        A     2     5     3    15
-        """
-
-        if isinstance(func, tuple):
-            func, target = func
-            if target in kwargs:
-                raise ValueError('%s is both the pipe target and a keyword '
-                                 'argument' % target)
-            kwargs[target] = self
-            return func(*args, **kwargs)
-        else:
-            return func(self, *args, **kwargs)
-
     @property
     def shape(self):
         """
@@ -2747,8 +2804,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                 for name in self._metadata.data_columns])
         return DataFrame(sdf, metadata)
 
-    # TODO: percentiles, include, and exclude should be implemented.
-    def describe(self) -> 'DataFrame':
+    # TODO: include, and exclude should be implemented.
+    def describe(self, percentiles: Optional[List[float]] = None) -> 'DataFrame':
         """
         Generate descriptive statistics that summarize the central tendency,
         dispersion and shape of a dataset's distribution, excluding
@@ -2758,6 +2815,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         as ``DataFrame`` column sets of mixed data types. The output
         will vary depending on what is provided. Refer to the notes
         below for more detail.
+
+        Parameters
+        ----------
+        percentiles : list of ``float`` in range [0.0, 1.0], default [0.25, 0.5, 0.75]
+            A list of percentiles to be computed.
 
         Returns
         -------
@@ -2775,7 +2837,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Notes
         -----
         For numeric data, the result's index will include ``count``,
-        ``mean``, ``stddev``, ``min``, ``max``.
+        ``mean``, ``std``, ``min``, ``25%``, ``50%``, ``75%``, ``max``.
 
         Currently only numeric data is supported.
 
@@ -2785,11 +2847,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> s = ks.Series([1, 2, 3])
         >>> s.describe()
-        count     3.0
-        mean      2.0
-        stddev    1.0
-        min       1.0
-        max       3.0
+        count    3.0
+        mean     2.0
+        std      1.0
+        min      1.0
+        25%      1.0
+        50%      2.0
+        75%      3.0
+        max      3.0
         Name: 0, dtype: float64
 
         Describing a ``DataFrame``. Only numeric fields are returned.
@@ -2800,22 +2865,59 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                   },
         ...                   columns=['numeric1', 'numeric2', 'object'])
         >>> df.describe()
-                numeric1  numeric2
-        count        3.0       3.0
-        mean         2.0       5.0
-        stddev       1.0       1.0
-        min          1.0       4.0
-        max          3.0       6.0
+               numeric1  numeric2
+        count       3.0       3.0
+        mean        2.0       5.0
+        std         1.0       1.0
+        min         1.0       4.0
+        25%         1.0       4.0
+        50%         2.0       5.0
+        75%         3.0       6.0
+        max         3.0       6.0
+
+        Describing a ``DataFrame`` and selecting custom percentiles.
+
+        >>> df = ks.DataFrame({'numeric1': [1, 2, 3],
+        ...                    'numeric2': [4.0, 5.0, 6.0]
+        ...                   },
+        ...                   columns=['numeric1', 'numeric2'])
+        >>> df.describe(percentiles = [0.85, 0.15])
+               numeric1  numeric2
+        count       3.0       3.0
+        mean        2.0       5.0
+        std         1.0       1.0
+        min         1.0       4.0
+        15%         1.0       4.0
+        50%         2.0       5.0
+        85%         3.0       6.0
+        max         3.0       6.0
 
         Describing a column from a ``DataFrame`` by accessing it as
         an attribute.
 
         >>> df.numeric1.describe()
-        count     3.0
-        mean      2.0
-        stddev    1.0
-        min       1.0
-        max       3.0
+        count    3.0
+        mean     2.0
+        std      1.0
+        min      1.0
+        25%      1.0
+        50%      2.0
+        75%      3.0
+        max      3.0
+        Name: numeric1, dtype: float64
+
+        Describing a column from a ``DataFrame`` by accessing it as
+        an attribute and selecting custom percentiles.
+
+        >>> df.numeric1.describe(percentiles = [0.85, 0.15])
+        count    3.0
+        mean     2.0
+        std      1.0
+        min      1.0
+        15%      1.0
+        50%      2.0
+        85%      3.0
+        max      3.0
         Name: numeric1, dtype: float64
         """
         exprs = []
@@ -2833,9 +2935,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if len(exprs) == 0:
             raise ValueError("Cannot describe a DataFrame without columns")
 
-        sdf = self._sdf.select(*exprs).describe()
-        return DataFrame(sdf, index=Metadata(data_columns=data_columns,
-                                             index_map=[('summary', None)])).astype('float64')
+        if percentiles is not None:
+            if any((p < 0.0) or (p > 1.0) for p in percentiles):
+                raise ValueError("Percentiles should all be in the interval [0, 1]")
+            # appending 50% if not in percentiles already
+            percentiles = (percentiles + [0.5]) if 0.5 not in percentiles else percentiles
+        else:
+            percentiles = [0.25, 0.5, 0.75]
+
+        formatted_perc = ["{:.0%}".format(p) for p in sorted(percentiles)]
+        stats = ["count", "mean", "stddev", "min", *formatted_perc, "max"]
+
+        sdf = self._sdf.select(*exprs).summary(stats)
+
+        return DataFrame(sdf.replace("stddev", "std", subset='summary'),
+                         index=Metadata(data_columns=data_columns,
+                                        index_map=[('summary', None)])).astype('float64')
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
