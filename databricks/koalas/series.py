@@ -230,15 +230,10 @@ class Series(_Frame, IndexOpsMixin):
         """
         assert isinstance(prefix, str)
         kdf = self.to_dataframe()
-        print(kdf.head(5))
-        print(kdf.index)
-        print(kdf._metadata.index_names)
-        print(kdf._metadata.data_columns)
-        print(kdf._metadata.index_map)
-        sdf = kdf._sdf.select([F.concat(F.lit(prefix), kdf._sdf[index_column])
+        self._kdf._sdf = kdf._sdf.select([F.concat(F.lit(prefix), kdf._sdf[index_column]).alias(index_column)
                                for index_column in kdf._metadata.index_columns] +
                               kdf._metadata.data_columns)
-        return _col(DataFrame(sdf))
+        return Series(kdf._sdf[kdf._metadata.data_columns[0]], anchor=self._kdf, index=self._index_map)
 
     def getField(self, name):
         if not isinstance(self.schema, StructType):
