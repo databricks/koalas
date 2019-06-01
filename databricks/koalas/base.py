@@ -272,7 +272,6 @@ class IndexOpsMixin(object):
         --------
         >>> s = ks.Series(['lama', 'cow', 'lama', 'beetle', 'lama',
         ...                'hippo'], name='animal')
-
         >>> s.isin(['cow', 'lama'])
         0     True
         1     True

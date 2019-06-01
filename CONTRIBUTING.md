@@ -120,53 +120,12 @@ We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception:
 ## Doctest Conventions
 
 When writing doctests, usually the doctests in pandas are converted into Koalas to make sure the same codes work in Koalas.
-In general, doctests should be grouped logically by seperating a newline. For instance, the first block is for the statements for
-preparation, the second block is for using the function with a specific argument, and third block is for another argument.
-These blocks should be consistently separated in Koalas, and more doctests should be added if the coverage of the doctests or
-the number of examples to show is not enough.
+In general, doctests should be grouped logically by seperating a newline.
 
-There are some explicit notes to keep in mind:
+For instance, the first block is for the statements for preparation, the second block is for using the function with a specific argument,
+and third block is for another argument. As a example, please refer [DataFrame.rsub](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.rsub.html#pandas.DataFrame.rsub) in pandas.
 
-  - For statements for data preparation used in doctests that don't fit in two lines, insert a newline to make it a separate example block in API documentation. See the examples below:
-
-    ```python
-    >>> df = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
-    ...                   index=['cobra', 'viper', 'sidewinder'],
-    ...                   columns=['max_speed', 'shield'])
-
-    >>> df.call()
-    ...
-    ```
-
-    ```python
-    >>> df = ks.DataFrame({'month': [1, 4, 7, 10],
-    ...                    'year': [2012, 2014, 2013, 2014],
-    ...                    'sale': [55, 40, 84, 31]},
-    ...                   columns=['month', 'year', 'sale'])
-    >>> df
-       month  year  sale
-    0      1  2012    55
-    1      4  2014    40
-    2      7  2013    84
-    3     10  2014    31
-
-    >>> df.call()
-    ...
-    ```
-
-  - For each example used in doctests, insert a newline to each example logically to make it a separate example block in API documentation. See the examples below:
-
-    ```python
-    >>> df.call()
-    ...
-
-    >>> df.call(func)
-    ...
-
-    >>> df = df.call(flag=True).call()
-    >>> df.call(func, flag=True)
-    ...
-    ```
+These blocks should be consistently separated in Koalas, and more doctests should be added if the coverage of the doctests or the number of examples to show is not enough even though they are different from pandas'.
 
 ## Release Instructions
 Only project maintainers can do the following.

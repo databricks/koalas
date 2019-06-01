@@ -74,7 +74,6 @@ class _Frame(object):
         ...                    'col1': [1, 2, 3],
         ...                    'col2': [4, 5, 6]},
         ...                   columns=['category', 'col1', 'col2'])
-
         >>> def keep_category_a(df):
         ...    return df[df['category'] == 'A']
         >>> def add_one(df, column):
@@ -240,7 +239,6 @@ class _Frame(object):
         ...                    'mask': ['red', 'purple'],
         ...                    'weapon': ['sai', 'bo staff']},
         ...                    columns=['name', 'mask', 'weapon'])
-
         >>> df.to_csv(index=False)
         'name,mask,weapon\\nRaphael,red,sai\\nDonatello,purple,bo staff\\n'
         >>> df.name.to_csv()  # doctest: +ELLIPSIS
@@ -343,7 +341,6 @@ class _Frame(object):
         >>> df = ks.DataFrame([['a', 'b'], ['c', 'd']],
         ...                   index=['row 1', 'row 2'],
         ...                   columns=['col 1', 'col 2'])
-
         >>> df.to_json(orient='split')
         '{"columns":["col 1","col 2"],\
 "index":["row 1","row 2"],\
@@ -492,7 +489,6 @@ class _Frame(object):
         >>> df1 = ks.DataFrame([['a', 'b'], ['c', 'd']],
         ...                    index=['row 1', 'row 2'],
         ...                    columns=['col 1', 'col 2'])
-
         >>> df1.to_excel("output.xlsx")  # doctest: +SKIP
 
         To specify the sheet name:
@@ -803,7 +799,6 @@ class _Frame(object):
         ...     'c': [100, 50, -30, -50]
         ...   },
         ...   columns=['a', 'b', 'c'])
-
         >>> df.abs()
            a   b    c
         0  4  10  100

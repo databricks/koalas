@@ -1357,7 +1357,6 @@ class Series(_Frame, IndexOpsMixin):
         ...                    's2': [.3, .6, .0, .1]})
         >>> s1 = df.s1
         >>> s2 = df.s2
-
         >>> s1.corr(s2, method='pearson')  # doctest: +ELLIPSIS
         -0.851064...
 

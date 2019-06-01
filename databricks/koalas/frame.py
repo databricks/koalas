@@ -278,7 +278,6 @@ class DataFrame(_Frame):
         --------
         >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
         ...                   columns=['dogs', 'cats'])
-
         >>> df.corr('pearson')
                   dogs      cats
         dogs  1.000000 -0.851064
@@ -792,16 +791,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = pd.DataFrame({'name': ['Raphael', 'Donatello'],
+        >>> df = ks.DataFrame({'name': ['Raphael', 'Donatello'],
         ...                    'mask': ['red', 'purple'],
         ...                    'weapon': ['sai', 'bo staff']},
         ...                   columns=['name', 'mask', 'weapon'])
-
         >>> df.to_latex(index=False) # doctest: +NORMALIZE_WHITESPACE
         '\\begin{tabular}{lll}\n\\toprule\n name & mask & weapon
         \\\\\n\\midrule\n Raphael & red & sai \\\\\n Donatello &
         purple & bo staff \\\\\n\\bottomrule\n\\end{tabular}\n'
         """
+
         args = locals()
         kdf = self
         return validate_arguments_and_invoke_function(
@@ -1210,7 +1209,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
         ...                   columns=['dogs', 'cats'])
-
         >>> df.to_pandas()
            dogs  cats
         0   0.2   0.3
@@ -1773,7 +1771,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                    'e': [True, False, True],
         ...                    'f': pd.date_range('20130101', periods=3)},
         ...                   columns=['a', 'b', 'c', 'd', 'e', 'f'])
-
         >>> df.dtypes
         a            object
         b             int64
@@ -2008,7 +2005,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...     'col3': [0, 1, 9, 4, 2, 3],
         ...   },
         ...   columns=['col1', 'col2', 'col3'])
-
         >>> df.sort_values(by=['col1', 'col2'])
            col1  col2  col3
         1     A     1     1
@@ -2339,7 +2335,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4],
         ...                    'col3': [5, 6]})
-
         >>> df.shape
         (2, 3)
         """
@@ -2758,7 +2753,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                    'object': ['a', 'b', 'c']
         ...                   },
         ...                   columns=['numeric1', 'numeric2', 'object'])
-
         >>> df.describe()
                numeric1  numeric2
         count       3.0       3.0
@@ -2776,7 +2770,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                    'numeric2': [4.0, 5.0, 6.0]
         ...                   },
         ...                   columns=['numeric1', 'numeric2'])
-
         >>> df.describe(percentiles = [0.85, 0.15])
                numeric1  numeric2
         count       3.0       3.0

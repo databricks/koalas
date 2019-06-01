@@ -151,7 +151,6 @@ class Index(IndexOpsMixin):
         >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
         ...                   columns=['dogs', 'cats'],
         ...                   index=list('abcd'))
-
         >>> df['dogs'].index.to_series()
         a    a
         b    b
