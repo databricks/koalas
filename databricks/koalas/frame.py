@@ -33,7 +33,8 @@ from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, F
                                StructType, to_arrow_type)
 from pyspark.sql.utils import AnalysisException
 
-from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+# For running doctests and reference resolution in PyCharm.
+from databricks import koalas as ks
 from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.metadata import Metadata
@@ -45,7 +46,8 @@ from databricks.koalas.typedef import infer_pd_series_spark_type
 # These regular expression patterns are complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
 # Two patterns basically seek the footer string from Pandas'
-REPR_PATTERN = re.compile(r"\n\n\[(?P<rows>[0-9]+) rows x (?P<columns>[0-9]+) columns\]$")
+REPR_PATTERN = re.compile(
+    r"\n\n\[(?P<rows>[0-9]+) rows x (?P<columns>[0-9]+) columns\]$")
 REPR_HTML_PATTERN = re.compile(
     r"\n\<p\>(?P<rows>[0-9]+) rows × (?P<columns>[0-9]+) columns\<\/p\>\n\<\/div\>$")
 
@@ -126,7 +128,9 @@ class DataFrame(_Frame):
     3  8  7  9  1  0
     4  2  5  4  3  9
     """
-    def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
+
+    def __init__(self, data=None, index=None,
+                 columns=None, dtype=None, copy=False):
         if isinstance(data, pd.DataFrame):
             assert index is None
             assert columns is None
@@ -139,7 +143,12 @@ class DataFrame(_Frame):
             assert not copy
             self._init_from_spark(data, index)
         else:
-            pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
+            pdf = pd.DataFrame(
+                data=data,
+                index=index,
+                columns=columns,
+                dtype=dtype,
+                copy=copy)
             self._init_from_pandas(pdf)
 
     def _init_from_pandas(self, pdf):
@@ -160,7 +169,8 @@ class DataFrame(_Frame):
     def _init_from_spark(self, sdf, metadata=None):
         self._sdf = sdf
         if metadata is None:
-            self._metadata = Metadata(data_columns=self._sdf.schema.fieldNames())
+            self._metadata = Metadata(
+                data_columns=self._sdf.schema.fieldNames())
         else:
             self._metadata = metadata
 
@@ -178,17 +188,20 @@ class DataFrame(_Frame):
         for col in self.columns:
             col_sdf = self._sdf[col]
             col_type = self._sdf.schema[col].dataType
-            if isinstance(col_type, BooleanType) and sfun.__name__ not in ('min', 'max'):
+            if isinstance(col_type, BooleanType) and sfun.__name__ not in (
+                    'min', 'max'):
                 # Stat functions cannot be used with boolean values by default
                 # Thus, cast to integer (true to 1 and false to 0)
-                # Exclude the min and max methods though since those work with booleans
+                # Exclude the min and max methods though since those work with
+                # booleans
                 col_sdf = col_sdf.cast('integer')
             if num_args == 1:
                 # Only pass in the column if sfun accepts only one arg
                 col_sdf = sfun(col_sdf)
             else:  # must be 2
                 assert num_args == 2
-                # Pass in both the column and its data type if sfun accepts two args
+                # Pass in both the column and its data type if sfun accepts two
+                # args
                 col_sdf = sfun(col_sdf, col_type)
             exprs.append(col_sdf.alias(col))
 
@@ -501,7 +514,8 @@ class DataFrame(_Frame):
         --------
         to_string : Convert DataFrame to a string.
         """
-        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        # Make sure locals() call is at the top of the function so we don't
+        # capture local variables.
         args = locals()
         if max_rows is not None:
             kdf = self.head(max_rows)
@@ -601,7 +615,8 @@ class DataFrame(_Frame):
         0     1     4
         1     2     5
         """
-        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        # Make sure locals() call is at the top of the function so we don't
+        # capture local variables.
         args = locals()
         if max_rows is not None:
             kdf = self.head(max_rows)
@@ -699,7 +714,8 @@ class DataFrame(_Frame):
         [defaultdict(<class 'list'>, {'col..., 'col...}), \
 defaultdict(<class 'list'>, {'col..., 'col...})]
         """
-        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        # Make sure locals() call is at the top of the function so we don't
+        # capture local variables.
         args = locals()
         kdf = self
         return validate_arguments_and_invoke_function(
@@ -912,18 +928,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise KeyError(key)
 
         if drop:
-            data_columns = [column for column in self._metadata.data_columns if column not in keys]
+            data_columns = [
+                column for column in self._metadata.data_columns if column not in keys]
         else:
             data_columns = self._metadata.data_columns
         if append:
-            index_map = self._metadata.index_map + [(column, column) for column in keys]
+            index_map = self._metadata.index_map + \
+                [(column, column) for column in keys]
         else:
             index_map = [(column, column) for column in keys]
 
-        metadata = self._metadata.copy(data_columns=data_columns, index_map=index_map)
+        metadata = self._metadata.copy(
+            data_columns=data_columns, index_map=index_map)
 
         # Sync Spark's columns as well.
-        sdf = self._sdf.select(['`{}`'.format(name) for name in metadata.columns])
+        sdf = self._sdf.select(['`{}`'.format(name)
+                                for name in metadata.columns])
 
         if inplace:
             self._metadata = metadata
@@ -998,9 +1018,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  mammal       80.5
         3  mammal        NaN
         """
-        # TODO: add example of MultiIndex back. See https://github.com/databricks/koalas/issues/301
+        # TODO: add example of MultiIndex back. See
+        # https://github.com/databricks/koalas/issues/301
         if len(self._metadata.index_map) == 0:
-            raise NotImplementedError('Can\'t reset index because there is no index.')
+            raise NotImplementedError(
+                'Can\'t reset index because there is no index.')
 
         multi_index = len(self._metadata.index_map) > 1
 
@@ -1058,9 +1080,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             new_index_map = []
 
         metadata = self._metadata.copy(
-            data_columns=[column for column, _ in new_index_map] + self._metadata.data_columns,
+            data_columns=[
+                column for column,
+                _ in new_index_map] + self._metadata.data_columns,
             index_map=index_map)
-        columns = [name for _, name in new_index_map] + self._metadata.data_columns
+        columns = [name for _, name in new_index_map] + \
+            self._metadata.data_columns
         if inplace:
             self._metadata = metadata
             self.columns = columns
@@ -1188,21 +1213,25 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Name: 0, dtype: int64
         """
         if axis != 0:
-            raise ValueError("The 'nunique' method only works with axis=0 at the moment")
-        count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
+            raise ValueError(
+                "The 'nunique' method only works with axis=0 at the moment")
+        count_fn = partial(
+            F.approx_count_distinct,
+            rsd=rsd) if approx else F.countDistinct
         if dropna:
             res = self._sdf.select([count_fn(Column(c))
-                                   .alias(c)
+                                    .alias(c)
                                     for c in self.columns])
         else:
             res = self._sdf.select([(count_fn(Column(c))
                                      # If the count of null values in a column is at least 1,
                                      # increase the total count by 1 else 0. This is like adding
                                      # self.isnull().sum().clip(upper=1) but can be computed in a
-                                     # single Spark job when pulling it into the select statement.
+                                     # single Spark job when pulling it into
+                                     # the select statement.
                                      + F.when(F.count(F.when(F.col(c).isNull(), 1).otherwise(None))
                                               >= 1, 1).otherwise(0))
-                                   .alias(c)
+                                    .alias(c)
                                     for c in self.columns])
         return res.toPandas().T.iloc[:, 0]
 
@@ -1280,7 +1309,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2   0.6   0.0
         3   0.2   0.1
         """
-        sdf = self._sdf.select(['`{}`'.format(name) for name in self._metadata.columns])
+        sdf = self._sdf.select(['`{}`'.format(name)
+                                for name in self._metadata.columns])
         pdf = sdf.toPandas()
         if len(pdf) == 0 and len(sdf.schema) > 0:
             # TODO: push to OSS
@@ -1481,7 +1511,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return DataFrame(self._sdf, self._metadata.copy())
 
-    def dropna(self, axis=0, how='any', thresh=None, subset=None, inplace=False):
+    def dropna(self, axis=0, how='any', thresh=None,
+               subset=None, inplace=False):
         """
         Remove missing values.
 
@@ -1600,7 +1631,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return DataFrame(sdf, self._metadata.copy())
 
         else:
-            raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
+            raise NotImplementedError(
+                "dropna currently only works for axis=0 or axis='index'")
 
     def fillna(self, value=None, axis=None, inplace=False):
         """Fill NA/NaN values.
@@ -1660,7 +1692,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if axis is None:
             axis = 0
         if not (axis == 0 or axis == "index"):
-            raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
+            raise NotImplementedError(
+                "fillna currently only works for axis=0 or axis='index'")
 
         if value is None:
             raise ValueError('Currently must specify value')
@@ -1958,11 +1991,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 columns = [columns]
             sdf = self._sdf.drop(*columns)
             metadata = self._metadata.copy(
-                data_columns=[column for column in self.columns if column not in columns]
+                data_columns=[
+                    column for column in self.columns if column not in columns]
             )
             return DataFrame(sdf, metadata)
         else:
-            raise ValueError("Need to specify at least one of 'labels' or 'columns'")
+            raise ValueError(
+                "Need to specify at least one of 'labels' or 'columns'")
 
     def get(self, key, default=None):
         """
@@ -2089,7 +2124,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("invalid na_position: '{}'".format(na_position))
 
         # Mapper: Get a spark column function for (ascending, na_position) combination
-        # Note that 'asc_nulls_first' and friends were added as of Spark 2.4, see SPARK-23847.
+        # Note that 'asc_nulls_first' and friends were added as of Spark 2.4,
+        # see SPARK-23847.
         mapper = {
             (True, 'first'): lambda x: Column(getattr(x._jc, "asc_nulls_first")()),
             (True, 'last'): lambda x: Column(getattr(x._jc, "asc_nulls_last")()),
@@ -2170,11 +2206,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
           1  0  3
         """
         if axis != 0:
-            raise ValueError("No other axes than 0 are supported at the moment")
+            raise ValueError(
+                "No other axes than 0 are supported at the moment")
         if level is not None:
-            raise ValueError("The 'axis' argument is not supported at the moment")
+            raise ValueError(
+                "The 'axis' argument is not supported at the moment")
         if kind is not None:
-            raise ValueError("Specifying the sorting algorithm is supported at the moment.")
+            raise ValueError(
+                "Specifying the sorting algorithm is supported at the moment.")
         return self.sort_values(by=self._metadata.index_columns, ascending=ascending,
                                 inplace=inplace, na_position=na_position)
 
@@ -2250,7 +2289,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  6.0  10
 
         """
-        kdf = self.sort_values(by=columns, ascending=False)  # type: Optional[DataFrame]
+        kdf = self.sort_values(by=columns,
+                               ascending=False)  # type: Optional[DataFrame]
         assert kdf is not None
         return kdf.head(n=n)
 
@@ -2317,7 +2357,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  2.0   7
         2  3.0   8
         """
-        kdf = self.sort_values(by=columns, ascending=True)  # type: Optional[DataFrame]
+        kdf = self.sort_values(by=columns,
+                               ascending=True)  # type: Optional[DataFrame]
         assert kdf is not None
         return kdf.head(n=n)
 
@@ -2366,7 +2407,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if isinstance(values, (pd.DataFrame, pd.Series)):
             raise NotImplementedError("DataFrame and Series are not supported")
-        if isinstance(values, dict) and not set(values.keys()).issubset(self.columns):
+        if isinstance(values, dict) and not set(
+                values.keys()).issubset(self.columns):
             raise AttributeError(
                 "'DataFrame' object has no attribute %s"
                 % (set(values.keys()).difference(self.columns)))
@@ -2375,16 +2417,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(values, dict):
             for col in self.columns:
                 if col in values:
-                    _select_columns.append(self[col]._scol.isin(values[col]).alias(col))
+                    _select_columns.append(
+                        self[col]._scol.isin(
+                            values[col]).alias(col))
                 else:
                     _select_columns.append(F.lit(False).alias(col))
         elif is_list_like(values):
             _select_columns += [
                 self[col]._scol.isin(list(values)).alias(col) for col in self.columns]
         else:
-            raise TypeError('Values should be iterable, Series, DataFrame or dict.')
+            raise TypeError(
+                'Values should be iterable, Series, DataFrame or dict.')
 
-        return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
+        return DataFrame(self._sdf.select(
+            _select_columns), self._metadata.copy())
 
     @property
     def shape(self):
@@ -2511,7 +2557,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         As described in #263, joining string columns currently returns None for missing values
             instead of NaN.
         """
-        _to_list = lambda o: o if o is None or is_list_like(o) else [o]
+        def _to_list(o): return o if o is None or is_list_like(o) else [o]
 
         if on:
             if left_on or right_on:
@@ -2558,8 +2604,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         left_table = left._sdf.alias('left_table')
         right_table = right._sdf.alias('right_table')
 
-        left_key_columns = [left_table[col] for col in left_keys]  # type: ignore
-        right_key_columns = [right_table[col] for col in right_keys]  # type: ignore
+        left_key_columns = [left_table[col]
+                            for col in left_keys]  # type: ignore
+        right_key_columns = [right_table[col]
+                             for col in right_keys]  # type: ignore
 
         join_condition = reduce(lambda x, y: x & y,
                                 [lkey == rkey for lkey, rkey
@@ -2571,7 +2619,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         left_suffix = suffixes[0]
         right_suffix = suffixes[1]
 
-        # Append suffixes to columns with the same name to avoid conflicts later
+        # Append suffixes to columns with the same name to avoid conflicts
+        # later
         duplicate_columns = (set(left._metadata.data_columns)
                              & set(right._metadata.data_columns))
 
@@ -2682,7 +2731,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if frac is None:
             raise ValueError("frac must be specified.")
 
-        sdf = self._sdf.sample(withReplacement=replace, fraction=frac, seed=random_state)
+        sdf = self._sdf.sample(
+            withReplacement=replace,
+            fraction=frac,
+            seed=random_state)
         return DataFrame(sdf, self._metadata.copy())
 
     def astype(self, dtype) -> 'DataFrame':
@@ -2798,7 +2850,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         assert isinstance(prefix, str)
         data_columns = self._metadata.data_columns
-        metadata = self._metadata.copy(data_columns=[prefix + name for name in data_columns])
+        metadata = self._metadata.copy(
+            data_columns=[
+                prefix +
+                name for name in data_columns])
 
         sdf = self._sdf.select(self._metadata.index_columns +
                                [self[name]._scol.alias(prefix + name)
@@ -2846,7 +2901,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         assert isinstance(suffix, str)
         data_columns = self._metadata.data_columns
-        metadata = self._metadata.copy(data_columns=[name + suffix for name in data_columns])
+        metadata = self._metadata.copy(
+            data_columns=[
+                name + suffix for name in data_columns])
 
         sdf = self._sdf.select(self._metadata.index_columns +
                                [self[name]._scol.alias(name + suffix)
@@ -2854,7 +2911,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return DataFrame(sdf, metadata)
 
     # TODO: include, and exclude should be implemented.
-    def describe(self, percentiles: Optional[List[float]] = None) -> 'DataFrame':
+    def describe(
+            self, percentiles: Optional[List[float]] = None) -> 'DataFrame':
         """
         Generate descriptive statistics that summarize the central tendency,
         dispersion and shape of a dataset's distribution, excluding
@@ -2974,8 +3032,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for col in self.columns:
             kseries = self[col]
             spark_type = kseries.spark_type
-            if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
-                exprs.append(F.nanvl(kseries._scol, F.lit(None)).alias(kseries.name))
+            if isinstance(spark_type, DoubleType) or isinstance(
+                    spark_type, FloatType):
+                exprs.append(
+                    F.nanvl(
+                        kseries._scol,
+                        F.lit(None)).alias(
+                        kseries.name))
                 data_columns.append(kseries.name)
             elif isinstance(spark_type, NumericType):
                 exprs.append(kseries._scol)
@@ -2986,9 +3049,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if percentiles is not None:
             if any((p < 0.0) or (p > 1.0) for p in percentiles):
-                raise ValueError("Percentiles should all be in the interval [0, 1]")
+                raise ValueError(
+                    "Percentiles should all be in the interval [0, 1]")
             # appending 50% if not in percentiles already
-            percentiles = (percentiles + [0.5]) if 0.5 not in percentiles else percentiles
+            percentiles = (
+                percentiles +
+                [0.5]) if 0.5 not in percentiles else percentiles
         else:
             percentiles = [0.25, 0.5, 0.75]
 
@@ -3022,7 +3088,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
-            return Series(self._sdf.__getitem__(key), anchor=self, index=self._metadata.index_map)
+            return Series(self._sdf.__getitem__(key), anchor=self,
+                          index=self._metadata.index_map)
         if isinstance(key, Series):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
@@ -3075,7 +3142,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(key, (tuple, list)):
             assert isinstance(value.schema, StructType)
             field_names = value.schema.fieldNames()
-            kdf = self.assign(**{k: value[c] for k, c in zip(key, field_names)})
+            kdf = self.assign(**{k: value[c]
+                                 for k, c in zip(key, field_names)})
         else:
             kdf = self.assign(**{key: value})
 
@@ -3084,7 +3152,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def __getattr__(self, key: str) -> Any:
         from databricks.koalas.series import Series
-        if key.startswith("__") or key.startswith("_pandas_") or key.startswith("_spark_"):
+        if key.startswith("__") or key.startswith(
+                "_pandas_") or key.startswith("_spark_"):
             raise AttributeError(key)
         if hasattr(_MissingPandasLikeDataFrame, key):
             property_or_func = getattr(_MissingPandasLikeDataFrame, key)
@@ -3092,7 +3161,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_map)
+        return Series(self._sdf.__getattr__(key), anchor=self,
+                      index=self._metadata.index_map)
 
     def __len__(self):
         return self._sdf.count()
