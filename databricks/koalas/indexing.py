@@ -82,6 +82,84 @@ def _unfold(key, kseries):
     return rows_sel, cols_sel
 
 
+class AtIndexer(object):
+    """
+    Access a single value for a row/column label pair.
+    If the index is not unique, all matching pairs are returned as an array.
+    Similar to ``loc``, in that both provide label-based lookups. Use ``at`` if you only need to
+    get a single value in a DataFrame or Series.
+
+    .. note:: Unlike pandas, Koalas only allows using ``at`` to get values but not to set them.
+
+    .. note:: Warning: If ``row_index`` matches a lot of rows, large amounts of data will be
+        fetched, potentially causing your machine to run out of memory.
+
+    Raises
+    ------
+    KeyError
+        When label does not exist in DataFrame
+
+    Examples
+    --------
+    >>> kdf = ks.DataFrame([[0, 2, 3], [0, 4, 1], [10, 20, 30]],
+    ...                    index=[4, 5, 5], columns=['A', 'B', 'C'])
+    >>> kdf
+        A   B   C
+    4   0   2   3
+    5   0   4   1
+    5  10  20  30
+
+    Get value at specified row/column pair
+
+    >>> kdf.at[4, 'B']
+    2
+
+    Get array if an index occurs multiple times
+
+    >>> kdf.at[5, 'B']
+    array([ 4, 20])
+    """
+    def __init__(self, df_or_s):
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series
+        assert isinstance(df_or_s, (DataFrame, Series)), \
+            'unexpected argument type: {}'.format(type(df_or_s))
+        if isinstance(df_or_s, DataFrame):
+            self._kdf = df_or_s
+            self._ks = None
+        else:
+            # If df_or_col is Column, store both the DataFrame anchored to the Column and
+            # the Column itself.
+            self._kdf = df_or_s._kdf
+            self._ks = df_or_s
+
+    def __getitem__(self, key):
+        if self._ks is None and (not isinstance(key, tuple) or len(key) != 2):
+            raise TypeError("Use DataFrame.at like .at[row_index, column_name]")
+        if self._ks is not None and not isinstance(key, str) and len(key) != 1:
+            raise TypeError("Use Series.at like .at[row_index]")
+
+        # TODO Maybe extend to multilevel indices in the future
+        if len(self._kdf._metadata.index_columns) != 1:
+            raise ValueError("'.at' only supports indices with level 1 right now")
+
+        column = key[1] if self._ks is None else self._ks.name
+        if column is not None and column not in self._kdf._metadata.data_columns:
+            raise KeyError("%s" % column)
+        series = self._ks if self._ks is not None else self._kdf[column]
+
+        row = key[0] if self._ks is None else key
+        pdf = (series._kdf._sdf
+               .where(F.col(self._kdf._metadata.index_columns[0]) == row)
+               .select(column)
+               .toPandas())
+        if len(pdf) < 1:
+            raise KeyError("%s" % row)
+
+        values = pdf.iloc[:, 0].values
+        return values[0] if len(values) == 1 else values
+
+
 class LocIndexer(object):
     """
     Access a group of rows and columns by label(s) or a boolean Series.

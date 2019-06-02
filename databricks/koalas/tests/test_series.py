@@ -15,6 +15,7 @@
 #
 
 import inspect
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -176,6 +177,24 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         ks.dropna(inplace=True)
         self.assert_eq(ks, ps.dropna())
+
+    def test_nunique(self):
+        ps = pd.Series([1, 2, 1, np.nan])
+        ks = koalas.from_pandas(ps)
+
+        # Assert NaNs are dropped by default
+        nunique_result = ks.nunique()
+        self.assertEqual(nunique_result, 2)
+        self.assert_eq(nunique_result, ps.nunique())
+
+        # Assert including NaN values
+        nunique_result = ks.nunique(dropna=False)
+        self.assertEqual(nunique_result, 3)
+        self.assert_eq(nunique_result, ps.nunique(dropna=False))
+
+        # Assert approximate counts
+        self.assertEqual(koalas.Series(range(100)).nunique(approx=True), 103)
+        self.assertEqual(koalas.Series(range(100)).nunique(approx=True, rsd=0.01), 100)
 
     def test_value_counts(self):
         ps = pd.Series([1, 2, 1, 3, 3, np.nan, 1, 4], name="x")
@@ -353,3 +372,17 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_to_list(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
             self.assertEqual(self.ks.to_list(), self.ps.to_list())
+
+    def test_map(self):
+        pser = pd.Series(['cat', 'dog', None, 'rabbit'])
+        kser = koalas.from_pandas(pser)
+        # Currently Koalas doesn't return NaN as Pandas does.
+        self.assertEqual(
+            repr(kser.map({})),
+            repr(pser.map({}).replace({pd.np.nan: None}).rename(0)))
+
+        d = defaultdict(lambda: "abc")
+        self.assertTrue("abc" in repr(kser.map(d)))
+        self.assertEqual(
+            repr(kser.map(d)),
+            repr(pser.map(d).rename(0)))
