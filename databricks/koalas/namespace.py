@@ -137,7 +137,7 @@ def range(start: int,
     return DataFrame(sdf)
 
 
-def read_csv(path, header='infer', names=None, usecols=None,
+def read_csv(path, sep=None, header='infer', names=None, usecols=None,
              mangle_dupe_cols=True, parse_dates=False, comment=None):
     """Read CSV (comma-separated) file into DataFrame.
 
@@ -204,7 +204,7 @@ def read_csv(path, header='infer', names=None, usecols=None,
                 raise ValueError("Only length-1 comment characters supported")
             reader.option("comment", comment)
 
-        sdf = reader.csv(path)
+        sdf = reader.csv(path, sep=sep)
 
         if header is None:
             sdf = sdf.selectExpr(*["`%s` as `%s`" % (field.name, i)
