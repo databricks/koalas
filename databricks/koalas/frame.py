@@ -2557,7 +2557,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         As described in #263, joining string columns currently returns None for missing values
             instead of NaN.
         """
-        def _to_list(o): return o if o is None or is_list_like(o) else [o]
+        def _to_list(o):
+            return o if o is None or is_list_like(o) else [o]
 
         if on:
             if left_on or right_on:
