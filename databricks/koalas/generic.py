@@ -524,9 +524,15 @@ class _Frame(object):
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_excel, f, args)
 
-    def mean(self):
+    def mean(self, numeric_only=None):
         """
         Return the mean of the values.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -550,11 +556,17 @@ class _Frame(object):
         >>> df['a'].mean()
         2.0
         """
-        return self._reduce_for_stat_function(F.mean)
+        return self._reduce_for_stat_function(F.mean, numeric_only=numeric_only)
 
-    def sum(self):
+    def sum(self, numeric_only=None):
         """
         Return the sum of the values.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -578,11 +590,17 @@ class _Frame(object):
         >>> df['a'].sum()
         6.0
         """
-        return self._reduce_for_stat_function(F.sum)
+        return self._reduce_for_stat_function(F.sum, numeric_only=numeric_only)
 
-    def skew(self):
+    def skew(self, numeric_only=None):
         """
         Return unbiased skew normalized by N-1.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -606,12 +624,18 @@ class _Frame(object):
         >>> df['a'].skew()
         0.0
         """
-        return self._reduce_for_stat_function(F.skewness)
+        return self._reduce_for_stat_function(F.skewness, numeric_only=numeric_only)
 
-    def kurtosis(self):
+    def kurtosis(self, numeric_only=None):
         """
         Return unbiased kurtosis using Fisher’s definition of kurtosis (kurtosis of normal == 0.0).
         Normalized by N-1.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -635,13 +659,19 @@ class _Frame(object):
         >>> df['a'].kurtosis()
         -1.5
         """
-        return self._reduce_for_stat_function(F.kurtosis)
+        return self._reduce_for_stat_function(F.kurtosis, numeric_only=numeric_only)
 
     kurt = kurtosis
 
-    def min(self):
+    def min(self, numeric_only=None):
         """
         Return the minimum of the values.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -665,11 +695,17 @@ class _Frame(object):
         >>> df['a'].min()
         1.0
         """
-        return self._reduce_for_stat_function(F.min)
+        return self._reduce_for_stat_function(F.min, numeric_only=numeric_only)
 
-    def max(self):
+    def max(self, numeric_only=None):
         """
         Return the maximum of the values.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -693,11 +729,17 @@ class _Frame(object):
         >>> df['a'].max()
         3.0
         """
-        return self._reduce_for_stat_function(F.max)
+        return self._reduce_for_stat_function(F.max, numeric_only=numeric_only)
 
-    def std(self):
+    def std(self, numeric_only=None):
         """
         Return sample standard deviation.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -721,11 +763,17 @@ class _Frame(object):
         >>> df['a'].std()
         1.0
         """
-        return self._reduce_for_stat_function(F.stddev)
+        return self._reduce_for_stat_function(F.stddev, numeric_only=numeric_only)
 
-    def var(self):
+    def var(self, numeric_only=None):
         """
         Return unbiased variance.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -749,7 +797,7 @@ class _Frame(object):
         >>> df['a'].var()
         1.0
         """
-        return self._reduce_for_stat_function(F.variance)
+        return self._reduce_for_stat_function(F.variance, numeric_only=numeric_only)
 
     @property
     def size(self) -> int:

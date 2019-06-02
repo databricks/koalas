@@ -1772,7 +1772,11 @@ class Series(_Frame, IndexOpsMixin):
 
     # ----------------------------------------------------------------------
 
-    def _reduce_for_stat_function(self, sfun):
+    def _reduce_for_stat_function(self, sfun, numeric_only=None):
+        """
+        :param sfun: the stats function to be used for aggregation
+        :param numeric_only: not used by this implementation, but passed down by stats functions
+        """
         from inspect import signature
         num_args = len(signature(sfun).parameters)
         col_sdf = self._scol
