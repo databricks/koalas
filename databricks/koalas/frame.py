@@ -180,8 +180,9 @@ class DataFrame(_Frame):
             col_type = self._sdf.schema[col].dataType
 
             numeric_only = numeric_only if numeric_only is not None else True
+            is_numeric_or_boolean = isinstance(col_type, (NumericType, BooleanType))
             min_or_max = sfun.__name__ in ('min', 'max')
-            keep_column = not numeric_only or min_or_max or isinstance(col_type, (NumericType, BooleanType))
+            keep_column = not numeric_only or is_numeric_or_boolean or min_or_max
 
             if keep_column:
                 if isinstance(col_type, BooleanType) and not min_or_max:
