@@ -2776,18 +2776,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         See Also
         --------
+        Series.add_prefix: Prefix row labels with string `prefix`.
         Series.add_suffix: Suffix row labels with string `suffix`.
         DataFrame.add_suffix: Suffix column labels with string `suffix`.
 
         Examples
         --------
-        >>> df = ks.DataFrame({'A': [1, 2, 3, 4],  'B': [3, 4, 5, 6]})
+        >>> df = ks.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]}, columns=['A', 'B'])
         >>> df
            A  B
         0  1  3
         1  2  4
         2  3  5
         3  4  6
+
         >>> df.add_prefix('col_')
            col_A  col_B
         0      1      3
@@ -2823,6 +2825,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         See Also
         --------
+        Series.add_prefix: Prefix row labels with string `prefix`.
         Series.add_suffix: Suffix row labels with string `suffix`.
         DataFrame.add_prefix: Prefix column labels with string `prefix`.
 
@@ -2835,6 +2838,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  2  4
         2  3  5
         3  4  6
+
         >>> df.add_suffix('_col')
            A_col  B_col
         0      1      3

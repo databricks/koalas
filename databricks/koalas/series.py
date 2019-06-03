@@ -1359,6 +1359,7 @@ class Series(_Frame, IndexOpsMixin):
         Prefix labels with string `prefix`.
 
         For Series, the row labels are prefixed.
+        For DataFrame, the column labels are prefixed.
 
         Parameters
         ----------
@@ -1374,6 +1375,7 @@ class Series(_Frame, IndexOpsMixin):
         --------
         Series.add_suffix: Suffix column labels with string `suffix`.
         DataFrame.add_suffix: Suffix column labels with string `suffix`.
+        DataFrame.add_prefix: Prefix column labels with string `prefix`.
 
         Examples
         --------
@@ -1393,10 +1395,11 @@ class Series(_Frame, IndexOpsMixin):
         Name: 0, dtype: int64
         """
         assert isinstance(prefix, str)
-        kdf = self._kdf
-        kdf._sdf = kdf._sdf.select(
-            [F.concat(F.lit(prefix), kdf._sdf[index_column]).alias(index_column)
-             for index_column in kdf._metadata.index_columns] + kdf._metadata.data_columns)
+        kdf = self.to_dataframe()
+        metadata = kdf._metadata
+        sdf = kdf._sdf
+        kdf._sdf = sdf.select([F.concat(F.lit(prefix), sdf[index_column]).alias(index_column)
+                               for index_column in metadata.index_columns] + metadata.data_columns)
         return Series(self._scol, anchor=kdf, index=self._index_map)
 
     def add_suffix(self, suffix):
@@ -1404,6 +1407,7 @@ class Series(_Frame, IndexOpsMixin):
         Suffix labels with string suffix.
 
         For Series, the row labels are suffixed.
+        For DataFrame, the column labels are suffixed.
 
         Parameters
         ----------
@@ -1419,6 +1423,7 @@ class Series(_Frame, IndexOpsMixin):
         --------
         Series.add_prefix: Prefix row labels with string `prefix`.
         DataFrame.add_prefix: Prefix column labels with string `prefix`.
+        DataFrame.add_suffix: Suffix column labels with string `suffix`.
 
         Examples
         --------
@@ -1438,10 +1443,11 @@ class Series(_Frame, IndexOpsMixin):
         Name: 0, dtype: int64
         """
         assert isinstance(suffix, str)
-        kdf = self._kdf
-        kdf._sdf = kdf._sdf.select(
-            [F.concat(kdf._sdf[index_column], F.lit(suffix)).alias(index_column)
-             for index_column in kdf._metadata.index_columns] + kdf._metadata.data_columns)
+        kdf = self.to_dataframe()
+        metadata = kdf._metadata
+        sdf = kdf._sdf
+        kdf._sdf = sdf.select([F.concat(sdf[index_column], F.lit(suffix)).alias(index_column)
+                               for index_column in metadata.index_columns] + metadata.data_columns)
         return Series(self._scol, anchor=kdf, index=self._index_map)
 
     def corr(self, other, method='pearson'):
