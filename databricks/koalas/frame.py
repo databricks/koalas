@@ -1899,7 +1899,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Single    5
         dtype: int64
         """
-        return self._reduce_for_stat_function(_Frame._count_expr)
+        return self._reduce_for_stat_function(_Frame._count_expr, numeric_only=False)
 
     def drop(self, labels=None, axis=1, columns: Union[str, List[str]] = None):
         """
