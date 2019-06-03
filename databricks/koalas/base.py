@@ -322,12 +322,12 @@ class IndexOpsMixin(object):
         0    False
         1    False
         2     True
-        Name: ((0 IS NULL) OR isnan(0)), dtype: bool
+        Name: 0, dtype: bool
         """
         if isinstance(self.spark_type, (FloatType, DoubleType)):
-            return self._with_new_scol(self._scol.isNull() | F.isnan(self._scol))
+            return self._with_new_scol(self._scol.isNull() | F.isnan(self._scol)).alias(self.name)
         else:
-            return self._with_new_scol(self._scol.isNull())
+            return self._with_new_scol(self._scol.isNull()).alias(self.name)
 
     isna = isnull
 
@@ -360,9 +360,9 @@ class IndexOpsMixin(object):
         0     True
         1     True
         2    False
-        Name: (NOT ((0 IS NULL) OR isnan(0))), dtype: bool
+        Name: 0, dtype: bool
         """
-        return ~self.isnull()
+        return (~self.isnull()).alias(self.name)
 
     notna = notnull
 
@@ -382,6 +382,8 @@ class IndexOpsMixin(object):
             * 0 / 'index' : reduce the index, return a Series whose index is the
               original column labels.
 
+        Examples
+        --------
         >>> ks.Series([True, True]).all()
         True
 
@@ -441,12 +443,6 @@ class IndexOpsMixin(object):
 
         Examples
         --------
-
-        **Series**
-
-        For Series input, the output is a scalar indicating whether any element
-        is True.
-
         >>> ks.Series([False, False]).any()
         False
 

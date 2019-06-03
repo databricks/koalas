@@ -660,6 +660,7 @@ class DataFrame(_Frame):
               col1  col2
         row1     1  0.50
         row2     2  0.75
+
         >>> df_dict = df.to_dict()
         >>> sorted([(key, sorted(values.items())) for key, values in df_dict.items()])
         [('col1', [('row1', 1), ('row2', 2)]), ('col2', [('row1', 0.5), ('row2', 0.75)])]
@@ -673,6 +674,7 @@ class DataFrame(_Frame):
         Name: col1, dtype: int64), ('col2', row1    0.50
         row2    0.75
         Name: col2, dtype: float64)]
+
         >>> df_dict = df.to_dict('split')
         >>> sorted(df_dict.items())  # doctest: +ELLIPSIS
         [('columns', ['col1', 'col2']), ('data', [[1..., 0.75]]), ('index', ['row1', 'row2'])]
@@ -789,10 +791,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = pd.DataFrame({'name': ['Raphael', 'Donatello'],
-        ... 'mask': ['red', 'purple'],
-        ... 'weapon': ['sai', 'bo staff']},
-        ... columns=['name', 'mask', 'weapon'])
+        >>> df = ks.DataFrame({'name': ['Raphael', 'Donatello'],
+        ...                    'mask': ['red', 'purple'],
+        ...                    'weapon': ['sai', 'bo staff']},
+        ...                   columns=['name', 'mask', 'weapon'])
         >>> df.to_latex(index=False) # doctest: +NORMALIZE_WHITESPACE
         '\\begin{tabular}{lll}\n\\toprule\n name & mask & weapon
         \\\\\n\\midrule\n Raphael & red & sai \\\\\n Donatello &
