@@ -335,13 +335,17 @@ class _InternalFrame(object):
                               for field in sdf.schema})
 
         index_columns = self.index_columns
+        if self._scol is None:
+            data_columns = self.data_columns
+        else:
+            data_columns = [sdf.schema[-1].name]
         if len(index_columns) > 0:
             append = False
             for index_field in index_columns:
-                drop = index_field not in self.data_columns
+                drop = index_field not in data_columns
                 pdf = pdf.set_index(index_field, drop=drop, append=append)
                 append = True
-            pdf = pdf[self.data_columns]
+            pdf = pdf[data_columns]
 
         index_names = self.index_names
         if len(index_names) > 0:
