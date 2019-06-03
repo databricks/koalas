@@ -30,6 +30,7 @@ from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, Times
     to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps
 
 
@@ -110,9 +111,17 @@ class IndexOpsMixin(object):
     def _with_new_scol(self, scol: spark.Column) -> IndexOpsMixin
         Creates new object with the new column
     """
-    def __init__(self, kdf, scol):
+    def __init__(self, internal: _InternalFrame, kdf):
+        self._internal = internal  # type: _InternalFrame
         self._kdf = kdf
-        self._scol = scol
+
+    @property
+    def _scol(self):
+        return self._internal.scol
+
+    @_scol.setter
+    def _scol(self, scol: spark.Column) -> None:
+        self._internal = self._internal.copy(scol=scol)
 
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)

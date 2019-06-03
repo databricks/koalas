@@ -209,8 +209,7 @@ class Series(_Frame, IndexOpsMixin):
             assert not copy
             assert not fastpath
             assert anchor._internal.index_map == index
-            super(Series, self).__init__(anchor._internal.copy(scol=data))
-            self._kdf = anchor
+            IndexOpsMixin.__init__(self, anchor._internal.copy(scol=data), anchor)
         else:
             if isinstance(data, pd.Series):
                 assert index is None
@@ -224,17 +223,8 @@ class Series(_Frame, IndexOpsMixin):
                 s = pd.Series(
                     data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
             kdf = DataFrame(s)
-            super(Series, self).__init__(kdf._internal.copy(
-                scol=kdf._internal._sdf[kdf._internal.data_columns[0]]))
-            self._kdf = kdf
-
-    @property
-    def _scol(self) -> spark.Column:
-        return self._internal._scol
-
-    @_scol.setter
-    def _scol(self, scol: spark.Column) -> None:
-        self._internal = self._internal.copy(scol=scol)
+            IndexOpsMixin.__init__(self, kdf._internal.copy(
+                scol=kdf._internal._sdf[kdf._internal.data_columns[0]]), kdf)
 
     @property
     def _index_map(self) -> List[IndexMap]:

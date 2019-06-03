@@ -41,7 +41,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_series(self):
         ks = self.ks
 
-        self.assertTrue(isinstance(ks['x'], Series))
+        self.assertTrue(isinstance(ks, Series))
 
         self.assert_eq(ks + 1, self.ps + 1)
 

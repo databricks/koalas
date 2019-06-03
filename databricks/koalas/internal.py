@@ -40,10 +40,10 @@ class _InternalFrame(object):
     information.
 
     :ivar _sdf: Spark DataFrame
-    :ivar _data_columns: list of the Spark field names to be seen as columns in Koalas DataFrame.
     :ivar _index_map: list of pair holding the Spark field names for indexes,
                        and the index name to be seen in Koalas DataFrame.
     :ivar _scol: Spark Column
+    :ivar _data_columns: list of the Spark field names to be seen as columns in Koalas DataFrame.
 
     .. note:: this is an internal class. It is not supposed to be exposed to users and users
         should not directly access to it.
@@ -251,34 +251,40 @@ class _InternalFrame(object):
     """
 
     def __init__(self, sdf: spark.DataFrame,
-                 data_columns: Optional[List[str]] = None,
                  index_map: Optional[List[IndexMap]] = None,
-                 scol: Optional[spark.Column] = None) -> None:
+                 scol: Optional[spark.Column] = None,
+                 data_columns: Optional[List[str]] = None) -> None:
         """
         Create a new internal immutable DataFrame to manage Spark DataFrame, column fields and
         index fields and names.
 
         :param sdf: Spark DataFrame to be managed.
-        :param data_columns: list of string
-                              Field names to appear as columns.
         :param index_map: list of string pair
                            Each pair holds the index field name which exists in Spark fields,
                            and the index name.
         :param scol: Spark Column to be managed.
+        :param data_columns: list of string
+                              Field names to appear as columns. If scol is not None, this
+                              argument is ignored, otherwise if this is None, calculated from sdf.
         """
         assert isinstance(sdf, spark.DataFrame)
-        assert data_columns is None or all(isinstance(col, str) for col in data_columns)
         assert index_map is None \
             or all(isinstance(index_field, str)
                    and (index_name is None or isinstance(index_name, str))
                    for index_field, index_name in index_map)
         assert scol is None or isinstance(scol, spark.Column)
+        assert data_columns is None or all(isinstance(col, str) for col in data_columns)
 
         self._sdf = sdf  # type: spark.DataFrame
-        self._data_columns = (data_columns if data_columns is not None
-                              else sdf.columns)  # type: List[str]
         self._index_map = (index_map if index_map is not None else [])  # type: List[IndexMap]
         self._scol = scol  # type: Optional[spark.Column]
+        if scol is not None:
+            self._data_columns = sdf.select(scol).columns
+        elif data_columns is None:
+            index_columns = set(index_column for index_column, _ in self._index_map)
+            self._data_columns = [column for column in sdf.columns if column not in index_columns]
+        else:
+            self._data_columns = data_columns
 
     @property
     def sdf(self) -> spark.DataFrame:
@@ -321,9 +327,10 @@ class _InternalFrame(object):
     def spark_dataframe(self) -> spark.DataFrame:
         """ Return as Spark DataFrame. """
         if self._scol is None:
-            return self._sdf
+            sdf = self._sdf
         else:
-            return self._sdf.select(self.index_columns + [self._scol])
+            sdf = self._sdf.select(self.index_columns + [self._scol])
+        return sdf.select(['`{}`'.format(name) for name in self.columns])
 
     @lazy_property
     def pandas_dataframe(self):
@@ -335,17 +342,13 @@ class _InternalFrame(object):
                               for field in sdf.schema})
 
         index_columns = self.index_columns
-        if self._scol is None:
-            data_columns = self.data_columns
-        else:
-            data_columns = [sdf.schema[-1].name]
         if len(index_columns) > 0:
             append = False
             for index_field in index_columns:
-                drop = index_field not in data_columns
+                drop = index_field not in self.data_columns
                 pdf = pdf.set_index(index_field, drop=drop, append=append)
                 append = True
-            pdf = pdf[data_columns]
+            pdf = pdf[self.data_columns]
 
         index_names = self.index_names
         if len(index_names) > 0:
@@ -356,26 +359,26 @@ class _InternalFrame(object):
         return pdf
 
     def copy(self, sdf: Optional[spark.DataFrame] = None,
-             data_columns: Optional[List[str]] = None,
              index_map: Optional[List[IndexMap]] = None,
-             scol: Optional[spark.Column] = None) -> '_InternalFrame':
+             scol: Optional[spark.Column] = None,
+             data_columns: Optional[List[str]] = None) -> '_InternalFrame':
         """ Copy the immutable DataFrame.
 
         :param sdf: the new Spark DataFrame. If None, then the original one is used.
-        :param data_columns: the new column field names. If None, then the original ones are used.
         :param index_map: the new index information. If None, then the original one is used.
         :param scol: the new Spark Column. If None, then the original one is used.
+        :param data_columns: the new column field names. If None, then the original ones are used.
         :return: the copied immutable DataFrame.
         """
         if sdf is None:
             sdf = self._sdf
-        if data_columns is None:
-            data_columns = self._data_columns
         if index_map is None:
             index_map = self._index_map
         if scol is None:
             scol = self._scol
-        return _InternalFrame(sdf, data_columns=data_columns, index_map=index_map.copy(), scol=scol)
+        if data_columns is None:
+            data_columns = self._data_columns
+        return _InternalFrame(sdf, index_map=index_map.copy(), scol=scol, data_columns=data_columns)
 
     @staticmethod
     def from_pandas(pdf: pd.DataFrame) -> '_InternalFrame':
@@ -413,4 +416,4 @@ class _InternalFrame(object):
                 continue
             reset_index[name] = col.replace({np.nan: None})
         sdf = default_session().createDataFrame(reset_index, schema=schema)
-        return _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map)
+        return _InternalFrame(sdf=sdf, index_map=index_map, data_columns=data_columns)
