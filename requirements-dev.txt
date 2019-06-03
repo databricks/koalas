@@ -5,7 +5,7 @@ numpy>=1.14
 mlflow
 
 # Documentation build
-sphinx
+sphinx==2.0.1
 nbsphinx
 numpydoc
 
