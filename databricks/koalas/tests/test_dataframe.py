@@ -597,3 +597,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.sample()
         with self.assertRaises(NotImplementedError):
             kdf.sample(n=1)
+
+    def test_add_prefix(self):
+        pdf = pd.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]})
+        kdf = ks.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]})
+        self.assert_eq(pdf.add_prefix('col_'), kdf.add_prefix('col_'))
+
+    def test_add_suffix(self):
+        pdf = pd.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]})
+        kdf = ks.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]})
+        self.assert_eq(pdf.add_suffix('_col'), kdf.add_suffix('_col'))

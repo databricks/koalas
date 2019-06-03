@@ -387,6 +387,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             repr(kser.map(d)),
             repr(pser.map(d).rename(0)))
 
+    def test_add_prefix(self):
+        ps = pd.Series([1, 2, 3, 4], name='0')
+        ks = koalas.from_pandas(ps)
+        self.assert_eq(ps.add_prefix('item_'), ks.add_prefix('item_'))
+
+    def test_add_suffix(self):
+        ps = pd.Series([1, 2, 3, 4], name='0')
+        ks = koalas.from_pandas(ps)
+        self.assert_eq(ps.add_suffix('_item'), ks.add_suffix('_item'))
+
     def test_pandas_wraps(self):
         # This test checks the return column name of `isna()`. Previously it returned the column
         # name as its internal expression which contains, for instance, '`f(x)`' in the middle of

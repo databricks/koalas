@@ -1371,6 +1371,102 @@ class Series(_Frame, IndexOpsMixin):
         else:
             return ks_
 
+    def add_prefix(self, prefix):
+        """
+        Prefix labels with string `prefix`.
+
+        For Series, the row labels are prefixed.
+        For DataFrame, the column labels are prefixed.
+
+        Parameters
+        ----------
+        prefix : str
+           The string to add before each label.
+
+        Returns
+        -------
+        Series
+           New Series with updated labels.
+
+        See Also
+        --------
+        Series.add_suffix: Suffix column labels with string `suffix`.
+        DataFrame.add_suffix: Suffix column labels with string `suffix`.
+        DataFrame.add_prefix: Prefix column labels with string `prefix`.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4])
+        >>> s
+        0    1
+        1    2
+        2    3
+        3    4
+        Name: 0, dtype: int64
+
+        >>> s.add_prefix('item_')
+        item_0    1
+        item_1    2
+        item_2    3
+        item_3    4
+        Name: 0, dtype: int64
+        """
+        assert isinstance(prefix, str)
+        kdf = self.to_dataframe()
+        metadata = kdf._metadata
+        sdf = kdf._sdf
+        kdf._sdf = sdf.select([F.concat(F.lit(prefix), sdf[index_column]).alias(index_column)
+                               for index_column in metadata.index_columns] + metadata.data_columns)
+        return Series(self._scol, anchor=kdf, index=self._index_map)
+
+    def add_suffix(self, suffix):
+        """
+        Suffix labels with string suffix.
+
+        For Series, the row labels are suffixed.
+        For DataFrame, the column labels are suffixed.
+
+        Parameters
+        ----------
+        suffix : str
+           The string to add after each label.
+
+        Returns
+        -------
+        Series
+           New Series with updated labels.
+
+        See Also
+        --------
+        Series.add_prefix: Prefix row labels with string `prefix`.
+        DataFrame.add_prefix: Prefix column labels with string `prefix`.
+        DataFrame.add_suffix: Suffix column labels with string `suffix`.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4])
+        >>> s
+        0    1
+        1    2
+        2    3
+        3    4
+        Name: 0, dtype: int64
+
+        >>> s.add_suffix('_item')
+        0_item    1
+        1_item    2
+        2_item    3
+        3_item    4
+        Name: 0, dtype: int64
+        """
+        assert isinstance(suffix, str)
+        kdf = self.to_dataframe()
+        metadata = kdf._metadata
+        sdf = kdf._sdf
+        kdf._sdf = sdf.select([F.concat(sdf[index_column], F.lit(suffix)).alias(index_column)
+                               for index_column in metadata.index_columns] + metadata.data_columns)
+        return Series(self._scol, anchor=kdf, index=self._index_map)
+
     def corr(self, other, method='pearson'):
         """
         Compute correlation with `other` Series, excluding missing values.
