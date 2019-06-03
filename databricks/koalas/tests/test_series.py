@@ -386,3 +386,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(
             repr(kser.map(d)),
             repr(pser.map(d).rename(0)))
+
+    def test_pandas_wraps(self):
+        @koalas.pandas_wraps
+        def f(x) -> koalas.Col[int]:
+            return 2 * x
+
+        df = koalas.DataFrame({"x": [1, None]})
+        self.assert_eq(
+            f(df["x"]).isna(),
+            pd.Series([False, True]).rename("f(x)"))
