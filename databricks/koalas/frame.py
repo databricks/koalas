@@ -2831,7 +2831,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame({'A': [1, 2, 3, 4],  'B': [3, 4, 5, 6]}, columns=['A', 'B'])
+        >>> df = ks.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]}, columns=['A', 'B'])
         >>> df
            A  B
         0  1  3
