@@ -518,23 +518,21 @@ class Series(_Frame, IndexOpsMixin):
         1    2
         2    3
         3    4
-        dtype: int64
+        Name: 0, dtype: int64
 
         >>> s.add_prefix('item_')
         item_0    1
         item_1    2
         item_2    3
         item_3    4
-        dtype: int64
+        Name: 0, dtype: int64
         """
         assert isinstance(prefix, str)
-        kdf = self.to_dataframe()
-        self._kdf._sdf = kdf._sdf.select(
+        kdf = self._kdf
+        kdf._sdf = kdf._sdf.select(
             [F.concat(F.lit(prefix), kdf._sdf[index_column]).alias(index_column)
-             for index_column in kdf._metadata.index_columns] +
-            kdf._metadata.data_columns)
-        return Series(kdf._sdf[kdf._metadata.data_columns[0]],
-                      anchor=self._kdf, index=self._index_map)
+             for index_column in kdf._metadata.index_columns] + kdf._metadata.data_columns)
+        return Series(self._scol, anchor=kdf, index=self._index_map)
 
     def add_suffix(self, suffix):
         """
@@ -565,23 +563,21 @@ class Series(_Frame, IndexOpsMixin):
         1    2
         2    3
         3    4
-        dtype: int64
+        Name: 0, dtype: int64
 
-        >>> s.add_prefix('_item')
+        >>> s.add_suffix('_item')
         0_item    1
         1_item    2
         2_item    3
         3_item    4
-        dtype: int64
+        Name: 0, dtype: int64
         """
         assert isinstance(suffix, str)
-        kdf = self.to_dataframe()
-        self._kdf._sdf = kdf._sdf.select(
+        kdf = self._kdf
+        kdf._sdf = kdf._sdf.select(
             [F.concat(kdf._sdf[index_column], F.lit(suffix)).alias(index_column)
-             for index_column in kdf._metadata.index_columns] +
-            kdf._metadata.data_columns)
-        return Series(kdf._sdf[kdf._metadata.data_columns[0]],
-                      anchor=self._kdf, index=self._index_map)
+             for index_column in kdf._metadata.index_columns] + kdf._metadata.data_columns)
+        return Series(self._scol, anchor=kdf, index=self._index_map)
 
     def getField(self, name):
         if not isinstance(self.schema, StructType):

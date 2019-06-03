@@ -388,11 +388,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             repr(pser.map(d).rename(0)))
 
     def test_add_prefix(self):
-        pser = pd.Series([1, 2, 3, 4])
-        kser = koalas.Series([1, 2, 3, 4])
-        self.assert_eq(pser.add_prefix('item_'), kser.add_prefix('item_'))
+        ps = pd.Series([1, 2, 3, 4], name='0')
+        ks = koalas.from_pandas(ps)
+        self.assert_eq(ps.add_prefix('item_'), ks.add_prefix('item_'))
 
     def test_add_suffix(self):
-        pser = pd.Series([1, 2, 3, 4])
-        kser = koalas.Series([1, 2, 3, 4])
-        self.assert_eq(pser.add_suffix('_item'), kser.add_suffix('_item'))
+        ps = pd.Series([1, 2, 3, 4], name='0')
+        ks = koalas.from_pandas(ps)
+        self.assert_eq(ps.add_suffix('_item'), ks.add_suffix('_item'))
