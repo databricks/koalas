@@ -24,18 +24,17 @@ from typing import Any, Optional, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like, \
-    is_dict_like
+from pandas.api.types import is_list_like, is_dict_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column, DataFrame as SDataFrame
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
-                               IntegerType, LongType, NumericType, ShortType, StructField,
-                               StructType, to_arrow_type)
+                               IntegerType, LongType, NumericType, ShortType, StructType)
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
+from databricks.koalas.utils import validate_arguments_and_invoke_function
 from databricks.koalas.generic import _Frame, max_display_count
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
@@ -127,42 +126,48 @@ class DataFrame(_Frame):
     4  2  5  4  3  9
     """
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
-        if isinstance(data, pd.DataFrame):
+        if isinstance(data, _InternalFrame):
             assert index is None
             assert columns is None
             assert dtype is None
             assert not copy
-            self._init_from_pandas(data)
+            super(DataFrame, self).__init__(data)
         elif isinstance(data, spark.DataFrame):
             assert columns is None
             assert dtype is None
             assert not copy
-            self._init_from_spark(data, index)
+            if index is None:
+                super(DataFrame, self).__init__(_InternalFrame(data))
+            else:
+                super(DataFrame, self).__init__(
+                    _InternalFrame(data, data_columns=index.data_columns, index_map=index.index_map))
         else:
-            pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
-            self._init_from_pandas(pdf)
+            if isinstance(data, pd.DataFrame):
+                assert index is None
+                assert columns is None
+                assert dtype is None
+                assert not copy
+                pdf = data
+            else:
+                pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
+            super(DataFrame, self).__init__(_InternalFrame.from_pandas(pdf))
 
-    def _init_from_pandas(self, pdf):
-        metadata = Metadata.from_pandas(pdf)
-        reset_index = pdf.reset_index()
-        reset_index.columns = metadata.columns
-        schema = StructType([StructField(name, infer_pd_series_spark_type(col),
-                                         nullable=bool(col.isnull().any()))
-                             for name, col in reset_index.iteritems()])
-        for name, col in reset_index.iteritems():
-            dt = col.dtype
-            if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
-                continue
-            reset_index[name] = col.replace({np.nan: None})
-        self._init_from_spark(default_session().createDataFrame(reset_index, schema=schema),
-                              metadata)
+    @property
+    def _sdf(self) -> spark.DataFrame:
+        return self._internal.sdf
 
-    def _init_from_spark(self, sdf, metadata=None):
-        self._sdf = sdf
-        if metadata is None:
-            self._metadata = Metadata(data_columns=self._sdf.schema.fieldNames())
-        else:
-            self._metadata = metadata
+    @_sdf.setter
+    def _sdf(self, sdf: spark.DataFrame) -> None:
+        self._internal = self._internal.copy(sdf=sdf)
+
+    @property
+    def _metadata(self) -> Metadata:
+        return Metadata(data_columns=self._internal.data_columns, index_map=self._internal.index_map)
+
+    @_metadata.setter
+    def _metadata(self, metadata: Metadata) -> None:
+        self._internal = self._internal.copy(data_columns=metadata.data_columns,
+                                             index_map=metadata.index_map)
 
     def _reduce_for_stat_function(self, sfun):
         """
@@ -1262,7 +1267,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         DataFrame.to_koalas
         """
-        return self._sdf
+        return self._internal.spark_dataframe
 
     def to_pandas(self):
         """
@@ -1282,29 +1287,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2   0.6   0.0
         3   0.2   0.1
         """
-        sdf = self._sdf.select(['`{}`'.format(name) for name in self._metadata.columns])
-        pdf = sdf.toPandas()
-        if len(pdf) == 0 and len(sdf.schema) > 0:
-            # TODO: push to OSS
-            pdf = pdf.astype({field.name: to_arrow_type(field.dataType).to_pandas_dtype()
-                              for field in sdf.schema})
-
-        index_columns = self._metadata.index_columns
-        if len(index_columns) > 0:
-            append = False
-            for index_field in index_columns:
-                drop = index_field not in self._metadata.data_columns
-                pdf = pdf.set_index(index_field, drop=drop, append=append)
-                append = True
-            pdf = pdf[self._metadata.data_columns]
-
-        index_names = self._metadata.index_names
-        if len(index_names) > 0:
-            if isinstance(pdf.index, pd.MultiIndex):
-                pdf.index.names = index_names
-            else:
-                pdf.index.name = index_names[0]
-        return pdf
+        return self._internal.pandas_dataframe.copy()
 
     # Alias to maintain backward compatibility with Spark
     toPandas = to_pandas
