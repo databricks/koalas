@@ -2843,11 +2843,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  4  6
 
         >>> df.add_prefix('col_')
-            col_A   col_B
-        0       1       3
-        1       2       4
-        2       3       5
-        3       4       6
+           col_A  col_B
+        0      1      3
+        1      2      4
+        2      3      5
+        3      4      6
         """
         assert isinstance(prefix, str)
         data_columns = self._metadata.data_columns
@@ -2894,11 +2894,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  4  6
 
         >>> df.add_suffix('_col')
-            A_col   B_col
-        0       1       3
-        1       2       4
-        2       3       5
-        3       4       6
+           A_col  B_col
+        0      1      3
+        1      2      4
+        2      3      5
+        3      4      6
         """
         assert isinstance(suffix, str)
         data_columns = self._metadata.data_columns
