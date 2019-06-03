@@ -382,6 +382,8 @@ class IndexOpsMixin(object):
             * 0 / 'index' : reduce the index, return a Series whose index is the
               original column labels.
 
+        Examples
+        --------
         >>> ks.Series([True, True]).all()
         True
 
@@ -441,12 +443,6 @@ class IndexOpsMixin(object):
 
         Examples
         --------
-
-        **Series**
-
-        For Series input, the output is a scalar indicating whether any element
-        is True.
-
         >>> ks.Series([False, False]).any()
         False
 

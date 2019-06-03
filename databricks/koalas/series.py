@@ -87,6 +87,7 @@ a  1.0  1.0
 b  1.0  NaN
 c  1.0  1.0
 d  NaN  NaN
+
 >>> df.a.add(df.b)
 a    2.0
 b    NaN
@@ -107,6 +108,7 @@ a  1.0  1.0
 b  1.0  NaN
 c  1.0  1.0
 d  NaN  NaN
+
 >>> df.a.subtract(df.b)
 a    0.0
 b    NaN
@@ -127,6 +129,7 @@ a  2.0  2.0
 b  2.0  NaN
 c  4.0  2.0
 d  NaN  NaN
+
 >>> df.a.multiply(df.b)
 a    4.0
 b    NaN
@@ -147,6 +150,7 @@ a  2.0  2.0
 b  2.0  NaN
 c  4.0  2.0
 d  NaN  NaN
+
 >>> df.a.divide(df.b)
 a    1.0
 b    NaN
@@ -263,6 +267,7 @@ class Series(_Frame, IndexOpsMixin):
     # Arithmetic Operators
     def add(self, other):
         return (self + other).rename(self.name)
+
     add.__doc__ = _flex_doc_SERIES.format(
         desc='Addition',
         op_name="+",
@@ -272,6 +277,7 @@ class Series(_Frame, IndexOpsMixin):
 
     def radd(self, other):
         return (other + self).rename(self.name)
+
     radd.__doc__ = _flex_doc_SERIES.format(
         desc='Addition',
         op_name="+",
@@ -281,6 +287,7 @@ class Series(_Frame, IndexOpsMixin):
 
     def div(self, other):
         return (self / other).rename(self.name)
+
     div.__doc__ = _flex_doc_SERIES.format(
         desc='Floating division',
         op_name="/",
@@ -292,6 +299,7 @@ class Series(_Frame, IndexOpsMixin):
 
     def rdiv(self, other):
         return (other / self).rename(self.name)
+
     rdiv.__doc__ = _flex_doc_SERIES.format(
         desc='Floating division',
         op_name="/",
@@ -301,6 +309,7 @@ class Series(_Frame, IndexOpsMixin):
 
     def truediv(self, other):
         return (self / other).rename(self.name)
+
     truediv.__doc__ = _flex_doc_SERIES.format(
         desc='Floating division',
         op_name="/",
@@ -310,6 +319,7 @@ class Series(_Frame, IndexOpsMixin):
 
     def rtruediv(self, other):
         return (other / self).rename(self.name)
+
     rtruediv.__doc__ = _flex_doc_SERIES.format(
         desc='Floating division',
         op_name="/",
@@ -319,6 +329,7 @@ class Series(_Frame, IndexOpsMixin):
 
     def mul(self, other):
         return (self * other).rename(self.name)
+
     mul.__doc__ = _flex_doc_SERIES.format(
         desc='Multiplication',
         op_name="*",
@@ -330,6 +341,7 @@ class Series(_Frame, IndexOpsMixin):
 
     def rmul(self, other):
         return (other * self).rename(self.name)
+
     rmul.__doc__ = _flex_doc_SERIES.format(
         desc='Multiplication',
         op_name="*",
@@ -339,6 +351,7 @@ class Series(_Frame, IndexOpsMixin):
 
     def sub(self, other):
         return (self - other).rename(self.name)
+
     sub.__doc__ = _flex_doc_SERIES.format(
         desc='Subtraction',
         op_name="-",
@@ -350,6 +363,7 @@ class Series(_Frame, IndexOpsMixin):
 
     def rsub(self, other):
         return (other - self).rename(self.name)
+
     rsub.__doc__ = _flex_doc_SERIES.format(
         desc='Subtraction',
         op_name="-",
@@ -419,6 +433,7 @@ class Series(_Frame, IndexOpsMixin):
 
         >>> def format(x) -> str:
         ...     return 'I am a {}'.format(x)
+
         >>> s.map(format)
         0       I am a cat
         1       I am a dog
@@ -802,9 +817,11 @@ class Series(_Frame, IndexOpsMixin):
         >>> s_dict = s.to_dict()
         >>> sorted(s_dict.items())
         [(0, 1), (1, 2), (2, 3), (3, 4)]
+
         >>> from collections import OrderedDict, defaultdict
         >>> s.to_dict(OrderedDict)
         OrderedDict([(0, 1), (1, 2), (2, 3), (3, 4)])
+
         >>> dd = defaultdict(list)
         >>> s.to_dict(dd)  # doctest: +ELLIPSIS
         defaultdict(<class 'list'>, {...})
@@ -993,8 +1010,8 @@ class Series(_Frame, IndexOpsMixin):
         Notes
         -----
         One difference between this implementation and pandas is that running
-        pd.Series(['a', 'b']).clip(0, 1) will crash with "TypeError: '<=' not supported between
-        instances of 'str' and 'int'" while ks.Series(['a', 'b']).clip(0, 1) will output the
+        `pd.Series(['a', 'b']).clip(0, 1)` will crash with "TypeError: '<=' not supported between
+        instances of 'str' and 'int'" while `ks.Series(['a', 'b']).clip(0, 1)` will output the
         original Series, simply ignoring the incompatible types.
         """
         return _col(self.to_dataframe().clip(lower, upper))

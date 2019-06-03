@@ -610,6 +610,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
       letter  number
     0      c       3
     1      d       4
+
     >>> ks.concat([df1, df2])
       letter  number
     0      a       1
@@ -638,6 +639,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
       letter  number animal
     0      c       3    cat
     1      d       4    dog
+
     >>> ks.concat([df1, df3])
       animal letter  number
     0   None      a       1
