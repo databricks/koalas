@@ -3240,7 +3240,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise KeyError("none key")
         if isinstance(key, str):
             try:
-                return Series(self._sdf.__getitem__(key), anchor=self,
+                # Currently, we don't support nested structure properly in Koalas
+                # as it's not supported in pandas.
+                # If Koalas should support it, we should properly resolve nested
+                # access.
+                return Series(self._sdf.__getitem__("`%s`" % key), anchor=self,
                               index=self._metadata.index_map)
             except AnalysisException:
                 raise KeyError(key)
