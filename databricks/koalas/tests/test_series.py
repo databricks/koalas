@@ -388,6 +388,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             repr(pser.map(d).rename(0)))
 
     def test_pandas_wraps(self):
+        # This test checks the return column name of `isna()`. Previously it returned the column
+        # name as its internal expression which contains, for instance, '`f(x)`' in the middle of
+        # column name which currently cannot be recognized in PySpark.
         @koalas.pandas_wraps
         def f(x) -> koalas.Col[int]:
             return 2 * x
