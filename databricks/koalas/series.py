@@ -201,8 +201,7 @@ class Series(_Frame, IndexOpsMixin):
             assert name is None
             assert not copy
             assert not fastpath
-            super(Series, self).__init__(data)
-            self._kdf = anchor
+            IndexOpsMixin.__init__(self, data, anchor)
         elif isinstance(data, spark.Column):
             assert dtype is None
             assert name is None
