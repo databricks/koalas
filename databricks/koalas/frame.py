@@ -305,13 +305,10 @@ class DataFrame(_Frame):
 
     # Arithmetic Operators
     def _map_series_op(self, op, other):
-        if isinstance(other, DataFrame):
+        if isinstance(other, DataFrame) or is_sequence(other):
             raise ValueError(
-                "%s on DataFrames is currently not supported; however, got %s." % (op, other))
-        if is_sequence(other):
-            raise ValueError(
-                "%s on DataFrame and sequence is currently not supported; "
-                "however, got %s." % (op, other))
+                "%s with another DataFrame or a sequence is currently not supported; "
+                "however, got %s." % (op, type(other)))
 
         applied = []
         for column in self._metadata.data_columns:
