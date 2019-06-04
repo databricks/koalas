@@ -48,8 +48,7 @@ REPR_PATTERN = re.compile(r"Length: (?P<length>[0-9]+)")
 _flex_doc_SERIES = """
 Return {desc} of series and other, element-wise (binary operator `{op_name}`).
 
-Equivalent to ``{equiv}``, but with support to substitute a fill_value for
-missing data in one of the inputs.
+Equivalent to ``{equiv}``
 
 Parameters
 ----------
