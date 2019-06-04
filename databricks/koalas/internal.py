@@ -248,6 +248,56 @@ class _InternalFrame(object):
     1 2  6  10  14  18
     2 3  7  11  15  19
     3 4  8  12  16  20
+
+    For series, it also holds scol to represent the column.
+
+    >>> kseries = kdf1.B
+    >>> kseries
+    A
+    1    5
+    2    6
+    3    7
+    4    8
+    Name: B, dtype: int64
+
+    >>> internal = kseries._internal
+    >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE
+    +---+---+---+---+---+
+    |  A|  B|  C|  D|  E|
+    +---+---+---+---+---+
+    |  1|  5|  9| 13| 17|
+    |  2|  6| 10| 14| 18|
+    |  3|  7| 11| 15| 19|
+    |  4|  8| 12| 16| 20|
+    +---+---+---+---+---+
+    >>> internal.scol
+    Column<b'B'>
+    >>> internal.data_columns
+    ['B']
+    >>> internal.index_columns
+    ['A']
+    >>> internal.columns
+    ['A', 'B']
+    >>> internal.index_names
+    ['A']
+    >>> internal.index_map
+    [('A', 'A')]
+    >>> internal.spark_dataframe.show()  # doctest: +NORMALIZE_WHITESPACE
+    +---+---+
+    |  A|  B|
+    +---+---+
+    |  1|  5|
+    |  2|  6|
+    |  3|  7|
+    |  4|  8|
+    +---+---+
+    >>> internal.pandas_dataframe  # doctest: +NORMALIZE_WHITESPACE
+       B
+    A
+    1  5
+    2  6
+    3  7
+    4  8
     """
 
     def __init__(self, sdf: spark.DataFrame,
