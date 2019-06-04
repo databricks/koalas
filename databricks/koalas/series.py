@@ -38,6 +38,7 @@ from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 from databricks.koalas.datetimes import DatetimeMethods
+from databricks.koalas.strings import StringMethods
 
 
 # This regular expression pattern is complied and defined here to avoid to compile the same
@@ -158,6 +159,10 @@ c    2.0
 d    NaN
 Name: a, dtype: float64
 """
+
+
+# Needed to disambiguate Series.str and str type
+str_type = str
 
 
 class Series(_Frame, IndexOpsMixin):
@@ -1769,6 +1774,7 @@ class Series(_Frame, IndexOpsMixin):
     # Accessor Methods
     # ----------------------------------------------------------------------
     dt = CachedAccessor("dt", DatetimeMethods)
+    str = CachedAccessor("str", StringMethods)
 
     # ----------------------------------------------------------------------
 
@@ -1797,7 +1803,7 @@ class Series(_Frame, IndexOpsMixin):
     def __getitem__(self, key):
         return Series(self._scol.__getitem__(key), anchor=self._kdf, index=self._index_map)
 
-    def __getattr__(self, item: str) -> Any:
+    def __getattr__(self, item: str_type) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
             raise AttributeError(item)
         if hasattr(_MissingPandasLikeSeries, item):

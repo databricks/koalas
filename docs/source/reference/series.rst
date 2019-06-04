@@ -144,11 +144,12 @@ Koalas provides dtype-specific methods under various accessors.
 These are separate namespaces within :class:`Series` that only apply
 to specific data types.
 
-========= =========================
-Data Type                  Accessor
-========= =========================
+========= ===========================
+Data Type                    Accessor
+========= ===========================
 Datetime  :ref:`dt <api.series.dt>`
-========= =========================
+String    :ref:`str <api.series.str>`
+========= ===========================
 
 .. _api.series.dt:
 
@@ -189,6 +190,37 @@ Datetime Methods
    :toctree: api/
 
    Series.dt.strftime
+
+.. _api.series.str:
+
+String Handling
+^^^^^^^^^^^^^^^
+
+``Series.str`` can be used to access the values of the series as
+strings and apply several methods to it. These can be accessed
+like ``Series.str.<function/property>``.
+
+.. currentmodule:: databricks.koalas.series
+.. autosummary::
+   :toctree: api/
+
+   Series.str.capitalize
+   Series.str.decode
+   Series.str.encode
+   Series.str.endswith
+   Series.str.get
+   Series.str.isalnum
+   Series.str.isalpha
+   Series.str.isdigit
+   Series.str.isspace
+   Series.str.islower
+   Series.str.isupper
+   Series.str.istitle
+   Series.str.isnumeric
+   Series.str.isdecimal
+   Series.str.lower
+   Series.str.startswith
+   Series.str.swapcase
 
 Serialization / IO / Conversion
 -------------------------------
