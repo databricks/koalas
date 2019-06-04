@@ -1268,7 +1268,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         DataFrame.to_koalas
         """
-        return self._internal.spark_dataframe
+        return self._internal.spark_df
 
     def to_pandas(self):
         """
@@ -1288,7 +1288,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2   0.6   0.0
         3   0.2   0.1
         """
-        return self._internal.pandas_dataframe.copy()
+        return self._internal.pandas_df.copy()
 
     # Alias to maintain backward compatibility with Spark
     toPandas = to_pandas

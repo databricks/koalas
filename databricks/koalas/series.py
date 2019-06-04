@@ -709,7 +709,7 @@ class Series(_Frame, IndexOpsMixin):
             return kdf
 
     def to_dataframe(self) -> spark.DataFrame:
-        sdf = self._internal.spark_dataframe
+        sdf = self._internal.spark_df
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[sdf.schema[-1].name],
                                   index_map=self._internal.index_map)
@@ -856,7 +856,7 @@ class Series(_Frame, IndexOpsMixin):
         3    0.2
         Name: dogs, dtype: float64
         """
-        return _col(self._internal.pandas_dataframe.copy())
+        return _col(self._internal.pandas_df.copy())
 
     # Alias to maintain backward compatibility with Spark
     toPandas = to_pandas

@@ -93,9 +93,9 @@ class _InternalFrame(object):
 
     * `index_map` is zipped pairs of `index_columns` and `index_names`
 
-    * `spark_dataframe` represents Spark DataFrame derived by the metadata
+    * `spark_df` represents Spark DataFrame derived by the metadata
 
-    * `pandas_dataframe` represents pandas DataFrame derived by the metadata
+    * `pandas_df` represents pandas DataFrame derived by the metadata
 
     >>> internal = kdf._internal
     >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE
@@ -117,7 +117,7 @@ class _InternalFrame(object):
     [None]
     >>> internal.index_map
     [('__index_level_0__', None)]
-    >>> internal.spark_dataframe.show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
     +-----------------+---+---+---+---+---+
@@ -126,7 +126,7 @@ class _InternalFrame(object):
     |                2|  3|  7| 11| 15| 19|
     |                3|  4|  8| 12| 16| 20|
     +-----------------+---+---+---+---+---+
-    >>> internal.pandas_dataframe
+    >>> internal.pandas_df
        A  B   C   D   E
     0  1  5   9  13  17
     1  2  6  10  14  18
@@ -174,7 +174,7 @@ class _InternalFrame(object):
     ['A']
     >>> internal.index_map
     [('A', 'A')]
-    >>> internal.spark_dataframe.show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+---+---+---+
     |  A|  B|  C|  D|  E|
     +---+---+---+---+---+
@@ -183,7 +183,7 @@ class _InternalFrame(object):
     |  3|  7| 11| 15| 19|
     |  4|  8| 12| 16| 20|
     +---+---+---+---+---+
-    >>> internal.pandas_dataframe  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.pandas_df  # doctest: +NORMALIZE_WHITESPACE
        B   C   D   E
     A
     1  5   9  13  17
@@ -232,7 +232,7 @@ class _InternalFrame(object):
     [None, 'A']
     >>> internal.index_map
     [('__index_level_0__', None), ('A', 'A')]
-    >>> internal.spark_dataframe.show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
     +-----------------+---+---+---+---+---+
@@ -241,7 +241,7 @@ class _InternalFrame(object):
     |                2|  3|  7| 11| 15| 19|
     |                3|  4|  8| 12| 16| 20|
     +-----------------+---+---+---+---+---+
-    >>> internal.pandas_dataframe  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.pandas_df  # doctest: +NORMALIZE_WHITESPACE
          B   C   D   E
       A
     0 1  5   9  13  17
@@ -282,7 +282,7 @@ class _InternalFrame(object):
     ['A']
     >>> internal.index_map
     [('A', 'A')]
-    >>> internal.spark_dataframe.show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+
     |  A|  B|
     +---+---+
@@ -291,7 +291,7 @@ class _InternalFrame(object):
     |  3|  7|
     |  4|  8|
     +---+---+
-    >>> internal.pandas_dataframe  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.pandas_df  # doctest: +NORMALIZE_WHITESPACE
        B
     A
     1  5
@@ -374,7 +374,7 @@ class _InternalFrame(object):
         return self._scol
 
     @lazy_property
-    def spark_dataframe(self) -> spark.DataFrame:
+    def spark_df(self) -> spark.DataFrame:
         """ Return as Spark DataFrame. """
         if self._scol is None:
             sdf = self._sdf
@@ -383,9 +383,9 @@ class _InternalFrame(object):
         return sdf.select(['`{}`'.format(name) for name in self.columns])
 
     @lazy_property
-    def pandas_dataframe(self):
+    def pandas_df(self):
         """ Return as pandas DataFrame. """
-        sdf = self.spark_dataframe
+        sdf = self.spark_df
         pdf = sdf.toPandas()
         if len(pdf) == 0 and len(sdf.schema) > 0:
             pdf = pdf.astype({field.name: to_arrow_type(field.dataType).to_pandas_dtype()
