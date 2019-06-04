@@ -18,3 +18,4 @@ pytest
 pytest-cov
 openpyxl
 xlrd
+scikit-learn
