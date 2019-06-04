@@ -584,12 +584,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_binary_operators(self):
         self.assertRaisesRegex(
             ValueError,
-            'DataFrames is currently not supported',
+            'with another DataFrame or a sequence is currently not supported',
             lambda: ks.range(10).add(ks.range(10)))
 
         self.assertRaisesRegex(
             ValueError,
-            'DataFrame and sequence is currently not supported',
+            'with another DataFrame or a sequence is currently not supported',
             lambda: ks.range(10).add(ks.range(10).id))
 
     def test_sample(self):
