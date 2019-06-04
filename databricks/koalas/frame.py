@@ -139,8 +139,8 @@ class DataFrame(_Frame):
             if index is None:
                 super(DataFrame, self).__init__(_InternalFrame(data))
             else:
-                super(DataFrame, self).__init__(
-                    _InternalFrame(data, data_columns=index.data_columns, index_map=index.index_map))
+                super(DataFrame, self).__init__(_InternalFrame(
+                    data, data_columns=index.data_columns, index_map=index.index_map))
         else:
             if isinstance(data, pd.DataFrame):
                 assert index is None
@@ -162,7 +162,8 @@ class DataFrame(_Frame):
 
     @property
     def _metadata(self) -> Metadata:
-        return Metadata(data_columns=self._internal.data_columns, index_map=self._internal.index_map)
+        return Metadata(data_columns=self._internal.data_columns,
+                        index_map=self._internal.index_map)
 
     @_metadata.setter
     def _metadata(self, metadata: Metadata) -> None:
