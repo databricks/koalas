@@ -26,6 +26,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like, \
     is_dict_like
+from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column, DataFrame as SDataFrame
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
@@ -48,6 +49,109 @@ from databricks.koalas.typedef import infer_pd_series_spark_type
 REPR_PATTERN = re.compile(r"\n\n\[(?P<rows>[0-9]+) rows x (?P<columns>[0-9]+) columns\]$")
 REPR_HTML_PATTERN = re.compile(
     r"\n\<p\>(?P<rows>[0-9]+) rows × (?P<columns>[0-9]+) columns\<\/p\>\n\<\/div\>$")
+
+
+_flex_doc_FRAME = """
+Get {desc} of dataframe and other, element-wise (binary operator `{op_name}`).
+
+Equivalent to ``{equiv}``. With reverse version, `{reverse}`.
+
+Among flexible wrappers (`add`, `sub`, `mul`, `div`) to
+arithmetic operators: `+`, `-`, `*`, `/`, `//`.
+
+Parameters
+----------
+other : scalar
+    Any single data
+
+Returns
+-------
+DataFrame
+    Result of the arithmetic operation.
+
+Examples
+--------
+>>> df = ks.DataFrame({{'angles': [0, 3, 4],
+...                    'degrees': [360, 180, 360]}},
+...                   index=['circle', 'triangle', 'rectangle'],
+...                   columns=['angles', 'degrees'])
+>>> df
+           angles  degrees
+circle          0      360
+triangle        3      180
+rectangle       4      360
+
+Add a scalar with operator version which return the same
+results.
+
+>>> df + 1
+           angles  degrees
+circle          1      361
+triangle        4      181
+rectangle       5      361
+
+>>> df.add(1)
+           angles  degrees
+circle          1      361
+triangle        4      181
+rectangle       5      361
+
+Divide by constant with reverse version.
+
+>>> df.div(10)
+           angles  degrees
+circle        0.0     36.0
+triangle      0.3     18.0
+rectangle     0.4     36.0
+
+>>> df.rdiv(10)
+             angles   degrees
+circle          NaN  0.027778
+triangle   3.333333  0.055556
+rectangle  2.500000  0.027778
+
+Subtract by constant.
+
+>>> df - 1
+           angles  degrees
+circle         -1      359
+triangle        2      179
+rectangle       3      359
+
+>>> df.sub(1)
+           angles  degrees
+circle         -1      359
+triangle        2      179
+rectangle       3      359
+
+Multiply by constant.
+
+>>> df * 1
+           angles  degrees
+circle          0      360
+triangle        3      180
+rectangle       4      360
+
+>>> df.mul(1)
+           angles  degrees
+circle          0      360
+triangle        3      180
+rectangle       4      360
+
+Divide by constant.
+
+>>> df / 1
+           angles  degrees
+circle        0.0    360.0
+triangle      3.0    180.0
+rectangle     4.0    360.0
+
+>>> df.div(1)
+           angles  degrees
+circle        0.0    360.0
+triangle      3.0    180.0
+rectangle     4.0    360.0
+"""
 
 
 class DataFrame(_Frame):
@@ -198,6 +302,147 @@ class DataFrame(_Frame):
         row = pdf.iloc[0]
         row.name = None
         return row  # Return first row as a Series
+
+    # Arithmetic Operators
+    def _map_series_op(self, op, other):
+        if isinstance(other, DataFrame) or is_sequence(other):
+            raise ValueError(
+                "%s with another DataFrame or a sequence is currently not supported; "
+                "however, got %s." % (op, type(other)))
+
+        applied = []
+        for column in self._metadata.data_columns:
+            applied.append(getattr(self[column], op)(other))
+        sdf = self._sdf.select(
+            self._metadata.index_columns + [c._scol for c in applied])
+        metadata = self._metadata.copy(data_columns=[c.name for c in applied])
+        return DataFrame(sdf, metadata)
+
+    def __add__(self, other):
+        return self._map_series_op("add", other)
+
+    def __radd__(self, other):
+        return self._map_series_op("radd", other)
+
+    def __div__(self, other):
+        return self._map_series_op("div", other)
+
+    def __rdiv__(self, other):
+        return self._map_series_op("rdiv", other)
+
+    def __truediv__(self, other):
+        return self._map_series_op("truediv", other)
+
+    def __rtruediv__(self, other):
+        return self._map_series_op("rtruediv", other)
+
+    def __mul__(self, other):
+        return self._map_series_op("mul", other)
+
+    def __rmul__(self, other):
+        return self._map_series_op("rmul", other)
+
+    def __sub__(self, other):
+        return self._map_series_op("sub", other)
+
+    def __rsub__(self, other):
+        return self._map_series_op("rsub", other)
+
+    def add(self, other):
+        return self + other
+
+    add.__doc__ = _flex_doc_FRAME.format(
+        desc='Addition',
+        op_name='+',
+        equiv='dataframe + other',
+        reverse='radd')
+
+    def radd(self, other):
+        return other + self
+
+    radd.__doc__ = _flex_doc_FRAME.format(
+        desc='Addition',
+        op_name="+",
+        equiv="other + dataframe",
+        reverse='add')
+
+    def div(self, other):
+        return self / other
+
+    div.__doc__ = _flex_doc_FRAME.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="dataframe / other",
+        reverse='rdiv')
+
+    divide = div
+
+    def rdiv(self, other):
+        return other / self
+
+    rdiv.__doc__ = _flex_doc_FRAME.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="other / dataframe",
+        reverse='div')
+
+    def truediv(self, other):
+        return self / other
+
+    truediv.__doc__ = _flex_doc_FRAME.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="dataframe / other",
+        reverse='rtruediv')
+
+    def rtruediv(self, other):
+        return other / self
+
+    rtruediv.__doc__ = _flex_doc_FRAME.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="other / dataframe",
+        reverse='truediv')
+
+    def mul(self, other):
+        return self * other
+
+    mul.__doc__ = _flex_doc_FRAME.format(
+        desc='Multiplication',
+        op_name="*",
+        equiv="dataframe * other",
+        reverse='rmul')
+
+    multiply = mul
+
+    def rmul(self, other):
+        return other * self
+
+    rmul.__doc__ = _flex_doc_FRAME.format(
+        desc='Multiplication',
+        op_name="*",
+        equiv="other * dataframe",
+        reverse='mul')
+
+    def sub(self, other):
+        return self - other
+
+    sub.__doc__ = _flex_doc_FRAME.format(
+        desc='Subtraction',
+        op_name="-",
+        equiv="dataframe - other",
+        reverse='rsub')
+
+    subtract = sub
+
+    def rsub(self, other):
+        return other - self
+
+    rsub.__doc__ = _flex_doc_FRAME.format(
+        desc='Subtraction',
+        op_name="-",
+        equiv="other - dataframe",
+        reverse='sub')
 
     def applymap(self, func):
         """
