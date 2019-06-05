@@ -222,7 +222,7 @@ class Series(_Frame, IndexOpsMixin):
                     data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
             kdf = DataFrame(s)
             IndexOpsMixin.__init__(self, kdf._internal.copy(
-                scol=kdf._internal._sdf[kdf._internal.data_columns[0]]), kdf)
+                scol=kdf._internal._sdf["`%s`" % kdf._internal.data_columns[0]]), kdf)
 
     @property
     def _index_map(self) -> List[IndexMap]:

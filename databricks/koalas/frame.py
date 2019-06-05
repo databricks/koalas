@@ -286,7 +286,7 @@ class DataFrame(_Frame):
         exprs = []
         num_args = len(signature(sfun).parameters)
         for col in self.columns:
-            col_sdf = self._sdf[col]
+            col_sdf = self._sdf["`%s`" % col]
             col_type = self._sdf.schema[col].dataType
             if isinstance(col_type, BooleanType) and sfun.__name__ not in ('min', 'max'):
                 # Stat functions cannot be used with boolean values by default

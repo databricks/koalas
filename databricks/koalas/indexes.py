@@ -80,7 +80,7 @@ class Index(IndexOpsMixin):
     def _columns(self) -> List[spark.Column]:
         """ Returns spark Columns corresponding to index columns. """
         kdf = self._kdf
-        return [kdf._sdf[field] for field in kdf._metadata.index_columns]
+        return [kdf._sdf["`%s`" % field] for field in kdf._metadata.index_columns]
 
     def to_pandas(self) -> pd.Index:
         """
