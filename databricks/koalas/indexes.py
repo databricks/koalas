@@ -63,7 +63,8 @@ class Index(IndexOpsMixin):
         assert len(kdf._metadata._index_map) == 1
         if scol is None:
             IndexOpsMixin.__init__(
-                self, kdf._internal.copy(scol=kdf._sdf[kdf._internal.index_columns[0]]), kdf)
+                self, kdf._internal.copy(
+                    scol=kdf._sdf["`%s`" % kdf._internal.index_columns[0]]), kdf)
         else:
             IndexOpsMixin.__init__(self, kdf._internal.copy(scol=scol), kdf)
 

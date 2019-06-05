@@ -1407,8 +1407,9 @@ class Series(_Frame, IndexOpsMixin):
         kdf = self.to_dataframe()
         metadata = kdf._metadata
         sdf = kdf._sdf
-        kdf._sdf = sdf.select([F.concat(F.lit(prefix), sdf[index_column]).alias(index_column)
-                               for index_column in metadata.index_columns] + metadata.data_columns)
+        kdf._sdf = sdf.select(
+            [F.concat(F.lit(prefix), sdf["`%s`" % index_column]).alias(index_column)
+             for index_column in metadata.index_columns] + metadata.data_columns)
         return Series(self._scol, anchor=kdf, index=self._index_map)
 
     def add_suffix(self, suffix):
@@ -1455,8 +1456,9 @@ class Series(_Frame, IndexOpsMixin):
         kdf = self.to_dataframe()
         metadata = kdf._metadata
         sdf = kdf._sdf
-        kdf._sdf = sdf.select([F.concat(sdf[index_column], F.lit(suffix)).alias(index_column)
-                               for index_column in metadata.index_columns] + metadata.data_columns)
+        kdf._sdf = sdf.select(
+            [F.concat(sdf["`%s`" % index_column], F.lit(suffix)).alias(index_column)
+             for index_column in metadata.index_columns] + metadata.data_columns)
         return Series(self._scol, anchor=kdf, index=self._index_map)
 
     def corr(self, other, method='pearson'):
