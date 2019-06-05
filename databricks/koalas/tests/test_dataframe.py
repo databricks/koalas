@@ -581,6 +581,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         str_kdf = ks.DataFrame({'A': ['a', 'b', 'c']})
         self.assert_eq(str_kdf.clip(1, 3), str_kdf)
 
+    def test_binary_operators(self):
+        self.assertRaisesRegex(
+            ValueError,
+            'with another DataFrame or a sequence is currently not supported',
+            lambda: ks.range(10).add(ks.range(10)))
+
+        self.assertRaisesRegex(
+            ValueError,
+            'with another DataFrame or a sequence is currently not supported',
+            lambda: ks.range(10).add(ks.range(10).id))
+
     def test_sample(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})
         kdf = ks.from_pandas(pdf)

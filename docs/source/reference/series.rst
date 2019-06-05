@@ -55,16 +55,13 @@ Binary operator functions
 
    Series.add
    Series.div
-   Series.divide
    Series.mul
-   Series.multiply
    Series.radd
    Series.rdiv
    Series.rmul
    Series.rsub
    Series.rtruediv
    Series.sub
-   Series.subtract
    Series.truediv
 
 Function application, GroupBy & Window
