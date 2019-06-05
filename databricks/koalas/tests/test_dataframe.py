@@ -609,6 +609,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         str_kdf = ks.DataFrame({'A': ['a', 'b', 'c']})
         self.assert_eq(str_kdf.clip(1, 3), str_kdf)
 
+    def test_binary_operators(self):
+        self.assertRaisesRegex(
+            ValueError,
+            'with another DataFrame or a sequence is currently not supported',
+            lambda: ks.range(10).add(ks.range(10)))
+
+        self.assertRaisesRegex(
+            ValueError,
+            'with another DataFrame or a sequence is currently not supported',
+            lambda: ks.range(10).add(ks.range(10).id))
+
     def test_sample(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})
         kdf = ks.from_pandas(pdf)
@@ -625,3 +636,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.sample()
         with self.assertRaises(NotImplementedError):
             kdf.sample(n=1)
+
+    def test_add_prefix(self):
+        pdf = pd.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]})
+        kdf = ks.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]})
+        self.assert_eq(pdf.add_prefix('col_'), kdf.add_prefix('col_'))
+
+    def test_add_suffix(self):
+        pdf = pd.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]})
+        kdf = ks.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]})
+        self.assert_eq(pdf.add_suffix('_col'), kdf.add_suffix('_col'))

@@ -53,6 +53,22 @@ Indexing, iteration
    DataFrame.iteritems
    DataFrame.get
 
+Binary operator functions
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.add
+   DataFrame.radd
+   DataFrame.div
+   DataFrame.rdiv
+   DataFrame.truediv
+   DataFrame.rtruediv
+   DataFrame.mul
+   DataFrame.rmul
+   DataFrame.sub
+   DataFrame.rsub
+
 Function application, GroupBy & Window
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
@@ -90,6 +106,8 @@ Reindexing / Selection / Label manipulation
 .. autosummary::
    :toctree: api/
 
+   DataFrame.add_prefix
+   DataFrame.add_suffix
    DataFrame.drop
    DataFrame.head
    DataFrame.reset_index
