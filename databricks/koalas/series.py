@@ -34,6 +34,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
+from databricks.koalas.internal import IndexMap, _InternalFrame
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.utils import validate_arguments_and_invoke_function
@@ -194,50 +195,42 @@ class Series(_Frame, IndexOpsMixin):
 
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False,
                  anchor=None):
-        if isinstance(data, pd.Series):
-            assert index is None
+        if isinstance(data, _InternalFrame):
             assert dtype is None
             assert name is None
             assert not copy
-            assert anchor is None
             assert not fastpath
-            self._init_from_pandas(data)
+            IndexOpsMixin.__init__(self, data, anchor)
         elif isinstance(data, spark.Column):
             assert dtype is None
             assert name is None
             assert not copy
             assert not fastpath
-            self._init_from_spark(data, anchor, index)
+            assert anchor._internal.index_map == index
+            IndexOpsMixin.__init__(self, anchor._internal.copy(scol=data), anchor)
         else:
-            s = pd.Series(
-                data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
-            self._init_from_pandas(s)
+            if isinstance(data, pd.Series):
+                assert index is None
+                assert dtype is None
+                assert name is None
+                assert not copy
+                assert anchor is None
+                assert not fastpath
+                s = data
+            else:
+                s = pd.Series(
+                    data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
+            kdf = DataFrame(s)
+            IndexOpsMixin.__init__(self, kdf._internal.copy(
+                scol=kdf._internal._sdf[kdf._internal.data_columns[0]]), kdf)
 
-    def _init_from_pandas(self, s):
-        """
-        Creates Koalas Series from Pandas Series.
+    @property
+    def _index_map(self) -> List[IndexMap]:
+        return self._internal.index_map
 
-        :param s: Pandas Series
-        """
-
-        kdf = DataFrame(pd.DataFrame(s))
-        self._init_from_spark(kdf._sdf[kdf._metadata.data_columns[0]],
-                              kdf, kdf._metadata.index_map)
-
-    def _init_from_spark(self, scol, kdf, index_map):
-        """
-        Creates Koalas Series from Spark Column.
-
-        :param scol: Spark Column
-        :param kdf: Koalas DataFrame that should have the `scol`.
-        :param index_map: index information of this Series.
-        """
-        assert index_map is not None
-        assert kdf is not None
-        assert isinstance(kdf, ks.DataFrame), type(kdf)
-        self._scol = scol
-        self._kdf = kdf
-        self._index_map = index_map
+    @_index_map.setter
+    def _index_map(self, index_map: List[IndexMap]) -> None:
+        self._internal = self._internal.copy(index_map=index_map)
 
     def _with_new_scol(self, scol: spark.Column) -> 'Series':
         """
@@ -705,20 +698,21 @@ class Series(_Frame, IndexOpsMixin):
             kdf = self.to_dataframe()
         kdf = kdf.reset_index(level=level, drop=drop)
         if drop:
-            s = _col(kdf)
+            kseries = _col(kdf)
             if inplace:
-                self._kdf = kdf
-                self._scol = s._scol
-                self._index_map = s._index_map
+                self._internal = kseries._internal
+                self._kdf = kseries._kdf
             else:
-                return s
+                return kseries
         else:
             return kdf
 
     def to_dataframe(self) -> spark.DataFrame:
-        sdf = self._kdf._sdf.select([field for field, _ in self._index_map] + [self._scol])
-        metadata = Metadata(data_columns=[sdf.schema[-1].name], index_map=self._index_map)
-        return DataFrame(sdf, metadata)
+        sdf = self._internal.spark_df
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[sdf.schema[-1].name],
+                                  index_map=self._internal.index_map)
+        return DataFrame(internal)
 
     def to_string(self, buf=None, na_rep='NaN', float_format=None, header=True,
                   index=True, length=False, dtype=False, name=False,
@@ -861,7 +855,7 @@ class Series(_Frame, IndexOpsMixin):
         3    0.2
         Name: dogs, dtype: float64
         """
-        return _col(self.to_dataframe().toPandas())
+        return _col(self._internal.pandas_df.copy())
 
     # Alias to maintain backward compatibility with Spark
     toPandas = to_pandas
@@ -923,12 +917,12 @@ class Series(_Frame, IndexOpsMixin):
         Name: x, dtype: float64
         """
 
-        ks = _col(self.to_dataframe().fillna(value=value, axis=axis, inplace=False))
+        kseries = _col(self.to_dataframe().fillna(value=value, axis=axis, inplace=False))
         if inplace:
-            self._kdf = ks._kdf
-            self._scol = ks._scol
+            self._internal = kseries._internal
+            self._kdf = kseries._kdf
         else:
-            return ks
+            return kseries
 
     def dropna(self, axis=0, inplace=False, **kwargs):
         """
@@ -973,12 +967,12 @@ class Series(_Frame, IndexOpsMixin):
         Name: 0, dtype: float64
         """
         # TODO: last two examples from Pandas produce different results.
-        kser = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
+        kseries = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
-            self._kdf = kser._kdf
-            self._scol = kser._scol
+            self._internal = kseries._internal
+            self._kdf = kseries._kdf
         else:
-            return kser
+            return kseries
 
     def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) -> 'Series':
         """
@@ -1283,15 +1277,14 @@ class Series(_Frame, IndexOpsMixin):
         0    z
         Name: 0, dtype: object
         """
-        ks_ = _col(self.to_dataframe().sort_values(by=self.name, ascending=ascending,
-                                                   na_position=na_position))
+        kseries = _col(self.to_dataframe().sort_values(by=self.name, ascending=ascending,
+                                                       na_position=na_position))
         if inplace:
-            self._kdf = ks_.to_dataframe()
-            self._scol = ks_._scol
-            self._index_map = ks_._index_map
+            self._internal = kseries._internal
+            self._kdf = kseries._kdf
             return None
         else:
-            return ks_
+            return kseries
 
     def sort_index(self, axis: int = 0, level: int = None, ascending: bool = True,
                    inplace: bool = False, kind: str = None, na_position: str = 'last') \
@@ -1360,15 +1353,15 @@ class Series(_Frame, IndexOpsMixin):
             raise ValueError("The 'axis' argument is not supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-        ks_ = _col(self.to_dataframe().sort_values(by=self._metadata.index_columns,
-                                                   ascending=ascending, na_position=na_position))
+        kseries = _col(self.to_dataframe().sort_values(by=self._metadata.index_columns,
+                                                       ascending=ascending,
+                                                       na_position=na_position))
         if inplace:
-            self._kdf = ks_.to_dataframe()
-            self._scol = ks_._scol
-            self._index_map = ks_._index_map
+            self._internal = kseries._internal
+            self._kdf = kseries._kdf
             return None
         else:
-            return ks_
+            return kseries
 
     def add_prefix(self, prefix):
         """

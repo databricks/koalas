@@ -28,6 +28,7 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, ILocIndexer, LocIndexer
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 
 max_display_count = 1000
@@ -37,6 +38,9 @@ class _Frame(object):
     """
     The base class for both DataFrame and Series.
     """
+
+    def __init__(self, internal: _InternalFrame):
+        self._internal = internal  # type: _InternalFrame
 
     @property
     def values(self):
