@@ -2659,7 +2659,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     .count()) > 0:
                 raise ValueError("Indices have overlapping values")
 
-        # Keep schema before it gets modified by adding columns
+        # The following loop adds all columns from `other_sdf` that do not appear in `self_sdf` to
+        # `self_sdf`. Afterwards, we add all columns from `self_sdf` that do not appear in
+        # `other_sdf` to `other_sdf`. Therefore we need to save the original schema of `self_sdf`
+        # in order to use the original set of columns before adding the ones from `other_sdf`.
         self_schema_fields = self_sdf._schema.fields
         for schema_field in other_sdf._schema.fields:
             col_name, col_type = schema_field.name, schema_field.dataType
