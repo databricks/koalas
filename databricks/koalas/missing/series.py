@@ -169,7 +169,6 @@ class _MissingPandasLikeSeries(object):
     to_sql = unsupported_function('to_sql')
     to_timestamp = unsupported_function('to_timestamp')
     to_xarray = unsupported_function('to_xarray')
-    transform = unsupported_function('transform')
     transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     tshift = unsupported_function('tshift')
