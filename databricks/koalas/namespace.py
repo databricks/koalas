@@ -18,6 +18,7 @@
 Wrappers around spark that correspond to common pandas functions.
 """
 from typing import Optional, Union
+from collections import OrderedDict
 from collections.abc import Iterable
 import itertools
 
@@ -277,6 +278,350 @@ def read_parquet(path, columns=None):
     else:
         sdf = default_session().createDataFrame([], schema=StructType())
     return DataFrame(sdf)
+
+
+def read_clipboard(sep=r'\s+', **kwargs):
+    r"""
+    Read text from clipboard and pass to read_csv. See read_csv for the
+    full argument list
+
+    Parameters
+    ----------
+    sep : str, default '\s+'
+        A string or regex delimiter. The default of '\s+' denotes
+        one or more whitespace characters.
+
+    Returns
+    -------
+    parsed : DataFrame
+    """
+    return from_pandas(pd.read_clipboard(sep, **kwargs))
+
+
+def read_excel(io, sheet_name=0, header=0, names=None, index_col=None, usecols=None, squeeze=False,
+               dtype=None, engine=None, converters=None, true_values=None, false_values=None,
+               skiprows=None, nrows=None, na_values=None, keep_default_na=True, verbose=False,
+               parse_dates=False, date_parser=None, thousands=None, comment=None, skipfooter=0,
+               convert_float=True, mangle_dupe_cols=True, **kwds):
+    """
+    Read an Excel file into a Koalas DataFrame.
+
+    Support both `xls` and `xlsx` file extensions from a local filesystem or URL.
+    Support an option to read a single sheet or a list of sheets.
+
+    Parameters
+    ----------
+    io : str, file descriptor, pathlib.Path, ExcelFile or xlrd.Book
+        The string could be a URL. Valid URL schemes include http, ftp, s3,
+        gcs, and file. For file URLs, a host is expected. For instance, a local
+        file could be /path/to/workbook.xlsx.
+    sheet_name : str, int, list, or None, default 0
+        Strings are used for sheet names. Integers are used in zero-indexed
+        sheet positions. Lists of strings/integers are used to request
+        multiple sheets. Specify None to get all sheets.
+
+        Available cases:
+
+        * Defaults to ``0``: 1st sheet as a `DataFrame`
+        * ``1``: 2nd sheet as a `DataFrame`
+        * ``"Sheet1"``: Load sheet with name "Sheet1"
+        * ``[0, 1, "Sheet5"]``: Load first, second and sheet named "Sheet5"
+          as a dict of `DataFrame`
+        * None: All sheets.
+
+    header : int, list of int, default 0
+        Row (0-indexed) to use for the column labels of the parsed
+        DataFrame. If a list of integers is passed those row positions will
+        be combined into a ``MultiIndex``. Use None if there is no header.
+    names : array-like, default None
+        List of column names to use. If file contains no header row,
+        then you should explicitly pass header=None.
+    index_col : int, list of int, default None
+        Column (0-indexed) to use as the row labels of the DataFrame.
+        Pass None if there is no such column.  If a list is passed,
+        those columns will be combined into a ``MultiIndex``.  If a
+        subset of data is selected with ``usecols``, index_col
+        is based on the subset.
+    usecols : int, str, list-like, or callable default None
+        Return a subset of the columns.
+
+        * If None, then parse all columns.
+        * If str, then indicates comma separated list of Excel column letters
+          and column ranges (e.g. "A:E" or "A,C,E:F"). Ranges are inclusive of
+          both sides.
+        * If list of int, then indicates list of column numbers to be parsed.
+        * If list of string, then indicates list of column names to be parsed.
+        * If callable, then evaluate each column name against it and parse the
+          column if the callable returns ``True``.
+    squeeze : bool, default False
+        If the parsed data only contains one column then return a Series.
+    dtype : Type name or dict of column -> type, default None
+        Data type for data or columns. E.g. {'a': np.float64, 'b': np.int32}
+        Use `object` to preserve data as stored in Excel and not interpret dtype.
+        If converters are specified, they will be applied INSTEAD
+        of dtype conversion.
+    engine : str, default None
+        If io is not a buffer or path, this must be set to identify io.
+        Acceptable values are None or xlrd.
+    converters : dict, default None
+        Dict of functions for converting values in certain columns. Keys can
+        either be integers or column labels, values are functions that take one
+        input argument, the Excel cell content, and return the transformed
+        content.
+    true_values : list, default None
+        Values to consider as True.
+    false_values : list, default None
+        Values to consider as False.
+    skiprows : list-like
+        Rows to skip at the beginning (0-indexed).
+    nrows : int, default None
+        Number of rows to parse.
+    na_values : scalar, str, list-like, or dict, default None
+        Additional strings to recognize as NA/NaN. If dict passed, specific
+        per-column NA values. By default the following values are interpreted
+        as NaN.
+    keep_default_na : bool, default True
+        If na_values are specified and keep_default_na is False the default NaN
+        values are overridden, otherwise they're appended to.
+    verbose : bool, default False
+        Indicate number of NA values placed in non-numeric columns.
+    parse_dates : bool, list-like, or dict, default False
+        The behavior is as follows:
+
+        * bool. If True -> try parsing the index.
+        * list of int or names. e.g. If [1, 2, 3] -> try parsing columns 1, 2, 3
+          each as a separate date column.
+        * list of lists. e.g.  If [[1, 3]] -> combine columns 1 and 3 and parse as
+          a single date column.
+        * dict, e.g. {{'foo' : [1, 3]}} -> parse columns 1, 3 as date and call
+          result 'foo'
+
+        If a column or index contains an unparseable date, the entire column or
+        index will be returned unaltered as an object data type. For non-standard
+        datetime parsing, use ``pd.to_datetime`` after ``pd.read_csv``
+
+        Note: A fast-path exists for iso8601-formatted dates.
+    date_parser : function, optional
+        Function to use for converting a sequence of string columns to an array of
+        datetime instances. The default uses ``dateutil.parser.parser`` to do the
+        conversion. Koalas will try to call `date_parser` in three different ways,
+        advancing to the next if an exception occurs: 1) Pass one or more arrays
+        (as defined by `parse_dates`) as arguments; 2) concatenate (row-wise) the
+        string values from the columns defined by `parse_dates` into a single array
+        and pass that; and 3) call `date_parser` once for each row using one or
+        more strings (corresponding to the columns defined by `parse_dates`) as
+        arguments.
+    thousands : str, default None
+        Thousands separator for parsing string columns to numeric.  Note that
+        this parameter is only necessary for columns stored as TEXT in Excel,
+        any numeric columns will automatically be parsed, regardless of display
+        format.
+    comment : str, default None
+        Comments out remainder of line. Pass a character or characters to this
+        argument to indicate comments in the input file. Any data between the
+        comment string and the end of the current line is ignored.
+    skipfooter : int, default 0
+        Rows at the end to skip (0-indexed).
+    convert_float : bool, default True
+        Convert integral floats to int (i.e., 1.0 --> 1). If False, all numeric
+        data will be read in as floats: Excel stores all numbers as floats
+        internally.
+    mangle_dupe_cols : bool, default True
+        Duplicate columns will be specified as 'X', 'X.1', ...'X.N', rather than
+        'X'...'X'. Passing in False will cause data to be overwritten if there
+        are duplicate names in the columns.
+    **kwds : optional
+        Optional keyword arguments can be passed to ``TextFileReader``.
+
+    Returns
+    -------
+    DataFrame or dict of DataFrames
+        DataFrame from the passed in Excel file. See notes in sheet_name
+        argument for more information on when a dict of DataFrames is returned.
+
+    See Also
+    --------
+    DataFrame.to_excel : Write DataFrame to an Excel file.
+    DataFrame.to_csv : Write DataFrame to a comma-separated values (csv) file.
+    read_csv : Read a comma-separated values (csv) file into DataFrame.
+
+    Examples
+    --------
+    The file can be read using the file name as string or an open file object:
+
+    >>> ks.read_excel('tmp.xlsx', index_col=0)  # doctest: +SKIP
+           Name  Value
+    0   string1      1
+    1   string2      2
+    2  #Comment      3
+
+    >>> ks.read_excel(open('tmp.xlsx', 'rb'),
+    ...               sheet_name='Sheet3')  # doctest: +SKIP
+       Unnamed: 0      Name  Value
+    0           0   string1      1
+    1           1   string2      2
+    2           2  #Comment      3
+
+    Index and header can be specified via the `index_col` and `header` arguments
+
+    >>> ks.read_excel('tmp.xlsx', index_col=None, header=None)  # doctest: +SKIP
+         0         1      2
+    0  NaN      Name  Value
+    1  0.0   string1      1
+    2  1.0   string2      2
+    3  2.0  #Comment      3
+
+    Column types are inferred but can be explicitly specified
+
+    >>> ks.read_excel('tmp.xlsx', index_col=0,
+    ...               dtype={'Name': str, 'Value': float})  # doctest: +SKIP
+           Name  Value
+    0   string1    1.0
+    1   string2    2.0
+    2  #Comment    3.0
+
+    True, False, and NA values, and thousands separators have defaults,
+    but can be explicitly specified, too. Supply the values you would like
+    as strings or lists of strings!
+
+    >>> ks.read_excel('tmp.xlsx', index_col=0,
+    ...               na_values=['string1', 'string2'])  # doctest: +SKIP
+           Name  Value
+    0      None      1
+    1      None      2
+    2  #Comment      3
+
+    Comment lines in the excel input file can be skipped using the `comment` kwarg
+
+    >>> ks.read_excel('tmp.xlsx', index_col=0, comment='#')  # doctest: +SKIP
+          Name  Value
+    0  string1    1.0
+    1  string2    2.0
+    2     None    NaN
+    """
+    pdfs = pd.read_excel(
+        io=io, sheet_name=sheet_name, header=header, names=names, index_col=index_col,
+        usecols=usecols, squeeze=squeeze, dtype=dtype, engine=engine, converters=converters,
+        true_values=true_values, false_values=false_values, skiprows=skiprows, nrows=nrows,
+        na_values=na_values, keep_default_na=keep_default_na, verbose=verbose,
+        parse_dates=parse_dates, date_parser=date_parser, thousands=thousands, comment=comment,
+        skipfooter=skipfooter, convert_float=convert_float, mangle_dupe_cols=mangle_dupe_cols,
+        kwds=kwds)
+    if isinstance(pdfs, dict):
+        return OrderedDict([(key, from_pandas(value)) for key, value in pdfs.items()])
+    else:
+        return from_pandas(pdfs)
+
+
+def read_html(io, match='.+', flavor=None, header=None, index_col=None,
+              skiprows=None, attrs=None, parse_dates=False,
+              thousands=',', encoding=None,
+              decimal='.', converters=None, na_values=None,
+              keep_default_na=True, displayed_only=True):
+    r"""Read HTML tables into a ``list`` of ``DataFrame`` objects.
+
+    Parameters
+    ----------
+    io : str or file-like
+        A URL, a file-like object, or a raw string containing HTML. Note that
+        lxml only accepts the http, ftp and file url protocols. If you have a
+        URL that starts with ``'https'`` you might try removing the ``'s'``.
+
+    match : str or compiled regular expression, optional
+        The set of tables containing text matching this regex or string will be
+        returned. Unless the HTML is extremely simple you will probably need to
+        pass a non-empty string here. Defaults to '.+' (match any non-empty
+        string). The default value will return all tables contained on a page.
+        This value is converted to a regular expression so that there is
+        consistent behavior between Beautiful Soup and lxml.
+
+    flavor : str or None, container of strings
+        The parsing engine to use. 'bs4' and 'html5lib' are synonymous with
+        each other, they are both there for backwards compatibility. The
+        default of ``None`` tries to use ``lxml`` to parse and if that fails it
+        falls back on ``bs4`` + ``html5lib``.
+
+    header : int or list-like or None, optional
+        The row (or list of rows for a :class:`~ks.MultiIndex`) to use to
+        make the columns headers.
+
+    index_col : int or list-like or None, optional
+        The column (or list of columns) to use to create the index.
+
+    skiprows : int or list-like or slice or None, optional
+        0-based. Number of rows to skip after parsing the column integer. If a
+        sequence of integers or a slice is given, will skip the rows indexed by
+        that sequence.  Note that a single element sequence means 'skip the nth
+        row' whereas an integer means 'skip n rows'.
+
+    attrs : dict or None, optional
+        This is a dictionary of attributes that you can pass to use to identify
+        the table in the HTML. These are not checked for validity before being
+        passed to lxml or Beautiful Soup. However, these attributes must be
+        valid HTML table attributes to work correctly. For example, ::
+
+            attrs = {'id': 'table'}
+
+        is a valid attribute dictionary because the 'id' HTML tag attribute is
+        a valid HTML attribute for *any* HTML tag as per `this document
+        <http://www.w3.org/TR/html-markup/global-attributes.html>`__. ::
+
+            attrs = {'asdf': 'table'}
+
+        is *not* a valid attribute dictionary because 'asdf' is not a valid
+        HTML attribute even if it is a valid XML attribute.  Valid HTML 4.01
+        table attributes can be found `here
+        <http://www.w3.org/TR/REC-html40/struct/tables.html#h-11.2>`__. A
+        working draft of the HTML 5 spec can be found `here
+        <http://www.w3.org/TR/html-markup/table.html>`__. It contains the
+        latest information on table attributes for the modern web.
+
+    parse_dates : bool, optional
+        See :func:`~ks.read_csv` for more details.
+
+    thousands : str, optional
+        Separator to use to parse thousands. Defaults to ``','``.
+
+    encoding : str or None, optional
+        The encoding used to decode the web page. Defaults to ``None``.``None``
+        preserves the previous encoding behavior, which depends on the
+        underlying parser library (e.g., the parser library will try to use
+        the encoding provided by the document).
+
+    decimal : str, default '.'
+        Character to recognize as decimal point (e.g. use ',' for European
+        data).
+
+    converters : dict, default None
+        Dict of functions for converting values in certain columns. Keys can
+        either be integers or column labels, values are functions that take one
+        input argument, the cell (not column) content, and return the
+        transformed content.
+
+    na_values : iterable, default None
+        Custom NA values
+
+    keep_default_na : bool, default True
+        If na_values are specified and keep_default_na is False the default NaN
+        values are overridden, otherwise they're appended to
+
+    displayed_only : bool, default True
+        Whether elements with "display: none" should be parsed
+
+    Returns
+    -------
+    dfs : list of DataFrames
+
+    See Also
+    --------
+    read_csv
+    """
+    pdfs = pd.read_html(
+        io=io, match=match, flavor=flavor, header=header, index_col=index_col, skiprows=skiprows,
+        attrs=attrs, parse_dates=parse_dates, thousands=thousands, encoding=encoding,
+        decimal=decimal, converters=converters, na_values=na_values,
+        keep_default_na=keep_default_na, displayed_only=displayed_only)
+    return [from_pandas(pdf) for pdf in pdfs]
 
 
 def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
