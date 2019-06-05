@@ -404,7 +404,7 @@ def read_excel(io, sheet_name=0, header=0, names=None, index_col=None, usecols=N
     date_parser : function, optional
         Function to use for converting a sequence of string columns to an array of
         datetime instances. The default uses ``dateutil.parser.parser`` to do the
-        conversion. Pandas will try to call `date_parser` in three different ways,
+        conversion. Koalas will try to call `date_parser` in three different ways,
         advancing to the next if an exception occurs: 1) Pass one or more arrays
         (as defined by `parse_dates`) as arguments; 2) concatenate (row-wise) the
         string values from the columns defined by `parse_dates` into a single array
@@ -615,29 +615,6 @@ def read_html(io, match='.+', flavor=None, header=None, index_col=None,
     See Also
     --------
     read_csv
-
-    Notes
-    -----
-    Before using this function you should read the `gotchas about the
-    HTML parsing libraries
-    <https://pandas.pydata.org/pandas-docs/stable/user_guide/io.html#io-html-gotchas>`__.
-
-    Expect to do some cleanup after you call this function. For example, you
-    might need to manually assign column names if the column names are
-    converted to NaN when you pass the `header=0` argument. We try to assume as
-    little as possible about the structure of the table and push the
-    idiosyncrasies of the HTML contained in the table to the user.
-
-    This function searches for ``<table>`` elements and only for ``<tr>``
-    and ``<th>`` rows and ``<td>`` elements within each ``<tr>`` or ``<th>``
-    element in the table. ``<td>`` stands for "table data". This function
-    attempts to properly handle ``colspan`` and ``rowspan`` attributes.
-    If the function has a ``<thead>`` argument, it is used to construct
-    the header, otherwise the function attempts to find the header within
-    the body (by putting rows with only ``<th>`` elements into the header).
-
-    This function will *always* return a list of :class:`DataFrame` *or*
-    it will fail, e.g., it will *not* return an empty list.
     """
     pdfs = pd.read_html(
         io=io, match=match, flavor=flavor, header=header, index_col=index_col, skiprows=skiprows,
