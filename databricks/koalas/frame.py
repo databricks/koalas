@@ -2596,7 +2596,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return DataFrame(joined_table.select(*exprs))
 
     def append(self, other: 'DataFrame', ignore_index: bool = False,
-               verify_integrity: bool = False, sort: bool = None) -> 'DataFrame':
+               verify_integrity: bool = False, sort: bool = False) -> 'DataFrame':
         """
         Append rows of other to the end of caller, returning a new object.
 
@@ -2613,7 +2613,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         verify_integrity : boolean, default False
             If True, raise ValueError on creating index with duplicates.
 
-        sort : boolean, default None
+        sort : boolean, default False
             Currently not supported.
 
         Returns
@@ -2640,7 +2640,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if isinstance(other, ks.Series):
             raise ValueError("DataFrames.append() does not support appending Series to DataFrames")
-        if sort is not None:
+        if sort:
             raise ValueError("The 'sort' parameter is currently not supported")
 
         self_sdf = self._sdf
