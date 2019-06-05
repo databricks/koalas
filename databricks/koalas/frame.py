@@ -2897,7 +2897,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     .count()) > 0:
                 raise ValueError("Indices have overlapping values")
 
-        return ks.concat([self, other], ignore_index=ignore_index)
+        # Lazy import to avoid circular dependency issues
+        from databricks.koalas.namespace import concat
+        return concat([self, other], ignore_index=ignore_index)
 
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
                random_state: Optional[int] = None) -> 'DataFrame':
