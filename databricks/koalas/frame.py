@@ -25,7 +25,7 @@ from typing import Any, Optional, List, Tuple, Union
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like
-from pandas.core.dtypes.inference import
+from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column, DataFrame as SDataFrame
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
