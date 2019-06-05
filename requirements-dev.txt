@@ -3,7 +3,7 @@ pandas>=0.23
 pyarrow>=0.10
 numpy>=1.14
 
-mlflow>=1.0
+mlflow[extras]>=1.0
 
 # Documentation build
 sphinx==2.0.1
