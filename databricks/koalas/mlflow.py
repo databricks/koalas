@@ -66,7 +66,8 @@ class PythonModelWrapper(object):
     @lazy_property
     def _model_udf(self):
         spark = default_session()
-        return spark_udf(spark, self._path, self._run_id, result_type=self._return_type)
+        model_uri = "runs:/{run_id}/{path}".format(run_id=self._run_id, path=self._path)
+        return spark_udf(spark, model_uri=model_uri, result_type=self._return_type)
 
     def __str__(self):
         return "PythonModelWrapper({})".format(str(self._model))

@@ -3,8 +3,7 @@ pandas>=0.23
 pyarrow>=0.10
 numpy>=1.14
 
-# TODO: support mlflow 1.0.0
-mlflow==0.9.1
+mlflow>=1.0
 
 # Documentation build
 sphinx==2.0.1
