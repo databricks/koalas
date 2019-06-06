@@ -601,6 +601,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(multi_index_kdf.append(multi_index_kdf),
                        multi_index_pdf.append(multi_index_pdf))
 
+        # Assert DataFrames with non-matching columns
+        self.assert_eq(multi_index_kdf.append(other_multi_index_kdf),
+                       multi_index_pdf.append(other_multi_index_pdf))
+
         # Assert using 'verify_integrity' only raises an exception for overlapping indices
         self.assert_eq(multi_index_kdf.append(other_multi_index_kdf, verify_integrity=True),
                        multi_index_pdf.append(other_multi_index_pdf, verify_integrity=True))
