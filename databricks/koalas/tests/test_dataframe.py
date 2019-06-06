@@ -595,7 +595,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                        index=[[2, 3], [4, 5]])
         multi_index_kdf = ks.from_pandas(multi_index_pdf)
         other_multi_index_pdf = pd.DataFrame([[5, 6], [7, 8]], columns=list('AB'),
-                                             index=[[6, 7], [8, 9]])
+                                             index=[[2, 3], [6, 7]])
         other_multi_index_kdf = ks.from_pandas(other_multi_index_pdf)
 
         self.assert_eq(multi_index_kdf.append(multi_index_kdf),
