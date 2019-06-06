@@ -373,6 +373,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
             self.assertEqual(self.ks.to_list(), self.ps.to_list())
 
+    def test_append(self):
+        ps1 = pd.Series([1, 2, 3], name='0')
+        ps2 = pd.Series([4, 5, 6], name='0')
+        ps3 = pd.Series([4, 5, 6], index=[3, 4, 5], name='0')
+        ks1 = koalas.from_pandas(ps1)
+        ks2 = koalas.from_pandas(ps2)
+        ks3 = koalas.from_pandas(ps3)
+
+        self.assert_eq(ks1.append(ks2), ps1.append(ps2))
+        self.assert_eq(ks1.append(ks3), ps1.append(ps3))
+        self.assert_eq(ks1.append(ks2, ignore_index=True), ps1.append(ps2, ignore_index=True))
+
+        ks1.append(ks3, verify_integrity=True)
+        msg = "Indices have overlapping values"
+        with self.assertRaises(ValueError, msg=msg):
+            ks1.append(ks2, verify_integrity=True)
+
     def test_map(self):
         pser = pd.Series(['cat', 'dog', None, 'rabbit'])
         kser = koalas.from_pandas(pser)

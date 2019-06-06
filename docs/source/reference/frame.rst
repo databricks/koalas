@@ -138,6 +138,7 @@ Combining / joining / merging
 .. autosummary::
    :toctree: api/
 
+   DataFrame.append
    DataFrame.assign
    DataFrame.merge
 

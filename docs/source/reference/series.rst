@@ -134,6 +134,13 @@ Reshaping, sorting, transposing
    Series.sort_index
    Series.sort_values
 
+Combining / joining / merging
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Series.append
+
 Accessors
 ---------
 
@@ -202,4 +209,3 @@ Serialization / IO / Conversion
    Series.to_json
    Series.to_csv
    Series.to_excel
-
