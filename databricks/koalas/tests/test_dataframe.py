@@ -597,6 +597,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaises(ValueError, msg=msg):
             kdf.append(multi_index_kdf)
 
+        self.assert_eq(kdf.append(multi_index_kdf, ignore_index=True),
+                       pdf.append(multi_index_pdf, ignore_index=True))
+
     def test_clip(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})
         kdf = ks.from_pandas(pdf)

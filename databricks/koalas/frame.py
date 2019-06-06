@@ -2885,7 +2885,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'sort' parameter is currently not supported")
 
         index_columns = self._metadata.index_columns
-        if len(index_columns) != len(other._metadata.index_columns):
+        if not ignore_index and len(index_columns) != len(other._metadata.index_columns):
             raise ValueError("Both DataFrames have to have the same number of index levels")
 
         if verify_integrity:
