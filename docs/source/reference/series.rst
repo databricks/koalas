@@ -205,8 +205,6 @@ like ``Series.str.<function/property>``.
    :toctree: api/
 
    Series.str.capitalize
-   Series.str.decode
-   Series.str.encode
    Series.str.endswith
    Series.str.get
    Series.str.isalnum

@@ -140,46 +140,6 @@ class StringMethods(object):
             StringType()
         ).alias(self.name)
 
-    def encode(self, encoding) -> 'ks.Series':
-        """
-        Encode character string in the Series/Index using indicated encoding.
-
-        Equivalent to :func:`str.encode`.
-
-        Parameters
-        ----------
-        encoding : str
-
-        Returns
-        -------
-        Series of objects
-        """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.encode(encoding),
-            BinaryType()
-        ).alias(self.name)
-
-    def decode(self, encoding) -> 'ks.Series':
-        """
-        Decode character string in the Series/Index using indicated encoding.
-
-        Equivalent to :func:`str.decode`.
-
-        Parameters
-        ----------
-        encoding : str
-
-        Returns
-        -------
-        Series of str
-        """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.decode(encoding),
-            StringType()
-        ).alias(self.name)
-
     def isalnum(self) -> 'ks.Series':
         """
         Check whether all characters in each string are alphanumeric.

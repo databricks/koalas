@@ -37,14 +37,6 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
             check_names=False
         )
 
-    def check_func_on_series(self, func, pds):
-        ks = koalas.from_pandas(pds)
-        mt.assert_series_equal(
-            func(ks).toPandas(),
-            func(pds),
-            check_names=False
-        )
-
     def test_string_add_str_num(self):
         pdf = pd.DataFrame(dict(col1=['a'], col2=[1]))
         ds = koalas.from_pandas(pdf)
@@ -92,14 +84,6 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
     def test_string_get(self):
         self.check_func(lambda x: x.str.get(6))
         self.check_func(lambda x: x.str.get(-1))
-
-    def test_string_encode(self):
-        self.check_func(lambda x: x.str.encode(encoding='raw_unicode_escape'))
-
-    def test_string_decode(self):
-        series = pd.Series([b'a', b'b', b'c', None])
-        self.check_func_on_series(lambda x: x.str.decode(encoding='raw_unicode_escape'),
-                                  series)
 
     def test_string_isalnum(self):
         self.check_func(lambda x: x.str.isalnum())
