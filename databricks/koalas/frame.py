@@ -2887,9 +2887,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index_columns = self._metadata.index_columns
         if len(index_columns) != len(other._metadata.index_columns):
             raise ValueError("Both DataFrames have to have the same number of index levels")
-        # TODO Maybe extend to multilevel indices in the future
-        if len(index_columns) != 1 or len(other._metadata.index_columns) != 1:
-            raise ValueError("DataFrames.append() only supports indices with level 1 right now")
 
         if verify_integrity:
             if (self._sdf.select(index_columns[0])

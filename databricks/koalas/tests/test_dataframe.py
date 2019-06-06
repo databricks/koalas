@@ -585,6 +585,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaises(ValueError, msg=msg):
             kdf.append(kdf, verify_integrity=True)
 
+        # Assert appending multi-index DataFrames
+        multi_index_pdf = pd.DataFrame([[1, 2], [3, 4]], columns=list('AB'),
+                                       index=[[2, 3], [4, 5]])
+        multi_index_kdf = ks.from_pandas(multi_index_pdf)
+        self.assert_eq(multi_index_kdf.append(multi_index_kdf),
+                       multi_index_pdf.append(multi_index_pdf))
+
+        # Assert trying to append DataFrames with different index levels
+        msg = "Both DataFrames have to have the same number of index levels"
+        with self.assertRaises(ValueError, msg=msg):
+            kdf.append(multi_index_kdf)
+
     def test_clip(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})
         kdf = ks.from_pandas(pdf)
