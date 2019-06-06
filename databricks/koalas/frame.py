@@ -2884,15 +2884,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if sort:
             raise ValueError("The 'sort' parameter is currently not supported")
 
-        index_columns = self._metadata.index_columns
-        if not ignore_index and len(index_columns) != len(other._metadata.index_columns):
-            raise ValueError("Both DataFrames have to have the same number of index levels")
+        if not ignore_index:
+            index_columns = self._metadata.index_columns
+            if len(index_columns) != len(other._metadata.index_columns):
+                raise ValueError("Both DataFrames have to have the same number of index levels")
 
-        if verify_integrity:
-            if (self._sdf.select(index_columns[0])
-                    .intersect(other._sdf.select(index_columns[0]))
-                    .count()) > 0:
-                raise ValueError("Indices have overlapping values")
+            if verify_integrity:
+                if (self._sdf.select(index_columns[0])
+                        .intersect(other._sdf.select(index_columns[0]))
+                        .count()) > 0:
+                    raise ValueError("Indices have overlapping values")
 
         # Lazy import to avoid circular dependency issues
         from databricks.koalas.namespace import concat

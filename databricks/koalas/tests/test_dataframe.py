@@ -585,6 +585,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaises(ValueError, msg=msg):
             kdf.append(kdf, verify_integrity=True)
 
+        self.assert_eq(kdf.append(kdf, ignore_index=True, verify_integrity=True),
+                       pdf.append(pdf, ignore_index=True, verify_integrity=True))
+
         # Assert appending multi-index DataFrames
         multi_index_pdf = pd.DataFrame([[1, 2], [3, 4]], columns=list('AB'),
                                        index=[[2, 3], [4, 5]])
