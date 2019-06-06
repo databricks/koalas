@@ -100,10 +100,8 @@ def load_model(model_uri, predict_type='infer') -> PythonModelWrapper:
 
     Parameters
     ----------
-    path : str
-        The path of the model, as logged when calling 'mlflow.log_model' or 'mlflow.save_model'
-    run_id : str
-        The id of the run. See MLflow runs documentation for more details.
+    model_uri : str
+        URI pointing to the model. See MLflow documentation for more details.
     predict_type : a python basic type, a numpy basic type, a Spark type or 'infer'.
        This is the return type that is expected when calling the predict function of the model.
        If 'infer' is specified, the wrapper will attempt to determine automatically the return type
@@ -149,7 +147,7 @@ def load_model(model_uri, predict_type='infer') -> PythonModelWrapper:
 
     >>> from databricks.koalas.mlflow import load_model
     >>> run_info = client.list_run_infos(exp)[-1]
-    >>> model = load_model("model", run_id = run_info.run_uuid)
+    >>> model = load_model("runs:/{run_id}/model".format(run_id = run_info.run_uuid))
     >>> prediction_df = ks.DataFrame({"x1": [2.0], "x2": [4.0]})
     >>> prediction_df["prediction"] = model.predict(prediction_df)
     >>> prediction_df
