@@ -28,6 +28,7 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, ILocIndexer, LocIndexer
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 
 max_display_count = 1000
@@ -37,6 +38,9 @@ class _Frame(object):
     """
     The base class for both DataFrame and Series.
     """
+
+    def __init__(self, internal: _InternalFrame):
+        self._internal = internal  # type: _InternalFrame
 
     @property
     def values(self):
@@ -238,7 +242,7 @@ class _Frame(object):
         >>> df = ks.DataFrame({'name': ['Raphael', 'Donatello'],
         ...                    'mask': ['red', 'purple'],
         ...                    'weapon': ['sai', 'bo staff']},
-        ...                     columns=['name', 'mask', 'weapon'])
+        ...                    columns=['name', 'mask', 'weapon'])
         >>> df.to_csv(index=False)
         'name,mask,weapon\\nRaphael,red,sai\\nDonatello,purple,bo staff\\n'
         >>> df.name.to_csv()  # doctest: +ELLIPSIS
@@ -791,6 +795,8 @@ class _Frame(object):
         3    4.00
         Name: abs(0), dtype: float64
 
+        Absolute numeric values in a DataFrame.
+
         >>> df = ks.DataFrame({
         ...     'a': [4, 5, 6, 7],
         ...     'b': [10, 20, 30, 40],
@@ -848,6 +854,7 @@ class _Frame(object):
         1  Falcon      370.0
         2  Parrot       24.0
         3  Parrot       26.0
+
         >>> df.groupby(['Animal']).mean()  # doctest: +NORMALIZE_WHITESPACE
                 Max Speed
         Animal

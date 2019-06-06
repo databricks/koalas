@@ -55,16 +55,13 @@ Binary operator functions
 
    Series.add
    Series.div
-   Series.divide
    Series.mul
-   Series.multiply
    Series.radd
    Series.rdiv
    Series.rmul
    Series.rsub
    Series.rtruediv
    Series.sub
-   Series.subtract
    Series.truediv
 
 Function application, GroupBy & Window
@@ -109,6 +106,8 @@ Reindexing / Selection / Label manipulation
 .. autosummary::
    :toctree: api/
 
+   Series.add_prefix
+   Series.add_suffix
    Series.head
    Series.isin
    Series.rename
@@ -134,6 +133,13 @@ Reshaping, sorting, transposing
 
    Series.sort_index
    Series.sort_values
+
+Combining / joining / merging
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Series.append
 
 Accessors
 ---------
@@ -203,4 +209,3 @@ Serialization / IO / Conversion
    Series.to_json
    Series.to_csv
    Series.to_excel
-

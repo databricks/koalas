@@ -30,6 +30,7 @@ from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, Times
     to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps
 
 
@@ -110,9 +111,17 @@ class IndexOpsMixin(object):
     def _with_new_scol(self, scol: spark.Column) -> IndexOpsMixin
         Creates new object with the new column
     """
-    def __init__(self, kdf, scol):
+    def __init__(self, internal: _InternalFrame, kdf):
+        self._internal = internal  # type: _InternalFrame
         self._kdf = kdf
-        self._scol = scol
+
+    @property
+    def _scol(self):
+        return self._internal.scol
+
+    @_scol.setter
+    def _scol(self, scol: spark.Column) -> None:
+        self._internal = self._internal.copy(scol=scol)
 
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
@@ -322,12 +331,12 @@ class IndexOpsMixin(object):
         0    False
         1    False
         2     True
-        Name: ((0 IS NULL) OR isnan(0)), dtype: bool
+        Name: 0, dtype: bool
         """
         if isinstance(self.spark_type, (FloatType, DoubleType)):
-            return self._with_new_scol(self._scol.isNull() | F.isnan(self._scol))
+            return self._with_new_scol(self._scol.isNull() | F.isnan(self._scol)).alias(self.name)
         else:
-            return self._with_new_scol(self._scol.isNull())
+            return self._with_new_scol(self._scol.isNull()).alias(self.name)
 
     isna = isnull
 
@@ -360,9 +369,9 @@ class IndexOpsMixin(object):
         0     True
         1     True
         2    False
-        Name: (NOT ((0 IS NULL) OR isnan(0))), dtype: bool
+        Name: 0, dtype: bool
         """
-        return ~self.isnull()
+        return (~self.isnull()).alias(self.name)
 
     notna = notnull
 
@@ -382,6 +391,8 @@ class IndexOpsMixin(object):
             * 0 / 'index' : reduce the index, return a Series whose index is the
               original column labels.
 
+        Examples
+        --------
         >>> ks.Series([True, True]).all()
         True
 
@@ -441,12 +452,6 @@ class IndexOpsMixin(object):
 
         Examples
         --------
-
-        **Series**
-
-        For Series input, the output is a scalar indicating whether any element
-        is True.
-
         >>> ks.Series([False, False]).any()
         False
 
