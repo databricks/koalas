@@ -217,8 +217,12 @@ like ``Series.str.<function/property>``.
    Series.str.isnumeric
    Series.str.isdecimal
    Series.str.lower
+   Series.str.lstrip
+   Series.str.rstrip
    Series.str.startswith
+   Series.str.strip
    Series.str.swapcase
+   Series.str.upper
 
 Serialization / IO / Conversion
 -------------------------------

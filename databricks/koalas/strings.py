@@ -52,11 +52,21 @@ class StringMethods(object):
 
     def lower(self) -> 'ks.Series':
         """
-        Convert strings in the Series/Index to lowercase.
+        Convert strings in the Series/Index to all lowercase.
         """
         return _wrap_accessor_pandas(
             self,
             lambda x: x.str.lower(),
+            StringType()
+        ).alias(self.name)
+
+    def upper(self) -> 'ks.Series':
+        """
+        Convert strings in the Series/Index to all uppercase.
+        """
+        return _wrap_accessor_pandas(
+            self,
+            lambda x: x.str.upper(),
             StringType()
         ).alias(self.name)
 
@@ -118,6 +128,81 @@ class StringMethods(object):
             self,
             lambda x: x.str.endswith(pattern, na),
             BooleanType()
+        ).alias(self.name)
+
+    def strip(self, to_strip=None) -> 'ks.Series':
+        """
+        Remove leading and trailing characters.
+
+        Strip whitespaces (including newlines) or a set of specified
+        characters from each string in the Series/Index from left and
+        right sides. Equivalent to :func:`str.strip`.
+
+        Parameters
+        ----------
+        to_strip : str
+            Specifying the set of characters to be removed. All combinations
+            of this set of characters will be stripped. If None then
+            whitespaces are removed.
+
+        Returns
+        -------
+        Series of str
+        """
+        return _wrap_accessor_pandas(
+            self,
+            lambda x: x.str.strip(to_strip),
+            StringType()
+        ).alias(self.name)
+
+    def lstrip(self, to_strip=None) -> 'ks.Series':
+        """
+        Remove leading characters.
+
+        Strip whitespaces (including newlines) or a set of specified
+        characters from each string in the Series/Index from left side.
+        Equivalent to :func:`str.lstrip`.
+
+        Parameters
+        ----------
+        to_strip : str
+            Specifying the set of characters to be removed. All combinations
+            of this set of characters will be stripped. If None then
+            whitespaces are removed.
+
+        Returns
+        -------
+        Series of str
+        """
+        return _wrap_accessor_pandas(
+            self,
+            lambda x: x.str.lstrip(to_strip),
+            StringType()
+        ).alias(self.name)
+
+    def rstrip(self, to_strip=None) -> 'ks.Series':
+        """
+        Remove trailing characters.
+
+        Strip whitespaces (including newlines) or a set of specified
+        characters from each string in the Series/Index from right side.
+        Equivalent to :func:`str.rstrip`.
+
+        Parameters
+        ----------
+        to_strip : str
+            Specifying the set of characters to be removed. All combinations
+            of this set of characters will be stripped. If None then
+            whitespaces are removed.
+
+        Returns
+        -------
+        Series of str
+        """
+        return _wrap_accessor_pandas(
+            self,
+            lambda x: x.str.rstrip(to_strip),
+            StringType()
         ).alias(self.name)
 
     def get(self, i) -> 'ks.Series':

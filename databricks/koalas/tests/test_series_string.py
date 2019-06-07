@@ -27,6 +27,7 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
     @property
     def pds1(self):
         return pd.Series(['apples', 'Bananas', 'carrots', '1', '100', '',
+                          '\nleading-whitespace', 'trailing-whitespace    \t',
                           None, np.NaN])
 
     def check_func(self, func):
@@ -68,6 +69,9 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
     def test_string_lower(self):
         self.check_func(lambda x:  x.str.lower())
 
+    def test_string_upper(self):
+        self.check_func(lambda x:  x.str.upper())
+
     def test_string_swapcase(self):
         self.check_func(lambda x: x.str.swapcase())
 
@@ -80,6 +84,21 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         pattern = 's'
         self.check_func(lambda x: x.str.endswith(pattern))
         self.check_func(lambda x: x.str.endswith(pattern, na=False))
+
+    def test_string_strip(self):
+        self.check_func(lambda x: x.str.strip())
+        self.check_func(lambda x: x.str.strip('es\t'))
+        self.check_func(lambda x: x.str.strip('1'))
+
+    def test_string_lstrip(self):
+        self.check_func(lambda x: x.str.lstrip())
+        self.check_func(lambda x: x.str.lstrip('\n1le'))
+        self.check_func(lambda x: x.str.lstrip('s'))
+
+    def test_string_rstrip(self):
+        self.check_func(lambda x: x.str.rstrip())
+        self.check_func(lambda x: x.str.rstrip('\t ec'))
+        self.check_func(lambda x: x.str.rstrip('0'))
 
     def test_string_get(self):
         self.check_func(lambda x: x.str.get(6))
