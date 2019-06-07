@@ -123,17 +123,17 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertAlmostEqual(ds.var(), s.var())
         self.assertAlmostEqual(ds.std(), s.std())
 
-    def test_stats_on_non_numeric_columns_should_be_discarded_by_default(self):
+    def test_some_stats_functions_should_discard_non_numeric_columns_by_default(self):
         df = pd.DataFrame({'i': [0, 1, 2],
                            'b': [False, False, True],
                            's': ['x', 'y', 'z']})
         ddf = koalas.from_pandas(df)
 
-        # min and max are not affected by this restriction
+        # min and max do not discard non-numeric columns by default
         self.assertEqual(len(ddf.min()), 3)
         self.assertEqual(len(ddf.max()), 3)
 
-        # all the others are
+        # all the others do
         self.assertEqual(len(ddf.sum()), 2)
         self.assertEqual(len(ddf.mean()), 2)
 
@@ -142,6 +142,21 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertEqual(len(ddf.kurtosis()), 2)
         self.assertEqual(len(ddf.skew()), 2)
+
+    def test_stats_on_non_numeric_columns_should_be_discarded_if_numeric_only_is_true(self):
+        df = pd.DataFrame({'i': [0, 1, 2],
+                           'b': [False, False, True],
+                           's': ['x', 'y', 'z']})
+        ddf = koalas.from_pandas(df)
+
+        self.assertEqual(len(ddf.sum(numeric_only=True)), 2)
+        self.assertEqual(len(ddf.mean(numeric_only=True)), 2)
+
+        self.assertEqual(len(ddf.var(numeric_only=True)), 2)
+        self.assertEqual(len(ddf.std(numeric_only=True)), 2)
+
+        self.assertEqual(len(ddf.kurtosis(numeric_only=True)), 2)
+        self.assertEqual(len(ddf.skew(numeric_only=True)), 2)
 
     def test_stats_on_non_numeric_columns_should_not_be_discarded_if_numeric_only_is_false(self):
         df = pd.DataFrame({'i': [0, 1, 2],

@@ -524,7 +524,7 @@ class _Frame(object):
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_excel, f, args)
 
-    def mean(self, numeric_only=None):
+    def mean(self, numeric_only=True):
         """
         Return the mean of the values.
 
@@ -558,7 +558,7 @@ class _Frame(object):
         """
         return self._reduce_for_stat_function(F.mean, numeric_only=numeric_only)
 
-    def sum(self, numeric_only=None):
+    def sum(self, numeric_only=True):
         """
         Return the sum of the values.
 
@@ -592,7 +592,7 @@ class _Frame(object):
         """
         return self._reduce_for_stat_function(F.sum, numeric_only=numeric_only)
 
-    def skew(self, numeric_only=None):
+    def skew(self, numeric_only=True):
         """
         Return unbiased skew normalized by N-1.
 
@@ -626,7 +626,7 @@ class _Frame(object):
         """
         return self._reduce_for_stat_function(F.skewness, numeric_only=numeric_only)
 
-    def kurtosis(self, numeric_only=None):
+    def kurtosis(self, numeric_only=True):
         """
         Return unbiased kurtosis using Fisher’s definition of kurtosis (kurtosis of normal == 0.0).
         Normalized by N-1.
@@ -663,7 +663,7 @@ class _Frame(object):
 
     kurt = kurtosis
 
-    def min(self, numeric_only=None):
+    def min(self, numeric_only=False):
         """
         Return the minimum of the values.
 
@@ -697,7 +697,7 @@ class _Frame(object):
         """
         return self._reduce_for_stat_function(F.min, numeric_only=numeric_only)
 
-    def max(self, numeric_only=None):
+    def max(self, numeric_only=False):
         """
         Return the maximum of the values.
 
@@ -731,7 +731,7 @@ class _Frame(object):
         """
         return self._reduce_for_stat_function(F.max, numeric_only=numeric_only)
 
-    def std(self, numeric_only=None):
+    def std(self, numeric_only=True):
         """
         Return sample standard deviation.
 
@@ -765,7 +765,7 @@ class _Frame(object):
         """
         return self._reduce_for_stat_function(F.stddev, numeric_only=numeric_only)
 
-    def var(self, numeric_only=None):
+    def var(self, numeric_only=True):
         """
         Return unbiased variance.
 

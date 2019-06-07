@@ -164,7 +164,7 @@ class DataFrame(_Frame):
         else:
             self._metadata = metadata
 
-    def _reduce_for_stat_function(self, sfun, numeric_only=None):
+    def _reduce_for_stat_function(self, sfun, numeric_only=False):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
         number of columns.
@@ -179,7 +179,6 @@ class DataFrame(_Frame):
             col_sdf = self._sdf[col]
             col_type = self._sdf.schema[col].dataType
 
-            numeric_only = numeric_only if numeric_only is not None else True
             is_numeric_or_boolean = isinstance(col_type, (NumericType, BooleanType))
             min_or_max = sfun.__name__ in ('min', 'max')
             keep_column = not numeric_only or is_numeric_or_boolean or min_or_max
