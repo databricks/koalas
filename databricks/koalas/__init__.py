@@ -39,11 +39,11 @@ from databricks.koalas.namespace import *
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index, MultiIndex
 from databricks.koalas.series import Series
-from databricks.koalas.typedef import Col, pandas_wraps
+from databricks.koalas.typedef import pandas_wraps, Types
 from databricks.koalas.sql import sql
 
 __all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
-           'get_dummies', 'DataFrame', 'Series', 'Index', 'MultiIndex', 'Col', 'pandas_wraps',
+           'get_dummies', 'DataFrame', 'Series', 'Index', 'MultiIndex', 'Types', 'pandas_wraps',
            'sql', 'range', 'concat']
 
 

@@ -20,7 +20,7 @@ A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 import re
 import warnings
 from functools import partial, reduce
-from typing import Any, Optional, List, Tuple, Union
+from typing import Any, Optional, List, Tuple, Union, TypeVar, Generic
 
 import numpy as np
 import pandas as pd
@@ -33,13 +33,13 @@ from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, F
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.typedef import Types
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.typedef import infer_pd_series_spark_type
 
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
@@ -153,7 +153,10 @@ rectangle     4.0    360.0
 """
 
 
-class DataFrame(_Frame):
+T = TypeVar('T', bound=Types)
+
+
+class DataFrame(_Frame, Generic[T]):
     """
     Koala DataFrame that corresponds to Pandas DataFrame logically. This holds Spark DataFrame
     internally.
@@ -2515,7 +2518,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         }
         by = [mapper[(asc, na_position)](self[colname]._scol)
               for colname, asc in zip(by, ascending)]
-        kdf = DataFrame(self._sdf.sort(*by), self._metadata.copy())
+        kdf = DataFrame(self._sdf.sort(*by), self._metadata.copy())  # type: ks.DataFrame
         if inplace:
             self._sdf = kdf._sdf
             self._metadata = kdf._metadata

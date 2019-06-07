@@ -20,7 +20,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 import re
 import inspect
 from functools import partial, wraps
-from typing import Any, Optional, List, Union
+from typing import Any, Optional, List, Union, Generic, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -160,12 +160,13 @@ d    NaN
 Name: a, dtype: float64
 """
 
+T = TypeVar("T")
 
 # Needed to disambiguate Series.str and str type
 str_type = str
 
 
-class Series(_Frame, IndexOpsMixin):
+class Series(_Frame, IndexOpsMixin, Generic[T]):
     """
     Koala Series that corresponds to Pandas Series logically. This holds Spark Column
     internally.
