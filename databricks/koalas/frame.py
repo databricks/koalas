@@ -1620,6 +1620,67 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                           [name for name, _ in pairs if name not in data_columns]))
         return DataFrame(sdf, metadata)
 
+    @staticmethod
+    def from_records(data: Union[np.array, List[tuple], dict, pd.DataFrame],
+                     index: Union[str, list, np.array] = None, exclude: list = None,
+                     columns: list = None, coerce_float: bool = False, nrows: int = None):
+        """
+        Convert structured or record ndarray to DataFrame.
+
+        Parameters
+        ----------
+        data : ndarray (structured dtype), list of tuples, dict, or DataFrame
+
+        index : string, list of fields, array-like
+            Field of array to use as the index, alternately a specific set of input labels to use
+
+        exclude : sequence, default None
+            Columns or fields to exclude
+
+        columns : sequence, default None
+            Column names to use. If the passed data do not have names associated with them, this
+            argument provides names for the columns. Otherwise this argument indicates the order of
+            the columns in the result (any names not found in the data will become all-NA columns)
+
+        coerce_float : boolean, default False
+            Attempt to convert values of non-string, non-numeric objects (like decimal.Decimal) to
+            floating point, useful for SQL result sets
+
+        nrows : int, default None
+            Number of rows to read if data is an iterator
+
+        Returns
+        -------
+        df : DataFrame
+
+        Examples
+        --------
+        Use dict as input
+
+        >>> ks.DataFrame.from_records({'A': [1, 2, 3]})
+           A
+        0  1
+        1  2
+        2  3
+
+        Use list of tuples as input
+
+        >>> ks.DataFrame.from_records([(1, 2), (3, 4)])
+           0  1
+        0  1  2
+        1  3  4
+
+        Use NumPy array as input
+
+        >>> ks.DataFrame.from_records(np.eye(3))
+             0    1    2
+        0  1.0  0.0  0.0
+        1  0.0  1.0  0.0
+        2  0.0  0.0  1.0
+        """
+        return DataFrame(pd.DataFrame.from_records(data, index, exclude, columns, coerce_float,
+                                                   nrows))
+
     def to_records(self, index=True, convert_datetime64=None,
                    column_dtypes=None, index_dtypes=None):
         """
