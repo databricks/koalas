@@ -20,7 +20,8 @@ A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 import re
 import warnings
 from functools import partial, reduce
-from typing import Any, Optional, List, Tuple, Union
+import sys
+from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -168,8 +169,27 @@ triangle      9.0   32400.0
 rectangle    16.0  129600.0
 """
 
+T = TypeVar('T')
 
-class DataFrame(_Frame):
+
+if (3, 5) <= sys.version_info < (3, 7):
+    from typing import GenericMeta
+
+    # This is a workaround to support variadic generic in DataFrame in Python 3.5+.
+    # See https://github.com/python/typing/issues/193
+    # We wrap the input params by a tuple to mimic variadic generic.
+    old_getitem = GenericMeta.__getitem__  # type: ignore
+
+    def new_getitem(self, params):
+        if hasattr(self, "is_dataframe"):
+            return old_getitem(self, Tuple[params])
+        else:
+            return old_getitem(self, params)
+
+    GenericMeta.__getitem__ = new_getitem  # type: ignore
+
+
+class DataFrame(_Frame, Generic[T]):
     """
     Koala DataFrame that corresponds to Pandas DataFrame logically. This holds Spark DataFrame
     internally.
@@ -2997,7 +3017,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         }
         by = [mapper[(asc, na_position)](self[colname]._scol)
               for colname, asc in zip(by, ascending)]
-        kdf = DataFrame(self._internal.copy(sdf=self._sdf.sort(*by)))
+        kdf = DataFrame(self._internal.copy(sdf=self._sdf.sort(*by)))  # type: ks.DataFrame
         if inplace:
             self._internal = kdf._internal
             return None
@@ -4492,6 +4512,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError('No axis named {0}'.format(axis))
         # convert to numeric axis
         return {None: 0, 'index': 0, 'columns': 1}.get(axis, axis)
+
+    if sys.version_info >= (3, 7):
+        def __class_getitem__(cls, params):
+            # This is a workaround to support variadic generic in DataFrame in Python 3.7.
+            # See https://github.com/python/typing/issues/193
+            # we always wraps the given type hints by a tuple to mimic the variadic generic.
+            return super(cls, DataFrame).__class_getitem__(Tuple[params])
+    elif (3, 5) <= sys.version_info < (3, 7):
+        # This is a workaround to support variadic generic in DataFrame in Python 3.5+
+        # The implementation is in its metaclass so this flag is needed to distinguish
+        # Koalas DataFrame.
+        is_dataframe = None
 
 
 def _reduce_spark_multi(sdf, aggs):

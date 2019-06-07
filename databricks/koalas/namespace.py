@@ -32,7 +32,7 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.typedef import Col, pandas_wraps
+from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.series import Series, _col
 
 
@@ -1249,7 +1249,7 @@ melt.__doc__ = DataFrame.melt.__doc__
 
 # @pandas_wraps(return_col=np.datetime64)
 @pandas_wraps
-def _to_datetime1(arg, errors, format, infer_datetime_format) -> Col[np.datetime64]:
+def _to_datetime1(arg, errors, format, infer_datetime_format) -> Series[np.datetime64]:
     return pd.to_datetime(
         arg,
         errors=errors,
@@ -1260,7 +1260,7 @@ def _to_datetime1(arg, errors, format, infer_datetime_format) -> Col[np.datetime
 # @pandas_wraps(return_col=np.datetime64)
 @pandas_wraps
 def _to_datetime2(arg_year, arg_month, arg_day,
-                  errors, format, infer_datetime_format) -> Col[np.datetime64]:
+                  errors, format, infer_datetime_format) -> Series[np.datetime64]:
     arg = dict(year=arg_year, month=arg_month, day=arg_day)
     for key in arg:
         if arg[key] is None:
