@@ -1623,7 +1623,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     @staticmethod
     def from_records(data: Union[np.array, List[tuple], dict, pd.DataFrame],
                      index: Union[str, list, np.array] = None, exclude: list = None,
-                     columns: list = None, coerce_float: bool = False, nrows: int = None):
+                     columns: list = None, coerce_float: bool = False, nrows: int = None) \
+            -> 'DataFrame':
         """
         Convert structured or record ndarray to DataFrame.
 
