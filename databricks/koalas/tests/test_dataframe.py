@@ -580,22 +580,51 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.append(kdf, sort=True)
 
         # Assert using 'verify_integrity' only raises an exception for overlapping indices
-        kdf.append(other_kdf, verify_integrity=True)
+        self.assert_eq(kdf.append(other_kdf, verify_integrity=True),
+                       pdf.append(other_pdf, verify_integrity=True))
         msg = "Indices have overlapping values"
         with self.assertRaises(ValueError, msg=msg):
             kdf.append(kdf, verify_integrity=True)
+
+        # Skip integrity verification when ignore_index=True
+        self.assert_eq(kdf.append(kdf, ignore_index=True, verify_integrity=True),
+                       pdf.append(pdf, ignore_index=True, verify_integrity=True))
 
         # Assert appending multi-index DataFrames
         multi_index_pdf = pd.DataFrame([[1, 2], [3, 4]], columns=list('AB'),
                                        index=[[2, 3], [4, 5]])
         multi_index_kdf = ks.from_pandas(multi_index_pdf)
+        other_multi_index_pdf = pd.DataFrame([[5, 6], [7, 8]], columns=list('AB'),
+                                             index=[[2, 3], [6, 7]])
+        other_multi_index_kdf = ks.from_pandas(other_multi_index_pdf)
+
         self.assert_eq(multi_index_kdf.append(multi_index_kdf),
                        multi_index_pdf.append(multi_index_pdf))
+
+        # Assert DataFrames with non-matching columns
+        self.assert_eq(multi_index_kdf.append(other_multi_index_kdf),
+                       multi_index_pdf.append(other_multi_index_pdf))
+
+        # Assert using 'verify_integrity' only raises an exception for overlapping indices
+        self.assert_eq(multi_index_kdf.append(other_multi_index_kdf, verify_integrity=True),
+                       multi_index_pdf.append(other_multi_index_pdf, verify_integrity=True))
+        with self.assertRaises(ValueError, msg=msg):
+            multi_index_kdf.append(multi_index_kdf, verify_integrity=True)
+
+        # Skip integrity verification when ignore_index=True
+        self.assert_eq(multi_index_kdf.append(multi_index_kdf,
+                                              ignore_index=True, verify_integrity=True),
+                       multi_index_pdf.append(multi_index_pdf,
+                                              ignore_index=True, verify_integrity=True))
 
         # Assert trying to append DataFrames with different index levels
         msg = "Both DataFrames have to have the same number of index levels"
         with self.assertRaises(ValueError, msg=msg):
             kdf.append(multi_index_kdf)
+
+        # Skip index level check when ignore_index=True
+        self.assert_eq(kdf.append(multi_index_kdf, ignore_index=True),
+                       pdf.append(multi_index_pdf, ignore_index=True))
 
     def test_clip(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})
