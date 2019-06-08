@@ -28,9 +28,9 @@ class SQLTest(ReusedSQLTestCase, SQLTestUtils):
             ks.sql('select * from {variable_foo}')
 
     def test_error_unsupported_type(self):
-        msg = "Unsupported variable type <class 'dict'>: {'a': 1, 'b': 2}"
+        msg = "Unsupported variable type <class 'dict'>: {'a': 1}"
         with self.assertRaisesRegex(ValueError, msg):
-            some_dict = {'a': 1, 'b': 2}
+            some_dict = {'a': 1}
             ks.sql('select * from {some_dict}')
 
     def test_error_bad_sql(self):
