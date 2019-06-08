@@ -624,6 +624,10 @@ class DataFrame(_Frame):
           - Windows : none
           - OS X : none
 
+        See Also
+        --------
+        read_clipboard : Read text from clipboard.
+
         Examples
         --------
         Copy the contents of a DataFrame to the clipboard.

@@ -13,8 +13,8 @@ Data Generator
 
    range
 
-Flat File
----------
+Flat File / CSV
+---------------
 .. autosummary::
    :toctree: api/
 
