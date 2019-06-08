@@ -1,6 +1,21 @@
+#
+# Copyright (C) 2019 Databricks, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import _string
-from typing import Dict, Any, Set, Optional
-import pymysql
+from typing import Dict, Any, Optional
 import inspect
 import pandas as pd
 
@@ -22,6 +37,14 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     """
     Execute a SQL query and return the result as a Koalas DataFrame.
 
+    This function also supports embedding Python variables (locals, globals, and parameters)
+    in the SQL statement by wrapping them in curly braces. See examples section for details.
+
+    In addition to the locals, globals and parameters, the function will also attempt
+    to determine if the program currently runs in an IPython (or Jupyter) environment
+    and to import the variables from this environment. The variables have the same
+    precedence as globals.
+
     Parameters
     ----------
     query : str
@@ -37,32 +60,6 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     -------
     DataFrame
 
-    Notes
-    -----
-
-    The index is not preserved. The SQL syntax in general is too flexible to
-    guarantee that the index can be preserved, so it is simply dropped.
-    If you need to preserver any index, you must reset the index.
-
-    >>> sql("SELECT * from {df}", df=ks.DataFrame({"x": [1,2]}, index=["a", "b"]))
-       x
-    0  1
-    1  2
-
-    The reductions return a DataFrame with a single row. This behaviour may
-    change in the future and return a pandas Series.
-
-    >>> sql("SELECT count(*) from {df}", df=ks.DataFrame({"x": [1,2]}))
-       count(1)
-    0         2
-
-    In addition to the locals, globals and parameters, the function will also attempt
-    to determine if the program currently runs in an IPython (or Jupyter) environment
-    and to import the variables from this environment. The variables have the same
-    precedence as globals. This behaviour cannot be changed.
-
-    Arbitrary statements are not supported for the {} expressions.
-
     Examples
     --------
 
@@ -73,14 +70,24 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     0   8
     1   9
 
-    A query that depends on a local variable, a dataframe, and a parameter:
+    A query can also reference a local variable or parameter by wrapping them in curly braces:
 
-    >>> mydf = ks.DataFrame({"x": range(5)})
+    >>> bound1 = 7
+    >>> ks.sql("select * from range(10) where id > {bound1} and id < {bound2}", bound2=9)
+       id
+    0   8
+
+    You can also wrap a DataFrame with curly braces to query it directly. Note that when you do
+    that, the indexes, if any, automatically become top level columns.
+
+    >>> mydf = ks.range(10)
     >>> x = range(4)
-    >>> sql("SELECT * from {mydf} m WHERE m.x IN {x} AND m.x < {mymax}", mymax=2)
-       x
-    0  0
-    1  1
+    >>> ks.sql("SELECT * from {mydf} WHERE id IN {x}")
+       id
+    0   0
+    1   1
+    2   2
+    3   3
 
     Queries can also be arbitrarily nested in functions:
 
@@ -88,11 +95,11 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     ...     mydf2 = ks.DataFrame({"x": range(2)})
     ...     return sql("SELECT * from {mydf2}")
     >>> statement()
-       x
-    0  0
-    1  1
+       __index_level_0__  x
+    0                  0  0
+    1                  1  1
 
-    Mixing Koalas and pandas dataframes in a join operation. Note that the index is
+    Mixing Koalas and pandas DataFrames in a join operation. Note that the index is
     dropped.
 
     >>> sql('''
@@ -145,6 +152,32 @@ def _get_ipython_scope():
         return None
 
 
+# Originally from pymysql package
+_escape_table = [chr(x) for x in range(128)]
+_escape_table[0] = u'\\0'
+_escape_table[ord('\\')] = u'\\\\'
+_escape_table[ord('\n')] = u'\\n'
+_escape_table[ord('\r')] = u'\\r'
+_escape_table[ord('\032')] = u'\\Z'
+_escape_table[ord('"')] = u'\\"'
+_escape_table[ord("'")] = u"\\'"
+
+
+def escape_sql_string(value: str) -> str:
+    """Escapes value without adding quotes.
+
+    >>> escape_sql_string("foo\\nbar")
+    'foo\\\\nbar'
+
+    >>> escape_sql_string("'abc'de")
+    "\\\\'abc\\\\'de"
+
+    >>> escape_sql_string('"abc"de')
+    '\\\\"abc\\\\"de'
+    """
+    return value.translate(_escape_table)
+
+
 class ValidationError(Exception):
     def __init__(self, message, error):
         super().__init__(message)
@@ -171,9 +204,24 @@ class SQLProcessor(object):
 
     def execute(self) -> DataFrame:
         """
-        Returns a dataframe for which the SQL statement has been executed by
+        Returns a DataFrame for which the SQL statement has been executed by
         the underlying SQL engine.
-        :return:
+
+        >>> str0 = 'abc'
+        >>> sql("select {str0}")
+           abc
+        0  abc
+
+        >>> str1 = 'abc"abc'
+        >>> str2 = "abc'abc"
+        >>> sql("select {str0}, {str1}, {str2}")
+           abc  abc"abc  abc'abc
+        0  abc  abc"abc  abc'abc
+
+        >>> strs = ['a', 'b']
+        >>> sql("select 'a' in {strs} as cond1, 'c' in {strs} as cond2")
+           cond1  cond2
+        0   True  False
         """
         blocks = _string.formatter_parser(self._statement)
         # TODO: use a string builder
@@ -197,10 +245,8 @@ class SQLProcessor(object):
     def _convert(self, key) -> Any:
         """
         Given a {} key, returns an equivalent SQL representation.
-        This conversion perfoms all the necessary escaping so that the string
+        This conversion performs all the necessary escaping so that the string
         returned can be directly injected into the SQL statement.
-        :param key:
-        :return:
         """
         # Already cached?
         if key in self._cached_vars:
@@ -228,14 +274,11 @@ class SQLProcessor(object):
             df_id = "koalas_" + str(id(var))
             if df_id not in self._temp_views:
                 sdf = var.to_spark()
-                # We should not capture extra index.
-                # TODO: document this
-                sdf = sdf[list(var.columns)]
                 sdf.createOrReplaceTempView(df_id)
                 self._temp_views[df_id] = sdf
             return df_id
         if isinstance(var, str):
-            return pymysql.escape_string(str)
+            return '"' + escape_sql_string(var) + '"'
         if isinstance(var, list):
             return "(" + ", ".join([self._convert_var(v) for v in var]) + ")"
         if isinstance(var, (tuple, range)):

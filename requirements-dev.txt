@@ -2,7 +2,6 @@
 pandas>=0.23
 pyarrow>=0.10
 numpy>=1.14
-pymysql
 
 # TODO: support mlflow 1.0.0
 mlflow==0.9.1
