@@ -1509,13 +1509,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(self)
 
-    def to_parquet(self, path, mode=None, partition=None, compression=None):
+    def to_parquet(self, path: str, mode: str = 'error',
+                   partition_cols: Union[str, List[str], None] = None,
+                   compression: Optional[str] = None):
         """
         Write the DataFrame out as a Parquet file or directory.
 
         Parameters
         ----------
-        path : string, required
+        path : str, required
             Path to write to.
         mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
             Specifies the behavior of the save operation when data already.
@@ -1525,7 +1527,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             - 'ignore': Silently ignore this operation if data already exists.
             - 'error' or 'errorifexists': Throw an exception if data already exists.
 
-        partition : str or list of str
+        partition_cols : str or list of str, optional, default None
             Names of partitioning columns
         compression : str {'none', 'uncompressed', 'snappy', 'gzip', 'lzo', 'brotli', 'lz4', 'zstd'}
             Compression codec to use when saving to file. If None is set, it uses the
@@ -1541,11 +1543,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.write.parquet('my_data.parquet', partition=['date', 'country'])  # doctest: +SKIP
         """
-        self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition,
+        self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition_cols,
                                 compression=compression)
 
     def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
-                    mode: Optional[str] = None, partition: Union[str, List[str], None] = None,
+                    mode: Optional[str] = None, partition_cols: Union[str, List[str], None] = None,
                     **options):
         """Write the DataFrame out to a Spark data source.
 
@@ -1562,7 +1564,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             - 'overwrite': Overwrite existing data.
             - 'ignore': Silently ignore this operation if data already exists.
             - 'error' or 'errorifexists': Throw an exception if data already exists.
-        partition : str or list of str
+        partition_cols : str or list of str, optional
             Names of partitioning columns
         options : dict
             All other options passed directly into Spark's data source.
@@ -1575,7 +1577,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         >>> df.to_spark_io(path='data.json', format='json')  # doctest: +SKIP
         """
-        self._sdf.write.save(path=path, format=format, mode=mode, partitionBy=partition,
+        self._sdf.write.save(path=path, format=format, mode=mode, partitionBy=partition_cols,
                              options=options)
 
     def to_spark(self):

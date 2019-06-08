@@ -76,34 +76,15 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected = ks.DataFrame(pdf)
 
             # Write out partitioned by one column
-            expected.to_parquet(tmp, mode='overwrite', partition='i32')
+            expected.to_parquet(tmp, mode='overwrite', partition_cols='i32')
             # reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first
             actual = ks.read_parquet(tmp)[self.test_column_order]
             self.assert_eq(actual.sort_values(by='f'), expected.sort_values(by='f'))
 
             # Write out partitioned by two columns
-            expected.to_parquet(tmp, mode='overwrite', partition=['i32', 'bhello'])
+            expected.to_parquet(tmp, mode='overwrite', partition_cols=['i32', 'bhello'])
             # reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first
             actual = ks.read_parquet(tmp)[self.test_column_order]
-            self.assert_eq(actual.sort_values(by='f'), expected.sort_values(by='f'))
-
-    def test_spark_io(self):
-        with self.temp_dir() as tmp:
-            pdf = self.test_pdf
-            expected = ks.DataFrame(pdf)
-
-            # Write out partitioned by one column
-            expected.to_spark_io(tmp, format='json', mode='overwrite', partition='i32')
-            # reset column order, as once the data is written out, Spark rearranges partition
-            # columns to appear first
-            actual = ks.read_spark_io(tmp, format='json')[self.test_column_order]
-            self.assert_eq(actual.sort_values(by='f'), expected.sort_values(by='f'))
-
-            # Write out partitioned by two columns
-            expected.to_spark_io(tmp, format='json', mode='overwrite', partition=['i32', 'bhello'])
-            # reset column order, as once the data is written out, Spark rearranges partition
-            # columns to appear first
-            actual = ks.read_spark_io(path=tmp, format='json')[self.test_column_order]
             self.assert_eq(actual.sort_values(by='f'), expected.sort_values(by='f'))
