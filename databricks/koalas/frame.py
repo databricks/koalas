@@ -1547,7 +1547,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                 compression=compression)
 
     def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
-                    mode: Optional[str] = None, partition_cols: Union[str, List[str], None] = None,
+                    mode: str = 'error', partition_cols: Union[str, List[str], None] = None,
                     **options):
         """Write the DataFrame out to a Spark data source.
 
