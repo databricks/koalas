@@ -148,7 +148,6 @@ class _MissingPandasLikeDataFrame(object):
     to_gbq = unsupported_function('to_gbq')
     to_hdf = unsupported_function('to_hdf')
     to_msgpack = unsupported_function('to_msgpack')
-    to_parquet = unsupported_function('to_parquet')
     to_period = unsupported_function('to_period')
     to_pickle = unsupported_function('to_pickle')
     to_sparse = unsupported_function('to_sparse')

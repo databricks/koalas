@@ -76,14 +76,14 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected = ks.DataFrame(pdf)
 
             # Write out partitioned by one column
-            expected.to_parquet(tmp, mode='overwrite', partition='i32')
+            expected.to_parquet(tmp, mode='overwrite', partition_cols='i32')
             # reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first
             actual = ks.read_parquet(tmp)[self.test_column_order]
             self.assert_eq(actual.sort_values(by='f'), expected.sort_values(by='f'))
 
             # Write out partitioned by two columns
-            expected.to_parquet(tmp, mode='overwrite', partition=['i32', 'bhello'])
+            expected.to_parquet(tmp, mode='overwrite', partition_cols=['i32', 'bhello'])
             # reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first
             actual = ks.read_parquet(tmp)[self.test_column_order]
