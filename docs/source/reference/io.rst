@@ -13,6 +13,13 @@ Data Generator
 
    range
 
+Parquet
+-------
+.. autosummary::
+   :toctree: api/
+
+   read_parquet
+
 Flat File / CSV
 ---------------
 .. autosummary::
@@ -40,10 +47,3 @@ HTML
    :toctree: api/
 
    read_html
-
-Parquet
--------
-.. autosummary::
-   :toctree: api/
-
-   read_parquet

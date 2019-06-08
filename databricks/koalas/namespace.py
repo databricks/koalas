@@ -264,6 +264,10 @@ def read_parquet(path, columns=None):
     -------
     DataFrame
 
+    See Also
+    --------
+    DataFrame.to_parquet
+
     Examples
     --------
     >>> ks.read_parquet('data.parquet', columns=['name', 'gender'])  # doctest: +SKIP

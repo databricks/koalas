@@ -25,6 +25,7 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils, Tes
 
 
 class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
+    """Test cases for "small data" conversion and I/O."""
 
     @property
     def pdf(self):
