@@ -250,7 +250,32 @@ def read_csv(path, header='infer', names=None, usecols=None,
     return DataFrame(sdf)
 
 
-def read_parquet(path, columns=None):
+def read_table(name: str) -> DataFrame:
+    """
+    Read a Spark table and return a DataFrame.
+
+    Parameters
+    ----------
+    name : string
+        Table name in Spark.
+
+    Returns
+    -------
+    DataFrame
+
+    See Also
+    --------
+    DataFrame.to_table
+
+    Examples
+    --------
+    >>> ks.read_table('my_database.my_table')  # doctest: +SKIP
+    """
+    sdf = default_session().read.table(name)
+    return DataFrame(sdf)
+
+
+def read_parquet(path, columns=None) -> DataFrame:
     """Load a parquet object from the file path, returning a DataFrame.
 
     Parameters
