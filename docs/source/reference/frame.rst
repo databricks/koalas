@@ -148,6 +148,7 @@ Serialization / IO / Conversion
    :toctree: api/
 
    DataFrame.from_records
+   DataFrame.to_parquet
    DataFrame.to_csv
    DataFrame.to_pandas
    DataFrame.to_html

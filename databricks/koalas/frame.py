@@ -1509,6 +1509,42 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(self)
 
+    def to_parquet(self, path: str, mode: str = 'error',
+                   partition_cols: Union[str, List[str], None] = None, compression=None):
+        """
+        Write the DataFrame out as a Parquet file or directory.
+
+        Parameters
+        ----------
+        path : str, required
+            Path to write to.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when data already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        compression : str {'none', 'uncompressed', 'snappy', 'gzip', 'lzo', 'brotli', 'lz4', 'zstd'}
+            Compression codec to use when saving to file. If None is set, it uses the
+            value specified in `spark.sql.parquet.compression.codec`.
+
+        See Also
+        --------
+        read_parquet
+
+        Examples
+        --------
+        >>> df.write.parquet('my_data.parquet', partition='date')  # doctest: +SKIP
+
+        >>> df.write.parquet('my_data.parquet', partition=['date', 'country'])  # doctest: +SKIP
+        """
+        self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition_cols,
+                                compression=compression)
+
     def to_spark(self):
         """
         Return the current DataFrame as a Spark DataFrame.
