@@ -1544,6 +1544,40 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition,
                                 compression=compression)
 
+    def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
+                    mode: Optional[str] = None, partition: Union[str, List[str], None] = None,
+                    **options):
+        """Write the DataFrame out to a Spark data source.
+
+        Parameters
+        ----------
+        path : string, optional
+            Path to the data source.
+        format : string, optional
+            Name of the data source in Spark.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when data already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+        partition : str or list of str
+            Names of partitioning columns
+        options : dict
+            All other options passed directly into Spark's data source.
+
+        See Also
+        --------
+        read_spark_io
+
+        Examples
+        --------
+        >>> df.to_spark_io(path='data.json', format='json')  # doctest: +SKIP
+        """
+        self._sdf.write.save(path=path, format=format, mode=mode, partitionBy=partition,
+                             options=options)
+
     def to_spark(self):
         """
         Return the current DataFrame as a Spark DataFrame.
