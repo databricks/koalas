@@ -88,5 +88,3 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             # columns to appear first
             actual = ks.read_parquet(tmp)[self.test_column_order]
             self.assert_eq(actual.sort_values(by='f'), expected.sort_values(by='f'))
-
-
