@@ -177,6 +177,10 @@ def read_csv(path, header='infer', names=None, usecols=None,
     -------
     DataFrame
 
+    See Also
+    --------
+    DataFrame.to_csv : Write DataFrame to a comma-separated values (csv) file.
+
     Examples
     --------
     >>> ks.read_csv('data.csv')  # doctest: +SKIP
@@ -290,6 +294,10 @@ def read_clipboard(sep=r'\s+', **kwargs):
     sep : str, default '\s+'
         A string or regex delimiter. The default of '\s+' denotes
         one or more whitespace characters.
+
+    See Also
+    --------
+    DataFrame.to_clipboard : Write text out to clipboard.
 
     Returns
     -------
@@ -615,6 +623,7 @@ def read_html(io, match='.+', flavor=None, header=None, index_col=None,
     See Also
     --------
     read_csv
+    DataFrame.to_html
     """
     pdfs = pd.read_html(
         io=io, match=match, flavor=flavor, header=header, index_col=index_col, skiprows=skiprows,
