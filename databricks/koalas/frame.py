@@ -1509,7 +1509,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(self)
 
-    def to_parquet(self, path: str, mode: str = None,
+    def to_parquet(self, path: str, mode: str = 'error',
                    partition_cols: Union[str, List[str], None] = None, compression=None):
         """
         Write the DataFrame out as a Parquet file or directory.
