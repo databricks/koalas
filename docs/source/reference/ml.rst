@@ -6,7 +6,7 @@ Machine Learning utilities
 .. currentmodule:: databricks.koalas.mlflow
 
 MLflow
-~~~~~~
+------
 
 Arbitrary MLflow models can be used with Koalas Dataframes,
 provided they implement the 'pyfunc' flavor. This is the case

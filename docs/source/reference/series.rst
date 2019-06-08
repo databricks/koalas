@@ -127,7 +127,7 @@ Missing data handling
    Series.fillna
 
 Reshaping, sorting, transposing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 .. autosummary::
    :toctree: api/
 
@@ -135,7 +135,7 @@ Reshaping, sorting, transposing
    Series.sort_values
 
 Combining / joining / merging
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------
 .. autosummary::
    :toctree: api/
 
@@ -157,15 +157,15 @@ String    :ref:`str <api.series.str>`
 
 .. _api.series.dt:
 
-Datetimelike Properties
-~~~~~~~~~~~~~~~~~~~~~~~
+Date Time Handling
+------------------
 
 ``Series.dt`` can be used to access the values of the series as
 datetimelike and return several properties.
 These can be accessed like ``Series.dt.<property>``.
 
 Datetime Properties
-^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~
 
 .. currentmodule:: databricks.koalas.series
 .. autosummary::
@@ -187,7 +187,7 @@ Datetime Properties
    Series.dt.microsecond
 
 Datetime Methods
-^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~
 
 .. currentmodule:: databricks.koalas.series
 .. autosummary::
@@ -198,7 +198,7 @@ Datetime Methods
 .. _api.series.str:
 
 String Handling
-^^^^^^^^^^^^^^^
+---------------
 
 ``Series.str`` can be used to access the values of the series as
 strings and apply several methods to it. These can be accessed

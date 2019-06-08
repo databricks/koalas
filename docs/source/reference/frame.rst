@@ -6,14 +6,14 @@ DataFrame
 .. currentmodule:: databricks.koalas
 
 Constructor
-~~~~~~~~~~~
+-----------
 .. autosummary::
    :toctree: api/
 
    DataFrame
 
 Attributes and underlying data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 
 .. autosummary::
    :toctree: api/
@@ -30,7 +30,7 @@ Attributes and underlying data
    DataFrame.size
 
 Conversion
-~~~~~~~~~~
+----------
 .. autosummary::
    :toctree: api/
 
@@ -42,7 +42,7 @@ Conversion
    DataFrame.notnull
 
 Indexing, iteration
-~~~~~~~~~~~~~~~~~~~
+-------------------
 .. autosummary::
    :toctree: api/
 
@@ -54,7 +54,7 @@ Indexing, iteration
    DataFrame.get
 
 Binary operator functions
-~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------
 .. autosummary::
    :toctree: api/
 
@@ -70,7 +70,7 @@ Binary operator functions
    DataFrame.rsub
 
 Function application, GroupBy & Window
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------
 .. autosummary::
    :toctree: api/
 
@@ -81,7 +81,7 @@ Function application, GroupBy & Window
 .. _api.dataframe.stats:
 
 Computations / Descriptive Stats
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------
 .. autosummary::
    :toctree: api/
 
@@ -102,7 +102,7 @@ Computations / Descriptive Stats
    DataFrame.var
 
 Reindexing / Selection / Label manipulation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------------
 .. autosummary::
    :toctree: api/
 
@@ -118,7 +118,7 @@ Reindexing / Selection / Label manipulation
 .. _api.dataframe.missing:
 
 Missing data handling
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 .. autosummary::
    :toctree: api/
 
@@ -126,7 +126,7 @@ Missing data handling
    DataFrame.fillna
 
 Reshaping, sorting, transposing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 .. autosummary::
    :toctree: api/
 
@@ -134,7 +134,7 @@ Reshaping, sorting, transposing
    DataFrame.sort_values
 
 Combining / joining / merging
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------
 .. autosummary::
    :toctree: api/
 
@@ -143,7 +143,7 @@ Combining / joining / merging
    DataFrame.merge
 
 Serialization / IO / Conversion
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 .. autosummary::
    :toctree: api/
 
