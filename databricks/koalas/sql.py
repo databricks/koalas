@@ -45,20 +45,30 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     and to import the variables from this environment. The variables have the same
     precedence as globals.
 
+    The following variable types are supported:
+
+    - string
+    - int
+    - float
+    - list, tuple, range of above types
+    - Koalas DataFrame
+    - Koalas Series
+    - pandas DataFrame
+
     Parameters
     ----------
     query : str
         the SQL query
-
-    globals : the dictionary of global variables, if explicitly set by the user
-
-    locals : the dictionary of local variables, if explicitly set by the user
-
-    kwargs : other variables that the user may want to set manually.
+    globals : dict, optional
+        the dictionary of global variables, if explicitly set by the user
+    locals : dict, optional
+        the dictionary of local variables, if explicitly set by the user
+    kwargs
+        other variables that the user may want to set manually that can be referenced in the query
 
     Returns
     -------
-    DataFrame
+    Koalas DataFrame
 
     Examples
     --------
@@ -93,16 +103,15 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
 
     >>> def statement():
     ...     mydf2 = ks.DataFrame({"x": range(2)})
-    ...     return sql("SELECT * from {mydf2}")
+    ...     return ks.sql("SELECT * from {mydf2}")
     >>> statement()
        __index_level_0__  x
     0                  0  0
     1                  1  1
 
-    Mixing Koalas and pandas DataFrames in a join operation. Note that the index is
-    dropped.
+    Mixing Koalas and pandas DataFrames in a join operation. Note that the index is dropped.
 
-    >>> sql('''
+    >>> ks.sql('''
     ...   SELECT m1.a, m2.b
     ...   FROM {table1} m1 INNER JOIN {table2} m2
     ...   ON m1.key = m2.key
@@ -113,7 +122,6 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     0  1  3
     1  2  4
     2  2  5
-
     """
     if globals is None:
         globals = _get_ipython_scope()
@@ -178,12 +186,6 @@ def escape_sql_string(value: str) -> str:
     return value.translate(_escape_table)
 
 
-class ValidationError(Exception):
-    def __init__(self, message, error):
-        super().__init__(message)
-        self.inner_error = error
-
-
 class SQLProcessor(object):
 
     def __init__(self, scope: Dict[str, Any], statement: str, session: SparkSession):
@@ -208,18 +210,18 @@ class SQLProcessor(object):
         the underlying SQL engine.
 
         >>> str0 = 'abc'
-        >>> sql("select {str0}")
+        >>> ks.sql("select {str0}")
            abc
         0  abc
 
         >>> str1 = 'abc"abc'
         >>> str2 = "abc'abc"
-        >>> sql("select {str0}, {str1}, {str2}")
+        >>> ks.sql("select {str0}, {str1}, {str2}")
            abc  abc"abc  abc'abc
         0  abc  abc"abc  abc'abc
 
         >>> strs = ['a', 'b']
-        >>> sql("select 'a' in {strs} as cond1, 'c' in {strs} as cond2")
+        >>> ks.sql("select 'a' in {strs} as cond1, 'c' in {strs} as cond2")
            cond1  cond2
         0   True  False
         """
@@ -231,12 +233,8 @@ class SQLProcessor(object):
                 var_next = "" if inner is None else self._convert(inner)
                 res = res + pre + var_next
             self._normalized_statement = res
+
             sdf = self._session.sql(self._normalized_statement)
-        except Exception as e:
-            # Simply propagate PySpark exceptions
-            s = ("Could not execute statement: normalized_statement='{}' "
-                 "temp_views={}".format(self._normalized_statement, self._temp_views))
-            raise ValidationError(s, e)
         finally:
             for v in self._temp_views:
                 self._session.catalog.dropTempView(v)
@@ -283,4 +281,4 @@ class SQLProcessor(object):
             return "(" + ", ".join([self._convert_var(v) for v in var]) + ")"
         if isinstance(var, (tuple, range)):
             return self._convert_var(list(var))
-        raise ValueError("Cannot understand value of type {}: {}".format(type(var), str(var)))
+        raise ValueError("Unsupported variable type {}: {}".format(type(var), str(var)))
