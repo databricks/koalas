@@ -14,8 +14,6 @@
 # limitations under the License.
 #
 
-import unittest
-
 import numpy as np
 import pandas as pd
 
@@ -26,149 +24,150 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_stat_functions(self):
-        df = pd.DataFrame({'A': [1, 2, 3, 4],
-                           'B': [1.0, 2.1, 3, 4]})
-        ddf = koalas.from_pandas(df)
+        pdf = pd.DataFrame({'A': [1, 2, 3, 4],
+                            'B': [1.0, 2.1, 3, 4]})
+        kdf = koalas.from_pandas(pdf)
 
         functions = ['max', 'min', 'mean', 'sum']
         for funcname in functions:
-            self.assertEqual(getattr(ddf.A, funcname)(), getattr(df.A, funcname)())
-            self.assert_eq(getattr(ddf, funcname)(), getattr(df, funcname)())
+            self.assertEqual(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)())
+            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)())
 
         functions = ['std', 'var']
         for funcname in functions:
-            self.assertAlmostEqual(getattr(ddf.A, funcname)(), getattr(df.A, funcname)())
-            self.assertPandasAlmostEqual(getattr(ddf, funcname)(), getattr(df, funcname)())
+            self.assertAlmostEqual(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)())
+            self.assertPandasAlmostEqual(getattr(kdf, funcname)(), getattr(pdf, funcname)())
 
         # NOTE: To test skew and kurt, just make sure they run.
         #       The numbers are different in spark and pandas.
         functions = ['skew', 'kurt']
         for funcname in functions:
-            getattr(ddf.A, funcname)()
-            getattr(ddf, funcname)()
+            getattr(kdf.A, funcname)()
+            getattr(kdf, funcname)()
 
     def test_abs(self):
-        df = pd.DataFrame({'A': [1, -2, 3, -4, 5],
-                           'B': [1., -2, 3, -4, 5],
-                           'C': [-6., -7, -8, -9, 10],
-                           'D': ['a', 'b', 'c', 'd', 'e']})
-        ddf = koalas.from_pandas(df)
-        self.assert_eq(ddf.A.abs(), df.A.abs())
-        self.assert_eq(ddf.B.abs(), df.B.abs())
-        self.assert_eq(ddf[['B', 'C']].abs(), df[['B', 'C']].abs())
-        # self.assert_eq(ddf.select('A', 'B').abs(), df[['A', 'B']].abs())
+        pdf = pd.DataFrame({'A': [1, -2, 3, -4, 5],
+                            'B': [1., -2, 3, -4, 5],
+                            'C': [-6., -7, -8, -9, 10],
+                            'D': ['a', 'b', 'c', 'd', 'e']})
+        kdf = koalas.from_pandas(pdf)
+        self.assert_eq(kdf.A.abs(), pdf.A.abs())
+        self.assert_eq(kdf.B.abs(), pdf.B.abs())
+        self.assert_eq(kdf[['B', 'C']].abs(), pdf[['B', 'C']].abs())
+        # self.assert_eq(kdf.select('A', 'B').abs(), pdf[['A', 'B']].abs())
 
     def test_corr(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.
         with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
             # DataFrame
             # we do not handle NaNs for now
-            df = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
-            ddf = koalas.from_pandas(df)
+            pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
+            kdf = koalas.from_pandas(pdf)
 
-            res = ddf.corr()
-            sol = df.corr()
+            res = kdf.corr()
+            sol = pdf.corr()
             self.assertPandasAlmostEqual(res, sol)
 
             # Series
-            a = df.A
-            b = df.B
-            da = ddf.A
-            db = ddf.B
+            a = pdf.A
+            b = pdf.B
+            da = kdf.A
+            db = kdf.B
 
             res = da.corr(db)
             sol = a.corr(b)
             self.assertAlmostEqual(res, sol)
-            self.assertRaises(TypeError, lambda: da.corr(ddf))
+            self.assertRaises(TypeError, lambda: da.corr(kdf))
 
     def test_cov_corr_meta(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.
         with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
-            df = pd.DataFrame({'a': np.array([1, 2, 3], dtype='i1'),
-                               'b': np.array([1, 2, 3], dtype='i2'),
-                               'c': np.array([1, 2, 3], dtype='i4'),
-                               'd': np.array([1, 2, 3]),
-                               'e': np.array([1.0, 2.0, 3.0], dtype='f4'),
-                               'f': np.array([1.0, 2.0, 3.0]),
-                               'g': np.array([True, False, True]),
-                               'h': np.array(list('abc'))},
-                              index=pd.Index([1, 2, 3], name='myindex'))
-            ddf = koalas.from_pandas(df)
-            self.assert_eq(ddf.corr(), df.corr())
+            pdf = pd.DataFrame({'a': np.array([1, 2, 3], dtype='i1'),
+                                'b': np.array([1, 2, 3], dtype='i2'),
+                                'c': np.array([1, 2, 3], dtype='i4'),
+                                'd': np.array([1, 2, 3]),
+                                'e': np.array([1.0, 2.0, 3.0], dtype='f4'),
+                                'f': np.array([1.0, 2.0, 3.0]),
+                                'g': np.array([True, False, True]),
+                                'h': np.array(list('abc'))},
+                               index=pd.Index([1, 2, 3], name='myindex'))
+            kdf = koalas.from_pandas(pdf)
+            self.assert_eq(kdf.corr(), pdf.corr())
 
     def test_stats_on_boolean_dataframe(self):
-        df = pd.DataFrame({'A': [True, False, True],
-                           'B': [False, False, True]})
-        ddf = koalas.from_pandas(df)
+        pdf = pd.DataFrame({'A': [True, False, True],
+                            'B': [False, False, True]})
+        kdf = koalas.from_pandas(pdf)
 
-        pd.testing.assert_series_equal(ddf.min(), df.min())
-        pd.testing.assert_series_equal(ddf.max(), df.max())
+        pd.testing.assert_series_equal(kdf.min(), pdf.min())
+        pd.testing.assert_series_equal(kdf.max(), pdf.max())
 
-        pd.testing.assert_series_equal(ddf.sum(), df.sum())
-        pd.testing.assert_series_equal(ddf.mean(), df.mean())
+        pd.testing.assert_series_equal(kdf.sum(), pdf.sum())
+        pd.testing.assert_series_equal(kdf.mean(), pdf.mean())
 
-        pd.testing.assert_series_equal(ddf.var(), df.var())
-        pd.testing.assert_series_equal(ddf.std(), df.std())
+        pd.testing.assert_series_equal(kdf.var(), pdf.var())
+        pd.testing.assert_series_equal(kdf.std(), pdf.std())
 
     def test_stats_on_boolean_series(self):
-        s = pd.Series([True, False, True])
-        ds = koalas.from_pandas(s)
+        ps = pd.Series([True, False, True])
+        ks = koalas.from_pandas(ps)
 
-        self.assertEqual(ds.min(), s.min())
-        self.assertEqual(ds.max(), s.max())
+        self.assertEqual(ks.min(), ps.min())
+        self.assertEqual(ks.max(), ps.max())
 
-        self.assertEqual(ds.sum(), s.sum())
-        self.assertEqual(ds.mean(), s.mean())
+        self.assertEqual(ks.sum(), ps.sum())
+        self.assertEqual(ks.mean(), ps.mean())
 
-        self.assertAlmostEqual(ds.var(), s.var())
-        self.assertAlmostEqual(ds.std(), s.std())
+        self.assertAlmostEqual(ks.var(), ps.var())
+        self.assertAlmostEqual(ks.std(), ps.std())
 
     def test_some_stats_functions_should_discard_non_numeric_columns_by_default(self):
-        df = pd.DataFrame({'i': [0, 1, 2],
-                           'b': [False, False, True],
-                           's': ['x', 'y', 'z']})
-        ddf = koalas.from_pandas(df)
+        pdf = pd.DataFrame({'i': [0, 1, 2],
+                            'b': [False, False, True],
+                            's': ['x', 'y', 'z']})
+        kdf = koalas.from_pandas(pdf)
 
         # min and max do not discard non-numeric columns by default
-        self.assertEqual(len(ddf.min()), 3)
-        self.assertEqual(len(ddf.max()), 3)
+        self.assertEqual(len(kdf.min()), len(kdf.min()))
+        self.assertEqual(len(kdf.max()), len(kdf.max()))
 
         # all the others do
-        self.assertEqual(len(ddf.sum()), 2)
-        self.assertEqual(len(ddf.mean()), 2)
+        self.assertEqual(len(kdf.sum()), len(kdf.sum()))
+        self.assertEqual(len(kdf.mean()), len(kdf.mean()))
 
-        self.assertEqual(len(ddf.var()), 2)
-        self.assertEqual(len(ddf.std()), 2)
+        self.assertEqual(len(kdf.var()), len(kdf.var()))
+        self.assertEqual(len(kdf.std()), len(kdf.std()))
 
-        self.assertEqual(len(ddf.kurtosis()), 2)
-        self.assertEqual(len(ddf.skew()), 2)
+        self.assertEqual(len(kdf.kurtosis()), len(kdf.kurtosis()))
+        self.assertEqual(len(kdf.skew()), len(kdf.skew()))
 
     def test_stats_on_non_numeric_columns_should_be_discarded_if_numeric_only_is_true(self):
-        df = pd.DataFrame({'i': [0, 1, 2],
-                           'b': [False, False, True],
-                           's': ['x', 'y', 'z']})
-        ddf = koalas.from_pandas(df)
+        pdf = pd.DataFrame({'i': [0, 1, 2],
+                            'b': [False, False, True],
+                            's': ['x', 'y', 'z']})
+        kdf = koalas.from_pandas(pdf)
 
-        self.assertEqual(len(ddf.sum(numeric_only=True)), 2)
-        self.assertEqual(len(ddf.mean(numeric_only=True)), 2)
+        self.assertEqual(len(kdf.sum(numeric_only=True)), len(kdf.sum(numeric_only=True)))
+        self.assertEqual(len(kdf.mean(numeric_only=True)), len(kdf.mean(numeric_only=True)))
 
-        self.assertEqual(len(ddf.var(numeric_only=True)), 2)
-        self.assertEqual(len(ddf.std(numeric_only=True)), 2)
+        self.assertEqual(len(kdf.var(numeric_only=True)), len(kdf.var(numeric_only=True)))
+        self.assertEqual(len(kdf.std(numeric_only=True)), len(kdf.std(numeric_only=True)))
 
-        self.assertEqual(len(ddf.kurtosis(numeric_only=True)), 2)
-        self.assertEqual(len(ddf.skew(numeric_only=True)), 2)
+        self.assertEqual(len(kdf.kurtosis(numeric_only=True)), len(kdf.kurtosis(numeric_only=True)))
+        self.assertEqual(len(kdf.skew(numeric_only=True)), len(kdf.skew(numeric_only=True)))
 
     def test_stats_on_non_numeric_columns_should_not_be_discarded_if_numeric_only_is_false(self):
-        df = pd.DataFrame({'i': [0, 1, 2],
-                           'b': [False, False, True],
-                           's': ['x', 'y', 'z']})
-        ddf = koalas.from_pandas(df)
+        pdf = pd.DataFrame({'i': [0, 1, 2],
+                            'b': [False, False, True],
+                            's': ['x', 'y', 'z']})
+        kdf = koalas.from_pandas(pdf)
 
-        self.assertEqual(len(ddf.sum(numeric_only=False)), 3)
-        self.assertEqual(len(ddf.mean(numeric_only=False)), 3)
+        self.assertEqual(len(kdf.sum(numeric_only=False)), len(kdf.sum(numeric_only=False)))
+        self.assertEqual(len(kdf.mean(numeric_only=False)), len(kdf.mean(numeric_only=False)))
 
-        self.assertEqual(len(ddf.var(numeric_only=False)), 3)
-        self.assertEqual(len(ddf.std(numeric_only=False)), 3)
+        self.assertEqual(len(kdf.var(numeric_only=False)), len(kdf.var(numeric_only=False)))
+        self.assertEqual(len(kdf.std(numeric_only=False)), len(kdf.std(numeric_only=False)))
 
-        self.assertEqual(len(ddf.kurtosis(numeric_only=False)), 3)
-        self.assertEqual(len(ddf.skew(numeric_only=False)), 3)
+        self.assertEqual(len(kdf.kurtosis(numeric_only=False)),
+                         len(kdf.kurtosis(numeric_only=False)))
+        self.assertEqual(len(kdf.skew(numeric_only=False)), len(kdf.skew(numeric_only=False)))

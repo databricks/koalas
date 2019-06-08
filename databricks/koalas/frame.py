@@ -169,8 +169,12 @@ class DataFrame(_Frame):
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
         number of columns.
 
-        :param sfun: either an 1-arg function that takes a Column and returns a Column, or
+        Parameters
+        ----------
+        sfun : either an 1-arg function that takes a Column and returns a Column, or
         a 2-arg function that takes a Column and its DataType and returns a Column.
+        numeric_only : boolean, default False
+            If True, sfun is applied on numeric columns (including booleans) only.
         """
         from inspect import signature
         exprs = []
