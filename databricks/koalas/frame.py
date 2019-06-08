@@ -2870,7 +2870,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         left_index_columns = set(left._metadata.index_columns)
         right_index_columns = set(right._metadata.index_columns)
 
-        # TODO: in some case, we can keep indexes.
         exprs = []
         for col in left_table.columns:
             if col in left_index_columns:
@@ -2895,7 +2894,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     scol = scol.alias(col)
             exprs.append(scol)
 
-        return DataFrame(joined_table.select(*exprs))
+        # Get all data columns while maintaining their order
+        data_columns = left._metadata.data_columns + [col for col in right._metadata.data_columns
+                                                      if col not in left._metadata.data_columns]
+        # Retain indices if they are use for joining
+        if left_index:
+            exprs.extend(['left_table.%s' % col for col in left_index_columns])
+            index_map = left._metadata.index_map
+        elif right_index:
+            exprs.extend(['right_table.%s' % col for col in right_index_columns])
+            index_map = right._metadata.index_map
+        else:
+            index_map = None
+
+        return DataFrame(joined_table.select(*exprs), index=Metadata(data_columns, index_map))
 
     def append(self, other: 'DataFrame', ignore_index: bool = False,
                verify_integrity: bool = False, sort: bool = False) -> 'DataFrame':
