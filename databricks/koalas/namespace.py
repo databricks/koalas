@@ -266,6 +266,8 @@ def read_table(name: str) -> DataFrame:
     See Also
     --------
     DataFrame.to_table
+    read_spark_io
+    read_parquet
 
     Examples
     --------

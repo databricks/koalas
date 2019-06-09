@@ -1520,7 +1520,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         name : str, required
             Table name in Spark.
         format : string, optional
-            Name of the data source in Spark.
+            Specifies the output data source format. Some common ones are:
+
+            - 'delta'
+            - 'parquet'
+            - 'orc'
+            - 'json'
+            - 'csv'
+
         mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
             Specifies the behavior of the save operation when the table exists already.
 
@@ -1537,6 +1544,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         read_table
+        to_spark_io
+        to_parquet
 
         Examples
         --------
