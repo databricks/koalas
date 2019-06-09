@@ -1530,13 +1530,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> with df.cache() as cached_df:
         ...    print(cached_df.count())
         ...
-        dogs    4
-        cats    4
+        __index_level_0__    4
+        dogs                 4
+        cats                 4
         dtype: int64
 
         >>> df = df.cache()
-        >>> df.to_pandas().mean(axis=0)['cats']
-        0.24999999999999997
+        >>> df.to_pandas().mean(axis=1)
+        0    0.166667
+        1    0.533333
+        2    0.866667
+        3    1.100000
+        dtype: float64
         """
         return _CachedDataFrame(self._sdf)
 
