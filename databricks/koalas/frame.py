@@ -3546,6 +3546,7 @@ def _reduce_spark_multi(sdf, aggs):
     assert len(l2) == len(aggs), (row, l2)
     return l2
 
+
 class _CachedDataFrame(DataFrame):
 
     def __init__(self, sdf):
