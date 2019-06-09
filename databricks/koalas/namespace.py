@@ -227,6 +227,52 @@ def read_csv(path, header='infer', names=None, usecols=None,
     return DataFrame(sdf)
 
 
+def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str] = None,
+               **options) -> DataFrame:
+    """
+    Read a Delta Lake table on some file system and return a DataFrame.
+
+    If the Delta Lake table is already stored in the catalog (aka the metastore), use 'read_table'.
+
+    Parameters
+    ----------
+    path : string
+        Path to the Delta Lake table.
+    version : string, optional
+        Specifies the table version (based on Delta's internal transaction version) to read from,
+        using Delta's time travel feature. This sets Delta's 'versionAsOf' option.
+    timestamp : string, optional
+        Specifies the table version (based on timestamp) to read from,
+        using Delta's time travel feature. This must be a valid date or timestamp string in Spark,
+        and sets Delta's 'timestampAsOf' option.
+    options
+        Additional options that can be passed onto Delta.
+
+    Returns
+    -------
+    DataFrame
+
+    See Also
+    --------
+    DataFrame.to_delta
+    read_table
+    read_spark_io
+    read_parquet
+
+    Examples
+    --------
+    >>> ks.range(1).to_delta('%s/read_delta/foo' % path)
+    >>> ks.read_delta('%s/read_delta/foo' % path)
+       id
+    0   0
+    """
+    if version is not None:
+        options['versionAsOf'] = version
+    if timestamp is not None:
+        options['timestampAsOf'] = timestamp
+    return read_spark_io(path, format='delta', options=options)
+
+
 def read_table(name: str) -> DataFrame:
     """
     Read a Spark table and return a DataFrame.
@@ -243,12 +289,16 @@ def read_table(name: str) -> DataFrame:
     See Also
     --------
     DataFrame.to_table
-    read_spark_io
+    read_delta
     read_parquet
+    read_spark_io
 
     Examples
     --------
-    >>> ks.read_table('my_database.my_table')  # doctest: +SKIP
+    >>> ks.range(1).to_table('%s.my_table' % db)
+    >>> ks.read_table('%s.my_table' % db)
+       id
+    0   0
     """
     sdf = default_session().read.table(name)
     return DataFrame(sdf)
@@ -281,11 +331,16 @@ def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
     --------
     DataFrame.to_spark_io
     DataFrame.read_table
+    DataFrame.read_delta
     DataFrame.read_parquet
 
     Examples
     --------
-    >>> ks.read_spark_io('data.parquet', format='parquet', schema='name string')  # doctest: +SKIP
+    >>> ks.range(1).to_spark_io('%s/read_spark_io/data.parquet' % path)
+    >>> ks.read_spark_io(
+    ...     '%s/read_spark_io/data.parquet' % path, format='parquet', schema='id long')
+       id
+    0   0
     """
     sdf = default_session().read.load(path=path, format=format, schema=schema, options=options)
     return DataFrame(sdf)
@@ -308,6 +363,9 @@ def read_parquet(path, columns=None) -> DataFrame:
     See Also
     --------
     DataFrame.to_parquet
+    DataFrame.read_table
+    DataFrame.read_delta
+    DataFrame.read_spark_io
 
     Examples
     --------

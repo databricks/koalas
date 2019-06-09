@@ -13,12 +13,21 @@ Data Generator
 
    range
 
-Spark Table
------------
+Spark Metastore Table
+---------------------
 .. autosummary::
    :toctree: api/
 
    read_table
+   DataFrame.to_table
+
+Delta Lake
+----------
+.. autosummary::
+   :toctree: api/
+
+   read_delta
+   DataFrame.to_delta
 
 Parquet
 -------
@@ -26,6 +35,7 @@ Parquet
    :toctree: api/
 
    read_parquet
+   DataFrame.to_parquet
 
 Generic Spark I/O
 -----------------
@@ -33,6 +43,7 @@ Generic Spark I/O
    :toctree: api/
 
    read_spark_io
+   DataFrame.to_spark_io
 
 Flat File / CSV
 ---------------
@@ -40,6 +51,7 @@ Flat File / CSV
    :toctree: api/
 
    read_csv
+   DataFrame.to_csv
 
 Clipboard
 ---------
@@ -47,6 +59,7 @@ Clipboard
    :toctree: api/
 
    read_clipboard
+   DataFrame.to_clipboard
 
 Excel
 -----
@@ -54,6 +67,7 @@ Excel
    :toctree: api/
 
    read_excel
+   DataFrame.to_excel
 
 HTML
 ----
@@ -61,3 +75,4 @@ HTML
    :toctree: api/
 
    read_html
+   DataFrame.to_html

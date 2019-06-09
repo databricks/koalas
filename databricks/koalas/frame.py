@@ -1549,10 +1549,77 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df.to_table('my_database.my_table', partition_cols='date')  # doctest: +SKIP
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
+
+        >>> df.to_table('%s.my_table' % db, partition_cols='date')
         """
         self._sdf.write.saveAsTable(name=name, format=format, mode=mode,
                                     partitionBy=partition_cols, options=options)
+
+    def to_delta(self, path: str, mode: str = 'error',
+                 partition_cols: Union[str, List[str], None] = None, **options):
+        """
+        Write the DataFrame out as a Delta Lake table.
+
+        Parameters
+        ----------
+        path : str, required
+            Path to write to.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when the destination exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        options : dict
+            All other options passed directly into Delta Lake.
+
+        See Also
+        --------
+        read_delta
+        DataFrame.to_parquet
+        DataFrame.to_table
+        DataFrame.to_spark_io
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
+
+        Create a new Delta Lake table, partitioned by one column:
+
+        >>> df.to_delta('%s/to_delta/foo' % path, partition_cols='date')
+
+        Partitioned by two columns:
+
+        >>> df.to_delta('%s/to_delta/bar' % path, partition_cols=['date', 'country'])
+
+        Overwrite an existing table's partitions, using the 'replaceWhere' capability in Delta:
+
+        >>> df.to_delta('%s/to_delta/bar' % path,
+        ...             mode='overwrite', replaceWhere='date >= "2019-01-01"')
+        """
+        self.to_spark_io(path=path, mode=mode, partition_cols=partition_cols, options=options)
 
     def to_parquet(self, path: str, mode: str = 'error',
                    partition_cols: Union[str, List[str], None] = None,
@@ -1581,14 +1648,28 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         read_parquet
+        DataFrame.to_delta
         DataFrame.to_table
         DataFrame.to_spark_io
 
         Examples
         --------
-        >>> df.to_parquet('my_data.parquet', partition_cols='date')  # doctest: +SKIP
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
 
-        >>> df.to_parquet('my_data.parquet', partition_cols=['date', 'country'])  # doctest: +SKIP
+        >>> df.to_parquet('%s/to_parquet/foo.parquet' % path, partition_cols='date')
+
+        >>> df.to_parquet(
+        ...     '%s/to_parquet/foo.parquet' % path,
+        ...     mode = 'overwrite',
+        ...     partition_cols=['date', 'country'])
         """
         self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition_cols,
                                 compression=compression)
@@ -1625,11 +1706,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         read_spark_io
-        to_parquet
+        DataFrame.to_delta
+        DataFrame.to_parquet
+        DataFrame.to_table
 
         Examples
         --------
-        >>> df.to_spark_io(path='data.json', format='json')  # doctest: +SKIP
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
+
+        >>> df.to_spark_io(path='%s/to_spark_io/foo.json' % path, format='json')
         """
         self._sdf.write.save(path=path, format=format, mode=mode, partitionBy=partition_cols,
                              options=options)
