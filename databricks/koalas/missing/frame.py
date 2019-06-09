@@ -93,7 +93,6 @@ class _MissingPandasLikeDataFrame(object):
     items = unsupported_function('items')
     iterrows = unsupported_function('iterrows')
     itertuples = unsupported_function('itertuples')
-    join = unsupported_function('join')
     keys = unsupported_function('keys')
     last = unsupported_function('last')
     last_valid_index = unsupported_function('last_valid_index')
