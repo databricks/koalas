@@ -61,29 +61,6 @@ def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'Da
         raise ValueError("Unknown data type: {}".format(type(pobj)))
 
 
-def sql(query: str) -> DataFrame:
-    """
-    Execute a SQL query and return the result as a Koalas DataFrame.
-
-    Parameters
-    ----------
-    query : str
-        the SQL query
-
-    Returns
-    -------
-    DataFrame
-
-    Examples
-    --------
-    >>> ks.sql("select * from range(10) where id > 7")
-       id
-    0   8
-    1   9
-    """
-    return DataFrame(default_session().sql(query))
-
-
 def range(start: int,
           end: Optional[int] = None,
           step: int = 1,
