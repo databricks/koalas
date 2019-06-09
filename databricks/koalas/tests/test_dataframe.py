@@ -727,21 +727,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_join(self):
         pdf1 = pd.DataFrame({'key': ['K0', 'K1', 'K2', 'K3', 'K4', 'K5'],
-                            'A': ['A0', 'A1', 'A2', 'A3', 'A4', 'A5']},
-                           columns=['key', 'A'])
+                            'A': ['A0', 'A1', 'A2', 'A3', 'A4', 'A5']}, columns=['key', 'A'])
         pdf2 = pd.DataFrame({'key': ['K0', 'K1', 'K2'],
-                             'B': ['B0', 'B1', 'B2']},
-                            columns=['key', 'B'])
+                             'B': ['B0', 'B1', 'B2']}, columns=['key', 'B'])
         kdf1 = ks.DataFrame({'key': ['K0', 'K1', 'K2', 'K3', 'K4', 'K5'],
-                             'A': ['A0', 'A1', 'A2', 'A3', 'A4', 'A5']},
-                            columns=['key', 'A'])
+                             'A': ['A0', 'A1', 'A2', 'A3', 'A4', 'A5']}, columns=['key', 'A'])
         kdf2 = ks.DataFrame({'key': ['K0', 'K1', 'K2'],
-                             'B': ['B0', 'B1', 'B2']},
-                            columns=['key', 'B'])
+                             'B': ['B0', 'B1', 'B2']}, columns=['key', 'B'])
         join_pdf = pdf1.join(pdf2, lsuffix='_caller', rsuffix='_other')
-        join_pdf.sort_values(by=join_pdf.columns, inplace=True)
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
 
         join_kdf = kdf1.join(kdf2, lsuffix='_caller', rsuffix='_other')
-        join_kdf.sort_values(by=join_kdf.columns, inplace=True)
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
 
         self.assert_eq(join_pdf, join_kdf)
