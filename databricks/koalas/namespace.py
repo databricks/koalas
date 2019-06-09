@@ -227,6 +227,42 @@ def read_csv(path, header='infer', names=None, usecols=None,
     return DataFrame(sdf)
 
 
+def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
+                  schema: Union[str, 'StructType'] = None, **options) -> DataFrame:
+    """Load a DataFrame from a Spark data source.
+
+    Parameters
+    ----------
+    path : string, optional
+        Path to the data source.
+    format : string, optional
+        Specifies the output data source format. Some common ones are:
+
+        - 'delta'
+        - 'parquet'
+        - 'orc'
+        - 'json'
+        - 'csv'
+    schema : string or StructType, optional
+        Input schema. If none, Spark tries to infer the schema automatically.
+        The schema can either be a Spark StructType, or a DDL-formatted string like
+        `col0 INT, col1 DOUBLE`.
+    options : dict
+        All other options passed directly into Spark's data source.
+
+    See Also
+    --------
+    DataFrame.to_spark_io
+    DataFrame.read_parquet
+
+    Examples
+    --------
+    >>> ks.read_spark_io('data.parquet', format='parquet', schema='name string')  # doctest: +SKIP
+    """
+    sdf = default_session().read.load(path=path, format=format, schema=schema, options=options)
+    return DataFrame(sdf)
+
+
 def read_parquet(path, columns=None):
     """Load a parquet object from the file path, returning a DataFrame.
 
