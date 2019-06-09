@@ -256,13 +256,6 @@ class DataFrame(_Frame):
                 pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
             super(DataFrame, self).__init__(_InternalFrame.from_pandas(pdf))
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        if self._sdf.is_cached:
-            self._sdf.unpersist()
-
     @property
     def _sdf(self) -> spark.DataFrame:
         return self._internal.sdf
@@ -1538,11 +1531,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         dtype: int64
 
         >>> df = df.cache()
-        >>> df.to_dict()
-        {'dogs': {0: 0.2, 1: 0.0, 2: 0.6, 3: 0.2}, 'cats': {0: 0.3, 1: 0.6, 2: 0.0, 3: 0.1}}
+        >>> df.to_pandas().mean(axis=0)['cats']
+        0.24999999999999997
         """
-        self._sdf = self._sdf.cache()
-        return self
+        return _CachedDataFrame(self._sdf)
 
     def to_spark(self):
         """
@@ -3455,3 +3447,20 @@ def _reduce_spark_multi(sdf, aggs):
     l2 = list(row)
     assert len(l2) == len(aggs), (row, l2)
     return l2
+
+class _CachedDataFrame(DataFrame):
+
+    def __init__(self, sdf):
+        self._cached = sdf.cache()
+        super(_CachedDataFrame, self).__init__(self._cached)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        if self._sdf.is_cached:
+            self._sdf.unpersist()
+
+    def unpersist(self):
+        if self._cached.is_cached:
+            self._cached.unpersist()
