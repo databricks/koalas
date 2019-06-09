@@ -280,6 +280,7 @@ def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
     See Also
     --------
     DataFrame.to_spark_io
+    DataFrame.read_table
     DataFrame.read_parquet
 
     Examples

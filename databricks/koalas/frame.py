@@ -1544,8 +1544,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         read_table
-        to_spark_io
-        to_parquet
+        DataFrame.to_spark_io
+        DataFrame.to_parquet
 
         Examples
         --------
@@ -1581,6 +1581,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         read_parquet
+        DataFrame.to_table
+        DataFrame.to_spark_io
 
         Examples
         --------
