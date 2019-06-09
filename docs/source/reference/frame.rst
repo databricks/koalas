@@ -140,6 +140,7 @@ Combining / joining / merging
 
    DataFrame.append
    DataFrame.assign
+   DataFrame.join
    DataFrame.merge
 
 Serialization / IO / Conversion
