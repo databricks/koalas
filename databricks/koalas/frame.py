@@ -1596,7 +1596,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Overwrite an existing table's partitions, using the 'replaceWhere' capability in Delta:
 
-        >>> df.to_delta('/delta/events', mode='overwrite', replaceWhere='date >= "2019-01-01"')
+        >>> df.to_delta('/delta/events',
+        ...             mode='overwrite', replaceWhere='date >= "2019-01-01"') # doctest: +SKIP
         """
         self.to_spark_io(path=path, mode=mode, partition_cols=partition_cols, options=options)
 
