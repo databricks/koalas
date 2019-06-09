@@ -67,6 +67,5 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         with ks.cache(sdf) as cached_df:
             assert cached_df.is_cached
 
-        self.assertRaisesRegex(TypeError,
-                               "'<class 'str'>' object is not callable",
-                               lambda: ks.cache(error_value))
+        self.assertRaisesRegex(
+            TypeError, "'<class 'str'>' object is not callable", lambda: ks.cache(error_value))
