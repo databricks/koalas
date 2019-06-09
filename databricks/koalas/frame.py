@@ -1542,6 +1542,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2    0.866667
         3    1.100000
         dtype: float64
+
+        To uncache the dataframe, use `unpersist` function
+
+        >>> df.unpersist()
         """
         return _CachedDataFrame(self._sdf)
 
