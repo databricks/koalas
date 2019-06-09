@@ -13,12 +13,26 @@ Data Generator
 
    range
 
+Spark Table
+-----------
+.. autosummary::
+   :toctree: api/
+
+   read_table
+
 Parquet
 -------
 .. autosummary::
    :toctree: api/
 
    read_parquet
+
+Generic Spark I/O
+-----------------
+.. autosummary::
+   :toctree: api/
+
+   read_spark_io
 
 Flat File / CSV
 ---------------
