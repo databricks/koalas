@@ -1547,7 +1547,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.unpersist()
         """
-        return _CachedDataFrame(self._sdf)
+        return _CachedDataFrame(self._sdf, self._metadata)
 
     def to_parquet(self, path: str, mode: str = 'error',
                    partition_cols: Union[str, List[str], None] = None, compression=None):
@@ -3557,18 +3557,40 @@ def _reduce_spark_multi(sdf, aggs):
 
 
 class _CachedDataFrame(DataFrame):
-
-    def __init__(self, sdf):
+    """
+    Cached Koalas DataFrame, which corresponds to Pandas DataFrame logically, but internally
+    it caches the corresponding Spark DataFrame.
+    """
+    def __init__(self, sdf, metadata):
         self._cached = sdf.cache()
-        super(_CachedDataFrame, self).__init__(self._cached)
+        super(_CachedDataFrame, self).__init__(self._cached, index=metadata)
 
     def __enter__(self):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         if self._sdf.is_cached:
-            self._sdf.unpersist()
+            self.unpersist()
 
     def unpersist(self):
+        """
+        The `unpersist` function is used to uncache the Koalas DataFrame when it
+        is not used with `with` statement.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'])
+        >>> df
+           dogs  cats
+        0   0.2   0.3
+        1   0.0   0.6
+        2   0.6   0.0
+        3   0.2   0.1
+
+        To uncache the dataframe, use `unpersist` function
+
+        >>> df.unpersist()
+        """
         if self._cached.is_cached:
             self._cached.unpersist()
