@@ -1554,6 +1554,52 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self._sdf.write.saveAsTable(name=name, format=format, mode=mode,
                                     partitionBy=partition_cols, options=options)
 
+    def to_delta(self, path: str, mode: str = 'error',
+                 partition_cols: Union[str, List[str], None] = None, **options):
+        """
+        Write the DataFrame out as a Delta Lake table.
+
+        Parameters
+        ----------
+        path : str, required
+            Path to write to.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when the destination exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        options : dict
+            All other options passed directly into Delta Lake.
+
+        See Also
+        --------
+        read_delta
+        DataFrame.to_parquet
+        DataFrame.to_table
+        DataFrame.to_spark_io
+
+        Examples
+        --------
+
+        Create a new Delta Lake table, partitioned by one column:
+
+        >>> df.to_delta('/delta/events', partition_cols='date')  # doctest: +SKIP
+
+        Partitioned by two columns:
+
+        >>> df.to_delta('/delta/events', partition_cols=['date', 'country'])  # doctest: +SKIP
+
+        Overwrite an existing table's partitions, using the 'replaceWhere' capability in Delta:
+
+        >>> df.to_delta('/delta/events', mode='overwrite', replaceWhere='date >= "2019-01-01"')
+        """
+        self.to_spark_io(path=path, mode=mode, partition_cols=partition_cols, options=options)
+
     def to_parquet(self, path: str, mode: str = 'error',
                    partition_cols: Union[str, List[str], None] = None,
                    compression: Optional[str] = None):
@@ -1581,6 +1627,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         read_parquet
+        DataFrame.to_delta
         DataFrame.to_table
         DataFrame.to_spark_io
 
@@ -1625,7 +1672,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         read_spark_io
-        to_parquet
+        DataFrame.to_delta
+        DataFrame.to_parquet
+        DataFrame.to_table
 
         Examples
         --------
