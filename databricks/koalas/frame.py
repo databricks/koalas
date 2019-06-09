@@ -1536,10 +1536,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df = df.cache()
         >>> df.to_pandas().mean(axis=1)
-        0    0.166667
-        1    0.533333
-        2    0.866667
-        3    1.100000
+        0    0.25
+        1    0.30
+        2    0.30
+        3    0.15
         dtype: float64
 
         To uncache the dataframe, use `unpersist` function
