@@ -117,6 +117,15 @@ It generates HTMLs under `docs/build/html` directory. Open `docs/build/html/inde
 ## Coding Conventions
 We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
 
+## Doctest Conventions
+
+When writing doctests, usually the doctests in pandas are converted into Koalas to make sure the same codes work in Koalas.
+In general, doctests should be grouped logically by seperating a newline.
+
+For instance, the first block is for the statements for preparation, the second block is for using the function with a specific argument,
+and third block is for another argument. As a example, please refer [DataFrame.rsub](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.rsub.html#pandas.DataFrame.rsub) in pandas.
+
+These blocks should be consistently separated in Koalas, and more doctests should be added if the coverage of the doctests or the number of examples to show is not enough even though they are different from pandas'.
 
 ## Release Instructions
 Only project maintainers can do the following.

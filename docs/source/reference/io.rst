@@ -7,22 +7,43 @@ Input/Output
 
 
 Data Generator
-~~~~~~~~~~~~~~
+--------------
 .. autosummary::
    :toctree: api/
 
    range
 
-Flat File
-~~~~~~~~~
+Parquet
+-------
+.. autosummary::
+   :toctree: api/
+
+   read_parquet
+
+Flat File / CSV
+---------------
 .. autosummary::
    :toctree: api/
 
    read_csv
 
-Parquet
-~~~~~~~
+Clipboard
+---------
 .. autosummary::
    :toctree: api/
 
-   read_parquet
+   read_clipboard
+
+Excel
+-----
+.. autosummary::
+   :toctree: api/
+
+   read_excel
+
+HTML
+----
+.. autosummary::
+   :toctree: api/
+
+   read_html

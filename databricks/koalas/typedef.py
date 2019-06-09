@@ -102,6 +102,7 @@ def _to_stype(tpe) -> X:
 # First element of the list is the python base type
 _base = {
     types.StringType(): [str, 'str', 'string'],
+    types.BinaryType(): [bytes],
     types.ByteType(): [np.int8, 'int8', 'byte'],
     types.ShortType(): [np.int16, 'int16', 'short'],
     types.IntegerType(): [int, 'int', np.int],

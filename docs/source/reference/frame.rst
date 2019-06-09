@@ -6,14 +6,14 @@ DataFrame
 .. currentmodule:: databricks.koalas
 
 Constructor
-~~~~~~~~~~~
+-----------
 .. autosummary::
    :toctree: api/
 
    DataFrame
 
 Attributes and underlying data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 
 .. autosummary::
    :toctree: api/
@@ -30,7 +30,7 @@ Attributes and underlying data
    DataFrame.size
 
 Conversion
-~~~~~~~~~~
+----------
 .. autosummary::
    :toctree: api/
 
@@ -42,18 +42,35 @@ Conversion
    DataFrame.notnull
 
 Indexing, iteration
-~~~~~~~~~~~~~~~~~~~
+-------------------
 .. autosummary::
    :toctree: api/
 
+   DataFrame.at
    DataFrame.head
    DataFrame.loc
    DataFrame.iloc
    DataFrame.iteritems
    DataFrame.get
 
+Binary operator functions
+-------------------------
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.add
+   DataFrame.radd
+   DataFrame.div
+   DataFrame.rdiv
+   DataFrame.truediv
+   DataFrame.rtruediv
+   DataFrame.mul
+   DataFrame.rmul
+   DataFrame.sub
+   DataFrame.rsub
+
 Function application, GroupBy & Window
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------
 .. autosummary::
    :toctree: api/
 
@@ -64,7 +81,7 @@ Function application, GroupBy & Window
 .. _api.dataframe.stats:
 
 Computations / Descriptive Stats
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------
 .. autosummary::
    :toctree: api/
 
@@ -78,16 +95,19 @@ Computations / Descriptive Stats
    DataFrame.max
    DataFrame.mean
    DataFrame.min
+   DataFrame.nunique
    DataFrame.skew
    DataFrame.sum
    DataFrame.std
    DataFrame.var
 
 Reindexing / Selection / Label manipulation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------------
 .. autosummary::
    :toctree: api/
 
+   DataFrame.add_prefix
+   DataFrame.add_suffix
    DataFrame.drop
    DataFrame.head
    DataFrame.reset_index
@@ -98,7 +118,7 @@ Reindexing / Selection / Label manipulation
 .. _api.dataframe.missing:
 
 Missing data handling
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 .. autosummary::
    :toctree: api/
 
@@ -106,7 +126,7 @@ Missing data handling
    DataFrame.fillna
 
 Reshaping, sorting, transposing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 .. autosummary::
    :toctree: api/
 
@@ -114,18 +134,21 @@ Reshaping, sorting, transposing
    DataFrame.sort_values
 
 Combining / joining / merging
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------
 .. autosummary::
    :toctree: api/
 
+   DataFrame.append
    DataFrame.assign
    DataFrame.merge
 
 Serialization / IO / Conversion
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 .. autosummary::
    :toctree: api/
 
+   DataFrame.from_records
+   DataFrame.to_parquet
    DataFrame.to_csv
    DataFrame.to_pandas
    DataFrame.to_html
