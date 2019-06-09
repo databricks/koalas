@@ -144,6 +144,8 @@ def _get_local_scope():
     try:
         return inspect.stack()[2][0].f_locals
     except Exception as e:
+        # TODO (rxin, thunterdb): use a more narrow scope exception.
+        # See https://github.com/databricks/koalas/pull/448
         return {}
 
 
@@ -157,6 +159,8 @@ def _get_ipython_scope():
         shell = get_ipython()
         return shell.user_ns
     except Exception as e:
+        # TODO (rxin, thunterdb): use a more narrow scope exception.
+        # See https://github.com/databricks/koalas/pull/448
         return None
 
 
