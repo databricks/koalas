@@ -1509,6 +1509,51 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(self)
 
+    def to_table(self, name: str, format: Optional[str] = None, mode: str = 'error',
+                 partition_cols: Union[str, List[str], None] = None,
+                 **options):
+        """
+        Write the DataFrame into a Spark table.
+
+        Parameters
+        ----------
+        name : str, required
+            Table name in Spark.
+        format : string, optional
+            Specifies the output data source format. Some common ones are:
+
+            - 'delta'
+            - 'parquet'
+            - 'orc'
+            - 'json'
+            - 'csv'
+
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when the table exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        options
+            Additional options passed directly to Spark.
+
+        See Also
+        --------
+        read_table
+        DataFrame.to_spark_io
+        DataFrame.to_parquet
+
+        Examples
+        --------
+        >>> df.to_table('my_database.my_table', partition_cols='date')  # doctest: +SKIP
+        """
+        self._sdf.write.saveAsTable(name=name, format=format, mode=mode,
+                                    partitionBy=partition_cols, options=options)
+
     def to_parquet(self, path: str, mode: str = 'error',
                    partition_cols: Union[str, List[str], None] = None,
                    compression: Optional[str] = None):
@@ -1520,7 +1565,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         path : str, required
             Path to write to.
         mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
-            Specifies the behavior of the save operation when data already.
+            Specifies the behavior of the save operation when the destination exists already.
 
             - 'append': Append the new data to existing data.
             - 'overwrite': Overwrite existing data.
@@ -1536,12 +1581,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         read_parquet
+        DataFrame.to_table
+        DataFrame.to_spark_io
 
         Examples
         --------
-        >>> df.write.parquet('my_data.parquet', partition='date')  # doctest: +SKIP
+        >>> df.to_parquet('my_data.parquet', partition_cols='date')  # doctest: +SKIP
 
-        >>> df.write.parquet('my_data.parquet', partition=['date', 'country'])  # doctest: +SKIP
+        >>> df.to_parquet('my_data.parquet', partition_cols=['date', 'country'])  # doctest: +SKIP
         """
         self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition_cols,
                                 compression=compression)

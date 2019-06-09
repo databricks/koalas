@@ -13,6 +13,13 @@ Data Generator
 
    range
 
+Spark Table
+-----------
+.. autosummary::
+   :toctree: api/
+
+   read_table
+
 Parquet
 -------
 .. autosummary::
