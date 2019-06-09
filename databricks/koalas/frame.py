@@ -1528,11 +1528,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3   0.2   0.1
 
         >>> with df.cache() as cached_df:
-        ...    print(cached_df.count())
+        ...     print(cached_df.count())
         ...
-        __index_level_0__    4
-        dogs                 4
-        cats                 4
+        dogs    4
+        cats    4
         dtype: int64
 
         >>> df = df.cache()
@@ -3670,12 +3669,7 @@ class _CachedDataFrame(DataFrame):
         --------
         >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
         ...                   columns=['dogs', 'cats'])
-        >>> df
-           dogs  cats
-        0   0.2   0.3
-        1   0.0   0.6
-        2   0.6   0.0
-        3   0.2   0.1
+        >>> df = df.cache()
 
         To uncache the dataframe, use `unpersist` function
 
