@@ -2915,21 +2915,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             joins index-on-index. If multiple values given, the other DataFrame must have a
             MultiIndex. Can pass an array as the join key if it is not already contained in the
             calling DataFrame. Like an Excel VLOOKUP operation.
-        how: {‘left’, ‘right’, ‘outer’, ‘inner’}, default ‘inner’
-            How to handle the operation of the two objects.
-            left: left: use calling frame’s index (or column if on is specified)
-            right: right: use other’s index.
-            outer: outer: form union of calling frame’s index (or column if on is specified) with
-                other’s index, and sort it. lexicographically.
-            inner: inner: form intersection of calling frame’s index (or column if on is specified)
-                with other’s index, preserving the order of the calling’s one.
-        lsuffix: str, default ‘‘
-            Suffix to use from left frame’s overlapping columns
-        rsuffix: str, default ‘‘
-            Suffix to use from right frame’s overlapping columns.
-        sort : bool, default False
-            Order result DataFrame lexicographically by the join key. If False, the order of the
-            join key depends on the join type (how keyword).
+        how: How to handle the operation of the two objects.
+            {‘left’, ‘right’, ‘outer’, ‘inner’}, default‘inner’
+            left: use calling frame’s index (or column if on is specified).
+            right: use other’s index.
+            outer: form union of calling frame’s index (or column if on is specified) with
+            other’s index, and sort it. lexicographically.
+            inner: form intersection of calling frame’s index (or column if on is specified)
+            with other’s index, preserving the order of the calling’s one.
 
         Returns
         -------
@@ -2948,11 +2941,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Examples
         --------
         >>> kdf1 = ks.DataFrame({'key': ['K0', 'K1', 'K2', 'K3', 'K4', 'K5'],
-        ...                     'A': ['A0', 'A1', 'A2', 'A3', 'A4', 'A5']},
-        ...                    columns=['key', 'A'])
+        ...                      'A': ['A0', 'A1', 'A2', 'A3', 'A4', 'A5']},
+        ...                     columns=['key', 'A'])
         >>> kdf2 = ks.DataFrame({'key': ['K0', 'K1', 'K2'],
-        ...                       'B': ['B0', 'B1', 'B2']},
-        ...                      columns=['key', 'B'])
+        ...                      'B': ['B0', 'B1', 'B2']},
+        ...                     columns=['key', 'B'])
         >>> kdf1
           key   A
         0  K0  A0
@@ -3043,7 +3036,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 scol = scol.alias(col)
             exprs.append(scol)
 
-        if left._metadata.index_map[0][1] != None:
+        if left._metadata.index_map[0][1] is not None:
             for col in left_keys:
                 exprs.append(joined_table[col])
             kdf = DataFrame(joined_table.select(*exprs)).set_index(left_keys)
