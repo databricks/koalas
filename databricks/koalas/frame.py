@@ -1556,7 +1556,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         path : string, optional
             Path to the data source.
         format : string, optional
-            Name of the data source in Spark.
+            Specifies the output data source format. Some common ones are:
+
+            - 'delta'
+            - 'parquet'
+            - 'orc'
+            - 'json'
+            - 'csv'
         mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
             Specifies the behavior of the save operation when data already.
 
@@ -1572,6 +1578,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         read_spark_io
+        to_parquet
 
         Examples
         --------

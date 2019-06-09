@@ -259,7 +259,13 @@ def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
     path : string, optional
         Path to the data source.
     format : string, optional
-        Name of the data source in Spark.
+        Specifies the output data source format. Some common ones are:
+
+        - 'delta'
+        - 'parquet'
+        - 'orc'
+        - 'json'
+        - 'csv'
     schema : string or StructType, optional
         Input schema. If none, Spark tries to infer the schema automatically.
         The schema can either be a Spark StructType, or a DDL-formatted string like
@@ -270,6 +276,7 @@ def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
     See Also
     --------
     DataFrame.to_spark_io
+    DataFrame.read_parquet
 
     Examples
     --------
