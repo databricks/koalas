@@ -261,7 +261,7 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
 
     Examples
     --------
-    >>> ks.read_delta('/delta/events', timestamp='2019-01-01'T'00:00:00.000Z')  # doctest: +SKIP
+    >>> ks.read_delta('/delta/events', timestamp="2019-01-01'T'00:00:00.000Z")  # doctest: +SKIP
     """
     if version is not None:
         options['versionAsOf'] = version
