@@ -1210,7 +1210,7 @@ class cache:
         elif isinstance(df, spark.DataFrame):
             self.df = df
         else:
-            raise ValueError("Unknown data type: {}".format(type(df)))
+            raise TypeError("'{}' object is not callable".format(type(df)))
 
     def __enter__(self):
         return self.df.cache()

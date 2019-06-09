@@ -56,6 +56,7 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({'A': [0, 2, 4], 'B': [1, 3, 5]})
         kdf = ks.from_pandas(pdf)
         sdf = kdf.to_spark()
+        error_value = "Test"
 
         with ks.cache(kdf) as cached_df:
             assert cached_df.is_cached
@@ -65,3 +66,7 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
         with ks.cache(sdf) as cached_df:
             assert cached_df.is_cached
+
+        self.assertRaisesRegex(TypeError,
+                               "'<class 'str'>' object is not callable",
+                               lambda: ks.cache(error_value))
