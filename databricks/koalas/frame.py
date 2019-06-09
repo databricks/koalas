@@ -2976,9 +2976,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         other. The joined DataFrame will have key as its index.
 
         >>> join_kdf = kdf1.set_index('key').join(kdf2.set_index('key'))
-        >>> join_kdf.sort_values(by=join_kdf.columns)
+        >>> join_kdf.sort_values(by=join_kdf.columns) # doctest: +NORMALIZE_WHITESPACE
               A     B
-        key          
+        key
         K0   A0    B0
         K1   A1    B1
         K2   A2    B2
