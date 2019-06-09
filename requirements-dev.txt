@@ -3,10 +3,12 @@ pandas>=0.23
 pyarrow>=0.10
 matplotlib>=3.0.0
 numpy>=1.14
-mlflow
+
+# TODO: support mlflow 1.0.0
+mlflow==0.9.1
 
 # Documentation build
-sphinx
+sphinx==2.0.1
 nbsphinx
 numpydoc
 

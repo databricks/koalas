@@ -31,6 +31,7 @@ from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import max_display_count
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
 
@@ -61,11 +62,10 @@ class Index(IndexOpsMixin):
     def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None) -> None:
         assert len(kdf._metadata._index_map) == 1
         if scol is None:
-            self._kdf = kdf
-            self._scol = self._columns[0]
+            IndexOpsMixin.__init__(
+                self, kdf._internal.copy(scol=kdf._sdf[kdf._internal.index_columns[0]]), kdf)
         else:
-            self._kdf = kdf.copy()
-            self._scol = scol
+            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=scol), kdf)
 
     def _with_new_scol(self, scol: spark.Column) -> 'Index':
         """
@@ -189,9 +189,9 @@ class MultiIndex(Index):
         assert len(kdf._metadata._index_map) > 1
         self._kdf = kdf
         if scol is None:
-            self._scol = F.struct(self._columns)
+            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=F.struct(self._columns)), kdf)
         else:
-            self._scol = scol
+            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=scol), kdf)
 
     def _with_new_scol(self, scol: spark.Column) -> 'MultiIndex':
         """

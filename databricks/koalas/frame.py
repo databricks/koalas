@@ -24,18 +24,18 @@ from typing import Any, Optional, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like, \
-    is_dict_like
+from pandas.api.types import is_list_like, is_dict_like
+from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column, DataFrame as SDataFrame
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
-                               IntegerType, LongType, NumericType, ShortType, StructField,
-                               StructType, to_arrow_type)
+                               IntegerType, LongType, NumericType, ShortType, StructType)
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.utils import default_session, validate_arguments_and_invoke_function
+from databricks.koalas.utils import validate_arguments_and_invoke_function
 from databricks.koalas.generic import _Frame, max_display_count
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
@@ -48,6 +48,109 @@ from databricks.koalas.typedef import infer_pd_series_spark_type
 REPR_PATTERN = re.compile(r"\n\n\[(?P<rows>[0-9]+) rows x (?P<columns>[0-9]+) columns\]$")
 REPR_HTML_PATTERN = re.compile(
     r"\n\<p\>(?P<rows>[0-9]+) rows × (?P<columns>[0-9]+) columns\<\/p\>\n\<\/div\>$")
+
+
+_flex_doc_FRAME = """
+Get {desc} of dataframe and other, element-wise (binary operator `{op_name}`).
+
+Equivalent to ``{equiv}``. With reverse version, `{reverse}`.
+
+Among flexible wrappers (`add`, `sub`, `mul`, `div`) to
+arithmetic operators: `+`, `-`, `*`, `/`, `//`.
+
+Parameters
+----------
+other : scalar
+    Any single data
+
+Returns
+-------
+DataFrame
+    Result of the arithmetic operation.
+
+Examples
+--------
+>>> df = ks.DataFrame({{'angles': [0, 3, 4],
+...                    'degrees': [360, 180, 360]}},
+...                   index=['circle', 'triangle', 'rectangle'],
+...                   columns=['angles', 'degrees'])
+>>> df
+           angles  degrees
+circle          0      360
+triangle        3      180
+rectangle       4      360
+
+Add a scalar with operator version which return the same
+results.
+
+>>> df + 1
+           angles  degrees
+circle          1      361
+triangle        4      181
+rectangle       5      361
+
+>>> df.add(1)
+           angles  degrees
+circle          1      361
+triangle        4      181
+rectangle       5      361
+
+Divide by constant with reverse version.
+
+>>> df.div(10)
+           angles  degrees
+circle        0.0     36.0
+triangle      0.3     18.0
+rectangle     0.4     36.0
+
+>>> df.rdiv(10)
+             angles   degrees
+circle          NaN  0.027778
+triangle   3.333333  0.055556
+rectangle  2.500000  0.027778
+
+Subtract by constant.
+
+>>> df - 1
+           angles  degrees
+circle         -1      359
+triangle        2      179
+rectangle       3      359
+
+>>> df.sub(1)
+           angles  degrees
+circle         -1      359
+triangle        2      179
+rectangle       3      359
+
+Multiply by constant.
+
+>>> df * 1
+           angles  degrees
+circle          0      360
+triangle        3      180
+rectangle       4      360
+
+>>> df.mul(1)
+           angles  degrees
+circle          0      360
+triangle        3      180
+rectangle       4      360
+
+Divide by constant.
+
+>>> df / 1
+           angles  degrees
+circle        0.0    360.0
+triangle      3.0    180.0
+rectangle     4.0    360.0
+
+>>> df.div(1)
+           angles  degrees
+circle        0.0    360.0
+triangle      3.0    180.0
+rectangle     4.0    360.0
+"""
 
 
 class DataFrame(_Frame):
@@ -127,42 +230,49 @@ class DataFrame(_Frame):
     4  2  5  4  3  9
     """
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
-        if isinstance(data, pd.DataFrame):
+        if isinstance(data, _InternalFrame):
             assert index is None
             assert columns is None
             assert dtype is None
             assert not copy
-            self._init_from_pandas(data)
+            super(DataFrame, self).__init__(data)
         elif isinstance(data, spark.DataFrame):
             assert columns is None
             assert dtype is None
             assert not copy
-            self._init_from_spark(data, index)
+            if index is None:
+                super(DataFrame, self).__init__(_InternalFrame(data))
+            else:
+                super(DataFrame, self).__init__(_InternalFrame(
+                    data, data_columns=index.data_columns, index_map=index.index_map))
         else:
-            pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
-            self._init_from_pandas(pdf)
+            if isinstance(data, pd.DataFrame):
+                assert index is None
+                assert columns is None
+                assert dtype is None
+                assert not copy
+                pdf = data
+            else:
+                pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
+            super(DataFrame, self).__init__(_InternalFrame.from_pandas(pdf))
 
-    def _init_from_pandas(self, pdf):
-        metadata = Metadata.from_pandas(pdf)
-        reset_index = pdf.reset_index()
-        reset_index.columns = metadata.columns
-        schema = StructType([StructField(name, infer_pd_series_spark_type(col),
-                                         nullable=bool(col.isnull().any()))
-                             for name, col in reset_index.iteritems()])
-        for name, col in reset_index.iteritems():
-            dt = col.dtype
-            if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
-                continue
-            reset_index[name] = col.replace({np.nan: None})
-        self._init_from_spark(default_session().createDataFrame(reset_index, schema=schema),
-                              metadata)
+    @property
+    def _sdf(self) -> spark.DataFrame:
+        return self._internal.sdf
 
-    def _init_from_spark(self, sdf, metadata=None):
-        self._sdf = sdf
-        if metadata is None:
-            self._metadata = Metadata(data_columns=self._sdf.schema.fieldNames())
-        else:
-            self._metadata = metadata
+    @_sdf.setter
+    def _sdf(self, sdf: spark.DataFrame) -> None:
+        self._internal = self._internal.copy(sdf=sdf)
+
+    @property
+    def _metadata(self) -> Metadata:
+        return Metadata(data_columns=self._internal.data_columns,
+                        index_map=self._internal.index_map)
+
+    @_metadata.setter
+    def _metadata(self, metadata: Metadata) -> None:
+        self._internal = self._internal.copy(data_columns=metadata.data_columns,
+                                             index_map=metadata.index_map)
 
     def _reduce_for_stat_function(self, sfun):
         """
@@ -198,6 +308,147 @@ class DataFrame(_Frame):
         row = pdf.iloc[0]
         row.name = None
         return row  # Return first row as a Series
+
+    # Arithmetic Operators
+    def _map_series_op(self, op, other):
+        if isinstance(other, DataFrame) or is_sequence(other):
+            raise ValueError(
+                "%s with another DataFrame or a sequence is currently not supported; "
+                "however, got %s." % (op, type(other)))
+
+        applied = []
+        for column in self._metadata.data_columns:
+            applied.append(getattr(self[column], op)(other))
+        sdf = self._sdf.select(
+            self._metadata.index_columns + [c._scol for c in applied])
+        metadata = self._metadata.copy(data_columns=[c.name for c in applied])
+        return DataFrame(sdf, metadata)
+
+    def __add__(self, other):
+        return self._map_series_op("add", other)
+
+    def __radd__(self, other):
+        return self._map_series_op("radd", other)
+
+    def __div__(self, other):
+        return self._map_series_op("div", other)
+
+    def __rdiv__(self, other):
+        return self._map_series_op("rdiv", other)
+
+    def __truediv__(self, other):
+        return self._map_series_op("truediv", other)
+
+    def __rtruediv__(self, other):
+        return self._map_series_op("rtruediv", other)
+
+    def __mul__(self, other):
+        return self._map_series_op("mul", other)
+
+    def __rmul__(self, other):
+        return self._map_series_op("rmul", other)
+
+    def __sub__(self, other):
+        return self._map_series_op("sub", other)
+
+    def __rsub__(self, other):
+        return self._map_series_op("rsub", other)
+
+    def add(self, other):
+        return self + other
+
+    add.__doc__ = _flex_doc_FRAME.format(
+        desc='Addition',
+        op_name='+',
+        equiv='dataframe + other',
+        reverse='radd')
+
+    def radd(self, other):
+        return other + self
+
+    radd.__doc__ = _flex_doc_FRAME.format(
+        desc='Addition',
+        op_name="+",
+        equiv="other + dataframe",
+        reverse='add')
+
+    def div(self, other):
+        return self / other
+
+    div.__doc__ = _flex_doc_FRAME.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="dataframe / other",
+        reverse='rdiv')
+
+    divide = div
+
+    def rdiv(self, other):
+        return other / self
+
+    rdiv.__doc__ = _flex_doc_FRAME.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="other / dataframe",
+        reverse='div')
+
+    def truediv(self, other):
+        return self / other
+
+    truediv.__doc__ = _flex_doc_FRAME.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="dataframe / other",
+        reverse='rtruediv')
+
+    def rtruediv(self, other):
+        return other / self
+
+    rtruediv.__doc__ = _flex_doc_FRAME.format(
+        desc='Floating division',
+        op_name="/",
+        equiv="other / dataframe",
+        reverse='truediv')
+
+    def mul(self, other):
+        return self * other
+
+    mul.__doc__ = _flex_doc_FRAME.format(
+        desc='Multiplication',
+        op_name="*",
+        equiv="dataframe * other",
+        reverse='rmul')
+
+    multiply = mul
+
+    def rmul(self, other):
+        return other * self
+
+    rmul.__doc__ = _flex_doc_FRAME.format(
+        desc='Multiplication',
+        op_name="*",
+        equiv="other * dataframe",
+        reverse='mul')
+
+    def sub(self, other):
+        return self - other
+
+    sub.__doc__ = _flex_doc_FRAME.format(
+        desc='Subtraction',
+        op_name="-",
+        equiv="dataframe - other",
+        reverse='rsub')
+
+    subtract = sub
+
+    def rsub(self, other):
+        return other - self
+
+    rsub.__doc__ = _flex_doc_FRAME.format(
+        desc='Subtraction',
+        op_name="-",
+        equiv="other - dataframe",
+        reverse='sub')
 
     def applymap(self, func):
         """
@@ -372,6 +623,10 @@ class DataFrame(_Frame):
           - Linux : `xclip`, or `xsel` (with `gtk` or `PyQt4` modules)
           - Windows : none
           - OS X : none
+
+        See Also
+        --------
+        read_clipboard : Read text from clipboard.
 
         Examples
         --------
@@ -660,6 +915,7 @@ class DataFrame(_Frame):
               col1  col2
         row1     1  0.50
         row2     2  0.75
+
         >>> df_dict = df.to_dict()
         >>> sorted([(key, sorted(values.items())) for key, values in df_dict.items()])
         [('col1', [('row1', 1), ('row2', 2)]), ('col2', [('row1', 0.5), ('row2', 0.75)])]
@@ -673,6 +929,7 @@ class DataFrame(_Frame):
         Name: col1, dtype: int64), ('col2', row1    0.50
         row2    0.75
         Name: col2, dtype: float64)]
+
         >>> df_dict = df.to_dict('split')
         >>> sorted(df_dict.items())  # doctest: +ELLIPSIS
         [('columns', ['col1', 'col2']), ('data', [[1..., 0.75]]), ('index', ['row1', 'row2'])]
@@ -789,10 +1046,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = pd.DataFrame({'name': ['Raphael', 'Donatello'],
-        ... 'mask': ['red', 'purple'],
-        ... 'weapon': ['sai', 'bo staff']},
-        ... columns=['name', 'mask', 'weapon'])
+        >>> df = ks.DataFrame({'name': ['Raphael', 'Donatello'],
+        ...                    'mask': ['red', 'purple'],
+        ...                    'weapon': ['sai', 'bo staff']},
+        ...                   columns=['name', 'mask', 'weapon'])
         >>> df.to_latex(index=False) # doctest: +NORMALIZE_WHITESPACE
         '\\begin{tabular}{lll}\n\\toprule\n name & mask & weapon
         \\\\\n\\midrule\n Raphael & red & sai \\\\\n Donatello &
@@ -1155,11 +1412,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Don’t include NaN in the count.
         approx: bool, default False
             If False, will use the exact algorithm and return the exact number of unique.
-            If True, it uses Spark's approximate algorithm, which is faster in most circumstances.
-            Note: this parameter is specific to Spark and is not found in pandas.
+            If True, it uses the HyperLogLog approximate algorithm, which is significantly faster
+            for large amount of data.
+            Note: This parameter is specific to Koalas and is not found in pandas.
         rsd: float, default 0.05
-            Maximum estimation error allowed. Just like ``approx`` this parameter is specific to
-            Spark.
+            Maximum estimation error allowed in the HyperLogLog algorithm.
+            Note: Just like ``approx`` this parameter is specific to Koalas.
 
         Returns
         -------
@@ -1167,14 +1425,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> ks.DataFrame({'A': [1, 2, 3], 'B': [np.nan, 3, np.nan]}).nunique()
+        >>> df = ks.DataFrame({'A': [1, 2, 3], 'B': [np.nan, 3, np.nan]})
+        >>> df.nunique()
         A    3
         B    1
         Name: 0, dtype: int64
 
-        >>> ks.DataFrame({'A': [1, 2, 3], 'B': [np.nan, 3, np.nan]}).nunique(dropna=False)
+        >>> df.nunique(dropna=False)
         A    3
         B    2
+        Name: 0, dtype: int64
+
+        On big data, we recommend using the approximate algorithm to speed up this function.
+        The result will be very close to the exact unique count.
+
+        >>> df.nunique(approx=True)
+        A    3
+        B    1
         Name: 0, dtype: int64
         """
         if axis != 0:
@@ -1242,6 +1509,131 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(self)
 
+    def to_table(self, name: str, format: Optional[str] = None, mode: str = 'error',
+                 partition_cols: Union[str, List[str], None] = None,
+                 **options):
+        """
+        Write the DataFrame into a Spark table.
+
+        Parameters
+        ----------
+        name : str, required
+            Table name in Spark.
+        format : string, optional
+            Specifies the output data source format. Some common ones are:
+
+            - 'delta'
+            - 'parquet'
+            - 'orc'
+            - 'json'
+            - 'csv'
+
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when the table exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        options
+            Additional options passed directly to Spark.
+
+        See Also
+        --------
+        read_table
+        DataFrame.to_spark_io
+        DataFrame.to_parquet
+
+        Examples
+        --------
+        >>> df.to_table('my_database.my_table', partition_cols='date')  # doctest: +SKIP
+        """
+        self._sdf.write.saveAsTable(name=name, format=format, mode=mode,
+                                    partitionBy=partition_cols, options=options)
+
+    def to_parquet(self, path: str, mode: str = 'error',
+                   partition_cols: Union[str, List[str], None] = None,
+                   compression: Optional[str] = None):
+        """
+        Write the DataFrame out as a Parquet file or directory.
+
+        Parameters
+        ----------
+        path : str, required
+            Path to write to.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when the destination exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        compression : str {'none', 'uncompressed', 'snappy', 'gzip', 'lzo', 'brotli', 'lz4', 'zstd'}
+            Compression codec to use when saving to file. If None is set, it uses the
+            value specified in `spark.sql.parquet.compression.codec`.
+
+        See Also
+        --------
+        read_parquet
+        DataFrame.to_table
+        DataFrame.to_spark_io
+
+        Examples
+        --------
+        >>> df.to_parquet('my_data.parquet', partition_cols='date')  # doctest: +SKIP
+
+        >>> df.to_parquet('my_data.parquet', partition_cols=['date', 'country'])  # doctest: +SKIP
+        """
+        self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition_cols,
+                                compression=compression)
+
+    def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
+                    mode: str = 'error', partition_cols: Union[str, List[str], None] = None,
+                    **options):
+        """Write the DataFrame out to a Spark data source.
+
+        Parameters
+        ----------
+        path : string, optional
+            Path to the data source.
+        format : string, optional
+            Specifies the output data source format. Some common ones are:
+
+            - 'delta'
+            - 'parquet'
+            - 'orc'
+            - 'json'
+            - 'csv'
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when data already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+        partition_cols : str or list of str, optional
+            Names of partitioning columns
+        options : dict
+            All other options passed directly into Spark's data source.
+
+        See Also
+        --------
+        read_spark_io
+        to_parquet
+
+        Examples
+        --------
+        >>> df.to_spark_io(path='data.json', format='json')  # doctest: +SKIP
+        """
+        self._sdf.write.save(path=path, format=format, mode=mode, partitionBy=partition_cols,
+                             options=options)
+
     def to_spark(self):
         """
         Return the current DataFrame as a Spark DataFrame.
@@ -1250,7 +1642,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         DataFrame.to_koalas
         """
-        return self._sdf
+        return self._internal.spark_df
 
     def to_pandas(self):
         """
@@ -1270,29 +1662,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2   0.6   0.0
         3   0.2   0.1
         """
-        sdf = self._sdf.select(['`{}`'.format(name) for name in self._metadata.columns])
-        pdf = sdf.toPandas()
-        if len(pdf) == 0 and len(sdf.schema) > 0:
-            # TODO: push to OSS
-            pdf = pdf.astype({field.name: to_arrow_type(field.dataType).to_pandas_dtype()
-                              for field in sdf.schema})
-
-        index_columns = self._metadata.index_columns
-        if len(index_columns) > 0:
-            append = False
-            for index_field in index_columns:
-                drop = index_field not in self._metadata.data_columns
-                pdf = pdf.set_index(index_field, drop=drop, append=append)
-                append = True
-            pdf = pdf[self._metadata.data_columns]
-
-        index_names = self._metadata.index_names
-        if len(index_names) > 0:
-            if isinstance(pdf.index, pd.MultiIndex):
-                pdf.index.names = index_names
-            else:
-                pdf.index.name = index_names[0]
-        return pdf
+        return self._internal.pandas_df.copy()
 
     # Alias to maintain backward compatibility with Spark
     toPandas = to_pandas
@@ -1378,6 +1748,63 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             data_columns=(data_columns +
                           [name for name, _ in pairs if name not in data_columns]))
         return DataFrame(sdf, metadata)
+
+    @staticmethod
+    def from_records(data: Union[np.array, List[tuple], dict, pd.DataFrame],
+                     index: Union[str, list, np.array] = None, exclude: list = None,
+                     columns: list = None, coerce_float: bool = False, nrows: int = None) \
+            -> 'DataFrame':
+        """
+        Convert structured or record ndarray to DataFrame.
+
+        Parameters
+        ----------
+        data : ndarray (structured dtype), list of tuples, dict, or DataFrame
+        index : string, list of fields, array-like
+            Field of array to use as the index, alternately a specific set of input labels to use
+        exclude : sequence, default None
+            Columns or fields to exclude
+        columns : sequence, default None
+            Column names to use. If the passed data do not have names associated with them, this
+            argument provides names for the columns. Otherwise this argument indicates the order of
+            the columns in the result (any names not found in the data will become all-NA columns)
+        coerce_float : boolean, default False
+            Attempt to convert values of non-string, non-numeric objects (like decimal.Decimal) to
+            floating point, useful for SQL result sets
+        nrows : int, default None
+            Number of rows to read if data is an iterator
+
+        Returns
+        -------
+        df : DataFrame
+
+        Examples
+        --------
+        Use dict as input
+
+        >>> ks.DataFrame.from_records({'A': [1, 2, 3]})
+           A
+        0  1
+        1  2
+        2  3
+
+        Use list of tuples as input
+
+        >>> ks.DataFrame.from_records([(1, 2), (3, 4)])
+           0  1
+        0  1  2
+        1  3  4
+
+        Use NumPy array as input
+
+        >>> ks.DataFrame.from_records(np.eye(3))
+             0    1    2
+        0  1.0  0.0  0.0
+        1  0.0  1.0  0.0
+        2  0.0  0.0  1.0
+        """
+        return DataFrame(pd.DataFrame.from_records(data, index, exclude, columns, coerce_float,
+                                                   nrows))
 
     def to_records(self, index=True, convert_datetime64=None,
                    column_dtypes=None, index_dtypes=None):
@@ -2595,6 +3022,69 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(joined_table.select(*exprs))
 
+    def append(self, other: 'DataFrame', ignore_index: bool = False,
+               verify_integrity: bool = False, sort: bool = False) -> 'DataFrame':
+        """
+        Append rows of other to the end of caller, returning a new object.
+
+        Columns in other that are not in the caller are added as new columns.
+
+        Parameters
+        ----------
+        other : DataFrame or Series/dict-like object, or list of these
+            The data to append.
+
+        ignore_index : boolean, default False
+            If True, do not use the index labels.
+
+        verify_integrity : boolean, default False
+            If True, raise ValueError on creating index with duplicates.
+
+        sort : boolean, default False
+            Currently not supported.
+
+        Returns
+        -------
+        appended : DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[1, 2], [3, 4]], columns=list('AB'))
+
+        >>> df.append(df)
+           A  B
+        0  1  2
+        1  3  4
+        0  1  2
+        1  3  4
+
+        >>> df.append(df, ignore_index=True)
+           A  B
+        0  1  2
+        1  3  4
+        2  1  2
+        3  3  4
+        """
+        if isinstance(other, ks.Series):
+            raise ValueError("DataFrames.append() does not support appending Series to DataFrames")
+        if sort:
+            raise ValueError("The 'sort' parameter is currently not supported")
+
+        if not ignore_index:
+            index_columns = self._metadata.index_columns
+            if len(index_columns) != len(other._metadata.index_columns):
+                raise ValueError("Both DataFrames have to have the same number of index levels")
+
+            if verify_integrity and len(index_columns) > 0:
+                if (self._sdf.select(index_columns)
+                        .intersect(other._sdf.select(other._metadata.index_columns))
+                        .count()) > 0:
+                    raise ValueError("Indices have overlapping values")
+
+        # Lazy import to avoid circular dependency issues
+        from databricks.koalas.namespace import concat
+        return concat([self, other], ignore_index=ignore_index)
+
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
                random_state: Optional[int] = None) -> 'DataFrame':
         """
@@ -2746,6 +3236,104 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf.select(
             self._metadata.index_columns + list(map(lambda ser: ser._scol, results)))
         return DataFrame(sdf, self._metadata.copy())
+
+    def add_prefix(self, prefix):
+        """
+        Prefix labels with string `prefix`.
+
+        For Series, the row labels are prefixed.
+        For DataFrame, the column labels are prefixed.
+
+        Parameters
+        ----------
+        prefix : str
+           The string to add before each label.
+
+        Returns
+        -------
+        DataFrame
+           New DataFrame with updated labels.
+
+        See Also
+        --------
+        Series.add_prefix: Prefix row labels with string `prefix`.
+        Series.add_suffix: Suffix row labels with string `suffix`.
+        DataFrame.add_suffix: Suffix column labels with string `suffix`.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]}, columns=['A', 'B'])
+        >>> df
+           A  B
+        0  1  3
+        1  2  4
+        2  3  5
+        3  4  6
+
+        >>> df.add_prefix('col_')
+           col_A  col_B
+        0      1      3
+        1      2      4
+        2      3      5
+        3      4      6
+        """
+        assert isinstance(prefix, str)
+        data_columns = self._metadata.data_columns
+        metadata = self._metadata.copy(data_columns=[prefix + name for name in data_columns])
+
+        sdf = self._sdf.select(self._metadata.index_columns +
+                               [self[name]._scol.alias(prefix + name)
+                                for name in self._metadata.data_columns])
+        return DataFrame(sdf, metadata)
+
+    def add_suffix(self, suffix):
+        """
+        Suffix labels with string `suffix`.
+
+        For Series, the row labels are suffixed.
+        For DataFrame, the column labels are suffixed.
+
+        Parameters
+        ----------
+        suffix : str
+           The string to add before each label.
+
+        Returns
+        -------
+        DataFrame
+           New DataFrame with updated labels.
+
+        See Also
+        --------
+        Series.add_prefix: Prefix row labels with string `prefix`.
+        Series.add_suffix: Suffix row labels with string `suffix`.
+        DataFrame.add_prefix: Prefix column labels with string `prefix`.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]}, columns=['A', 'B'])
+        >>> df
+           A  B
+        0  1  3
+        1  2  4
+        2  3  5
+        3  4  6
+
+        >>> df.add_suffix('_col')
+           A_col  B_col
+        0      1      3
+        1      2      4
+        2      3      5
+        3      4      6
+        """
+        assert isinstance(suffix, str)
+        data_columns = self._metadata.data_columns
+        metadata = self._metadata.copy(data_columns=[name + suffix for name in data_columns])
+
+        sdf = self._sdf.select(self._metadata.index_columns +
+                               [self[name]._scol.alias(name + suffix)
+                                for name in self._metadata.data_columns])
+        return DataFrame(sdf, metadata)
 
     # TODO: include, and exclude should be implemented.
     def describe(self, percentiles: Optional[List[float]] = None) -> 'DataFrame':

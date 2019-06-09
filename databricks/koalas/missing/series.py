@@ -58,12 +58,9 @@ class _MissingPandasLikeSeries(object):
     blocks = unsupported_property('blocks', deprecated=True)
 
     # Functions
-    add_prefix = unsupported_function('add_prefix')
-    add_suffix = unsupported_function('add_suffix')
     agg = unsupported_function('agg')
     aggregate = unsupported_function('aggregate')
     align = unsupported_function('align')
-    append = unsupported_function('append')
     argmax = unsupported_function('argmax')
     argmin = unsupported_function('argmin')
     argsort = unsupported_function('argsort')
@@ -169,7 +166,6 @@ class _MissingPandasLikeSeries(object):
     to_sql = unsupported_function('to_sql')
     to_timestamp = unsupported_function('to_timestamp')
     to_xarray = unsupported_function('to_xarray')
-    transform = unsupported_function('transform')
     transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     tshift = unsupported_function('tshift')
