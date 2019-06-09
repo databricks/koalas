@@ -61,29 +61,6 @@ def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'Da
         raise ValueError("Unknown data type: {}".format(type(pobj)))
 
 
-def sql(query: str) -> DataFrame:
-    """
-    Execute a SQL query and return the result as a Koalas DataFrame.
-
-    Parameters
-    ----------
-    query : str
-        the SQL query
-
-    Returns
-    -------
-    DataFrame
-
-    Examples
-    --------
-    >>> ks.sql("select * from range(10) where id > 7")
-       id
-    0   8
-    1   9
-    """
-    return DataFrame(default_session().sql(query))
-
-
 def range(start: int,
           end: Optional[int] = None,
           step: int = 1,
@@ -274,6 +251,42 @@ def read_table(name: str) -> DataFrame:
     >>> ks.read_table('my_database.my_table')  # doctest: +SKIP
     """
     sdf = default_session().read.table(name)
+    return DataFrame(sdf)
+
+
+def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
+                  schema: Union[str, 'StructType'] = None, **options) -> DataFrame:
+    """Load a DataFrame from a Spark data source.
+
+    Parameters
+    ----------
+    path : string, optional
+        Path to the data source.
+    format : string, optional
+        Specifies the output data source format. Some common ones are:
+
+        - 'delta'
+        - 'parquet'
+        - 'orc'
+        - 'json'
+        - 'csv'
+    schema : string or StructType, optional
+        Input schema. If none, Spark tries to infer the schema automatically.
+        The schema can either be a Spark StructType, or a DDL-formatted string like
+        `col0 INT, col1 DOUBLE`.
+    options : dict
+        All other options passed directly into Spark's data source.
+
+    See Also
+    --------
+    DataFrame.to_spark_io
+    DataFrame.read_parquet
+
+    Examples
+    --------
+    >>> ks.read_spark_io('data.parquet', format='parquet', schema='name string')  # doctest: +SKIP
+    """
+    sdf = default_session().read.load(path=path, format=format, schema=schema, options=options)
     return DataFrame(sdf)
 
 

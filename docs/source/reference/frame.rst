@@ -150,6 +150,7 @@ Serialization / IO / Conversion
    DataFrame.from_records
    DataFrame.to_table
    DataFrame.to_parquet
+   DataFrame.to_spark_io
    DataFrame.to_csv
    DataFrame.to_pandas
    DataFrame.to_html

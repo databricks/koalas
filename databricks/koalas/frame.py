@@ -1555,7 +1555,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                     partitionBy=partition_cols, options=options)
 
     def to_parquet(self, path: str, mode: str = 'error',
-                   partition_cols: Union[str, List[str], None] = None, compression=None):
+                   partition_cols: Union[str, List[str], None] = None,
+                   compression: Optional[str] = None):
         """
         Write the DataFrame out as a Parquet file or directory.
 
@@ -1589,6 +1590,47 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition_cols,
                                 compression=compression)
+
+    def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
+                    mode: str = 'error', partition_cols: Union[str, List[str], None] = None,
+                    **options):
+        """Write the DataFrame out to a Spark data source.
+
+        Parameters
+        ----------
+        path : string, optional
+            Path to the data source.
+        format : string, optional
+            Specifies the output data source format. Some common ones are:
+
+            - 'delta'
+            - 'parquet'
+            - 'orc'
+            - 'json'
+            - 'csv'
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when data already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+        partition_cols : str or list of str, optional
+            Names of partitioning columns
+        options : dict
+            All other options passed directly into Spark's data source.
+
+        See Also
+        --------
+        read_spark_io
+        to_parquet
+
+        Examples
+        --------
+        >>> df.to_spark_io(path='data.json', format='json')  # doctest: +SKIP
+        """
+        self._sdf.write.save(path=path, format=format, mode=mode, partitionBy=partition_cols,
+                             options=options)
 
     def to_spark(self):
         """
