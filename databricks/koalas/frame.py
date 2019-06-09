@@ -624,6 +624,10 @@ class DataFrame(_Frame):
           - Windows : none
           - OS X : none
 
+        See Also
+        --------
+        read_clipboard : Read text from clipboard.
+
         Examples
         --------
         Copy the contents of a DataFrame to the clipboard.
@@ -1536,6 +1540,42 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return _CachedDataFrame(self._sdf)
 
+    def to_parquet(self, path: str, mode: str = 'error',
+                   partition_cols: Union[str, List[str], None] = None, compression=None):
+        """
+        Write the DataFrame out as a Parquet file or directory.
+
+        Parameters
+        ----------
+        path : str, required
+            Path to write to.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when data already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        compression : str {'none', 'uncompressed', 'snappy', 'gzip', 'lzo', 'brotli', 'lz4', 'zstd'}
+            Compression codec to use when saving to file. If None is set, it uses the
+            value specified in `spark.sql.parquet.compression.codec`.
+
+        See Also
+        --------
+        read_parquet
+
+        Examples
+        --------
+        >>> df.write.parquet('my_data.parquet', partition='date')  # doctest: +SKIP
+
+        >>> df.write.parquet('my_data.parquet', partition=['date', 'country'])  # doctest: +SKIP
+        """
+        self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition_cols,
+                                compression=compression)
+
     def to_spark(self):
         """
         Return the current DataFrame as a Spark DataFrame.
@@ -1650,6 +1690,63 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             data_columns=(data_columns +
                           [name for name, _ in pairs if name not in data_columns]))
         return DataFrame(sdf, metadata)
+
+    @staticmethod
+    def from_records(data: Union[np.array, List[tuple], dict, pd.DataFrame],
+                     index: Union[str, list, np.array] = None, exclude: list = None,
+                     columns: list = None, coerce_float: bool = False, nrows: int = None) \
+            -> 'DataFrame':
+        """
+        Convert structured or record ndarray to DataFrame.
+
+        Parameters
+        ----------
+        data : ndarray (structured dtype), list of tuples, dict, or DataFrame
+        index : string, list of fields, array-like
+            Field of array to use as the index, alternately a specific set of input labels to use
+        exclude : sequence, default None
+            Columns or fields to exclude
+        columns : sequence, default None
+            Column names to use. If the passed data do not have names associated with them, this
+            argument provides names for the columns. Otherwise this argument indicates the order of
+            the columns in the result (any names not found in the data will become all-NA columns)
+        coerce_float : boolean, default False
+            Attempt to convert values of non-string, non-numeric objects (like decimal.Decimal) to
+            floating point, useful for SQL result sets
+        nrows : int, default None
+            Number of rows to read if data is an iterator
+
+        Returns
+        -------
+        df : DataFrame
+
+        Examples
+        --------
+        Use dict as input
+
+        >>> ks.DataFrame.from_records({'A': [1, 2, 3]})
+           A
+        0  1
+        1  2
+        2  3
+
+        Use list of tuples as input
+
+        >>> ks.DataFrame.from_records([(1, 2), (3, 4)])
+           0  1
+        0  1  2
+        1  3  4
+
+        Use NumPy array as input
+
+        >>> ks.DataFrame.from_records(np.eye(3))
+             0    1    2
+        0  1.0  0.0  0.0
+        1  0.0  1.0  0.0
+        2  0.0  0.0  1.0
+        """
+        return DataFrame(pd.DataFrame.from_records(data, index, exclude, columns, coerce_float,
+                                                   nrows))
 
     def to_records(self, index=True, convert_datetime64=None,
                    column_dtypes=None, index_dtypes=None):
@@ -2915,15 +3012,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if sort:
             raise ValueError("The 'sort' parameter is currently not supported")
 
-        index_columns = self._metadata.index_columns
-        if len(index_columns) != len(other._metadata.index_columns):
-            raise ValueError("Both DataFrames have to have the same number of index levels")
+        if not ignore_index:
+            index_columns = self._metadata.index_columns
+            if len(index_columns) != len(other._metadata.index_columns):
+                raise ValueError("Both DataFrames have to have the same number of index levels")
 
-        if verify_integrity:
-            if (self._sdf.select(index_columns[0])
-                    .intersect(other._sdf.select(index_columns[0]))
-                    .count()) > 0:
-                raise ValueError("Indices have overlapping values")
+            if verify_integrity and len(index_columns) > 0:
+                if (self._sdf.select(index_columns)
+                        .intersect(other._sdf.select(other._metadata.index_columns))
+                        .count()) > 0:
+                    raise ValueError("Indices have overlapping values")
 
         # Lazy import to avoid circular dependency issues
         from databricks.koalas.namespace import concat

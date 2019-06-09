@@ -237,6 +237,10 @@ class _Frame(object):
             If path_or_buf is None, returns the resulting csv format as a
             string. Otherwise returns None.
 
+        See Also
+        --------
+        read_csv : Reading CSV files.
+
         Examples
         --------
         >>> df = ks.DataFrame({'name': ['Raphael', 'Donatello'],
@@ -485,6 +489,10 @@ class _Frame(object):
         -----
         Once a workbook has been saved it is not possible write further data
         without rewriting the whole workbook.
+
+        See Also
+        --------
+        read_excel : Read Excel file.
 
         Examples
         --------

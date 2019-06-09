@@ -19,12 +19,13 @@ import string
 import numpy as np
 import pandas as pd
 
-from databricks import koalas
+from databricks import koalas as ks
 from distutils.version import LooseVersion
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils, TestUtils
 
 
 class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
+    """Test cases for "small data" conversion and I/O."""
 
     @property
     def pdf(self):
@@ -35,7 +36,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
 
     @property
     def kdf(self):
-        return koalas.from_pandas(self.pdf)
+        return ks.from_pandas(self.pdf)
 
     @staticmethod
     def strip_all_whitespace(str):
@@ -53,7 +54,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
             'b': ["one", "two", None],
         }, index=[0, 1, 3])
 
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.to_csv(na_rep='null'), pdf.to_csv(na_rep='null'))
 
@@ -62,7 +63,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
             'b': [4.0, 5.0, 6.0],
         }, index=[0, 1, 3])
 
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.to_csv(float_format='%.1f'), pdf.to_csv(float_format='%.1f'))
         self.assert_eq(kdf.to_csv(header=False), pdf.to_csv(header=False))
@@ -128,7 +129,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
                 'b': ["one", "two", None],
             }, index=[0, 1, 3])
 
-            kdf = koalas.from_pandas(pdf)
+            kdf = ks.from_pandas(pdf)
 
             kdf.to_excel(koalas_location, na_rep='null')
             pdf.to_excel(pandas_location, na_rep='null')
@@ -140,7 +141,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
                 'b': [4.0, 5.0, 6.0],
             }, index=[0, 1, 3])
 
-            kdf = koalas.from_pandas(pdf)
+            kdf = ks.from_pandas(pdf)
 
             kdf.to_excel(koalas_location, float_format='%.1f')
             pdf.to_excel(pandas_location, float_format='%.1f')
@@ -159,7 +160,7 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
 
     def test_to_json(self):
         pdf = self.pdf
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.to_json(), pdf.to_json())
         self.assert_eq(kdf.to_json(orient='split'), pdf.to_json(orient='split'))
@@ -205,10 +206,33 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
                 'B': [0.5, 0.75]
             }, index=['a', 'b'])
 
-            kdf = koalas.from_pandas(pdf)
+            kdf = ks.from_pandas(pdf)
 
             self.assert_array_eq(kdf.to_records(), pdf.to_records())
             self.assert_array_eq(kdf.to_records(index=False),
                                  pdf.to_records(index=False))
             self.assert_array_eq(kdf.to_records(index_dtypes="<S2"),
                                  pdf.to_records(index_dtypes="<S2"))
+
+    def test_from_records(self):
+        # Assert using a dict as input
+        self.assert_eq(ks.DataFrame.from_records({'A': [1, 2, 3]}),
+                       pd.DataFrame.from_records({'A': [1, 2, 3]}))
+        # Assert using a list of tuples as input
+        self.assert_eq(repr(ks.DataFrame.from_records([(1, 2), (3, 4)])),
+                       repr(pd.DataFrame.from_records([(1, 2), (3, 4)])))
+        # Assert using a NumPy array as input
+        self.assert_eq(repr(ks.DataFrame.from_records(np.eye(3))),
+                       repr(pd.DataFrame.from_records(np.eye(3))))
+        # Asserting using a custom index
+        self.assert_eq(repr(ks.DataFrame.from_records([(1, 2), (3, 4)], index=[2, 3])),
+                       repr(pd.DataFrame.from_records([(1, 2), (3, 4)], index=[2, 3])))
+        # Assert excluding excluding column(s)
+        self.assert_eq(ks.DataFrame.from_records({'A': [1, 2, 3], 'B': [1, 2, 3]}, exclude=['B']),
+                       pd.DataFrame.from_records({'A': [1, 2, 3], 'B': [1, 2, 3]}, exclude=['B']))
+        # Assert limiting to certain column(s)
+        self.assert_eq(ks.DataFrame.from_records({'A': [1, 2, 3], 'B': [1, 2, 3]}, columns=['A']),
+                       pd.DataFrame.from_records({'A': [1, 2, 3], 'B': [1, 2, 3]}, columns=['A']))
+        # Assert limiting to a number of rows
+        self.assert_eq(repr(ks.DataFrame.from_records([(1, 2), (3, 4)], nrows=1)),
+                       repr(pd.DataFrame.from_records([(1, 2), (3, 4)], nrows=1)))

@@ -19,27 +19,37 @@ from distutils.version import LooseVersion
 import numpy as np
 import pandas as pd
 
-from databricks import koalas
+from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
-class ParquetTest(ReusedSQLTestCase, TestUtils):
+class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
+    """Test cases for big data I/O using Spark."""
 
-    def test_local(self):
+    @property
+    def test_column_order(self):
+        return ['i32', 'i64', 'f', 'bhello']
+
+    @property
+    def test_pdf(self):
+        pdf = pd.DataFrame({
+            'i32': np.arange(20, dtype=np.int32) % 3,
+            'i64': np.arange(20, dtype=np.int64) % 5,
+            'f': np.arange(20, dtype=np.float64),
+            'bhello': np.random.choice(['hello', 'yo', 'people'], size=20).astype("O")},
+            columns=self.test_column_order)
+        return pdf
+
+    def test_parquet_read(self):
         with self.temp_dir() as tmp:
-            data = pd.DataFrame({
-                'i32': np.arange(1000, dtype=np.int32),
-                'i64': np.arange(1000, dtype=np.int64),
-                'f': np.arange(1000, dtype=np.float64),
-                'bhello': np.random.choice(['hello', 'yo', 'people'], size=1000).astype("O")})
-            data = data[['i32', 'i64', 'f', 'bhello']]
+            data = self.test_pdf
             self.spark.createDataFrame(data, 'i32 int, i64 long, f double, bhello string') \
                 .coalesce(1).write.parquet(tmp, mode='overwrite')
 
             def check(columns, expected):
                 if LooseVersion("0.21.1") <= LooseVersion(pd.__version__):
                     expected = pd.read_parquet(tmp, columns=columns)
-                actual = koalas.read_parquet(tmp, columns=columns)
+                actual = ks.read_parquet(tmp, columns=columns)
                 self.assertPandasEqual(expected, actual.toPandas())
 
             check(None, data)
@@ -57,5 +67,24 @@ class ParquetTest(ReusedSQLTestCase, TestUtils):
                 expected = pd.read_parquet(tmp)
             else:
                 expected = data
-            actual = koalas.read_parquet(tmp)
+            actual = ks.read_parquet(tmp)
             self.assertPandasEqual(expected, actual.toPandas())
+
+    def test_parquet_write(self):
+        with self.temp_dir() as tmp:
+            pdf = self.test_pdf
+            expected = ks.DataFrame(pdf)
+
+            # Write out partitioned by one column
+            expected.to_parquet(tmp, mode='overwrite', partition_cols='i32')
+            # reset column order, as once the data is written out, Spark rearranges partition
+            # columns to appear first
+            actual = ks.read_parquet(tmp)[self.test_column_order]
+            self.assert_eq(actual.sort_values(by='f'), expected.sort_values(by='f'))
+
+            # Write out partitioned by two columns
+            expected.to_parquet(tmp, mode='overwrite', partition_cols=['i32', 'bhello'])
+            # reset column order, as once the data is written out, Spark rearranges partition
+            # columns to appear first
+            actual = ks.read_parquet(tmp)[self.test_column_order]
+            self.assert_eq(actual.sort_values(by='f'), expected.sort_values(by='f'))

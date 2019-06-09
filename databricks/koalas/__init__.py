@@ -56,8 +56,8 @@ def _auto_patch():
         logger.info("Patching spark automatically. You can disable it by setting "
                     "SPARK_KOALAS_AUTOPATCH=false in your environment")
 
-    from pyspark.sql import dataframe as df
-    df.DataFrame.to_koalas = DataFrame.to_koalas
+        from pyspark.sql import dataframe as df
+        df.DataFrame.to_koalas = DataFrame.to_koalas
 
 
 _auto_patch()

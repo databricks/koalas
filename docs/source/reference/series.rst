@@ -127,7 +127,7 @@ Missing data handling
    Series.fillna
 
 Reshaping, sorting, transposing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 .. autosummary::
    :toctree: api/
 
@@ -135,7 +135,7 @@ Reshaping, sorting, transposing
    Series.sort_values
 
 Combining / joining / merging
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------
 .. autosummary::
    :toctree: api/
 
@@ -148,23 +148,24 @@ Koalas provides dtype-specific methods under various accessors.
 These are separate namespaces within :class:`Series` that only apply
 to specific data types.
 
-========= =========================
-Data Type                  Accessor
-========= =========================
+========= ===========================
+Data Type                    Accessor
+========= ===========================
 Datetime  :ref:`dt <api.series.dt>`
-========= =========================
+String    :ref:`str <api.series.str>`
+========= ===========================
 
 .. _api.series.dt:
 
-Datetimelike Properties
-~~~~~~~~~~~~~~~~~~~~~~~
+Date Time Handling
+------------------
 
 ``Series.dt`` can be used to access the values of the series as
 datetimelike and return several properties.
 These can be accessed like ``Series.dt.<property>``.
 
 Datetime Properties
-^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~
 
 .. currentmodule:: databricks.koalas.series
 .. autosummary::
@@ -186,13 +187,46 @@ Datetime Properties
    Series.dt.microsecond
 
 Datetime Methods
-^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~
 
 .. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
    Series.dt.strftime
+
+.. _api.series.str:
+
+String Handling
+---------------
+
+``Series.str`` can be used to access the values of the series as
+strings and apply several methods to it. These can be accessed
+like ``Series.str.<function/property>``.
+
+.. currentmodule:: databricks.koalas.series
+.. autosummary::
+   :toctree: api/
+
+   Series.str.capitalize
+   Series.str.endswith
+   Series.str.get
+   Series.str.isalnum
+   Series.str.isalpha
+   Series.str.isdigit
+   Series.str.isspace
+   Series.str.islower
+   Series.str.isupper
+   Series.str.istitle
+   Series.str.isnumeric
+   Series.str.isdecimal
+   Series.str.lower
+   Series.str.lstrip
+   Series.str.rstrip
+   Series.str.startswith
+   Series.str.strip
+   Series.str.swapcase
+   Series.str.upper
 
 Serialization / IO / Conversion
 -------------------------------
