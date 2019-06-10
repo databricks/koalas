@@ -9,7 +9,7 @@ mlflow==0.9.1
 # Documentation build
 sphinx==2.0.1
 nbsphinx
-numpydoc<=0.8
+numpydoc==0.8
 
 # Linter
 mypy
