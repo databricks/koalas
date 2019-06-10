@@ -33,17 +33,21 @@ fi
 FWDIR="$( cd "$DIR"/.. && pwd )"
 cd "$FWDIR"
 
+if [ -n "$KOALAS_USAGE_LOGGER" ]; then
+    logopts=(-o log_cli=true -s)
+fi
+
 # Runs both doctests and unit tests by default, otherwise hands arguments over to pytest.
 if [ "$#" = 0 ]; then
     if [[ "$SPARK_VERSION" == 2.3* ]] || [[ "$SPARK_VERSION" == 2.4.1* ]] || [[ "$SPARK_VERSION" == 2.4.2* ]]; then
         # Delta requires Spark 2.4.2+. We skip the related doctests.
         if [[ "$SPARK_VERSION" == 2.3* ]]; then
-            pytest --cov=databricks -k " -melt -to_delta -read_delta" --verbose --showlocals --doctest-modules databricks
+            pytest --cov=databricks -k " -melt -to_delta -read_delta" --verbose --showlocals --doctest-modules databricks "${logopts[@]}"
         else
-            pytest --cov=databricks -k "-to_delta -read_delta" --verbose --showlocals --doctest-modules databricks
+            pytest --cov=databricks -k "-to_delta -read_delta" --verbose --showlocals --doctest-modules databricks "${logopts[@]}"
         fi
     else
-        pytest --cov=databricks --verbose --showlocals --doctest-modules databricks
+        pytest --cov=databricks --verbose --showlocals --doctest-modules databricks "${logopts[@]}"
     fi
 else
     pytest "$@"
