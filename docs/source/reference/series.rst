@@ -153,6 +153,7 @@ Data Type                    Accessor
 ========= ===========================
 Datetime  :ref:`dt <api.series.dt>`
 String    :ref:`str <api.series.str>`
+Plot      :ref:`str <api.series.plot>`
 ========= ===========================
 
 .. _api.series.dt:
@@ -227,6 +228,27 @@ like ``Series.str.<function/property>``.
    Series.str.strip
    Series.str.swapcase
    Series.str.upper
+
+.. _api.series.plot:
+
+Plotting
+-------------------------------
+``Series.plot`` is both a callable method and a namespace attribute for
+specific plotting methods of the form ``Series.plot.<kind>``.
+
+.. currentmodule:: databricks.koalas.series
+.. autosummary::
+   :toctree: api/
+
+   Series.plot.bar
+   Series.plot.box
+   Series.plot.hist
+
+.. currentmodule:: databricks.koalas
+.. autosummary::
+   :toctree: api/
+
+   Series.hist
 
 Serialization / IO / Conversion
 -------------------------------
