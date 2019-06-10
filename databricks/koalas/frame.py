@@ -3657,8 +3657,7 @@ class _CachedDataFrame(DataFrame):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        if self._sdf.is_cached:
-            self.unpersist()
+        self.unpersist()
 
     def unpersist(self):
         """
