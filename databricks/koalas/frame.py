@@ -2933,9 +2933,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 ).withColumnRenamed(
                     'left_table.%s' % left_index_col, left_index_col
                 ).drop(F.col('left_table.%s' % left_index_col))
-        selected_columns = selected_columns.drop(*[F.col('right_table.%s' % right_index_col)
-                                                   for right_index_col in right_index_columns
-                                                   if right_index_col in left_index_columns])
+        if not(left_index and not right_index):
+            selected_columns = selected_columns.drop(*[F.col('right_table.%s' % right_index_col)
+                                                       for right_index_col in right_index_columns
+                                                       if right_index_col in left_index_columns])
 
         if index_map:
             data_columns = [c for c in selected_columns.columns
