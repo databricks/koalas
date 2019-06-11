@@ -1619,7 +1619,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.to_delta('%s/to_delta/bar' % path,
         ...             mode='overwrite', replaceWhere='date >= "2019-01-01"')
         """
-        self.to_spark_io(path=path, mode=mode, partition_cols=partition_cols, options=options)
+        self.to_spark_io(
+            path=path, mode=mode, format="delta", partition_cols=partition_cols, options=options)
 
     def to_parquet(self, path: str, mode: str = 'error',
                    partition_cols: Union[str, List[str], None] = None,
