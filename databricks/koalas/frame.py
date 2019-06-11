@@ -2916,7 +2916,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             exprs.extend(['left_table.%s' % col for col in left_index_columns])
             index_map = left._metadata.index_map
         else:
-            index_map = None
+            index_map = []
 
         selected_columns = joined_table.select(*exprs)
 
