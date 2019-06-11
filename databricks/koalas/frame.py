@@ -2705,6 +2705,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Merge DataFrame objects with a database-style join.
 
+        The index of the resulting DataFrame will be one of the following:
+            - 0...n if no index is used for merging
+            - Index of the left DataFrame if merged only on the index of the right DataFrame
+            - Index of the right DataFrame if merged only on the index of the left DataFrame
+            - All involved indices if merged using the indices of both DataFrames
+                e.g. if `left` with indices (a, x) and `right` with indices (b, x), the result will
+                be an index (x, a, b)
+
         Parameters
         ----------
         right: Object to merge with.
@@ -2780,7 +2788,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> left_kdf.merge(right_kdf, left_index=True, right_index=True)
            A  B
-        0  2  x
+        1  2  x
 
         >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left')
            A     B
@@ -2789,8 +2797,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right')
              A  B
-        0  2.0  x
-        1  NaN  y
+        1  2.0  x
+        2  NaN  y
 
         >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer')
              A     B
@@ -2894,20 +2902,47 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     scol = scol.alias(col)
             exprs.append(scol)
 
-        # Get all data columns while maintaining their order
-        data_columns = left._metadata.data_columns + [col for col in right._metadata.data_columns
-                                                      if col not in left._metadata.data_columns]
-        # Retain indices if they are use for joining
+        # Retain indices if they are used for joining
         if left_index:
+            if right_index:
+                exprs.extend(['left_table.%s' % col for col in left_index_columns])
+                exprs.extend(['right_table.%s' % col for col in right_index_columns])
+                index_map = left._metadata.index_map + [idx for idx in right._metadata.index_map
+                                                        if idx not in left._metadata.index_map]
+            else:
+                exprs.extend(['right_table.%s' % col for col in right_index_columns])
+                index_map = right._metadata.index_map
+        elif right_index:
             exprs.extend(['left_table.%s' % col for col in left_index_columns])
             index_map = left._metadata.index_map
-        elif right_index:
-            exprs.extend(['right_table.%s' % col for col in right_index_columns])
-            index_map = right._metadata.index_map
         else:
             index_map = None
 
-        return DataFrame(joined_table.select(*exprs), index=Metadata(data_columns, index_map))
+        selected_columns = joined_table.select(*exprs)
+
+        # Merge left and right indices after the join by replacing missing values in the left index
+        # with values from the right index and dropping
+        if (how == 'right' or how == 'full') and right_index:
+            for left_index_col, right_index_col in zip(left._metadata.index_columns,
+                                                       right._metadata.index_columns):
+                selected_columns = selected_columns.withColumn(
+                    'left_table.' + left_index_col,
+                    F.when(F.col('left_table.%s' % left_index_col).isNotNull(),
+                           F.col('left_table.%s' % left_index_col))
+                    .otherwise(F.col('right_table.%s' % right_index_col))
+                ).withColumnRenamed(
+                    'left_table.%s' % left_index_col, left_index_col
+                ).drop(F.col('left_table.%s' % left_index_col))
+        selected_columns = selected_columns.drop(*[F.col('right_table.%s' % right_index_col)
+                                                   for right_index_col in right_index_columns
+                                                   if right_index_col in left_index_columns])
+
+        if index_map:
+            data_columns = [c for c in selected_columns.columns
+                            if c not in [idx[0] for idx in index_map]]
+            return DataFrame(selected_columns, index=Metadata(data_columns, index_map))
+        else:
+            return DataFrame(selected_columns)
 
     def append(self, other: 'DataFrame', ignore_index: bool = False,
                verify_integrity: bool = False, sort: bool = False) -> 'DataFrame':
