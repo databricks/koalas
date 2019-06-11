@@ -3532,6 +3532,65 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                          index=Metadata(data_columns=data_columns,
                                         index_map=[('summary', None)])).astype('float64')
 
+    # TODO: implements 'keep' parameters
+    def drop_duplicates(self, subset=None, inplace=False):
+        """
+        Return DataFrame with duplicate rows removed, optionally only
+        considering certain columns.
+
+        Parameters
+        ----------
+        subset : column label or sequence of labels, optional
+            Only consider certain columns for identifying duplicates, by
+            default use all of the columns
+        inplace : boolean, default False
+            Whether to drop duplicates in place or to return a copy
+
+        Returns
+        -------
+        DataFrame
+
+        >>> df = ks.DataFrame(
+        ...     {'a': [1, 2, 2, 2, 3], 'b': ['a', 'a', 'a', 'c', 'd']}, columns = ['a', 'b'])
+        >>> df
+           a  b
+        0  1  a
+        1  2  a
+        2  2  a
+        3  2  c
+        4  3  d
+
+        >>> df.drop_duplicates().sort_values('a')
+           a  b
+        0  1  a
+        3  2  c
+        1  2  a
+        4  3  d
+
+        >>> df.drop_duplicates('a').sort_values('a')
+           a  b
+        0  1  a
+        1  2  a
+        4  3  d
+
+        >>> df.drop_duplicates(['a', 'b']).sort_values('a')
+           a  b
+        0  1  a
+        1  2  a
+        3  2  c
+        4  3  d
+        """
+        if subset is None:
+            subset = self._metadata.data_columns
+        elif not isinstance(subset, list):
+            subset = [subset]
+
+        sdf = self._sdf.drop_duplicates(subset=subset)
+        if inplace:
+            self._sdf = sdf
+        else:
+            return DataFrame(sdf, self._metadata.copy())
+
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
         if key is None:
