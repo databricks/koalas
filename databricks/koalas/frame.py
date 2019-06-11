@@ -3560,20 +3560,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  2  c
         4  3  d
 
-        >>> df.drop_duplicates().sort_values('a')
+        >>> df.drop_duplicates().sort_values(['a', 'b'])
            a  b
         0  1  a
+        1  2  a
         3  2  c
-        1  2  a
         4  3  d
 
-        >>> df.drop_duplicates('a').sort_values('a')
+        >>> df.drop_duplicates('a').sort_values(['a', 'b'])
            a  b
         0  1  a
         1  2  a
         4  3  d
 
-        >>> df.drop_duplicates(['a', 'b']).sort_values('a')
+        >>> df.drop_duplicates(['a', 'b']).sort_values(['a', 'b'])
            a  b
         0  1  a
         1  2  a
