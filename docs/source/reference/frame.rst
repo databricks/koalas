@@ -142,6 +142,13 @@ Combining / joining / merging
    DataFrame.assign
    DataFrame.merge
 
+Cache
+-------------------------------
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.cache
+
 Serialization / IO / Conversion
 -------------------------------
 .. autosummary::
