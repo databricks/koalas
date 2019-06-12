@@ -1523,8 +1523,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Yields and caches the current DataFrame.
 
-        The Koalas DataFrame is yielded as a protected resource and it's corresponding
-        Spark DataFrame is cached which gets uncached after execution goes of the context.
+        The Koalas DataFrame is yielded as a protected resource and its corresponding
+        data is cached which gets uncached after execution goes of the context.
 
         Examples
         --------
