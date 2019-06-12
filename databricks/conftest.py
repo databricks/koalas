@@ -35,6 +35,7 @@ if LooseVersion(__version__) >= LooseVersion("2.4.2"):
 else:
     session = utils.default_session()
 
+
 @pytest.fixture(autouse=True)
 def add_ks(doctest_namespace):
     doctest_namespace['ks'] = koalas
