@@ -153,7 +153,7 @@ Data Type                    Accessor
 ========= ===========================
 Datetime  :ref:`dt <api.series.dt>`
 String    :ref:`str <api.series.str>`
-Plot      :ref:`str <api.series.plot>`
+Plot      :ref:`plot <api.series.plot>`
 ========= ===========================
 
 .. _api.series.dt:
