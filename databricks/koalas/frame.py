@@ -2897,37 +2897,45 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(joined_table.select(*exprs))
 
-    # TODO: implenment `on` parameter. See Pandas's DataFrame.join.
-    def join(left, other: 'DataFrame',
-             on: Optional[Union[str, List[str]]] = None, how: str = 'left',
-             lsuffix: str = '', rsuffix: str = '', sort: bool = False) -> 'DataFrame':
+    def join(left, right: 'DataFrame', on: Optional[Union[str, List[str]]] = None,
+             how: str = 'left', lsuffix: str = '', rsuffix: str = '',
+             sort: bool = False) -> 'DataFrame':
+
         """
         Join columns of another DataFrame.
 
-        Join columns with other DataFrame either on index or on a key column. Efficiently join
+        Join columns with right DataFrame either on index or on a key column. Efficiently join
         multiple DataFrame objects by index at once by passing a list.
 
         Parameters
         ----------
-        other: DataFrame, Series, or list of DataFrame.
+        right: DataFrame, Series
         on: str, list of str, or array-like, optional
-            Column or index level name(s) in the caller to join on the index in other, otherwise
-            joins index-on-index. If multiple values given, the other DataFrame must have a
+            Column or index level name(s) in the caller to join on the index in right, otherwise
+            joins index-on-index. If multiple values given, the right DataFrame must have a
             MultiIndex. Can pass an array as the join key if it is not already contained in the
             calling DataFrame. Like an Excel VLOOKUP operation.
-        how: How to handle the operation of the two objects.
-            {‘left’, ‘right’, ‘outer’, ‘inner’}, default‘inner’
-            left: use calling frame’s index (or column if on is specified).
-            right: use other’s index.
-            outer: form union of calling frame’s index (or column if on is specified) with
-            other’s index, and sort it. lexicographically.
-            inner: form intersection of calling frame’s index (or column if on is specified)
-            with other’s index, preserving the order of the calling’s one.
+        how: {'left', 'right', 'outer', 'inner'}, default 'left'
+            How to handle the operation of the two objects.
+
+            * left: use calling frame’s index (or column if on is specified).
+            * right: use right’s index.
+            * outer: form union of calling frame’s index (or column if on is specified) with
+                right’s index, and sort it. lexicographically.
+            * inner: form intersection of calling frame’s index (or column if on is specified)
+                with right’s index, preserving the order of the calling’s one.
+        lsuffix : str, default ''
+            Suffix to use from left frame's overlapping columns.
+        rsuffix : str, default ''
+            Suffix to use from right frame's overlapping columns.
+        sort : bool, default False
+            Order result DataFrame lexicographically by the join key. If False,
+            the order of the join key depends on the join type (how keyword).
 
         Returns
         -------
         DataFrame
-            A dataframe containing columns from both the caller and other.
+            A dataframe containing columns from both the left and right.
 
         See Also
         --------
@@ -2940,8 +2948,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> kdf1 = ks.DataFrame({'key': ['K0', 'K1', 'K2', 'K3', 'K4', 'K5'],
-        ...                      'A': ['A0', 'A1', 'A2', 'A3', 'A4', 'A5']},
+        >>> kdf1 = ks.DataFrame({'key': ['K0', 'K1', 'K2', 'K3'],
+        ...                      'A': ['A0', 'A1', 'A2', 'A3']},
         ...                     columns=['key', 'A'])
         >>> kdf2 = ks.DataFrame({'key': ['K0', 'K1', 'K2'],
         ...                      'B': ['B0', 'B1', 'B2']},
@@ -2952,8 +2960,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  K1  A1
         2  K2  A2
         3  K3  A3
-        4  K4  A4
-        5  K5  A5
         >>> kdf2
           key   B
         0  K0  B0
@@ -2962,32 +2968,28 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Join DataFrames using their indexes.
 
-        >>> join_kdf = kdf1.join(kdf2, lsuffix='_caller', rsuffix='_other')
+        >>> join_kdf = kdf1.join(kdf2, lsuffix='_left', rsuffix='_right')
         >>> join_kdf.sort_values(by=join_kdf.columns)
-          key_caller   A key_other     B
-        0         K0  A0        K0    B0
-        1         K1  A1        K1    B1
-        2         K2  A2        K2    B2
-        3         K3  A3      None  None
-        4         K4  A4      None  None
-        5         K5  A5      None  None
+          key_left   A key_right     B
+        0       K0  A0        K0    B0
+        1       K1  A1        K1    B1
+        2       K2  A2        K2    B2
+        3       K3  A3      None  None
 
         If we want to join using the key columns, we need to set key to be the index in both df and
-        other. The joined DataFrame will have key as its index.
+        right. The joined DataFrame will have key as its index.
 
         >>> join_kdf = kdf1.set_index('key').join(kdf2.set_index('key'))
         >>> join_kdf.sort_values(by=join_kdf.columns)
-              A     B
+             A     B
         key
-        K0   A0    B0
-        K1   A1    B1
-        K2   A2    B2
-        K3   A3  None
-        K4   A4  None
-        K5   A5  None
+        K0  A0    B0
+        K1  A1    B1
+        K2  A2    B2
+        K3  A3  None
 
         Another option to join using the key columns is to use the on parameter. DataFrame.join
-        always uses other’s index but we can use any column in df. This method preserves the
+        always uses right’s index but we can use any column in df. This method preserves the
         original DataFrame’s index in the result.
 
         >>> join_kdf = kdf1.join(kdf2.set_index('key'), on='key')
@@ -2997,56 +2999,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  K1  A1    B1
         2  K2  A2    B2
         3  K3  A3  None
-        4  K4  A4  None
-        5  K5  A5  None
         """
         if on:
-            left = left.set_index('key')
-
-        left_keys = left._metadata.index_columns
-        right_keys = other._metadata.index_columns
-
-        if left_keys != right_keys:
-            raise ValueError(
-                'Index type and names should be same in the objects to join. '
-                'You passed different indices '
-                '{left_keys} and {right_keys}'.format(
-                    left_keys=left_keys, right_keys=right_keys))
-
-        left_table = left._sdf.alias('left_table')
-        right_table = other._sdf.alias('right_table')
-
-        duplicate_columns = (set(left._metadata.data_columns)
-                             & set(other._metadata.data_columns))
-
-        joined_table = left_table.join(right_table, left_keys, how=how)
-
-        exprs = []
-        for col in left._metadata.data_columns:
-            scol = left_table[col]
-            if col in duplicate_columns:
-                col = col + lsuffix
-                scol = scol.alias(col)
-            exprs.append(scol)
-
-        for col in other._metadata.data_columns:
-            scol = right_table[col]
-            if col in duplicate_columns:
-                col = col + rsuffix
-                scol = scol.alias(col)
-            exprs.append(scol)
-
-        if left._metadata.index_map[0][1] is not None:
-            for col in left_keys:
-                exprs.append(joined_table[col])
-            kdf = DataFrame(joined_table.select(*exprs)).set_index(left_keys)
+            left = left.set_index(on)
+            join_kdf = left.merge(right, left_index=True, right_index=True, how=how,
+                                  suffixes=(lsuffix, rsuffix)).reset_index()
         else:
-            kdf = DataFrame(joined_table.select(*exprs))
+            join_kdf = left.merge(right, left_index=True, right_index=True, how=how,
+                                  suffixes=(lsuffix, rsuffix))
 
-        if on:
-            return kdf.reset_index()
-        else:
-            return kdf
+        if sort:
+            join_kdf = join_kdf.sort_index()
+        return join_kdf
 
     def append(self, other: 'DataFrame', ignore_index: bool = False,
                verify_integrity: bool = False, sort: bool = False) -> 'DataFrame':
