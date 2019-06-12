@@ -3214,8 +3214,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(selected_columns)
 
     def join(left, right: 'DataFrame', on: Optional[Union[str, List[str]]] = None,
-             how: str = 'left', lsuffix: str = '', rsuffix: str = '',
-             sort: bool = False) -> 'DataFrame':
+             how: str = 'left', lsuffix: str = '', rsuffix: str = '') -> 'DataFrame':
         """
         Join columns of another DataFrame.
 
@@ -3243,9 +3242,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Suffix to use from left frame's overlapping columns.
         rsuffix : str, default ''
             Suffix to use from `right` frame's overlapping columns.
-        sort : bool, default False
-            Order result DataFrame lexicographically by the join key. If False, the order of the
-            join key depends on the join type (how keyword).
 
         Returns
         -------
@@ -3322,8 +3318,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             join_kdf = left.merge(right, left_index=True, right_index=True, how=how,
                                   suffixes=(lsuffix, rsuffix))
-        if sort:
-            join_kdf = join_kdf.sort_index()
         return join_kdf
 
     def append(self, other: 'DataFrame', ignore_index: bool = False,
