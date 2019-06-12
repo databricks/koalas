@@ -274,13 +274,17 @@ class DataFrame(_Frame):
         self._internal = self._internal.copy(data_columns=metadata.data_columns,
                                              index_map=metadata.index_map)
 
-    def _reduce_for_stat_function(self, sfun):
+    def _reduce_for_stat_function(self, sfun, numeric_only=False):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
         number of columns.
 
-        :param sfun: either an 1-arg function that takes a Column and returns a Column, or
+        Parameters
+        ----------
+        sfun : either an 1-arg function that takes a Column and returns a Column, or
         a 2-arg function that takes a Column and its DataType and returns a Column.
+        numeric_only : boolean, default False
+            If True, sfun is applied on numeric columns (including booleans) only.
         """
         from inspect import signature
         exprs = []
@@ -288,19 +292,25 @@ class DataFrame(_Frame):
         for col in self.columns:
             col_sdf = self._sdf[col]
             col_type = self._sdf.schema[col].dataType
-            if isinstance(col_type, BooleanType) and sfun.__name__ not in ('min', 'max'):
-                # Stat functions cannot be used with boolean values by default
-                # Thus, cast to integer (true to 1 and false to 0)
-                # Exclude the min and max methods though since those work with booleans
-                col_sdf = col_sdf.cast('integer')
-            if num_args == 1:
-                # Only pass in the column if sfun accepts only one arg
-                col_sdf = sfun(col_sdf)
-            else:  # must be 2
-                assert num_args == 2
-                # Pass in both the column and its data type if sfun accepts two args
-                col_sdf = sfun(col_sdf, col_type)
-            exprs.append(col_sdf.alias(col))
+
+            is_numeric_or_boolean = isinstance(col_type, (NumericType, BooleanType))
+            min_or_max = sfun.__name__ in ('min', 'max')
+            keep_column = not numeric_only or is_numeric_or_boolean or min_or_max
+
+            if keep_column:
+                if isinstance(col_type, BooleanType) and not min_or_max:
+                    # Stat functions cannot be used with boolean values by default
+                    # Thus, cast to integer (true to 1 and false to 0)
+                    # Exclude the min and max methods though since those work with booleans
+                    col_sdf = col_sdf.cast('integer')
+                if num_args == 1:
+                    # Only pass in the column if sfun accepts only one arg
+                    col_sdf = sfun(col_sdf)
+                else:  # must be 2
+                    assert num_args == 2
+                    # Pass in both the column and its data type if sfun accepts two args
+                    col_sdf = sfun(col_sdf, col_type)
+                exprs.append(col_sdf.alias(col))
 
         sdf = self._sdf.select(*exprs)
         pdf = sdf.toPandas()
@@ -1509,6 +1519,264 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(self)
 
+    def cache(self):
+        """
+        Yields and caches the current DataFrame.
+
+        The Koalas DataFrame is yielded as a protected resource and it's corresponding
+        Spark DataFrame is cached which gets uncached after execution goes of the context.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'])
+        >>> df
+           dogs  cats
+        0   0.2   0.3
+        1   0.0   0.6
+        2   0.6   0.0
+        3   0.2   0.1
+
+        >>> with df.cache() as cached_df:
+        ...     print(cached_df.count())
+        ...
+        dogs    4
+        cats    4
+        dtype: int64
+
+        >>> df = df.cache()
+        >>> df.to_pandas().mean(axis=1)
+        0    0.25
+        1    0.30
+        2    0.30
+        3    0.15
+        dtype: float64
+
+        To uncache the dataframe, use `unpersist` function
+
+        >>> df.unpersist()
+        """
+        return _CachedDataFrame(self._sdf, self._metadata)
+
+    def to_table(self, name: str, format: Optional[str] = None, mode: str = 'error',
+                 partition_cols: Union[str, List[str], None] = None,
+                 **options):
+        """
+        Write the DataFrame into a Spark table.
+
+        Parameters
+        ----------
+        name : str, required
+            Table name in Spark.
+        format : string, optional
+            Specifies the output data source format. Some common ones are:
+
+            - 'delta'
+            - 'parquet'
+            - 'orc'
+            - 'json'
+            - 'csv'
+
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when the table exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        options
+            Additional options passed directly to Spark.
+
+        See Also
+        --------
+        read_table
+        DataFrame.to_spark_io
+        DataFrame.to_parquet
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
+
+        >>> df.to_table('%s.my_table' % db, partition_cols='date')
+        """
+        self._sdf.write.saveAsTable(name=name, format=format, mode=mode,
+                                    partitionBy=partition_cols, options=options)
+
+    def to_delta(self, path: str, mode: str = 'error',
+                 partition_cols: Union[str, List[str], None] = None, **options):
+        """
+        Write the DataFrame out as a Delta Lake table.
+
+        Parameters
+        ----------
+        path : str, required
+            Path to write to.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when the destination exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        options : dict
+            All other options passed directly into Delta Lake.
+
+        See Also
+        --------
+        read_delta
+        DataFrame.to_parquet
+        DataFrame.to_table
+        DataFrame.to_spark_io
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
+
+        Create a new Delta Lake table, partitioned by one column:
+
+        >>> df.to_delta('%s/to_delta/foo' % path, partition_cols='date')
+
+        Partitioned by two columns:
+
+        >>> df.to_delta('%s/to_delta/bar' % path, partition_cols=['date', 'country'])
+
+        Overwrite an existing table's partitions, using the 'replaceWhere' capability in Delta:
+
+        >>> df.to_delta('%s/to_delta/bar' % path,
+        ...             mode='overwrite', replaceWhere='date >= "2019-01-01"')
+        """
+        self.to_spark_io(
+            path=path, mode=mode, format="delta", partition_cols=partition_cols, options=options)
+
+    def to_parquet(self, path: str, mode: str = 'error',
+                   partition_cols: Union[str, List[str], None] = None,
+                   compression: Optional[str] = None):
+        """
+        Write the DataFrame out as a Parquet file or directory.
+
+        Parameters
+        ----------
+        path : str, required
+            Path to write to.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when the destination exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        compression : str {'none', 'uncompressed', 'snappy', 'gzip', 'lzo', 'brotli', 'lz4', 'zstd'}
+            Compression codec to use when saving to file. If None is set, it uses the
+            value specified in `spark.sql.parquet.compression.codec`.
+
+        See Also
+        --------
+        read_parquet
+        DataFrame.to_delta
+        DataFrame.to_table
+        DataFrame.to_spark_io
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
+
+        >>> df.to_parquet('%s/to_parquet/foo.parquet' % path, partition_cols='date')
+
+        >>> df.to_parquet(
+        ...     '%s/to_parquet/foo.parquet' % path,
+        ...     mode = 'overwrite',
+        ...     partition_cols=['date', 'country'])
+        """
+        self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition_cols,
+                                compression=compression)
+
+    def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
+                    mode: str = 'error', partition_cols: Union[str, List[str], None] = None,
+                    **options):
+        """Write the DataFrame out to a Spark data source.
+
+        Parameters
+        ----------
+        path : string, optional
+            Path to the data source.
+        format : string, optional
+            Specifies the output data source format. Some common ones are:
+
+            - 'delta'
+            - 'parquet'
+            - 'orc'
+            - 'json'
+            - 'csv'
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when data already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+        partition_cols : str or list of str, optional
+            Names of partitioning columns
+        options : dict
+            All other options passed directly into Spark's data source.
+
+        See Also
+        --------
+        read_spark_io
+        DataFrame.to_delta
+        DataFrame.to_parquet
+        DataFrame.to_table
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
+
+        >>> df.to_spark_io(path='%s/to_spark_io/foo.json' % path, format='json')
+        """
+        self._sdf.write.save(path=path, format=format, mode=mode, partitionBy=partition_cols,
+                             options=options)
+
     def to_spark(self):
         """
         Return the current DataFrame as a Spark DataFrame.
@@ -2182,7 +2450,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Single    5
         dtype: int64
         """
-        return self._reduce_for_stat_function(_Frame._count_expr)
+        return self._reduce_for_stat_function(_Frame._count_expr, numeric_only=False)
 
     def drop(self, labels=None, axis=1, columns: Union[str, List[str]] = None):
         """
@@ -2705,6 +2973,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Merge DataFrame objects with a database-style join.
 
+        The index of the resulting DataFrame will be one of the following:
+            - 0...n if no index is used for merging
+            - Index of the left DataFrame if merged only on the index of the right DataFrame
+            - Index of the right DataFrame if merged only on the index of the left DataFrame
+            - All involved indices if merged using the indices of both DataFrames
+                e.g. if `left` with indices (a, x) and `right` with indices (b, x), the result will
+                be an index (x, a, b)
+
         Parameters
         ----------
         right: Object to merge with.
@@ -2780,7 +3056,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> left_kdf.merge(right_kdf, left_index=True, right_index=True)
            A  B
-        0  2  x
+        1  2  x
 
         >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left')
            A     B
@@ -2789,8 +3065,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right')
              A  B
-        0  2.0  x
-        1  NaN  y
+        1  2.0  x
+        2  NaN  y
 
         >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer')
              A     B
@@ -2870,7 +3146,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         left_index_columns = set(left._metadata.index_columns)
         right_index_columns = set(right._metadata.index_columns)
 
-        # TODO: in some case, we can keep indexes.
         exprs = []
         for col in left_table.columns:
             if col in left_index_columns:
@@ -2895,7 +3170,48 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     scol = scol.alias(col)
             exprs.append(scol)
 
-        return DataFrame(joined_table.select(*exprs))
+        # Retain indices if they are used for joining
+        if left_index:
+            if right_index:
+                exprs.extend(['left_table.%s' % col for col in left_index_columns])
+                exprs.extend(['right_table.%s' % col for col in right_index_columns])
+                index_map = left._metadata.index_map + [idx for idx in right._metadata.index_map
+                                                        if idx not in left._metadata.index_map]
+            else:
+                exprs.extend(['right_table.%s' % col for col in right_index_columns])
+                index_map = right._metadata.index_map
+        elif right_index:
+            exprs.extend(['left_table.%s' % col for col in left_index_columns])
+            index_map = left._metadata.index_map
+        else:
+            index_map = []
+
+        selected_columns = joined_table.select(*exprs)
+
+        # Merge left and right indices after the join by replacing missing values in the left index
+        # with values from the right index and dropping
+        if (how == 'right' or how == 'full') and right_index:
+            for left_index_col, right_index_col in zip(left._metadata.index_columns,
+                                                       right._metadata.index_columns):
+                selected_columns = selected_columns.withColumn(
+                    'left_table.' + left_index_col,
+                    F.when(F.col('left_table.%s' % left_index_col).isNotNull(),
+                           F.col('left_table.%s' % left_index_col))
+                    .otherwise(F.col('right_table.%s' % right_index_col))
+                ).withColumnRenamed(
+                    'left_table.%s' % left_index_col, left_index_col
+                ).drop(F.col('left_table.%s' % left_index_col))
+        if not(left_index and not right_index):
+            selected_columns = selected_columns.drop(*[F.col('right_table.%s' % right_index_col)
+                                                       for right_index_col in right_index_columns
+                                                       if right_index_col in left_index_columns])
+
+        if index_map:
+            data_columns = [c for c in selected_columns.columns
+                            if c not in [idx[0] for idx in index_map]]
+            return DataFrame(selected_columns, index=Metadata(data_columns, index_map))
+        else:
+            return DataFrame(selected_columns)
 
     def join(left, right: 'DataFrame', on: Optional[Union[str, List[str]]] = None,
              how: str = 'left', lsuffix: str = '', rsuffix: str = '',
@@ -3473,6 +3789,65 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                          index=Metadata(data_columns=data_columns,
                                         index_map=[('summary', None)])).astype('float64')
 
+    # TODO: implements 'keep' parameters
+    def drop_duplicates(self, subset=None, inplace=False):
+        """
+        Return DataFrame with duplicate rows removed, optionally only
+        considering certain columns.
+
+        Parameters
+        ----------
+        subset : column label or sequence of labels, optional
+            Only consider certain columns for identifying duplicates, by
+            default use all of the columns
+        inplace : boolean, default False
+            Whether to drop duplicates in place or to return a copy
+
+        Returns
+        -------
+        DataFrame
+
+        >>> df = ks.DataFrame(
+        ...     {'a': [1, 2, 2, 2, 3], 'b': ['a', 'a', 'a', 'c', 'd']}, columns = ['a', 'b'])
+        >>> df
+           a  b
+        0  1  a
+        1  2  a
+        2  2  a
+        3  2  c
+        4  3  d
+
+        >>> df.drop_duplicates().sort_values(['a', 'b'])
+           a  b
+        0  1  a
+        1  2  a
+        3  2  c
+        4  3  d
+
+        >>> df.drop_duplicates('a').sort_values(['a', 'b'])
+           a  b
+        0  1  a
+        1  2  a
+        4  3  d
+
+        >>> df.drop_duplicates(['a', 'b']).sort_values(['a', 'b'])
+           a  b
+        0  1  a
+        1  2  a
+        3  2  c
+        4  3  d
+        """
+        if subset is None:
+            subset = self._metadata.data_columns
+        elif not isinstance(subset, list):
+            subset = [subset]
+
+        sdf = self._sdf.drop_duplicates(subset=subset)
+        if inplace:
+            self._sdf = sdf
+        else:
+            return DataFrame(sdf, self._metadata.copy())
+
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
         if key is None:
@@ -3593,3 +3968,37 @@ def _reduce_spark_multi(sdf, aggs):
     l2 = list(row)
     assert len(l2) == len(aggs), (row, l2)
     return l2
+
+
+class _CachedDataFrame(DataFrame):
+    """
+    Cached Koalas DataFrame, which corresponds to Pandas DataFrame logically, but internally
+    it caches the corresponding Spark DataFrame.
+    """
+    def __init__(self, sdf, metadata):
+        self._cached = sdf.cache()
+        super(_CachedDataFrame, self).__init__(self._cached, index=metadata)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.unpersist()
+
+    def unpersist(self):
+        """
+        The `unpersist` function is used to uncache the Koalas DataFrame when it
+        is not used with `with` statement.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'])
+        >>> df = df.cache()
+
+        To uncache the dataframe, use `unpersist` function
+
+        >>> df.unpersist()
+        """
+        if self._cached.is_cached:
+            self._cached.unpersist()

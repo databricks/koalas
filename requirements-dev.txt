@@ -1,6 +1,7 @@
 # Dependencies in Koalas
 pandas>=0.23
 pyarrow>=0.10
+matplotlib>=3.0.0
 numpy>=1.14
 
 # TODO: support mlflow 1.0.0
@@ -9,7 +10,7 @@ mlflow==0.9.1
 # Documentation build
 sphinx==2.0.1
 nbsphinx
-numpydoc
+numpydoc==0.8
 
 # Linter
 mypy

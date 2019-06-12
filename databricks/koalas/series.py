@@ -37,6 +37,7 @@ from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.internal import IndexMap, _InternalFrame
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
+from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
@@ -260,6 +261,8 @@ class Series(_Frame, IndexOpsMixin):
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self.schema.fields[-1].dataType
+
+    plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
 
     # Arithmetic Operators
     def add(self, other):
@@ -520,6 +523,11 @@ class Series(_Frame, IndexOpsMixin):
     def shape(self):
         """Return a tuple of the shape of the underlying data."""
         return len(self),
+
+    @property
+    def ndim(self):
+        """Returns number of dimensions of the Series."""
+        return 1
 
     @property
     def name(self) -> str:
@@ -1717,6 +1725,11 @@ class Series(_Frame, IndexOpsMixin):
 
     sample.__doc__ = DataFrame.sample.__doc__
 
+    def hist(self, bins=10, **kwds):
+        return self.plot.hist(bins, **kwds)
+
+    hist.__doc__ = KoalasSeriesPlotMethods.hist.__doc__
+
     def apply(self, func, args=(), **kwds):
         """
         Invoke function on values of Series.
@@ -1893,7 +1906,11 @@ class Series(_Frame, IndexOpsMixin):
 
     # ----------------------------------------------------------------------
 
-    def _reduce_for_stat_function(self, sfun):
+    def _reduce_for_stat_function(self, sfun, numeric_only=None):
+        """
+        :param sfun: the stats function to be used for aggregation
+        :param numeric_only: not used by this implementation, but passed down by stats functions
+        """
         from inspect import signature
         num_args = len(signature(sfun).parameters)
         col_sdf = self._scol

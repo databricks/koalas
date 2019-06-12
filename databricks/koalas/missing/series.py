@@ -51,7 +51,6 @@ class _MissingPandasLikeSeries(object):
     itemsize = unsupported_property('itemsize')
     ix = unsupported_property('ix')
     nbytes = unsupported_property('nbytes')
-    ndim = unsupported_property('ndim')
     real = unsupported_property('real')
     strides = unsupported_property('strides')
 
@@ -104,7 +103,6 @@ class _MissingPandasLikeSeries(object):
     get_dtype_counts = unsupported_function('get_dtype_counts')
     get_values = unsupported_function('get_values')
     gt = unsupported_function('gt')
-    hist = unsupported_function('hist')
     idxmax = unsupported_function('idxmax')
     idxmin = unsupported_function('idxmin')
     infer_objects = unsupported_function('infer_objects')
