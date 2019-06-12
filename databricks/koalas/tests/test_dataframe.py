@@ -750,3 +750,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         join_kdf = kdf1.join(kdf2.set_index('key'), on='key', lsuffix='_left', rsuffix='_right')
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
         self.assert_eq(join_pdf, join_kdf)
+
+        # check 'sort' parameter
+        join_pdf = pdf1.join(pdf2.set_index('key'), on='key',
+                             lsuffix='_left', rsuffix='_right', sort=True)
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
+
+        join_kdf = kdf1.join(kdf2.set_index('key'), on='key',
+                             lsuffix='_left', rsuffix='_right', sort=True)
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
+        self.assert_eq(join_pdf, join_kdf)
