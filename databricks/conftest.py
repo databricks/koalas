@@ -28,11 +28,12 @@ from databricks.koalas import utils
 
 
 # Initialize Spark session that should be used in doctests or unittests.
-# Detla requires Spark 2.4.2+. See
+# Delta requires Spark 2.4.2+. See
 # https://github.com/delta-io/delta#compatibility-with-apache-spark-versions.
 if LooseVersion(__version__) >= LooseVersion("2.4.2"):
     session = utils.default_session({"spark.jars.packages": "io.delta:delta-core_2.11:0.1.0"})
-
+else:
+    session = utils.default_session()
 
 @pytest.fixture(autouse=True)
 def add_ks(doctest_namespace):
@@ -54,6 +55,6 @@ def add_path(doctest_namespace):
 @pytest.fixture(autouse=True)
 def add_db(doctest_namespace):
     db_name = str(uuid.uuid4()).replace("-", "")
-    utils.default_session().sql("CREATE DATABASE %s" % db_name)
+    session.sql("CREATE DATABASE %s" % db_name)
     atexit.register(lambda: session.sql("DROP DATABASE IF EXISTS %s CASCADE" % db_name))
     doctest_namespace['db'] = db_name
