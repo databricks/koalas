@@ -471,7 +471,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         def check(op):
             k_res = op(left_kdf, right_kdf)
+            k_res = k_res.to_pandas()
             k_res = k_res.sort_values(by=list(k_res.columns))
+            k_res = k_res.reset_index(drop=True)
             p_res = op(left_pdf, right_pdf)
             p_res = p_res.sort_values(by=list(p_res.columns))
             p_res = p_res.reset_index(drop=True)
@@ -506,6 +508,36 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # suffix
         check(lambda left, right: left.merge(right, left_on='lkey', right_on='rkey',
                                              suffixes=['_left', '_right']))
+
+    def test_merge_retains_indices(self):
+        left_pdf = pd.DataFrame({'A': [0, 1]})
+        right_pdf = pd.DataFrame({'B': [1, 2]}, index=[1, 2])
+        left_kdf = ks.from_pandas(left_pdf)
+        right_kdf = ks.from_pandas(right_pdf)
+
+        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True),
+                       left_pdf.merge(right_pdf, left_index=True, right_index=True))
+        self.assert_eq(left_kdf.merge(right_kdf, left_on='A', right_index=True),
+                       left_pdf.merge(right_pdf, left_on='A', right_index=True))
+        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_on='B'),
+                       left_pdf.merge(right_pdf, left_index=True, right_on='B'))
+        self.assert_eq(left_kdf.merge(right_kdf, left_on='A', right_on='B'),
+                       left_pdf.merge(right_pdf, left_on='A', right_on='B'))
+
+    def test_merge_how_parameter(self):
+        left_pdf = pd.DataFrame({'A': [1, 2]})
+        right_pdf = pd.DataFrame({'B': ['x', 'y']}, index=[1, 2])
+        left_kdf = ks.from_pandas(left_pdf)
+        right_kdf = ks.from_pandas(right_pdf)
+
+        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True),
+                       left_pdf.merge(right_pdf, left_index=True, right_index=True))
+        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left'),
+                       left_pdf.merge(right_pdf, left_index=True, right_index=True, how='left'))
+        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right'),
+                       left_pdf.merge(right_pdf, left_index=True, right_index=True, how='right'))
+        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer'),
+                       left_pdf.merge(right_pdf, left_index=True, right_index=True, how='outer'))
 
     def test_merge_raises(self):
         left = ks.DataFrame({'value': [1, 2, 3, 5, 6],
