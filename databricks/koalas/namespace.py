@@ -369,7 +369,10 @@ def read_parquet(path, columns=None) -> DataFrame:
 
     Examples
     --------
-    >>> ks.read_parquet('data.parquet', columns=['name', 'gender'])  # doctest: +SKIP
+    >>> ks.range(1).to_parquet('%s/read_spark_io/data.parquet' % path)
+    >>> ks.read_parquet('%s/read_spark_io/data.parquet' % path, columns=['id'])
+       id
+    0   0
     """
     if columns is not None:
         columns = list(columns)
