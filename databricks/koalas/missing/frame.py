@@ -67,7 +67,6 @@ class _MissingPandasLikeDataFrame(object):
     cumsum = unsupported_function('cumsum')
     diff = unsupported_function('diff')
     dot = unsupported_function('dot')
-    drop_duplicates = unsupported_function('drop_duplicates')
     droplevel = unsupported_function('droplevel')
     duplicated = unsupported_function('duplicated')
     eq = unsupported_function('eq')
