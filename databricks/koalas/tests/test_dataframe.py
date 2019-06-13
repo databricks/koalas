@@ -877,3 +877,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
                             aggfunc={'b': 'mean', 'e': 'sum'})
+
+    def test_transpose(self):
+        pdf1 = pd.DataFrame(
+            data={'col1': [1, 2], 'col2': [3, 4]},
+            columns=['col1', 'col2'])
+
+        pdf2 = pd.DataFrame(
+            data={'score': [9, 8], 'kids': [0, 0], 'age': [12, 22]},
+            columns=['score', 'kids', 'age'])
+
+        self.assertEqual(
+            repr(pdf1.transpose().sort_index()),
+            repr(ks.DataFrame(pdf1).transpose(limit=None).sort_index()))
+
+        self.assert_eq(
+            repr(pdf2.transpose().sort_index()),
+            repr(ks.DataFrame(pdf2).transpose(limit=None).sort_index()))
+
+        self.assertEqual(
+            repr(pdf1.transpose().sort_index()),
+            repr(ks.DataFrame(pdf1).transpose().sort_index()))
+
+        self.assert_eq(
+            repr(pdf2.transpose().sort_index()),
+            repr(ks.DataFrame(pdf2).transpose().sort_index()))
