@@ -72,7 +72,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # check ks.DataFrame(ks.Series)
         kser = pd.Series([1, 2, 3], name='x')
         pser = ks.Series([1, 2, 3], name='x')
-        print(kser, pser)
         self.assert_eq(pd.DataFrame(kser), ks.DataFrame(pser))
 
     def test_repr_cache_invalidation(self):
