@@ -245,6 +245,13 @@ class DataFrame(_Frame):
             else:
                 super(DataFrame, self).__init__(_InternalFrame(
                     data, data_columns=index.data_columns, index_map=index.index_map))
+        elif isinstance(data, ks.Series):
+            assert index is None
+            assert columns is None
+            assert dtype is None
+            assert not copy
+            data = data.to_dataframe()
+            super(DataFrame, self).__init__(data._internal)
         else:
             if isinstance(data, pd.DataFrame):
                 assert index is None

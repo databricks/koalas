@@ -69,6 +69,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertEqual(ddf.a.notnull().alias("x").name, "x")
 
+        # check ks.DataFrame(ks.Series)
+        pser = pd.Series([1, 2, 3], name='x')
+        kser = ks.Series([1, 2, 3], name='x')
+        self.assert_eq(pd.DataFrame(pser), ks.DataFrame(kser))
+
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
         df = ks.range(10)
