@@ -165,12 +165,14 @@ class DataFrame(_Frame):
 
     Parameters
     ----------
-    data : numpy ndarray (structured or homogeneous), dict, Pandas DataFrame or Spark DataFrame
+    data : numpy ndarray (structured or homogeneous), dict, Pandas DataFrame or Spark DataFrame \
+        or Koalas Series
         Dict can contain Series, arrays, constants, or list-like objects
         If data is a dict, argument order is maintained for Python 3.6
         and later.
         Note that if `data` is a Pandas DataFrame, other arguments should not be used.
         If `data` is a Spark DataFrame, all other arguments except `index` should not be used.
+        If `data` is a Koalas Series, other arguments should not be used.
     index : Index or array-like
         Index to use for resulting frame. Will default to RangeIndex if
         no indexing information part of input data and no index provided
