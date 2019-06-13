@@ -165,7 +165,7 @@ class DataFrame(_Frame):
 
     Parameters
     ----------
-    data : numpy ndarray (structured or homogeneous), dict, Pandas DataFrame or Spark DataFrame \
+    data : numpy ndarray (structured or homogeneous), dict, Pandas DataFrame, Spark DataFrame \
         or Koalas Series
         Dict can contain Series, arrays, constants, or list-like objects
         If data is a dict, argument order is maintained for Python 3.6
