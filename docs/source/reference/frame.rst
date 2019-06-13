@@ -132,6 +132,8 @@ Reshaping, sorting, transposing
 
    DataFrame.sort_index
    DataFrame.sort_values
+   DataFrame.nlargest
+   DataFrame.nsmallest
 
 Combining / joining / merging
 -----------------------------
