@@ -123,6 +123,7 @@ class _MissingPandasLikeDataFrame(object):
     rmod = unsupported_function('rmod')
     rolling = unsupported_function('rolling')
     round = unsupported_function('round')
+    rpow = unsupported_function('rpow')
     select_dtypes = unsupported_function('select_dtypes')
     sem = unsupported_function('sem')
     set_axis = unsupported_function('set_axis')

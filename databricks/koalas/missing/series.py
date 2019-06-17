@@ -138,6 +138,7 @@ class _MissingPandasLikeSeries(object):
     rmod = unsupported_function('rmod')
     rolling = unsupported_function('rolling')
     round = unsupported_function('round')
+    rpow = unsupported_function('rpow')
     searchsorted = unsupported_function('searchsorted')
     sem = unsupported_function('sem')
     set_axis = unsupported_function('set_axis')
