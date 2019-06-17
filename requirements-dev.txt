@@ -19,5 +19,6 @@ flake8
 # Test
 pytest
 pytest-cov
+scikit-learn
 openpyxl
 xlrd
