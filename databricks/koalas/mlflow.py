@@ -17,9 +17,8 @@
 """
 MLflow-related functions to load models and apply them to Koalas dataframes.
 """
-from mlflow.pyfunc import load_model, spark_udf
+from mlflow import pyfunc
 from pyspark.sql.types import DataType
-import pyspark.sql.functions as F
 import pandas as pd
 import numpy as np
 from typing import Any
@@ -60,12 +59,12 @@ class PythonModelWrapper(object):
         """
         The return object has to follow the API of mlflow.pyfunc.PythonModel.
         """
-        return load_model(model_uri=self._model_uri)
+        return pyfunc.load_model(model_uri=self._model_uri)
 
     @lazy_property
     def _model_udf(self):
         spark = default_session()
-        return spark_udf(spark, model_uri=self._model_uri, result_type=self._return_type)
+        return pyfunc.spark_udf(spark, model_uri=self._model_uri, result_type=self._return_type)
 
     def __str__(self):
         return "PythonModelWrapper({})".format(str(self._model))
@@ -147,7 +146,7 @@ def load_model(model_uri, predict_type='infer') -> PythonModelWrapper:
 
     >>> from databricks.koalas.mlflow import load_model
     >>> run_info = client.list_run_infos(exp)[-1]
-    >>> model = load_model("runs:/{run_id}/model".format(run_id = run_info.run_uuid))
+    >>> model = load_model("runs:/{run_id}/model".format(run_id=run_info.run_uuid))
     >>> prediction_df = ks.DataFrame({"x1": [2.0], "x2": [4.0]})
     >>> prediction_df["prediction"] = model.predict(prediction_df)
     >>> prediction_df
@@ -156,7 +155,7 @@ def load_model(model_uri, predict_type='infer') -> PythonModelWrapper:
 
     The model also works on pandas DataFrames as expected:
 
-    >>> model.predict(prediction_df[["x1", "x2"]].toPandas())
+    >>> model.predict(prediction_df[["x1", "x2"]].to_pandas())
     array([[1.35555142]])
 
     Notes

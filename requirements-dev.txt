@@ -4,7 +4,8 @@ pyarrow>=0.10
 matplotlib>=3.0.0
 numpy>=1.14
 
-mlflow[extras]>=1.0
+# MLflow
+mlflow>=1.0
 
 # Documentation build
 sphinx==2.0.1
