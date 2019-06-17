@@ -56,14 +56,6 @@ Equivalent to ``{equiv}``
 Parameters
 ----------
 other : Series or scalar value
-fill_value : None or float value, default None (NaN)
-    Fill existing missing (NaN) values, and any new element needed for
-    successful Series alignment, with this value before computation.
-    If data in both corresponding Series locations is missing
-    the result will be missing.
-level : int or name
-    Broadcast across a level, matching Index values on the
-    passed MultiIndex level.
 
 Returns
 -------
@@ -370,6 +362,154 @@ class Series(_Frame, IndexOpsMixin):
         equiv="other - series",
         reverse='sub',
         series_examples=_sub_example_SERIES)
+
+    # Comparison Operators
+    def eq(self, other):
+        """
+        Compare if the current value is equal to the other.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4],
+        ...                    'b': [1, np.nan, 1, np.nan]},
+        ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+
+        >>> df.a == 1
+        a     True
+        b    False
+        c    False
+        d    False
+        Name: (a = 1), dtype: bool
+
+        >>> df.b.eq(1)
+        a    True
+        b    None
+        c    True
+        d    None
+        Name: b, dtype: object
+        """
+        return (self == other).rename(self.name)
+
+    equals = eq
+
+    def gt(self, other):
+        """
+        Compare if the current value is greater than the other.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4],
+        ...                    'b': [1, np.nan, 1, np.nan]},
+        ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+
+        >>> df.a > 1
+        a    False
+        b     True
+        c     True
+        d     True
+        Name: (a > 1), dtype: bool
+
+
+        >>> df.b.gt(1)
+        a    False
+        b     None
+        c    False
+        d     None
+        Name: b, dtype: object
+        """
+        return (self > other).rename(self.name)
+
+    def ge(self, other):
+        """
+        Compare if the current value is greater than or equal to the other.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4],
+        ...                    'b': [1, np.nan, 1, np.nan]},
+        ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+
+        >>> df.a >= 2
+        a    False
+        b     True
+        c     True
+        d     True
+        Name: (a >= 2), dtype: bool
+
+        >>> df.b.ge(2)
+        a    False
+        b     None
+        c    False
+        d     None
+        Name: b, dtype: object
+        """
+        return (self >= other).rename(self.name)
+
+    def lt(self, other):
+        """
+        Compare if the current value is less than the other.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4],
+        ...                    'b': [1, np.nan, 1, np.nan]},
+        ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+
+        >>> df.a < 1
+        a    False
+        b    False
+        c    False
+        d    False
+        Name: (a < 1), dtype: bool
+
+        >>> df.b.lt(2)
+        a    True
+        b    None
+        c    True
+        d    None
+        Name: b, dtype: object
+        """
+        return (self < other).rename(self.name)
+
+    def le(self, other):
+        """
+        Compare if the current value is less than or equal to the other.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4],
+        ...                    'b': [1, np.nan, 1, np.nan]},
+        ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+
+        >>> df.a <= 2
+        a     True
+        b     True
+        c    False
+        d    False
+        Name: (a <= 2), dtype: bool
+
+        >>> df.b.le(2)
+        a    True
+        b    None
+        c    True
+        d    None
+        Name: b, dtype: object
+        """
+        return (self <= other).rename(self.name)
+
+    def ne(self, other):
+        """
+        Compare if the current value is not equal to the other.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4],
+        ...                    'b': [1, np.nan, 1, np.nan]},
+        ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+
+        >>> df.a != 1
+        a    False
+        b     True
+        c     True
+        d     True
+        Name: (NOT (a = 1)), dtype: bool
+
+        >>> df.b.ne(1)
+        a    False
+        b     None
+        c    False
+        d     None
+        Name: b, dtype: object
+        """
+        return (self != other).rename(self.name)
 
     # TODO: arg should support Series
     # TODO: NaN and None

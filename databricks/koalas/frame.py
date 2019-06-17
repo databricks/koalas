@@ -469,6 +469,129 @@ class DataFrame(_Frame):
         equiv="other - dataframe",
         reverse='sub')
 
+    # Comparison Operators
+    def __eq__(self, other):
+        return self._map_series_op("eq", other)
+
+    def __ne__(self, other):
+        return self._map_series_op("ne", other)
+
+    def __lt__(self, other):
+        return self._map_series_op("lt", other)
+
+    def __le__(self, other):
+        return self._map_series_op("le", other)
+
+    def __ge__(self, other):
+        return self._map_series_op("ge", other)
+
+    def __gt__(self, other):
+        return self._map_series_op("gt", other)
+
+    def eq(self, other):
+        """
+        Compare if the current value is equal to the other.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4],
+        ...                    'b': [1, np.nan, 1, np.nan]},
+        ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+
+        >>> df.eq(1)
+               a     b
+        a   True  True
+        b  False  None
+        c  False  True
+        d  False  None
+        """
+        return self == other
+
+    equals = eq
+
+    def gt(self, other):
+        """
+        Compare if the current value is greater than the other.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4],
+        ...                    'b': [1, np.nan, 1, np.nan]},
+        ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+
+        >>> df.gt(2)
+               a      b
+        a  False  False
+        b  False   None
+        c   True  False
+        d   True   None
+        """
+        return self > other
+
+    def ge(self, other):
+        """
+        Compare if the current value is greater than or equal to the other.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4],
+        ...                    'b': [1, np.nan, 1, np.nan]},
+        ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+
+        >>> df.ge(1)
+              a     b
+        a  True  True
+        b  True  None
+        c  True  True
+        d  True  None
+        """
+        return self >= other
+
+    def lt(self, other):
+        """
+        Compare if the current value is less than the other.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4],
+        ...                    'b': [1, np.nan, 1, np.nan]},
+        ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+
+        >>> df.lt(1)
+               a      b
+        a  False  False
+        b  False   None
+        c  False  False
+        d  False   None
+        """
+        return self < other
+
+    def le(self, other):
+        """
+        Compare if the current value is less than or equal to the other.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4],
+        ...                    'b': [1, np.nan, 1, np.nan]},
+        ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+
+        >>> df.le(2)
+               a     b
+        a   True  True
+        b   True  None
+        c  False  True
+        d  False  None
+        """
+        return self <= other
+
+    def ne(self, other):
+        """
+        Compare if the current value is not equal to the other.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4],
+        ...                    'b': [1, np.nan, 1, np.nan]},
+        ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+
+        >>> df.ne(1)
+               a      b
+        a  False  False
+        b   True   None
+        c   True  False
+        d   True   None
+        """
+        return self != other
+
     def applymap(self, func):
         """
         Apply a function to a Dataframe elementwise.
