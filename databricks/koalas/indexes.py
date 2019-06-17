@@ -159,9 +159,8 @@ class Index(IndexOpsMixin):
         """
         kdf = self._kdf
         scol = self._scol
-        return Series(scol if name is None else scol.alias(name),
-                      anchor=kdf,
-                      index=kdf._metadata.index_map)
+        return Series(kdf._internal.copy(scol=scol if name is None else scol.alias(name)),
+                      anchor=kdf)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):

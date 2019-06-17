@@ -92,7 +92,7 @@ class PythonModelWrapper(object):
             # However, this is only possible with spark >= 3.0
             # s = F.struct(*data.columns)
             # return_col = self._model_udf(s)
-            return Series(data=return_col, anchor=data, index=data._metadata.index_map)
+            return Series(data._internal.copy(scol=return_col), anchor=data)
 
 
 def load_model(path, run_id=None, predict_type='infer') -> PythonModelWrapper:

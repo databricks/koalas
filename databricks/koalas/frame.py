@@ -3735,8 +3735,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise KeyError("none key")
         if isinstance(key, str):
             try:
-                return Series(self._sdf.__getitem__(key), anchor=self,
-                              index=self._metadata.index_map)
+                return Series(self._internal.copy(scol=self._sdf.__getitem__(key)), anchor=self)
             except AnalysisException:
                 raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, str)):
@@ -3750,7 +3749,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
-            return Series(self._sdf.__getitem__(key), anchor=self, index=self._metadata.index_map)
+            return Series(self._internal.copy(scol=self._sdf.__getitem__(key)), anchor=self)
         if isinstance(key, Series):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
@@ -3819,7 +3818,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_map)
+        return Series(self._internal.copy(scol=self._sdf.__getattr__(key)), anchor=self)
 
     def __len__(self):
         return self._sdf.count()

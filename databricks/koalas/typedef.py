@@ -224,7 +224,7 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
         return f(*args, **kwargs)
 
     # We detected some columns. They need to be wrapped in a UDF to spark.
-    (index_map, kdf) = _get_metadata(args, kwargs)
+    kdf = _get_metadata(args, kwargs)
 
     def clean_fun(*args2):
         assert len(args2) == len(all_indexes), \
@@ -251,7 +251,7 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
         spark_col_args.append(col._scol)
         kw_name_tokens.append("{}={}".format(key, col.name))
     col = wrapped_udf(*spark_col_args)
-    series = Series(data=col, index=index_map, anchor=kdf)
+    series = Series(kdf._internal.copy(scol=col), anchor=kdf)
     all_name_tokens = name_tokens + sorted(kw_name_tokens)
     name = "{}({})".format(f.__name__, ", ".join(all_name_tokens))
     series = series.astype(return_type).alias(name)
@@ -265,7 +265,7 @@ def _get_metadata(args, kwargs):
     assert all_cols
     # TODO: check all the anchors
     s = all_cols[0]
-    return (s._index_map, s._kdf)
+    return s._kdf
 
 
 def pandas_wraps(function=None, return_col=None, return_scalar=None):
