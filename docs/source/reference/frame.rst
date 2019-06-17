@@ -68,6 +68,12 @@ Binary operator functions
    DataFrame.rmul
    DataFrame.sub
    DataFrame.rsub
+   DataFrame.lt
+   DataFrame.gt
+   DataFrame.le
+   DataFrame.ge
+   DataFrame.ne
+   DataFrame.eq
 
 Function application, GroupBy & Window
 --------------------------------------

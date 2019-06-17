@@ -63,6 +63,12 @@ Binary operator functions
    Series.rtruediv
    Series.sub
    Series.truediv
+   Series.lt
+   Series.gt
+   Series.le
+   Series.ge
+   Series.ne
+   Series.eq
 
 Function application, GroupBy & Window
 --------------------------------------
