@@ -21,7 +21,10 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 import pyspark.sql.functions as F
-from pyspark.sql.types import DateType, TimestampType, LongType, StringType
+from pyspark.sql.types import (
+    DateType, TimestampType, LongType, StringType, BooleanType
+)
+
 
 from databricks.koalas.base import _wrap_accessor_pandas, _wrap_accessor_spark
 
@@ -188,7 +191,111 @@ class DatetimeMethods(object):
         return _wrap_accessor_pandas(
             self, lambda s: s.dt.dayofyear, LongType()).alias(self._data.name)
 
+    @property
+    def quarter(self) -> 'ks.Series':
+        """
+        The quarter of the date.
+        """
+        return _wrap_accessor_pandas(
+            self, lambda s: s.dt.quarter, LongType()).alias(self._data.name)
+
+    @property
+    def is_month_start(self) -> 'ks.Series':
+        """
+        Indicates whether the date is the first day of the month.
+        """
+        return _wrap_accessor_pandas(
+            self, lambda s: s.dt.is_month_start, BooleanType()).alias(self._data.name)
+
+    @property
+    def is_month_end(self) -> 'ks.Series':
+        """
+        Indicates whether the date is the last day of the month.
+        """
+        return _wrap_accessor_pandas(
+            self, lambda s: s.dt.is_month_end, BooleanType()).alias(self._data.name)
+
+    @property
+    def is_quarter_start(self) -> 'ks.Series':
+        """
+        Indicator for whether the date is the first day of a quarter.
+        """
+        return _wrap_accessor_pandas(
+            self, lambda s: s.dt.is_quarter_start, BooleanType()).alias(self._data.name)
+
+    @property
+    def is_quarter_end(self) -> 'ks.Series':
+        """
+        Indicator for whether the date is the last day of a quarter.
+        """
+        return _wrap_accessor_pandas(
+            self, lambda s: s.dt.is_quarter_end, BooleanType()).alias(self._data.name)
+
+    @property
+    def is_year_start(self) -> 'ks.Series':
+        """
+        Indicate whether the date is the first day of a year.
+        """
+        return _wrap_accessor_pandas(
+            self, lambda s: s.dt.is_year_start, BooleanType()).alias(self._data.name)
+
+    @property
+    def is_year_end(self) -> 'ks.Series':
+        """
+        Indicate whether the date is the last day of the year.
+        """
+        return _wrap_accessor_pandas(
+            self, lambda s: s.dt.is_year_end, BooleanType()).alias(self._data.name)
+
+    @property
+    def is_leap_year(self) -> 'ks.Series':
+        """
+        Boolean indicator if the date belongs to a leap year.
+        """
+        return _wrap_accessor_pandas(
+            self, lambda s: s.dt.is_leap_year, BooleanType()
+        ).alias(self._data.name)
+
+    @property
+    def daysinmonth(self) -> 'ks.Series':
+        """
+        The number of days in the month.
+        """
+        return _wrap_accessor_pandas(
+            self, lambda s: s.dt.daysinmonth, LongType()).alias(self._data.name)
+
+    @property
+    def days_in_month(self) -> 'ks.Series':
+        return self.daysinmonth
+
+    days_in_month.__doc__ = daysinmonth.__doc__
+
     # Methods
+
+    def tz_localize(self, tz) -> 'ks.Series':
+        """
+        Localize tz-naive Datetime column to tz-aware Datetime column.
+        """
+        # Neither tz-naive or tz-aware datetime exists in Spark
+        raise NotImplementedError()
+
+    def tz_convert(self, tz) -> 'ks.Series':
+        """
+        Convert tz-aware Datetime column from one time zone to another.
+        """
+        # tz-aware datetime doesn't exist in Spark
+        raise NotImplementedError()
+
+    def normalize(self) -> 'ks.Series':
+        """
+        Convert times to midnight.
+        """
+        return _wrap_accessor_pandas(
+            self,
+            lambda x: x.dt.normalize(),
+            TimestampType()
+        ).alias(self.name)
+
     def strftime(self, date_format) -> 'ks.Series':
         """
         Convert to a String Series using specified date_format.
@@ -196,5 +303,55 @@ class DatetimeMethods(object):
         return _wrap_accessor_pandas(
             self,
             lambda x: x.dt.strftime(date_format),
+            StringType()
+        ).alias(self.name)
+
+    def round(self, freq) -> 'ks.Series':
+        """
+        Perform round operation on the data to the specified freq.
+        """
+        return _wrap_accessor_pandas(
+            self,
+            lambda x: x.dt.round(freq),
+            TimestampType()
+        ).alias(self.name)
+
+    def floor(self, freq) -> 'ks.Series':
+        """
+        Perform floor operation on the data to the specified freq.
+        """
+        return _wrap_accessor_pandas(
+            self,
+            lambda x: x.dt.floor(freq),
+            TimestampType()
+        ).alias(self.name)
+
+    def ceil(self, freq) -> 'ks.Series':
+        """
+        Perform ceil operation on the data to the specified freq.
+        """
+        return _wrap_accessor_pandas(
+            self,
+            lambda x: x.dt.ceil(freq),
+            TimestampType()
+        ).alias(self.name)
+
+    def month_name(self, locale=None) -> 'ks.Series':
+        """
+        Return the month names of the DateTimeIndex with specified locale.
+        """
+        return _wrap_accessor_pandas(
+            self,
+            lambda x: x.dt.month_name(locale),
+            StringType()
+        ).alias(self.name)
+
+    def day_name(self, locale=None) -> 'ks.Series':
+        """
+        Return the day names of the DateTimeIndex with specified locale.
+        """
+        return _wrap_accessor_pandas(
+            self,
+            lambda x: x.dt.day_name(locale),
             StringType()
         ).alias(self.name)
