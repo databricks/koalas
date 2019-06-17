@@ -978,7 +978,7 @@ class _Frame(object):
 
 def _resolve_col(kdf, col_like):
     if isinstance(col_like, ks.Series):
-        assert kdf == col_like._kdf, \
+        assert kdf is col_like._kdf, \
             "Cannot combine column argument because it comes from a different dataframe"
         return col_like
     elif isinstance(col_like, str):

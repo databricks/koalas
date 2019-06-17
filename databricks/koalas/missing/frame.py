@@ -105,6 +105,7 @@ class _MissingPandasLikeDataFrame(object):
     pivot = unsupported_function('pivot')
     pivot_table = unsupported_function('pivot_table')
     pop = unsupported_function('pop')
+    pow = unsupported_function('pow')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
     quantile = unsupported_function('quantile')

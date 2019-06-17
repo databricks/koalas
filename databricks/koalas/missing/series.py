@@ -118,6 +118,7 @@ class _MissingPandasLikeSeries(object):
     nonzero = unsupported_function('nonzero')
     pct_change = unsupported_function('pct_change')
     pop = unsupported_function('pop')
+    pow = unsupported_function('pow')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
     ptp = unsupported_function('ptp')
