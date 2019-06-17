@@ -237,6 +237,10 @@ class _Frame(object):
             If path_or_buf is None, returns the resulting csv format as a
             string. Otherwise returns None.
 
+        See Also
+        --------
+        read_csv : Reading CSV files.
+
         Examples
         --------
         >>> df = ks.DataFrame({'name': ['Raphael', 'Donatello'],
@@ -486,6 +490,10 @@ class _Frame(object):
         Once a workbook has been saved it is not possible write further data
         without rewriting the whole workbook.
 
+        See Also
+        --------
+        read_excel : Read Excel file.
+
         Examples
         --------
         Create, write to and save a workbook:
@@ -528,9 +536,15 @@ class _Frame(object):
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_excel, f, args)
 
-    def mean(self):
+    def mean(self, numeric_only=True):
         """
         Return the mean of the values.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -554,11 +568,17 @@ class _Frame(object):
         >>> df['a'].mean()
         2.0
         """
-        return self._reduce_for_stat_function(F.mean)
+        return self._reduce_for_stat_function(F.mean, numeric_only=numeric_only)
 
-    def sum(self):
+    def sum(self, numeric_only=True):
         """
         Return the sum of the values.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -582,11 +602,17 @@ class _Frame(object):
         >>> df['a'].sum()
         6.0
         """
-        return self._reduce_for_stat_function(F.sum)
+        return self._reduce_for_stat_function(F.sum, numeric_only=numeric_only)
 
-    def skew(self):
+    def skew(self, numeric_only=True):
         """
         Return unbiased skew normalized by N-1.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -610,12 +636,18 @@ class _Frame(object):
         >>> df['a'].skew()
         0.0
         """
-        return self._reduce_for_stat_function(F.skewness)
+        return self._reduce_for_stat_function(F.skewness, numeric_only=numeric_only)
 
-    def kurtosis(self):
+    def kurtosis(self, numeric_only=True):
         """
         Return unbiased kurtosis using Fisher’s definition of kurtosis (kurtosis of normal == 0.0).
         Normalized by N-1.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -639,13 +671,19 @@ class _Frame(object):
         >>> df['a'].kurtosis()
         -1.5
         """
-        return self._reduce_for_stat_function(F.kurtosis)
+        return self._reduce_for_stat_function(F.kurtosis, numeric_only=numeric_only)
 
     kurt = kurtosis
 
-    def min(self):
+    def min(self, numeric_only=False):
         """
         Return the minimum of the values.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -669,11 +707,17 @@ class _Frame(object):
         >>> df['a'].min()
         1.0
         """
-        return self._reduce_for_stat_function(F.min)
+        return self._reduce_for_stat_function(F.min, numeric_only=numeric_only)
 
-    def max(self):
+    def max(self, numeric_only=False):
         """
         Return the maximum of the values.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -697,11 +741,17 @@ class _Frame(object):
         >>> df['a'].max()
         3.0
         """
-        return self._reduce_for_stat_function(F.max)
+        return self._reduce_for_stat_function(F.max, numeric_only=numeric_only)
 
-    def std(self):
+    def std(self, numeric_only=True):
         """
         Return sample standard deviation.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -725,11 +775,17 @@ class _Frame(object):
         >>> df['a'].std()
         1.0
         """
-        return self._reduce_for_stat_function(F.stddev)
+        return self._reduce_for_stat_function(F.stddev, numeric_only=numeric_only)
 
-    def var(self):
+    def var(self, numeric_only=True):
         """
         Return unbiased variance.
+
+        Parameters
+        ----------
+        numeric_only : bool, default None
+            Include only float, int, boolean columns. If None, will attempt to use
+            everything, then use only numeric data. Not implemented for Series.
 
         Returns
         -------
@@ -753,7 +809,7 @@ class _Frame(object):
         >>> df['a'].var()
         1.0
         """
-        return self._reduce_for_stat_function(F.variance)
+        return self._reduce_for_stat_function(F.variance, numeric_only=numeric_only)
 
     @property
     def size(self) -> int:

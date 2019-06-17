@@ -17,6 +17,11 @@
 import inspect
 from collections import defaultdict
 
+import base64
+from io import BytesIO
+import matplotlib
+matplotlib.use('agg')
+from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -373,6 +378,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
             self.assertEqual(self.ks.to_list(), self.ps.to_list())
 
+    def test_append(self):
+        ps1 = pd.Series([1, 2, 3], name='0')
+        ps2 = pd.Series([4, 5, 6], name='0')
+        ps3 = pd.Series([4, 5, 6], index=[3, 4, 5], name='0')
+        ks1 = koalas.from_pandas(ps1)
+        ks2 = koalas.from_pandas(ps2)
+        ks3 = koalas.from_pandas(ps3)
+
+        self.assert_eq(ks1.append(ks2), ps1.append(ps2))
+        self.assert_eq(ks1.append(ks3), ps1.append(ps3))
+        self.assert_eq(ks1.append(ks2, ignore_index=True), ps1.append(ps2, ignore_index=True))
+
+        ks1.append(ks3, verify_integrity=True)
+        msg = "Indices have overlapping values"
+        with self.assertRaises(ValueError, msg=msg):
+            ks1.append(ks2, verify_integrity=True)
+
     def test_map(self):
         pser = pd.Series(['cat', 'dog', None, 'rabbit'])
         kser = koalas.from_pandas(pser)
@@ -409,3 +431,25 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             f(df["x"]).isna(),
             pd.Series([False, True]).rename("f(x)"))
+
+    def test_hist(self):
+        pdf = pd.DataFrame({
+            'a': [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50],
+        }, index=[0, 1, 3, 5, 6, 8, 9, 9, 9, 10, 10])
+
+        kdf = koalas.from_pandas(pdf)
+
+        def plot_to_base64(ax):
+            bytes_data = BytesIO()
+            ax.figure.savefig(bytes_data, format='png')
+            bytes_data.seek(0)
+            b64_data = base64.b64encode(bytes_data.read())
+            plt.close(ax.figure)
+            return b64_data
+
+        _, ax1 = plt.subplots(1, 1)
+        # Using plot.hist() because pandas changes ticks props when called hist()
+        ax1 = pdf['a'].plot.hist()
+        _, ax2 = plt.subplots(1, 1)
+        ax2 = kdf['a'].hist()
+        self.assert_eq(plot_to_base64(ax1), plot_to_base64(ax2))

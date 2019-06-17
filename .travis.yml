@@ -62,11 +62,9 @@ install:
   # Test PyPI installation at Python 3.5. This is also because
   # one of the dependency requires Python 3.6 Conda specifically.
   - if [[ $TRAVIS_PYTHON_VERSION == "3.5" ]]; then
-      pip install -r requirements-dev.txt;
-      pip list;
+      pip install -r requirements-dev.txt && pip list;
     else
-      conda install -c conda-forge --yes --file requirements-dev.txt;
-      conda list;
+      conda install -c conda-forge --yes --file requirements-dev.txt && conda list;
     fi
 
   # Useful for to_clipboard test
@@ -75,6 +73,7 @@ install:
 
 before_script:
   - export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
+  - export QT_QPA_PLATFORM="offscreen"
   - ./dev/lint-python
 
 script:

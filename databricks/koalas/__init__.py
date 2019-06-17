@@ -40,6 +40,7 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index, MultiIndex
 from databricks.koalas.series import Series
 from databricks.koalas.typedef import Col, pandas_wraps
+from databricks.koalas.sql import sql
 
 __all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
            'get_dummies', 'DataFrame', 'Series', 'Index', 'MultiIndex', 'Col', 'pandas_wraps',
@@ -56,8 +57,8 @@ def _auto_patch():
         logger.info("Patching spark automatically. You can disable it by setting "
                     "SPARK_KOALAS_AUTOPATCH=false in your environment")
 
-    from pyspark.sql import dataframe as df
-    df.DataFrame.to_koalas = DataFrame.to_koalas
+        from pyspark.sql import dataframe as df
+        df.DataFrame.to_koalas = DataFrame.to_koalas
 
 
 _auto_patch()

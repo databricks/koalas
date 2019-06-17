@@ -92,6 +92,8 @@ Computations / Descriptive Stats
    Series.max
    Series.mean
    Series.min
+   Series.nlargest
+   Series.nsmallest
    Series.nunique
    Series.skew
    Series.std
@@ -127,12 +129,19 @@ Missing data handling
    Series.fillna
 
 Reshaping, sorting, transposing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 .. autosummary::
    :toctree: api/
 
    Series.sort_index
    Series.sort_values
+
+Combining / joining / merging
+-----------------------------
+.. autosummary::
+   :toctree: api/
+
+   Series.append
 
 Accessors
 ---------
@@ -141,23 +150,25 @@ Koalas provides dtype-specific methods under various accessors.
 These are separate namespaces within :class:`Series` that only apply
 to specific data types.
 
-========= =========================
-Data Type                  Accessor
-========= =========================
+========= ===========================
+Data Type                    Accessor
+========= ===========================
 Datetime  :ref:`dt <api.series.dt>`
-========= =========================
+String    :ref:`str <api.series.str>`
+Plot      :ref:`plot <api.series.plot>`
+========= ===========================
 
 .. _api.series.dt:
 
-Datetimelike Properties
-~~~~~~~~~~~~~~~~~~~~~~~
+Date Time Handling
+------------------
 
 ``Series.dt`` can be used to access the values of the series as
 datetimelike and return several properties.
 These can be accessed like ``Series.dt.<property>``.
 
 Datetime Properties
-^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~
 
 .. currentmodule:: databricks.koalas.series
 .. autosummary::
@@ -179,13 +190,67 @@ Datetime Properties
    Series.dt.microsecond
 
 Datetime Methods
-^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~
 
 .. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
    Series.dt.strftime
+
+.. _api.series.str:
+
+String Handling
+---------------
+
+``Series.str`` can be used to access the values of the series as
+strings and apply several methods to it. These can be accessed
+like ``Series.str.<function/property>``.
+
+.. currentmodule:: databricks.koalas.series
+.. autosummary::
+   :toctree: api/
+
+   Series.str.capitalize
+   Series.str.endswith
+   Series.str.get
+   Series.str.isalnum
+   Series.str.isalpha
+   Series.str.isdigit
+   Series.str.isspace
+   Series.str.islower
+   Series.str.isupper
+   Series.str.istitle
+   Series.str.isnumeric
+   Series.str.isdecimal
+   Series.str.lower
+   Series.str.lstrip
+   Series.str.rstrip
+   Series.str.startswith
+   Series.str.strip
+   Series.str.swapcase
+   Series.str.upper
+
+.. _api.series.plot:
+
+Plotting
+-------------------------------
+``Series.plot`` is both a callable method and a namespace attribute for
+specific plotting methods of the form ``Series.plot.<kind>``.
+
+.. currentmodule:: databricks.koalas.series
+.. autosummary::
+   :toctree: api/
+
+   Series.plot.bar
+   Series.plot.box
+   Series.plot.hist
+
+.. currentmodule:: databricks.koalas
+.. autosummary::
+   :toctree: api/
+
+   Series.hist
 
 Serialization / IO / Conversion
 -------------------------------
@@ -202,4 +267,3 @@ Serialization / IO / Conversion
    Series.to_json
    Series.to_csv
    Series.to_excel
-

@@ -5,17 +5,17 @@ General functions
 =================
 .. currentmodule:: databricks.koalas
 
-Data manipulations
-~~~~~~~~~~~~~~~~~~
+Data manipulations and SQL
+--------------------------
 .. autosummary::
    :toctree: api/
 
    get_dummies
-   sql
    concat
+   sql
 
 Top-level dealing with datetimelike
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------
 .. autosummary::
    :toctree: api/
 
@@ -23,7 +23,7 @@ Top-level dealing with datetimelike
 
 
 Integration with Spark and pandas
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------
 .. autosummary::
    :toctree: api/
 

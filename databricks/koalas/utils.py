@@ -24,8 +24,13 @@ from pyspark import sql as spark
 import pandas as pd
 
 
-def default_session():
-    return spark.SparkSession.builder.getOrCreate()
+def default_session(conf=None):
+    if conf is None:
+        conf = dict()
+    builder = spark.SparkSession.builder.appName("Koalas")
+    for key, value in conf.items():
+        builder = builder.config(key, value)
+    return builder.getOrCreate()
 
 
 def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],

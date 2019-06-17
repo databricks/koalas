@@ -69,6 +69,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertEqual(ddf.a.notnull().alias("x").name, "x")
 
+        # check ks.DataFrame(ks.Series)
+        pser = pd.Series([1, 2, 3], name='x')
+        kser = ks.Series([1, 2, 3], name='x')
+        self.assert_eq(pd.DataFrame(pser), ks.DataFrame(kser))
+
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
         df = ks.range(10)
@@ -471,7 +476,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         def check(op):
             k_res = op(left_kdf, right_kdf)
+            k_res = k_res.to_pandas()
             k_res = k_res.sort_values(by=list(k_res.columns))
+            k_res = k_res.reset_index(drop=True)
             p_res = op(left_pdf, right_pdf)
             p_res = p_res.sort_values(by=list(p_res.columns))
             p_res = p_res.reset_index(drop=True)
@@ -506,6 +513,36 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # suffix
         check(lambda left, right: left.merge(right, left_on='lkey', right_on='rkey',
                                              suffixes=['_left', '_right']))
+
+    def test_merge_retains_indices(self):
+        left_pdf = pd.DataFrame({'A': [0, 1]})
+        right_pdf = pd.DataFrame({'B': [1, 2]}, index=[1, 2])
+        left_kdf = ks.from_pandas(left_pdf)
+        right_kdf = ks.from_pandas(right_pdf)
+
+        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True),
+                       left_pdf.merge(right_pdf, left_index=True, right_index=True))
+        self.assert_eq(left_kdf.merge(right_kdf, left_on='A', right_index=True),
+                       left_pdf.merge(right_pdf, left_on='A', right_index=True))
+        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_on='B'),
+                       left_pdf.merge(right_pdf, left_index=True, right_on='B'))
+        self.assert_eq(left_kdf.merge(right_kdf, left_on='A', right_on='B'),
+                       left_pdf.merge(right_pdf, left_on='A', right_on='B'))
+
+    def test_merge_how_parameter(self):
+        left_pdf = pd.DataFrame({'A': [1, 2]})
+        right_pdf = pd.DataFrame({'B': ['x', 'y']}, index=[1, 2])
+        left_kdf = ks.from_pandas(left_pdf)
+        right_kdf = ks.from_pandas(right_pdf)
+
+        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True),
+                       left_pdf.merge(right_pdf, left_index=True, right_index=True))
+        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left'),
+                       left_pdf.merge(right_pdf, left_index=True, right_index=True, how='left'))
+        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right'),
+                       left_pdf.merge(right_pdf, left_index=True, right_index=True, how='right'))
+        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer'),
+                       left_pdf.merge(right_pdf, left_index=True, right_index=True, how='outer'))
 
     def test_merge_raises(self):
         left = ks.DataFrame({'value': [1, 2, 3, 5, 6],
@@ -556,6 +593,75 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(AnalysisException,
                                     'Cannot resolve column name "id"'):
             left.merge(right, on='id')
+
+    def test_append(self):
+        pdf = pd.DataFrame([[1, 2], [3, 4]], columns=list('AB'))
+        kdf = ks.from_pandas(pdf)
+        other_pdf = pd.DataFrame([[3, 4], [5, 6]], columns=list('BC'), index=[2, 3])
+        other_kdf = ks.from_pandas(other_pdf)
+
+        self.assert_eq(kdf.append(kdf), pdf.append(pdf))
+        self.assert_eq(kdf.append(kdf, ignore_index=True), pdf.append(pdf, ignore_index=True))
+
+        # Assert DataFrames with non-matching columns
+        self.assert_eq(kdf.append(other_kdf), pdf.append(other_pdf))
+
+        # Assert appending a Series fails
+        msg = "DataFrames.append() does not support appending Series to DataFrames"
+        with self.assertRaises(ValueError, msg=msg):
+            kdf.append(kdf['A'])
+
+        # Assert using the sort parameter raises an exception
+        msg = "The 'sort' parameter is currently not supported"
+        with self.assertRaises(ValueError, msg=msg):
+            kdf.append(kdf, sort=True)
+
+        # Assert using 'verify_integrity' only raises an exception for overlapping indices
+        self.assert_eq(kdf.append(other_kdf, verify_integrity=True),
+                       pdf.append(other_pdf, verify_integrity=True))
+        msg = "Indices have overlapping values"
+        with self.assertRaises(ValueError, msg=msg):
+            kdf.append(kdf, verify_integrity=True)
+
+        # Skip integrity verification when ignore_index=True
+        self.assert_eq(kdf.append(kdf, ignore_index=True, verify_integrity=True),
+                       pdf.append(pdf, ignore_index=True, verify_integrity=True))
+
+        # Assert appending multi-index DataFrames
+        multi_index_pdf = pd.DataFrame([[1, 2], [3, 4]], columns=list('AB'),
+                                       index=[[2, 3], [4, 5]])
+        multi_index_kdf = ks.from_pandas(multi_index_pdf)
+        other_multi_index_pdf = pd.DataFrame([[5, 6], [7, 8]], columns=list('AB'),
+                                             index=[[2, 3], [6, 7]])
+        other_multi_index_kdf = ks.from_pandas(other_multi_index_pdf)
+
+        self.assert_eq(multi_index_kdf.append(multi_index_kdf),
+                       multi_index_pdf.append(multi_index_pdf))
+
+        # Assert DataFrames with non-matching columns
+        self.assert_eq(multi_index_kdf.append(other_multi_index_kdf),
+                       multi_index_pdf.append(other_multi_index_pdf))
+
+        # Assert using 'verify_integrity' only raises an exception for overlapping indices
+        self.assert_eq(multi_index_kdf.append(other_multi_index_kdf, verify_integrity=True),
+                       multi_index_pdf.append(other_multi_index_pdf, verify_integrity=True))
+        with self.assertRaises(ValueError, msg=msg):
+            multi_index_kdf.append(multi_index_kdf, verify_integrity=True)
+
+        # Skip integrity verification when ignore_index=True
+        self.assert_eq(multi_index_kdf.append(multi_index_kdf,
+                                              ignore_index=True, verify_integrity=True),
+                       multi_index_pdf.append(multi_index_pdf,
+                                              ignore_index=True, verify_integrity=True))
+
+        # Assert trying to append DataFrames with different index levels
+        msg = "Both DataFrames have to have the same number of index levels"
+        with self.assertRaises(ValueError, msg=msg):
+            kdf.append(multi_index_kdf)
+
+        # Skip index level check when ignore_index=True
+        self.assert_eq(kdf.append(multi_index_kdf, ignore_index=True),
+                       pdf.append(multi_index_pdf, ignore_index=True))
 
     def test_clip(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})

@@ -48,3 +48,6 @@ _build
 
 # Coverage
 .coverage*
+
+# Spark
+spark-warehouse/
