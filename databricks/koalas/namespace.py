@@ -25,6 +25,7 @@ import itertools
 import numpy as np
 import pandas as pd
 
+from databricks.koalas.metadata import Metadata
 from pyspark.sql import functions as F
 from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
     DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
@@ -1232,6 +1233,14 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
         return _col(result_kdf)
     else:
         return result_kdf
+
+
+def melt(frame, id_vars=None, value_vars=None, var_name='variable',
+         value_name='value'):
+    return DataFrame.melt(frame, id_vars, value_vars, var_name, value_name)
+
+
+melt.__doc__ = DataFrame.melt.__doc__
 
 
 # @pandas_wraps(return_col=np.datetime64)
