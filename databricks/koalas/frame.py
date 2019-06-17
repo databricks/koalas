@@ -27,7 +27,7 @@ import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like
 from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
-from pyspark.sql import functions as F, Column, DataFrame as SDataFrame
+from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType, StructType)
 from pyspark.sql.utils import AnalysisException
@@ -39,7 +39,6 @@ from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.typedef import infer_pd_series_spark_type
 
 
 # These regular expression patterns are complied and defined here to avoid to compile the same

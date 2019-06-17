@@ -19,7 +19,6 @@ MLflow-related functions to load models and apply them to Koalas dataframes.
 """
 from mlflow.pyfunc import load_pyfunc, spark_udf
 from pyspark.sql.types import DataType
-import pyspark.sql.functions as F
 import pandas as pd
 import numpy as np
 from typing import Any

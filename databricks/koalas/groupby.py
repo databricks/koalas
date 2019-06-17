@@ -28,7 +28,6 @@ from pyspark.sql.types import FloatType, DoubleType, NumericType
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import _InternalFrame
-from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
 from databricks.koalas.series import Series, _col
