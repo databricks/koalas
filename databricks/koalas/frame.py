@@ -269,19 +269,10 @@ class DataFrame(_Frame):
     def _sdf(self) -> spark.DataFrame:
         return self._internal.sdf
 
-    @_sdf.setter
-    def _sdf(self, sdf: spark.DataFrame) -> None:
-        self._internal = self._internal.copy(sdf=sdf)
-
     @property
     def _metadata(self) -> Metadata:
         return Metadata(data_columns=self._internal.data_columns,
                         index_map=self._internal.index_map)
-
-    @_metadata.setter
-    def _metadata(self, metadata: Metadata) -> None:
-        self._internal = self._internal.copy(data_columns=metadata.data_columns,
-                                             index_map=metadata.index_map)
 
     def _reduce_for_stat_function(self, sfun, numeric_only=False):
         """
@@ -1201,14 +1192,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # Sync Spark's columns as well.
         sdf = self._sdf.select(['`{}`'.format(name) for name in metadata.columns])
 
+        internal = _InternalFrame(sdf=sdf, index_map=index_map, data_columns=data_columns)
+
         if inplace:
-            self._metadata = metadata
-            self._sdf = sdf
+            self._internal = internal
         else:
-            kdf = self.copy()
-            kdf._metadata = metadata
-            kdf._sdf = sdf
-            return kdf
+            return DataFrame(internal)
 
     def reset_index(self, level=None, drop=False, inplace=False):
         """Reset the index, or a level of it.
@@ -1333,16 +1322,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if drop:
             new_index_map = []
 
-        metadata = self._metadata.copy(
+        internal = self._internal.copy(
             data_columns=[column for column, _ in new_index_map] + self._metadata.data_columns,
             index_map=index_map)
         columns = [name for _, name in new_index_map] + self._metadata.data_columns
         if inplace:
-            self._metadata = metadata
+            self._internal = internal
             self.columns = columns
         else:
-            kdf = self.copy()
-            kdf._metadata = metadata
+            kdf = DataFrame(internal)
             kdf.columns = columns
             return kdf
 
@@ -2163,10 +2151,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     raise TypeError('must specify how or thresh')
 
             sdf = self._sdf.filter(pred)
+            internal = self._internal.copy(sdf=sdf)
             if inplace:
-                self._sdf = sdf
+                self._internal = internal
             else:
-                return DataFrame(sdf, self._metadata.copy())
+                return DataFrame(internal)
 
         else:
             raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
@@ -2243,10 +2232,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     raise TypeError("Unsupported type %s" % type(v))
 
         sdf = self._sdf.fillna(value)
+        internal = self._internal.copy(sdf=sdf)
         if inplace:
-            self._sdf = sdf
+            self._internal = internal
         else:
-            return DataFrame(sdf, self._metadata.copy())
+            return DataFrame(internal)
 
     def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) \
             -> 'DataFrame':
@@ -2380,8 +2370,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf.select(self._metadata.index_columns +
                                [self[old_name]._scol.alias(new_name)
                                 for (old_name, new_name) in zip(old_names, names)])
-        self._sdf = sdf
-        self._metadata = self._metadata.copy(data_columns=names)
+        self._internal = self._internal.copy(sdf=sdf, data_columns=names)
 
     @property
     def dtypes(self):
@@ -2669,8 +2658,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
               for colname, asc in zip(by, ascending)]
         kdf = DataFrame(self._sdf.sort(*by), self._metadata.copy())
         if inplace:
-            self._sdf = kdf._sdf
-            self._metadata = kdf._metadata
+            self._internal = kdf._internal
             return None
         else:
             return kdf
@@ -3820,8 +3808,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             kdf = self.assign(**{key: value})
 
-        self._sdf = kdf._sdf
-        self._metadata = kdf._metadata
+        self._internal = kdf._internal
 
     def __getattr__(self, key: str) -> Any:
         from databricks.koalas.series import Series

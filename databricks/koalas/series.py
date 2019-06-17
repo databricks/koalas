@@ -234,10 +234,6 @@ class Series(_Frame, IndexOpsMixin):
     def _index_map(self) -> List[IndexMap]:
         return self._internal.index_map
 
-    @_index_map.setter
-    def _index_map(self, index_map: List[IndexMap]) -> None:
-        self._internal = self._internal.copy(index_map=index_map)
-
     def _with_new_scol(self, scol: spark.Column) -> 'Series':
         """
         Copy Koalas Series with the new Spark Column.
@@ -578,7 +574,7 @@ class Series(_Frame, IndexOpsMixin):
             return self
         scol = self._scol.alias(index)
         if kwargs.get('inplace', False):
-            self._scol = scol
+            self._internal = self._internal.copy(scol=scol)
             return self
         else:
             return Series(scol, anchor=self._kdf, index=self._index_map)
@@ -1192,10 +1188,9 @@ class Series(_Frame, IndexOpsMixin):
             sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
 
         index_name = 'index' if self.name != 'index' else 'level_0'
-        kdf = DataFrame(sdf)
-        kdf.columns = [index_name, self.name]
-        kdf._metadata = Metadata(data_columns=[self.name], index_map=[(index_name, None)])
-        return _col(kdf)
+        sdf = sdf.select(sdf[self.name].alias(index_name), sdf['count'].alias(self.name))
+        internal = _InternalFrame(sdf=sdf, data_columns=[self.name], index_map=[(index_name, None)])
+        return _col(DataFrame(internal))
 
     def sort_values(self, ascending: bool = True, inplace: bool = False,
                     na_position: str = 'last') -> Union['Series', None]:
@@ -1418,10 +1413,11 @@ class Series(_Frame, IndexOpsMixin):
         """
         assert isinstance(prefix, str)
         kdf = self.to_dataframe()
-        metadata = kdf._metadata
-        sdf = kdf._sdf
-        kdf._sdf = sdf.select([F.concat(F.lit(prefix), sdf[index_column]).alias(index_column)
-                               for index_column in metadata.index_columns] + metadata.data_columns)
+        internal = kdf._internal
+        sdf = internal.sdf
+        sdf = sdf.select([F.concat(F.lit(prefix), sdf[index_column]).alias(index_column)
+                          for index_column in internal.index_columns] + internal.data_columns)
+        kdf._internal = internal.copy(sdf=sdf)
         return Series(self._scol, anchor=kdf, index=self._index_map)
 
     def add_suffix(self, suffix):
@@ -1466,10 +1462,11 @@ class Series(_Frame, IndexOpsMixin):
         """
         assert isinstance(suffix, str)
         kdf = self.to_dataframe()
-        metadata = kdf._metadata
-        sdf = kdf._sdf
-        kdf._sdf = sdf.select([F.concat(sdf[index_column], F.lit(suffix)).alias(index_column)
-                               for index_column in metadata.index_columns] + metadata.data_columns)
+        internal = kdf._internal
+        sdf = internal.sdf
+        sdf = sdf.select([F.concat(sdf[index_column], F.lit(suffix)).alias(index_column)
+                          for index_column in internal.index_columns] + internal.data_columns)
+        kdf._internal = internal.copy(sdf=sdf)
         return Series(self._scol, anchor=kdf, index=self._index_map)
 
     def corr(self, other, method='pearson'):

@@ -31,7 +31,6 @@ from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import max_display_count
-from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
 
@@ -125,11 +124,11 @@ class Index(IndexOpsMixin):
     def names(self, names: List[str]) -> None:
         if not is_list_like(names):
             raise ValueError('Names must be a list-like')
-        metadata = self._kdf._metadata
-        if len(metadata.index_map) != len(names):
+        internal = self._kdf._internal
+        if len(internal.index_map) != len(names):
             raise ValueError('Length of new names must be {}, got {}'
-                             .format(len(metadata.index_map), len(names)))
-        self._kdf._metadata = metadata.copy(index_map=list(zip(metadata.index_columns, names)))
+                             .format(len(internal.index_map), len(names)))
+        self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
 
     def to_series(self, name: str = None) -> Series:
         """
