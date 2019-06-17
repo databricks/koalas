@@ -1884,9 +1884,10 @@ class Series(_Frame, IndexOpsMixin):
             sdf = self._kdf._sdf.select(
                 self._metadata.index_columns + [c._scol for c in applied])
 
-            metadata = self._metadata.copy(data_columns=[c.name for c in applied])
+            internal = self.to_dataframe()._internal.copy(
+                sdf=sdf, data_columns=[c.name for c in applied])
 
-            return DataFrame(sdf, metadata)
+            return DataFrame(internal)
         else:
             return self.apply(func, args=args, **kwargs)
 
