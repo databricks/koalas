@@ -25,7 +25,6 @@ import itertools
 import numpy as np
 import pandas as pd
 
-from databricks.koalas.metadata import Metadata
 from pyspark.sql import functions as F
 from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
     DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
