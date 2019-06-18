@@ -3096,7 +3096,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return len(self), len(self.columns)
 
-    def merge(left, right: 'DataFrame', how: str = 'inner',
+    def merge(self, right: 'DataFrame', how: str = 'inner',
               on: Optional[Union[str, List[str]]] = None,
               left_on: Optional[Union[str, List[str]]] = None,
               right_on: Optional[Union[str, List[str]]] = None,
@@ -3117,7 +3117,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ----------
         right: Object to merge with.
         how: Type of merge to be performed.
-            {‘left’, ‘right’, ‘outer’, ‘inner’}, default ‘inner’
+            {'left', 'right', 'outer', 'inner'}, default 'inner'
 
             left: use only keys from left frame, similar to a SQL left outer join; preserve key
                 order.
@@ -3222,7 +3222,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             # TODO: need special handling for multi-index.
             if left_index:
-                left_keys = left._metadata.index_columns
+                left_keys = self._metadata.index_columns
             else:
                 left_keys = _to_list(left_on)
             if right_index:
@@ -3235,7 +3235,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if right_keys and not left_keys:
                 raise ValueError('Must pass left_on or left_index=True')
             if not left_keys and not right_keys:
-                common = list(left.columns.intersection(right.columns))
+                common = list(self.columns.intersection(right.columns))
                 if len(common) == 0:
                     raise ValueError(
                         'No common columns to perform merge on. Merge options: '
@@ -3255,7 +3255,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'how' parameter has to be amongst the following values: ",
                              "['inner', 'left', 'right', 'outer']")
 
-        left_table = left._sdf.alias('left_table')
+        left_table = self._sdf.alias('left_table')
         right_table = right._sdf.alias('right_table')
 
         left_key_columns = [left_table[col] for col in left_keys]  # type: ignore
@@ -3272,10 +3272,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         right_suffix = suffixes[1]
 
         # Append suffixes to columns with the same name to avoid conflicts later
-        duplicate_columns = (set(left._metadata.data_columns)
+        duplicate_columns = (set(self._metadata.data_columns)
                              & set(right._metadata.data_columns))
 
-        left_index_columns = set(left._metadata.index_columns)
+        left_index_columns = set(self._metadata.index_columns)
         right_index_columns = set(right._metadata.index_columns)
 
         exprs = []
@@ -3307,14 +3307,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if right_index:
                 exprs.extend(['left_table.%s' % col for col in left_index_columns])
                 exprs.extend(['right_table.%s' % col for col in right_index_columns])
-                index_map = left._metadata.index_map + [idx for idx in right._metadata.index_map
-                                                        if idx not in left._metadata.index_map]
+                index_map = self._metadata.index_map + [idx for idx in right._metadata.index_map
+                                                        if idx not in self._metadata.index_map]
             else:
                 exprs.extend(['right_table.%s' % col for col in right_index_columns])
                 index_map = right._metadata.index_map
         elif right_index:
             exprs.extend(['left_table.%s' % col for col in left_index_columns])
-            index_map = left._metadata.index_map
+            index_map = self._metadata.index_map
         else:
             index_map = []
 
@@ -3323,7 +3323,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # Merge left and right indices after the join by replacing missing values in the left index
         # with values from the right index and dropping
         if (how == 'right' or how == 'full') and right_index:
-            for left_index_col, right_index_col in zip(left._metadata.index_columns,
+            for left_index_col, right_index_col in zip(self._metadata.index_columns,
                                                        right._metadata.index_columns):
                 selected_columns = selected_columns.withColumn(
                     'left_table.' + left_index_col,
