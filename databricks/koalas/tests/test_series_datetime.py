@@ -173,11 +173,11 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_month_name(self):
         self.check_func(lambda x: x.dt.month_name())
-        self.check_func(lambda x: x.dt.month_name(locale='zh_TW'))
+        self.check_func(lambda x: x.dt.month_name(locale='en_US.UTF-8'))
 
     def test_day_name(self):
         self.check_func(lambda x: x.dt.day_name())
-        self.check_func(lambda x: x.dt.day_name(locale='zh_TW'))
+        self.check_func(lambda x: x.dt.day_name(locale='en_US.UTF-8'))
 
     def test_unsupported_type(self):
         self.assertRaisesRegex(ValueError,
