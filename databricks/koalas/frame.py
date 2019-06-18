@@ -3286,7 +3286,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return concat([self, other], ignore_index=ignore_index)
 
     # TODO: implement 'filter_func' when version issue answered
-    def update(left, right: 'DataFrame', join: str = 'left', overwrite: bool = True,
+    def update(self, right: 'DataFrame', join: str = 'left', overwrite: bool = True,
                errors: str = 'ignore'):
         """
         Modify in place using non-NA values from another DataFrame.
@@ -3391,8 +3391,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(right, ks.Series):
             right = DataFrame(right)
 
-        update_columns = list(set(left._metadata.data_columns) & set(right._metadata.data_columns))
-        update_sdf = left.join(right[update_columns], rsuffix='_new')._sdf
+        update_columns = list(set(self._metadata.data_columns) & set(right._metadata.data_columns))
+        update_sdf = self.join(right[update_columns], rsuffix='_new')._sdf
 
         for column_name in update_columns:
             old_col = update_sdf[column_name]
@@ -3409,7 +3409,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 update_sdf = update_sdf.withColumn(column_name, F.when(old_col.isNull(), new_col)
                                                    .otherwise(old_col))
 
-        left._sdf = update_sdf.select(left._internal.columns)
+        self._sdf = update_sdf.select(self._internal.columns)
 
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
                random_state: Optional[int] = None) -> 'DataFrame':
