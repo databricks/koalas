@@ -4043,7 +4043,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(id_vars, (list, tuple, np.ndarray)):
             id_vars = list(id_vars)
 
-        data_columns = self._metadata.data_columns
+        data_columns = self._internal.data_columns
 
         if value_vars is None:
             value_vars = []
