@@ -27,7 +27,7 @@ import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like
 from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
-from pyspark.sql import functions as F, Column, DataFrame as SDataFrame
+from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType, StructType)
 from pyspark.sql.utils import AnalysisException
@@ -39,7 +39,6 @@ from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.typedef import infer_pd_series_spark_type
 
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
@@ -158,10 +157,8 @@ class DataFrame(_Frame):
     Koala DataFrame that corresponds to Pandas DataFrame logically. This holds Spark DataFrame
     internally.
 
-    :ivar _sdf: Spark Column instance
-    :type _sdf: SDataFrame
-    :ivar _metadata: Metadata related to column names and index information.
-    :type _metadata: Metadata
+    :ivar _internal: an internal immutable Frame to manage metadata.
+    :type _internal: _InternalFrame
 
     Parameters
     ----------
@@ -170,13 +167,11 @@ class DataFrame(_Frame):
         Dict can contain Series, arrays, constants, or list-like objects
         If data is a dict, argument order is maintained for Python 3.6
         and later.
-        Note that if `data` is a Pandas DataFrame, other arguments should not be used.
-        If `data` is a Spark DataFrame, all other arguments except `index` should not be used.
-        If `data` is a Koalas Series, other arguments should not be used.
+        Note that if `data` is a Pandas DataFrame, a Spark DataFrame, and a Koalas Series,
+        other arguments should not be used.
     index : Index or array-like
         Index to use for resulting frame. Will default to RangeIndex if
         no indexing information part of input data and no index provided
-        If `data` is a Spark DataFrame, `index` is expected to be `Metadata`.
     columns : Index or array-like
         Column labels to use for resulting frame. Will default to
         RangeIndex (0, 1, 2, ..., n) if no column labels are provided
@@ -239,14 +234,11 @@ class DataFrame(_Frame):
             assert not copy
             super(DataFrame, self).__init__(data)
         elif isinstance(data, spark.DataFrame):
+            assert index is None
             assert columns is None
             assert dtype is None
             assert not copy
-            if index is None:
-                super(DataFrame, self).__init__(_InternalFrame(data))
-            else:
-                super(DataFrame, self).__init__(_InternalFrame(
-                    data, data_columns=index.data_columns, index_map=index.index_map))
+            super(DataFrame, self).__init__(_InternalFrame(data))
         elif isinstance(data, ks.Series):
             assert index is None
             assert columns is None
@@ -269,19 +261,10 @@ class DataFrame(_Frame):
     def _sdf(self) -> spark.DataFrame:
         return self._internal.sdf
 
-    @_sdf.setter
-    def _sdf(self, sdf: spark.DataFrame) -> None:
-        self._internal = self._internal.copy(sdf=sdf)
-
     @property
     def _metadata(self) -> Metadata:
         return Metadata(data_columns=self._internal.data_columns,
                         index_map=self._internal.index_map)
-
-    @_metadata.setter
-    def _metadata(self, metadata: Metadata) -> None:
-        self._internal = self._internal.copy(data_columns=metadata.data_columns,
-                                             index_map=metadata.index_map)
 
     def _reduce_for_stat_function(self, sfun, numeric_only=False):
         """
@@ -338,10 +321,11 @@ class DataFrame(_Frame):
         applied = []
         for column in self._metadata.data_columns:
             applied.append(getattr(self[column], op)(other))
+
         sdf = self._sdf.select(
             self._metadata.index_columns + [c._scol for c in applied])
-        metadata = self._metadata.copy(data_columns=[c.name for c in applied])
-        return DataFrame(sdf, metadata)
+        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
 
     def __add__(self, other):
         return self._map_series_op("add", other)
@@ -645,9 +629,8 @@ class DataFrame(_Frame):
         sdf = self._sdf.select(
             self._metadata.index_columns + [c._scol for c in applied])
 
-        metadata = self._metadata.copy(data_columns=[c.name for c in applied])
-
-        return DataFrame(sdf, metadata)
+        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
 
     def corr(self, method='pearson'):
         """
@@ -1324,14 +1307,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # Sync Spark's columns as well.
         sdf = self._sdf.select(['`{}`'.format(name) for name in metadata.columns])
 
+        internal = _InternalFrame(sdf=sdf, index_map=index_map, data_columns=data_columns)
+
         if inplace:
-            self._metadata = metadata
-            self._sdf = sdf
+            self._internal = internal
         else:
-            kdf = self.copy()
-            kdf._metadata = metadata
-            kdf._sdf = sdf
-            return kdf
+            return DataFrame(internal)
 
     def reset_index(self, level=None, drop=False, inplace=False):
         """Reset the index, or a level of it.
@@ -1456,16 +1437,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if drop:
             new_index_map = []
 
-        metadata = self._metadata.copy(
+        internal = self._internal.copy(
             data_columns=[column for column, _ in new_index_map] + self._metadata.data_columns,
             index_map=index_map)
         columns = [name for _, name in new_index_map] + self._metadata.data_columns
         if inplace:
-            self._metadata = metadata
+            self._internal = internal
             self.columns = columns
         else:
-            kdf = self.copy()
-            kdf._metadata = metadata
+            kdf = DataFrame(internal)
             kdf.columns = columns
             return kdf
 
@@ -1688,7 +1668,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.unpersist()
         """
-        return _CachedDataFrame(self._sdf, self._metadata)
+        return _CachedDataFrame(self._internal)
 
     def to_table(self, name: str, format: Optional[str] = None, mode: str = 'error',
                  partition_cols: Union[str, List[str], None] = None,
@@ -2019,10 +1999,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.withColumn(name, F.lit(c))
 
         data_columns = self._metadata.data_columns
-        metadata = self._metadata.copy(
-            data_columns=(data_columns +
-                          [name for name, _ in pairs if name not in data_columns]))
-        return DataFrame(sdf, metadata)
+        internal = self._internal.copy(
+            sdf=sdf,
+            data_columns=(data_columns + [name for name, _ in pairs if name not in data_columns]))
+        return DataFrame(internal)
 
     @staticmethod
     def from_records(data: Union[np.array, List[tuple], dict, pd.DataFrame],
@@ -2171,7 +2151,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         -------
         copy : DataFrame
         """
-        return DataFrame(self._sdf, self._metadata.copy())
+        return DataFrame(self._internal.copy())
 
     def dropna(self, axis=0, how='any', thresh=None, subset=None, inplace=False):
         """
@@ -2286,10 +2266,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     raise TypeError('must specify how or thresh')
 
             sdf = self._sdf.filter(pred)
+            internal = self._internal.copy(sdf=sdf)
             if inplace:
-                self._sdf = sdf
+                self._internal = internal
             else:
-                return DataFrame(sdf, self._metadata.copy())
+                return DataFrame(internal)
 
         else:
             raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
@@ -2366,10 +2347,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     raise TypeError("Unsupported type %s" % type(v))
 
         sdf = self._sdf.fillna(value)
+        internal = self._internal.copy(sdf=sdf)
         if inplace:
-            self._sdf = sdf
+            self._internal = internal
         else:
-            return DataFrame(sdf, self._metadata.copy())
+            return DataFrame(internal)
 
     def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) \
             -> 'DataFrame':
@@ -2486,7 +2468,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2     falcon
         """
 
-        return DataFrame(self._sdf.limit(n), self._metadata.copy())
+        return DataFrame(self._internal.copy(sdf=self._sdf.limit(n)))
 
     @property
     def columns(self):
@@ -2503,8 +2485,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf.select(self._metadata.index_columns +
                                [self[old_name]._scol.alias(new_name)
                                 for (old_name, new_name) in zip(old_names, names)])
-        self._sdf = sdf
-        self._metadata = self._metadata.copy(data_columns=names)
+        self._internal = self._internal.copy(sdf=sdf, data_columns=names)
 
     @property
     def dtypes(self):
@@ -2649,10 +2630,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if isinstance(columns, str):
                 columns = [columns]
             sdf = self._sdf.drop(*columns)
-            metadata = self._metadata.copy(
-                data_columns=[column for column in self.columns if column not in columns]
-            )
-            return DataFrame(sdf, metadata)
+            internal = self._internal.copy(
+                sdf=sdf,
+                data_columns=[column for column in self.columns if column not in columns])
+            return DataFrame(internal)
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'columns'")
 
@@ -2790,10 +2771,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         }
         by = [mapper[(asc, na_position)](self[colname]._scol)
               for colname, asc in zip(by, ascending)]
-        kdf = DataFrame(self._sdf.sort(*by), self._metadata.copy())
+        kdf = DataFrame(self._internal.copy(sdf=self._sdf.sort(*by)))
         if inplace:
-            self._sdf = kdf._sdf
-            self._metadata = kdf._metadata
+            self._internal = kdf._internal
             return None
         else:
             return kdf
@@ -3076,7 +3056,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             raise TypeError('Values should be iterable, Series, DataFrame or dict.')
 
-        return DataFrame(self._sdf.select(_select_columns), self._metadata.copy())
+        return DataFrame(self._internal.copy(sdf=self._sdf.select(_select_columns)))
 
     @property
     def shape(self):
@@ -3341,7 +3321,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if index_map:
             data_columns = [c for c in selected_columns.columns
                             if c not in [idx[0] for idx in index_map]]
-            return DataFrame(selected_columns, index=Metadata(data_columns, index_map))
+            internal = _InternalFrame(
+                sdf=selected_columns, data_columns=data_columns, index_map=index_map)
+            return DataFrame(internal)
         else:
             return DataFrame(selected_columns)
 
@@ -3593,7 +3575,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("frac must be specified.")
 
         sdf = self._sdf.sample(withReplacement=replace, fraction=frac, seed=random_state)
-        return DataFrame(sdf, self._metadata.copy())
+        return DataFrame(self._internal.copy(sdf=sdf))
 
     def astype(self, dtype) -> 'DataFrame':
         """
@@ -3665,7 +3647,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 results.append(col.astype(dtype=dtype))
         sdf = self._sdf.select(
             self._metadata.index_columns + list(map(lambda ser: ser._scol, results)))
-        return DataFrame(sdf, self._metadata.copy())
+        return DataFrame(self._internal.copy(sdf=sdf))
 
     def add_prefix(self, prefix):
         """
@@ -3709,12 +3691,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         assert isinstance(prefix, str)
         data_columns = self._metadata.data_columns
-        metadata = self._metadata.copy(data_columns=[prefix + name for name in data_columns])
 
         sdf = self._sdf.select(self._metadata.index_columns +
                                [self[name]._scol.alias(prefix + name)
-                                for name in self._metadata.data_columns])
-        return DataFrame(sdf, metadata)
+                                for name in data_columns])
+        internal = self._internal.copy(
+            sdf=sdf, data_columns=[prefix + name for name in data_columns])
+        return DataFrame(internal)
 
     def add_suffix(self, suffix):
         """
@@ -3758,12 +3741,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         assert isinstance(suffix, str)
         data_columns = self._metadata.data_columns
-        metadata = self._metadata.copy(data_columns=[name + suffix for name in data_columns])
 
         sdf = self._sdf.select(self._metadata.index_columns +
                                [self[name]._scol.alias(name + suffix)
-                                for name in self._metadata.data_columns])
-        return DataFrame(sdf, metadata)
+                                for name in data_columns])
+        internal = self._internal.copy(
+            sdf=sdf, data_columns=[name + suffix for name in data_columns])
+        return DataFrame(internal)
 
     # TODO: include, and exclude should be implemented.
     def describe(self, percentiles: Optional[List[float]] = None) -> 'DataFrame':
@@ -3909,9 +3893,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf.select(*exprs).summary(stats)
 
-        return DataFrame(sdf.replace("stddev", "std", subset='summary'),
-                         index=Metadata(data_columns=data_columns,
-                                        index_map=[('summary', None)])).astype('float64')
+        internal = _InternalFrame(sdf=sdf.replace("stddev", "std", subset='summary'),
+                                  data_columns=data_columns,
+                                  index_map=[('summary', None)])
+        return DataFrame(internal).astype('float64')
 
     # TODO: implements 'keep' parameters
     def drop_duplicates(self, subset=None, inplace=False):
@@ -3967,10 +3952,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             subset = [subset]
 
         sdf = self._sdf.drop_duplicates(subset=subset)
+        internal = self._internal.copy(sdf=sdf)
         if inplace:
-            self._sdf = sdf
+            self._internal = internal
         else:
-            return DataFrame(sdf, self._metadata.copy())
+            return DataFrame(internal)
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
@@ -3978,8 +3964,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise KeyError("none key")
         if isinstance(key, str):
             try:
-                return Series(self._sdf.__getitem__(key), anchor=self,
-                              index=self._metadata.index_map)
+                return Series(self._internal.copy(scol=self._sdf.__getitem__(key)), anchor=self)
             except AnalysisException:
                 raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, str)):
@@ -3993,12 +3978,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
-            return Series(self._sdf.__getitem__(key), anchor=self, index=self._metadata.index_map)
+            return Series(self._internal.copy(scol=self._sdf.__getitem__(key)), anchor=self)
         if isinstance(key, Series):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
             bcol = key._scol.cast("boolean")
-            return DataFrame(self._sdf.filter(bcol), self._metadata.copy())
+            return DataFrame(self._internal.copy(sdf=self._sdf.filter(bcol)))
         raise NotImplementedError(key)
 
     def __repr__(self):
@@ -4050,8 +4035,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             kdf = self.assign(**{key: value})
 
-        self._sdf = kdf._sdf
-        self._metadata = kdf._metadata
+        self._internal = kdf._internal
 
     def __getattr__(self, key: str) -> Any:
         from databricks.koalas.series import Series
@@ -4063,7 +4047,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        return Series(self._sdf.__getattr__(key), anchor=self, index=self._metadata.index_map)
+        return Series(self._internal.copy(scol=self._sdf.__getattr__(key)), anchor=self)
 
     def __len__(self):
         return self._sdf.count()
@@ -4099,9 +4083,9 @@ class _CachedDataFrame(DataFrame):
     Cached Koalas DataFrame, which corresponds to Pandas DataFrame logically, but internally
     it caches the corresponding Spark DataFrame.
     """
-    def __init__(self, sdf, metadata):
-        self._cached = sdf.cache()
-        super(_CachedDataFrame, self).__init__(self._cached, index=metadata)
+    def __init__(self, internal):
+        self._cached = internal._sdf.cache()
+        super(_CachedDataFrame, self).__init__(internal)
 
     def __enter__(self):
         return self

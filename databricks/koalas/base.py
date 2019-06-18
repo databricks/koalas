@@ -119,10 +119,6 @@ class IndexOpsMixin(object):
     def _scol(self):
         return self._internal.scol
 
-    @_scol.setter
-    def _scol(self, scol: spark.Column) -> None:
-        self._internal = self._internal.copy(scol=scol)
-
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
 

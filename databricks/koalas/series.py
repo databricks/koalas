@@ -35,7 +35,6 @@ from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.internal import IndexMap, _InternalFrame
-from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.utils import validate_arguments_and_invoke_function
@@ -163,28 +162,24 @@ class Series(_Frame, IndexOpsMixin):
     Koala Series that corresponds to Pandas Series logically. This holds Spark Column
     internally.
 
-    :ivar _scol: Spark Column instance
-    :type _scol: pyspark.Column
+    :ivar _internal: an internal immutable Frame to manage metadata.
+    :type _internal: _InternalFrame
     :ivar _kdf: Parent's Koalas DataFrame
     :type _kdf: ks.DataFrame
-    :ivar _index_map: Each pair holds the index field name which exists in Spark fields,
-      and the index name.
 
     Parameters
     ----------
-    data : array-like, dict, or scalar value, Pandas Series or Spark Column
+    data : array-like, dict, or scalar value, Pandas Series
         Contains data stored in Series
         If data is a dict, argument order is maintained for Python 3.6
         and later.
         Note that if `data` is a Pandas Series, other arguments should not be used.
-        If `data` is a Spark Column, all other arguments except `index` should not be used.
     index : array-like or Index (1d)
         Values must be hashable and have the same length as `data`.
         Non-unique index values are allowed. Will default to
         RangeIndex (0, 1, 2, ..., n) if not provided. If both a dict and index
         sequence are used, the index will override the keys found in the
         dict.
-        If `data` is a Spark DataFrame, `index` is expected to be `Metadata`s `index_map`.
     dtype : numpy.dtype or None
         If None, dtype will be inferred
     copy : boolean, default False
@@ -199,13 +194,6 @@ class Series(_Frame, IndexOpsMixin):
             assert not copy
             assert not fastpath
             IndexOpsMixin.__init__(self, data, anchor)
-        elif isinstance(data, spark.Column):
-            assert dtype is None
-            assert name is None
-            assert not copy
-            assert not fastpath
-            assert anchor._internal.index_map == index
-            IndexOpsMixin.__init__(self, anchor._internal.copy(scol=data), anchor)
         else:
             if isinstance(data, pd.Series):
                 assert index is None
@@ -226,10 +214,6 @@ class Series(_Frame, IndexOpsMixin):
     def _index_map(self) -> List[IndexMap]:
         return self._internal.index_map
 
-    @_index_map.setter
-    def _index_map(self, index_map: List[IndexMap]) -> None:
-        self._internal = self._internal.copy(index_map=index_map)
-
     def _with_new_scol(self, scol: spark.Column) -> 'Series':
         """
         Copy Koalas Series with the new Spark Column.
@@ -237,7 +221,7 @@ class Series(_Frame, IndexOpsMixin):
         :param scol: the new Spark Column
         :return: the copied Series
         """
-        return Series(scol, anchor=self._kdf, index=self._index_map)
+        return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf)
 
     @property
     def dtypes(self):
@@ -599,7 +583,8 @@ class Series(_Frame, IndexOpsMixin):
                 current = current.otherwise(F.lit(tmp_val))
             else:
                 current = current.otherwise(F.lit(None).cast(self.spark_type))
-            return Series(current, anchor=self._kdf, index=self._index_map).rename(self.name)
+            return Series(self._kdf._internal.copy(scol=current),
+                          anchor=self._kdf).rename(self.name)
         else:
             return self.apply(arg)
 
@@ -638,7 +623,7 @@ class Series(_Frame, IndexOpsMixin):
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
-        return Series(self._scol.cast(spark_type), anchor=self._kdf, index=self._index_map)
+        return Series(self._kdf._internal.copy(scol=self._scol.cast(spark_type)), anchor=self._kdf)
 
     def getField(self, name):
         if not isinstance(self.schema, StructType):
@@ -648,7 +633,8 @@ class Series(_Frame, IndexOpsMixin):
             if name not in fnames:
                 raise AttributeError(
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
-            return Series(self._scol.getField(name), anchor=self._kdf, index=self._index_map)
+            return Series(self._kdf._internal.copy(scol=self._scol.getField(name)),
+                          anchor=self._kdf)
 
     def alias(self, name):
         """An alias for :meth:`Series.rename`."""
@@ -718,10 +704,10 @@ class Series(_Frame, IndexOpsMixin):
             return self
         scol = self._scol.alias(index)
         if kwargs.get('inplace', False):
-            self._scol = scol
+            self._internal = self._internal.copy(scol=scol)
             return self
         else:
-            return Series(scol, anchor=self._kdf, index=self._index_map)
+            return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf)
 
     @property
     def _metadata(self):
@@ -1332,10 +1318,9 @@ class Series(_Frame, IndexOpsMixin):
             sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
 
         index_name = 'index' if self.name != 'index' else 'level_0'
-        kdf = DataFrame(sdf)
-        kdf.columns = [index_name, self.name]
-        kdf._metadata = Metadata(data_columns=[self.name], index_map=[(index_name, None)])
-        return _col(kdf)
+        sdf = sdf.select(sdf[self.name].alias(index_name), sdf['count'].alias(self.name))
+        internal = _InternalFrame(sdf=sdf, data_columns=[self.name], index_map=[(index_name, None)])
+        return _col(DataFrame(internal))
 
     def sort_values(self, ascending: bool = True, inplace: bool = False,
                     na_position: str = 'last') -> Union['Series', None]:
@@ -1558,11 +1543,12 @@ class Series(_Frame, IndexOpsMixin):
         """
         assert isinstance(prefix, str)
         kdf = self.to_dataframe()
-        metadata = kdf._metadata
-        sdf = kdf._sdf
-        kdf._sdf = sdf.select([F.concat(F.lit(prefix), sdf[index_column]).alias(index_column)
-                               for index_column in metadata.index_columns] + metadata.data_columns)
-        return Series(self._scol, anchor=kdf, index=self._index_map)
+        internal = kdf._internal
+        sdf = internal.sdf
+        sdf = sdf.select([F.concat(F.lit(prefix), sdf[index_column]).alias(index_column)
+                          for index_column in internal.index_columns] + internal.data_columns)
+        kdf._internal = internal.copy(sdf=sdf)
+        return Series(kdf._internal.copy(scol=self._scol), anchor=kdf)
 
     def add_suffix(self, suffix):
         """
@@ -1606,11 +1592,12 @@ class Series(_Frame, IndexOpsMixin):
         """
         assert isinstance(suffix, str)
         kdf = self.to_dataframe()
-        metadata = kdf._metadata
-        sdf = kdf._sdf
-        kdf._sdf = sdf.select([F.concat(sdf[index_column], F.lit(suffix)).alias(index_column)
-                               for index_column in metadata.index_columns] + metadata.data_columns)
-        return Series(self._scol, anchor=kdf, index=self._index_map)
+        internal = kdf._internal
+        sdf = internal.sdf
+        sdf = sdf.select([F.concat(sdf[index_column], F.lit(suffix)).alias(index_column)
+                          for index_column in internal.index_columns] + internal.data_columns)
+        kdf._internal = internal.copy(sdf=sdf)
+        return Series(kdf._internal.copy(scol=self._scol), anchor=kdf)
 
     def corr(self, other, method='pearson'):
         """
@@ -2027,9 +2014,10 @@ class Series(_Frame, IndexOpsMixin):
             sdf = self._kdf._sdf.select(
                 self._metadata.index_columns + [c._scol for c in applied])
 
-            metadata = self._metadata.copy(data_columns=[c.name for c in applied])
+            internal = self.to_dataframe()._internal.copy(
+                sdf=sdf, data_columns=[c.name for c in applied])
 
-            return DataFrame(sdf, metadata)
+            return DataFrame(internal)
         else:
             return self.apply(func, args=args, **kwargs)
 
