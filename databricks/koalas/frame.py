@@ -3222,7 +3222,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(selected_columns)
 
-    def join(left, right: 'DataFrame', on: Optional[Union[str, List[str]]] = None,
+    def join(self, right: 'DataFrame', on: Optional[Union[str, List[str]]] = None,
              how: str = 'left', lsuffix: str = '', rsuffix: str = '') -> 'DataFrame':
         """
         Join columns of another DataFrame.
@@ -3321,11 +3321,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  K3  A3  None
         """
         if on:
-            left = left.set_index(on)
-            join_kdf = left.merge(right, left_index=True, right_index=True, how=how,
+            self = self.set_index(on)
+            join_kdf = self.merge(right, left_index=True, right_index=True, how=how,
                                   suffixes=(lsuffix, rsuffix)).reset_index()
         else:
-            join_kdf = left.merge(right, left_index=True, right_index=True, how=how,
+            join_kdf = self.merge(right, left_index=True, right_index=True, how=how,
                                   suffixes=(lsuffix, rsuffix))
         return join_kdf
 
