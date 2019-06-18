@@ -1234,6 +1234,14 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
         return result_kdf
 
 
+def melt(frame, id_vars=None, value_vars=None, var_name='variable',
+         value_name='value'):
+    return DataFrame.melt(frame, id_vars, value_vars, var_name, value_name)
+
+
+melt.__doc__ = DataFrame.melt.__doc__
+
+
 # @pandas_wraps(return_col=np.datetime64)
 @pandas_wraps
 def _to_datetime1(arg, errors, format, infer_datetime_format) -> Col[np.datetime64]:
