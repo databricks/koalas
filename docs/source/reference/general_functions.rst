@@ -10,6 +10,7 @@ Data manipulations and SQL
 .. autosummary::
    :toctree: api/
 
+   melt
    get_dummies
    concat
    sql
