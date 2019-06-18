@@ -224,7 +224,7 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
         return f(*args, **kwargs)
 
     # We detected some columns. They need to be wrapped in a UDF to spark.
-    kdf = _get_metadata(args, kwargs)
+    kdf = _get_kdf(args, kwargs)
 
     def clean_fun(*args2):
         assert len(args2) == len(all_indexes), \
@@ -258,7 +258,7 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
     return series
 
 
-def _get_metadata(args, kwargs):
+def _get_kdf(args, kwargs):
     from databricks.koalas.series import Series
     all_cols = ([arg for arg in args if isinstance(arg, Series)]
                 + [arg for arg in kwargs.values() if isinstance(arg, Series)])

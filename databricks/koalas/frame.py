@@ -36,7 +36,6 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.internal import _InternalFrame
-from databricks.koalas.metadata import Metadata
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 
@@ -261,11 +260,6 @@ class DataFrame(_Frame):
     def _sdf(self) -> spark.DataFrame:
         return self._internal.sdf
 
-    @property
-    def _metadata(self) -> Metadata:
-        return Metadata(data_columns=self._internal.data_columns,
-                        index_map=self._internal.index_map)
-
     def _reduce_for_stat_function(self, sfun, numeric_only=False):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
@@ -319,11 +313,11 @@ class DataFrame(_Frame):
                 "however, got %s." % (op, type(other)))
 
         applied = []
-        for column in self._metadata.data_columns:
+        for column in self._internal.data_columns:
             applied.append(getattr(self[column], op)(other))
 
         sdf = self._sdf.select(
-            self._metadata.index_columns + [c._scol for c in applied])
+            self._internal.index_columns + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
@@ -623,11 +617,11 @@ class DataFrame(_Frame):
         """
 
         applied = []
-        for column in self._metadata.data_columns:
+        for column in self._internal.data_columns:
             applied.append(self[column].apply(func))
 
         sdf = self._sdf.select(
-            self._metadata.index_columns + [c._scol for c in applied])
+            self._internal.index_columns + [c._scol for c in applied])
 
         internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
@@ -1197,9 +1191,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Index
         """
         from databricks.koalas.indexes import Index, MultiIndex
-        if len(self._metadata.index_map) == 0:
+        if len(self._internal.index_map) == 0:
             return None
-        elif len(self._metadata.index_map) == 1:
+        elif len(self._internal.index_map) == 1:
             return Index(self)
         else:
             return MultiIndex(self)
@@ -1220,7 +1214,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> ks.DataFrame({}, index=list('abc')).empty
         True
         """
-        return len(self._metadata.data_columns) == 0 or self._sdf.rdd.isEmpty()
+        return len(self._internal.data_columns) == 0 or self._sdf.rdd.isEmpty()
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns.
@@ -1294,18 +1288,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise KeyError(key)
 
         if drop:
-            data_columns = [column for column in self._metadata.data_columns if column not in keys]
+            data_columns = [column for column in self._internal.data_columns if column not in keys]
         else:
-            data_columns = self._metadata.data_columns
+            data_columns = self._internal.data_columns
         if append:
-            index_map = self._metadata.index_map + [(column, column) for column in keys]
+            index_map = self._internal.index_map + [(column, column) for column in keys]
         else:
             index_map = [(column, column) for column in keys]
 
-        metadata = self._metadata.copy(data_columns=data_columns, index_map=index_map)
+        index_columns = set(column for column, _ in index_map)
+        columns = [column for column, _ in index_map] + \
+                  [column for column in data_columns if column not in index_columns]
 
         # Sync Spark's columns as well.
-        sdf = self._sdf.select(['`{}`'.format(name) for name in metadata.columns])
+        sdf = self._sdf.select(['`{}`'.format(name) for name in columns])
 
         internal = _InternalFrame(sdf=sdf, index_map=index_map, data_columns=data_columns)
 
@@ -1379,23 +1375,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  mammal        NaN
         """
         # TODO: add example of MultiIndex back. See https://github.com/databricks/koalas/issues/301
-        if len(self._metadata.index_map) == 0:
+        if len(self._internal.index_map) == 0:
             raise NotImplementedError('Can\'t reset index because there is no index.')
 
-        multi_index = len(self._metadata.index_map) > 1
+        multi_index = len(self._internal.index_map) > 1
 
         def rename(index):
             if multi_index:
                 return 'level_{}'.format(index)
             else:
-                if 'index' not in self._metadata.data_columns:
+                if 'index' not in self._internal.data_columns:
                     return 'index'
                 else:
                     return 'level_{}'.format(index)
 
         if level is None:
             new_index_map = [(column, name if name is not None else rename(i))
-                             for i, (column, name) in enumerate(self._metadata.index_map)]
+                             for i, (column, name) in enumerate(self._internal.index_map)]
             index_map = []
         else:
             if isinstance(level, (int, str)):
@@ -1404,30 +1400,30 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             if all(isinstance(l, int) for l in level):
                 for lev in level:
-                    if lev >= len(self._metadata.index_map):
+                    if lev >= len(self._internal.index_map):
                         raise IndexError('Too many levels: Index has only {} level, not {}'
-                                         .format(len(self._metadata.index_map), lev + 1))
+                                         .format(len(self._internal.index_map), lev + 1))
                 idx = level
             elif all(isinstance(lev, str) for lev in level):
                 idx = []
                 for l in level:
                     try:
-                        i = self._metadata.index_columns.index(l)
+                        i = self._internal.index_columns.index(l)
                         idx.append(i)
                     except ValueError:
                         if multi_index:
                             raise KeyError('Level unknown not found')
                         else:
                             raise KeyError('Level unknown must be same as name ({})'
-                                           .format(self._metadata.index_columns[0]))
+                                           .format(self._internal.index_columns[0]))
             else:
                 raise ValueError('Level should be all int or all string.')
             idx.sort()
 
             new_index_map = []
-            index_map = self._metadata.index_map.copy()
+            index_map = self._internal.index_map.copy()
             for i in idx:
-                info = self._metadata.index_map[i]
+                info = self._internal.index_map[i]
                 index_column, index_name = info
                 new_index_map.append(
                     (index_column,
@@ -1438,9 +1434,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             new_index_map = []
 
         internal = self._internal.copy(
-            data_columns=[column for column, _ in new_index_map] + self._metadata.data_columns,
+            data_columns=[column for column, _ in new_index_map] + self._internal.data_columns,
             index_map=index_map)
-        columns = [name for _, name in new_index_map] + self._metadata.data_columns
+        columns = [name for _, name in new_index_map] + self._internal.data_columns
         if inplace:
             self._internal = internal
             self.columns = columns
@@ -1998,10 +1994,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 sdf = sdf.withColumn(name, F.lit(c))
 
-        data_columns = self._metadata.data_columns
+        data_columns = set(self._internal.data_columns)
         internal = self._internal.copy(
             sdf=sdf,
-            data_columns=(data_columns + [name for name, _ in pairs if name not in data_columns]))
+            data_columns=(self._internal.data_columns +
+                          [name for name, _ in pairs if name not in data_columns]))
         return DataFrame(internal)
 
     @staticmethod
@@ -2243,7 +2240,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 else:
                     columns = list(subset)
                 invalids = [column for column in columns
-                            if column not in self._metadata.data_columns]
+                            if column not in self._internal.data_columns]
                 if len(invalids) > 0:
                     raise KeyError(invalids)
             else:
@@ -2473,16 +2470,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     @property
     def columns(self):
         """The column labels of the DataFrame."""
-        return pd.Index(self._metadata.data_columns)
+        return pd.Index(self._internal.data_columns)
 
     @columns.setter
     def columns(self, names):
-        old_names = self._metadata.data_columns
+        old_names = self._internal.data_columns
         if len(old_names) != len(names):
             raise ValueError(
                 "Length mismatch: Expected axis has %d elements, new values have %d elements"
                 % (len(old_names), len(names)))
-        sdf = self._sdf.select(self._metadata.index_columns +
+        sdf = self._sdf.select(self._internal.index_columns +
                                [self[old_name]._scol.alias(new_name)
                                 for (old_name, new_name) in zip(old_names, names)])
         self._internal = self._internal.copy(sdf=sdf, data_columns=names)
@@ -2517,8 +2514,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         f    datetime64[ns]
         dtype: object
         """
-        return pd.Series([self[col].dtype for col in self._metadata.data_columns],
-                         index=self._metadata.data_columns)
+        return pd.Series([self[col].dtype for col in self._internal.data_columns],
+                         index=self._internal.data_columns)
 
     def count(self):
         """
@@ -2847,7 +2844,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'axis' argument is not supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-        return self.sort_values(by=self._metadata.index_columns, ascending=ascending,
+        return self.sort_values(by=self._internal.index_columns, ascending=ascending,
                                 inplace=inplace, na_position=na_position)
 
     # TODO:  add keep = First
@@ -3043,16 +3040,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 "'DataFrame' object has no attribute %s"
                 % (set(values.keys()).difference(self.columns)))
 
-        _select_columns = self._metadata.index_columns
+        _select_columns = self._internal.index_columns.copy()
         if isinstance(values, dict):
             for col in self.columns:
                 if col in values:
-                    _select_columns.append(self[col]._scol.isin(values[col]).alias(col))
+                    _select_columns.append(self._sdf[col].isin(values[col]).alias(col))
                 else:
                     _select_columns.append(F.lit(False).alias(col))
         elif is_list_like(values):
             _select_columns += [
-                self[col]._scol.isin(list(values)).alias(col) for col in self.columns]
+                self._sdf[col].isin(list(values)).alias(col) for col in self.columns]
         else:
             raise TypeError('Values should be iterable, Series, DataFrame or dict.')
 
@@ -3202,11 +3199,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             # TODO: need special handling for multi-index.
             if left_index:
-                left_keys = self._metadata.index_columns
+                left_keys = self._internal.index_columns
             else:
                 left_keys = _to_list(left_on)
             if right_index:
-                right_keys = right._metadata.index_columns
+                right_keys = right._internal.index_columns
             else:
                 right_keys = _to_list(right_on)
 
@@ -3252,11 +3249,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         right_suffix = suffixes[1]
 
         # Append suffixes to columns with the same name to avoid conflicts later
-        duplicate_columns = (set(self._metadata.data_columns)
-                             & set(right._metadata.data_columns))
+        duplicate_columns = (set(self._internal.data_columns)
+                             & set(right._internal.data_columns))
 
-        left_index_columns = set(self._metadata.index_columns)
-        right_index_columns = set(right._metadata.index_columns)
+        left_index_columns = set(self._internal.index_columns)
+        right_index_columns = set(right._internal.index_columns)
 
         exprs = []
         for col in left_table.columns:
@@ -3287,14 +3284,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if right_index:
                 exprs.extend(['left_table.%s' % col for col in left_index_columns])
                 exprs.extend(['right_table.%s' % col for col in right_index_columns])
-                index_map = self._metadata.index_map + [idx for idx in right._metadata.index_map
-                                                        if idx not in self._metadata.index_map]
+                index_map = self._internal.index_map + [idx for idx in right._internal.index_map
+                                                        if idx not in self._internal.index_map]
             else:
                 exprs.extend(['right_table.%s' % col for col in right_index_columns])
-                index_map = right._metadata.index_map
+                index_map = right._internal.index_map
         elif right_index:
             exprs.extend(['left_table.%s' % col for col in left_index_columns])
-            index_map = self._metadata.index_map
+            index_map = self._internal.index_map
         else:
             index_map = []
 
@@ -3303,8 +3300,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # Merge left and right indices after the join by replacing missing values in the left index
         # with values from the right index and dropping
         if (how == 'right' or how == 'full') and right_index:
-            for left_index_col, right_index_col in zip(self._metadata.index_columns,
-                                                       right._metadata.index_columns):
+            for left_index_col, right_index_col in zip(self._internal.index_columns,
+                                                       right._internal.index_columns):
                 selected_columns = selected_columns.withColumn(
                     'left_table.' + left_index_col,
                     F.when(F.col('left_table.%s' % left_index_col).isNotNull(),
@@ -3483,13 +3480,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'sort' parameter is currently not supported")
 
         if not ignore_index:
-            index_columns = self._metadata.index_columns
-            if len(index_columns) != len(other._metadata.index_columns):
+            index_columns = self._internal.index_columns
+            if len(index_columns) != len(other._internal.index_columns):
                 raise ValueError("Both DataFrames have to have the same number of index levels")
 
             if verify_integrity and len(index_columns) > 0:
                 if (self._sdf.select(index_columns)
-                        .intersect(other._sdf.select(other._metadata.index_columns))
+                        .intersect(other._sdf.select(other._internal.index_columns))
                         .count()) > 0:
                     raise ValueError("Indices have overlapping values")
 
@@ -3646,7 +3643,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             for col_name, col in self.iteritems():
                 results.append(col.astype(dtype=dtype))
         sdf = self._sdf.select(
-            self._metadata.index_columns + list(map(lambda ser: ser._scol, results)))
+            self._internal.index_columns + list(map(lambda ser: ser._scol, results)))
         return DataFrame(self._internal.copy(sdf=sdf))
 
     def add_prefix(self, prefix):
@@ -3690,9 +3687,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3      4      6
         """
         assert isinstance(prefix, str)
-        data_columns = self._metadata.data_columns
+        data_columns = self._internal.data_columns
 
-        sdf = self._sdf.select(self._metadata.index_columns +
+        sdf = self._sdf.select(self._internal.index_columns +
                                [self[name]._scol.alias(prefix + name)
                                 for name in data_columns])
         internal = self._internal.copy(
@@ -3740,9 +3737,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3      4      6
         """
         assert isinstance(suffix, str)
-        data_columns = self._metadata.data_columns
+        data_columns = self._internal.data_columns
 
-        sdf = self._sdf.select(self._metadata.index_columns +
+        sdf = self._sdf.select(self._internal.index_columns +
                                [self[name]._scol.alias(name + suffix)
                                 for name in data_columns])
         internal = self._internal.copy(
@@ -3947,7 +3944,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  3  d
         """
         if subset is None:
-            subset = self._metadata.data_columns
+            subset = self._internal.data_columns
         elif not isinstance(subset, list):
             subset = [subset]
 
