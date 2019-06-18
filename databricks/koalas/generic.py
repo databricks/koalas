@@ -978,7 +978,7 @@ class _Frame(object):
 
 def _resolve_col(kdf, col_like):
     if isinstance(col_like, ks.Series):
-        assert kdf == col_like._kdf, \
+        assert kdf is col_like._kdf, \
             "Cannot combine column argument because it comes from a different dataframe"
         return col_like
     elif isinstance(col_like, str):
@@ -995,7 +995,7 @@ def _spark_col_apply(kdf_or_ks, sfun):
     from databricks.koalas.series import Series
     if isinstance(kdf_or_ks, Series):
         ks = kdf_or_ks
-        return Series(sfun(kdf_or_ks._scol), anchor=ks._kdf, index=ks._index_map)
+        return Series(ks._kdf._internal.copy(scol=sfun(kdf_or_ks._scol)), anchor=ks._kdf)
     assert isinstance(kdf_or_ks, DataFrame)
     kdf = kdf_or_ks
     sdf = kdf._sdf

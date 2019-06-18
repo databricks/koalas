@@ -1189,7 +1189,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                 if ignore_index:
                     kdfs.append(DataFrame(sdf))
                 else:
-                    kdfs.append(DataFrame(sdf, first_kdf._metadata.copy()))
+                    kdfs.append(DataFrame(first_kdf._internal.copy(sdf=sdf)))
         elif join == "outer":
             # If there are columns unmatched, just sort the column names.
             merged_columns = set(
@@ -1211,8 +1211,8 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                     sdf = kdf._sdf.select(
                         kdf._metadata.index_columns + sorted(kdf._metadata.data_columns))
 
-                kdf = DataFrame(sdf, kdf._metadata.copy(
-                    data_columns=sorted(kdf._metadata.data_columns)))
+                kdf = DataFrame(kdf._internal.copy(sdf=sdf,
+                                                   data_columns=sorted(kdf._metadata.data_columns)))
                 kdfs.append(kdf)
         else:
             raise ValueError(
@@ -1225,7 +1225,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
     if ignore_index:
         result_kdf = DataFrame(concatenated.select(kdfs[0]._metadata.data_columns))
     else:
-        result_kdf = DataFrame(concatenated, kdfs[0]._metadata.copy())
+        result_kdf = DataFrame(kdfs[0]._internal.copy(sdf=concatenated))
 
     if should_return_series:
         # If all input were Series, we should return Series.

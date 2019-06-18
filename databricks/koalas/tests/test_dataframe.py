@@ -725,41 +725,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]})
         self.assert_eq(pdf.add_suffix('_col'), kdf.add_suffix('_col'))
 
-    def test_update(self):
-        def check(pdf, kdf):
-            pdf.sort_values(by=list(pdf.columns), inplace=True)
-            kdf.sort_values(by=list(kdf.columns), inplace=True)
-            self.assert_eq(pdf, kdf)
+    def test_join(self):
+        # check basic function
+        pdf1 = pd.DataFrame({'key': ['K0', 'K1', 'K2', 'K3'],
+                            'A': ['A0', 'A1', 'A2', 'A3']}, columns=['key', 'A'])
+        pdf2 = pd.DataFrame({'key': ['K0', 'K1', 'K2'],
+                             'B': ['B0', 'B1', 'B2']}, columns=['key', 'B'])
+        kdf1 = ks.DataFrame({'key': ['K0', 'K1', 'K2', 'K3'],
+                             'A': ['A0', 'A1', 'A2', 'A3']}, columns=['key', 'A'])
+        kdf2 = ks.DataFrame({'key': ['K0', 'K1', 'K2'],
+                             'B': ['B0', 'B1', 'B2']}, columns=['key', 'B'])
+        join_pdf = pdf1.join(pdf2, lsuffix='_left', rsuffix='_right')
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
 
-        def get_df():
-            left_pdf = pd.DataFrame({'A': ['1', '2', '3', '4'],
-                                     'B': ['100', '200', np.nan, np.nan]},
-                                    columns=['A', 'B'])
-            right_pdf = pd.DataFrame({'B': ['x', np.nan, 'z', np.nan], 'C': ['d', 'e', 'f', 'g']},
-                                     columns=['B', 'C'])
+        join_kdf = kdf1.join(kdf2, lsuffix='_left', rsuffix='_right')
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
 
-            left_kdf = ks.DataFrame({'A': ['1', '2', '3', '4'], 'B': ['100', '200', None, None]},
-                                    columns=['A', 'B'])
-            right_kdf = ks.DataFrame({'B': ['x', None, 'z', None], 'C': ['d', 'e', 'f', 'g']},
-                                     columns=['B', 'C'])
-            return left_pdf, right_pdf, left_kdf, right_kdf
+        self.assert_eq(join_pdf, join_kdf)
 
-        # check base function
-        left_pdf, right_pdf, left_kdf, right_kdf = get_df()
-        left_pdf.update(right_pdf)
-        left_kdf.update(right_kdf)
-        check(left_pdf, left_kdf)
+        # check `on` parameter
+        join_pdf = pdf1.join(pdf2.set_index('key'), on='key', lsuffix='_left', rsuffix='_right')
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
 
-        # check overwrite parameter
-        left_pdf, right_pdf, left_kdf, right_kdf = get_df()
-        left_pdf.update(right_pdf, overwrite=False)
-        left_kdf.update(right_kdf, overwrite=False)
-        check(left_pdf, left_kdf)
-
-        # check series
-        left_pdf, _, left_kdf, _1 = get_df()
-        right_per = pd.Series(['x', np.nan, 'z', np.nan], name='B')
-        right_ker = ks.Series(['x', None, 'z', None], name='B')
-        left_pdf.update(right_per, overwrite=False)
-        left_kdf.update(right_ker, overwrite=False)
-        check(left_pdf, left_kdf)
+        join_kdf = kdf1.join(kdf2.set_index('key'), on='key', lsuffix='_left', rsuffix='_right')
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
+        self.assert_eq(join_pdf, join_kdf)

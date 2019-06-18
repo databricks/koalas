@@ -421,8 +421,9 @@ class LocIndexer(object):
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))
-        kdf._metadata = self._kdf._metadata.copy(
-            data_columns=kdf._metadata.data_columns[-len(columns):])
+        kdf._internal = kdf._internal.copy(
+            data_columns=kdf._internal.data_columns[-len(columns):],
+            index_map=self._kdf._internal.index_map)
         if cols_sel is not None and isinstance(cols_sel, spark.Column):
             from databricks.koalas.series import _col
             return _col(kdf)
@@ -654,8 +655,9 @@ class ILocIndexer(object):
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))
-        kdf._metadata = self._kdf._metadata.copy(
-            data_columns=kdf._metadata.data_columns[-len(columns):])
+        kdf._internal = kdf._internal.copy(
+            data_columns=kdf._internal.data_columns[-len(columns):],
+            index_map=self._kdf._internal.index_map)
         if cols_sel is not None and isinstance(cols_sel, (Series, int)):
             from databricks.koalas.series import _col
             return _col(kdf)

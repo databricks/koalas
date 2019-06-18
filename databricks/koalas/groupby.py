@@ -27,7 +27,7 @@ from pyspark.sql.types import FloatType, DoubleType, NumericType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.metadata import Metadata
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
 from databricks.koalas.series import Series, _col
@@ -104,10 +104,11 @@ class GroupBy(object):
         reordered = [F.expr('{1}({0}) as {0}'.format(key, value))
                      for key, value in func_or_funcs.items()]
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
-        metadata = Metadata(data_columns=[key for key, _ in func_or_funcs.items()],
-                            index_map=[('__index_level_{}__'.format(i), s.name)
-                                       for i, s in enumerate(groupkeys)])
-        return DataFrame(sdf, metadata)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[key for key, _ in func_or_funcs.items()],
+                                  index_map=[('__index_level_{}__'.format(i), s.name)
+                                             for i, s in enumerate(groupkeys)])
+        return DataFrame(internal)
 
     agg = aggregate
 
@@ -255,10 +256,11 @@ class GroupBy(object):
         else:
             sdf = sdf.select(*groupkey_cols).distinct()
         sdf = sdf.sort(*groupkey_cols)
-        metadata = Metadata(data_columns=data_columns,
-                            index_map=[('__index_level_{}__'.format(i), s.name)
-                                       for i, s in enumerate(groupkeys)])
-        return DataFrame(sdf, metadata)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=data_columns,
+                                  index_map=[('__index_level_{}__'.format(i), s.name)
+                                             for i, s in enumerate(groupkeys)])
+        return DataFrame(internal)
 
 
 class DataFrameGroupBy(GroupBy):
