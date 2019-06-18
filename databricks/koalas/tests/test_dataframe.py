@@ -756,9 +756,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         left_kdf.update(right_kdf, overwrite=False)
         check(left_pdf, left_kdf)
 
-        # TODO: wait pandas version issues
-        # check errors parameter
-        # left_pdf, right_pdf, left_kdf, right_kdf = get_df()
-        # left_pdf.update(right_pdf, errors='raise')
-        # left_kdf.update(right_kdf, errors='raise')
-        # check(left_pdf, left_kdf)
+        # check series
+        left_pdf, _, left_kdf, _1 = get_df()
+        right_per = pd.Series(['x', np.nan, 'z', np.nan], name='B')
+        right_ker = ks.Series(['x', None, 'z', None], name='B')
+        left_pdf.update(right_per, overwrite=False)
+        left_kdf.update(right_ker, overwrite=False)
+        check(left_pdf, left_kdf)
