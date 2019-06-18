@@ -658,7 +658,7 @@ class Series(_Frame, IndexOpsMixin):
     @property
     def name(self) -> str:
         """Return name of the Series."""
-        return self.to_dataframe()._internal.data_columns[0]
+        return self._internal.data_columns[0]
 
     @name.setter
     def name(self, name):
