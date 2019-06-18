@@ -77,7 +77,6 @@ class _MissingPandasLikeDataFrame(object):
     first = unsupported_function('first')
     first_valid_index = unsupported_function('first_valid_index')
     floordiv = unsupported_function('floordiv')
-    get_dtype_counts = unsupported_function('get_dtype_counts')
     get_values = unsupported_function('get_values')
     hist = unsupported_function('hist')
     idxmax = unsupported_function('idxmax')
