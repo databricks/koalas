@@ -3620,8 +3620,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 update_sdf = update_sdf.withColumn(column_name, F.when(old_col.isNull(), new_col)
                                                    .otherwise(old_col))
-
-        self._sdf = update_sdf.select(self._internal.columns)
+        internal = self._internal.copy(sdf=update_sdf.select(self._internal.columns))
+        self._internal = internal
 
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
                random_state: Optional[int] = None) -> 'DataFrame':
