@@ -754,7 +754,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_update(self):
         # check base function
         def get_data():
-            left_pdf = pd.DataFrame({'A': ['1', '2', '3', '4'], 'B': ['100', '200', np.nan, np.nan]},
+            left_pdf = pd.DataFrame({'A': ['1', '2', '3', '4'],
+                                     'B': ['100', '200', np.nan, np.nan]},
                                     columns=['A', 'B'])
             right_pdf = pd.DataFrame({'B': ['x', np.nan, 'y', np.nan],
                                       'C': ['100', '200', '300', '400']}, columns=['B', 'C'])
@@ -785,4 +786,3 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         left_kdf, left_pdf, right_kdf, right_pdf = get_data()
         with self.assertRaisesRegex(ValueError, "Data overlaps."):
             left_kdf.update(right_kdf, errors='raise')
-
