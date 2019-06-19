@@ -17,6 +17,7 @@
 """
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
+from collections import Counter
 from collections.abc import Iterable
 
 import numpy as np
@@ -47,6 +48,44 @@ class _Frame(object):
         raise NotImplementedError("Koalas does not support the 'values' property. " +
                                   "If you want to collect your data as an NumPy array, " +
                                   "use 'to_numpy()' instead.")
+
+    def get_dtype_counts(self):
+        """
+        Return counts of unique dtypes in this object.
+
+        Returns
+        -------
+        dtype : pd.Series
+            Series with the count of columns with each dtype.
+
+        See Also
+        --------
+        dtypes : Return the dtypes in this object.
+
+        Examples
+        --------
+        >>> a = [['a', 1, 1], ['b', 2, 2], ['c', 3, 3]]
+        >>> df = ks.DataFrame(a, columns=['str', 'int1', 'int2'])
+        >>> df
+          str  int1  int2
+        0   a     1     1
+        1   b     2     2
+        2   c     3     3
+
+        >>> df.get_dtype_counts().sort_values()
+        object    1
+        int64     2
+        dtype: int64
+
+        >>> df.str.get_dtype_counts().sort_values()
+        object    1
+        dtype: int64
+        """
+        if not isinstance(self.dtypes, Iterable):
+            dtypes = [self.dtypes]
+        else:
+            dtypes = self.dtypes
+        return pd.Series(dict(Counter([d.name for d in list(dtypes)])))
 
     def pipe(self, func, *args, **kwargs):
         r"""

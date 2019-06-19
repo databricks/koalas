@@ -97,7 +97,6 @@ class _MissingPandasLikeSeries(object):
     first_valid_index = unsupported_function('first_valid_index')
     floordiv = unsupported_function('floordiv')
     get = unsupported_function('get')
-    get_dtype_counts = unsupported_function('get_dtype_counts')
     get_values = unsupported_function('get_values')
     idxmax = unsupported_function('idxmax')
     idxmin = unsupported_function('idxmin')
