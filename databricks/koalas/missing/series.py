@@ -31,13 +31,10 @@ class _MissingPandasLikeSeries(object):
 
     # Properties
     T = unsupported_property('T')
-    argmax = unsupported_function('argmax')
-    argmin = unsupported_function('argmin')
     array = unsupported_property('array')
     asobject = unsupported_property('asobject')
     axes = unsupported_property('axes')
     base = unsupported_property('base')
-    data = unsupported_property('data')
     flags = unsupported_property('flags')
     ftype = unsupported_property('ftype')
     ftypes = unsupported_property('ftypes')
@@ -48,7 +45,6 @@ class _MissingPandasLikeSeries(object):
     is_monotonic = unsupported_property('is_monotonic')
     is_monotonic_decreasing = unsupported_property('is_monotonic_decreasing')
     is_monotonic_increasing = unsupported_property('is_monotonic_increasing')
-    itemsize = unsupported_property('itemsize')
     ix = unsupported_property('ix')
     nbytes = unsupported_property('nbytes')
     real = unsupported_property('real')
@@ -114,7 +110,6 @@ class _MissingPandasLikeSeries(object):
     memory_usage = unsupported_function('memory_usage')
     mod = unsupported_function('mod')
     mode = unsupported_function('mode')
-    nonzero = unsupported_function('nonzero')
     pct_change = unsupported_function('pct_change')
     pop = unsupported_function('pop')
     pow = unsupported_function('pow')
@@ -170,6 +165,8 @@ class _MissingPandasLikeSeries(object):
     xs = unsupported_function('xs')
 
     # Deprecated functions
+    itemsize = unsupported_property('itemsize', deprecated=True)
+    data = unsupported_property('data', deprecated=True)
     as_blocks = unsupported_function('as_blocks', deprecated=True)
     as_matrix = unsupported_function('as_matrix', deprecated=True)
     clip_lower = unsupported_function('clip_lower', deprecated=True)
