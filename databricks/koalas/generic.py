@@ -17,7 +17,7 @@
 """
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
-from collections import OrderedDict, Counter
+from collections import Counter
 from collections.abc import Iterable
 
 import numpy as np
@@ -55,7 +55,7 @@ class _Frame(object):
 
         Returns
         -------
-        dtype : Series
+        dtype : pd.Series
             Series with the count of columns with each dtype.
 
         See Also
@@ -72,12 +72,12 @@ class _Frame(object):
         1   b     2     2
         2   c     3     3
 
-        >>> df.get_dtype_counts()
+        >>> df.get_dtype_counts().sort_values()
         object    1
         int64     2
         dtype: int64
 
-        >>> df.str.get_dtype_counts()
+        >>> df.str.get_dtype_counts().sort_values()
         object    1
         dtype: int64
         """
@@ -85,7 +85,7 @@ class _Frame(object):
             dtypes = [self.dtypes]
         else:
             dtypes = self.dtypes
-        return pd.Series(OrderedDict(Counter([d.name for d in list(dtypes)])))
+        return pd.Series(dict(Counter([d.name for d in list(dtypes)])))
 
     def pipe(self, func, *args, **kwargs):
         r"""
