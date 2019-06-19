@@ -20,6 +20,8 @@ Computations / Descriptive Stats
 .. autosummary::
    :toctree: api/
 
+   GroupBy.all
+   GroupBy.any
    GroupBy.count
    GroupBy.first
    GroupBy.last
