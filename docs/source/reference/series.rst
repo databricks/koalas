@@ -183,17 +183,27 @@ Datetime Properties
    Series.dt.date
    Series.dt.year
    Series.dt.month
-   Series.dt.week
-   Series.dt.weekofyear
    Series.dt.day
-   Series.dt.dayofweek
-   Series.dt.weekday
-   Series.dt.dayofyear
    Series.dt.hour
    Series.dt.minute
    Series.dt.second
    Series.dt.millisecond
    Series.dt.microsecond
+   Series.dt.week
+   Series.dt.weekofyear
+   Series.dt.dayofweek
+   Series.dt.weekday
+   Series.dt.dayofyear
+   Series.dt.quarter
+   Series.dt.is_month_start
+   Series.dt.is_month_end
+   Series.dt.is_quarter_start
+   Series.dt.is_quarter_end
+   Series.dt.is_year_start
+   Series.dt.is_year_end
+   Series.dt.is_leap_year
+   Series.dt.daysinmonth
+   Series.dt.days_in_month
 
 Datetime Methods
 ~~~~~~~~~~~~~~~~
@@ -202,7 +212,13 @@ Datetime Methods
 .. autosummary::
    :toctree: api/
 
+   Series.dt.normalize
    Series.dt.strftime
+   Series.dt.round
+   Series.dt.floor
+   Series.dt.ceil
+   Series.dt.month_name
+   Series.dt.day_name
 
 .. _api.series.str:
 

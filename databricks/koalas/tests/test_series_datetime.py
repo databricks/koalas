@@ -28,7 +28,7 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
 
     @property
     def pdf1(self):
-        date1 = pd.Series(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M'))
+        date1 = pd.Series(pd.date_range('2012-1-1 12:45:31', periods=3, freq='M'))
         date2 = pd.Series(pd.date_range('2013-3-11 21:45:00', periods=3, freq='W'))
         return pd.DataFrame(dict(start_date=date1, end_date=date2))
 
@@ -41,8 +41,6 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         return ks.from_pandas(self.pd_start_date)
 
     def check_func(self, func):
-        # import pdb; pdb.set_trace()
-
         mt.assert_series_equal(
             func(self.ks_start_date).to_pandas(),
             func(self.pd_start_date),
@@ -114,8 +112,72 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
     def test_dayofweek(self):
         self.check_func(lambda x: x.dt.dayofweek)
 
+    def test_dayofyear(self):
+        self.check_func(lambda x: x.dt.dayofyear)
+
+    def test_quarter(self):
+        self.check_func(lambda x: x.dt.dayofyear)
+
+    def test_is_month_start(self):
+        self.check_func(lambda x: x.dt.is_month_start)
+
+    def test_is_month_end(self):
+        self.check_func(lambda x: x.dt.is_month_end)
+
+    def test_is_quarter_start(self):
+        self.check_func(lambda x: x.dt.is_quarter_start)
+
+    def test_is_quarter_end(self):
+        self.check_func(lambda x: x.dt.is_quarter_end)
+
+    def test_is_year_start(self):
+        self.check_func(lambda x: x.dt.is_year_start)
+
+    def test_is_year_end(self):
+        self.check_func(lambda x: x.dt.is_year_end)
+
+    def test_is_leap_year(self):
+        self.check_func(lambda x: x.dt.is_leap_year)
+
+    def test_daysinmonth(self):
+        self.check_func(lambda x: x.dt.daysinmonth)
+
+    def test_days_in_month(self):
+        self.check_func(lambda x: x.dt.days_in_month)
+
+    @unittest.expectedFailure
+    def test_tz_localize(self):
+        self.check_func(lambda x: x.dt.tz_localize('America/New_York'))
+
+    @unittest.expectedFailure
+    def test_tz_convert(self):
+        self.check_func(lambda x: x.dt.tz_convert('America/New_York'))
+
+    def test_normalize(self):
+        self.check_func(lambda x: x.dt.normalize())
+
     def test_strftime(self):
         self.check_func(lambda x: x.dt.strftime('%Y-%m-%d'))
+
+    def test_round(self):
+        self.check_func(lambda x: x.dt.round(freq='min'))
+        self.check_func(lambda x: x.dt.round(freq='H'))
+
+    def test_floor(self):
+        self.check_func(lambda x: x.dt.floor(freq='min'))
+        self.check_func(lambda x: x.dt.floor(freq='H'))
+
+    def test_ceil(self):
+        self.check_func(lambda x: x.dt.floor(freq='min'))
+        self.check_func(lambda x: x.dt.floor(freq='H'))
+
+    def test_month_name(self):
+        self.check_func(lambda x: x.dt.month_name())
+        self.check_func(lambda x: x.dt.month_name(locale='en_US.UTF-8'))
+
+    def test_day_name(self):
+        self.check_func(lambda x: x.dt.day_name())
+        self.check_func(lambda x: x.dt.day_name(locale='en_US.UTF-8'))
 
     def test_unsupported_type(self):
         self.assertRaisesRegex(ValueError,
