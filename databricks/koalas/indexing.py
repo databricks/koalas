@@ -140,17 +140,17 @@ class AtIndexer(object):
             raise TypeError("Use Series.at like .at[row_index]")
 
         # TODO Maybe extend to multilevel indices in the future
-        if len(self._kdf._metadata.index_columns) != 1:
+        if len(self._kdf._internal.index_columns) != 1:
             raise ValueError("'.at' only supports indices with level 1 right now")
 
         column = key[1] if self._ks is None else self._ks.name
-        if column is not None and column not in self._kdf._metadata.data_columns:
+        if column is not None and column not in self._kdf._internal.data_columns:
             raise KeyError("%s" % column)
         series = self._ks if self._ks is not None else self._kdf[column]
 
         row = key[0] if self._ks is None else key
         pdf = (series._kdf._sdf
-               .where(F.col(self._kdf._metadata.index_columns[0]) == row)
+               .where(F.col(self._kdf._internal.index_columns[0]) == row)
                .select(column)
                .toPandas())
         if len(pdf) < 1:
@@ -363,9 +363,9 @@ class LocIndexer(object):
             if rows_sel == slice(None):
                 # If slice is None - select everything, so nothing to do
                 pass
-            elif len(self._kdf._metadata.index_columns) == 0:
+            elif len(self._kdf._internal.index_columns) == 0:
                 raiseNotImplemented("Cannot use slice for Spark if no index provided.")
-            elif len(self._kdf._metadata.index_columns) == 1:
+            elif len(self._kdf._internal.index_columns) == 1:
                 start = rows_sel.start
                 stop = rows_sel.stop
 
@@ -390,7 +390,7 @@ class LocIndexer(object):
                 raiseNotImplemented("Cannot use a scalar value for row selection with Spark.")
             if len(rows_sel) == 0:
                 sdf = sdf.where(F.lit(False))
-            elif len(self._kdf._metadata.index_columns) == 1:
+            elif len(self._kdf._internal.index_columns) == 1:
                 index_column = self._kdf.index.to_series()
                 index_data_type = index_column.schema[0].dataType
                 if len(rows_sel) == 1:
@@ -411,13 +411,13 @@ class LocIndexer(object):
             cols_sel = None
 
         if cols_sel is None:
-            columns = [_make_col(c) for c in self._kdf._metadata.data_columns]
+            columns = [_make_col(c) for c in self._kdf._internal.data_columns]
         elif isinstance(cols_sel, spark.Column):
             columns = [cols_sel]
         else:
             columns = [_make_col(c) for c in cols_sel]
         try:
-            kdf = DataFrame(sdf.select(self._kdf._metadata.index_columns + columns))
+            kdf = DataFrame(sdf.select(self._kdf._internal.index_columns + columns))
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))
@@ -651,7 +651,7 @@ class ILocIndexer(object):
                              "listlike of integers, boolean array] types, got {}".format(cols_sel))
 
         try:
-            kdf = DataFrame(sdf.select(self._kdf._metadata.index_columns + columns))
+            kdf = DataFrame(sdf.select(self._kdf._internal.index_columns + columns))
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))

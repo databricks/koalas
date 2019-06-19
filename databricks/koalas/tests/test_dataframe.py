@@ -439,15 +439,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.to_pandas(), pdf)
 
     def test_isin(self):
-        df = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
-                           'b': [1, 2, 9, 4, 2, 4],
-                           'c': ["one", "three", "six", "seven", "one", "5"]},
-                          index=[10, 20, 30, 40, 50, 60])
+        pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
+                            'b': [1, 2, 9, 4, 2, 4],
+                            'c': ["one", "three", "six", "seven", "one", "5"]},
+                           index=[10, 20, 30, 40, 50, 60])
 
-        kdf = ks.from_pandas(df)
-        self.assert_eq(kdf.isin([4, 'six']), df.isin([4, 'six']))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.isin([4, 'six']), pdf.isin([4, 'six']))
         self.assert_eq(kdf.isin({"a": [2, 8], "c": ['three', "one"]}),
-                       df.isin({"a": [2, 8], "c": ['three', "one"]}))
+                       pdf.isin({"a": [2, 8], "c": ['three', "one"]}))
 
         msg = "'DataFrame' object has no attribute {'e'}"
         with self.assertRaisesRegex(AttributeError, msg):
@@ -455,7 +455,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         msg = "DataFrame and Series are not supported"
         with self.assertRaisesRegex(NotImplementedError, msg):
-            kdf.isin(df)
+            kdf.isin(pdf)
 
         msg = "Values should be iterable, Series, DataFrame or dict."
         with self.assertRaisesRegex(TypeError, msg):

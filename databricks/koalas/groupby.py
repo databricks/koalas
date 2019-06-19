@@ -271,7 +271,7 @@ class DataFrameGroupBy(GroupBy):
 
         if agg_columns is None:
             groupkey_names = set(s.name for s in self._groupkeys)
-            agg_columns = [col for col in self._kdf._metadata.data_columns
+            agg_columns = [col for col in self._kdf._internal.data_columns
                            if col not in groupkey_names]
         self._agg_columns = [kdf[col] for col in agg_columns]
 

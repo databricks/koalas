@@ -658,7 +658,7 @@ class Series(_Frame, IndexOpsMixin):
     @property
     def name(self) -> str:
         """Return name of the Series."""
-        return self._metadata.data_columns[0]
+        return self._internal.data_columns[0]
 
     @name.setter
     def name(self, name):
@@ -708,10 +708,6 @@ class Series(_Frame, IndexOpsMixin):
             return self
         else:
             return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf)
-
-    @property
-    def _metadata(self):
-        return self.to_dataframe()._metadata
 
     @property
     def index(self):
@@ -1491,7 +1487,7 @@ class Series(_Frame, IndexOpsMixin):
             raise ValueError("The 'axis' argument is not supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-        kseries = _col(self.to_dataframe().sort_values(by=self._metadata.index_columns,
+        kseries = _col(self.to_dataframe().sort_values(by=self._internal.index_columns,
                                                        ascending=ascending,
                                                        na_position=na_position))
         if inplace:
@@ -2012,7 +2008,7 @@ class Series(_Frame, IndexOpsMixin):
                 applied.append(self.apply(f).rename(f.__name__))
 
             sdf = self._kdf._sdf.select(
-                self._metadata.index_columns + [c._scol for c in applied])
+                self._internal.index_columns + [c._scol for c in applied])
 
             internal = self.to_dataframe()._internal.copy(
                 sdf=sdf, data_columns=[c.name for c in applied])

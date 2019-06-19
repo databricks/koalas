@@ -1151,7 +1151,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
     # DataFrame, DataFrame, ...
     # All Series are converted into DataFrame and then compute concat.
     if not ignore_index:
-        indices_of_kdfs = [kdf._metadata.index_map for kdf in objs]
+        indices_of_kdfs = [kdf._internal.index_map for kdf in objs]
         index_of_first_kdf = indices_of_kdfs[0]
         for index_of_kdf in indices_of_kdfs:
             if index_of_first_kdf != index_of_kdf:
@@ -1161,20 +1161,20 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                     '{index_of_first_kdf} and {index_of_kdf}'.format(
                         index_of_first_kdf=index_of_first_kdf, index_of_kdf=index_of_kdf))
 
-    columns_of_kdfs = [kdf._metadata.columns for kdf in objs]
+    columns_of_kdfs = [kdf._internal.columns for kdf in objs]
     first_kdf = objs[0]
     if ignore_index:
-        columns_of_first_kdf = first_kdf._metadata.data_columns
+        columns_of_first_kdf = first_kdf._internal.data_columns
     else:
-        columns_of_first_kdf = first_kdf._metadata.columns
+        columns_of_first_kdf = first_kdf._internal.columns
     if all(current_kdf == columns_of_first_kdf for current_kdf in columns_of_kdfs):
         # If all columns are in the same order and values, use it.
         kdfs = objs
     else:
         if ignore_index:
-            columns_to_apply = [kdf._metadata.data_columns for kdf in objs]
+            columns_to_apply = [kdf._internal.data_columns for kdf in objs]
         else:
-            columns_to_apply = [kdf._metadata.columns for kdf in objs]
+            columns_to_apply = [kdf._internal.columns for kdf in objs]
 
         if join == "inner":
             interested_columns = set.intersection(*map(set, columns_to_apply))
@@ -1198,21 +1198,21 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
             kdfs = []
             for kdf in objs:
                 if ignore_index:
-                    columns_to_add = merged_columns - set(kdf._metadata.data_columns)
+                    columns_to_add = merged_columns - set(kdf._internal.data_columns)
                 else:
-                    columns_to_add = merged_columns - set(kdf._metadata.columns)
+                    columns_to_add = merged_columns - set(kdf._internal.columns)
 
                 # TODO: NaN and None difference for missing values. pandas seems filling NaN.
                 kdf = kdf.assign(**dict(zip(columns_to_add, [None] * len(columns_to_add))))
 
                 if ignore_index:
-                    sdf = kdf._sdf.select(sorted(kdf._metadata.data_columns))
+                    sdf = kdf._sdf.select(sorted(kdf._internal.data_columns))
                 else:
                     sdf = kdf._sdf.select(
-                        kdf._metadata.index_columns + sorted(kdf._metadata.data_columns))
+                        kdf._internal.index_columns + sorted(kdf._internal.data_columns))
 
                 kdf = DataFrame(kdf._internal.copy(sdf=sdf,
-                                                   data_columns=sorted(kdf._metadata.data_columns)))
+                                                   data_columns=sorted(kdf._internal.data_columns)))
                 kdfs.append(kdf)
         else:
             raise ValueError(
@@ -1223,7 +1223,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
         concatenated = concatenated.unionByName(kdf._sdf)
 
     if ignore_index:
-        result_kdf = DataFrame(concatenated.select(kdfs[0]._metadata.data_columns))
+        result_kdf = DataFrame(concatenated.select(kdfs[0]._internal.data_columns))
     else:
         result_kdf = DataFrame(kdfs[0]._internal.copy(sdf=concatenated))
 
