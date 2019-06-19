@@ -842,12 +842,45 @@ class Series(_Frame, IndexOpsMixin):
         else:
             return kdf
 
-    def to_dataframe(self) -> spark.DataFrame:
-        sdf = self._internal.spark_df
+    def to_frame(self, name=None) -> spark.DataFrame:
+        """
+        Convert Series to DataFrame.
+
+        Parameters
+        ----------
+        name : object, default None
+            The passed name should substitute for the series name (if it has
+            one).
+
+        Returns
+        -------
+        DataFrame
+            DataFrame representation of Series.
+
+        Examples
+        --------
+        >>> s = ks.Series(["a", "b", "c"])
+        >>> s.to_frame()
+           0
+        0  a
+        1  b
+        2  c
+
+        >>> s = ks.Series(["a", "b", "c"], name="vals")
+        >>> s.to_frame()
+          vals
+        0    a
+        1    b
+        2    c
+        """
+        renamed = self.rename(name)
+        sdf = renamed._internal.spark_df
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[sdf.schema[-1].name],
-                                  index_map=self._internal.index_map)
+                                  index_map=renamed._internal.index_map)
         return DataFrame(internal)
+
+    to_dataframe = to_frame
 
     def to_string(self, buf=None, na_rep='NaN', float_format=None, header=True,
                   index=True, length=False, dtype=False, name=False,
