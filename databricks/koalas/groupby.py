@@ -231,6 +231,90 @@ class GroupBy(object):
         """
         return self._reduce_for_stat_function(F.variance, only_numeric=True)
 
+    # TODO: skipna should be implemented.
+    def all(self):
+        """
+        Returns True if all values in the group are truthful, else False.
+
+        See Also
+        --------
+
+        koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
+        ...                    'B': [True, True, True, False, False,
+        ...                          False, None, True, None, False]},
+        ...                   columns=['A', 'B'])
+        >>> df
+           A      B
+        0  1   True
+        1  1   True
+        2  2   True
+        3  2  False
+        4  3  False
+        5  3  False
+        6  4   None
+        7  4   True
+        8  5   None
+        9  5  False
+
+        >>> df.groupby('A').all()  # doctest: +NORMALIZE_WHITESPACE
+               B
+        A
+        1   True
+        2  False
+        3  False
+        4   True
+        5  False
+        """
+        return self._reduce_for_stat_function(
+            lambda col: F.min(F.coalesce(col.cast('boolean'), F.lit(True))),
+            only_numeric=False)
+
+    # TODO: skipna should be implemented.
+    def any(self):
+        """
+        Returns True if any value in the group is truthful, else False.
+
+        See Also
+        --------
+
+        koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
+        ...                    'B': [True, True, True, False, False,
+        ...                          False, None, True, None, False]},
+        ...                   columns=['A', 'B'])
+        >>> df
+           A      B
+        0  1   True
+        1  1   True
+        2  2   True
+        3  2  False
+        4  3  False
+        5  3  False
+        6  4   None
+        7  4   True
+        8  5   None
+        9  5  False
+
+        >>> df.groupby('A').any()  # doctest: +NORMALIZE_WHITESPACE
+               B
+        A
+        1   True
+        2   True
+        3  False
+        4   True
+        5  False
+        """
+        return self._reduce_for_stat_function(
+            lambda col: F.max(F.coalesce(col.cast('boolean'), F.lit(False))),
+            only_numeric=False)
+
     def _reduce_for_stat_function(self, sfun, only_numeric):
         groupkeys = self._groupkeys
         groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))

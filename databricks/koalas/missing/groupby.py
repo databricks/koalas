@@ -52,8 +52,6 @@ class _MissingPandasLikeDataFrameGroupBy(object):
     take = unsupported_property('take', deprecated=True)
 
     # Functions
-    all = unsupported_function('all')
-    any = unsupported_function('any')
     apply = unsupported_function('apply')
     backfill = unsupported_function('backfill')
     bfill = unsupported_function('bfill')
@@ -117,8 +115,6 @@ class _MissingPandasLikeSeriesGroupBy(object):
     take = unsupported_property('take', deprecated=True)
 
     # Functions
-    all = unsupported_function('all')
-    any = unsupported_function('any')
     apply = unsupported_function('apply')
     backfill = unsupported_function('backfill')
     bfill = unsupported_function('bfill')

@@ -87,6 +87,20 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby('A').agg({'B': 'min', 'C': 'sum'}),
                        pdf.groupby('A').agg({'B': 'min', 'C': 'sum'}))
 
+    def test_all_any(self):
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
+                            'B': [True, True, True, False, False, False, None, True, None, False]})
+        kdf = koalas.from_pandas(pdf)
+
+        self.assert_eq(kdf.groupby('A').all(), pdf.groupby('A').all())
+        self.assert_eq(kdf.groupby('A').any(), pdf.groupby('A').any())
+
+        self.assert_eq(kdf.groupby('A').all().B, pdf.groupby('A').all().B)
+        self.assert_eq(kdf.groupby('A').any().B, pdf.groupby('A').any().B)
+
+        self.assert_eq(kdf.B.groupby(kdf.A).all(), pdf.B.groupby(pdf.A).all())
+        self.assert_eq(kdf.B.groupby(kdf.A).any(), pdf.B.groupby(pdf.A).any())
+
     def test_raises(self):
         kdf = koalas.DataFrame({'a': [1, 2, 6, 4, 4, 6, 4, 3, 7],
                                 'b': [4, 2, 7, 3, 3, 1, 1, 1, 2]},
