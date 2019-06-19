@@ -3,9 +3,11 @@
 =======
 GroupBy
 =======
-.. currentmodule:: databricks.koalas.groupby
+.. currentmodule:: databricks.koalas
 
-GroupBy objects are returned by groupby calls: :func:`koalas.DataFrame.groupby`, :func:`koalas.Series.groupby`, etc.
+GroupBy objects are returned by groupby calls: :func:`DataFrame.groupby`, :func:`Series.groupby`, etc.
+
+.. currentmodule:: databricks.koalas.groupby
 
 Function application
 --------------------

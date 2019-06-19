@@ -66,9 +66,13 @@ class GroupBy(object):
         -----
         `agg` is an alias for `aggregate`. Use the alias.
 
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
         Examples
         --------
-
         >>> df = ks.DataFrame({'A': [1, 1, 2, 2],
         ...                    'B': [1, 2, 3, 4],
         ...                    'C': [0.362, 0.227, 1.267, -0.562]},
@@ -116,6 +120,13 @@ class GroupBy(object):
         """
         Compute count of group, excluding missing values.
 
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
         >>> df = ks.DataFrame({'A': [1, 1, 2, 1, 2],
         ...                    'B': [np.nan, 2, 3, 4, 5],
         ...                    'C': [1, 2, 1, 1, 2]}, columns=['A', 'B', 'C'])
@@ -134,8 +145,8 @@ class GroupBy(object):
 
         See Also
         --------
-
-        koalas.DataFrame.groupby
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
         """
         return self._reduce_for_stat_function(F.first, only_numeric=False)
 
@@ -145,8 +156,8 @@ class GroupBy(object):
 
         See Also
         --------
-
-        koalas.DataFrame.groupby
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
         """
         return self._reduce_for_stat_function(lambda col: F.last(col, ignorenulls=True),
                                               only_numeric=False)
@@ -157,8 +168,8 @@ class GroupBy(object):
 
         See Also
         --------
-
-        koalas.DataFrame.groupby
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
         """
         return self._reduce_for_stat_function(F.max, only_numeric=False)
 
@@ -173,8 +184,8 @@ class GroupBy(object):
 
         See Also
         --------
-
-        koalas.DataFrame.groupby
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
 
         Examples
         --------
@@ -200,8 +211,8 @@ class GroupBy(object):
 
         See Also
         --------
-
-        koalas.DataFrame.groupby
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
         """
         return self._reduce_for_stat_function(F.min, only_numeric=False)
 
@@ -209,6 +220,11 @@ class GroupBy(object):
     def std(self):
         """
         Compute standard deviation of groups, excluding missing values.
+
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
         """
 
         return self._reduce_for_stat_function(F.stddev, only_numeric=True)
@@ -219,8 +235,8 @@ class GroupBy(object):
 
         See Also
         --------
-
-        koalas.DataFrame.groupby
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
         """
         return self._reduce_for_stat_function(F.sum, only_numeric=True)
 
@@ -228,6 +244,11 @@ class GroupBy(object):
     def var(self):
         """
         Compute variance of groups, excluding missing values.
+
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
         """
         return self._reduce_for_stat_function(F.variance, only_numeric=True)
 
@@ -238,8 +259,8 @@ class GroupBy(object):
 
         See Also
         --------
-
-        koalas.DataFrame.groupby
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
 
         Examples
         --------
@@ -280,8 +301,8 @@ class GroupBy(object):
 
         See Also
         --------
-
-        koalas.DataFrame.groupby
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
 
         Examples
         --------
