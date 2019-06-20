@@ -151,7 +151,7 @@ class AtIndexer(object):
         row = key[0] if self._ks is None else key
         pdf = (series._kdf._sdf
                .where(self._kdf._internal.index_scols[0] == row)
-               .select('`{}`'.format(column))
+               .select(_make_col(column))
                .toPandas())
         if len(pdf) < 1:
             raise KeyError("%s" % row)

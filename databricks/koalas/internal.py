@@ -28,7 +28,7 @@ from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import infer_pd_series_spark_type
-from databricks.koalas.utils import default_session, lazy_property
+from databricks.koalas.utils import default_session, lazy_property, scol_for
 
 
 IndexMap = Tuple[str, Optional[str]]
@@ -341,7 +341,7 @@ class _InternalFrame(object):
         if self._scol is not None and column_name == self._data_columns[0]:
             return self._scol
         else:
-            return self._sdf['`{}`'.format(column_name)]
+            return scol_for(self._sdf, column_name)
 
     def spark_type_for(self, column_name: str) -> DataType:
         """ Return DataType for the given column name. """

@@ -38,6 +38,7 @@ from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
+from databricks.koalas.utils import scol_for
 
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
@@ -3236,8 +3237,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         left_table = self._sdf.alias('left_table')
         right_table = right._sdf.alias('right_table')
 
-        left_key_columns = [left_table['`{}`'.format(col)] for col in left_keys]  # type: ignore
-        right_key_columns = [right_table['`{}`'.format(col)] for col in right_keys]  # type: ignore
+        left_key_columns = [scol_for(left_table, col) for col in left_keys]  # type: ignore
+        right_key_columns = [scol_for(right_table, col) for col in right_keys]  # type: ignore
 
         join_condition = reduce(lambda x, y: x & y,
                                 [lkey == rkey for lkey, rkey
@@ -3260,7 +3261,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for col in left_table.columns:
             if col in left_index_columns:
                 continue
-            scol = left_table['`{}`'.format(col)]
+            scol = scol_for(left_table, col)
             if col in duplicate_columns:
                 if col in left_keys and col in right_keys:
                     pass
@@ -3271,7 +3272,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for col in right_table.columns:
             if col in right_index_columns:
                 continue
-            scol = right_table['`{}`'.format(col)]
+            scol = scol_for(right_table, col)
             if col in duplicate_columns:
                 if col in left_keys and col in right_keys:
                     continue
@@ -3692,7 +3693,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         data_columns = self._internal.data_columns
 
         sdf = self._sdf.select(self._internal.index_scols +
-                               [self[name]._scol.alias(prefix + name)
+                               [self._internal.scol_for(name).alias(prefix + name)
                                 for name in data_columns])
         internal = self._internal.copy(
             sdf=sdf, data_columns=[prefix + name for name in data_columns])
@@ -3742,7 +3743,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         data_columns = self._internal.data_columns
 
         sdf = self._sdf.select(self._internal.index_scols +
-                               [self[name]._scol.alias(name + suffix)
+                               [self._internal.scol_for(name).alias(name + suffix)
                                 for name in data_columns])
         internal = self._internal.copy(
             sdf=sdf, data_columns=[name + suffix for name in data_columns])
