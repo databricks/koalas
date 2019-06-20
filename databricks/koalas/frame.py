@@ -3236,8 +3236,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         left_table = self._sdf.alias('left_table')
         right_table = right._sdf.alias('right_table')
 
-        left_key_columns = [left_table[col] for col in left_keys]  # type: ignore
-        right_key_columns = [right_table[col] for col in right_keys]  # type: ignore
+        left_key_columns = [left_table['`{}`'.format(col)] for col in left_keys]  # type: ignore
+        right_key_columns = [right_table['`{}`'.format(col)] for col in right_keys]  # type: ignore
 
         join_condition = reduce(lambda x, y: x & y,
                                 [lkey == rkey for lkey, rkey
@@ -3260,7 +3260,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for col in left_table.columns:
             if col in left_index_columns:
                 continue
-            scol = left_table[col]
+            scol = left_table['`{}`'.format(col)]
             if col in duplicate_columns:
                 if col in left_keys and col in right_keys:
                     pass
@@ -3271,7 +3271,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for col in right_table.columns:
             if col in right_index_columns:
                 continue
-            scol = right_table[col]
+            scol = right_table['`{}`'.format(col)]
             if col in duplicate_columns:
                 if col in left_keys and col in right_keys:
                     continue
@@ -3283,15 +3283,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # Retain indices if they are used for joining
         if left_index:
             if right_index:
-                exprs.extend(['left_table.%s' % col for col in left_index_columns])
-                exprs.extend(['right_table.%s' % col for col in right_index_columns])
+                exprs.extend(['left_table.`{}`'.format(col) for col in left_index_columns])
+                exprs.extend(['right_table.`{}`'.format(col) for col in right_index_columns])
                 index_map = self._internal.index_map + [idx for idx in right._internal.index_map
                                                         if idx not in self._internal.index_map]
             else:
-                exprs.extend(['right_table.%s' % col for col in right_index_columns])
+                exprs.extend(['right_table.`{}`'.format(col) for col in right_index_columns])
                 index_map = right._internal.index_map
         elif right_index:
-            exprs.extend(['left_table.%s' % col for col in left_index_columns])
+            exprs.extend(['left_table.`{}`'.format(col) for col in left_index_columns])
             index_map = self._internal.index_map
         else:
             index_map = []
@@ -3305,16 +3305,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                                        right._internal.index_columns):
                 selected_columns = selected_columns.withColumn(
                     'left_table.' + left_index_col,
-                    F.when(F.col('left_table.%s' % left_index_col).isNotNull(),
-                           F.col('left_table.%s' % left_index_col))
-                    .otherwise(F.col('right_table.%s' % right_index_col))
+                    F.when(F.col('left_table.`{}`'.format(left_index_col)).isNotNull(),
+                           F.col('left_table.`{}`'.format(left_index_col)))
+                    .otherwise(F.col('right_table.`{}`'.format(right_index_col)))
                 ).withColumnRenamed(
-                    'left_table.%s' % left_index_col, left_index_col
-                ).drop(F.col('left_table.%s' % left_index_col))
+                    'left_table.' + left_index_col, left_index_col
+                ).drop(F.col('left_table.`{}`'.format(left_index_col)))
         if not(left_index and not right_index):
-            selected_columns = selected_columns.drop(*[F.col('right_table.%s' % right_index_col)
-                                                       for right_index_col in right_index_columns
-                                                       if right_index_col in left_index_columns])
+            for right_index_col in right_index_columns:
+                if right_index_col in left_index_columns:
+                    selected_columns = \
+                        selected_columns.drop(F.col('right_table.`{}`'.format(right_index_col)))
 
         if index_map:
             data_columns = [c for c in selected_columns.columns

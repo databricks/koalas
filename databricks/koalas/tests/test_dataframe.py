@@ -596,7 +596,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             left.merge(right, left_index=True, right_index=True, how='foo')
 
         with self.assertRaisesRegex(AnalysisException,
-                                    'Cannot resolve column name "id"'):
+                                    'Cannot resolve column name "`id`"'):
             left.merge(right, on='id')
 
     def test_append(self):
