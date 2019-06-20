@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from pyspark import sql as spark
-from pyspark.sql.types import StructField, StructType, to_arrow_type
+from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import infer_pd_series_spark_type
@@ -336,6 +336,17 @@ class _InternalFrame(object):
         else:
             self._data_columns = data_columns
 
+    def scol_for(self, column_name: str) -> spark.Column:
+        """ Return Spark Column for the given column name. """
+        if self._scol is not None and column_name == self._data_columns[0]:
+            return self._scol
+        else:
+            return self._sdf['`{}`'.format(column_name)]
+
+    def spark_type_for(self, column_name: str) -> DataType:
+        """ Return DataType for the given column name. """
+        return self._sdf.schema[column_name].dataType
+
     @property
     def sdf(self) -> spark.DataFrame:
         """ Return the managed Spark DataFrame. """
@@ -347,9 +358,19 @@ class _InternalFrame(object):
         return self._data_columns
 
     @lazy_property
+    def data_scols(self) -> List[spark.Column]:
+        """ Return Spark Columns for the managed data columns. """
+        return [self.scol_for(column) for column in self.data_columns]
+
+    @lazy_property
     def index_columns(self) -> List[str]:
         """ Return the managed index field names. """
         return [index_column for index_column, _ in self._index_map]
+
+    @lazy_property
+    def index_scols(self) -> List[spark.Column]:
+        """ Return Spark Columns for the managed index columns. """
+        return [self.scol_for(column) for column in self.index_columns]
 
     @lazy_property
     def columns(self) -> List[str]:
@@ -357,6 +378,11 @@ class _InternalFrame(object):
         index_columns = set(self.index_columns)
         return self.index_columns + [column for column in self._data_columns
                                      if column not in index_columns]
+
+    @lazy_property
+    def scols(self) -> List[spark.Column]:
+        """ Return Spark Columns for the managed columns including index columns. """
+        return [self.scol_for(column) for column in self.columns]
 
     @property
     def index_map(self) -> List[IndexMap]:
@@ -376,11 +402,7 @@ class _InternalFrame(object):
     @lazy_property
     def spark_df(self) -> spark.DataFrame:
         """ Return as Spark DataFrame. """
-        if self._scol is None:
-            sdf = self._sdf
-        else:
-            sdf = self._sdf.select(self.index_columns + [self._scol])
-        return sdf.select(['`{}`'.format(name) for name in self.columns])
+        return self._sdf.select(self.scols)
 
     @lazy_property
     def pandas_df(self):

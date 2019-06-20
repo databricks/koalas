@@ -276,8 +276,8 @@ class DataFrame(_Frame):
         exprs = []
         num_args = len(signature(sfun).parameters)
         for col in self.columns:
-            col_sdf = self._sdf[col]
-            col_type = self._sdf.schema[col].dataType
+            col_sdf = self._internal.scol_for(col)
+            col_type = self._internal.spark_type_for(col)
 
             is_numeric_or_boolean = isinstance(col_type, (NumericType, BooleanType))
             min_or_max = sfun.__name__ in ('min', 'max')
@@ -317,7 +317,7 @@ class DataFrame(_Frame):
             applied.append(getattr(self[column], op)(other))
 
         sdf = self._sdf.select(
-            self._internal.index_columns + [c._scol for c in applied])
+            self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
@@ -621,7 +621,7 @@ class DataFrame(_Frame):
             applied.append(self[column].apply(func))
 
         sdf = self._sdf.select(
-            self._internal.index_columns + [c._scol for c in applied])
+            self._internal.index_scols + [c._scol for c in applied])
 
         internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
@@ -1301,7 +1301,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                   [column for column in data_columns if column not in index_columns]
 
         # Sync Spark's columns as well.
-        sdf = self._sdf.select(['`{}`'.format(name) for name in columns])
+        sdf = self._sdf.select([self._internal.scol_for(name) for name in columns])
 
         internal = _InternalFrame(sdf=sdf, index_map=index_map, data_columns=data_columns)
 
@@ -1566,16 +1566,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'nunique' method only works with axis=0 at the moment")
         count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
         if dropna:
-            res = self._sdf.select([count_fn(Column(c))
+            res = self._sdf.select([count_fn(self._internal.scol_for(c))
                                    .alias(c)
                                     for c in self.columns])
         else:
-            res = self._sdf.select([(count_fn(Column(c))
+            res = self._sdf.select([(count_fn(self._internal.scol_for(c))
                                      # If the count of null values in a column is at least 1,
                                      # increase the total count by 1 else 0. This is like adding
                                      # self.isnull().sum().clip(upper=1) but can be computed in a
                                      # single Spark job when pulling it into the select statement.
-                                     + F.when(F.count(F.when(F.col(c).isNull(), 1).otherwise(None))
+                                     + F.when(F.count(F.when(self._internal.scol_for(c).isNull(), 1)
+                                                      .otherwise(None))
                                               >= 1, 1).otherwise(0))
                                    .alias(c)
                                     for c in self.columns])
@@ -2391,26 +2392,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if lower is None and upper is None:
             return self
 
-        sdf = self._sdf
-
         numeric_types = (DecimalType, DoubleType, FloatType, ByteType, IntegerType, LongType,
                          ShortType)
-        numeric_columns = [c for c in self.columns
-                           if isinstance(sdf.schema[c].dataType, numeric_types)]
-        nonnumeric_columns = [c for c in self.columns
-                              if not isinstance(sdf.schema[c].dataType, numeric_types)]
+        numeric_columns = [(c, self._internal.scol_for(c)) for c in self.columns
+                           if isinstance(self._internal.spark_type_for(c), numeric_types)]
 
         if lower is not None:
-            sdf = sdf.select(*[F.when(F.col(c) < lower, lower).otherwise(F.col(c)).alias(c)
-                               for c in numeric_columns] + nonnumeric_columns)
+            numeric_columns = [(c, F.when(scol < lower, lower).otherwise(scol).alias(c))
+                               for c, scol in numeric_columns]
         if upper is not None:
-            sdf = sdf.select(*[F.when(F.col(c) > upper, upper).otherwise(F.col(c)).alias(c)
-                               for c in numeric_columns] + nonnumeric_columns)
+            numeric_columns = [(c, F.when(scol > upper, upper).otherwise(scol).alias(c))
+                               for c, scol in numeric_columns]
 
-        # Restore initial column order
-        sdf = sdf.select(list(self.columns))
+        nonnumeric_columns = [self._internal.scol_for(c) for c in self.columns
+                              if not isinstance(self._internal.spark_type_for(c), numeric_types)]
 
-        return ks.DataFrame(sdf)
+        sdf = self._sdf.select([scol for _, scol in numeric_columns] + nonnumeric_columns)
+
+        return ks.DataFrame(sdf)[list(self.columns)]
 
     def head(self, n=5):
         """
@@ -2479,7 +2478,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError(
                 "Length mismatch: Expected axis has %d elements, new values have %d elements"
                 % (len(old_names), len(names)))
-        sdf = self._sdf.select(self._internal.index_columns +
+        sdf = self._sdf.select(self._internal.index_scols +
                                [self[old_name]._scol.alias(new_name)
                                 for (old_name, new_name) in zip(old_names, names)])
         self._internal = self._internal.copy(sdf=sdf, data_columns=names)
@@ -3044,12 +3043,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(values, dict):
             for col in self.columns:
                 if col in values:
-                    _select_columns.append(self._sdf[col].isin(values[col]).alias(col))
+                    _select_columns.append(self._internal.scol_for(col)
+                                           .isin(values[col]).alias(col))
                 else:
                     _select_columns.append(F.lit(False).alias(col))
         elif is_list_like(values):
             _select_columns += [
-                self._sdf[col].isin(list(values)).alias(col) for col in self.columns]
+                self._internal.scol_for(col).isin(list(values)).alias(col)
+                for col in self.columns]
         else:
             raise TypeError('Values should be iterable, Series, DataFrame or dict.')
 
@@ -3480,13 +3481,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'sort' parameter is currently not supported")
 
         if not ignore_index:
-            index_columns = self._internal.index_columns
-            if len(index_columns) != len(other._internal.index_columns):
+            index_scols = self._internal.index_scols
+            if len(index_scols) != len(other._internal.index_scols):
                 raise ValueError("Both DataFrames have to have the same number of index levels")
 
-            if verify_integrity and len(index_columns) > 0:
-                if (self._sdf.select(index_columns)
-                        .intersect(other._sdf.select(other._internal.index_columns))
+            if verify_integrity and len(index_scols) > 0:
+                if (self._sdf.select(index_scols)
+                        .intersect(other._sdf.select(other._internal.index_scols))
                         .count()) > 0:
                     raise ValueError("Indices have overlapping values")
 
@@ -3643,7 +3644,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             for col_name, col in self.iteritems():
                 results.append(col.astype(dtype=dtype))
         sdf = self._sdf.select(
-            self._internal.index_columns + list(map(lambda ser: ser._scol, results)))
+            self._internal.index_scols + list(map(lambda ser: ser._scol, results)))
         return DataFrame(self._internal.copy(sdf=sdf))
 
     def add_prefix(self, prefix):
@@ -3689,7 +3690,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         assert isinstance(prefix, str)
         data_columns = self._internal.data_columns
 
-        sdf = self._sdf.select(self._internal.index_columns +
+        sdf = self._sdf.select(self._internal.index_scols +
                                [self[name]._scol.alias(prefix + name)
                                 for name in data_columns])
         internal = self._internal.copy(
@@ -3739,7 +3740,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         assert isinstance(suffix, str)
         data_columns = self._internal.data_columns
 
-        sdf = self._sdf.select(self._internal.index_columns +
+        sdf = self._sdf.select(self._internal.index_scols +
                                [self[name]._scol.alias(name + suffix)
                                 for name in data_columns])
         internal = self._internal.copy(
@@ -4058,7 +4059,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         pairs = F.explode(F.array(*[
             F.struct(*(
                 [F.lit(column).alias(var_name)] +
-                [F.col(column).alias(value_name)])
+                [self._internal.scol_for(column).alias(value_name)])
             ) for column in data_columns if column in value_vars]))
 
         columns = (id_vars +
@@ -4073,7 +4074,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise KeyError("none key")
         if isinstance(key, str):
             try:
-                return Series(self._internal.copy(scol=self._sdf.__getitem__(key)), anchor=self)
+                return Series(self._internal.copy(scol=self._internal.scol_for(key)), anchor=self)
             except AnalysisException:
                 raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, str)):
@@ -4087,7 +4088,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
-            return Series(self._internal.copy(scol=self._sdf.__getitem__(key)), anchor=self)
+            return Series(self._internal.copy(scol=self._internal.scol_for(key)), anchor=self)
         if isinstance(key, Series):
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
@@ -4156,7 +4157,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        return Series(self._internal.copy(scol=self._sdf.__getattr__(key)), anchor=self)
+        if key not in self.columns:
+            raise AttributeError(
+                "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))
+        return Series(self._internal.copy(scol=self._internal.scol_for(key)), anchor=self)
 
     def __len__(self):
         return self._sdf.count()
