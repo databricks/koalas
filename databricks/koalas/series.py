@@ -1347,7 +1347,8 @@ class Series(_Frame, IndexOpsMixin):
             sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
 
         index_name = 'index' if self.name != 'index' else 'level_0'
-        sdf = sdf.select(sdf[self.name].alias(index_name), sdf['count'].alias(self.name))
+        sdf = sdf.select(sdf['`{}`'.format(self.name)].alias(index_name),
+                         sdf['count'].alias(self.name))
         internal = _InternalFrame(sdf=sdf, data_columns=[self.name], index_map=[(index_name, None)])
         return _col(DataFrame(internal))
 
@@ -1574,7 +1575,8 @@ class Series(_Frame, IndexOpsMixin):
         kdf = self.to_dataframe()
         internal = kdf._internal
         sdf = internal.sdf
-        sdf = sdf.select([F.concat(F.lit(prefix), sdf[index_column]).alias(index_column)
+        sdf = sdf.select([F.concat(F.lit(prefix),
+                                   sdf['`{}`'.format(index_column)]).alias(index_column)
                           for index_column in internal.index_columns] + internal.data_columns)
         kdf._internal = internal.copy(sdf=sdf)
         return Series(kdf._internal.copy(scol=self._scol), anchor=kdf)
@@ -1623,7 +1625,8 @@ class Series(_Frame, IndexOpsMixin):
         kdf = self.to_dataframe()
         internal = kdf._internal
         sdf = internal.sdf
-        sdf = sdf.select([F.concat(sdf[index_column], F.lit(suffix)).alias(index_column)
+        sdf = sdf.select([F.concat(sdf['`{}`'.format(index_column)],
+                                   F.lit(suffix)).alias(index_column)
                           for index_column in internal.index_columns] + internal.data_columns)
         kdf._internal = internal.copy(sdf=sdf)
         return Series(kdf._internal.copy(scol=self._scol), anchor=kdf)
@@ -2041,7 +2044,7 @@ class Series(_Frame, IndexOpsMixin):
                 applied.append(self.apply(f).rename(f.__name__))
 
             sdf = self._kdf._sdf.select(
-                self._internal.index_columns + [c._scol for c in applied])
+                self._internal.index_scols + [c._scol for c in applied])
 
             internal = self.to_dataframe()._internal.copy(
                 sdf=sdf, data_columns=[c.name for c in applied])
@@ -2071,7 +2074,7 @@ class Series(_Frame, IndexOpsMixin):
         from inspect import signature
         num_args = len(signature(sfun).parameters)
         col_sdf = self._scol
-        col_type = self.schema[self.name].dataType
+        col_type = self.spark_type
         if isinstance(col_type, BooleanType) and sfun.__name__ not in ('min', 'max'):
             # Stat functions cannot be used with boolean values by default
             # Thus, cast to integer (true to 1 and false to 0)
