@@ -84,8 +84,7 @@ class PythonModelWrapper(object):
         if isinstance(data, pd.DataFrame):
             return self._model.predict(data)
         if isinstance(data, DataFrame):
-            cols = [data._sdf[n] for n in data.columns]
-            return_col = self._model_udf(*cols)
+            return_col = self._model_udf(*data._internal.data_scols)
             # TODO: the columns should be named according to the mlflow spec
             # However, this is only possible with spark >= 3.0
             # s = F.struct(*data.columns)

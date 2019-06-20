@@ -1038,5 +1038,5 @@ def _spark_col_apply(kdf_or_ks, sfun):
     assert isinstance(kdf_or_ks, DataFrame)
     kdf = kdf_or_ks
     sdf = kdf._sdf
-    sdf = sdf.select([sfun(sdf[col]).alias(col) for col in kdf.columns])
+    sdf = sdf.select([sfun(kdf._internal.scol_for(col)).alias(col) for col in kdf.columns])
     return DataFrame(sdf)

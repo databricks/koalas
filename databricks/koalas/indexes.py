@@ -62,7 +62,7 @@ class Index(IndexOpsMixin):
         assert len(kdf._internal._index_map) == 1
         if scol is None:
             IndexOpsMixin.__init__(
-                self, kdf._internal.copy(scol=kdf._sdf[kdf._internal.index_columns[0]]), kdf)
+                self, kdf._internal.copy(scol=kdf._internal.index_scols[0]), kdf)
         else:
             IndexOpsMixin.__init__(self, kdf._internal.copy(scol=scol), kdf)
 
@@ -74,12 +74,6 @@ class Index(IndexOpsMixin):
         :return: the copied Index
         """
         return Index(self._kdf, scol)
-
-    @property
-    def _columns(self) -> List[spark.Column]:
-        """ Returns spark Columns corresponding to index columns. """
-        kdf = self._kdf
-        return [kdf._sdf[field] for field in kdf._internal.index_columns]
 
     def to_pandas(self) -> pd.Index:
         """
@@ -187,7 +181,8 @@ class MultiIndex(Index):
         assert len(kdf._internal._index_map) > 1
         self._kdf = kdf
         if scol is None:
-            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=F.struct(self._columns)), kdf)
+            IndexOpsMixin.__init__(self, kdf._internal.copy(
+                scol=F.struct(self._kdf._internal.index_scols)), kdf)
         else:
             IndexOpsMixin.__init__(self, kdf._internal.copy(scol=scol), kdf)
 
