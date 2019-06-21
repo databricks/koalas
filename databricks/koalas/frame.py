@@ -42,7 +42,7 @@ from pyspark.sql.utils import AnalysisException
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 from databricks.koalas.generic import _Frame, max_display_count
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 
@@ -5014,6 +5014,232 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._internal = internal
         else:
             return DataFrame(internal)
+
+    def reindex(self, labels: Optional[Any] = None, index: Optional[Any] = None,
+                columns: Optional[Any] = None, axis: Optional[Union[int, str]] = None,
+                copy: Optional[bool] = True, fill_value: Optional[Any] = None) -> 'DataFrame':
+        """
+        Conform DataFrame to new index with optional filling logic, placing
+        NA/NaN in locations having no value in the previous index. A new object
+        is produced unless the new index is equivalent to the current one and
+        ``copy=False``.
+
+        Parameters
+        ----------
+        labels: array-like, optional
+            New labels / index to conform the axis specified by ‘axis’ to.
+        index, columns: array-like, optional
+            New labels / index to conform to, should be specified using keywords.
+            Preferably an Index object to avoid duplicating data
+        axis: int or str, optional
+            Axis to target. Can be either the axis name (‘index’, ‘columns’) or
+            number (0, 1).
+        copy : bool, default True
+            Return a new object, even if the passed indexes are the same.
+        fill_value : scalar, default np.NaN
+            Value to use for missing values. Defaults to NaN, but can be any
+            "compatible" value.
+
+        Returns
+        -------
+        DataFrame with changed index.
+
+        See Also
+        --------
+        DataFrame.set_index : Set row labels.
+        DataFrame.reset_index : Remove row labels or move them to new columns.
+
+        Examples
+        --------
+
+        ``DataFrame.reindex`` supports two calling conventions
+
+        * ``(index=index_labels, columns=column_labels, ...)``
+        * ``(labels, axis={'index', 'columns'}, ...)``
+
+        We *highly* recommend using keyword arguments to clarify your
+        intent.
+
+        Create a dataframe with some fictional data.
+
+        >>> index = ['Firefox', 'Chrome', 'Safari', 'IE10', 'Konqueror']
+        >>> df = ks.DataFrame({
+        ...      'http_status': [200, 200, 404, 404, 301],
+        ...      'response_time': [0.04, 0.02, 0.07, 0.08, 1.0]},
+        ...       index=index)
+        >>> df
+                   http_status  response_time
+        Firefox            200           0.04
+        Chrome             200           0.02
+        Safari             404           0.07
+        IE10               404           0.08
+        Konqueror          301           1.00
+
+        Create a new index and reindex the dataframe. By default
+        values in the new index that do not have corresponding
+        records in the dataframe are assigned ``NaN``.
+
+        >>> new_index= ['Safari', 'Iceweasel', 'Comodo Dragon', 'IE10',
+        ...             'Chrome']
+        >>> df.reindex(new_index).sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+                       http_status  response_time
+        Chrome               200.0           0.02
+        Comodo Dragon          NaN            NaN
+        IE10                 404.0           0.08
+        Iceweasel              NaN            NaN
+        Safari               404.0           0.07
+
+        We can fill in the missing values by passing a value to
+        the keyword ``fill_value``.
+
+        >>> df.reindex(new_index, fill_value=0, copy=False).sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+                       http_status  response_time
+        Chrome                 200           0.02
+        Comodo Dragon            0           0.00
+        IE10                   404           0.08
+        Iceweasel                0           0.00
+        Safari                 404           0.07
+
+        We can also reindex the columns.
+
+        >>> df.reindex(columns=['http_status', 'user_agent']).sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+                       http_status  user_agent
+        Chrome                 200         NaN
+        Comodo Dragon            0         NaN
+        IE10                   404         NaN
+        Iceweasel                0         NaN
+        Safari                 404         NaN
+
+        Or we can use "axis-style" keyword arguments
+
+        >>> df.reindex(['http_status', 'user_agent'], axis="columns").sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+                      http_status  user_agent
+        Chrome                 200         NaN
+        Comodo Dragon            0         NaN
+        IE10                   404         NaN
+        Iceweasel                0         NaN
+        Safari                 404         NaN
+
+        To further illustrate the filling functionality in
+        ``reindex``, we will create a dataframe with a
+        monotonically increasing index (for example, a sequence
+        of dates).
+
+        >>> date_index = pd.date_range('1/1/2010', periods=6, freq='D')
+        >>> df2 = ks.DataFrame({"prices": [100, 101, np.nan, 100, 89, 88]},
+        ...                    index=date_index)
+        >>> df2.sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                    prices
+        2010-01-01   100.0
+        2010-01-02   101.0
+        2010-01-03     NaN
+        2010-01-04   100.0
+        2010-01-05    89.0
+        2010-01-06    88.0
+
+        Suppose we decide to expand the dataframe to cover a wider
+        date range.
+
+        >>> date_index2 = pd.date_range('12/29/2009', periods=10, freq='D')
+        >>> df2.reindex(date_index2).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                    prices
+        2009-12-29     NaN
+        2009-12-30     NaN
+        2009-12-31     NaN
+        2010-01-01   100.0
+        2010-01-02   101.0
+        2010-01-03     NaN
+        2010-01-04   100.0
+        2010-01-05    89.0
+        2010-01-06    88.0
+        2010-01-07     NaN
+        """
+        if axis is not None and (index is not None or columns is not None):
+            raise TypeError("Cannot specify both 'axis' and any of 'index' or 'columns'.")
+
+        if labels is not None:
+            if axis in ('index', 0, None):
+                index = labels
+            elif axis in ('columns', 1):
+                columns = labels
+            else:
+                raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
+
+        if index is not None and not is_list_like(index):
+            raise TypeError("Index must be called with a collection of some kind, "
+                            "%s was passed" % type(index))
+
+        if columns is not None and not is_list_like(columns):
+            raise TypeError("Columns must be called with a collection of some kind, "
+                            "%s was passed" % type(columns))
+
+        df = self.copy()
+
+        if index is not None:
+            df = DataFrame(df._reindex_index(index))
+
+        if columns is not None:
+            df = DataFrame(df._reindex_columns(columns))
+
+        # Process missing values.
+        if fill_value is not None:
+            df = df.fillna(fill_value)
+
+        # Copy
+        if copy:
+            return df.copy()
+        else:
+            self._internal = df._internal
+            return self
+
+    def _reindex_index(self, index):
+        # When axis is index, we can mimic pandas' by a right outer join.
+        index_column = self._internal.index_columns
+        assert len(index_column) <= 1, "Index should be single column or not set."
+
+        if len(index_column) == 1:
+            kser = ks.Series(list(index))
+            index_column = index_column[0]
+            labels = kser._kdf._sdf.select(kser._scol.alias(index_column))
+        else:
+            index_column = None
+            labels = ks.Series(index).to_frame()._sdf
+
+        joined_df = self._sdf.join(labels, on=index_column, how="right")
+        new_data_columns = filter(lambda x: x not in index_column, joined_df.columns)
+        if index_column is not None:
+            index_map = [(index_column, None)]  # type: List[IndexMap]
+            internal = self._internal.copy(
+                sdf=joined_df,
+                data_columns=list(new_data_columns),
+                index_map=index_map)
+        else:
+            internal = self._internal.copy(
+                sdf=joined_df,
+                data_columns=list(new_data_columns))
+        return internal
+
+    def _reindex_columns(self, columns):
+        label_columns = list(columns)
+        null_columns = [
+            F.lit(np.nan).alias(label_column) for label_column
+            in label_columns if label_column not in self.columns]
+
+        # Concatenate all fields
+        sdf = self._sdf.select(
+            self._internal.index_columns +
+            list(map(F.col, self.columns)) +
+            null_columns)
+
+        # Only select label_columns (with index columns)
+        sdf = sdf.select(self._internal.index_columns + label_columns)
+        return self._internal.copy(
+            sdf=sdf,
+            data_columns=label_columns)
 
     def melt(self, id_vars=None, value_vars=None, var_name='variable',
              value_name='value'):
