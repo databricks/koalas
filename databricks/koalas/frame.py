@@ -2416,13 +2416,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if regex is not False:
             raise NotImplementedError("replace currently doesn't supports regex")
 
-        if not isinstance(value, (float, int, str, dict, list)):
-            raise TypeError("Unsupported type %s" % type(value))
-
         if not isinstance(value, (int, float, str, list, dict)):
-            raise TypeError("Unsupported type %s" % type(value))
+            raise TypeError("Unsupported type {}".format(type(value)))
         if not isinstance(to_replace, (int, float, str, list, dict)):
-            raise TypeError("Unsupported type %s" % type(to_replace))
+            raise TypeError("Unsupported type {}".format(type(to_replace)))
 
         if isinstance(value, (list)) and isinstance(to_replace, (list)):
             if len(value) != len(to_replace):
