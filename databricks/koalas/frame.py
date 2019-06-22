@@ -2351,7 +2351,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(internal)
 
     def replace(self, to_replace=None, value=None, subset=None, inplace=False,
-                limit=None, regex=False, method='pad') -> 'DataFrame':
+                limit=None, regex=False, method='pad'):
         """
         Returns a new DataFrame replacing a value with another value.
 
@@ -2424,7 +2424,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(to_replace, (int, float, str, list, dict)):
             raise TypeError("Unsupported type %s" % type(to_replace))
 
-        if isinstance(value, (list)):
+        if isinstance(value, (list)) and isinstance(to_replace, (list)):
             if len(value) != len(to_replace):
                 raise ValueError('Length of to_replace and value must be same')
 
