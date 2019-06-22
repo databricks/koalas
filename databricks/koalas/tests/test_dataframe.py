@@ -755,15 +755,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"name": ['Ironman', 'Captain America', 'Thor', 'Hulk'],
                            "weapon": ['Mark-45', 'Shield', 'Mjolnir', 'Smash']})
         kdf = ks.from_pandas(pdf)
-        
+
         with self.assertRaisesRegex(NotImplementedError,
-                  "replace currently works only for method='pad"):
+                                    "replace currently works only for method='pad"):
             kdf.replace(method='bfill')
         with self.assertRaisesRegex(NotImplementedError,
-                  "replace currently works only when limit=None"):
+                                    "replace currently works only when limit=None"):
             kdf.replace(limit=10)
         with self.assertRaisesRegex(NotImplementedError,
-                  "replace currently doesn't supports regex"):
+                                    "replace currently doesn't supports regex"):
             kdf.replace(regex='')
 
         with self.assertRaisesRegex(TypeError, "Unsupported type <class 'tuple'>"):

@@ -2350,9 +2350,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(internal)
 
-    def replace(self, to_replace=None, value=None, subset=None,
-                inplace=False, limit=None, regex=False, method='pad') \
-                -> 'DataFrame':
+    def replace(self, to_replace=None, value=None, subset=None, inplace=False,
+                limit=None, regex=False, method='pad') -> 'DataFrame':
         """
         Returns a new DataFrame replacing a value with another value.
 
