@@ -728,7 +728,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_join(self):
         # check basic function
         pdf1 = pd.DataFrame({'key': ['K0', 'K1', 'K2', 'K3'],
-                            'A': ['A0', 'A1', 'A2', 'A3']}, columns=['key', 'A'])
+                             'A': ['A0', 'A1', 'A2', 'A3']}, columns=['key', 'A'])
         pdf2 = pd.DataFrame({'key': ['K0', 'K1', 'K2'],
                              'B': ['B0', 'B1', 'B2']}, columns=['key', 'B'])
         kdf1 = ks.DataFrame({'key': ['K0', 'K1', 'K2', 'K3'],
@@ -875,5 +875,5 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         msg = 'Values as list of columns is not implemented yet.'
         with self.assertRaisesRegex(NotImplementedError, msg):
-            kdf.pivot_table(index=['c'], columns="a", values=['b','e'],
+            kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
                             aggfunc={'b': 'mean', 'e': 'sum'})

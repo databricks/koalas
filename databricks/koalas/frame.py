@@ -39,6 +39,7 @@ from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 
+
 # These regular expression patterns are complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
 # Two patterns basically seek the footer string from Pandas'
@@ -224,6 +225,7 @@ class DataFrame(_Frame):
     3  8  7  9  1  0
     4  2  5  4  3  9
     """
+
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
         if isinstance(data, _InternalFrame):
             assert index is None
@@ -2558,7 +2560,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(columns, str):
             raise ValueError("columns should be string.")
 
-        if not isinstance(values, str) and not isinstance(values, list) :
+        if not isinstance(values, str) and not isinstance(values, list):
             raise ValueError('values should be string or list of one column.')
 
         if not isinstance(aggfunc, str) and (not isinstance(aggfunc, dict) or not all(
@@ -2570,7 +2572,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise NotImplementedError("pivot_table doesn't support aggfuct"
                                       " as dict and without index.")
 
-        if isinstance(values,list) and len(values) > 1:
+        if isinstance(values, list) and len(values) > 1:
             raise NotImplementedError('Values as list of columns is not implemented yet.')
 
         if isinstance(aggfunc, str):
@@ -3448,7 +3450,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 ).withColumnRenamed(
                     'left_table.%s' % left_index_col, left_index_col
                 ).drop(F.col('left_table.%s' % left_index_col))
-        if not(left_index and not right_index):
+        if not (left_index and not right_index):
             selected_columns = selected_columns.drop(*[F.col('right_table.%s' % right_index_col)
                                                        for right_index_col in right_index_columns
                                                        if right_index_col in left_index_columns])
