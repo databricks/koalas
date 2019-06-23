@@ -2476,7 +2476,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Parameters
         ----------%s
         values : column to aggregate.
-            They sould be either a list or a string.
+            They should be either a list of one column or a string. A list of columns
+            is not supported yet.
         index : column (string) or list of columns
             If an array is passed, it must be the same length as the data.
             The list should contain string.
@@ -2546,19 +2547,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         We can also calculate multiple types of aggregations for any given
         value column.
 
-        >>> table = df.pivot_table(values = ['D','E'], index =['C'],
-        ...                     columns="A", aggfunc={'D':'mean','E':'sum'})
+        >>> table = df.pivot_table(values = ['D'], index =['C'],
+        ...                     columns="A", aggfunc={'D':'mean'})
         >>> table # doctest: +SKIP
-               bar_D  bar_E     foo_D  foo_E
+               bar       foo
         C
-        small    5.5     17  2.333333     13
-        large    5.5     15  2.000000      9
+        small  5.5  2.333333
+        large  5.5  2.000000
         """
         if not isinstance(columns, str):
             raise ValueError("columns should be string.")
 
-        if not isinstance(values, str) and not isinstance(values, list):
-            raise ValueError('values should be string or list of columns.')
+        if not isinstance(values, str) and not isinstance(values, list) :
+            raise ValueError('values should be string or list of one column.')
 
         if not isinstance(aggfunc, str) and (not isinstance(aggfunc, dict) or not all(
                 isinstance(key, str) and isinstance(value, str) for key, value in aggfunc.items())):
@@ -2568,6 +2569,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(aggfunc, dict) and index is None:
             raise NotImplementedError("pivot_table doesn't support aggfuct"
                                       " as dict and without index.")
+
+        if isinstance(values,list) and len(values) > 1:
+            raise NotImplementedError('Values as list of columns is not implemented yet.')
 
         if isinstance(aggfunc, str):
             agg_cols = [F.expr('{1}({0}) as {0}'.format(values, aggfunc))]

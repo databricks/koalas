@@ -789,11 +789,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         # Skip columns comparison by reset_index
-        res_df = kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
-                                 aggfunc={'b': 'mean', 'e': 'mean'}) \
+        res_df = kdf.pivot_table(index=['c'], columns="a", values=['b'],
+                                 aggfunc={'b': 'mean'}) \
             .dtypes.reset_index(drop=True)
-        exp_df = pdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
-                                 aggfunc={'b': 'mean', 'e': 'mean'}) \
+        exp_df = pdf.pivot_table(index=['c'], columns="a", values=['b'],
+                                 aggfunc={'b': 'mean'}) \
             .dtypes.reset_index(drop=True)
         self.assert_eq(res_df, exp_df)
 
@@ -852,7 +852,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf = ks.from_pandas(pdf)
 
-        msg = "values should be string or list of columns."
+        msg = "values should be string or list of one column."
         with self.assertRaisesRegex(ValueError, msg):
             kdf.pivot_table(index=['c'], columns="a", values=5)
 
@@ -873,7 +873,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.pivot_table(index=['e', 'c'], columns="a", values='b',
                             aggfunc={'b': 'mean', 'e': 'sum'})
 
-        msg = "Columns in aggfunc must be the same as values."
-        with self.assertRaisesRegex(ValueError, msg):
-            kdf.pivot_table(index=['e', 'c'], columns="a", values='b',
+        msg = 'Values as list of columns is not implemented yet.'
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            kdf.pivot_table(index=['c'], columns="a", values=['b','e'],
                             aggfunc={'b': 'mean', 'e': 'sum'})
