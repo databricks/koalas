@@ -225,7 +225,6 @@ class DataFrame(_Frame):
     3  8  7  9  1  0
     4  2  5  4  3  9
     """
-
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
         if isinstance(data, _InternalFrame):
             assert index is None
