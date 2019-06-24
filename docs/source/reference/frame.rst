@@ -151,6 +151,7 @@ Combining / joining / merging
    DataFrame.assign
    DataFrame.merge
    DataFrame.join
+   DataFrame.update
 
 Cache
 -------------------------------
