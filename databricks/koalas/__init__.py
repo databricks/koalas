@@ -35,12 +35,10 @@ def assert_pyspark_version():
 
 assert_pyspark_version()
 
-from databricks.koalas.namespace import *
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index, MultiIndex
 from databricks.koalas.series import Series
 from databricks.koalas.typedef import Col, pandas_wraps
-from databricks.koalas.sql import sql
 
 __all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
            'get_dummies', 'DataFrame', 'Series', 'Index', 'MultiIndex', 'Col', 'pandas_wraps',
@@ -50,6 +48,19 @@ __all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
 def _auto_patch():
     import os
     import logging
+
+    # Attach a usage logger.
+    logger_module = os.getenv("KOALAS_USAGE_LOGGER", None)
+    if logger_module is not None:
+        try:
+            from databricks.koalas import usage_logging
+            usage_logging.attach(logger_module)
+        except Exception as e:
+            from pyspark.util import _exception_message
+            logger = logging.getLogger('databricks.koalas.usage_logger')
+            logger.warning('Tried to attach usage logger `{}`, but an exception was raised: {}'
+                           .format(logger_module, _exception_message(e)))
+
     # Autopatching is on by default.
     x = os.getenv("SPARK_KOALAS_AUTOPATCH", "true")
     if x.lower() in ("true", "1", "enabled"):
@@ -62,3 +73,7 @@ def _auto_patch():
 
 
 _auto_patch()
+
+# Import after the usage logger is attached.
+from databricks.koalas.namespace import *
+from databricks.koalas.sql import sql
