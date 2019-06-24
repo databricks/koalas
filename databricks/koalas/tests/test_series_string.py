@@ -190,9 +190,9 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
     def test_string_index(self):
         pds = pd.Series(['tea', 'eat'])
         self.check_func_on_series(lambda x: x.str.index('ea'), pds)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Exception):
             self.check_func_on_series(lambda x: x.str.index('ea', start=0, end=2), pds)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Exception):
             self.check_func(lambda x: x.str.index('not-found'))
 
     def test_string_join(self):
@@ -255,9 +255,9 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
     def test_string_rindex(self):
         pds = pd.Series(['teatea', 'eateat'])
         self.check_func_on_series(lambda x: x.str.rindex('ea'), pds)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Exception):
             self.check_func_on_series(lambda x: x.str.rindex('ea', start=0, end=2), pds)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(Exception):
             self.check_func(lambda x: x.str.rindex('not-found'))
 
     def test_string_rjust(self):

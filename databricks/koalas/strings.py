@@ -43,6 +43,23 @@ class StringMethods(object):
     def capitalize(self) -> 'ks.Series':
         """
         Convert Strings in the series to be capitalized.
+
+        Examples
+        --------
+        >>> s = ks.Series(['lower', 'CAPITALS', 'this is a sentence', 'SwApCaSe'])
+        >>> s
+        0                 lower
+        1              CAPITALS
+        2    this is a sentence
+        3              SwApCaSe
+        Name: 0, dtype: object
+
+        >>> s.str.capitalize()
+        0                 Lower
+        1              Capitals
+        2    This is a sentence
+        3              Swapcase
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -53,6 +70,23 @@ class StringMethods(object):
     def title(self) -> 'ks.Series':
         """
         Convert Strings in the series to be titlecase.
+
+        Examples
+        --------
+        >>> s = ks.Series(['lower', 'CAPITALS', 'this is a sentence', 'SwApCaSe'])
+        >>> s
+        0                 lower
+        1              CAPITALS
+        2    this is a sentence
+        3              SwApCaSe
+        Name: 0, dtype: object
+
+        >>> s.str.title()
+        0                 Lower
+        1              Capitals
+        2    This Is A Sentence
+        3              Swapcase
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -63,6 +97,23 @@ class StringMethods(object):
     def lower(self) -> 'ks.Series':
         """
         Convert strings in the Series/Index to all lowercase.
+
+        Examples
+        --------
+        >>> s = ks.Series(['lower', 'CAPITALS', 'this is a sentence', 'SwApCaSe'])
+        >>> s
+        0                 lower
+        1              CAPITALS
+        2    this is a sentence
+        3              SwApCaSe
+        Name: 0, dtype: object
+
+        >>> s.str.lower()
+        0                 lower
+        1              capitals
+        2    this is a sentence
+        3              swapcase
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -73,6 +124,23 @@ class StringMethods(object):
     def upper(self) -> 'ks.Series':
         """
         Convert strings in the Series/Index to all uppercase.
+
+        Examples
+        --------
+        >>> s = ks.Series(['lower', 'CAPITALS', 'this is a sentence', 'SwApCaSe'])
+        >>> s
+        0                 lower
+        1              CAPITALS
+        2    this is a sentence
+        3              SwApCaSe
+        Name: 0, dtype: object
+
+        >>> s.str.upper()
+        0                 LOWER
+        1              CAPITALS
+        2    THIS IS A SENTENCE
+        3              SWAPCASE
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -83,6 +151,23 @@ class StringMethods(object):
     def swapcase(self) -> 'ks.Series':
         """
         Convert strings in the Series/Index to be swapcased.
+
+        Examples
+        --------
+        >>> s = ks.Series(['lower', 'CAPITALS', 'this is a sentence', 'SwApCaSe'])
+        >>> s
+        0                 lower
+        1              CAPITALS
+        2    this is a sentence
+        3              SwApCaSe
+        Name: 0, dtype: object
+
+        >>> s.str.swapcase()
+        0                 LOWER
+        1              capitals
+        2    THIS IS A SENTENCE
+        3              sWaPcAsE
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -90,7 +175,7 @@ class StringMethods(object):
             StringType()
         ).alias(self.name)
 
-    def startswith(self, pattern, na=np.NaN) -> 'ks.Series':
+    def startswith(self, pattern, na=None) -> 'ks.Series':
         """
         Test if the start of each string element matches a pattern.
 
@@ -100,14 +185,40 @@ class StringMethods(object):
         ----------
         pattern : str
             Character sequence. Regular expressions are not accepted.
-        na : object, defulat NaN
-            Object shown if element is not a string.
+        na : object, default None
+            Object shown if element is not a string. NaN converted to None.
 
         Returns
         -------
-        Series of bool
+        Series of bool or object
             Koalas Series of booleans indicating whether the given pattern
             matches the start of each string element.
+
+        Examples
+        --------
+        >>> s = ks.Series(['bat', 'Bear', 'cat', np.nan])
+        >>> s
+        0     bat
+        1    Bear
+        2     cat
+        3    None
+        Name: 0, dtype: object
+
+        >>> s.str.startswith('b')
+        0     True
+        1    False
+        2    False
+        3     None
+        Name: 0, dtype: object
+
+        Specifying na to be False instead of None.
+
+        >>> s.str.startswith('b', na=False)
+        0     True
+        1    False
+        2    False
+        3    False
+        Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
             self,
@@ -115,7 +226,7 @@ class StringMethods(object):
             BooleanType()
         ).alias(self.name)
 
-    def endswith(self, pattern, na=np.NaN) -> 'ks.Series':
+    def endswith(self, pattern, na=None) -> 'ks.Series':
         """
         Test if the end of each string element matches a pattern.
 
@@ -125,14 +236,40 @@ class StringMethods(object):
         ----------
         pattern : str
             Character sequence. Regular expressions are not accepted.
-        na : object, defulat NaN
-            Object shown if element is not a string.
+        na : object, default None
+            Object shown if element is not a string. NaN converted to None.
 
         Returns
         -------
-        Series of bool
+        Series of bool or object
             Koalas Series of booleans indicating whether the given pattern
             matches the end of each string element.
+
+        Examples
+        --------
+        >>> s = ks.Series(['bat', 'Bear', 'cat', np.nan])
+        >>> s
+        0     bat
+        1    Bear
+        2     cat
+        3    None
+        Name: 0, dtype: object
+
+        >>> s.str.endswith('t')
+        0     True
+        1    False
+        2     True
+        3     None
+        Name: 0, dtype: object
+
+        Specifying na to be False instead of None.
+
+        >>> s.str.endswith('t', na=False)
+        0     True
+        1    False
+        2     True
+        3    False
+        Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
             self,
@@ -157,7 +294,34 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of objects
+
+        Examples
+        --------
+        >>> s = ks.Series(['1. Ant.', '2. Bee!\\t', None])
+        >>> s
+        0      1. Ant.
+        1    2. Bee!\\t
+        2         None
+        Name: 0, dtype: object
+
+        >>> s.str.strip()
+        0    1. Ant.
+        1    2. Bee!
+        2       None
+        Name: 0, dtype: object
+
+        >>> s.str.strip('12.')
+        0        Ant
+        1     Bee!\\t
+        2       None
+        Name: 0, dtype: object
+
+        >>> s.str.strip('.!\\t')
+        0    1. Ant
+        1    2. Bee
+        2      None
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -182,7 +346,22 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
+
+        Examples
+        --------
+        >>> s = ks.Series(['1. Ant.', '2. Bee!\\t', None])
+        >>> s
+        0      1. Ant.
+        1    2. Bee!\\t
+        2         None
+        Name: 0, dtype: object
+
+        >>> s.str.lstrip('12.')
+        0       Ant.
+        1     Bee!\\t
+        2       None
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -207,7 +386,22 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
+
+        Examples
+        --------
+        >>> s = ks.Series(['1. Ant.', '2. Bee!\\t', None])
+        >>> s
+        0      1. Ant.
+        1    2. Bee!\\t
+        2         None
+        Name: 0, dtype: object
+
+        >>> s.str.rstrip('.!\\t')
+        0    1. Ant
+        1    2. Bee
+        2      None
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -217,8 +411,8 @@ class StringMethods(object):
 
     def get(self, i) -> 'ks.Series':
         """
-        Extract element from each string in the Series/Index at the
-        specified position.
+        Extract element from each string or string list/tuple in the Series
+        at the specified position.
 
         Parameters
         ----------
@@ -228,6 +422,40 @@ class StringMethods(object):
         Returns
         -------
         Series of objects
+
+        Examples
+        --------
+        >>> s1 = ks.Series(["String", "123"])
+        >>> s1
+        0    String
+        1       123
+        Name: 0, dtype: object
+
+        >>> s1.str.get(1)
+        0    t
+        1    2
+        Name: 0, dtype: object
+
+        >>> s1.str.get(-1)
+        0    g
+        1    3
+        Name: 0, dtype: object
+
+        >>> s2 = ks.Series([["a", "b", "c"], ["x", "y"]])
+        >>> s2
+        0    [a, b, c]
+        1       [x, y]
+        Name: 0, dtype: object
+
+        >>> s2.str.get(0)
+        0    a
+        1    x
+        Name: 0, dtype: object
+
+        >>> s2.str.get(2)
+        0       c
+        1    None
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -242,6 +470,28 @@ class StringMethods(object):
         This is equivalent to running the Python string method
         :func:`str.isalnum` for each element of the Series/Index.
         If a string has zero characters, False is returned for that check.
+
+        Examples
+        --------
+        >>> s1 = ks.Series(['one', 'one1', '1', ''])
+
+        >>> s1.str.isalnum()
+        0     True
+        1     True
+        2     True
+        3    False
+        Name: 0, dtype: bool
+
+        Note that checks against characters mixed with any additional
+        punctuation or whitespace will evaluate to false for an alphanumeric
+        check.
+
+        >>> s2 = ks.Series(['A B', '1.5', '3,000'])
+        >>> s2.str.isalnum()
+        0    False
+        1    False
+        2    False
+        Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
             self,
@@ -256,6 +506,17 @@ class StringMethods(object):
         This is equivalent to running the Python string method
         :func:`str.isalpha` for each element of the Series/Index.
         If a string has zero characters, False is returned for that check.
+
+        Examples
+        --------
+        >>> s1 = ks.Series(['one', 'one1', '1', ''])
+
+        >>> s1.str.isalpha()
+        0     True
+        1    False
+        2    False
+        3    False
+        Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
             self,
@@ -270,6 +531,42 @@ class StringMethods(object):
         This is equivalent to running the Python string method
         :func:`str.isdigit` for each element of the Series/Index.
         If a string has zero characters, False is returned for that check.
+
+        Examples
+        --------
+        >>> s = ks.Series(['23', '³', '⅕', ''])
+
+        The s.str.isdecimal method checks for characters used to form numbers
+        in base 10.
+
+        >>> s.str.isdecimal()
+        0     True
+        1    False
+        2    False
+        3    False
+        Name: 0, dtype: bool
+
+        The s.str.isdigit method is the same as s.str.isdecimal but also
+        includes special digits, like superscripted and subscripted digits in
+        unicode.
+
+        >>> s.str.isdigit()
+        0     True
+        1     True
+        2    False
+        3    False
+        Name: 0, dtype: bool
+
+        The s.str.isnumeric method is the same as s.str.isdigit but also
+        includes other characters that can represent quantities such as unicode
+        fractions.
+
+        >>> s.str.isnumeric()
+        0     True
+        1     True
+        2     True
+        3    False
+        Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
             self,
@@ -284,6 +581,15 @@ class StringMethods(object):
         This is equivalent to running the Python string method
         :func:`str.isspace` for each element of the Series/Index.
         If a string has zero characters, False is returned for that check.
+
+        Examples
+        --------
+        >>> s = ks.Series([' ', '\\t\\r\\n ', ''])
+        >>> s.str.isspace()
+        0     True
+        1     True
+        2    False
+        Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
             self,
@@ -298,6 +604,16 @@ class StringMethods(object):
         This is equivalent to running the Python string method
         :func:`str.islower` for each element of the Series/Index.
         If a string has zero characters, False is returned for that check.
+
+        Examples
+        --------
+        >>> s = ks.Series(['leopard', 'Golden Eagle', 'SNAKE', ''])
+        >>> s.str.islower()
+        0     True
+        1    False
+        2    False
+        3    False
+        Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
             self,
@@ -312,6 +628,16 @@ class StringMethods(object):
         This is equivalent to running the Python string method
         :func:`str.isupper` for each element of the Series/Index.
         If a string has zero characters, False is returned for that check.
+
+        Examples
+        --------
+        >>> s = ks.Series(['leopard', 'Golden Eagle', 'SNAKE', ''])
+        >>> s.str.isupper()
+        0    False
+        1    False
+        2     True
+        3    False
+        Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
             self,
@@ -326,6 +652,22 @@ class StringMethods(object):
         This is equivalent to running the Python string method
         :func:`str.istitle` for each element of the Series/Index.
         If a string has zero characters, False is returned for that check.
+
+        Examples
+        --------
+        >>> s = ks.Series(['leopard', 'Golden Eagle', 'SNAKE', ''])
+
+        The s.str.istitle method checks for whether all words are in title
+        case (whether only the first letter of each word is capitalized).
+        Words are assumed to be as any sequence of non-numeric characters
+        seperated by whitespace characters.
+
+        >>> s.str.istitle()
+        0    False
+        1     True
+        2    False
+        3    False
+        Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
             self,
@@ -340,6 +682,50 @@ class StringMethods(object):
         This is equivalent to running the Python string method
         :func:`str.isnumeric` for each element of the Series/Index.
         If a string has zero characters, False is returned for that check.
+
+        Examples
+        --------
+        >>> s1 = ks.Series(['one', 'one1', '1', ''])
+        >>> s1.str.isnumeric()
+        0    False
+        1    False
+        2     True
+        3    False
+        Name: 0, dtype: bool
+
+        >>> s2 = ks.Series(['23', '³', '⅕', ''])
+
+        The s2.str.isdecimal method checks for characters used to form numbers
+        in base 10.
+
+        >>> s2.str.isdecimal()
+        0     True
+        1    False
+        2    False
+        3    False
+        Name: 0, dtype: bool
+
+        The s2.str.isdigit method is the same as s2.str.isdecimal but also
+        includes special digits, like superscripted and subscripted digits in
+        unicode.
+
+        >>> s2.str.isdigit()
+        0     True
+        1     True
+        2    False
+        3    False
+        Name: 0, dtype: bool
+
+        The s2.str.isnumeric method is the same as s2.str.isdigit but also
+        includes other characters that can represent quantities such as unicode
+        fractions.
+
+        >>> s2.str.isnumeric()
+        0     True
+        1     True
+        2     True
+        3    False
+        Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
             self,
@@ -354,6 +740,42 @@ class StringMethods(object):
         This is equivalent to running the Python string method
         :func:`str.isdecimal` for each element of the Series/Index.
         If a string has zero characters, False is returned for that check.
+
+        Examples
+        --------
+        >>> s = ks.Series(['23', '³', '⅕', ''])
+
+        The s.str.isdecimal method checks for characters used to form numbers
+        in base 10.
+
+        >>> s.str.isdecimal()
+        0     True
+        1    False
+        2    False
+        3    False
+        Name: 0, dtype: bool
+
+        The s.str.isdigit method is the same as s.str.isdecimal but also
+        includes special digits, like superscripted and subscripted digits in
+        unicode.
+
+        >>> s.str.isdigit()
+        0     True
+        1     True
+        2    False
+        3    False
+        Name: 0, dtype: bool
+
+        The s.str.isnumeric method is the same as s.str.isdigit but also
+        includes other characters that can represent quantities such as unicode
+        fractions.
+
+        >>> s.str.isnumeric()
+        0     True
+        1     True
+        2     True
+        3    False
+        Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
             self,
@@ -383,6 +805,19 @@ class StringMethods(object):
         Returns
         -------
         Series of objects
+
+        Examples
+        --------
+        >>> s = ks.Series(["caribou", "tiger"])
+        >>> s
+        0    caribou
+        1      tiger
+        Name: 0, dtype: object
+
+        >>> s.str.center(width=10, fillchar='-')
+        0    -caribou--
+        1    --tiger---
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -390,9 +825,9 @@ class StringMethods(object):
             StringType()
         ).alias(self.name)
 
-    def contains(self, pat, case=True, flags=0, na=np.NaN, regex=True) -> 'ks.Series':
+    def contains(self, pat, case=True, flags=0, na=None, regex=True) -> 'ks.Series':
         """
-        Test if pattern or regex is contained within a string of a Series.
+        Testcif pattern or regex is contained within a string of a Series.
 
         Return boolean Series based on whether a given pattern or regex is
         contained within a string of a Series.
@@ -408,8 +843,8 @@ class StringMethods(object):
             If True, case sensitive.
         flags : int, default 0 (no flags)
             Flags to pass through to the re module, e.g. re.IGNORECASE.
-        na : default NaN
-            Fill value for missing values.
+        na : default None
+            Fill value for missing values. NaN converted to None.
         regex : bool, default True
             If True, assumes the pat is a regular expression.
             If False, treats the pat as a literal string.
@@ -417,9 +852,89 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of boolean values
+        Series of boolean values or object
             A Series of boolean values indicating whether the given pattern is
             contained within the string of each element of the Series.
+
+        Examples
+        --------
+        Returning a Series of booleans using only a literal pattern.
+
+        >>> s1 = ks.Series(['Mouse', 'dog', 'house and parrot', '23', np.NaN])
+        >>> s1.str.contains('og', regex=False)
+        0    False
+        1     True
+        2    False
+        3    False
+        4     None
+        Name: 0, dtype: object
+
+        Specifying case sensitivity using case.
+
+        >>> s1.str.contains('oG', case=True, regex=True)
+        0    False
+        1    False
+        2    False
+        3    False
+        4     None
+        Name: 0, dtype: object
+
+        Specifying na to be False instead of NaN replaces NaN values with
+        False. If Series does not contain NaN values the resultant dtype will
+        be bool, otherwise, an object dtype.
+
+        >>> s1.str.contains('og', na=False, regex=True)
+        0    False
+        1     True
+        2    False
+        3    False
+        4    False
+        Name: 0, dtype: bool
+
+        Returning ‘house’ or ‘dog’ when either expression occurs in a string.
+
+        >>> s1.str.contains('house|dog', regex=True)
+        0    False
+        1     True
+        2     True
+        3    False
+        4     None
+        Name: 0, dtype: object
+
+        Ignoring case sensitivity using flags with regex.
+
+        >>> import re
+        >>> s1.str.contains('PARROT', flags=re.IGNORECASE, regex=True)
+        0    False
+        1    False
+        2     True
+        3    False
+        4     None
+        Name: 0, dtype: object
+
+        Returning any digit using regular expression.
+
+        >>> s1.str.contains('[0-9]', regex=True)
+        0    False
+        1    False
+        2    False
+        3     True
+        4     None
+        Name: 0, dtype: object
+
+        Ensure pat is a not a literal pattern when regex is set to True.
+        Note in the following example one might expect only s2[1] and s2[3]
+        to return True. However, ‘.0’ as a regex matches any character followed
+        by a 0.
+
+        >>> s2 = ks.Series(['40','40.0','41','41.0','35'])
+        >>> s2.str.contains('.0', regex=True)
+        0     True
+        1     True
+        2    False
+        3     True
+        4    False
+        Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
             self,
@@ -445,6 +960,31 @@ class StringMethods(object):
         -------
         Series of int
             A Series containing the integer counts of pattern matches.
+
+        Examples
+        --------
+        >>> s = ks.Series(['A', 'B', 'Aaba', 'Baca', np.NaN, 'CABA', 'cat'])
+        >>> s.str.count('a')
+        0    0.0
+        1    0.0
+        2    2.0
+        3    2.0
+        4    NaN
+        5    0.0
+        6    1.0
+        Name: 0, dtype: float64
+
+        Escape '$' to find the literal dollar sign.
+
+        >>> s = ks.Series(['$', 'B', 'Aab$', '$$ca', 'C$B$', 'cat'])
+        >>> s.str.count('\\$')
+        0    1
+        1    0
+        2    1
+        3    2
+        4    2
+        5    0
+        Name: 0, dtype: int32
         """
         return _wrap_accessor_pandas(
             self,
@@ -496,6 +1036,34 @@ class StringMethods(object):
         -------
         Series of int
             Series of lowest matching indexes.
+
+        Examples
+        --------
+        >>> s = ks.Series(['apple', 'oranges', 'bananas'])
+
+        >>> s.str.find('a')
+        0    0
+        1    2
+        2    1
+        Name: 0, dtype: int32
+
+        >>> s.str.find('a', start=2)
+        0   -1
+        1    2
+        2    3
+        Name: 0, dtype: int32
+
+        >>> s.str.find('a', end=1)
+        0    0
+        1   -1
+        2   -1
+        Name: 0, dtype: int32
+
+        >>> s.str.find('a', start=2, end=2)
+        0   -1
+        1   -1
+        2   -1
+        Name: 0, dtype: int32
         """
         return _wrap_accessor_pandas(
             self,
@@ -519,9 +1087,67 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of list of strings
+        Series of object
             All non-overlapping matches of pattern or regular expression in
             each string of this Series.
+
+        Examples
+        --------
+        >>> s = ks.Series(['Lion', 'Monkey', 'Rabbit'])
+
+        The search for the pattern ‘Monkey’ returns one match:
+
+        >>> s.str.findall('Monkey')
+        0          []
+        1    [Monkey]
+        2          []
+        Name: 0, dtype: object
+
+        On the other hand, the search for the pattern ‘MONKEY’ doesn’t return
+        any match:
+
+        >>> s.str.findall('MONKEY')
+        0    []
+        1    []
+        2    []
+        Name: 0, dtype: object
+
+        Flags can be added to the pattern or regular expression. For instance,
+        to find the pattern ‘MONKEY’ ignoring the case:
+
+        >>> import re
+        >>> s.str.findall('MONKEY', flags=re.IGNORECASE)
+        0          []
+        1    [Monkey]
+        2          []
+        Name: 0, dtype: object
+
+        When the pattern matches more than one string in the Series, all
+        matches are returned:
+
+        >>> s.str.findall('on')
+        0    [on]
+        1    [on]
+        2      []
+        Name: 0, dtype: object
+
+        Regular expressions are supported too. For instance, the search for all
+        the strings ending with the word ‘on’ is shown next:
+
+        >>> s.str.findall('on$')
+        0    [on]
+        1      []
+        2      []
+        Name: 0, dtype: object
+
+        If the pattern is found more than once in the same string, then a list
+        of multiple strings is returned:
+
+        >>> s.str.findall('b')
+        0        []
+        1        []
+        2    [b, b]
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -551,6 +1177,20 @@ class StringMethods(object):
         -------
         Series of int
             Series of lowest matching indexes.
+
+        Examples
+        --------
+        >>> s = ks.Series(['apple', 'oranges', 'bananas'])
+
+        >>> s.str.index('a')
+        0    0
+        1    2
+        2    1
+        Name: 0, dtype: int64
+
+        The following expression throws an exception:
+
+        >>> s.str.index('a', start=2) # doctest: +SKIP
         """
         return _wrap_accessor_pandas(
             self,
@@ -573,9 +1213,25 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
             Series with list entries concatenated by intervening occurrences of
             the delimiter.
+
+        Examples
+        --------
+        Example with a list that contains a None element.
+        >>> s = ks.Series([['lion', 'elephant', 'zebra'],
+        ...                ['cat', None, 'dog']])
+        >>> s
+        0    [lion, elephant, zebra]
+        1           [cat, None, dog]
+        Name: 0, dtype: object
+
+        Join all lists using a ‘-‘. The list containing None will produce None.
+        >>> s.str.join('-')
+        0    lion-elephant-zebra
+        1                   None
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -594,6 +1250,23 @@ class StringMethods(object):
         Series of int
             A Series of integer values indicating the length of each element in
             the Series.
+
+        Examples
+        --------
+        Returns the length (number of characters) in a string. Returns the
+        number of entries for lists or tuples.
+
+        >>> s1 = ks.Series(['dog', 'monkey'])
+        >>> s1.str.len()
+        0    3
+        1    6
+        Name: 0, dtype: int64
+
+        >>> s2 = ks.Series([["a", "b", "c"], []])
+        >>> s2.str.len()
+        0    3
+        1    0
+        Name: 0, dtype: int64
         """
         return _wrap_accessor_pandas(
             self,
@@ -616,7 +1289,20 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
+
+        Examples
+        --------
+        >>> s = ks.Series(["caribou", "tiger"])
+        >>> s
+        0    caribou
+        1      tiger
+        Name: 0, dtype: object
+
+        >>> s.str.ljust(width=10, fillchar='-')
+        0    caribou---
+        1    tiger-----
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -644,9 +1330,45 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of boolean values
+        Series of boolean values or object
             A Series of boolean values indicating whether the given pattern can
             be matched in the string of each element of the Series.
+
+        Examples
+        --------
+        >>> s = ks.Series(['Mouse', 'dog', 'house and parrot', '23', np.NaN])
+        >>> s.str.match('dog')
+        0    False
+        1     True
+        2    False
+        3    False
+        4     None
+        Name: 0, dtype: object
+
+        >>> s.str.match('mouse|dog', case=False)
+        0     True
+        1     True
+        2    False
+        3    False
+        4     None
+        Name: 0, dtype: object
+
+        >>> s.str.match('.+and.+', na=True)
+        0    False
+        1    False
+        2     True
+        3    False
+        4     True
+        Name: 0, dtype: bool
+
+        >>> import re
+        >>> s.str.match('MOUSE', flags=re.IGNORECASE)
+        0     True
+        1    False
+        2    False
+        3    False
+        4     None
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -693,8 +1415,31 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
             Returns Series with minimum number of char in object.
+
+        Examples
+        --------
+        >>> s = ks.Series(["caribou", "tiger"])
+        >>> s
+        0    caribou
+        1      tiger
+        Name: 0, dtype: object
+
+        >>> s.str.pad(width=10)
+        0       caribou
+        1         tiger
+        Name: 0, dtype: object
+
+        >>> s.str.pad(width=10, side='right', fillchar='-')
+        0    caribou---
+        1    tiger-----
+        Name: 0, dtype: object
+
+        >>> s.str.pad(width=10, side='both', fillchar='-')
+        0    -caribou--
+        1    --tiger---
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -720,9 +1465,26 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
             Series or Index of repeated string objects specified by input
             parameter repeats.
+
+        Examples
+        --------
+        >>> s = ks.Series(['a', 'b', 'c'])
+        >>> s
+        0    a
+        1    b
+        2    c
+        Name: 0, dtype: object
+
+        Single int repeats string in Series
+
+        >>> s.str.repeat(repeats=2)
+        0    aa
+        1    bb
+        2    cc
+        Name: 0, dtype: object
         """
         if not isinstance(repeats, int):
             raise ValueError("repeats expects an int parameter")
@@ -763,9 +1525,63 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
             A copy of the string with all matching occurrences of pat replaced
             by repl.
+
+        Examples
+        --------
+        When pat is a string and regex is True (the default), the given pat is
+        compiled as a regex. When repl is a string, it replaces matching regex
+        patterns as with :func:`re.sub`. NaN value(s) in the Series are changed
+        to None:
+
+        >>> ks.Series(['foo', 'fuz', np.nan]).str.replace('f.', 'ba', regex=True)
+        0     bao
+        1     baz
+        2    None
+        Name: 0, dtype: object
+
+        When pat is a string and regex is False, every pat is replaced with
+        repl as with :func:`str.replace`:
+
+        >>> ks.Series(['f.o', 'fuz', np.nan]).str.replace('f.', 'ba', regex=False)
+        0     bao
+        1     fuz
+        2    None
+        Name: 0, dtype: object
+
+        When repl is a callable, it is called on every pat using
+        :func:`re.sub`. The callable should expect one positional argument (a
+        regex object) and return a string.
+
+        Reverse every lowercase alphabetic word:
+
+        >>> repl = lambda m: m.group(0)[::-1]
+        >>> ks.Series(['foo 123', 'bar baz', np.nan]).str.replace(r'[a-z]+', repl)
+        0    oof 123
+        1    rab zab
+        2       None
+        Name: 0, dtype: object
+
+        Using regex groups (extract second group and swap case):
+
+        >>> pat = r"(?P<one>\\w+) (?P<two>\\w+) (?P<three>\\w+)"
+        >>> repl = lambda m: m.group('two').swapcase()
+        >>> ks.Series(['One Two Three', 'Foo Bar Baz']).str.replace(pat, repl)
+        0    tWO
+        1    bAR
+        Name: 0, dtype: object
+
+        Using a compiled regex with flags:
+
+        >>> import re
+        >>> regex_pat = re.compile(r'FUZ', flags=re.IGNORECASE)
+        >>> ks.Series(['foo', 'fuz', np.nan]).str.replace(regex_pat, 'bar')
+        0     foo
+        1     bar
+        2    None
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -795,6 +1611,34 @@ class StringMethods(object):
         -------
         Series of int
             Series of highest matching indexes.
+
+        Examples
+        --------
+        >>> s = ks.Series(['apple', 'oranges', 'bananas'])
+
+        >>> s.str.rfind('a')
+        0    0
+        1    2
+        2    5
+        Name: 0, dtype: int32
+
+        >>> s.str.rfind('a', start=2)
+        0   -1
+        1    2
+        2    5
+        Name: 0, dtype: int32
+
+        >>> s.str.rfind('a', end=1)
+        0    0
+        1   -1
+        2   -1
+        Name: 0, dtype: int32
+
+        >>> s.str.rfind('a', start=2, end=2)
+        0   -1
+        1   -1
+        2   -1
+        Name: 0, dtype: int32
         """
         return _wrap_accessor_pandas(
             self,
@@ -824,6 +1668,20 @@ class StringMethods(object):
         -------
         Series of int
             Series of highest matching indexes.
+
+        Examples
+        --------
+        >>> s = ks.Series(['apple', 'oranges', 'bananas'])
+
+        >>> s.str.rindex('a')
+        0    0
+        1    2
+        2    5
+        Name: 0, dtype: int64
+
+        The following expression throws an exception:
+
+        >>> s.str.rindex('a', start=2) # doctest: +SKIP
         """
         return _wrap_accessor_pandas(
             self,
@@ -846,7 +1704,25 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
+
+        Examples
+        --------
+        >>> s = ks.Series(["caribou", "tiger"])
+        >>> s
+        0    caribou
+        1      tiger
+        Name: 0, dtype: object
+
+        >>> s.str.rjust(width=10)
+        0       caribou
+        1         tiger
+        Name: 0, dtype: object
+
+        >>> s.str.rjust(width=10, fillchar='-')
+        0    ---caribou
+        1    -----tiger
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -875,8 +1751,41 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
             Series from sliced substrings from original string objects.
+
+        Examples
+        --------
+        >>> s = ks.Series(["koala", "fox", "chameleon"])
+        >>> s
+        0        koala
+        1          fox
+        2    chameleon
+        Name: 0, dtype: object
+
+        >>> s.str.slice(start=1)
+        0        oala
+        1          ox
+        2    hameleon
+        Name: 0, dtype: object
+
+        >>> s.str.slice(stop=2)
+        0    ko
+        1    fo
+        2    ch
+        Name: 0, dtype: object
+
+        >>> s.str.slice(step=2)
+        0      kaa
+        1       fx
+        2    caeen
+        Name: 0, dtype: object
+
+        >>> s.str.slice(start=0, stop=5, step=3)
+        0    kl
+        1     f
+        2    cm
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -904,8 +1813,53 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
             Series from sliced substrings from original string objects.
+
+        Examples
+        --------
+        >>> s = ks.Series(['a', 'ab', 'abc', 'abdc', 'abcde'])
+        >>> s
+        0        a
+        1       ab
+        2      abc
+        3     abdc
+        4    abcde
+        Name: 0, dtype: object
+
+        Specify just start, meaning replace start until the end of the string
+        with repl.
+
+        >>> s.str.slice_replace(1, repl='X')
+        0    aX
+        1    aX
+        2    aX
+        3    aX
+        4    aX
+        Name: 0, dtype: object
+
+        Specify just stop, meaning the start of the string to stop is replaced
+        with repl, and the rest of the string is included.
+
+        >>> s.str.slice_replace(stop=2, repl='X')
+        0       X
+        1       X
+        2      Xc
+        3     Xdc
+        4    Xcde
+        Name: 0, dtype: object
+
+        Specify start and stop, meaning the slice from start to stop is
+        replaced with repl. Everything before or after start and stop is
+        included as is.
+
+        >>> s.str.slice_replace(start=1, stop=3, repl='X')
+        0      aX
+        1      aX
+        2      aX
+        3     aXc
+        4    aXde
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -933,8 +1887,53 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str arrays
+        Series of object
             Series with split strings.
+
+        Examples
+        --------
+        >>> s = ks.Series(["this is a regular sentence",
+        ...                "https://docs.python.org/3/tutorial/index.html",
+        ...                np.nan])
+
+        In the default setting, the string is split by whitespace.
+
+        >>> s.str.split()
+        0                   [this, is, a, regular, sentence]
+        1    [https://docs.python.org/3/tutorial/index.html]
+        2                                               None
+        Name: 0, dtype: object
+
+        Without the n parameter, the outputs of rsplit and split are identical.
+
+        >>> s.str.rsplit()
+        0                   [this, is, a, regular, sentence]
+        1    [https://docs.python.org/3/tutorial/index.html]
+        2                                               None
+        Name: 0, dtype: object
+
+        The n parameter can be used to limit the number of splits on the
+        delimiter. The outputs of split and rsplit are different.
+
+        >>> s.str.split(n=2)
+        0                     [this, is, a regular sentence]
+        1    [https://docs.python.org/3/tutorial/index.html]
+        2                                               None
+        Name: 0, dtype: object
+
+        >>> s.str.rsplit(n=2)
+        0                     [this is a, regular, sentence]
+        1    [https://docs.python.org/3/tutorial/index.html]
+        2                                               None
+        Name: 0, dtype: object
+
+        The pat parameter can be used to split by other characters.
+
+        >>> s.str.split(pat = "/")
+        0                         [this is a regular sentence]
+        1    [https:, , docs.python.org, 3, tutorial, index...
+        2                                                 None
+        Name: 0, dtype: object
         """
         if expand:
             raise ValueError("expand=True is currently not supported.")
@@ -965,8 +1964,45 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str arrays
+        Series of object
             Series with split strings.
+
+        Examples
+        --------
+        >>> s = ks.Series(["this is a regular sentence",
+        ...                "https://docs.python.org/3/tutorial/index.html",
+        ...                np.nan])
+
+        In the default setting, the string is split by whitespace.
+
+        >>> s.str.split()
+        0                   [this, is, a, regular, sentence]
+        1    [https://docs.python.org/3/tutorial/index.html]
+        2                                               None
+        Name: 0, dtype: object
+
+        Without the n parameter, the outputs of rsplit and split are identical.
+
+        >>> s.str.rsplit()
+        0                   [this, is, a, regular, sentence]
+        1    [https://docs.python.org/3/tutorial/index.html]
+        2                                               None
+        Name: 0, dtype: object
+
+        The n parameter can be used to limit the number of splits on the
+        delimiter. The outputs of split and rsplit are different.
+
+        >>> s.str.split(n=2)
+        0                     [this, is, a regular sentence]
+        1    [https://docs.python.org/3/tutorial/index.html]
+        2                                               None
+        Name: 0, dtype: object
+
+        >>> s.str.rsplit(n=2)
+        0                     [this is a, regular, sentence]
+        1    [https://docs.python.org/3/tutorial/index.html]
+        2                                               None
+        Name: 0, dtype: object
         """
         if expand:
             raise ValueError("expand=True is currently not supported.")
@@ -992,8 +2028,18 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
             Series with translated strings.
+
+        Examples
+        --------
+        >>> s = ks.Series(["dog", "cat", "bird"])
+        >>> m = str.maketrans({'a': 'X', 'i': 'Y', 'o': None})
+        >>> s.str.translate(m)
+        0      dg
+        1     cXt
+        2    bYrd
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -1035,8 +2081,16 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
             Series with wrapped strings.
+
+        Examples
+        --------
+        >>> s = ks.Series(['line to be wrapped', 'another line to be wrapped'])
+        >>> s.str.wrap(12)
+        0             line to be\\nwrapped
+        1    another line\\nto be\\nwrapped
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
@@ -1052,6 +2106,9 @@ class StringMethods(object):
         string to reach a total string length width. Strings in the Series with
         length greater or equal to width are unchanged.
 
+        Differs from :func:`str.zfill` which has special handling for ‘+’/’-‘
+        in the string.
+
         Parameters
         ----------
         width : int
@@ -1060,8 +2117,30 @@ class StringMethods(object):
 
         Returns
         -------
-        Series of str
+        Series of object
             Series with '0' left-padded strings.
+
+        Examples
+        --------
+        >>> s = ks.Series(['-1', '1', '1000', np.nan])
+        >>> s
+        0      -1
+        1       1
+        2    1000
+        3    None
+        Name: 0, dtype: object
+
+        Note that NaN is not a string, therefore it is converted to NaN. The
+        minus sign in '-1' is treated as a regular character and the zero is
+        added to the left of it (:func:`str.zfill` would have moved it to the
+        left). 1000 remains unchanged as it is longer than width.
+
+        >>> s.str.zfill(3)
+        0     0-1
+        1     001
+        2    1000
+        3    None
+        Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
             self,
