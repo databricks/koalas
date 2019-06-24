@@ -827,7 +827,7 @@ class StringMethods(object):
 
     def contains(self, pat, case=True, flags=0, na=None, regex=True) -> 'ks.Series':
         """
-        Testcif pattern or regex is contained within a string of a Series.
+        Test if pattern or regex is contained within a string of a Series.
 
         Return boolean Series based on whether a given pattern or regex is
         contained within a string of a Series.
