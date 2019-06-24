@@ -698,6 +698,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             'with another DataFrame or a sequence is currently not supported',
             lambda: ks.range(10).add(ks.range(10).id))
 
+    def test_replace(self):
+
+        pdf = pd.DataFrame({'A': [0, 1, 2, 3, 4],
+                            'B': [5, 6, 7, 8, 9],
+                            'C': ['a', 'b', 'c', 'd', 'e']})
+
+        kdf = ks.from_pandas(pdf)
+
+        assert (repr(kdf.replace([0, 1, 2, 3], 4)) == repr(pdf.replace([0, 1, 2, 3], 4)))
+
+        assert (repr(kdf.replace([0, 1, 2, 3], [4, 3, 2, 1])) == repr(pdf.replace([0, 1, 2, 3], [4, 3, 2, 1])))
+
+        assert (repr(kdf.replace({0: 10, 1: 100})) == repr(pdf.replace({0: 10, 1: 100})))
+
+        assert (repr(kdf.replace({'A': 0, 'B': 5}, 100)) == repr(pdf.replace({'A': 0, 'B': 5}, 100)))
+
+        assert (repr(kdf.replace({'A': {0: 100, 4: 400}})) == repr(pdf.replace({'A': {0: 100, 4: 400}})))
+
     def test_sample(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})
         kdf = ks.from_pandas(pdf)

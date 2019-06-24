@@ -3494,6 +3494,109 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         from databricks.koalas.namespace import concat
         return concat([self, other], ignore_index=ignore_index)
 
+    def replace(self, to_replace=None, value=None, subset=None, inplace=False,
+                limit=None, regex=False, method='pad'):
+        '''
+
+        Returns a new DataFrame replacing a value with another value.
+         Parameters
+        ----------
+        to_replace : int, float, string, or list
+            Value to be replaced. If the value is a dict, then value is ignored and
+            to_replace must be a mapping from column name (string) to replacement value.
+            The value to be replaced must be an int, float, or string.
+        value : int, float, string, or list
+            Value to use to replace holes. The replacement value must be an int, float,
+            or string. If value is a list, value should be of the same length with to_replace.
+        subset : sting, list
+            Optional list of column names to consider. Columns specified in subset that
+            do not have matching data type are ignored. For example, if value is a string,
+            and subset contains a non-string column, then the non-string column is simply ignored.
+
+
+        Returns
+        -------
+        DataFrame
+            Object after replacement.
+
+        Examples
+        --------
+        >>> df = pd.DataFrame({'A': [0, 1, 2, 3, 4],
+        ...                    'B': [5, 6, 7, 8, 9],
+        ...                    'C': ['a', 'b', 'c', 'd', 'e']})
+        >>> df.replace(0, 5)
+           A  B  C
+        0  5  5  a
+        1  1  6  b
+        2  2  7  c
+        3  3  8  d
+        4  4  9  e
+        >>> df.replace([0, 1, 2, 3], 4)
+           A  B  C
+        0  4  5  a
+        1  4  6  b
+        2  4  7  c
+        3  4  8  d
+        4  4  9  e
+        >>> df.replace([0, 1, 2, 3], [4, 3, 2, 1])
+           A  B  C
+        0  4  5  a
+        1  3  6  b
+        2  2  7  c
+        3  1  8  d
+        4  4  9  e
+
+        >>> df.replace({0: 10, 1: 100})
+             A  B  C
+        0   10  5  a
+        1  100  6  b
+        2    2  7  c
+        3    3  8  d
+        4    4  9  e
+        >>> df.replace({'A': 0, 'B': 5}, 100)
+             A    B  C
+        0  100  100  a
+        1    1    6  b
+        2    2    7  c
+        3    3    8  d
+        4    4    9  e
+        >>> df.replace({'A': {0: 100, 4: 400}})
+             A  B  C
+        0  100  5  a
+        1    1  6  b
+        2    2  7  c
+        3    3  8  d
+        4  400  9  e
+        '''
+
+        if method != 'pad':
+            raise NotImplementedError("replace currently works only for method='pad")
+        if limit is not None:
+            raise NotImplementedError("replace currently works only when limit=None")
+        if regex is not False:
+            raise NotImplementedError("replace currently doesn't supports regex")
+        if inplace is not False:
+            raise NotImplementedError("replace currently doesn't supports inplace")
+        if not isinstance(to_replace, (int, float, str, list, dict)):
+            raise TypeError("Unsupported type {}".format(type(to_replace)))
+        if isinstance(value, (list)) and isinstance(to_replace, (list)):
+            if len(value) != len(to_replace):
+                raise ValueError('Length of to_replace and value must be same')
+
+        sdf = self._sdf.select(self._internal.data_columns)
+
+        if isinstance(to_replace, dict):
+            if (not any(isinstance(i, dict) for i in to_replace.values())) and value is None:
+                return DataFrame(sdf.replace(to_replace, value, subset))
+            for df_column, to_find in to_replace.items():
+                if isinstance(to_find, dict):
+                    sdf = sdf.replace(to_find, subset=df_column)
+                else:
+                    sdf = sdf.withColumn(df_column, F.when(F.col(df_column) == to_find, value).otherwise(F.col(df_column)))
+            return DataFrame(sdf)
+        else:
+            return DataFrame(sdf.replace(to_replace, value, subset))
+
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
                random_state: Optional[int] = None) -> 'DataFrame':
         """
