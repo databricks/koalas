@@ -2416,9 +2416,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if regex is not False:
             raise NotImplementedError("replace currently doesn't supports regex")
 
-        if not isinstance(value, (int, float, str, list, dict)):
+        if value is not None and not isinstance(value, (int, float, str, list, dict)):
             raise TypeError("Unsupported type {}".format(type(value)))
-        if not isinstance(to_replace, (int, float, str, list, dict)):
+        if to_replace is not None and not isinstance(to_replace, (int, float, str, list, dict)):
             raise TypeError("Unsupported type {}".format(type(to_replace)))
 
         if isinstance(value, (list)) and isinstance(to_replace, (list)):

@@ -768,7 +768,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(TypeError, "Unsupported type <class 'tuple'>"):
             kdf.replace(value=(1, 2, 3))
-        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'NoneType'>"):
+        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'tuple'>"):
             kdf.replace(to_replace=(1, 2, 3))
 
         with self.assertRaisesRegex(ValueError, 'Length of to_replace and value must be same'):
