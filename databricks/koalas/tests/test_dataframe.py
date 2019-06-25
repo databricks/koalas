@@ -775,4 +775,3 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         left_pdf.update(right_pdf, overwrite=False)
         left_kdf.update(right_kdf, overwrite=False)
         self.assert_eq(left_pdf.sort_values(by=['A', 'B']), left_kdf.sort_values(by=['A', 'B']))
-
