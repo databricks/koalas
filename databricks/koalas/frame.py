@@ -3906,15 +3906,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Parameters
         ----------
         skipna : boolean, default True
-        Exclude NA/null values. If an entire row/column is NA, the result will be NA.
+            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
 
         Returns
         -------
         Series or DataFrame
 
+        See Also
+        --------
+        DataFrame.sum : Return the sum over DataFrame axis.
+        DataFrame.cummax : Return cumulative maximum over DataFrame axis.
+        DataFrame.cummin : Return cumulative minimum over DataFrame axis.
+        DataFrame.cumsum : Return cumulative sum over DataFrame axis.
+        DataFrame.cumprod : Return cumulative product over DataFrame axis.
+
         Examples
         --------
-
         >>> df = ks.DataFrame([[2.0, 1.0],
         ...                    [3.0, None],
         ...                    [1.0, 0.0]],
@@ -3932,14 +3939,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  2.0  1.0
         1  5.0  NaN
         2  6.0  1.0
-
-        >>> df.cumsum(skipna=False)
-             A    B
-        0  2.0  1.0
-        1  5.0  NaN
-        2  6.0  NaN
         """
-
         index_columns = self._internal.index_columns
         data_columns = self._internal.data_columns
         window = Window.orderBy(index_columns).rangeBetween(Window.unboundedPreceding, 0)
@@ -3959,7 +3959,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.withColumn(column_name,
                                      F.when(sdf[column_name + '_isnull'] == 1, F.lit(None))
                                      .otherwise(sdf[column_name]))
-
         return DataFrame(self._internal.copy(sdf=sdf.select(index_columns + data_columns)))
 
     # TODO: implements 'keep' parameters
