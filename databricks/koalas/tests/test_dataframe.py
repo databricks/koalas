@@ -776,13 +776,3 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         left_kdf.update(right_kdf, overwrite=False)
         self.assert_eq(left_pdf.sort_values(by=['A', 'B']), left_kdf.sort_values(by=['A', 'B']))
 
-        # check errors not in scope
-        left_kdf, left_pdf, right_kdf, right_pdf = get_data()
-        with self.assertRaisesRegex(ValueError,
-                                    "The parameter errors must be either 'ignore' or 'raise'"):
-            left_kdf.update(right_kdf, errors='other')
-
-        # check errors=='raise'
-        left_kdf, left_pdf, right_kdf, right_pdf = get_data()
-        with self.assertRaisesRegex(ValueError, "Data overlaps."):
-            left_kdf.update(right_kdf, errors='raise')

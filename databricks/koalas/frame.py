@@ -3494,9 +3494,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         from databricks.koalas.namespace import concat
         return concat([self, other], ignore_index=ignore_index)
 
-    # TODO: add 'filter_func' parameter
-    def update(self, other: 'DataFrame', join: str = 'left', overwrite: bool = True,
-               errors: str = 'ignore'):
+    # TODO: add 'filter_func' and 'errors' parameter
+    def update(self, other: 'DataFrame', join: str = 'left', overwrite: bool = True):
         """
         Modify in place using non-NA values from another DataFrame.
         Aligns on indices. There is no return value.
@@ -3511,19 +3510,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             * True: overwrite original DataFrame's values with values from `other`.
             * False: only update values that are NA in the original DataFrame.
-        errors : {'raise', 'ignore'}, default 'ignore'
-            If 'raise', will raise a ValueError if the DataFrame and `right` both contain non-NA
-            data in the same place.
 
         Returns
         -------
         None : method directly changes calling object
-
-        Raises
-        ------
-        ValueError
-            * When `errors='raise'` and there's overlapping non-NA data.
-            * When `errors` is not either 'ignore' or 'raise'
 
         See Also
         --------
@@ -3574,9 +3564,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  2  500.0
         2  3    6.0
         """
-        if errors not in ['ignore', 'raise']:
-            raise ValueError("The parameter errors must be either 'ignore' or 'raise'")
-
         if join != 'left':
             raise NotImplementedError("Only left join is supported")
 
@@ -3590,11 +3577,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for column_name in update_columns:
             old_col = update_sdf[column_name]
             new_col = update_sdf[column_name + '_new']
-            if errors == 'raise':
-                null_row_num = update_sdf.filter(old_col.isNull() & new_col.isNull()).count()
-                if null_row_num > 0:
-                    raise ValueError("Data overlaps.")
-
             if overwrite:
                 update_sdf = update_sdf.withColumn(column_name, F.when(new_col.isNull(), old_col)
                                                    .otherwise(new_col))
