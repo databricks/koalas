@@ -786,3 +786,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         left_kdf, left_pdf, right_kdf, right_pdf = get_data()
         with self.assertRaisesRegex(ValueError, "Data overlaps."):
             left_kdf.update(right_kdf, errors='raise')
+
+    def test_cumsum(self):
+        pdf = pd.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        kdf = ks.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        self.assert_eq(pdf.cumsum(), kdf.cumsum())
+        self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
