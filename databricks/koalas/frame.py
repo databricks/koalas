@@ -27,6 +27,7 @@ import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like
 from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
+from pyspark.sql.window import Window
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType, StructType)
@@ -4004,6 +4005,71 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   data_columns=data_columns,
                                   index_map=[('summary', None)])
         return DataFrame(internal).astype('float64')
+
+        # TODO: add 'axis' parameter
+    def cumsum(self, skipna: bool = True):
+        """
+        Return cumulative sum over a DataFrame or Series axis.
+
+        Returns a DataFrame or Series of the same size containing the cumulative sum.
+
+        Parameters
+        ----------
+        skipna : boolean, default True
+        Exclude NA/null values. If an entire row/column is NA, the result will be NA.
+
+        Returns
+        -------
+        Series or DataFrame
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame([[2.0, 1.0],
+        ...                    [3.0, None],
+        ...                    [1.0, 0.0]],
+        ...                    columns=list('AB'))
+        >>> df
+             A    B
+        0  2.0  1.0
+        1  3.0  NaN
+        2  1.0  0.0
+
+        By default, iterates over rows and finds the sum in each column.
+
+        >>> df.cumsum()
+             A    B
+        0  2.0  1.0
+        1  5.0  NaN
+        2  6.0  1.0
+
+        >>> df.cumsum(skipna=False)
+             A    B
+        0  2.0  1.0
+        1  5.0  NaN
+        2  6.0  NaN
+        """
+
+        index_columns = self._internal.index_columns
+        data_columns = self._internal.data_columns
+        window = Window.orderBy(index_columns).rangeBetween(Window.unboundedPreceding, 0)
+        sdf = self._sdf
+
+        for column_name in data_columns:
+            sdf = sdf.withColumn(column_name + '_isnull', F.when(sdf[column_name].isNull(), 1)
+                                 .otherwise(0))
+            sdf = sdf.withColumn(column_name, F.sum(column_name).over(window))
+            if not skipna:
+                sdf = sdf.withColumn(column_name + '_isnull',
+                                     F.sum(column_name + '_isnull').over(window))
+                sdf = sdf.withColumn(column_name,
+                                     F.when(sdf[column_name + '_isnull'] >= 1, F.lit(None))
+                                     .otherwise(sdf[column_name]))
+            else:
+                sdf = sdf.withColumn(column_name,
+                                     F.when(sdf[column_name + '_isnull'] == 1, F.lit(None))
+                                     .otherwise(sdf[column_name]))
+        return DataFrame(sdf.select(index_columns + data_columns), self._internal.copy())
 
     # TODO: implements 'keep' parameters
     def drop_duplicates(self, subset=None, inplace=False):

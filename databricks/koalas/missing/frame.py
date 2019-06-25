@@ -64,7 +64,6 @@ class _MissingPandasLikeDataFrame(object):
     cummax = unsupported_function('cummax')
     cummin = unsupported_function('cummin')
     cumprod = unsupported_function('cumprod')
-    cumsum = unsupported_function('cumsum')
     diff = unsupported_function('diff')
     dot = unsupported_function('dot')
     droplevel = unsupported_function('droplevel')
