@@ -3896,7 +3896,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   index_map=[('summary', None)])
         return DataFrame(internal).astype('float64')
 
-        # TODO: add 'axis' parameter
+    # TODO: add 'axis' parameter
     def cumsum(self, skipna: bool = True):
         """
         Return cumulative sum over a DataFrame or Series axis.
@@ -3959,7 +3959,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.withColumn(column_name,
                                      F.when(sdf[column_name + '_isnull'] == 1, F.lit(None))
                                      .otherwise(sdf[column_name]))
-        return DataFrame(sdf.select(index_columns + data_columns), self._internal.copy())
+
+        return DataFrame(self._internal.copy(sdf=sdf.select(index_columns + data_columns)))
 
     # TODO: implements 'keep' parameters
     def drop_duplicates(self, subset=None, inplace=False):
