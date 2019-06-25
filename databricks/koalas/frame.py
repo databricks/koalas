@@ -3591,8 +3591,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             old_col = update_sdf[column_name]
             new_col = update_sdf[column_name + '_new']
             if errors == 'raise':
-                null_sdf = update_sdf.filter(old_col.isNull() & new_col.isNull())
-                if null_sdf:
+                null_row_num = update_sdf.filter(old_col.isNull() & new_col.isNull()).count()
+                if null_row_num > 0:
                     raise ValueError("Data overlaps.")
 
             if overwrite:
