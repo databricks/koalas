@@ -784,4 +784,3 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
         self.assert_eq(pdf.cummax(), kdf.cummax())
         self.assert_eq(pdf.cummax(skipna=False), kdf.cummax(skipna=False))
-
