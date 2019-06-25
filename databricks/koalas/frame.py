@@ -2461,17 +2461,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise ValueError('Length of to_replace and value must be same')
 
         sdf = self._sdf.select(self._internal.data_columns)
-
         if isinstance(to_replace, dict):
             for df_column, replacement in to_replace.items():
                 if isinstance(replacement, dict):
                     sdf = sdf.replace(replacement, subset=df_column)
                 else:
-                    sdf = sdf.withColumn(
-                            df_column,
-                            F.when(F.col(df_column) == replacement, value)
-                             .otherwise(F.col(df_column))
-                        )
+                    sdf = sdf.withColumn(df_column, F.when(F.col(df_column) == replacement, value)
+                                         .otherwise(F.col(df_column)))
 
         else:
             sdf = sdf.replace(to_replace, value, subset)
