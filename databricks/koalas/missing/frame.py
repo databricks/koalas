@@ -61,7 +61,6 @@ class _MissingPandasLikeDataFrame(object):
     compound = unsupported_function('compound')
     corrwith = unsupported_function('corrwith')
     cov = unsupported_function('cov')
-    cummax = unsupported_function('cummax')
     cummin = unsupported_function('cummin')
     cumprod = unsupported_function('cumprod')
     cumsum = unsupported_function('cumsum')
