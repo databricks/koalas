@@ -779,3 +779,31 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.replace(['Ironman', 'Captain America'], ['Rescue', 'Hawkeye']),
             pdf.replace(['Ironman', 'Captain America'], ['Rescue', 'Hawkeye'])
         )
+
+    def test_update(self):
+        # check base function
+        def get_data():
+            left_pdf = pd.DataFrame({'A': ['1', '2', '3', '4'],
+                                     'B': ['100', '200', np.nan, np.nan]},
+                                    columns=['A', 'B'])
+            right_pdf = pd.DataFrame({'B': ['x', np.nan, 'y', np.nan],
+                                      'C': ['100', '200', '300', '400']}, columns=['B', 'C'])
+
+            left_kdf = ks.DataFrame({'A': ['1', '2', '3', '4'], 'B': ['100', '200', None, None]},
+                                    columns=['A', 'B'])
+            right_kdf = ks.DataFrame({'B': ['x', None, 'y', None],
+                                      'C': ['100', '200', '300', '400']}, columns=['B', 'C'])
+            return left_kdf, left_pdf, right_kdf, right_pdf
+
+        left_kdf, left_pdf, right_kdf, right_pdf = get_data()
+        left_pdf.update(right_pdf)
+        left_kdf.update(right_kdf)
+        self.assert_eq(left_pdf.sort_values(by=['A', 'B']), left_kdf.sort_values(by=['A', 'B']))
+
+        left_kdf, left_pdf, right_kdf, right_pdf = get_data()
+        left_pdf.update(right_pdf, overwrite=False)
+        left_kdf.update(right_kdf, overwrite=False)
+        self.assert_eq(left_pdf.sort_values(by=['A', 'B']), left_kdf.sort_values(by=['A', 'B']))
+
+        with self.assertRaises(NotImplementedError):
+            left_kdf.update(right_kdf, join='right')
