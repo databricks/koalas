@@ -750,3 +750,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         join_kdf = kdf1.join(kdf2.set_index('key'), on='key', lsuffix='_left', rsuffix='_right')
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
         self.assert_eq(join_pdf, join_kdf)
+
+    def test_cummax(self):
+        pdf = pd.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        kdf = ks.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        self.assert_eq(pdf.cummax(), kdf.cummax())
+        self.assert_eq(pdf.cummax(skipna=False), kdf.cummax(skipna=False))
