@@ -2467,8 +2467,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 if isinstance(replacement, dict):
                     sdf = sdf.replace(replacement, subset=df_column)
                 else:
-                    sdf = sdf.withColumn(df_column, F.when(F.col(df_column) == replacement, value)
-                             .otherwise(F.col(df_column)))
+                    sdf = sdf.withColumn(
+                            df_column,
+                            F.when(F.col(df_column) == replacement, value)
+                             .otherwise(F.col(df_column))
+                        )
+
         else:
             sdf = sdf.replace(to_replace, value, subset)
 
