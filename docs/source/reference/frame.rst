@@ -68,6 +68,12 @@ Binary operator functions
    DataFrame.rmul
    DataFrame.sub
    DataFrame.rsub
+   DataFrame.pow
+   DataFrame.rpow
+   DataFrame.mod
+   DataFrame.rmod
+   DataFrame.floordiv
+   DataFrame.rfloordiv
    DataFrame.lt
    DataFrame.gt
    DataFrame.le

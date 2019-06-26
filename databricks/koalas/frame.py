@@ -148,6 +148,24 @@ rectangle     4.0    360.0
 circle        0.0    360.0
 triangle      3.0    180.0
 rectangle     4.0    360.0
+
+>>> df // 2
+           angles  degrees
+circle          0      180
+triangle        1       90
+rectangle       2      180
+
+>>> df % 2
+           angles  degrees
+circle          0        0
+triangle        1        0
+rectangle       0        0
+
+>>> df.pow(2)
+           angles   degrees
+circle        0.0  129600.0
+triangle      9.0   32400.0
+rectangle    16.0  129600.0
 """
 
 
@@ -351,6 +369,24 @@ class DataFrame(_Frame):
     def __rsub__(self, other):
         return self._map_series_op("rsub", other)
 
+    def __pow__(self, other):
+        return self._map_series_op("pow", other)
+
+    def __rpow__(self, other):
+        return self._map_series_op("rpow", other)
+
+    def __mod__(self, other):
+        return self._map_series_op("mod", other)
+
+    def __rmod__(self, other):
+        return self._map_series_op("rmod", other)
+
+    def __floordiv__(self, other):
+        return self._map_series_op("floordiv", other)
+
+    def __rfloordiv__(self, other):
+        return self._map_series_op("rfloordiv", other)
+
     def add(self, other):
         return self + other
 
@@ -446,6 +482,60 @@ class DataFrame(_Frame):
         op_name="-",
         equiv="other - dataframe",
         reverse='sub')
+
+    def mod(self, other):
+        return self % other
+
+    mod.__doc__ = _flex_doc_FRAME.format(
+        desc='Modulo',
+        op_name='%',
+        equiv='dataframe % other',
+        reverse='rmod')
+
+    def rmod(self, other):
+        return other % self
+
+    rmod.__doc__ = _flex_doc_FRAME.format(
+        desc='Modulo',
+        op_name='%',
+        equiv='other % dataframe',
+        reverse='mod')
+
+    def pow(self, other):
+        return self ** other
+
+    pow.__doc__ = _flex_doc_FRAME.format(
+        desc='Exponential power of series',
+        op_name='**',
+        equiv='dataframe ** other',
+        reverse='rpow')
+
+    def rpow(self, other):
+        return other - self
+
+    rpow.__doc__ = _flex_doc_FRAME.format(
+        desc='Exponential power',
+        op_name='**',
+        equiv='other ** dataframe',
+        reverse='pow')
+
+    def floordiv(self, other):
+        return self // other
+
+    floordiv.__doc__ = _flex_doc_FRAME.format(
+        desc='Integer division',
+        op_name='//',
+        equiv='dataframe // other',
+        reverse='rfloordiv')
+
+    def rfloordiv(self, other):
+        return other - self
+
+    rfloordiv.__doc__ = _flex_doc_FRAME.format(
+        desc='Integer division',
+        op_name='//',
+        equiv='other // dataframe',
+        reverse='floordiv')
 
     # Comparison Operators
     def __eq__(self, other):

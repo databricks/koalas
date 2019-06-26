@@ -63,6 +63,12 @@ Binary operator functions
    Series.rtruediv
    Series.sub
    Series.truediv
+   Series.pow
+   Series.rpow
+   Series.mod
+   Series.rmod
+   Series.floordiv
+   Series.rfloordiv
    Series.lt
    Series.gt
    Series.le
