@@ -3988,7 +3988,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   index_map=[('summary', None)])
         return DataFrame(internal).astype('float64')
 
-    # TODO: add 'axis' parameter 
+    # TODO: add 'axis' parameter
     def cumsum(self, skipna: bool = True):
         """
         Return cumulative sum over a DataFrame or Series axis.
