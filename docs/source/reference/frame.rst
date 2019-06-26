@@ -28,6 +28,7 @@ Attributes and underlying data
    DataFrame.dtypes
    DataFrame.shape
    DataFrame.size
+   DataFrame.select_dtypes
 
 Conversion
 ----------
