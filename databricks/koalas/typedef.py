@@ -112,7 +112,6 @@ _base = {
     types.TimestampType(): [np.datetime64],
     types.DateType(): [datetime.date],
     types.BooleanType(): [bool, 'boolean', 'bool', np.bool],
-    types.ArrayType(types.StringType()): []
 }
 
 
@@ -122,7 +121,7 @@ def _build_type_dict():
 
 
 def _build_py_type_dict():
-    return dict([(spark_type, l[0]) for (spark_type, l) in _base.items() if len(l) > 0])
+    return dict([(spark_type, l[0]) for (spark_type, l) in _base.items()])
 
 
 _known_types = _build_type_dict()
