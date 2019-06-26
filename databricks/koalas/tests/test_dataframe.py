@@ -753,6 +753,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
         self.assert_eq(join_pdf, join_kdf)
 
+<<<<<<< HEAD
     def test_update(self):
         # check base function
         def get_data():
@@ -904,3 +905,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             repr(pdf2.transpose().sort_index()),
             repr(ks.DataFrame(pdf2).transpose().sort_index()))
+
+    def test_cummin(self):
+        pdf = pd.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        kdf = ks.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        self.assert_eq(pdf.cummin(), kdf.cummin())
+        self.assert_eq(pdf.cummin(skipna=False), kdf.cummin(skipna=False))
+
+    def test_cummax(self):
+        pdf = pd.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        kdf = ks.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        self.assert_eq(pdf.cummax(), kdf.cummax())
+        self.assert_eq(pdf.cummax(skipna=False), kdf.cummax(skipna=False))
+
+    def test_cumsum(self):
+        pdf = pd.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        kdf = ks.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        self.assert_eq(pdf.cumsum(), kdf.cumsum())
+        self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))

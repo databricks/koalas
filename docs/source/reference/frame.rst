@@ -113,6 +113,9 @@ Computations / Descriptive Stats
    DataFrame.sum
    DataFrame.std
    DataFrame.var
+   DataFrame.cummin
+   DataFrame.cummax
+   DataFrame.cumsum
 
 Reindexing / Selection / Label manipulation
 -------------------------------------------
@@ -161,7 +164,6 @@ Combining / joining / merging
    DataFrame.assign
    DataFrame.merge
    DataFrame.join
-   DataFrame.update
 
 Cache
 -------------------------------
