@@ -3987,7 +3987,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   data_columns=data_columns,
                                   index_map=[('summary', None)])
         return DataFrame(internal).astype('float64')
-    
+
     # TODO: add 'axis' parameter
     def cummin(self, skipna: bool = True):
         """
