@@ -2475,7 +2475,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         indexes) on the index and columns of the result DataFrame.
 
         Parameters
-        ----------%s
+        ----------
         values : column to aggregate.
             They should be either a list of one column or a string. A list of columns
             is not supported yet.
@@ -2524,8 +2524,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         This first example aggregates values by taking the sum.
 
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
-        ...                     columns='C', aggfunc='sum')
-        >>> table # doctest: +SKIP
+        ...                         columns='C', aggfunc='sum')
+        >>> table  # doctest: +NORMALIZE_WHITESPACE
                  large  small
         A   B
         foo one    4.0      1
@@ -2536,8 +2536,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         We can also fill missing values using the `fill_value` parameter.
 
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
-        ...                     columns='C', aggfunc='sum', fill_value=0)
-        >>> table # doctest: +SKIP
+        ...                         columns='C', aggfunc='sum', fill_value=0)
+        >>> table  # doctest: +NORMALIZE_WHITESPACE
                  large  small
         A   B
         foo one      4      1
@@ -2549,8 +2549,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         value column.
 
         >>> table = df.pivot_table(values = ['D'], index =['C'],
-        ...                     columns="A", aggfunc={'D':'mean'})
-        >>> table # doctest: +SKIP
+        ...                         columns="A", aggfunc={'D':'mean'})
+        >>> table  # doctest: +NORMALIZE_WHITESPACE
                bar       foo
         C
         small  5.5  2.333333
