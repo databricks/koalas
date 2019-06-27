@@ -2834,7 +2834,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4   True  1.0  a
         5  False  2.0  b
 
-        Spark SQL DDL type definition can be used as strings as well.
+        Spark SQL DDL type strings can be used as well.
 
         >>> df.select_dtypes(exclude=['string'])
            a      b    c
