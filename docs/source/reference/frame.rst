@@ -136,6 +136,7 @@ Reshaping, sorting, transposing
 .. autosummary::
    :toctree: api/
 
+   DataFrame.pivot_table
    DataFrame.sort_index
    DataFrame.sort_values
    DataFrame.nlargest

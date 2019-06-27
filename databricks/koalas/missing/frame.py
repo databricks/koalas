@@ -100,7 +100,6 @@ class _MissingPandasLikeDataFrame(object):
     mode = unsupported_function('mode')
     pct_change = unsupported_function('pct_change')
     pivot = unsupported_function('pivot')
-    pivot_table = unsupported_function('pivot_table')
     pop = unsupported_function('pop')
     pow = unsupported_function('pow')
     prod = unsupported_function('prod')
