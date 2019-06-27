@@ -105,8 +105,12 @@ class GroupBy(object):
         groupkeys = self._groupkeys
         groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
                          for i, s in enumerate(groupkeys)]
-        reordered = [F.expr('{1}({0}) as {0}'.format(key, value))
-                     for key, value in func_or_funcs.items()]
+        reordered = []
+        for key, value in func_or_funcs.items():
+            if value == "nunique":
+                reordered.append(F.expr('count(DISTINCT {0}) as {0}'.format(key)))
+            else:
+                reordered.append(F.expr('{1}({0}) as {0}'.format(key, value)))
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[key for key, _ in func_or_funcs.items()],

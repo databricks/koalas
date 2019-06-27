@@ -113,6 +113,14 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(KeyError, lambda: kdf.groupby('a')['b', 'x'])
         self.assertRaises(KeyError, lambda: kdf.groupby('a')[['b', 'x']])
 
+    def test_nunique(self):
+        pdf = pd.DataFrame({'a': [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                            'b': [2, 2, 2, 3, 3, 4, 4, 5, 5, 5]})
+        kdf = koalas.DataFrame(pdf)
+
+        self.assert_eq(kdf.groupby("a").agg({"b": "nunique"}),
+                       pdf.groupby("a").agg({"b": "nunique"}))
+
     def test_missing(self):
         kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 
