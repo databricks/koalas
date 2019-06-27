@@ -2614,7 +2614,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         This first example aggregates values by taking the sum.
 
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
-        ...                         columns='C', aggfunc='sum')
+        ...                        columns='C', aggfunc='sum')
         >>> table  # doctest: +NORMALIZE_WHITESPACE
                  large  small
         A   B
@@ -2626,7 +2626,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         We can also fill missing values using the `fill_value` parameter.
 
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
-        ...                         columns='C', aggfunc='sum', fill_value=0)
+        ...                        columns='C', aggfunc='sum', fill_value=0)
         >>> table  # doctest: +NORMALIZE_WHITESPACE
                  large  small
         A   B
@@ -2639,7 +2639,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         value column.
 
         >>> table = df.pivot_table(values = ['D'], index =['C'],
-        ...                         columns="A", aggfunc={'D':'mean'})
+        ...                        columns="A", aggfunc={'D':'mean'})
         >>> table  # doctest: +NORMALIZE_WHITESPACE
                bar       foo
         C
@@ -2665,10 +2665,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise NotImplementedError('Values as list of columns is not implemented yet.')
 
         if isinstance(aggfunc, str):
-            agg_cols = [F.expr('{1}({0}) as {0}'.format(values, aggfunc))]
+            agg_cols = [F.expr('{1}(`{0}`) as `{0}`'.format(values, aggfunc))]
 
         elif isinstance(aggfunc, dict):
-            agg_cols = [F.expr('{1}({0}) as {0}'.format(key, value))
+            agg_cols = [F.expr('{1}(`{0}`) as `{0}`'.format(key, value))
                         for key, value in aggfunc.items()]
             agg_columns = [key for key, value in aggfunc.items()]
 
@@ -3807,15 +3807,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         update_sdf = self.join(other[update_columns], rsuffix='_new')._sdf
 
         for column_name in update_columns:
-            old_col = update_sdf[column_name]
-            new_col = update_sdf[column_name + '_new']
+            old_col = scol_for(update_sdf, column_name)
+            new_col = scol_for(update_sdf, column_name + '_new')
             if overwrite:
                 update_sdf = update_sdf.withColumn(column_name, F.when(new_col.isNull(), old_col)
                                                    .otherwise(new_col))
             else:
                 update_sdf = update_sdf.withColumn(column_name, F.when(old_col.isNull(), new_col)
                                                    .otherwise(old_col))
-        internal = self._internal.copy(sdf=update_sdf.select(self._internal.columns))
+        internal = self._internal.copy(sdf=update_sdf.select([scol_for(update_sdf, col)
+                                                              for col in self._internal.columns]))
         self._internal = internal
 
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,

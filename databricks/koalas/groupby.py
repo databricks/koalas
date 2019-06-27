@@ -108,9 +108,9 @@ class GroupBy(object):
         reordered = []
         for key, value in func_or_funcs.items():
             if value == "nunique":
-                reordered.append(F.expr('count(DISTINCT {0}) as {0}'.format(key)))
+                reordered.append(F.expr('count(DISTINCT `{0}`) as `{0}`'.format(key)))
             else:
-                reordered.append(F.expr('{1}({0}) as {0}'.format(key, value)))
+                reordered.append(F.expr('{1}(`{0}`) as `{0}`'.format(key, value)))
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[key for key, _ in func_or_funcs.items()],
