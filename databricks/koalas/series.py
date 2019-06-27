@@ -152,6 +152,69 @@ d    NaN
 Name: a, dtype: float64
 """
 
+_pow_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+
+>>> df.a.pow(df.b)
+a     4.0
+b     NaN
+c    16.0
+d     NaN
+Name: a, dtype: float64
+"""
+
+_mod_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+
+>>> df.a.mod(df.b)
+a    0.0
+b    NaN
+c    0.0
+d    NaN
+Name: a, dtype: float64
+"""
+
+_floordiv_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+
+>>> df.a.floordiv(df.b)
+a    1.0
+b    NaN
+c    2.0
+d    NaN
+Name: a, dtype: float64
+"""
+
 
 # Needed to disambiguate Series.str and str type
 str_type = str
@@ -345,6 +408,66 @@ class Series(_Frame, IndexOpsMixin):
         equiv="other - series",
         reverse='sub',
         series_examples=_sub_example_SERIES)
+
+    def mod(self, other):
+        return (self % other).rename(self.name)
+
+    mod.__doc__ = _flex_doc_SERIES.format(
+        desc='Modulo',
+        op_name='%',
+        equiv='series % other',
+        reverse='rmod',
+        series_examples=_mod_example_SERIES)
+
+    def rmod(self, other):
+        return (other % self).rename(self.name)
+
+    rmod.__doc__ = _flex_doc_SERIES.format(
+        desc='Modulo',
+        op_name='%',
+        equiv='other % series',
+        reverse='mod',
+        series_examples=_mod_example_SERIES)
+
+    def pow(self, other):
+        return (self ** other).rename(self.name)
+
+    pow.__doc__ = _flex_doc_SERIES.format(
+        desc='Exponential power of series',
+        op_name='**',
+        equiv='series ** other',
+        reverse='rpow',
+        series_examples=_pow_example_SERIES)
+
+    def rpow(self, other):
+        return (other - self).rename(self.name)
+
+    rpow.__doc__ = _flex_doc_SERIES.format(
+        desc='Exponential power',
+        op_name='**',
+        equiv='other ** series',
+        reverse='pow',
+        series_examples=_pow_example_SERIES)
+
+    def floordiv(self, other):
+        return (self // other).rename(self.name)
+
+    floordiv.__doc__ = _flex_doc_SERIES.format(
+        desc='Integer division',
+        op_name='//',
+        equiv='series // other',
+        reverse='rfloordiv',
+        series_examples=_floordiv_example_SERIES)
+
+    def rfloordiv(self, other):
+        return (other - self).rename(self.name)
+
+    rfloordiv.__doc__ = _flex_doc_SERIES.format(
+        desc='Integer division',
+        op_name='//',
+        equiv='other // series',
+        reverse='floordiv',
+        series_examples=_floordiv_example_SERIES)
 
     # Comparison Operators
     def eq(self, other):

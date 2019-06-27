@@ -68,6 +68,12 @@ Binary operator functions
    DataFrame.rmul
    DataFrame.sub
    DataFrame.rsub
+   DataFrame.pow
+   DataFrame.rpow
+   DataFrame.mod
+   DataFrame.rmod
+   DataFrame.floordiv
+   DataFrame.rfloordiv
    DataFrame.lt
    DataFrame.gt
    DataFrame.le
@@ -136,6 +142,7 @@ Reshaping, sorting, transposing
 .. autosummary::
    :toctree: api/
 
+   DataFrame.pivot_table
    DataFrame.sort_index
    DataFrame.sort_values
    DataFrame.nlargest
@@ -151,6 +158,7 @@ Combining / joining / merging
    DataFrame.assign
    DataFrame.merge
    DataFrame.join
+   DataFrame.update
 
 Cache
 -------------------------------

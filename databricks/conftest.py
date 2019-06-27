@@ -17,8 +17,10 @@ import pytest
 import numpy
 import tempfile
 import atexit
+import os
 import shutil
 import uuid
+import logging
 from distutils.version import LooseVersion
 
 from pyspark import __version__
@@ -61,3 +63,9 @@ def add_db(doctest_namespace):
     session.sql("CREATE DATABASE %s" % db_name)
     atexit.register(lambda: session.sql("DROP DATABASE IF EXISTS %s CASCADE" % db_name))
     doctest_namespace['db'] = db_name
+
+
+@pytest.fixture(autouse=os.getenv("KOALAS_USAGE_LOGGER", None) is not None)
+def add_caplog(caplog):
+    with caplog.at_level(logging.INFO, logger='databricks.koalas.usage_logger'):
+        yield

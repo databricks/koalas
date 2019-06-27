@@ -149,6 +149,24 @@ rectangle     4.0    360.0
 circle        0.0    360.0
 triangle      3.0    180.0
 rectangle     4.0    360.0
+
+>>> df // 2
+           angles  degrees
+circle          0      180
+triangle        1       90
+rectangle       2      180
+
+>>> df % 2
+           angles  degrees
+circle          0        0
+triangle        1        0
+rectangle       0        0
+
+>>> df.pow(2)
+           angles   degrees
+circle        0.0  129600.0
+triangle      9.0   32400.0
+rectangle    16.0  129600.0
 """
 
 
@@ -352,6 +370,24 @@ class DataFrame(_Frame):
     def __rsub__(self, other):
         return self._map_series_op("rsub", other)
 
+    def __pow__(self, other):
+        return self._map_series_op("pow", other)
+
+    def __rpow__(self, other):
+        return self._map_series_op("rpow", other)
+
+    def __mod__(self, other):
+        return self._map_series_op("mod", other)
+
+    def __rmod__(self, other):
+        return self._map_series_op("rmod", other)
+
+    def __floordiv__(self, other):
+        return self._map_series_op("floordiv", other)
+
+    def __rfloordiv__(self, other):
+        return self._map_series_op("rfloordiv", other)
+
     def add(self, other):
         return self + other
 
@@ -447,6 +483,60 @@ class DataFrame(_Frame):
         op_name="-",
         equiv="other - dataframe",
         reverse='sub')
+
+    def mod(self, other):
+        return self % other
+
+    mod.__doc__ = _flex_doc_FRAME.format(
+        desc='Modulo',
+        op_name='%',
+        equiv='dataframe % other',
+        reverse='rmod')
+
+    def rmod(self, other):
+        return other % self
+
+    rmod.__doc__ = _flex_doc_FRAME.format(
+        desc='Modulo',
+        op_name='%',
+        equiv='other % dataframe',
+        reverse='mod')
+
+    def pow(self, other):
+        return self ** other
+
+    pow.__doc__ = _flex_doc_FRAME.format(
+        desc='Exponential power of series',
+        op_name='**',
+        equiv='dataframe ** other',
+        reverse='rpow')
+
+    def rpow(self, other):
+        return other - self
+
+    rpow.__doc__ = _flex_doc_FRAME.format(
+        desc='Exponential power',
+        op_name='**',
+        equiv='other ** dataframe',
+        reverse='pow')
+
+    def floordiv(self, other):
+        return self // other
+
+    floordiv.__doc__ = _flex_doc_FRAME.format(
+        desc='Integer division',
+        op_name='//',
+        equiv='dataframe // other',
+        reverse='rfloordiv')
+
+    def rfloordiv(self, other):
+        return other - self
+
+    rfloordiv.__doc__ = _flex_doc_FRAME.format(
+        desc='Integer division',
+        op_name='//',
+        equiv='other // dataframe',
+        reverse='floordiv')
 
     # Comparison Operators
     def __eq__(self, other):
@@ -2467,6 +2557,145 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._internal.copy(sdf=self._sdf.limit(n)))
 
+    def pivot_table(self, values=None, index=None, columns=None,
+                    aggfunc='mean', fill_value=None):
+        """
+        Create a spreadsheet-style pivot table as a DataFrame. The levels in
+        the pivot table will be stored in MultiIndex objects (hierarchical
+        indexes) on the index and columns of the result DataFrame.
+
+        Parameters
+        ----------
+        values : column to aggregate.
+            They should be either a list of one column or a string. A list of columns
+            is not supported yet.
+        index : column (string) or list of columns
+            If an array is passed, it must be the same length as the data.
+            The list should contain string.
+        columns : column
+            Columns used in the pivot operation. Only one column is supported and
+            it should be a string.
+        aggfunc : function (string), dict, default mean
+            If dict is passed, the resulting pivot table will have
+            columns concatenated by "_" where the first part is the value
+            of columns and the second part is the column name in values
+            If dict is passed, the key is column to aggregate and value
+            is function or list of functions.
+        fill_value : scalar, default None
+            Value to replace missing values with.
+
+        Returns
+        -------
+        table : DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({"A": ["foo", "foo", "foo", "foo", "foo",
+        ...                          "bar", "bar", "bar", "bar"],
+        ...                    "B": ["one", "one", "one", "two", "two",
+        ...                          "one", "one", "two", "two"],
+        ...                    "C": ["small", "large", "large", "small",
+        ...                          "small", "large", "small", "small",
+        ...                          "large"],
+        ...                    "D": [1, 2, 2, 3, 3, 4, 5, 6, 7],
+        ...                    "E": [2, 4, 5, 5, 6, 6, 8, 9, 9]})
+        >>> df
+             A    B      C  D  E
+        0  foo  one  small  1  2
+        1  foo  one  large  2  4
+        2  foo  one  large  2  5
+        3  foo  two  small  3  5
+        4  foo  two  small  3  6
+        5  bar  one  large  4  6
+        6  bar  one  small  5  8
+        7  bar  two  small  6  9
+        8  bar  two  large  7  9
+
+        This first example aggregates values by taking the sum.
+
+        >>> table = df.pivot_table(values='D', index=['A', 'B'],
+        ...                         columns='C', aggfunc='sum')
+        >>> table  # doctest: +NORMALIZE_WHITESPACE
+                 large  small
+        A   B
+        foo one    4.0      1
+            two    NaN      6
+        bar two    7.0      6
+            one    4.0      5
+
+        We can also fill missing values using the `fill_value` parameter.
+
+        >>> table = df.pivot_table(values='D', index=['A', 'B'],
+        ...                         columns='C', aggfunc='sum', fill_value=0)
+        >>> table  # doctest: +NORMALIZE_WHITESPACE
+                 large  small
+        A   B
+        foo one      4      1
+            two      0      6
+        bar two      7      6
+            one      4      5
+
+        We can also calculate multiple types of aggregations for any given
+        value column.
+
+        >>> table = df.pivot_table(values = ['D'], index =['C'],
+        ...                         columns="A", aggfunc={'D':'mean'})
+        >>> table  # doctest: +NORMALIZE_WHITESPACE
+               bar       foo
+        C
+        small  5.5  2.333333
+        large  5.5  2.000000
+        """
+        if not isinstance(columns, str):
+            raise ValueError("columns should be string.")
+
+        if not isinstance(values, str) and not isinstance(values, list):
+            raise ValueError('values should be string or list of one column.')
+
+        if not isinstance(aggfunc, str) and (not isinstance(aggfunc, dict) or not all(
+                isinstance(key, str) and isinstance(value, str) for key, value in aggfunc.items())):
+            raise ValueError("aggfunc must be a dict mapping from column name (string) "
+                             "to aggregate functions (string).")
+
+        if isinstance(aggfunc, dict) and index is None:
+            raise NotImplementedError("pivot_table doesn't support aggfuct"
+                                      " as dict and without index.")
+
+        if isinstance(values, list) and len(values) > 1:
+            raise NotImplementedError('Values as list of columns is not implemented yet.')
+
+        if isinstance(aggfunc, str):
+            agg_cols = [F.expr('{1}({0}) as {0}'.format(values, aggfunc))]
+
+        elif isinstance(aggfunc, dict):
+            agg_cols = [F.expr('{1}({0}) as {0}'.format(key, value))
+                        for key, value in aggfunc.items()]
+            agg_columns = [key for key, value in aggfunc.items()]
+
+            if set(agg_columns) != set(values):
+                raise ValueError("Columns in aggfunc must be the same as values.")
+
+        if index is None:
+            sdf = self._sdf.groupBy().pivot(pivot_col=columns).agg(*agg_cols)
+
+        elif isinstance(index, list):
+            sdf = self._sdf.groupBy(index).pivot(pivot_col=columns).agg(*agg_cols)
+        else:
+            raise ValueError("index should be a None or a list of columns.")
+
+        if fill_value is not None and isinstance(fill_value, (int, float)):
+            sdf = sdf.fillna(fill_value)
+
+        if index is not None:
+            return DataFrame(sdf).set_index(index)
+        else:
+            if isinstance(values, list):
+                index_values = values[-1]
+            else:
+                index_values = values
+
+            return DataFrame(sdf.withColumn(columns, F.lit(index_values))).set_index(columns)
+
     @property
     def columns(self):
         """The column labels of the DataFrame."""
@@ -3312,7 +3541,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 ).withColumnRenamed(
                     'left_table.' + left_index_col, left_index_col
                 ).drop(F.col('left_table.`{}`'.format(left_index_col)))
-        if not(left_index and not right_index):
+        if not (left_index and not right_index):
             for right_index_col in right_index_columns:
                 if right_index_col in left_index_columns:
                     selected_columns = \
@@ -3496,6 +3725,98 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # Lazy import to avoid circular dependency issues
         from databricks.koalas.namespace import concat
         return concat([self, other], ignore_index=ignore_index)
+
+    # TODO: add 'filter_func' and 'errors' parameter
+    def update(self, other: 'DataFrame', join: str = 'left', overwrite: bool = True):
+        """
+        Modify in place using non-NA values from another DataFrame.
+        Aligns on indices. There is no return value.
+
+        Parameters
+        ----------
+        other : DataFrame, or Series
+        join : 'left', default 'left'
+            Only left join is implemented, keeping the index and columns of the original object.
+        overwrite : bool, default True
+            How to handle non-NA values for overlapping keys:
+
+            * True: overwrite original DataFrame's values with values from `other`.
+            * False: only update values that are NA in the original DataFrame.
+
+        Returns
+        -------
+        None : method directly changes calling object
+
+        See Also
+        --------
+        DataFrame.merge : For column(s)-on-columns(s) operations.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2, 3], 'B': [400, 500, 600]}, columns=['A', 'B'])
+        >>> new_df = ks.DataFrame({'B': [4, 5, 6], 'C': [7, 8, 9]}, columns=['B', 'C'])
+        >>> df.update(new_df)
+        >>> df
+           A  B
+        0  1  4
+        1  2  5
+        2  3  6
+
+        The DataFrame's length does not increase as a result of the update,
+        only values at matching index/column labels are updated.
+
+        >>> df = ks.DataFrame({'A': ['a', 'b', 'c'], 'B': ['x', 'y', 'z']}, columns=['A', 'B'])
+        >>> new_df = ks.DataFrame({'B': ['d', 'e', 'f', 'g', 'h', 'i']}, columns=['B'])
+        >>> df.update(new_df)
+        >>> df
+           A  B
+        0  a  d
+        1  b  e
+        2  c  f
+
+        For Series, it's name attribute must be set.
+
+        >>> df = ks.DataFrame({'A': ['a', 'b', 'c'], 'B': ['x', 'y', 'z']}, columns=['A', 'B'])
+        >>> new_column = ks.Series(['d', 'e'], name='B', index=[0, 2])
+        >>> df.update(new_column)
+        >>> df
+           A  B
+        0  a  d
+        1  b  y
+        2  c  e
+
+        If `other` contains None the corresponding values are not updated in the original dataframe.
+
+        >>> df = ks.DataFrame({'A': [1, 2, 3], 'B': [400, 500, 600]}, columns=['A', 'B'])
+        >>> new_df = ks.DataFrame({'B': [4, None, 6]}, columns=['B'])
+        >>> df.update(new_df)
+        >>> df
+           A      B
+        0  1    4.0
+        1  2  500.0
+        2  3    6.0
+        """
+        if join != 'left':
+            raise NotImplementedError("Only left join is supported")
+
+        if isinstance(other, ks.Series):
+            other = DataFrame(other)
+
+        update_columns = list(set(self._internal.data_columns)
+                              .intersection(set(other._internal.data_columns)))
+        update_sdf = self.join(other[update_columns], rsuffix='_new')._sdf
+
+        for column_name in update_columns:
+            old_col = update_sdf[column_name]
+            new_col = update_sdf[column_name + '_new']
+            if overwrite:
+                update_sdf = update_sdf.withColumn(column_name, F.when(new_col.isNull(), old_col)
+                                                   .otherwise(new_col))
+            else:
+                update_sdf = update_sdf.withColumn(column_name, F.when(old_col.isNull(), new_col)
+                                                   .otherwise(old_col))
+        internal = self._internal.copy(sdf=update_sdf.select(self._internal.columns))
+        self._internal = internal
 
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
                random_state: Optional[int] = None) -> 'DataFrame':
