@@ -17,14 +17,14 @@
 from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
-def unsupported_function(method_name, deprecated=False):
+def unsupported_function(method_name, deprecated=False, reason=""):
     return _unsupported_function(class_name='pd.Series', method_name=method_name,
-                                 deprecated=deprecated)
+                                 deprecated=deprecated, reason=reason)
 
 
-def unsupported_property(property_name, deprecated=False):
+def unsupported_property(property_name, deprecated=False, reason=""):
     return _unsupported_property(class_name='pd.Series', property_name=property_name,
-                                 deprecated=deprecated)
+                                 deprecated=deprecated, reason=reason)
 
 
 class _MissingPandasLikeSeries(object):
@@ -173,3 +173,8 @@ class _MissingPandasLikeSeries(object):
     select = unsupported_function('select', deprecated=True)
     set_value = unsupported_function('set_value', deprecated=True)
     valid = unsupported_function('valid', deprecated=True)
+
+    # Functions and properties we won't support.
+    values = unsupported_property(
+        'values',
+        reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")

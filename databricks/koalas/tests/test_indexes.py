@@ -115,8 +115,9 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         unsupported_functions = [name for (name, type_) in missing_functions
                                  if type_.__name__ == 'unsupported_function']
         for name in unsupported_functions:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "method.*Index.*{}.*not implemented".format(name)):
+            with self.assertRaisesRegex(
+                    PandasNotImplementedError,
+                    "method.*Index.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
                 getattr(kdf.set_index('a').index, name)()
 
         deprecated_functions = [name for (name, type_) in missing_functions
@@ -131,8 +132,9 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         unsupported_functions = [name for (name, type_) in missing_functions
                                  if type_.__name__ == 'unsupported_function']
         for name in unsupported_functions:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "method.*Index.*{}.*not implemented".format(name)):
+            with self.assertRaisesRegex(
+                    PandasNotImplementedError,
+                    "method.*Index.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
                 getattr(kdf.set_index(['a', 'b']).index, name)()
 
         deprecated_functions = [name for (name, type_) in missing_functions
@@ -148,8 +150,9 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         unsupported_properties = [name for (name, type_) in missing_properties
                                   if type_.fget.__name__ == 'unsupported_property']
         for name in unsupported_properties:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "property.*Index.*{}.*not implemented".format(name)):
+            with self.assertRaisesRegex(
+                    PandasNotImplementedError,
+                    "property.*Index.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
                 getattr(kdf.set_index('a').index, name)
 
         deprecated_properties = [name for (name, type_) in missing_properties
@@ -165,8 +168,9 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         unsupported_properties = [name for (name, type_) in missing_properties
                                   if type_.fget.__name__ == 'unsupported_property']
         for name in unsupported_properties:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "property.*Index.*{}.*not implemented".format(name)):
+            with self.assertRaisesRegex(
+                    PandasNotImplementedError,
+                    "property.*Index.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
                 getattr(kdf.set_index(['a', 'b']).index, name)
 
         deprecated_properties = [name for (name, type_) in missing_properties

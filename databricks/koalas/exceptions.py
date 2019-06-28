@@ -52,29 +52,37 @@ class SparkPandasNotImplementedError(NotImplementedError):
 class PandasNotImplementedError(NotImplementedError):
 
     def __init__(self, class_name, method_name=None, arg_name=None, property_name=None,
-                 deprecated=False):
+                 deprecated=False, reason=""):
         assert (method_name is None) != (property_name is None)
         self.class_name = class_name
         self.method_name = method_name
         self.arg_name = arg_name
         if method_name is not None:
             if arg_name is not None:
-                msg = "The method `{0}.{1}()` does not support `{2}` parameter" \
-                    .format(class_name, method_name, arg_name)
+                msg = "The method `{0}.{1}()` does not support `{2}` parameter. {3}" \
+                    .format(class_name, method_name, arg_name, reason)
             else:
                 if deprecated:
                     msg = ("The method `{0}.{1}()` is deprecated in pandas and will therefore " +
-                           "not be supported in Koalas.") \
-                        .format(class_name, method_name)
+                           "not be supported in Koalas. {2}") \
+                        .format(class_name, method_name, reason)
                 else:
-                    msg = "The method `{0}.{1}()` is not implemented yet." \
-                        .format(class_name, method_name)
+                    if reason == "":
+                        reason = " yet."
+                    else:
+                        reason = ". " + reason
+                    msg = "The method `{0}.{1}()` is not implemented{2}" \
+                        .format(class_name, method_name, reason)
         else:
             if deprecated:
                 msg = ("The property `{0}.{1}()` is deprecated in pandas and will therefore " +
-                       "not be supported in Koalas.") \
-                    .format(class_name, property_name)
+                       "not be supported in Koalas. {2}") \
+                    .format(class_name, property_name, reason)
             else:
-                msg = "The property `{0}.{1}()` is not implemented yet." \
-                    .format(class_name, property_name)
+                if reason == "":
+                    reason = " yet."
+                else:
+                    reason = ". " + reason
+                msg = "The property `{0}.{1}()` is not implemented{2}" \
+                    .format(class_name, property_name, reason)
         super(NotImplementedError, self).__init__(msg)

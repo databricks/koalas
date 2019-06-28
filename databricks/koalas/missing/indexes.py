@@ -17,14 +17,14 @@
 from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
-def unsupported_function(method_name, deprecated=False):
+def unsupported_function(method_name, deprecated=False, reason=""):
     return _unsupported_function(class_name='pd.Index', method_name=method_name,
-                                 deprecated=deprecated)
+                                 deprecated=deprecated, reason=reason)
 
 
-def unsupported_property(property_name, deprecated=False):
+def unsupported_property(property_name, deprecated=False, reason=""):
     return _unsupported_property(class_name='pd.Index', property_name=property_name,
-                                 deprecated=deprecated)
+                                 deprecated=deprecated, reason=reason)
 
 
 class _MissingPandasLikeIndex(object):
@@ -46,7 +46,6 @@ class _MissingPandasLikeIndex(object):
     shape = unsupported_property('shape')
     size = unsupported_property('size')
     strides = unsupported_property('strides')
-    values = unsupported_property('values')
 
     # Functions
     append = unsupported_function('append')
@@ -132,6 +131,11 @@ class _MissingPandasLikeIndex(object):
     get_duplicates = unsupported_function('get_duplicates', deprecated=True)
     summary = unsupported_function('summary', deprecated=True)
 
+    # Functions and properties we won't support.
+    values = unsupported_property(
+        'values',
+        reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
+
 
 class _MissingPandasLikeMultiIndex(object):
 
@@ -154,7 +158,6 @@ class _MissingPandasLikeMultiIndex(object):
     shape = unsupported_property('shape')
     size = unsupported_property('size')
     strides = unsupported_property('strides')
-    values = unsupported_property('values')
 
     # Functions
     append = unsupported_function('append')
@@ -251,3 +254,8 @@ class _MissingPandasLikeMultiIndex(object):
     get_duplicates = unsupported_function('get_duplicates', deprecated=True)
     summary = unsupported_function('summary', deprecated=True)
     to_hierarchical = unsupported_function('to_hierarchical', deprecated=True)
+
+    # Functions and properties we won't support.
+    values = unsupported_property(
+        'values',
+        reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
