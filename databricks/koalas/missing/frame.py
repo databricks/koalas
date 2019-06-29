@@ -165,4 +165,5 @@ class _MissingPandasLikeDataFrame(object):
 
     to_pickle = unsupported_function(
         'to_pickle',
-        reason="Pickled data is not designed for a long term.")
+        reason="For storage, we encourage you to use Delta or Parquet, instead of Python pickle "
+               "format.")
