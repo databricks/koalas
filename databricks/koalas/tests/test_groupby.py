@@ -130,9 +130,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         unsupported_functions = [name for (name, type_) in missing_functions
                                  if type_.__name__ == 'unsupported_function']
         for name in unsupported_functions:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "method.*GroupBy.*{}.*not implemented"
-                                        .format(name)):
+            with self.assertRaisesRegex(
+                    PandasNotImplementedError,
+                    "method.*GroupBy.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
                 getattr(kdf.groupby('a'), name)()
 
         deprecated_functions = [name for (name, type_) in missing_functions
@@ -149,9 +149,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         unsupported_functions = [name for (name, type_) in missing_functions
                                  if type_.__name__ == 'unsupported_function']
         for name in unsupported_functions:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "method.*GroupBy.*{}.*not implemented"
-                                        .format(name)):
+            with self.assertRaisesRegex(
+                    PandasNotImplementedError,
+                    "method.*GroupBy.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
                 getattr(kdf.a.groupby('a'), name)()
 
         deprecated_functions = [name for (name, type_) in missing_functions
@@ -168,9 +168,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         unsupported_properties = [name for (name, type_) in missing_properties
                                   if type_.fget.__name__ == 'unsupported_property']
         for name in unsupported_properties:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "property.*GroupBy.*{}.*not implemented"
-                                        .format(name)):
+            with self.assertRaisesRegex(
+                    PandasNotImplementedError,
+                    "property.*GroupBy.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
                 getattr(kdf.groupby('a'), name)
         deprecated_properties = [name for (name, type_) in missing_properties
                                  if type_.fget.__name__ == 'deprecated_property']
@@ -186,9 +186,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         unsupported_properties = [name for (name, type_) in missing_properties
                                   if type_.fget.__name__ == 'unsupported_property']
         for name in unsupported_properties:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "property.*GroupBy.*{}.*not implemented"
-                                        .format(name)):
+            with self.assertRaisesRegex(
+                    PandasNotImplementedError,
+                    "property.*GroupBy.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
                 getattr(kdf.a.groupby('a'), name)
         deprecated_properties = [name for (name, type_) in missing_properties
                                  if type_.fget.__name__ == 'deprecated_property']

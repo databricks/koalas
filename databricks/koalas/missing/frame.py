@@ -17,14 +17,14 @@
 from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
-def unsupported_function(method_name, deprecated=False):
+def unsupported_function(method_name, deprecated=False, reason=""):
     return _unsupported_function(class_name='pd.DataFrame', method_name=method_name,
-                                 deprecated=deprecated)
+                                 deprecated=deprecated, reason=reason)
 
 
-def unsupported_property(property_name, deprecated=False):
+def unsupported_property(property_name, deprecated=False, reason=""):
     return _unsupported_property(class_name='pd.DataFrame', property_name=property_name,
-                                 deprecated=deprecated)
+                                 deprecated=deprecated, reason=reason)
 
 
 class _MissingPandasLikeDataFrame(object):
@@ -131,7 +131,6 @@ class _MissingPandasLikeDataFrame(object):
     to_hdf = unsupported_function('to_hdf')
     to_msgpack = unsupported_function('to_msgpack')
     to_period = unsupported_function('to_period')
-    to_pickle = unsupported_function('to_pickle')
     to_sparse = unsupported_function('to_sparse')
     to_sql = unsupported_function('to_sql')
     to_stata = unsupported_function('to_stata')
@@ -158,3 +157,13 @@ class _MissingPandasLikeDataFrame(object):
     select = unsupported_function('select', deprecated=True)
     set_value = unsupported_function('set_value', deprecated=True)
     to_panel = unsupported_function('to_panel', deprecated=True)
+
+    # Functions and properties we won't support.
+    values = unsupported_property(
+        'values',
+        reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
+
+    to_pickle = unsupported_function(
+        'to_pickle',
+        reason="For storage, we encourage you to use Delta or Parquet, instead of Python pickle "
+               "format.")
