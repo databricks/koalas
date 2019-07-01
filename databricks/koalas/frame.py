@@ -1272,7 +1272,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     # TODO: enable doctests once we drop Spark 2.3.x (due to type coercion logic
     #  when creating arrays)
-    def transpose(self, limit=1000):
+    def transpose(self, limit: Optional[int] = 1000):
         """
         Transpose index and columns.
 
@@ -1288,16 +1288,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 >>> ks.DataFrame({'a': range(1001)}).transpose()  # doctest: +NORMALIZE_WHITESPACE
                 Traceback (most recent call last):
                   ...
-                ValueError: Current DataFrame has more then the given limit 1000 rows. Note that,
-                before changing the given 'limit', this operation is considerably expensive.
+                ValueError: Current DataFrame has more then the given limit 1000 rows.
+                Please use df.transpose(limit=<maximum number of rows>) to retrieve more than
+                1000 rows. Note that, before changing the given 'limit', this operation is
+                considerably expensive.
 
         Parameters
         ----------
-        limit : int
+        limit : int, optional
             This parameter sets the limit of the current DataFrame. Set `None` to unlimit
             the input length. When the limit is set, it is executed by the shortcut by collecting
             the data into driver side, and then using pandas API. If the limit is unset,
-            the operation is executed by PySpark.
+            the operation is executed by PySpark. Default is 1000.
 
         Returns
         -------
@@ -1383,8 +1385,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             pdf = self.head(limit + 1).to_pandas()
             if len(pdf) > limit:
                 raise ValueError(
-                    "Current DataFrame has more then the given limit %s rows. Note that, before "
-                    "changing the given 'limit', this operation is considerably expensive." % limit)
+                    "Current DataFrame has more then the given limit %s rows. Please use "
+                    "df.transpose(limit=<maximum number of rows>) to retrieve more than %s rows. "
+                    "Note that, before changing the given 'limit', this operation is considerably "
+                    "expensive." % (limit, limit))
             return DataFrame(pdf.transpose())
 
         index_columns = self._internal.index_columns
