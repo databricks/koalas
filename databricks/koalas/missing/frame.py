@@ -112,7 +112,6 @@ class _MissingPandasLikeDataFrame(object):
     resample = unsupported_function('resample')
     rolling = unsupported_function('rolling')
     round = unsupported_function('round')
-    select_dtypes = unsupported_function('select_dtypes')
     sem = unsupported_function('sem')
     set_axis = unsupported_function('set_axis')
     shift = unsupported_function('shift')
