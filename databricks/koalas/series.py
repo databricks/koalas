@@ -2173,6 +2173,79 @@ class Series(_Frame, IndexOpsMixin):
         else:
             return self.apply(func, args=args, **kwargs)
 
+    def rank(self, method='min', ascending=True, pct=False):
+        """
+        Compute numerical data ranks (1 through n) along axis.
+
+        By default, equal values are assigned a rank that is the minimum of the
+        ranks of those values.
+
+        Parameters
+        ----------
+        method : {'min'}, default 'min'
+            How to rank the group of records that have the same value
+        ascending : bool, default True
+            Whether or not the elements should be ranked in ascending order.
+        pct : boolean, default False
+            Computes percentage rank of data
+
+        Returns
+        -------
+        same type as caller
+            Return a Series with data ranks as values.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(data={'Animal': ['cat', 'penguin', 'dog',
+        ...                                    'spider'],
+        ...                         'Number_legs': [4, 2, 4, 8]},
+        ...                   columns = ['Animal', 'Number_legs'])
+        >>> df
+            Animal  Number_legs
+        0      cat            4
+        1  penguin            2
+        2      dog            4
+        3   spider            8
+
+        The following example shows how the method behaves with the above
+        parameters:
+
+        * default_rank: this is the default behaviour obtained without using
+          any parameter.
+        * min_rank: setting ``ascending = False`` the output is sorted in a
+          descending order.
+        * pct_rank: when setting ``pct = True``, the ranking is expressed as
+          percentile rank.
+
+        >>> df['default_rank'] = df['Number_legs'].rank()
+        >>> df['desc_rank'] = df['Number_legs'].rank(ascending=False)
+        >>> df['pct_rank'] = df['Number_legs'].rank(pct=True)
+        >>> df.sort_values(['Number_legs'])
+            Animal  Number_legs  default_rank  desc_rank  pct_rank
+        1  penguin            2           1.0        4.0  0.000000
+        0      cat            4           2.0        2.0  0.333333
+        2      dog            4           2.0        2.0  0.333333
+        3   spider            8           4.0        1.0  1.000000
+        """
+        from pyspark.sql.window import Window
+
+        if method != 'min':
+            raise ValueError("Currently only 'min' method is supported.")
+
+        if ascending:
+            scol = self._scol.asc()
+        else:
+            scol = self._scol.desc()
+
+        if pct:
+            rank_func = F.percent_rank
+        else:
+            rank_func = F.rank
+
+        rank = rank_func().over(Window.orderBy(scol))
+        return Series(self._kdf._internal.copy(
+            scol=rank), anchor=self._kdf).astype("float").rename(self.name)
+
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
         return _col(self.to_dataframe().describe(percentiles))
 
