@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from databricks.koalas.missing import _unsupported_function, _unsupported_property
+from databricks.koalas.missing import _unsupported_function, _unsupported_property, common
 
 
 def unsupported_function(method_name, deprecated=False, reason=""):
@@ -93,7 +93,6 @@ class _MissingPandasLikeDataFrame(object):
     mad = unsupported_function('mad')
     mask = unsupported_function('mask')
     median = unsupported_function('median')
-    memory_usage = unsupported_function('memory_usage')
     mode = unsupported_function('mode')
     pct_change = unsupported_function('pct_change')
     pivot = unsupported_function('pivot')
@@ -157,11 +156,10 @@ class _MissingPandasLikeDataFrame(object):
     to_panel = unsupported_function('to_panel', deprecated=True)
 
     # Functions and properties we won't support.
-    values = unsupported_property(
-        'values',
-        reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
-
     to_pickle = unsupported_function(
         'to_pickle',
         reason="For storage, we encourage you to use Delta or Parquet, instead of Python pickle "
                "format.")
+
+    values = common.values(unsupported_property)
+    memory_usage = common.memory_usage(unsupported_function)
