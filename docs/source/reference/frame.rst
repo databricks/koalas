@@ -148,6 +148,8 @@ Reshaping, sorting, transposing
    DataFrame.nlargest
    DataFrame.nsmallest
    DataFrame.melt
+   DataFrame.T
+   DataFrame.transpose
 
 Combining / joining / merging
 -----------------------------
