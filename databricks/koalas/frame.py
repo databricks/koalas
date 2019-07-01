@@ -2797,7 +2797,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'a': [1, 2] * 3,
         ...                    'b': [True, False] * 3,
         ...                    'c': [1.0, 2.0] * 3,
-        ...                    'd': ['a', 'b'] * 3})
+        ...                    'd': ['a', 'b'] * 3}, columns=['a', 'b', 'c', 'd'])
         >>> df
            a      b    c  d
         0  1   True  1.0  a
