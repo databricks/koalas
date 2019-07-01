@@ -2220,7 +2220,7 @@ class Series(_Frame, IndexOpsMixin):
         >>> df['default_rank'] = df['Number_legs'].rank()
         >>> df['desc_rank'] = df['Number_legs'].rank(ascending=False)
         >>> df['pct_rank'] = df['Number_legs'].rank(pct=True)
-        >>> df
+        >>> df.sort_values(['Number_legs'])
             Animal  Number_legs  default_rank  desc_rank  pct_rank
         1  penguin            2           1.0        4.0  0.000000
         0      cat            4           2.0        2.0  0.333333
