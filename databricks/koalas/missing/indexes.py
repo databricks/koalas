@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from databricks.koalas.missing import _unsupported_function, _unsupported_property
+from databricks.koalas.missing import _unsupported_function, _unsupported_property, common
 
 
 def unsupported_function(method_name, deprecated=False, reason=""):
@@ -95,7 +95,6 @@ class _MissingPandasLikeIndex(object):
     join = unsupported_function('join')
     map = unsupported_function('map')
     max = unsupported_function('max')
-    memory_usage = unsupported_function('memory_usage')
     min = unsupported_function('min')
     nunique = unsupported_function('nunique')
     putmask = unsupported_function('putmask')
@@ -132,9 +131,8 @@ class _MissingPandasLikeIndex(object):
     summary = unsupported_function('summary', deprecated=True)
 
     # Functions and properties we won't support.
-    values = unsupported_property(
-        'values',
-        reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
+    values = common.values(unsupported_property)
+    memory_usage = common.memory_usage(unsupported_function)
 
 
 class _MissingPandasLikeMultiIndex(object):
@@ -211,7 +209,6 @@ class _MissingPandasLikeMultiIndex(object):
     join = unsupported_function('join')
     map = unsupported_function('map')
     max = unsupported_function('max')
-    memory_usage = unsupported_function('memory_usage')
     min = unsupported_function('min')
     nunique = unsupported_function('nunique')
     putmask = unsupported_function('putmask')
@@ -256,6 +253,5 @@ class _MissingPandasLikeMultiIndex(object):
     to_hierarchical = unsupported_function('to_hierarchical', deprecated=True)
 
     # Functions and properties we won't support.
-    values = unsupported_property(
-        'values',
-        reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
+    values = common.values(unsupported_property)
+    memory_usage = common.memory_usage(unsupported_function)
