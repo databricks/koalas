@@ -1428,16 +1428,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         pairs = F.explode(F.array(*[
             F.struct(
                 F.lit(column).alias("key"),
-                F.col(column).alias("value")
+                scol_for(sdf, column).alias("value")
             ) for column in data_columns]))
 
         exploded_df = sdf.withColumn("pairs", pairs).select(
-            [F.col(index_column), F.col("pairs.key"), F.col("pairs.value")])
+            [scol_for(sdf, index_column), F.col("pairs.key"), F.col("pairs.value")])
 
         # After that, executes pivot with key and its index column.
         # Note that index column should contain unique values since column names
         # should be unique.
-        pivoted_df = exploded_df.groupBy(F.col("key")).pivot(index_column)
+        pivoted_df = exploded_df.groupBy(F.col("key")).pivot('`{}`'.format(index_column))
 
         # New index column is always single index.
         internal_index_column = "__index_level_0__"
@@ -3089,7 +3089,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 columns += col
 
         return DataFrame(self._internal.copy(
-            sdf=self._sdf.select(self._internal.index_columns + columns), data_columns=columns))
+            sdf=self._sdf.select(self._internal.index_scols +
+                                 [scol_for(self._sdf, col) for col in columns]),
+            data_columns=columns))
 
     def count(self):
         """
