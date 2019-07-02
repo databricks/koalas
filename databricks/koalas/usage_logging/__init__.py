@@ -24,7 +24,7 @@ from typing import Union
 
 import pandas as pd
 
-from databricks.koalas import namespace
+from databricks.koalas import namespace, sql
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
@@ -36,7 +36,6 @@ from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, \
     _MissingPandasLikeMultiIndex
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.series import Series
-import databricks.koalas.sql as sql
 from databricks.koalas.strings import StringMethods
 
 
@@ -70,8 +69,8 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
     except ImportError:
         pass
 
-    sql._CAPTURE_SCOPES = 3
-    modules.append(sql)
+    sql._CAPTURE_SCOPES = 3  # type: ignore
+    modules.append(sql)  # type: ignore
 
     # Modules
     for target_module in modules:
