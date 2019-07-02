@@ -28,6 +28,7 @@ Attributes and underlying data
    DataFrame.dtypes
    DataFrame.shape
    DataFrame.size
+   DataFrame.select_dtypes
 
 Conversion
 ----------
@@ -148,6 +149,8 @@ Reshaping, sorting, transposing
    DataFrame.nlargest
    DataFrame.nsmallest
    DataFrame.melt
+   DataFrame.T
+   DataFrame.transpose
 
 Combining / joining / merging
 -----------------------------

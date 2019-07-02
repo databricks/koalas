@@ -14,23 +14,22 @@
 # limitations under the License.
 #
 
-from databricks.koalas.missing import _unsupported_function, _unsupported_property
+from databricks.koalas.missing import _unsupported_function, _unsupported_property, common
 
 
-def unsupported_function(method_name, deprecated=False):
+def unsupported_function(method_name, deprecated=False, reason=""):
     return _unsupported_function(class_name='pd.DataFrame', method_name=method_name,
-                                 deprecated=deprecated)
+                                 deprecated=deprecated, reason=reason)
 
 
-def unsupported_property(property_name, deprecated=False):
+def unsupported_property(property_name, deprecated=False, reason=""):
     return _unsupported_property(class_name='pd.DataFrame', property_name=property_name,
-                                 deprecated=deprecated)
+                                 deprecated=deprecated, reason=reason)
 
 
 class _MissingPandasLikeDataFrame(object):
 
     # Properties
-    T = unsupported_property('T')
     axes = unsupported_property('axes')
     ftypes = unsupported_property('ftypes')
     iat = unsupported_property('iat')
@@ -94,7 +93,6 @@ class _MissingPandasLikeDataFrame(object):
     mad = unsupported_function('mad')
     mask = unsupported_function('mask')
     median = unsupported_function('median')
-    memory_usage = unsupported_function('memory_usage')
     mode = unsupported_function('mode')
     pct_change = unsupported_function('pct_change')
     pivot = unsupported_function('pivot')
@@ -114,7 +112,6 @@ class _MissingPandasLikeDataFrame(object):
     resample = unsupported_function('resample')
     rolling = unsupported_function('rolling')
     round = unsupported_function('round')
-    select_dtypes = unsupported_function('select_dtypes')
     sem = unsupported_function('sem')
     set_axis = unsupported_function('set_axis')
     shift = unsupported_function('shift')
@@ -131,14 +128,12 @@ class _MissingPandasLikeDataFrame(object):
     to_hdf = unsupported_function('to_hdf')
     to_msgpack = unsupported_function('to_msgpack')
     to_period = unsupported_function('to_period')
-    to_pickle = unsupported_function('to_pickle')
     to_sparse = unsupported_function('to_sparse')
     to_sql = unsupported_function('to_sql')
     to_stata = unsupported_function('to_stata')
     to_timestamp = unsupported_function('to_timestamp')
     to_xarray = unsupported_function('to_xarray')
     transform = unsupported_function('transform')
-    transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     tshift = unsupported_function('tshift')
     tz_convert = unsupported_function('tz_convert')
@@ -158,3 +153,12 @@ class _MissingPandasLikeDataFrame(object):
     select = unsupported_function('select', deprecated=True)
     set_value = unsupported_function('set_value', deprecated=True)
     to_panel = unsupported_function('to_panel', deprecated=True)
+
+    # Functions and properties we won't support.
+    to_pickle = unsupported_function(
+        'to_pickle',
+        reason="For storage, we encourage you to use Delta or Parquet, instead of Python pickle "
+               "format.")
+
+    values = common.values(unsupported_property)
+    memory_usage = common.memory_usage(unsupported_function)

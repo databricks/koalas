@@ -43,12 +43,6 @@ class _Frame(object):
     def __init__(self, internal: _InternalFrame):
         self._internal = internal  # type: _InternalFrame
 
-    @property
-    def values(self):
-        raise NotImplementedError("Koalas does not support the 'values' property. " +
-                                  "If you want to collect your data as an NumPy array, " +
-                                  "use 'to_numpy()' instead.")
-
     def get_dtype_counts(self):
         """
         Return counts of unique dtypes in this object.

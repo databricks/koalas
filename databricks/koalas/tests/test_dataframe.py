@@ -394,8 +394,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         unsupported_functions = [name for (name, type_) in missing_functions
                                  if type_.__name__ == 'unsupported_function']
         for name in unsupported_functions:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "method.*DataFrame.*{}.*not implemented".format(name)):
+            with self.assertRaisesRegex(
+                    PandasNotImplementedError,
+                    "method.*DataFrame.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
                 getattr(kdf, name)()
 
         deprecated_functions = [name for (name, type_) in missing_functions
@@ -410,8 +411,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         unsupported_properties = [name for (name, type_) in missing_properties
                                   if type_.fget.__name__ == 'unsupported_property']
         for name in unsupported_properties:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "property.*DataFrame.*{}.*not implemented".format(name)):
+            with self.assertRaisesRegex(
+                    PandasNotImplementedError,
+                    "property.*DataFrame.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
                 getattr(kdf, name)
         deprecated_properties = [name for (name, type_) in missing_properties
                                  if type_.fget.__name__ == 'deprecated_property']
@@ -882,3 +884,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
                             aggfunc={'b': 'mean', 'e': 'sum'})
+
+    def test_transpose(self):
+        pdf1 = pd.DataFrame(
+            data={'col1': [1, 2], 'col2': [3, 4]},
+            columns=['col1', 'col2'])
+
+        pdf2 = pd.DataFrame(
+            data={'score': [9, 8], 'kids': [0, 0], 'age': [12, 22]},
+            columns=['score', 'kids', 'age'])
+
+        self.assertEqual(
+            repr(pdf1.transpose().sort_index()),
+            repr(ks.DataFrame(pdf1).transpose(limit=None).sort_index()))
+
+        self.assert_eq(
+            repr(pdf2.transpose().sort_index()),
+            repr(ks.DataFrame(pdf2).transpose(limit=None).sort_index()))
+
+        self.assertEqual(
+            repr(pdf1.transpose().sort_index()),
+            repr(ks.DataFrame(pdf1).transpose().sort_index()))
+
+        self.assert_eq(
+            repr(pdf2.transpose().sort_index()),
+            repr(ks.DataFrame(pdf2).transpose().sort_index()))

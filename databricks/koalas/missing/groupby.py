@@ -17,14 +17,14 @@
 from databricks.koalas.missing import _unsupported_function, _unsupported_property
 
 
-def unsupported_function(method_name, deprecated=False):
+def unsupported_function(method_name, deprecated=False, reason=""):
     return _unsupported_function(class_name='pd.groupby.GroupBy', method_name=method_name,
-                                 deprecated=deprecated)
+                                 deprecated=deprecated, reason=reason)
 
 
-def unsupported_property(property_name, deprecated=False):
+def unsupported_property(property_name, deprecated=False, reason=""):
     return _unsupported_property(class_name='pd.groupby.GroupBy', property_name=property_name,
-                                 deprecated=deprecated)
+                                 deprecated=deprecated, reason=reason)
 
 
 class _MissingPandasLikeDataFrameGroupBy(object):

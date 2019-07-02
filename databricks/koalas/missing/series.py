@@ -14,17 +14,17 @@
 # limitations under the License.
 #
 
-from databricks.koalas.missing import _unsupported_function, _unsupported_property
+from databricks.koalas.missing import _unsupported_function, _unsupported_property, common
 
 
-def unsupported_function(method_name, deprecated=False):
+def unsupported_function(method_name, deprecated=False, reason=""):
     return _unsupported_function(class_name='pd.Series', method_name=method_name,
-                                 deprecated=deprecated)
+                                 deprecated=deprecated, reason=reason)
 
 
-def unsupported_property(property_name, deprecated=False):
+def unsupported_property(property_name, deprecated=False, reason=""):
     return _unsupported_property(class_name='pd.Series', property_name=property_name,
-                                 deprecated=deprecated)
+                                 deprecated=deprecated, reason=reason)
 
 
 class _MissingPandasLikeSeries(object):
@@ -106,7 +106,6 @@ class _MissingPandasLikeSeries(object):
     mad = unsupported_function('mad')
     mask = unsupported_function('mask')
     median = unsupported_function('median')
-    memory_usage = unsupported_function('memory_usage')
     mode = unsupported_function('mode')
     pct_change = unsupported_function('pct_change')
     pop = unsupported_function('pop')
@@ -115,7 +114,6 @@ class _MissingPandasLikeSeries(object):
     ptp = unsupported_function('ptp')
     put = unsupported_function('put')
     quantile = unsupported_function('quantile')
-    rank = unsupported_function('rank')
     ravel = unsupported_function('ravel')
     rdivmod = unsupported_function('rdivmod')
     reindex = unsupported_function('reindex')
@@ -173,3 +171,7 @@ class _MissingPandasLikeSeries(object):
     select = unsupported_function('select', deprecated=True)
     set_value = unsupported_function('set_value', deprecated=True)
     valid = unsupported_function('valid', deprecated=True)
+
+    # Functions and properties we won't support.
+    values = common.values(unsupported_property)
+    memory_usage = common.memory_usage(unsupported_function)
