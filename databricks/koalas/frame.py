@@ -4595,9 +4595,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for column_name in data_columns:
             # It defines another column that holds true or false for nulls first.
             is_null_column = "%s_isnull" % column_name
-            sdf = sdf.withColumn(
-                is_null_column,
-                F.when(sdf[column_name].isNull(), F.lit(True)).otherwise(F.lit(False)))
+            sdf = sdf.withColumn(is_null_column, sdf[column_name].isNull())
 
             if skipna:
                 # There is a behavior difference between pandas and PySpark. In case of cummax,
