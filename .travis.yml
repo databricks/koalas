@@ -82,5 +82,5 @@ script:
 
 # Push the results back to codecov
 after_success:
-  - codecov
+  - bash <(curl -s https://codecov.io/bash)
 
