@@ -933,3 +933,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             repr(pdf2.transpose().sort_index()),
             repr(ks.DataFrame(pdf2).transpose().sort_index()))
+
+    def test_cummin(self):
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.cummin(), kdf.cummin())
+        self.assert_eq(pdf.cummin(skipna=False), kdf.cummin(skipna=False))
+
+    def test_cummax(self):
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.cummax(), kdf.cummax())
+        self.assert_eq(pdf.cummax(skipna=False), kdf.cummax(skipna=False))
+
+    def test_cumsum(self):
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.cumsum(), kdf.cumsum())
+        self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
