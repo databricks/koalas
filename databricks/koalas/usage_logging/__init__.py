@@ -24,7 +24,7 @@ from typing import Union
 
 import pandas as pd
 
-from databricks.koalas import namespace
+from databricks.koalas import namespace, sql
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
@@ -68,7 +68,9 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
         classes.append(mlflow.PythonModelWrapper)
     except ImportError:
         pass
-    # TODO: sql module
+
+    sql._CAPTURE_SCOPES = 3  # type: ignore
+    modules.append(sql)  # type: ignore
 
     # Modules
     for target_module in modules:
