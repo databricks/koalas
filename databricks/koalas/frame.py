@@ -2933,7 +2933,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                          "small", "large", "small", "small",
         ...                          "large"],
         ...                    "D": [1, 2, 2, 3, 3, 4, 5, 6, 7],
-        ...                    "E": [2, 4, 5, 5, 6, 6, 8, 9, 9]})
+        ...                    "E": [2, 4, 5, 5, 6, 6, 8, 9, 9]},
+        ...                   columns=['A', 'B', 'C', 'D', 'E'])
         >>> df
              A    B      C  D  E
         0  foo  one  small  1  2
