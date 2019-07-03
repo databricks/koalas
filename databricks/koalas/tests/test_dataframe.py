@@ -753,6 +753,35 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
         self.assert_eq(join_pdf, join_kdf)
 
+    def test_replace(self):
+        pdf = pd.DataFrame({"name": ['Ironman', 'Captain America', 'Thor', 'Hulk'],
+                           "weapon": ['Mark-45', 'Shield', 'Mjolnir', 'Smash']})
+        kdf = ks.from_pandas(pdf)
+
+        with self.assertRaisesRegex(NotImplementedError,
+                                    "replace currently works only for method='pad"):
+            kdf.replace(method='bfill')
+        with self.assertRaisesRegex(NotImplementedError,
+                                    "replace currently works only when limit=None"):
+            kdf.replace(limit=10)
+        with self.assertRaisesRegex(NotImplementedError,
+                                    "replace currently doesn't supports regex"):
+            kdf.replace(regex='')
+
+        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'tuple'>"):
+            kdf.replace(value=(1, 2, 3))
+        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'tuple'>"):
+            kdf.replace(to_replace=(1, 2, 3))
+
+        with self.assertRaisesRegex(ValueError, 'Length of to_replace and value must be same'):
+            kdf.replace(to_replace=['Ironman'], value=['Spiderman', 'Doctor Strange'])
+
+        self.assert_eq(kdf.replace('Ironman', 'Spiderman'), pdf.replace('Ironman', 'Spiderman'))
+        self.assert_eq(
+            kdf.replace(['Ironman', 'Captain America'], ['Rescue', 'Hawkeye']),
+            pdf.replace(['Ironman', 'Captain America'], ['Rescue', 'Hawkeye'])
+        )
+
     def test_update(self):
         # check base function
         def get_data():

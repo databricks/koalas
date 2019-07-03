@@ -108,7 +108,6 @@ class _MissingPandasLikeDataFrame(object):
     rename = unsupported_function('rename')
     rename_axis = unsupported_function('rename_axis')
     reorder_levels = unsupported_function('reorder_levels')
-    replace = unsupported_function('replace')
     resample = unsupported_function('resample')
     rolling = unsupported_function('rolling')
     round = unsupported_function('round')
