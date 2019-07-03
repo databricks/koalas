@@ -2181,6 +2181,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         By default, equal values are assigned a rank that is the minimum of the
         ranks of those values.
 
+        .. note:: the current implementation of rank uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
         Parameters
         ----------
         method : {'min'}, default 'min'
