@@ -2658,7 +2658,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         value : int, float, string, or list
             Value to use to replace holes. The replacement value must be an int, float,
             or string. If value is a list, value should be of the same length with to_replace.
-        subset : sting, list
+        subset : string, list
             Optional list of column names to consider. Columns specified in subset that
             do not have matching data type are ignored. For example, if value is a string,
             and subset contains a non-string column, then the non-string column is simply ignored.
@@ -2673,7 +2673,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Examples
         --------
         >>> df = ks.DataFrame({"name": ['Ironman', 'Captain America', 'Thor', 'Hulk'],
-        ...                    "weapon": ['Mark-45', 'Shield', 'Mjolnir', 'Smash']})
+        ...                    "weapon": ['Mark-45', 'Shield', 'Mjolnir', 'Smash']},
+        ...                   columns=['name', 'weapon'])
         >>> df
                       name   weapon
         0          Ironman  Mark-45
@@ -2713,7 +2714,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df = ks.DataFrame({'A': [0, 1, 2, 3, 4],
         ...                    'B': [5, 6, 7, 8, 9],
-        ...                    'C': ['a', 'b', 'c', 'd', 'e']})
+        ...                    'C': ['a', 'b', 'c', 'd', 'e']},
+        ...                   columns=['A', 'B', 'C'])
 
         >>> df.replace({'A': {0: 100, 4: 400}})
              A  B  C
@@ -2735,7 +2737,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         -----
         One difference between this implementation and pandas is that it is necessary
         to specify the column name when you are passing dictionary in `to_replace`
-        parameter. Calling `replace` like `df.replace({0: 10, 1: 100})` will
+        parameter. Calling `replace` on its index such as `df.replace({0: 10, 1: 100})` will
         throw an error. Instead specify column-name like `df.replace({'A': {0: 10, 1: 100}})`.
         """
         if method != 'pad':
@@ -2750,7 +2752,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if to_replace is not None and not isinstance(to_replace, (int, float, str, list, dict)):
             raise TypeError("Unsupported type {}".format(type(to_replace)))
 
-        if isinstance(value, (list)) and isinstance(to_replace, (list)):
+        if isinstance(value, list) and isinstance(to_replace, list):
             if len(value) != len(to_replace):
                 raise ValueError('Length of to_replace and value must be same')
 
