@@ -60,11 +60,6 @@ class _MissingPandasLikeDataFrame(object):
     compound = unsupported_function('compound')
     corrwith = unsupported_function('corrwith')
     cov = unsupported_function('cov')
-<<<<<<< HEAD
-    cummax = unsupported_function('cummax')
-=======
-    cummin = unsupported_function('cummin')
->>>>>>> cb5154f... DataFrame.cummax()
     cumprod = unsupported_function('cumprod')
     diff = unsupported_function('diff')
     dot = unsupported_function('dot')
@@ -141,7 +136,6 @@ class _MissingPandasLikeDataFrame(object):
     tz_convert = unsupported_function('tz_convert')
     tz_localize = unsupported_function('tz_localize')
     unstack = unsupported_function('unstack')
-    update = unsupported_function('update')
     where = unsupported_function('where')
     xs = unsupported_function('xs')
 

@@ -4582,12 +4582,110 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   index_map=[('summary', None)])
         return DataFrame(internal).astype('float64')
 
+    def _cum(self, func, skipna: bool):
+        if len(self._internal.index_columns) == 0:
+            raise ValueError("Index must be set.")
+
+        index_columns = self._internal.index_columns
+        data_columns = self._internal.data_columns
+        window = Window.orderBy(
+            index_columns).rowsBetween(Window.unboundedPreceding, Window.currentRow)
+        sdf = self._sdf
+
+        for column_name in data_columns:
+            # It defines another column that holds true or false for nulls first.
+            is_null_column = "%s_isnull" % column_name
+            sdf = sdf.withColumn(
+                is_null_column,
+                F.when(sdf[column_name].isNull(), F.lit(True)).otherwise(F.lit(False)))
+
+            if skipna:
+                # There is a behavior difference between pandas and PySpark. In case of cummax,
+                #
+                # Input:
+                #      A    B
+                # 0  2.0  1.0
+                # 1  5.0  NaN
+                # 2  1.0  0.0
+                # 3  2.0  4.0
+                # 4  4.0  9.0
+                #
+                # pandas:
+                #      A    B
+                # 0  2.0  1.0
+                # 1  5.0  NaN
+                # 2  5.0  1.0
+                # 3  5.0  4.0
+                # 4  5.0  9.0
+                #
+                # PySpark:
+                #      A    B
+                # 0  2.0  1.0
+                # 1  5.0  1.0
+                # 2  5.0  1.0
+                # 3  5.0  4.0
+                # 4  5.0  9.0
+
+                # After going through the windows,
+                sdf = sdf.withColumn(column_name, func(column_name).over(window))
+
+                # Manually sets nulls given the column defined above.
+                sdf = sdf.withColumn(
+                    column_name,
+                    F.when(sdf[is_null_column], F.lit(None)).otherwise(sdf[column_name]))
+            else:
+                # Here, we use two Windows.
+                # One for real data.
+                # The other one for setting nulls after the first null it meets.
+                #
+                # There is a behavior difference between pandas and PySpark. In case of cummax,
+                #
+                # Input:
+                #      A    B
+                # 0  2.0  1.0
+                # 1  5.0  NaN
+                # 2  1.0  0.0
+                # 3  2.0  4.0
+                # 4  4.0  9.0
+                #
+                # pandas:
+                #      A    B
+                # 0  2.0  1.0
+                # 1  5.0  NaN
+                # 2  5.0  NaN
+                # 3  5.0  NaN
+                # 4  5.0  NaN
+                #
+                # PySpark:
+                #      A    B
+                # 0  2.0  1.0
+                # 1  5.0  1.0
+                # 2  5.0  1.0
+                # 3  5.0  4.0
+                # 4  5.0  9.0
+                sdf = sdf.withColumn(column_name, func(column_name).over(window))
+
+                # By going through with max, it sets True after the first time it meets null.
+                sdf = sdf.withColumn(is_null_column, F.max(is_null_column).over(window))
+
+                # Manually sets nulls given the column defined above.
+                sdf = sdf.withColumn(
+                    column_name,
+                    F.when(sdf[is_null_column], F.lit(None)).otherwise(sdf[column_name]))
+
+        return DataFrame(self._internal.copy(sdf=sdf.select(index_columns + data_columns)))
+
     # TODO: add 'axis' parameter
     def cummin(self, skipna: bool = True):
         """
-        Return cumulative minimum over a DataFrame or Series axis.
+        Return cumulative minimum over a DataFrame axis.
 
-        Returns a DataFrame or Series of the same size containing the cumulative minimum.
+        Returns a DataFrame of the same size containing the cumulative minimum.
+
+        .. note:: the current implementation of cummin uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
 
         Parameters
         ----------
@@ -4596,7 +4694,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        Series or DataFrame
+        DataFrame
 
         See Also
         --------
@@ -4604,7 +4702,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         DataFrame.cummax : Return cumulative maximum over DataFrame axis.
         DataFrame.cummin : Return cumulative minimum over DataFrame axis.
         DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-        DataFrame.cumprod : Return cumulative product over DataFrame axis.
 
         Examples
         --------
@@ -4618,7 +4715,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  3.0  NaN
         2  1.0  0.0
 
-        By default, iterates over rows and finds the sum in each column.
+        By default, iterates over rows and finds the minimum in each column.
 
         >>> df.cummin()
              A    B
@@ -4626,33 +4723,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  2.0  NaN
         2  1.0  0.0
         """
-        index_columns = self._internal.index_columns
-        data_columns = self._internal.data_columns
-        window = Window.orderBy(index_columns).rangeBetween(Window.unboundedPreceding, 0)
-        sdf = self._sdf
-
-        for column_name in data_columns:
-            sdf = sdf.withColumn(column_name + '_isnull', F.when(sdf[column_name].isNull(), 1)
-                                 .otherwise(0))
-            sdf = sdf.withColumn(column_name, F.min(column_name).over(window))
-            if not skipna:
-                sdf = sdf.withColumn(column_name + '_isnull',
-                                     F.max(column_name + '_isnull').over(window))
-                sdf = sdf.withColumn(column_name,
-                                     F.when(sdf[column_name + '_isnull'] >= 1, F.lit(None))
-                                     .otherwise(sdf[column_name]))
-            else:
-                sdf = sdf.withColumn(column_name,
-                                     F.when(sdf[column_name + '_isnull'] == 1, F.lit(None))
-                                     .otherwise(sdf[column_name]))
-        return DataFrame(self._internal.copy(sdf=sdf.select(index_columns + data_columns)))
+        return self._cum(F.min, skipna)
 
     # TODO: add 'axis' parameter
     def cummax(self, skipna: bool = True):
         """
-        Return cumulative maximum over a DataFrame or Series axis.
+        Return cumulative maximum over a DataFrame axis.
 
-        Returns a DataFrame or Series of the same size containing the cumulative maximum.
+        Returns a DataFrame of the same size containing the cumulative maximum.
+
+        .. note:: the current implementation of cummax uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
 
         Parameters
         ----------
@@ -4661,7 +4744,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        Series or DataFrame
+        DataFrame
 
         See Also
         --------
@@ -4669,21 +4752,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         DataFrame.cummax : Return cumulative maximum over DataFrame axis.
         DataFrame.cummin : Return cumulative minimum over DataFrame axis.
         DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-        DataFrame.cumprod : Return cumulative product over DataFrame axis.
 
         Examples
         --------
-        >>> df = ks.DataFrame([[2.0, 1.0],
-        ...                    [3.0, None],
-        ...                    [1.0, 0.0]],
-        ...                    columns=list('AB'))
+        >>> df = ks.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
         >>> df
              A    B
         0  2.0  1.0
         1  3.0  NaN
         2  1.0  0.0
 
-        By default, iterates over rows and finds the sum in each column.
+        By default, iterates over rows and finds the maximum in each column.
 
         >>> df.cummax()
              A    B
@@ -4691,33 +4770,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  3.0  NaN
         2  3.0  1.0
         """
-        index_columns = self._internal.index_columns
-        data_columns = self._internal.data_columns
-        window = Window.orderBy(index_columns).rangeBetween(Window.unboundedPreceding, 0)
-        sdf = self._sdf
-
-        for column_name in data_columns:
-            sdf = sdf.withColumn(column_name + '_isnull', F.when(sdf[column_name].isNull(), 1)
-                                 .otherwise(0))
-            sdf = sdf.withColumn(column_name, F.max(column_name).over(window))
-            if not skipna:
-                sdf = sdf.withColumn(column_name + '_isnull',
-                                     F.max(column_name + '_isnull').over(window))
-                sdf = sdf.withColumn(column_name,
-                                     F.when(sdf[column_name + '_isnull'] >= 1, F.lit(None))
-                                     .otherwise(sdf[column_name]))
-            else:
-                sdf = sdf.withColumn(column_name,
-                                     F.when(sdf[column_name + '_isnull'] == 1, F.lit(None))
-                                     .otherwise(sdf[column_name]))
-        return DataFrame(self._internal.copy(sdf=sdf.select(index_columns + data_columns)))
+        return self._cum(F.max, skipna)
 
     # TODO: add 'axis' parameter
     def cumsum(self, skipna: bool = True):
         """
-        Return cumulative sum over a DataFrame or Series axis.
+        Return cumulative sum over a DataFrame axis.
 
-        Returns a DataFrame or Series of the same size containing the cumulative sum.
+        Returns a DataFrame of the same size containing the cumulative sum.
+
+        .. note:: the current implementation of cumsum uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
 
         Parameters
         ----------
@@ -4726,7 +4791,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        Series or DataFrame
+        DataFrame
 
         See Also
         --------
@@ -4734,7 +4799,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         DataFrame.cummax : Return cumulative maximum over DataFrame axis.
         DataFrame.cummin : Return cumulative minimum over DataFrame axis.
         DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-        DataFrame.cumprod : Return cumulative product over DataFrame axis.
 
         Examples
         --------
@@ -4756,26 +4820,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  5.0  NaN
         2  6.0  1.0
         """
-        index_columns = self._internal.index_columns
-        data_columns = self._internal.data_columns
-        window = Window.orderBy(index_columns).rangeBetween(Window.unboundedPreceding, 0)
-        sdf = self._sdf
-
-        for column_name in data_columns:
-            sdf = sdf.withColumn(column_name + '_isnull', F.when(sdf[column_name].isNull(), 1)
-                                 .otherwise(0))
-            sdf = sdf.withColumn(column_name, F.sum(column_name).over(window))
-            if not skipna:
-                sdf = sdf.withColumn(column_name + '_isnull',
-                                     F.sum(column_name + '_isnull').over(window))
-                sdf = sdf.withColumn(column_name,
-                                     F.when(sdf[column_name + '_isnull'] >= 1, F.lit(None))
-                                     .otherwise(sdf[column_name]))
-            else:
-                sdf = sdf.withColumn(column_name,
-                                     F.when(sdf[column_name + '_isnull'] == 1, F.lit(None))
-                                     .otherwise(sdf[column_name]))
-        return DataFrame(self._internal.copy(sdf=sdf.select(index_columns + data_columns)))
+        return self._cum(F.sum, skipna)
 
     # TODO: implements 'keep' parameters
     def drop_duplicates(self, subset=None, inplace=False):
