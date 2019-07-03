@@ -426,7 +426,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # name as its internal expression which contains, for instance, '`f(x)`' in the middle of
         # column name which currently cannot be recognized in PySpark.
         @koalas.pandas_wraps
-        def f(x) -> koalas.Col[int]:
+        def f(x) -> koalas.Series[int]:
             return 2 * x
 
         df = koalas.DataFrame({"x": [1, None]})
