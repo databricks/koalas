@@ -25,6 +25,7 @@ from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar
 
 import numpy as np
 import pandas as pd
+import pyspark.sql.functions as F
 from pandas.api.types import is_list_like, is_dict_like
 from pandas.core.dtypes.common import infer_dtype_from_object
 from pandas.core.dtypes.inference import is_sequence
@@ -2758,7 +2759,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise ValueError('Length of to_replace and value must be same')
 
         sdf = self._sdf.select(self._internal.data_columns)
-        if isinstance(to_replace, dict):
+        if isinstance(to_replace, dict) and value is None and \
+                (not any(isinstance(i, dict) for i in to_replace.values())):
+            sdf = sdf.replace(to_replace, value, subset)
+        elif isinstance(to_replace, dict):
             for df_column, replacement in to_replace.items():
                 if isinstance(replacement, dict):
                     sdf = sdf.replace(replacement, subset=df_column)
