@@ -62,7 +62,6 @@ install:
   - |
     if [[ $TRAVIS_PYTHON_VERSION == "3.5" ]]; then
       pip install -r requirements-dev.txt && \
-      pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
       pip list;
     else
       conda config --env --add pinned_packages python=$TRAVIS_PYTHON_VERSION && \
