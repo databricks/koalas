@@ -5011,6 +5011,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(internal)
 
+    # TODO: add axis,numeric_only
     def rank(self, axis=0, method='average', numeric_only=None, na_option='keep', ascending=True,
              pct=False):
         """
@@ -5048,21 +5049,30 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
             raise ValueError(msg)
 
+        if na_option not in {'keep', 'top', 'bottom'}:
+            msg = "na_option must be one of 'keep', 'top', 'bottom''"
+            raise ValueError(msg)
+
         index_columns = self._internal.index_columns
         data_columns = self._internal.data_columns
         sdf = self._sdf
 
         for column_name in data_columns:
+            if na_option == 'top':
+                sdf = sdf.fillna({column_name, sdf.agg({column_name: "min"}).collect()[0][0] - 1})
+            elif na_option == 'bottom':
+                sdf = sdf.fillna({column_name, sdf.agg({column_name: "max"}).collect()[0][0] + 1})
+
             if method == 'first':
-                window = Window.orderBy(index_columns + [column_name])\
+                window = Window.orderBy(index_columns + [column_name], ascending=ascending)\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
                 sdf = sdf.withColumn(column_name, F.row_number().over(window))
             elif method == 'dense_rank':
-                window = Window.orderBy([column_name])\
+                window = Window.orderBy([column_name], ascending=ascending)\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
                 sdf = sdf.withColumn(column_name, F.dense_rank().over(window))
             else:
-                window = Window.orderBy([column_name])\
+                window = Window.orderBy([column_name], ascending=ascending)\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
                 sdf = sdf.withColumn('rank', F.row_number().over(window))
                 window = Window.partitionBy('0')\
@@ -5073,6 +5083,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     sdf = sdf.withColumn(column_name, F.min(F.col('rank')).over(window))
                 elif method == 'max':
                     sdf = sdf.withColumn(column_name, F.max(F.col('rank')).over(window))
+
+            if pct:
+                count = sdf.count()
+                sdf = sdf.withColumn(column_name, F.round(sdf[column_name] / F.lit(count), 1))
         return DataFrame(self._internal.copy(sdf=sdf.select(index_columns + data_columns)))
 
     def melt(self, id_vars=None, value_vars=None, var_name='variable',
