@@ -2998,7 +2998,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                              "to aggregate functions (string).")
 
         if isinstance(aggfunc, dict) and index is None:
-            raise NotImplementedError("pivot_table doesn't support aggfuct"
+            raise NotImplementedError("pivot_table doesn't support aggfunc"
                                       " as dict and without index.")
 
         if isinstance(values, list) and len(values) > 1:

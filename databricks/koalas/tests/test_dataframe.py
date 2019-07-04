@@ -891,7 +891,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, msg):
             kdf.pivot_table(index="c", columns="a", values="b")
 
-        msg = "pivot_table doesn't support aggfuct as dict and without index."
+        msg = "pivot_table doesn't support aggfunc as dict and without index."
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.pivot_table(columns="a", values=['b', 'e'], aggfunc={'b': 'mean', 'e': 'sum'})
 
