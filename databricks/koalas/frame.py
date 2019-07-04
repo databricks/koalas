@@ -17,6 +17,7 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
+from distutils.version import LooseVersion
 import re
 import warnings
 from functools import partial, reduce
@@ -26,7 +27,10 @@ from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like
-from pandas.core.dtypes.common import infer_dtype_from_object
+if LooseVersion(pd.__version__) >= LooseVersion('0.24'):
+    from pandas.core.dtypes.common import infer_dtype_from_object
+else:
+    from pandas.core.dtypes.common import _get_dtype_from_object as infer_dtype_from_object
 from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
 from pyspark.sql.window import Window

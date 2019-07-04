@@ -854,7 +854,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Checking if both DataFrames have the same results (Temporary)
         np.testing.assert_equal(kdf.pivot_table(columns="a", values="b").to_numpy(),
-                                pdf.pivot_table(columns=["a"], values="b").to_numpy())
+                                pdf.pivot_table(columns=["a"], values="b").values)
 
         # Todo: self.assert_eq(kdf.pivot_table(columns="a", values="b"),
         #  pdf.pivot_table(columns=["a"], values="b"))
