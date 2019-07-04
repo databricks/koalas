@@ -954,3 +954,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.cumsum(), kdf.cumsum())
         self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
+
+    def test_rank(self):
+        pdf = pd.DataFrame(data={'col1': [1, None, 2, 0, 1], 'col2': [3, 4, None, 3, 1]},
+                           columns=['col1', 'col2'])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.rank(), kdf.rank())
+        self.assert_eq(pdf.rank(method='min'), kdf.rank(method='min'))
+        self.assert_eq(pdf.rank(method='max'), kdf.rank(method='max'))
+        self.assert_eq(pdf.rank(method='first'), kdf.rank(method='first'))
+        self.assert_eq(pdf.rank(method='dense', na_option='top', ascending=False, pct=True),
+                       kdf.rank(method='dense', na_option='top', ascending=False, pct=True))

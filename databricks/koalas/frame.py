@@ -5012,24 +5012,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(internal)
 
     # TODO: add axis,numeric_only
-    def rank(self, axis=0, method='average', numeric_only=None, na_option='keep', ascending=True,
-             pct=False):
+    def rank(self, method='average', na_option='keep', ascending=True, pct=False):
         """
         Compute numerical data ranks (1 through n) along axis. Equal values are
         assigned a rank that is the average of the ranks of those values.
         Parameters
         ----------
-        axis : {0 or 'index', 1 or 'columns'}, default 0
-            index to direct ranking
         method : {'average', 'min', 'max', 'first', 'dense'}
             * average: average rank of group
             * min: lowest rank in group
             * max: highest rank in group
             * first: ranks assigned in order they appear in the array
             * dense: like 'min', but rank always increases by 1 between groups
-        numeric_only : boolean, default None
-            Include only float, int, boolean data. Valid only for DataFrame or
-            Panel objects
         na_option : {'keep', 'top', 'bottom'}
             * keep: leave NA values where they are
             * top: smallest rank if ascending
@@ -5064,18 +5058,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.fillna({column_name, sdf.agg({column_name: "max"}).collect()[0][0] + 1})
 
             if method == 'first':
-                window = Window.orderBy(index_columns + [column_name], ascending=ascending)\
+                window = Window.orderBy(index_columns + [column_name],
+                                        ascending=[ascending, ascending])\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
                 sdf = sdf.withColumn(column_name, F.row_number().over(window))
             elif method == 'dense_rank':
-                window = Window.orderBy([column_name], ascending=ascending)\
+                window = Window.orderBy(column_name, ascending=ascending)\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
                 sdf = sdf.withColumn(column_name, F.dense_rank().over(window))
             else:
-                window = Window.orderBy([column_name], ascending=ascending)\
+                window = Window.orderBy(column_name, ascending=ascending)\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
                 sdf = sdf.withColumn('rank', F.row_number().over(window))
-                window = Window.partitionBy('0')\
+                window = Window.partitionBy(index_columns)\
                     .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
                 if method == 'average':
                     sdf = sdf.withColumn(column_name, F.mean(F.col('rank')).over(window))
