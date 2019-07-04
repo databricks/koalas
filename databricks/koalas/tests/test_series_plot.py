@@ -15,7 +15,10 @@
 #
 
 import base64
+from distutils.version import LooseVersion
 from io import BytesIO
+import unittest
+
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot as plt
@@ -68,6 +71,8 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         ax2 = kdf['a'].plot.bar()
         self.compare_plots(ax1, ax2)
 
+    @unittest.skipIf(LooseVersion(pd.__version__) < LooseVersion('0.24'),
+                     'TODO: support pandas 0.23')
     def test_bar_plot_limited(self):
         pdf = self.pdf2
         kdf = self.kdf2
