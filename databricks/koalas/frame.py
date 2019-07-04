@@ -5035,6 +5035,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Returns
         -------
         ranks : same type as caller
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2, 3, 0], 'B': [5, 4, 3, 2]}, columns= ['A', 'B'])
+        >>> df
+           A  B
+        0  1  5
+        1  2  4
+        2  3  3
+        3  0  2
+
+        >>> df.rank()
+             A    B
+        0  2.0  4.0
+        1  3.0  3.0
+        2  4.0  2.0
+        3  1.0  1.0
         """
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
@@ -5058,8 +5075,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.fillna({column_name, sdf.agg({column_name: "max"}).collect()[0][0] + 1})
 
             if method == 'first':
-                window = Window.orderBy(index_columns + [column_name],
-                                        ascending=[ascending, ascending])\
+                window = Window.orderBy(index_columns + [column_name])\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
                 sdf = sdf.withColumn(column_name, F.row_number().over(window))
             elif method == 'dense_rank':
