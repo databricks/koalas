@@ -58,7 +58,8 @@ install:
 
   # Test PyPI installation at Python 3.5. This is also because
   # one of the dependency requires Python 3.6 Conda specifically.
-  - if [[ $TRAVIS_PYTHON_VERSION == "3.5" ]]; then
+  - |
+    if [[ $TRAVIS_PYTHON_VERSION == "3.5" ]]; then
       pip install -r requirements-dev.txt && \
       pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
       pip list;
