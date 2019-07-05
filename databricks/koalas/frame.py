@@ -5084,10 +5084,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.rank(na_option='bottom').sort_index()
              A    B
-        0  2.0  4.0
-        1  3.0  1.0
-        2  1.0  3.0
-        3  4.0  2.0
+        0  1.0  3.0
+        1  2.0  4.0
+        2  4.0  2.0
+        3  3.0  1.0
         """
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
