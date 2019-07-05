@@ -5016,6 +5016,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Compute numerical data ranks (1 through n) along axis. Equal values are
         assigned a rank that is the average of the ranks of those values.
+
         Parameters
         ----------
         method : {'average', 'min', 'max', 'first', 'dense'}
@@ -5032,6 +5033,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             False for ranks by high (1) to low (N)
         pct : boolean, default False
             Computes percentage rank of data
+
         Returns
         -------
         ranks : same type as caller
@@ -5089,9 +5091,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  4.0  2.0
         3  3.0  1.0
         """
-        if len(self._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
-
         if method not in ['average', 'min', 'max', 'first', 'dense']:
             msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
             raise ValueError(msg)

@@ -971,3 +971,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        kdf.rank(na_option='top', method='first').sort_index())
         self.assert_eq(pdf.rank(na_option='top', method='dense'),
                        kdf.rank(na_option='top', method='dense').sort_index())
+
+        msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.rank(method='nothing')
+
+        msg = "na_option must be one of 'keep', 'top', 'bottom'"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.rank(na_option='nothing')
