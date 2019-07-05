@@ -5011,8 +5011,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(internal)
 
-    # TODO: add axis,numeric_only
-    def rank(self, method='average', na_option='keep', ascending=True, pct=False):
+    # TODO: add axis, numeric_only, method='keep' parameter
+    def rank(self, method='average', na_option='top', ascending=True, pct=False):
         """
         Compute numerical data ranks (1 through n) along axis. Equal values are
         assigned a rank that is the average of the ranks of those values.
@@ -5066,6 +5066,28 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  2.0  3.0
         2  2.0  2.0
         3  3.0  1.0
+
+        >>> df = ks.DataFrame({'A': [1, 2, None, 3], 'B': [4, None, 2, 1]}, columns= ['A', 'B'])
+        >>> df
+             A    B
+        0  1.0  4.0
+        1  2.0  NaN
+        2  NaN  2.0
+        3  3.0  1.0
+
+        >>> df.rank().sort_index()
+             A    B
+        0  2.0  4.0
+        1  3.0  1.0
+        2  1.0  3.0
+        3  4.0  2.0
+
+        >>> df.rank(na_option='bottom').sort_index()
+             A    B
+        0  2.0  4.0
+        1  3.0  1.0
+        2  1.0  3.0
+        3  4.0  2.0
         """
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
@@ -5074,51 +5096,58 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
             raise ValueError(msg)
 
-        if na_option not in ['keep', 'top', 'bottom']:
-            msg = "na_option must be one of 'keep', 'top', 'bottom''"
+        if na_option not in ['top', 'bottom']:
+            msg = "na_option must be one of 'top', 'bottom''"
             raise ValueError(msg)
 
         if ascending:
-            ascending_function = spark.functions.asc
+            asc_func = spark.functions.asc
         else:
-            ascending_function = spark.functions.desc
+            asc_func = spark.functions.desc
 
-        index_columns = self._internal.index_columns
+        index_column = self._internal.index_columns[0]
         data_columns = self._internal.data_columns
         sdf = self._sdf
 
         for column_name in data_columns:
             if na_option == 'top':
-                sdf = sdf.fillna({column_name, sdf.agg({column_name: 'min'}).collect()[0][0] - 1})
+                if ascending:
+                    sdf = sdf.fillna({column_name: sdf.agg({column_name: 'min'}).collect()[0][0] - 1})
+                else:
+                    sdf = sdf.fillna({column_name: sdf.agg({column_name: 'max'}).collect()[0][0] + 1})
             elif na_option == 'bottom':
-                sdf = sdf.fillna({column_name, sdf.agg({column_name: 'max'}).collect()[0][0] + 1})
+                if ascending:
+                    sdf = sdf.fillna({column_name: sdf.agg({column_name: 'max'}).collect()[0][0] + 1})
+                else:
+                    sdf = sdf.fillna({column_name: sdf.agg({column_name: 'min'}).collect()[0][0] - 1})
 
             if method == 'first':
-                window = Window.orderBy(ascending_function(index_columns[0]),
-                                        ascending_function(column_name))\
+                window = Window.orderBy(asc_func(column_name), asc_func(index_column))\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
-                sdf = sdf.withColumn(column_name, F.row_number().over(window).cast(FloatType))
-            elif method == 'dense_rank':
-                window = Window.orderBy(ascending_function(column_name))\
+                sdf = sdf.withColumn(column_name, F.row_number().over(window))
+            elif method == 'dense':
+                window = Window.orderBy(asc_func(column_name))\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
                 sdf = sdf.withColumn(column_name, F.dense_rank().over(window))
             else:
-                window = Window.orderBy(ascending_function(column_name))\
+                if method == 'average':
+                    stat_func = F.mean
+                elif method == 'min':
+                    stat_func = F.min
+                elif method == 'max':
+                    stat_func = F.max
+                window = Window.orderBy(asc_func(column_name))\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
                 sdf = sdf.withColumn('rank', F.row_number().over(window))
                 window = Window.partitionBy(column_name)\
                     .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
-                if method == 'average':
-                    sdf = sdf.withColumn(column_name, F.mean(F.col('rank')).over(window))
-                elif method == 'min':
-                    sdf = sdf.withColumn(column_name, F.min(F.col('rank')).over(window))
-                elif method == 'max':
-                    sdf = sdf.withColumn(column_name, F.max(F.col('rank')).over(window))
+                sdf = sdf.withColumn(column_name, stat_func(F.col('rank')).over(window))
 
             if pct:
-                count = sdf.count()
-                sdf = sdf.withColumn(column_name, F.round(sdf[column_name] / F.lit(count), 1))
-        return DataFrame(self._internal.copy(sdf=sdf.select(index_columns + data_columns))).astype(float)
+                max_value = sdf.agg({column_name: 'max'}).collect()[0][0]
+                sdf = sdf.withColumn(column_name, F.col(column_name) / max_value)
+        return DataFrame(self._internal.copy(sdf=sdf.select(self._internal.columns)))\
+            .astype(np.float64)
 
     def melt(self, id_vars=None, value_vars=None, var_name='variable',
              value_name='value'):
