@@ -1016,7 +1016,7 @@ class _Frame(object):
         elif isinstance(self, ks.Series):
             df = self.to_dataframe()
         else:
-            raise TypeError('Constructor expects DataFrame or Series; however, '
+            raise TypeError('bool() expects DataFrame or Series; however, '
                             'got [%s]' % (self,))
         return df.head(2).to_pandas().bool()
 
