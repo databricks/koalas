@@ -873,7 +873,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         #  fill_value=999), pdf.pivot_table(index=['e', 'c'], columns="a", values="b",
         #  fill_value=999))
 
-    def test_pivot_table_erros(self):
+    def test_pivot_errors(self):
+        kdf = ks.range(10)
+
+        with self.assertRaisesRegex(ValueError, "columns should be set"):
+            kdf.pivot(index='id')
+
+        with self.assertRaisesRegex(ValueError, "values should be set"):
+            kdf.pivot(index='id', columns="id")
+
+    def test_pivot_table_errors(self):
 
         pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
                             'b': [1, 2, 2, 4, 2, 4],
