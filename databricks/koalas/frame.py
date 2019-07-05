@@ -5012,7 +5012,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(internal)
 
     # TODO: add axis, numeric_only, method='keep' parameter
-    def rank(self, method='average', na_option='top', ascending=True, pct=False):
+    def rank(self, method='average', na_option='keep', ascending=True, pct=False):
         """
         Compute numerical data ranks (1 through n) along axis. Equal values are
         assigned a rank that is the average of the ranks of those values.
@@ -5077,10 +5077,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.rank().sort_index()
              A    B
-        0  2.0  4.0
-        1  3.0  1.0
-        2  1.0  3.0
-        3  4.0  2.0
+        0  1.0  3.0
+        1  2.0  NaN
+        2  NaN  2.0
+        3  3.0  1.0
 
         >>> df.rank(na_option='bottom').sort_index()
              A    B
@@ -5096,8 +5096,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
             raise ValueError(msg)
 
-        if na_option not in ['top', 'bottom']:
-            msg = "na_option must be one of 'top', 'bottom''"
+        if na_option not in ['keep', 'top', 'bottom']:
+            msg = "na_option must be one of 'keep', 'top', 'bottom'"
             raise ValueError(msg)
 
         if ascending:
@@ -5112,14 +5112,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for column_name in data_columns:
             if na_option == 'top':
                 if ascending:
-                    sdf = sdf.fillna({column_name: sdf.agg({column_name: 'min'}).collect()[0][0] - 1})
+                    fill_value = sdf.agg({column_name: 'min'}).collect()[0][0] - 1
                 else:
-                    sdf = sdf.fillna({column_name: sdf.agg({column_name: 'max'}).collect()[0][0] + 1})
+                    fill_value = sdf.agg({column_name: 'max'}).collect()[0][0] + 1
+                sdf = sdf.fillna({column_name: fill_value})
             elif na_option == 'bottom':
                 if ascending:
-                    sdf = sdf.fillna({column_name: sdf.agg({column_name: 'max'}).collect()[0][0] + 1})
+                    fill_value = sdf.agg({column_name: 'max'}).collect()[0][0] + 1
                 else:
-                    sdf = sdf.fillna({column_name: sdf.agg({column_name: 'min'}).collect()[0][0] - 1})
+                    fill_value = sdf.agg({column_name: 'min'}).collect()[0][0] - 1
+                sdf = sdf.fillna({column_name: fill_value})
+            else:
+                null_number = sdf.filter(F.col(column_name).isNull()).count()
+                if null_number > 0:
+                    sdf = sdf.withColumn(column_name + '_tmp', F.col(column_name))
 
             if method == 'first':
                 window = Window.orderBy(asc_func(column_name), asc_func(index_column))\
@@ -5142,6 +5148,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 window = Window.partitionBy(column_name)\
                     .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
                 sdf = sdf.withColumn(column_name, stat_func(F.col('rank')).over(window))
+
+            if na_option == 'keep':
+                if null_number > 0:
+                    sdf = sdf.withColumn(column_name,
+                                         F.when(sdf[column_name + '_tmp'].isNull(), F.lit(None))
+                                         .otherwise(sdf[column_name] - null_number))
 
             if pct:
                 max_value = sdf.agg({column_name: 'max'}).collect()[0][0]

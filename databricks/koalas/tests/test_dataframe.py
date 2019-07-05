@@ -959,7 +959,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame(data={'col1': [1, None, 2, 3, 1], 'col2': [3, 4, None, 3, 1]},
                            columns=['col1', 'col2'])
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.rank(na_option='top'), kdf.rank(na_option='top').sort_index())
+        self.assert_eq(pdf.rank(), kdf.rank().sort_index())
         self.assert_eq(pdf.rank(na_option='bottom'), kdf.rank(na_option='bottom').sort_index())
         self.assert_eq(pdf.rank(na_option='top', ascending=False),
                        kdf.rank(na_option='top', ascending=False).sort_index())
