@@ -33,7 +33,6 @@ else:
     from pandas.core.dtypes.common import _get_dtype_from_object as infer_dtype_from_object
 from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
-from pyspark.sql.window import Window
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType, StructType)
@@ -4718,242 +4717,25 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return DataFrame(internal).astype('float64')
 
     def _cum(self, func, skipna: bool):
+        # This is used for cummin, cummax, cumxum, etc.
+        if func == F.min:
+            func = "cummin"
+        elif func == F.max:
+            func = "cummax"
+        elif func == F.sum:
+            func = "cumsum"
+
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
 
-        index_columns = self._internal.index_columns
-        data_columns = self._internal.data_columns
-        window = Window.orderBy(
-            index_columns).rowsBetween(Window.unboundedPreceding, Window.currentRow)
-        sdf = self._sdf
+        applied = []
+        for column in self._internal.data_columns:
+            applied.append(getattr(self[column], func)(skipna))
 
-        for column_name in data_columns:
-            # It defines another column that holds true or false for nulls first.
-            is_null_column = "%s_isnull" % column_name
-            sdf = sdf.withColumn(is_null_column, sdf[column_name].isNull())
-
-            if skipna:
-                # There is a behavior difference between pandas and PySpark. In case of cummax,
-                #
-                # Input:
-                #      A    B
-                # 0  2.0  1.0
-                # 1  5.0  NaN
-                # 2  1.0  0.0
-                # 3  2.0  4.0
-                # 4  4.0  9.0
-                #
-                # pandas:
-                #      A    B
-                # 0  2.0  1.0
-                # 1  5.0  NaN
-                # 2  5.0  1.0
-                # 3  5.0  4.0
-                # 4  5.0  9.0
-                #
-                # PySpark:
-                #      A    B
-                # 0  2.0  1.0
-                # 1  5.0  1.0
-                # 2  5.0  1.0
-                # 3  5.0  4.0
-                # 4  5.0  9.0
-
-                # After going through the windows,
-                sdf = sdf.withColumn(column_name, func(column_name).over(window))
-
-                # Manually sets nulls given the column defined above.
-                sdf = sdf.withColumn(
-                    column_name,
-                    F.when(sdf[is_null_column], F.lit(None)).otherwise(sdf[column_name]))
-            else:
-                # Here, we use two Windows.
-                # One for real data.
-                # The other one for setting nulls after the first null it meets.
-                #
-                # There is a behavior difference between pandas and PySpark. In case of cummax,
-                #
-                # Input:
-                #      A    B
-                # 0  2.0  1.0
-                # 1  5.0  NaN
-                # 2  1.0  0.0
-                # 3  2.0  4.0
-                # 4  4.0  9.0
-                #
-                # pandas:
-                #      A    B
-                # 0  2.0  1.0
-                # 1  5.0  NaN
-                # 2  5.0  NaN
-                # 3  5.0  NaN
-                # 4  5.0  NaN
-                #
-                # PySpark:
-                #      A    B
-                # 0  2.0  1.0
-                # 1  5.0  1.0
-                # 2  5.0  1.0
-                # 3  5.0  4.0
-                # 4  5.0  9.0
-                sdf = sdf.withColumn(column_name, func(column_name).over(window))
-
-                # By going through with max, it sets True after the first time it meets null.
-                sdf = sdf.withColumn(is_null_column, F.max(is_null_column).over(window))
-
-                # Manually sets nulls given the column defined above.
-                sdf = sdf.withColumn(
-                    column_name,
-                    F.when(sdf[is_null_column], F.lit(None)).otherwise(sdf[column_name]))
-
-        return DataFrame(self._internal.copy(sdf=sdf.select(index_columns + data_columns)))
-
-    # TODO: add 'axis' parameter
-    def cummin(self, skipna: bool = True):
-        """
-        Return cumulative minimum over a DataFrame axis.
-
-        Returns a DataFrame of the same size containing the cumulative minimum.
-
-        .. note:: the current implementation of cummin uses Spark's Window without
-            specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
-
-        Parameters
-        ----------
-        skipna : boolean, default True
-            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
-
-        Returns
-        -------
-        DataFrame
-
-        See Also
-        --------
-        DataFrame.min : Return the minimum over DataFrame axis.
-        DataFrame.cummax : Return cumulative maximum over DataFrame axis.
-        DataFrame.cummin : Return cumulative minimum over DataFrame axis.
-        DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame([[2.0, 1.0],
-        ...                    [3.0, None],
-        ...                    [1.0, 0.0]],
-        ...                    columns=list('AB'))
-        >>> df
-             A    B
-        0  2.0  1.0
-        1  3.0  NaN
-        2  1.0  0.0
-
-        By default, iterates over rows and finds the minimum in each column.
-
-        >>> df.cummin()
-             A    B
-        0  2.0  1.0
-        1  2.0  NaN
-        2  1.0  0.0
-        """
-        return self._cum(F.min, skipna)
-
-    # TODO: add 'axis' parameter
-    def cummax(self, skipna: bool = True):
-        """
-        Return cumulative maximum over a DataFrame axis.
-
-        Returns a DataFrame of the same size containing the cumulative maximum.
-
-        .. note:: the current implementation of cummax uses Spark's Window without
-            specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
-
-        Parameters
-        ----------
-        skipna : boolean, default True
-            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
-
-        Returns
-        -------
-        DataFrame
-
-        See Also
-        --------
-        DataFrame.max : Return the maximum over DataFrame axis.
-        DataFrame.cummax : Return cumulative maximum over DataFrame axis.
-        DataFrame.cummin : Return cumulative minimum over DataFrame axis.
-        DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
-        >>> df
-             A    B
-        0  2.0  1.0
-        1  3.0  NaN
-        2  1.0  0.0
-
-        By default, iterates over rows and finds the maximum in each column.
-
-        >>> df.cummax()
-             A    B
-        0  2.0  1.0
-        1  3.0  NaN
-        2  3.0  1.0
-        """
-        return self._cum(F.max, skipna)
-
-    # TODO: add 'axis' parameter
-    def cumsum(self, skipna: bool = True):
-        """
-        Return cumulative sum over a DataFrame axis.
-
-        Returns a DataFrame of the same size containing the cumulative sum.
-
-        .. note:: the current implementation of cumsum uses Spark's Window without
-            specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
-
-        Parameters
-        ----------
-        skipna : boolean, default True
-            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
-
-        Returns
-        -------
-        DataFrame
-
-        See Also
-        --------
-        DataFrame.sum : Return the sum over DataFrame axis.
-        DataFrame.cummax : Return cumulative maximum over DataFrame axis.
-        DataFrame.cummin : Return cumulative minimum over DataFrame axis.
-        DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame([[2.0, 1.0],
-        ...                    [3.0, None],
-        ...                    [1.0, 0.0]],
-        ...                    columns=list('AB'))
-        >>> df
-             A    B
-        0  2.0  1.0
-        1  3.0  NaN
-        2  1.0  0.0
-
-        By default, iterates over rows and finds the sum in each column.
-
-        >>> df.cumsum()
-             A    B
-        0  2.0  1.0
-        1  5.0  NaN
-        2  6.0  1.0
-        """
-        return self._cum(F.sum, skipna)
+        sdf = self._sdf.select(
+            self._internal.index_columns + [c._scol for c in applied])
+        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
 
     # TODO: implements 'keep' parameters
     def drop_duplicates(self, subset=None, inplace=False):

@@ -455,3 +455,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['a'].hist()
         self.assert_eq(plot_to_base64(ax1), plot_to_base64(ax2))
+
+    def test_cummin(self):
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.cummin()), repr(kser.cummin()))
+        self.assertEqual(repr(pser.cummin(skipna=False)), repr(kser.cummin(skipna=False)))
+
+    def test_cummax(self):
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.cummax()), repr(kser.cummax()))
+        self.assertEqual(repr(pser.cummax(skipna=False)), repr(kser.cummax(skipna=False)))
+
+    def test_cumsum(self):
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.cumsum()), repr(kser.cumsum()))
+        self.assertEqual(repr(pser.cumsum(skipna=False)), repr(kser.cumsum(skipna=False)))
