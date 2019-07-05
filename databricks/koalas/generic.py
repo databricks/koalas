@@ -992,7 +992,7 @@ class _Frame(object):
         >>> ks.Series([False]).bool()
         False
 
-        If there are non-boolean or multiple values exist, it raise an exception in all
+        If there are non-boolean or multiple values exist, it raises an exception in all
         cases as below.
 
         >>> ks.DataFrame({'a': ['a']}).bool()
