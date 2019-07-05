@@ -25,7 +25,6 @@ from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar
 
 import numpy as np
 import pandas as pd
-import pyspark.sql.functions as F
 from pandas.api.types import is_list_like, is_dict_like
 from pandas.core.dtypes.common import infer_dtype_from_object
 from pandas.core.dtypes.inference import is_sequence
