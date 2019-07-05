@@ -5011,7 +5011,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(internal)
 
-    # TODO: add axis, numeric_only, method='keep' parameter
+    # TODO: add axis, numeric_only parameter
     def rank(self, method='average', na_option='keep', ascending=True, pct=False):
         """
         Compute numerical data ranks (1 through n) along axis. Equal values are
