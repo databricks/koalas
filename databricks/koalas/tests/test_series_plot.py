@@ -284,3 +284,22 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*Series.*{}.*not implemented".format(name)):
                 getattr(ks.plot, name)()
+
+    def test_empty_hist(self):
+        pdf = self.pdf1.assign(categorical='A')
+        kdf = koalas.from_pandas(pdf)
+        ks = kdf['categorical']
+
+        with self.assertRaisesRegex(TypeError,
+                                    "Empty 'DataFrame': no numeric data to plot"):
+            ks.plot.hist()
+
+    def test_single_value_hist(self):
+        pdf = self.pdf1.assign(single=2)
+        kdf = koalas.from_pandas(pdf)
+
+        _, ax1 = plt.subplots(1, 1)
+        ax1 = pdf['single'].plot.hist()
+        _, ax2 = plt.subplots(1, 1)
+        ax2 = kdf['single'].plot.hist()
+        self.compare_plots(ax1, ax2)

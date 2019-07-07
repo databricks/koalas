@@ -407,6 +407,9 @@ class KoalasHistPlotSummary:
                       .map(tuple)
                       .collect()[0])
         # divides the boundaries into bins
+        if boundaries[0] == boundaries[1]:
+            boundaries = (boundaries[0] - 0.5, boundaries[1] + 0.5)
+
         return np.linspace(boundaries[0], boundaries[1], n_bins + 1)
 
     def calc_histogram(self, bins):
@@ -438,6 +441,22 @@ class KoalasHistPlotSummary:
 
 class KoalasHistPlot(HistPlot):
     def _args_adjust(self):
+        from databricks.koalas.series import Series
+
+        data = self.data
+        if isinstance(data, Series):
+            data = data.to_frame()
+
+        numeric_data = data.select_dtypes(include=['byte', 'decimal', 'integer', 'float',
+                                                   'long', 'double', np.datetime64])
+
+        is_empty = not len(numeric_data.columns)
+
+        # no empty frames or series allowed
+        if is_empty:
+            raise TypeError('Empty {0!r}: no numeric data to '
+                            'plot'.format(numeric_data.__class__.__name__))
+
         if is_integer(self.bins):
             summary = KoalasHistPlotSummary(self.data, self.data.name)
             # computes boundaries for the column
