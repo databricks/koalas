@@ -3245,7 +3245,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     self._sdf.schema[col].dataType in exclude_spark_type)
 
             if should_include:
-                columns += col
+                columns.append(col)
 
         return DataFrame(self._internal.copy(
             sdf=self._sdf.select(self._internal.index_columns + columns), data_columns=columns))
