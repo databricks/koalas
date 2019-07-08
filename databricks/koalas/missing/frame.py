@@ -53,7 +53,6 @@ class _MissingPandasLikeDataFrame(object):
     at_time = unsupported_function('at_time')
     between_time = unsupported_function('between_time')
     bfill = unsupported_function('bfill')
-    bool = unsupported_function('bool')
     boxplot = unsupported_function('boxplot')
     combine = unsupported_function('combine')
     combine_first = unsupported_function('combine_first')

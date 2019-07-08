@@ -41,6 +41,7 @@ Conversion
    DataFrame.isnull
    DataFrame.notna
    DataFrame.notnull
+   DataFrame.bool
 
 Indexing, iteration
 -------------------

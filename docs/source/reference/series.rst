@@ -37,6 +37,7 @@ Conversion
    :toctree: api/
 
    Series.astype
+   Series.bool
 
 Indexing, iteration
 -------------------

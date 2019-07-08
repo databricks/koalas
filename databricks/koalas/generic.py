@@ -1154,6 +1154,49 @@ class _Frame(object):
         raise TypeError('Constructor expects DataFrame or Series; however, '
                         'got [%s]' % (df_or_s,))
 
+    def bool(self):
+        """
+        Return the bool of a single element PandasObject.
+
+        This must be a boolean scalar value, either True or False. Raise a ValueError if
+        the PandasObject does not have exactly 1 element, or that element is not boolean
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [True]}).bool()
+        True
+
+        >>> ks.Series([False]).bool()
+        False
+
+        If there are non-boolean or multiple values exist, it raises an exception in all
+        cases as below.
+
+        >>> ks.DataFrame({'a': ['a']}).bool()
+        Traceback (most recent call last):
+          ...
+        ValueError: bool cannot act on a non-boolean single element DataFrame
+
+        >>> ks.DataFrame({'a': [True], 'b': [False]}).bool()  # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+          ...
+        ValueError: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(),
+        a.item(), a.any() or a.all().
+
+        >>> ks.Series([1]).bool()
+        Traceback (most recent call last):
+          ...
+        ValueError: bool cannot act on a non-boolean single element DataFrame
+        """
+        if isinstance(self, ks.DataFrame):
+            df = self
+        elif isinstance(self, ks.Series):
+            df = self.to_dataframe()
+        else:
+            raise TypeError('bool() expects DataFrame or Series; however, '
+                            'got [%s]' % (self,))
+        return df.head(2).to_pandas().bool()
+
     @property
     def at(self):
         return AtIndexer(self)

@@ -67,7 +67,6 @@ class _MissingPandasLikeSeries(object):
     between = unsupported_function('between')
     between_time = unsupported_function('between_time')
     bfill = unsupported_function('bfill')
-    bool = unsupported_function('bool')
     combine = unsupported_function('combine')
     combine_first = unsupported_function('combine_first')
     compound = unsupported_function('compound')
