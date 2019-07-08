@@ -5011,6 +5011,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(internal)
 
+    def to_csv(self, path_or_buf=None, sep=",", na_rep='', float_format=None,
+               columns=None, header=True, index=True, index_label=None,
+               mode='w', encoding=None, compression='infer', quoting=None,
+               quotechar='"', line_terminator="\n", chunksize=None,
+               tupleize_cols=None, date_format=None, doublequote=True,
+               escapechar=None, decimal='.'):
+        return
+
     def melt(self, id_vars=None, value_vars=None, var_name='variable',
              value_name='value'):
         """
