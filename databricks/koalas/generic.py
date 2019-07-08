@@ -43,6 +43,183 @@ class _Frame(object):
     def __init__(self, internal: _InternalFrame):
         self._internal = internal  # type: _InternalFrame
 
+    # TODO: add 'axis' parameter
+    def cummin(self, skipna: bool = True):
+        """
+        Return cumulative minimum over a DataFrame or Series axis.
+
+        Returns a DataFrame or Series of the same size containing the cumulative minimum.
+
+        .. note:: the current implementation of cummin uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        skipna : boolean, default True
+            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
+
+        Returns
+        -------
+        DataFrame or Series
+
+        See Also
+        --------
+        DataFrame.min : Return the minimum over DataFrame axis.
+        DataFrame.cummax : Return cumulative maximum over DataFrame axis.
+        DataFrame.cummin : Return cumulative minimum over DataFrame axis.
+        DataFrame.cumsum : Return cumulative sum over DataFrame axis.
+        Series.min : Return the minimum over Series axis.
+        Series.cummax : Return cumulative maximum over Series axis.
+        Series.cummin : Return cumulative minimum over Series axis.
+        Series.cumsum : Return cumulative sum over Series axis.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        >>> df
+             A    B
+        0  2.0  1.0
+        1  3.0  NaN
+        2  1.0  0.0
+
+        By default, iterates over rows and finds the minimum in each column.
+
+        >>> df.cummin()
+             A    B
+        0  2.0  1.0
+        1  2.0  NaN
+        2  1.0  0.0
+
+        It works identically in Series.
+
+        >>> df.A.cummin()
+        0    2.0
+        1    2.0
+        2    1.0
+        Name: A, dtype: float64
+        """
+        return self._cum(F.min, skipna)  # type: ignore
+
+    # TODO: add 'axis' parameter
+    def cummax(self, skipna: bool = True):
+        """
+        Return cumulative maximum over a DataFrame or Series axis.
+
+        Returns a DataFrame or Series of the same size containing the cumulative maximum.
+
+        .. note:: the current implementation of cummax uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        skipna : boolean, default True
+            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
+
+        Returns
+        -------
+        DataFrame or Series
+
+        See Also
+        --------
+        DataFrame.max : Return the maximum over DataFrame axis.
+        DataFrame.cummax : Return cumulative maximum over DataFrame axis.
+        DataFrame.cummin : Return cumulative minimum over DataFrame axis.
+        DataFrame.cumsum : Return cumulative sum over DataFrame axis.
+        Series.max : Return the maximum over DataFrame axis.
+        Series.cummax : Return cumulative maximum over DataFrame axis.
+        Series.cummin : Return cumulative minimum over DataFrame axis.
+        Series.cumsum : Return cumulative sum over DataFrame axis.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        >>> df
+             A    B
+        0  2.0  1.0
+        1  3.0  NaN
+        2  1.0  0.0
+
+        By default, iterates over rows and finds the maximum in each column.
+
+        >>> df.cummax()
+             A    B
+        0  2.0  1.0
+        1  3.0  NaN
+        2  3.0  1.0
+
+        It works identically in Series.
+
+        >>> df.B.cummax()
+        0    1.0
+        1    NaN
+        2    1.0
+        Name: B, dtype: float64
+        """
+        return self._cum(F.max, skipna)  # type: ignore
+
+    # TODO: add 'axis' parameter
+    def cumsum(self, skipna: bool = True):
+        """
+        Return cumulative sum over a DataFrame or Series axis.
+
+        Returns a DataFrame or Series of the same size containing the cumulative sum.
+
+        .. note:: the current implementation of cumsum uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        skipna : boolean, default True
+            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
+
+        Returns
+        -------
+        DataFrame or Series
+
+        See Also
+        --------
+        DataFrame.sum : Return the sum over DataFrame axis.
+        DataFrame.cummax : Return cumulative maximum over DataFrame axis.
+        DataFrame.cummin : Return cumulative minimum over DataFrame axis.
+        DataFrame.cumsum : Return cumulative sum over DataFrame axis.
+        Series.sum : Return the sum over DataFrame axis.
+        Series.cummax : Return cumulative maximum over DataFrame axis.
+        Series.cummin : Return cumulative minimum over DataFrame axis.
+        Series.cumsum : Return cumulative sum over DataFrame axis.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
+        >>> df
+             A    B
+        0  2.0  1.0
+        1  3.0  NaN
+        2  1.0  0.0
+
+        By default, iterates over rows and finds the sum in each column.
+
+        >>> df.cumsum()
+             A    B
+        0  2.0  1.0
+        1  5.0  NaN
+        2  6.0  1.0
+
+        It works identically in Series.
+
+        >>> df.A.cumsum()
+        0    2.0
+        1    5.0
+        2    6.0
+        Name: A, dtype: float64
+        """
+        return self._cum(F.sum, skipna)  # type: ignore
+
     def get_dtype_counts(self):
         """
         Return counts of unique dtypes in this object.
