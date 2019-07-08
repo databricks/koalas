@@ -2130,6 +2130,25 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition_cols,
                                 compression=compression)
 
+    def to_csv(path_or_buf=None, sep=', ', na_rep='', float_format=None,
+               columns=None, header=True, index=True, index_label=None,
+               mode='w', encoding=None, compression=None, quoting=None,
+               quotechar='"', line_terminator='\n', chunksize=None,
+               tupleize_cols=None, date_format=None, doublequote=True,
+               escapechar=None, decimal='.'):
+
+        if columns is not None:
+            self
+        if index:
+            sdf = sdf.select(self._internal.columns)
+        else:
+            sdf = sdf.select(self._internal.data_columns)
+
+        self._sdf.write.csv(path=path_or_buf, sep=sep,
+                            nullValue=na_rep, header=header, encoding=encoding,
+                            , compression=compression,quote=quotechar,
+       dateFormat=date_format,)
+
     def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
                     mode: str = 'error', partition_cols: Union[str, List[str], None] = None,
                     **options):
