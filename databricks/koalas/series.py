@@ -1944,6 +1944,36 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return self._reduce_for_stat_function(_Frame._count_expr)
 
+    def median(self, accuracy=10000):
+        """
+        Return the median of the values for the requested axis.
+
+        .. note:: Unlike pandas', the median in Koalas is an approximated median based upon
+            approximate percentile computation because computing median across a large dataset
+            is extremely expensive.
+
+        Parameters
+        ----------
+        accuracy : int, optional
+            Default accuracy of approximation. Larger value means better accuracy.
+            The relative error can be deduced by 1.0 / accuracy
+
+        Returns
+        -------
+        median : scalar
+
+        Examples
+        -------
+        >>> ks.Series([24., 21., 25., 33., 26.]).median()
+        25.0
+
+        """
+        if not isinstance(accuracy, int):
+            raise ValueError("actually must be an integer; however, got [%s]" % type(accuracy))
+
+        return self._reduce_for_stat_function(
+            lambda _: F.expr("approx_percentile(`%s`, 0.5, %s)" % (self.name, accuracy)))
+
     def append(self, to_append: 'Series', ignore_index: bool = False,
                verify_integrity: bool = False) -> 'Series':
         """
