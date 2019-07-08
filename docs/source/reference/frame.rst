@@ -148,6 +148,7 @@ Reshaping, sorting, transposing
    :toctree: api/
 
    DataFrame.pivot_table
+   DataFrame.pivot
    DataFrame.sort_index
    DataFrame.sort_values
    DataFrame.nlargest

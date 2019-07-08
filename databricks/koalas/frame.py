@@ -3038,6 +3038,114 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             return DataFrame(sdf.withColumn(columns, F.lit(index_values))).set_index(columns)
 
+    def pivot(self, index=None, columns=None, values=None):
+        """
+        Return reshaped DataFrame organized by given index / column values.
+
+        Reshape data (produce a "pivot" table) based on column values. Uses
+        unique values from specified `index` / `columns` to form axes of the
+        resulting DataFrame. This function does not support data
+        aggregation.
+
+        Parameters
+        ----------
+        index : string, optional
+            Column to use to make new frame's index. If None, uses
+            existing index.
+        columns : string
+            Column to use to make new frame's columns.
+        values : string, object or a list of the previous
+            Column(s) to use for populating new frame's values.
+        Returns
+        -------
+        DataFrame
+            Returns reshaped DataFrame.
+
+        See Also
+        --------
+        DataFrame.pivot_table : Generalization of pivot that can handle
+            duplicate values for one index/column pair.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'foo': ['one', 'one', 'one', 'two', 'two',
+        ...                            'two'],
+        ...                    'bar': ['A', 'B', 'C', 'A', 'B', 'C'],
+        ...                    'baz': [1, 2, 3, 4, 5, 6],
+        ...                    'zoo': ['x', 'y', 'z', 'q', 'w', 't']},
+        ...                   columns=['foo', 'bar', 'baz', 'zoo'])
+        >>> df
+           foo bar  baz zoo
+        0  one   A    1   x
+        1  one   B    2   y
+        2  one   C    3   z
+        3  two   A    4   q
+        4  two   B    5   w
+        5  two   C    6   t
+
+        >>> df.pivot(index='foo', columns='bar', values='baz').sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+             A  B  C
+        foo
+        one  1  2  3
+        two  4  5  6
+
+        >>> df.pivot(columns='bar', values='baz').sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+             A    B    C
+        0  1.0  NaN  NaN
+        1  NaN  2.0  NaN
+        2  NaN  NaN  3.0
+        3  4.0  NaN  NaN
+        4  NaN  5.0  NaN
+        5  NaN  NaN  6.0
+
+        Notice that, unlike pandas raises an ValueError when duplicated values are found,
+        Koalas' pivot still works with its first value it meets during operation because pivot
+        is an expensive operation and it is preferred to permissively execute over failing fast
+        when processing large data.
+
+        >>> df = ks.DataFrame({"foo": ['one', 'one', 'two', 'two'],
+        ...                    "bar": ['A', 'A', 'B', 'C'],
+        ...                    "baz": [1, 2, 3, 4]}, columns=['foo', 'bar', 'baz'])
+        >>> df
+           foo bar  baz
+        0  one   A    1
+        1  one   A    2
+        2  two   B    3
+        3  two   C    4
+
+        >>> df.pivot(index='foo', columns='bar', values='baz').sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+               A    B    C
+        foo
+        one  1.0  NaN  NaN
+        two  NaN  3.0  4.0
+        """
+        if columns is None:
+            raise ValueError("columns should be set.")
+
+        if values is None:
+            raise ValueError("values should be set.")
+
+        should_use_existing_index = index is not None
+        if should_use_existing_index:
+            index = [index]
+        else:
+            index = self._internal.index_columns
+
+        df = self.pivot_table(
+            index=index, columns=columns, values=values, aggfunc='first')
+
+        if should_use_existing_index:
+            return df
+        else:
+            index_columns = df._internal.index_columns
+            # Note that the existing indexing column won't exist in the pivoted DataFrame.
+            internal = df._internal.copy(
+                index_map=[(index_column, None) for index_column in index_columns])
+            return DataFrame(internal)
+
     @property
     def columns(self):
         """The column labels of the DataFrame."""

@@ -91,7 +91,6 @@ class _MissingPandasLikeDataFrame(object):
     median = unsupported_function('median')
     mode = unsupported_function('mode')
     pct_change = unsupported_function('pct_change')
-    pivot = unsupported_function('pivot')
     pop = unsupported_function('pop')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
