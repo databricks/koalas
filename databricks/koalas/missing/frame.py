@@ -96,8 +96,6 @@ class _MissingPandasLikeDataFrame(object):
     product = unsupported_function('product')
     quantile = unsupported_function('quantile')
     query = unsupported_function('query')
-    reindex = unsupported_function('reindex')
-    rank = unsupported_function('rank')
     reindex_axis = unsupported_function('reindex_axis')
     reindex_like = unsupported_function('reindex_like')
     rename = unsupported_function('rename')
