@@ -1035,4 +1035,3 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=['numbers', '2', '3'], axis=2))
         self.assertRaises(TypeError, lambda: kdf.reindex(index=['A', 'B', 'C'], axis=1))
         self.assertRaises(TypeError, lambda: kdf.reindex(index=123))
-        
