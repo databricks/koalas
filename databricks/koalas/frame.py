@@ -5282,7 +5282,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._internal.copy(
             sdf=sdf,
             data_columns=label_columns)
->>>>>>> master
 
     def melt(self, id_vars=None, value_vars=None, var_name='variable',
              value_name='value'):
