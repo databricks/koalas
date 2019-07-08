@@ -41,6 +41,7 @@ Conversion
    DataFrame.isnull
    DataFrame.notna
    DataFrame.notnull
+   DataFrame.bool
 
 Indexing, iteration
 -------------------
@@ -149,6 +150,7 @@ Reshaping, sorting, transposing
    :toctree: api/
 
    DataFrame.pivot_table
+   DataFrame.pivot
    DataFrame.sort_index
    DataFrame.sort_values
    DataFrame.nlargest
@@ -156,6 +158,7 @@ Reshaping, sorting, transposing
    DataFrame.melt
    DataFrame.T
    DataFrame.transpose
+   DataFrame.reindex
 
 Combining / joining / merging
 -----------------------------

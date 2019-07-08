@@ -29,6 +29,7 @@ from pandas.core.accessor import CachedAccessor
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import BooleanType, StructType
+from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
@@ -2256,6 +2257,87 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return _col(self.to_dataframe().describe(percentiles))
 
     describe.__doc__ = DataFrame.describe.__doc__
+
+    def _cum(self, func, skipna):
+        # This is used to cummin, cummax, cumsum, etc.
+        if len(self._internal.index_columns) == 0:
+            raise ValueError("Index must be set.")
+
+        index_columns = self._internal.index_columns
+        window = Window.orderBy(
+            index_columns).rowsBetween(Window.unboundedPreceding, Window.currentRow)
+
+        column_name = self.name
+
+        if skipna:
+            # There is a behavior difference between pandas and PySpark. In case of cummax,
+            #
+            # Input:
+            #      A    B
+            # 0  2.0  1.0
+            # 1  5.0  NaN
+            # 2  1.0  0.0
+            # 3  2.0  4.0
+            # 4  4.0  9.0
+            #
+            # pandas:
+            #      A    B
+            # 0  2.0  1.0
+            # 1  5.0  NaN
+            # 2  5.0  1.0
+            # 3  5.0  4.0
+            # 4  5.0  9.0
+            #
+            # PySpark:
+            #      A    B
+            # 0  2.0  1.0
+            # 1  5.0  1.0
+            # 2  5.0  1.0
+            # 3  5.0  4.0
+            # 4  5.0  9.0
+
+            scol = F.when(
+                # Manually sets nulls given the column defined above.
+                F.col(column_name).isNull(), F.lit(None)
+            ).otherwise(func(column_name).over(window))
+        else:
+            # Here, we use two Windows.
+            # One for real data.
+            # The other one for setting nulls after the first null it meets.
+            #
+            # There is a behavior difference between pandas and PySpark. In case of cummax,
+            #
+            # Input:
+            #      A    B
+            # 0  2.0  1.0
+            # 1  5.0  NaN
+            # 2  1.0  0.0
+            # 3  2.0  4.0
+            # 4  4.0  9.0
+            #
+            # pandas:
+            #      A    B
+            # 0  2.0  1.0
+            # 1  5.0  NaN
+            # 2  5.0  NaN
+            # 3  5.0  NaN
+            # 4  5.0  NaN
+            #
+            # PySpark:
+            #      A    B
+            # 0  2.0  1.0
+            # 1  5.0  1.0
+            # 2  5.0  1.0
+            # 3  5.0  4.0
+            # 4  5.0  9.0
+            scol = F.when(
+                # By going through with max, it sets True after the first time it meets null.
+                F.max(F.col(column_name).isNull()).over(window),
+                # Manually sets nulls given the column defined above.
+                F.lit(None)
+            ).otherwise(func(column_name).over(window))
+
+        return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
 
     # ----------------------------------------------------------------------
     # Accessor Methods

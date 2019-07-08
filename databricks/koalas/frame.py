@@ -17,6 +17,7 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
+from distutils.version import LooseVersion
 import re
 import warnings
 from functools import partial, reduce
@@ -26,10 +27,12 @@ from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like
-from pandas.core.dtypes.common import infer_dtype_from_object
+if LooseVersion(pd.__version__) >= LooseVersion('0.24'):
+    from pandas.core.dtypes.common import infer_dtype_from_object
+else:
+    from pandas.core.dtypes.common import _get_dtype_from_object as infer_dtype_from_object
 from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
-from pyspark.sql.window import Window
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType, StructType)
@@ -38,7 +41,7 @@ from pyspark.sql.utils import AnalysisException
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 from databricks.koalas.generic import _Frame, max_display_count
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 
@@ -2758,7 +2761,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise ValueError('Length of to_replace and value must be same')
 
         sdf = self._sdf.select(self._internal.data_columns)
-        if isinstance(to_replace, dict):
+        if isinstance(to_replace, dict) and value is None and \
+                (not any(isinstance(i, dict) for i in to_replace.values())):
+            sdf = sdf.replace(to_replace, value, subset)
+        elif isinstance(to_replace, dict):
             for df_column, replacement in to_replace.items():
                 if isinstance(replacement, dict):
                     sdf = sdf.replace(replacement, subset=df_column)
@@ -2994,7 +3000,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                              "to aggregate functions (string).")
 
         if isinstance(aggfunc, dict) and index is None:
-            raise NotImplementedError("pivot_table doesn't support aggfuct"
+            raise NotImplementedError("pivot_table doesn't support aggfunc"
                                       " as dict and without index.")
 
         if isinstance(values, list) and len(values) > 1:
@@ -3031,6 +3037,114 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 index_values = values
 
             return DataFrame(sdf.withColumn(columns, F.lit(index_values))).set_index(columns)
+
+    def pivot(self, index=None, columns=None, values=None):
+        """
+        Return reshaped DataFrame organized by given index / column values.
+
+        Reshape data (produce a "pivot" table) based on column values. Uses
+        unique values from specified `index` / `columns` to form axes of the
+        resulting DataFrame. This function does not support data
+        aggregation.
+
+        Parameters
+        ----------
+        index : string, optional
+            Column to use to make new frame's index. If None, uses
+            existing index.
+        columns : string
+            Column to use to make new frame's columns.
+        values : string, object or a list of the previous
+            Column(s) to use for populating new frame's values.
+        Returns
+        -------
+        DataFrame
+            Returns reshaped DataFrame.
+
+        See Also
+        --------
+        DataFrame.pivot_table : Generalization of pivot that can handle
+            duplicate values for one index/column pair.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'foo': ['one', 'one', 'one', 'two', 'two',
+        ...                            'two'],
+        ...                    'bar': ['A', 'B', 'C', 'A', 'B', 'C'],
+        ...                    'baz': [1, 2, 3, 4, 5, 6],
+        ...                    'zoo': ['x', 'y', 'z', 'q', 'w', 't']},
+        ...                   columns=['foo', 'bar', 'baz', 'zoo'])
+        >>> df
+           foo bar  baz zoo
+        0  one   A    1   x
+        1  one   B    2   y
+        2  one   C    3   z
+        3  two   A    4   q
+        4  two   B    5   w
+        5  two   C    6   t
+
+        >>> df.pivot(index='foo', columns='bar', values='baz').sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+             A  B  C
+        foo
+        one  1  2  3
+        two  4  5  6
+
+        >>> df.pivot(columns='bar', values='baz').sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+             A    B    C
+        0  1.0  NaN  NaN
+        1  NaN  2.0  NaN
+        2  NaN  NaN  3.0
+        3  4.0  NaN  NaN
+        4  NaN  5.0  NaN
+        5  NaN  NaN  6.0
+
+        Notice that, unlike pandas raises an ValueError when duplicated values are found,
+        Koalas' pivot still works with its first value it meets during operation because pivot
+        is an expensive operation and it is preferred to permissively execute over failing fast
+        when processing large data.
+
+        >>> df = ks.DataFrame({"foo": ['one', 'one', 'two', 'two'],
+        ...                    "bar": ['A', 'A', 'B', 'C'],
+        ...                    "baz": [1, 2, 3, 4]}, columns=['foo', 'bar', 'baz'])
+        >>> df
+           foo bar  baz
+        0  one   A    1
+        1  one   A    2
+        2  two   B    3
+        3  two   C    4
+
+        >>> df.pivot(index='foo', columns='bar', values='baz').sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+               A    B    C
+        foo
+        one  1.0  NaN  NaN
+        two  NaN  3.0  4.0
+        """
+        if columns is None:
+            raise ValueError("columns should be set.")
+
+        if values is None:
+            raise ValueError("values should be set.")
+
+        should_use_existing_index = index is not None
+        if should_use_existing_index:
+            index = [index]
+        else:
+            index = self._internal.index_columns
+
+        df = self.pivot_table(
+            index=index, columns=columns, values=values, aggfunc='first')
+
+        if should_use_existing_index:
+            return df
+        else:
+            index_columns = df._internal.index_columns
+            # Note that the existing indexing column won't exist in the pivoted DataFrame.
+            internal = df._internal.copy(
+                index_map=[(index_column, None) for index_column in index_columns])
+            return DataFrame(internal)
 
     @property
     def columns(self):
@@ -4714,242 +4828,25 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return DataFrame(internal).astype('float64')
 
     def _cum(self, func, skipna: bool):
+        # This is used for cummin, cummax, cumxum, etc.
+        if func == F.min:
+            func = "cummin"
+        elif func == F.max:
+            func = "cummax"
+        elif func == F.sum:
+            func = "cumsum"
+
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
 
-        index_columns = self._internal.index_columns
-        data_columns = self._internal.data_columns
-        window = Window.orderBy(
-            index_columns).rowsBetween(Window.unboundedPreceding, Window.currentRow)
-        sdf = self._sdf
+        applied = []
+        for column in self._internal.data_columns:
+            applied.append(getattr(self[column], func)(skipna))
 
-        for column_name in data_columns:
-            # It defines another column that holds true or false for nulls first.
-            is_null_column = "%s_isnull" % column_name
-            sdf = sdf.withColumn(is_null_column, sdf[column_name].isNull())
-
-            if skipna:
-                # There is a behavior difference between pandas and PySpark. In case of cummax,
-                #
-                # Input:
-                #      A    B
-                # 0  2.0  1.0
-                # 1  5.0  NaN
-                # 2  1.0  0.0
-                # 3  2.0  4.0
-                # 4  4.0  9.0
-                #
-                # pandas:
-                #      A    B
-                # 0  2.0  1.0
-                # 1  5.0  NaN
-                # 2  5.0  1.0
-                # 3  5.0  4.0
-                # 4  5.0  9.0
-                #
-                # PySpark:
-                #      A    B
-                # 0  2.0  1.0
-                # 1  5.0  1.0
-                # 2  5.0  1.0
-                # 3  5.0  4.0
-                # 4  5.0  9.0
-
-                # After going through the windows,
-                sdf = sdf.withColumn(column_name, func(column_name).over(window))
-
-                # Manually sets nulls given the column defined above.
-                sdf = sdf.withColumn(
-                    column_name,
-                    F.when(sdf[is_null_column], F.lit(None)).otherwise(sdf[column_name]))
-            else:
-                # Here, we use two Windows.
-                # One for real data.
-                # The other one for setting nulls after the first null it meets.
-                #
-                # There is a behavior difference between pandas and PySpark. In case of cummax,
-                #
-                # Input:
-                #      A    B
-                # 0  2.0  1.0
-                # 1  5.0  NaN
-                # 2  1.0  0.0
-                # 3  2.0  4.0
-                # 4  4.0  9.0
-                #
-                # pandas:
-                #      A    B
-                # 0  2.0  1.0
-                # 1  5.0  NaN
-                # 2  5.0  NaN
-                # 3  5.0  NaN
-                # 4  5.0  NaN
-                #
-                # PySpark:
-                #      A    B
-                # 0  2.0  1.0
-                # 1  5.0  1.0
-                # 2  5.0  1.0
-                # 3  5.0  4.0
-                # 4  5.0  9.0
-                sdf = sdf.withColumn(column_name, func(column_name).over(window))
-
-                # By going through with max, it sets True after the first time it meets null.
-                sdf = sdf.withColumn(is_null_column, F.max(is_null_column).over(window))
-
-                # Manually sets nulls given the column defined above.
-                sdf = sdf.withColumn(
-                    column_name,
-                    F.when(sdf[is_null_column], F.lit(None)).otherwise(sdf[column_name]))
-
-        return DataFrame(self._internal.copy(sdf=sdf.select(index_columns + data_columns)))
-
-    # TODO: add 'axis' parameter
-    def cummin(self, skipna: bool = True):
-        """
-        Return cumulative minimum over a DataFrame axis.
-
-        Returns a DataFrame of the same size containing the cumulative minimum.
-
-        .. note:: the current implementation of cummin uses Spark's Window without
-            specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
-
-        Parameters
-        ----------
-        skipna : boolean, default True
-            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
-
-        Returns
-        -------
-        DataFrame
-
-        See Also
-        --------
-        DataFrame.min : Return the minimum over DataFrame axis.
-        DataFrame.cummax : Return cumulative maximum over DataFrame axis.
-        DataFrame.cummin : Return cumulative minimum over DataFrame axis.
-        DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame([[2.0, 1.0],
-        ...                    [3.0, None],
-        ...                    [1.0, 0.0]],
-        ...                    columns=list('AB'))
-        >>> df
-             A    B
-        0  2.0  1.0
-        1  3.0  NaN
-        2  1.0  0.0
-
-        By default, iterates over rows and finds the minimum in each column.
-
-        >>> df.cummin()
-             A    B
-        0  2.0  1.0
-        1  2.0  NaN
-        2  1.0  0.0
-        """
-        return self._cum(F.min, skipna)
-
-    # TODO: add 'axis' parameter
-    def cummax(self, skipna: bool = True):
-        """
-        Return cumulative maximum over a DataFrame axis.
-
-        Returns a DataFrame of the same size containing the cumulative maximum.
-
-        .. note:: the current implementation of cummax uses Spark's Window without
-            specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
-
-        Parameters
-        ----------
-        skipna : boolean, default True
-            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
-
-        Returns
-        -------
-        DataFrame
-
-        See Also
-        --------
-        DataFrame.max : Return the maximum over DataFrame axis.
-        DataFrame.cummax : Return cumulative maximum over DataFrame axis.
-        DataFrame.cummin : Return cumulative minimum over DataFrame axis.
-        DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame([[2.0, 1.0], [3.0, None], [1.0, 0.0]], columns=list('AB'))
-        >>> df
-             A    B
-        0  2.0  1.0
-        1  3.0  NaN
-        2  1.0  0.0
-
-        By default, iterates over rows and finds the maximum in each column.
-
-        >>> df.cummax()
-             A    B
-        0  2.0  1.0
-        1  3.0  NaN
-        2  3.0  1.0
-        """
-        return self._cum(F.max, skipna)
-
-    # TODO: add 'axis' parameter
-    def cumsum(self, skipna: bool = True):
-        """
-        Return cumulative sum over a DataFrame axis.
-
-        Returns a DataFrame of the same size containing the cumulative sum.
-
-        .. note:: the current implementation of cumsum uses Spark's Window without
-            specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
-
-        Parameters
-        ----------
-        skipna : boolean, default True
-            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
-
-        Returns
-        -------
-        DataFrame
-
-        See Also
-        --------
-        DataFrame.sum : Return the sum over DataFrame axis.
-        DataFrame.cummax : Return cumulative maximum over DataFrame axis.
-        DataFrame.cummin : Return cumulative minimum over DataFrame axis.
-        DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame([[2.0, 1.0],
-        ...                    [3.0, None],
-        ...                    [1.0, 0.0]],
-        ...                    columns=list('AB'))
-        >>> df
-             A    B
-        0  2.0  1.0
-        1  3.0  NaN
-        2  1.0  0.0
-
-        By default, iterates over rows and finds the sum in each column.
-
-        >>> df.cumsum()
-             A    B
-        0  2.0  1.0
-        1  5.0  NaN
-        2  6.0  1.0
-        """
-        return self._cum(F.sum, skipna)
+        sdf = self._sdf.select(
+            self._internal.index_columns + [c._scol for c in applied])
+        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
 
     # TODO: implements 'keep' parameters
     def drop_duplicates(self, subset=None, inplace=False):
@@ -5159,6 +5056,233 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.withColumn(column_name, F.col(column_name) / max_value)
         return DataFrame(self._internal.copy(sdf=sdf.select(self._internal.columns)))\
             .astype(np.float64)
+
+    def reindex(self, labels: Optional[Any] = None, index: Optional[Any] = None,
+                columns: Optional[Any] = None, axis: Optional[Union[int, str]] = None,
+                copy: Optional[bool] = True, fill_value: Optional[Any] = None) -> 'DataFrame':
+        """
+        Conform DataFrame to new index with optional filling logic, placing
+        NA/NaN in locations having no value in the previous index. A new object
+        is produced unless the new index is equivalent to the current one and
+        ``copy=False``.
+
+        Parameters
+        ----------
+        labels: array-like, optional
+            New labels / index to conform the axis specified by ‘axis’ to.
+        index, columns: array-like, optional
+            New labels / index to conform to, should be specified using keywords.
+            Preferably an Index object to avoid duplicating data
+        axis: int or str, optional
+            Axis to target. Can be either the axis name (‘index’, ‘columns’) or
+            number (0, 1).
+        copy : bool, default True
+            Return a new object, even if the passed indexes are the same.
+        fill_value : scalar, default np.NaN
+            Value to use for missing values. Defaults to NaN, but can be any
+            "compatible" value.
+
+        Returns
+        -------
+        DataFrame with changed index.
+
+        See Also
+        --------
+        DataFrame.set_index : Set row labels.
+        DataFrame.reset_index : Remove row labels or move them to new columns.
+
+        Examples
+        --------
+
+        ``DataFrame.reindex`` supports two calling conventions
+
+        * ``(index=index_labels, columns=column_labels, ...)``
+        * ``(labels, axis={'index', 'columns'}, ...)``
+
+        We *highly* recommend using keyword arguments to clarify your
+        intent.
+
+        Create a dataframe with some fictional data.
+
+        >>> index = ['Firefox', 'Chrome', 'Safari', 'IE10', 'Konqueror']
+        >>> df = ks.DataFrame({
+        ...      'http_status': [200, 200, 404, 404, 301],
+        ...      'response_time': [0.04, 0.02, 0.07, 0.08, 1.0]},
+        ...       index=index)
+        >>> df
+                   http_status  response_time
+        Firefox            200           0.04
+        Chrome             200           0.02
+        Safari             404           0.07
+        IE10               404           0.08
+        Konqueror          301           1.00
+
+        Create a new index and reindex the dataframe. By default
+        values in the new index that do not have corresponding
+        records in the dataframe are assigned ``NaN``.
+
+        >>> new_index= ['Safari', 'Iceweasel', 'Comodo Dragon', 'IE10',
+        ...             'Chrome']
+        >>> df.reindex(new_index).sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+                       http_status  response_time
+        Chrome               200.0           0.02
+        Comodo Dragon          NaN            NaN
+        IE10                 404.0           0.08
+        Iceweasel              NaN            NaN
+        Safari               404.0           0.07
+
+        We can fill in the missing values by passing a value to
+        the keyword ``fill_value``.
+
+        >>> df.reindex(new_index, fill_value=0, copy=False).sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+                       http_status  response_time
+        Chrome                 200           0.02
+        Comodo Dragon            0           0.00
+        IE10                   404           0.08
+        Iceweasel                0           0.00
+        Safari                 404           0.07
+
+        We can also reindex the columns.
+
+        >>> df.reindex(columns=['http_status', 'user_agent']).sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+                       http_status  user_agent
+        Chrome                 200         NaN
+        Comodo Dragon            0         NaN
+        IE10                   404         NaN
+        Iceweasel                0         NaN
+        Safari                 404         NaN
+
+        Or we can use "axis-style" keyword arguments
+
+        >>> df.reindex(['http_status', 'user_agent'], axis="columns").sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+                      http_status  user_agent
+        Chrome                 200         NaN
+        Comodo Dragon            0         NaN
+        IE10                   404         NaN
+        Iceweasel                0         NaN
+        Safari                 404         NaN
+
+        To further illustrate the filling functionality in
+        ``reindex``, we will create a dataframe with a
+        monotonically increasing index (for example, a sequence
+        of dates).
+
+        >>> date_index = pd.date_range('1/1/2010', periods=6, freq='D')
+        >>> df2 = ks.DataFrame({"prices": [100, 101, np.nan, 100, 89, 88]},
+        ...                    index=date_index)
+        >>> df2.sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                    prices
+        2010-01-01   100.0
+        2010-01-02   101.0
+        2010-01-03     NaN
+        2010-01-04   100.0
+        2010-01-05    89.0
+        2010-01-06    88.0
+
+        Suppose we decide to expand the dataframe to cover a wider
+        date range.
+
+        >>> date_index2 = pd.date_range('12/29/2009', periods=10, freq='D')
+        >>> df2.reindex(date_index2).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                    prices
+        2009-12-29     NaN
+        2009-12-30     NaN
+        2009-12-31     NaN
+        2010-01-01   100.0
+        2010-01-02   101.0
+        2010-01-03     NaN
+        2010-01-04   100.0
+        2010-01-05    89.0
+        2010-01-06    88.0
+        2010-01-07     NaN
+        """
+        if axis is not None and (index is not None or columns is not None):
+            raise TypeError("Cannot specify both 'axis' and any of 'index' or 'columns'.")
+
+        if labels is not None:
+            if axis in ('index', 0, None):
+                index = labels
+            elif axis in ('columns', 1):
+                columns = labels
+            else:
+                raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
+
+        if index is not None and not is_list_like(index):
+            raise TypeError("Index must be called with a collection of some kind, "
+                            "%s was passed" % type(index))
+
+        if columns is not None and not is_list_like(columns):
+            raise TypeError("Columns must be called with a collection of some kind, "
+                            "%s was passed" % type(columns))
+
+        df = self.copy()
+
+        if index is not None:
+            df = DataFrame(df._reindex_index(index))
+
+        if columns is not None:
+            df = DataFrame(df._reindex_columns(columns))
+
+        # Process missing values.
+        if fill_value is not None:
+            df = df.fillna(fill_value)
+
+        # Copy
+        if copy:
+            return df.copy()
+        else:
+            self._internal = df._internal
+            return self
+
+    def _reindex_index(self, index):
+        # When axis is index, we can mimic pandas' by a right outer join.
+        index_column = self._internal.index_columns
+        assert len(index_column) <= 1, "Index should be single column or not set."
+
+        if len(index_column) == 1:
+            kser = ks.Series(list(index))
+            index_column = index_column[0]
+            labels = kser._kdf._sdf.select(kser._scol.alias(index_column))
+        else:
+            index_column = None
+            labels = ks.Series(index).to_frame()._sdf
+
+        joined_df = self._sdf.join(labels, on=index_column, how="right")
+        new_data_columns = filter(lambda x: x not in index_column, joined_df.columns)
+        if index_column is not None:
+            index_map = [(index_column, None)]  # type: List[IndexMap]
+            internal = self._internal.copy(
+                sdf=joined_df,
+                data_columns=list(new_data_columns),
+                index_map=index_map)
+        else:
+            internal = self._internal.copy(
+                sdf=joined_df,
+                data_columns=list(new_data_columns))
+        return internal
+
+    def _reindex_columns(self, columns):
+        label_columns = list(columns)
+        null_columns = [
+            F.lit(np.nan).alias(label_column) for label_column
+            in label_columns if label_column not in self.columns]
+
+        # Concatenate all fields
+        sdf = self._sdf.select(
+            self._internal.index_columns +
+            list(map(F.col, self.columns)) +
+            null_columns)
+
+        # Only select label_columns (with index columns)
+        sdf = sdf.select(self._internal.index_columns + label_columns)
+        return self._internal.copy(
+            sdf=sdf,
+            data_columns=label_columns)
+>>>>>>> master
 
     def melt(self, id_vars=None, value_vars=None, var_name='variable',
              value_name='value'):

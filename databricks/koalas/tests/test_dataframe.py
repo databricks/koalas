@@ -782,6 +782,27 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             pdf.replace(['Ironman', 'Captain America'], ['Rescue', 'Hawkeye'])
         )
 
+        pdf = pd.DataFrame({'A': [0, 1, 2, 3, 4],
+                            'B': [5, 6, 7, 8, 9],
+                            'C': ['a', 'b', 'c', 'd', 'e']})
+
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(repr(kdf.replace([0, 1, 2, 3], 4)),
+                       repr(pdf.replace([0, 1, 2, 3], 4)))
+
+        self.assert_eq(repr(kdf.replace([0, 1, 2, 3], [4, 3, 2, 1])),
+                       repr(pdf.replace([0, 1, 2, 3], [4, 3, 2, 1])))
+
+        self.assert_eq(repr(kdf.replace({0: 10, 1: 100})),
+                       repr(pdf.replace({0: 10, 1: 100})))
+
+        self.assert_eq(repr(kdf.replace({'A': 0, 'B': 5}, 100)),
+                       repr(pdf.replace({'A': 0, 'B': 5}, 100)))
+
+        self.assert_eq(repr(kdf.replace({'A': {0: 100, 4: 400}})),
+                       repr(pdf.replace({'A': {0: 100, 4: 400}})))
+
     def test_update(self):
         # check base function
         def get_data():
@@ -854,7 +875,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Checking if both DataFrames have the same results (Temporary)
         np.testing.assert_equal(kdf.pivot_table(columns="a", values="b").to_numpy(),
-                                pdf.pivot_table(columns=["a"], values="b").to_numpy())
+                                pdf.pivot_table(columns=["a"], values="b").values)
 
         # Todo: self.assert_eq(kdf.pivot_table(columns="a", values="b"),
         #  pdf.pivot_table(columns=["a"], values="b"))
@@ -873,7 +894,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         #  fill_value=999), pdf.pivot_table(index=['e', 'c'], columns="a", values="b",
         #  fill_value=999))
 
-    def test_pivot_table_erros(self):
+    def test_pivot_errors(self):
+        kdf = ks.range(10)
+
+        with self.assertRaisesRegex(ValueError, "columns should be set"):
+            kdf.pivot(index='id')
+
+        with self.assertRaisesRegex(ValueError, "values should be set"):
+            kdf.pivot(index='id', columns="id")
+
+    def test_pivot_table_errors(self):
 
         pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
                             'b': [1, 2, 2, 4, 2, 4],
@@ -891,7 +921,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, msg):
             kdf.pivot_table(index="c", columns="a", values="b")
 
-        msg = "pivot_table doesn't support aggfuct as dict and without index."
+        msg = "pivot_table doesn't support aggfunc as dict and without index."
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.pivot_table(columns="a", values=['b', 'e'], aggfunc={'b': 'mean', 'e': 'sum'})
 
@@ -979,3 +1009,30 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "na_option must be one of 'keep', 'top', 'bottom'"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.rank(na_option='nothing')
+
+    def test_reindex(self):
+        index = ['A', 'B', 'C', 'D', 'E']
+        pdf = pd.DataFrame({'numbers': [1., 2., 3., 4., 5.]}, index=index)
+        kdf = ks.DataFrame({'numbers': [1., 2., 3., 4., 5.]}, index=index)
+
+        self.assert_eq(
+            pdf.reindex(['A', 'B', 'C'], columns=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(['A', 'B', 'C'], columns=['numbers', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(['A', 'B', 'C'], index=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(['A', 'B', 'C'], index=['numbers', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(index=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(index=['numbers', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(columns=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(columns=['numbers', '2', '3']).sort_index())
+
+        self.assertRaises(TypeError, lambda: kdf.reindex(columns=['numbers', '2', '3'], axis=1))
+        self.assertRaises(TypeError, lambda: kdf.reindex(columns=['numbers', '2', '3'], axis=2))
+        self.assertRaises(TypeError, lambda: kdf.reindex(index=['A', 'B', 'C'], axis=1))
+        self.assertRaises(TypeError, lambda: kdf.reindex(index=123))
+        

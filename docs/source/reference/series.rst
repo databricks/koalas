@@ -37,6 +37,7 @@ Conversion
    :toctree: api/
 
    Series.astype
+   Series.bool
 
 Indexing, iteration
 -------------------
@@ -99,6 +100,9 @@ Computations / Descriptive Stats
    Series.clip
    Series.corr
    Series.count
+   Series.cummax
+   Series.cummin
+   Series.cumsum
    Series.describe
    Series.kurt
    Series.max
