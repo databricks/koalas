@@ -1969,7 +1969,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         """
         if not isinstance(accuracy, int):
-            raise ValueError("actually must be an integer; however, got [%s]" % type(accuracy))
+            raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
 
         return self._reduce_for_stat_function(
             lambda _: F.expr("approx_percentile(`%s`, 0.5, %s)" % (self.name, accuracy)))
