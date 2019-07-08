@@ -91,6 +91,7 @@ Function application, GroupBy & Window
    DataFrame.applymap
    DataFrame.pipe
    DataFrame.groupby
+   DataFrame.transform
 
 .. _api.dataframe.stats:
 

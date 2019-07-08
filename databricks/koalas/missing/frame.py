@@ -126,7 +126,6 @@ class _MissingPandasLikeDataFrame(object):
     to_stata = unsupported_function('to_stata')
     to_timestamp = unsupported_function('to_timestamp')
     to_xarray = unsupported_function('to_xarray')
-    transform = unsupported_function('transform')
     truncate = unsupported_function('truncate')
     tshift = unsupported_function('tshift')
     tz_convert = unsupported_function('tz_convert')
