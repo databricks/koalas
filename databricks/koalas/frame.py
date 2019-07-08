@@ -37,6 +37,7 @@ from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType, StructType)
 from pyspark.sql.utils import AnalysisException
+from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function
