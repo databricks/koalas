@@ -135,7 +135,6 @@ class _MissingPandasLikeSeries(object):
     to_hdf = unsupported_function('to_hdf')
     to_msgpack = unsupported_function('to_msgpack')
     to_period = unsupported_function('to_period')
-    to_pickle = unsupported_function('to_pickle')
     to_sparse = unsupported_function('to_sparse')
     to_sql = unsupported_function('to_sql')
     to_timestamp = unsupported_function('to_timestamp')
@@ -171,3 +170,8 @@ class _MissingPandasLikeSeries(object):
     # Functions and properties we won't support.
     values = common.values(unsupported_property)
     memory_usage = common.memory_usage(unsupported_function)
+    # Functions and properties we won't support.
+    to_pickle = unsupported_function(
+        'to_pickle',
+        reason="For storage, we encourage you to use Delta or Parquet, instead of Python pickle "
+               "format.")
