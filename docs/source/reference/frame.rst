@@ -155,6 +155,7 @@ Reshaping, sorting, transposing
    DataFrame.melt
    DataFrame.T
    DataFrame.transpose
+   DataFrame.reindex
 
 Combining / joining / merging
 -----------------------------

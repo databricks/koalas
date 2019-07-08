@@ -975,3 +975,29 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.cumsum(), kdf.cumsum())
         self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
+
+    def test_reindex(self):
+        index = ['A', 'B', 'C', 'D', 'E']
+        pdf = pd.DataFrame({'numbers': [1., 2., 3., 4., 5.]}, index=index)
+        kdf = ks.DataFrame({'numbers': [1., 2., 3., 4., 5.]}, index=index)
+
+        self.assert_eq(
+            pdf.reindex(['A', 'B', 'C'], columns=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(['A', 'B', 'C'], columns=['numbers', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(['A', 'B', 'C'], index=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(['A', 'B', 'C'], index=['numbers', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(index=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(index=['numbers', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(columns=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(columns=['numbers', '2', '3']).sort_index())
+
+        self.assertRaises(TypeError, lambda: kdf.reindex(columns=['numbers', '2', '3'], axis=1))
+        self.assertRaises(TypeError, lambda: kdf.reindex(columns=['numbers', '2', '3'], axis=2))
+        self.assertRaises(TypeError, lambda: kdf.reindex(index=['A', 'B', 'C'], axis=1))
+        self.assertRaises(TypeError, lambda: kdf.reindex(index=123))
