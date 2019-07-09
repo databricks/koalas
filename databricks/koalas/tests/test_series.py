@@ -475,10 +475,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(repr(pser.cumsum(skipna=False)), repr(kser.cumsum(skipna=False)))
 
     def test_cumprod(self):
-        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        pser = pd.Series([1.0, None, 1.0, 4.0, 9.0]).rename("a")
         kser = koalas.from_pandas(pser)
         self.assertEqual(repr(pser.cumprod()), repr(kser.cumprod()))
         self.assertEqual(repr(pser.cumprod(skipna=False)), repr(kser.cumprod(skipna=False)))
+
+        with self.assertRaisesRegex(Exception, "values should be bigger than 0"):
+            repr(koalas.Series([0, 1]).cumprod())
 
     def test_median(self):
         with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):

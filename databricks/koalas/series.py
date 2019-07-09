@@ -2367,6 +2367,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 F.lit(None)
             ).otherwise(func(column_name).over(window))
 
+        # cumprod uese exp(sum(log(...))) trick.
+        if func.__name__ == "cumprod":
+            scol = F.exp(scol)
+
         return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
 
     # ----------------------------------------------------------------------

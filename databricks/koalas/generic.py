@@ -226,6 +226,8 @@ class _Frame(object):
         return self._cum(F.sum, skipna)  # type: ignore
 
     # TODO: add 'axis' parameter
+    # TODO: use pandas_udf to support negative values and other options later
+    #  other window except unbounded ones is supported as of Spark 3.0.
     def cumprod(self, skipna: bool = True):
         """
         Return cumulative product over a DataFrame or Series axis.
@@ -236,6 +238,9 @@ class _Frame(object):
             specifying partition specification. This leads to move all data into
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
+
+        .. note:: unliike pandas', Koalas' emulates cumulative product by ``exp(sum(log(...)))``
+            trick. Therefore, it only works for positive numbers.
 
         Parameters
         ----------
@@ -256,6 +261,10 @@ class _Frame(object):
         Series.cummin : Return cumulative minimum over Series axis.
         Series.cumsum : Return cumulative sum over Series axis.
         Series.cumprod : Return cumulative product over Series axis.
+
+        Raises
+        ------
+        Exception : If the values is equal to or lower than 0.
 
         Examples
         --------
@@ -281,15 +290,17 @@ class _Frame(object):
         1     6.0
         2    24.0
         Name: A, dtype: float64
-        """
-        from pyspark.sql.functions import pandas_udf, PandasUDFType
 
-        def cumprod(col):
-            # A bit hacky: this function will always be ran only via Series.
-            @pandas_udf(returnType=self.spark_type, functionType=PandasUDFType.GROUPED_AGG)
-            def prod(v):
-                return v.prod()
-            return prod(col)
+        """
+        from pyspark.sql.functions import pandas_udf
+
+        def cumprod(scol):
+            @pandas_udf(returnType=self._kdf._sdf.schema[self.name].dataType)
+            def negative_check(s):
+                assert ((s > 0) | (s.isnull())).all(), "values should be bigger than 0."
+                return s
+
+            return F.sum(F.log(negative_check(scol)))
 
         return self._cum(cumprod, skipna)  # type: ignore
 
