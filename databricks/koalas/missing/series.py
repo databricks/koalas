@@ -30,7 +30,6 @@ def unsupported_property(property_name, deprecated=False, reason=""):
 class _MissingPandasLikeSeries(object):
 
     # Properties
-    T = unsupported_property('T')
     array = unsupported_property('array')
     asobject = unsupported_property('asobject')
     axes = unsupported_property('axes')
@@ -138,7 +137,6 @@ class _MissingPandasLikeSeries(object):
     to_sql = unsupported_function('to_sql')
     to_timestamp = unsupported_function('to_timestamp')
     to_xarray = unsupported_function('to_xarray')
-    transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     tshift = unsupported_function('tshift')
     tz_convert = unsupported_function('tz_convert')
