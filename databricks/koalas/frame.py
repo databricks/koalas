@@ -4895,6 +4895,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             func = "cummax"
         elif func == F.sum:
             func = "cumsum"
+        elif func.__name__ == "cumprod":
+            func = "cumprod"
 
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")

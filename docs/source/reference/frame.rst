@@ -118,6 +118,7 @@ Computations / Descriptive Stats
    DataFrame.cummin
    DataFrame.cummax
    DataFrame.cumsum
+   DataFrame.cumprod
 
 Reindexing / Selection / Label manipulation
 -------------------------------------------

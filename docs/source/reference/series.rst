@@ -103,6 +103,7 @@ Computations / Descriptive Stats
    Series.cummax
    Series.cummin
    Series.cumsum
+   Series.cumprod
    Series.describe
    Series.kurt
    Series.max

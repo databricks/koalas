@@ -985,6 +985,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.cumsum(), kdf.cumsum())
         self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
 
+    def test_cumprod(self):
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.cumprod(), kdf.cumprod())
+        self.assert_eq(pdf.cumprod(skipna=False), kdf.cumprod(skipna=False))
+
     def test_reindex(self):
         index = ['A', 'B', 'C', 'D', 'E']
         pdf = pd.DataFrame({'numbers': [1., 2., 3., 4., 5.]}, index=index)

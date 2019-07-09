@@ -59,7 +59,6 @@ class _MissingPandasLikeDataFrame(object):
     compound = unsupported_function('compound')
     corrwith = unsupported_function('corrwith')
     cov = unsupported_function('cov')
-    cumprod = unsupported_function('cumprod')
     diff = unsupported_function('diff')
     dot = unsupported_function('dot')
     droplevel = unsupported_function('droplevel')

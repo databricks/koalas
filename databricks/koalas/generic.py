@@ -74,6 +74,7 @@ class _Frame(object):
         Series.cummax : Return cumulative maximum over Series axis.
         Series.cummin : Return cumulative minimum over Series axis.
         Series.cumsum : Return cumulative sum over Series axis.
+        Series.cumprod : Return cumulative product over Series axis.
 
         Examples
         --------
@@ -129,10 +130,12 @@ class _Frame(object):
         DataFrame.cummax : Return cumulative maximum over DataFrame axis.
         DataFrame.cummin : Return cumulative minimum over DataFrame axis.
         DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-        Series.max : Return the maximum over DataFrame axis.
-        Series.cummax : Return cumulative maximum over DataFrame axis.
-        Series.cummin : Return cumulative minimum over DataFrame axis.
-        Series.cumsum : Return cumulative sum over DataFrame axis.
+        DataFrame.cumprod : Return cumulative product over DataFrame axis.
+        Series.max : Return the maximum over Series axis.
+        Series.cummax : Return cumulative maximum over Series axis.
+        Series.cummin : Return cumulative minimum over Series axis.
+        Series.cumsum : Return cumulative sum over Series axis.
+        Series.cumprod : Return cumulative product over Series axis.
 
         Examples
         --------
@@ -188,10 +191,12 @@ class _Frame(object):
         DataFrame.cummax : Return cumulative maximum over DataFrame axis.
         DataFrame.cummin : Return cumulative minimum over DataFrame axis.
         DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-        Series.sum : Return the sum over DataFrame axis.
-        Series.cummax : Return cumulative maximum over DataFrame axis.
-        Series.cummin : Return cumulative minimum over DataFrame axis.
-        Series.cumsum : Return cumulative sum over DataFrame axis.
+        DataFrame.cumprod : Return cumulative product over DataFrame axis.
+        Series.sum : Return the sum over Series axis.
+        Series.cummax : Return cumulative maximum over Series axis.
+        Series.cummin : Return cumulative minimum over Series axis.
+        Series.cumsum : Return cumulative sum over Series axis.
+        Series.cumprod : Return cumulative product over Series axis.
 
         Examples
         --------
@@ -219,6 +224,74 @@ class _Frame(object):
         Name: A, dtype: float64
         """
         return self._cum(F.sum, skipna)  # type: ignore
+
+    # TODO: add 'axis' parameter
+    def cumprod(self, skipna: bool = True):
+        """
+        Return cumulative product over a DataFrame or Series axis.
+
+        Returns a DataFrame or Series of the same size containing the cumulative product.
+
+        .. note:: the current implementation of cumprod uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        skipna : boolean, default True
+            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
+
+        Returns
+        -------
+        DataFrame or Series
+
+        See Also
+        --------
+        DataFrame.cummax : Return cumulative maximum over DataFrame axis.
+        DataFrame.cummin : Return cumulative minimum over DataFrame axis.
+        DataFrame.cumsum : Return cumulative sum over DataFrame axis.
+        DataFrame.cumprod : Return cumulative product over DataFrame axis.
+        Series.cummax : Return cumulative maximum over Series axis.
+        Series.cummin : Return cumulative minimum over Series axis.
+        Series.cumsum : Return cumulative sum over Series axis.
+        Series.cumprod : Return cumulative product over Series axis.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[2.0, 1.0], [3.0, None], [4.0, 10.0]], columns=list('AB'))
+        >>> df
+             A     B
+        0  2.0   1.0
+        1  3.0   NaN
+        2  4.0  10.0
+
+        By default, iterates over rows and finds the sum in each column.
+
+        >>> df.cumprod()
+              A     B
+        0   2.0   1.0
+        1   6.0   NaN
+        2  24.0  10.0
+
+        It works identically in Series.
+
+        >>> df.A.cumprod()
+        0     2.0
+        1     6.0
+        2    24.0
+        Name: A, dtype: float64
+        """
+        from pyspark.sql.functions import pandas_udf, PandasUDFType
+
+        def cumprod(col):
+            # A bit hacky: this function will always be ran only via Series.
+            @pandas_udf(returnType=self.spark_type, functionType=PandasUDFType.GROUPED_AGG)
+            def prod(v):
+                return v.prod()
+            return prod(col)
+
+        return self._cum(cumprod, skipna)  # type: ignore
 
     def get_dtype_counts(self):
         """

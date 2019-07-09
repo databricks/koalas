@@ -72,7 +72,6 @@ class _MissingPandasLikeSeries(object):
     compound = unsupported_function('compound')
     copy = unsupported_function('copy')
     cov = unsupported_function('cov')
-    cumprod = unsupported_function('cumprod')
     diff = unsupported_function('diff')
     divmod = unsupported_function('divmod')
     dot = unsupported_function('dot')
