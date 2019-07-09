@@ -88,7 +88,6 @@ class _MissingPandasLikeDataFrame(object):
     lookup = unsupported_function('lookup')
     mad = unsupported_function('mad')
     mask = unsupported_function('mask')
-    median = unsupported_function('median')
     mode = unsupported_function('mode')
     pct_change = unsupported_function('pct_change')
     pop = unsupported_function('pop')

@@ -1197,6 +1197,70 @@ class _Frame(object):
                             'got [%s]' % (self,))
         return df.head(2).to_pandas().bool()
 
+    def median(self, accuracy=10000):
+        """
+        Return the median of the values for the requested axis.
+
+        .. note:: Unlike pandas', the median in Koalas is an approximated median based upon
+            approximate percentile computation because computing median across a large dataset
+            is extremely expensive.
+
+        Parameters
+        ----------
+        accuracy : int, optional
+            Default accuracy of approximation. Larger value means better accuracy.
+            The relative error can be deduced by 1.0 / accuracy.
+
+        Returns
+        -------
+        median : scalar or Series
+
+        Examples
+        -------
+        >>> df = ks.DataFrame({
+        ...     'a': [24., 21., 25., 33., 26.], 'b': [1, 2, 3, 4, 5]}, columns=['a', 'b'])
+        >>> df
+              a  b
+        0  24.0  1
+        1  21.0  2
+        2  25.0  3
+        3  33.0  4
+        4  26.0  5
+
+        On a DataFrame:
+
+        >>> df.median()
+        a    25.0
+        b     3.0
+        Name: 0, dtype: float64
+
+        On a Series:
+
+        >>> df['a'].median()
+        25.0
+        """
+        if not isinstance(accuracy, int):
+            raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
+
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series
+
+        kdf_or_ks = self
+        if isinstance(kdf_or_ks, Series):
+            ks = kdf_or_ks
+            return self._reduce_for_stat_function(
+                lambda _: F.expr("approx_percentile(`%s`, 0.5, %s)" % (ks.name, accuracy)))
+        assert isinstance(kdf_or_ks, DataFrame)
+
+        # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
+        # to get a column name from Spark column but we need it to pass it through `expr`.
+        kdf = kdf_or_ks
+        sdf = kdf._sdf
+        median = lambda name: F.expr("approx_percentile(`%s`, 0.5, %s)" % (name, accuracy))
+        sdf = sdf.select([median(col).alias(col) for col in kdf.columns])
+        # This is expected to be small so it's fine to transpose.
+        return DataFrame(sdf).to_pandas().transpose().iloc[:, 0]
+
     @property
     def at(self):
         return AtIndexer(self)

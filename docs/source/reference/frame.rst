@@ -110,6 +110,7 @@ Computations / Descriptive Stats
    DataFrame.max
    DataFrame.mean
    DataFrame.min
+   DataFrame.median
    DataFrame.nunique
    DataFrame.skew
    DataFrame.sum
