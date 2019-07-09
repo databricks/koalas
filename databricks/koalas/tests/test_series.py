@@ -473,3 +473,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = koalas.from_pandas(pser)
         self.assertEqual(repr(pser.cumsum()), repr(kser.cumsum()))
         self.assertEqual(repr(pser.cumsum(skipna=False)), repr(kser.cumsum(skipna=False)))
+
+    def test_median(self):
+        with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
+            koalas.Series([24., 21., 25., 33., 26.]).median(accuracy="a")

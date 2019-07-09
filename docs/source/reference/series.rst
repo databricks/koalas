@@ -115,6 +115,7 @@ Computations / Descriptive Stats
    Series.skew
    Series.std
    Series.sum
+   Series.median
    Series.var
    Series.kurtosis
    Series.unique
