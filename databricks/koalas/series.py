@@ -2367,7 +2367,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 F.lit(None)
             ).otherwise(func(column_name).over(window))
 
-        # cumprod uese exp(sum(log(...))) trick.
+        # cumprod uses exp(sum(log(...))) trick.
         if func.__name__ == "cumprod":
             scol = F.exp(scol)
 
