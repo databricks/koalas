@@ -30,6 +30,7 @@ Attributes
    Series.shape
    Series.size
    Series.empty
+   Series.T
 
 Conversion
 ----------

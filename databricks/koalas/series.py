@@ -2106,6 +2106,32 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
         return wrapped(self, *args, **kwds).rename(self.name)
 
+    def transpose(self, *args, **kwargs):
+        """
+        Return the transpose, which is by definition self.
+
+        Examples
+        --------
+        It returns the same object as the transpose of the given series object, which is by
+        definition self.
+
+        >>> s = ks.Series([1, 2, 3])
+        >>> s
+        0    1
+        1    2
+        2    3
+        Name: 0, dtype: int64
+
+        >>> s.transpose()
+        0    1
+        1    2
+        2    3
+        Name: 0, dtype: int64
+        """
+        return Series(self._kdf._internal.copy(), anchor=self._kdf)
+
+    T = property(transpose)
+
     def transform(self, func, *args, **kwargs):
         """
         Call ``func`` producing the same type as `self` with transformed values
