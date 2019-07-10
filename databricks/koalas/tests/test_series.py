@@ -479,27 +479,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             koalas.Series([24., 21., 25., 33., 26.]).median(accuracy="a")
 
     def test_rank(self):
-        pser = pd.Series([1, np.nan, 2, 3, 1], name='x')
+        pser = pd.Series([1, 2, 3, 1], name='x')
         kser = koalas.from_pandas(pser)
-        self.assertEqual(repr(pser.rank(na_option='keep')),
-                         repr(kser.rank(na_option='keep').sort_index()))
-        self.assertEqual(repr(pser.rank(na_option='bottom')),
-                         repr(kser.rank(na_option='bottom').sort_index()))
-        self.assertEqual(repr(pser.rank(na_option='top', ascending=False)),
-                         repr(kser.rank(na_option='top', ascending=False).sort_index()))
-        self.assertEqual(repr(pser.rank(na_option='top', method='min')),
-                         repr(kser.rank(na_option='top', method='min').sort_index()))
-        self.assertEqual(repr(pser.rank(na_option='top', method='max')),
-                         repr(kser.rank(na_option='top', method='max').sort_index()))
-        self.assertEqual(repr(pser.rank(na_option='top', method='first')),
-                         repr(kser.rank(na_option='top', method='first').sort_index()))
-        self.assertEqual(repr(pser.rank(na_option='top', method='dense')),
-                         repr(kser.rank(na_option='top', method='dense').sort_index()))
+        self.assertEqual(repr(pser.rank()),
+                         repr(kser.rank().sort_index()))
+        self.assertEqual(repr(pser.rank()),
+                         repr(kser.rank().sort_index()))
+        self.assertEqual(repr(pser.rank(ascending=False)),
+                         repr(kser.rank(ascending=False).sort_index()))
+        self.assertEqual(repr(pser.rank(method='min')),
+                         repr(kser.rank(method='min').sort_index()))
+        self.assertEqual(repr(pser.rank(method='max')),
+                         repr(kser.rank(method='max').sort_index()))
+        self.assertEqual(repr(pser.rank(method='first')),
+                         repr(kser.rank(method='first').sort_index()))
+        self.assertEqual(repr(pser.rank(method='dense')),
+                         repr(kser.rank(method='dense').sort_index()))
 
         msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
         with self.assertRaisesRegex(ValueError, msg):
             kser.rank(method='nothing')
-
-        msg = "na_option must be one of 'keep', 'top', 'bottom'"
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.rank(na_option='nothing')

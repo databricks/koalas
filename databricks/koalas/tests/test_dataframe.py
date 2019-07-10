@@ -1012,26 +1012,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(TypeError, lambda: kdf.reindex(index=123))
 
     def test_rank(self):
-        pdf = pd.DataFrame(data={'col1': [1, None, 2, 3, 1], 'col2': [3, 4, None, 3, 1]},
+        pdf = pd.DataFrame(data={'col1': [1, 2, 3, 1], 'col2': [3, 4, 3, 1]},
                            columns=['col1', 'col2'])
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.rank(), kdf.rank().sort_index())
-        self.assert_eq(pdf.rank(na_option='bottom'), kdf.rank(na_option='bottom').sort_index())
-        self.assert_eq(pdf.rank(na_option='top', ascending=False),
-                       kdf.rank(na_option='top', ascending=False).sort_index())
-        self.assert_eq(pdf.rank(na_option='top', method='min'),
-                       kdf.rank(na_option='top', method='min').sort_index())
-        self.assert_eq(pdf.rank(na_option='top', method='max'),
-                       kdf.rank(na_option='top', method='max').sort_index())
-        self.assert_eq(pdf.rank(na_option='top', method='first'),
-                       kdf.rank(na_option='top', method='first').sort_index())
-        self.assert_eq(pdf.rank(na_option='top', method='dense'),
-                       kdf.rank(na_option='top', method='dense').sort_index())
+        self.assert_eq(pdf.rank(),
+                       kdf.rank().sort_index())
+        self.assert_eq(pdf.rank(),
+                       kdf.rank().sort_index())
+        self.assert_eq(pdf.rank(ascending=False),
+                       kdf.rank(ascending=False).sort_index())
+        self.assert_eq(pdf.rank(method='min'),
+                       kdf.rank(method='min').sort_index())
+        self.assert_eq(pdf.rank(method='max'),
+                       kdf.rank(method='max').sort_index())
+        self.assert_eq(pdf.rank(method='first'),
+                       kdf.rank(method='first').sort_index())
+        self.assert_eq(pdf.rank(method='dense'),
+                       kdf.rank(method='dense').sort_index())
 
         msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.rank(method='nothing')
-
-        msg = "na_option must be one of 'keep', 'top', 'bottom'"
-        with self.assertRaisesRegex(ValueError, msg):
-            kdf.rank(na_option='nothing')
