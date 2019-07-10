@@ -232,7 +232,7 @@ class IndexOpsMixin(object):
     @property
     def hasnans(self):
         """
-        Return if I have any nans.
+        Return True if it has any missing values. Otherwise, it returns False.
 
         >>> ks.DataFrame({}, index=list('abc')).index.hasnans
         False

@@ -1241,10 +1241,10 @@ class _Frame(object):
 
     def bool(self):
         """
-        Return the bool of a single element PandasObject.
+        Return the bool of a single element in the current object.
 
         This must be a boolean scalar value, either True or False. Raise a ValueError if
-        the PandasObject does not have exactly 1 element, or that element is not boolean
+        the object does not have exactly 1 element, or that element is not boolean
 
         Examples
         --------
@@ -1301,7 +1301,7 @@ class _Frame(object):
         median : scalar or Series
 
         Examples
-        -------
+        --------
         >>> df = ks.DataFrame({
         ...     'a': [24., 21., 25., 33., 26.], 'b': [1, 2, 3, 4, 5]}, columns=['a', 'b'])
         >>> df
