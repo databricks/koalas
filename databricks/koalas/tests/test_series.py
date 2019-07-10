@@ -481,7 +481,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(repr(pser.cumprod(skipna=False)), repr(kser.cumprod(skipna=False)))
 
         with self.assertRaisesRegex(Exception, "values should be bigger than 0"):
-            repr(koalas.Series([0, 1]).cumprod())
+            a = repr(koalas.Series([0, 1]).cumprod())
+            assert False, a
 
     def test_median(self):
         with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
