@@ -31,6 +31,7 @@ Attributes
    Series.size
    Series.empty
    Series.T
+   Series.hasnans
 
 Conversion
 ----------
