@@ -29,7 +29,6 @@ from pandas.core.accessor import CachedAccessor
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import BooleanType, StructType
-from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
@@ -2201,83 +2200,86 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return self.apply(func, args=args, **kwargs)
 
-    def rank(self, method='min', ascending=True, pct=False):
-        """
-        Compute numerical data ranks (1 through n) along axis.
+        # TODO: add axis, numeric_only, pct parameter
+        def rank(self, method='average', na_option='keep', ascending=True):
+            """
+            Compute numerical data ranks (1 through n) along axis. Equal values are
+            assigned a rank that is the average of the ranks of those values.
 
-        By default, equal values are assigned a rank that is the minimum of the
-        ranks of those values.
+            Parameters
+            ----------
+            method : {'average', 'min', 'max', 'first', 'dense'}
+                * average: average rank of group
+                * min: lowest rank in group
+                * max: highest rank in group
+                * first: ranks assigned in order they appear in the array
+                * dense: like 'min', but rank always increases by 1 between groups
+            na_option : {'keep', 'top', 'bottom'}
+                * keep: leave NA values where they are
+                * top: smallest rank if ascending
+                * bottom: smallest rank if descending
+            ascending : boolean, default True
+                False for ranks by high (1) to low (N)
 
-        .. note:: the current implementation of rank uses Spark's Window without
-            specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
+            Returns
+            -------
+            ranks : same type as caller
 
-        Parameters
-        ----------
-        method : {'min'}, default 'min'
-            How to rank the group of records that have the same value
-        ascending : bool, default True
-            Whether or not the elements should be ranked in ascending order.
-        pct : boolean, default False
-            Computes percentage rank of data
+            Examples
+            --------
+            >>> df = ks.DataFrame({'A': [1, 2, 2, 3], 'B': [4, 3, 2, 1]}, columns= ['A', 'B'])
+            >>> df
+               A  B
+            0  1  4
+            1  2  3
+            2  2  2
+            3  3  1
 
-        Returns
-        -------
-        same type as caller
-            Return a Series with data ranks as values.
+            >>> df.rank().sort_index()
+                 A    B
+            0  1.0  4.0
+            1  2.5  3.0
+            2  2.5  2.0
+            3  4.0  1.0
 
-        Examples
-        --------
-        >>> df = ks.DataFrame(data={'Animal': ['cat', 'penguin', 'dog',
-        ...                                    'spider'],
-        ...                         'Number_legs': [4, 2, 4, 8]},
-        ...                   columns = ['Animal', 'Number_legs'])
-        >>> df
-            Animal  Number_legs
-        0      cat            4
-        1  penguin            2
-        2      dog            4
-        3   spider            8
+            >>> df.rank(method='min').sort_index()
+                 A    B
+            0  1.0  4.0
+            1  2.0  3.0
+            2  2.0  2.0
+            3  4.0  1.0
 
-        The following example shows how the method behaves with the above
-        parameters:
+            >>> df.rank(method='dense').sort_index()
+                 A    B
+            0  1.0  4.0
+            1  2.0  3.0
+            2  2.0  2.0
+            3  3.0  1.0
 
-        * default_rank: this is the default behaviour obtained without using
-          any parameter.
-        * min_rank: setting ``ascending = False`` the output is sorted in a
-          descending order.
-        * pct_rank: when setting ``pct = True``, the ranking is expressed as
-          percentile rank.
+            >>> df = ks.DataFrame({'A': [1, 2, None, 3], 'B': [4, None, 2, 1]}, columns= ['A', 'B'])
+            >>> df
+                 A    B
+            0  1.0  4.0
+            1  2.0  NaN
+            2  NaN  2.0
+            3  3.0  1.0
 
-        >>> df['default_rank'] = df['Number_legs'].rank()
-        >>> df['desc_rank'] = df['Number_legs'].rank(ascending=False)
-        >>> df['pct_rank'] = df['Number_legs'].rank(pct=True)
-        >>> df.sort_values(['Number_legs'])
-            Animal  Number_legs  default_rank  desc_rank  pct_rank
-        1  penguin            2           1.0        4.0  0.000000
-        0      cat            4           2.0        2.0  0.333333
-        2      dog            4           2.0        2.0  0.333333
-        3   spider            8           4.0        1.0  1.000000
-        """
-        from pyspark.sql.window import Window
+            >>> df.rank().sort_index()
+                 A    B
+            0  1.0  3.0
+            1  2.0  NaN
+            2  NaN  2.0
+            3  3.0  1.0
 
-        if method != 'min':
-            raise ValueError("Currently only 'min' method is supported.")
-
-        if ascending:
-            scol = self._scol.asc()
-        else:
-            scol = self._scol.desc()
-
-        if pct:
-            rank_func = F.percent_rank
-        else:
-            rank_func = F.rank
-
-        rank = rank_func().over(Window.orderBy(scol))
-        return Series(self._kdf._internal.copy(
-            scol=rank), anchor=self._kdf).astype("float").rename(self.name)
+            >>> df.rank(na_option='bottom').sort_index()
+                 A    B
+            0  1.0  3.0
+            1  2.0  4.0
+            2  4.0  2.0
+            3  3.0  1.0
+            """
+            return _col(self.to_dataframe()
+                        .rank(method=method, na_option=na_option, ascending=ascending))
 
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
         return _col(self.to_dataframe().describe(percentiles))

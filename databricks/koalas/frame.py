@@ -38,6 +38,7 @@ from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType, StructType)
 from pyspark.sql.utils import AnalysisException
+from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function
@@ -5305,6 +5306,147 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         exploded_df = sdf.withColumn("pairs", pairs).select(columns)
 
         return DataFrame(exploded_df)
+    # TODO: add axis, numeric_only, pct parameter
+    def rank(self, method='average', na_option='keep', ascending=True):
+        """
+        Compute numerical data ranks (1 through n) along axis. Equal values are
+        assigned a rank that is the average of the ranks of those values.
+
+        Parameters
+        ----------
+        method : {'average', 'min', 'max', 'first', 'dense'}
+            * average: average rank of group
+            * min: lowest rank in group
+            * max: highest rank in group
+            * first: ranks assigned in order they appear in the array
+            * dense: like 'min', but rank always increases by 1 between groups
+        na_option : {'keep', 'top', 'bottom'}
+            * keep: leave NA values where they are
+            * top: smallest rank if ascending
+            * bottom: smallest rank if descending
+        ascending : boolean, default True
+            False for ranks by high (1) to low (N)
+
+        Returns
+        -------
+        ranks : same type as caller
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2, 2, 3], 'B': [4, 3, 2, 1]}, columns= ['A', 'B'])
+        >>> df
+           A  B
+        0  1  4
+        1  2  3
+        2  2  2
+        3  3  1
+
+        >>> df.rank().sort_index()
+             A    B
+        0  1.0  4.0
+        1  2.5  3.0
+        2  2.5  2.0
+        3  4.0  1.0
+
+        >>> df.rank(method='min').sort_index()
+             A    B
+        0  1.0  4.0
+        1  2.0  3.0
+        2  2.0  2.0
+        3  4.0  1.0
+
+        >>> df.rank(method='dense').sort_index()
+             A    B
+        0  1.0  4.0
+        1  2.0  3.0
+        2  2.0  2.0
+        3  3.0  1.0
+
+        >>> df = ks.DataFrame({'A': [1, 2, None, 3], 'B': [4, None, 2, 1]}, columns= ['A', 'B'])
+        >>> df
+             A    B
+        0  1.0  4.0
+        1  2.0  NaN
+        2  NaN  2.0
+        3  3.0  1.0
+
+        >>> df.rank().sort_index()
+             A    B
+        0  1.0  3.0
+        1  2.0  NaN
+        2  NaN  2.0
+        3  3.0  1.0
+
+        >>> df.rank(na_option='bottom').sort_index()
+             A    B
+        0  1.0  3.0
+        1  2.0  4.0
+        2  4.0  2.0
+        3  3.0  1.0
+        """
+        if method not in ['average', 'min', 'max', 'first', 'dense']:
+            msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
+            raise ValueError(msg)
+
+        if na_option not in ['keep', 'top', 'bottom']:
+            msg = "na_option must be one of 'keep', 'top', 'bottom'"
+            raise ValueError(msg)
+
+        if ascending:
+            asc_func = spark.functions.asc
+        else:
+            asc_func = spark.functions.desc
+
+        index_column = self._internal.index_columns[0]
+        data_columns = self._internal.data_columns
+        sdf = self._sdf
+
+        for column_name in data_columns:
+            if na_option == 'top':
+                if not ascending:
+                    fill_value = sys.maxsize
+            elif na_option == 'bottom':
+                if ascending:
+                    fill_value = sys.maxsize
+            elif na_option == 'keep':
+                if ascending:
+                    fill_value = sys.maxsize
+                else:
+                    fill_value = -sys.maxsize
+
+            if 'fill_value' in locals():
+                sdf = sdf.withColumn(column_name + '_tmp', F.col(column_name))
+                sdf = sdf.fillna({column_name: fill_value})
+
+            if method == 'first':
+                window = Window.orderBy(asc_func(column_name), asc_func(index_column))\
+                    .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+                sdf = sdf.withColumn(column_name, F.row_number().over(window))
+            elif method == 'dense':
+                window = Window.orderBy(asc_func(column_name))\
+                    .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+                sdf = sdf.withColumn(column_name, F.dense_rank().over(window))
+            else:
+                if method == 'average':
+                    stat_func = F.mean
+                elif method == 'min':
+                    stat_func = F.min
+                elif method == 'max':
+                    stat_func = F.max
+                window = Window.orderBy(asc_func(column_name))\
+                    .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+                sdf = sdf.withColumn('rank', F.row_number().over(window))
+                window = Window.partitionBy(column_name)\
+                    .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+                sdf = sdf.withColumn(column_name, stat_func(F.col('rank')).over(window))
+
+            if na_option == 'keep':
+                sdf = sdf.withColumn(column_name,
+                                     F.when(sdf[column_name + '_tmp'].isNull(), F.lit(None))
+                                     .otherwise(sdf[column_name]))
+
+        return DataFrame(self._internal.copy(sdf=sdf.select(self._internal.columns)))\
+            .astype(np.float64)
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
