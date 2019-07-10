@@ -474,6 +474,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(repr(pser.cumsum()), repr(kser.cumsum()))
         self.assertEqual(repr(pser.cumsum(skipna=False)), repr(kser.cumsum(skipna=False)))
 
+    def test_cumprod(self):
+        pser = pd.Series([1.0, None, 1.0, 4.0, 9.0]).rename("a")
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.cumprod()), repr(kser.cumprod()))
+        self.assertEqual(repr(pser.cumprod(skipna=False)), repr(kser.cumprod(skipna=False)))
+
+        # TODO: due to unknown reason, this test passes in Travis CI. Unable to reproduce in local.
+        # with self.assertRaisesRegex(Exception, "values should be bigger than 0"):
+        #     repr(koalas.Series([0, 1]).cumprod())
+
     def test_median(self):
         with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
             koalas.Series([24., 21., 25., 33., 26.]).median(accuracy="a")
