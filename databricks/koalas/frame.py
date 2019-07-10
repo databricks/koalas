@@ -5306,6 +5306,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         exploded_df = sdf.withColumn("pairs", pairs).select(columns)
 
         return DataFrame(exploded_df)
+
     # TODO: add axis, numeric_only, pct parameter
     def rank(self, method='average', na_option='keep', ascending=True):
         """
