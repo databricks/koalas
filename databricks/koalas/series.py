@@ -29,6 +29,7 @@ from pandas.core.accessor import CachedAccessor
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import BooleanType, StructType
+from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
