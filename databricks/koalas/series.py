@@ -2207,10 +2207,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Compute numerical data ranks (1 through n) along axis. Equal values are
         assigned a rank that is the average of the ranks of those values.
 
-        .. note:: the current implementation of rank uses Spark's Window without
-            specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
         Parameters
         ----------
         method : {'average', 'min', 'max', 'first', 'dense'}
@@ -2247,7 +2243,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2  2.5  2.0
         3  4.0  1.0
 
-        If method is set to 'min', it will use the smallest sort value in ties.
         >>> df.rank(method='min').sort_index()
              A    B
         0  1.0  4.0
@@ -2255,7 +2250,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2  2.0  2.0
         3  4.0  1.0
 
-        If method is set to 'dense', it leaves no gaps in ranking sequence when there are ties.
         >>> df.rank(method='dense').sort_index()
              A    B
         0  1.0  4.0
@@ -2278,7 +2272,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2  NaN  2.0
         3  3.0  1.0
 
-        If na_option is set to 'bottom', 'Null' will use smallest rank if descending.
         >>> df.rank(na_option='bottom').sort_index()
              A    B
         0  1.0  3.0
