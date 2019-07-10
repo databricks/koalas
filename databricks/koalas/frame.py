@@ -5401,6 +5401,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index_column = self._internal.index_columns[0]
         data_columns = self._internal.data_columns
         sdf = self._sdf
+        fill_value = None
 
         for column_name in data_columns:
             if na_option == 'top':
