@@ -1486,7 +1486,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         .. note:: unlike pandas, it is required for ``func`` to specify return type hint.
 
-        .. note:: note that the series within ``func`` is actually a pandas series, and
+        .. note:: the series within ``func`` is actually a pandas series, and
             the length of each series is not guaranteed.
 
         Parameters
@@ -3116,6 +3116,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Column to use to make new frame's columns.
         values : string, object or a list of the previous
             Column(s) to use for populating new frame's values.
+
         Returns
         -------
         DataFrame
