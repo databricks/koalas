@@ -160,6 +160,7 @@ Reshaping, sorting, transposing
    DataFrame.T
    DataFrame.transpose
    DataFrame.reindex
+   DataFrame.rank
 
 Combining / joining / merging
 -----------------------------
