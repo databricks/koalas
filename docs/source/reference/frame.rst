@@ -91,6 +91,7 @@ Function application, GroupBy & Window
    DataFrame.applymap
    DataFrame.pipe
    DataFrame.groupby
+   DataFrame.transform
 
 .. _api.dataframe.stats:
 
@@ -109,6 +110,7 @@ Computations / Descriptive Stats
    DataFrame.max
    DataFrame.mean
    DataFrame.min
+   DataFrame.median
    DataFrame.nunique
    DataFrame.skew
    DataFrame.sum
@@ -117,6 +119,7 @@ Computations / Descriptive Stats
    DataFrame.cummin
    DataFrame.cummax
    DataFrame.cumsum
+   DataFrame.cumprod
 
 Reindexing / Selection / Label manipulation
 -------------------------------------------
@@ -157,6 +160,7 @@ Reshaping, sorting, transposing
    DataFrame.T
    DataFrame.transpose
    DataFrame.reindex
+   DataFrame.rank
 
 Combining / joining / merging
 -----------------------------

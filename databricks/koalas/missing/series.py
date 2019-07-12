@@ -30,7 +30,6 @@ def unsupported_property(property_name, deprecated=False, reason=""):
 class _MissingPandasLikeSeries(object):
 
     # Properties
-    T = unsupported_property('T')
     array = unsupported_property('array')
     asobject = unsupported_property('asobject')
     axes = unsupported_property('axes')
@@ -38,7 +37,6 @@ class _MissingPandasLikeSeries(object):
     flags = unsupported_property('flags')
     ftype = unsupported_property('ftype')
     ftypes = unsupported_property('ftypes')
-    hasnans = unsupported_property('hasnans')
     iat = unsupported_property('iat')
     imag = unsupported_property('imag')
     is_copy = unsupported_property('is_copy')
@@ -72,7 +70,6 @@ class _MissingPandasLikeSeries(object):
     compound = unsupported_function('compound')
     copy = unsupported_function('copy')
     cov = unsupported_function('cov')
-    cumprod = unsupported_function('cumprod')
     diff = unsupported_function('diff')
     divmod = unsupported_function('divmod')
     dot = unsupported_function('dot')
@@ -101,7 +98,6 @@ class _MissingPandasLikeSeries(object):
     last_valid_index = unsupported_function('last_valid_index')
     mad = unsupported_function('mad')
     mask = unsupported_function('mask')
-    median = unsupported_function('median')
     mode = unsupported_function('mode')
     pct_change = unsupported_function('pct_change')
     pop = unsupported_function('pop')
@@ -139,7 +135,6 @@ class _MissingPandasLikeSeries(object):
     to_sql = unsupported_function('to_sql')
     to_timestamp = unsupported_function('to_timestamp')
     to_xarray = unsupported_function('to_xarray')
-    transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     tshift = unsupported_function('tshift')
     tz_convert = unsupported_function('tz_convert')

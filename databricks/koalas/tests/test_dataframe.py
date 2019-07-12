@@ -985,6 +985,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.cumsum(), kdf.cumsum())
         self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
 
+    def test_cumprod(self):
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 1.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
+        kdf = ks.from_pandas(pdf)
+        self.assertEqual(repr(pdf.cumprod()), repr(kdf.cumprod()))
+        self.assertEqual(repr(pdf.cumprod(skipna=False)), repr(kdf.cumprod(skipna=False)))
+
     def test_reindex(self):
         index = ['A', 'B', 'C', 'D', 'E']
         pdf = pd.DataFrame({'numbers': [1., 2., 3., 4., 5.]}, index=index)
@@ -1010,3 +1017,26 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=['numbers', '2', '3'], axis=2))
         self.assertRaises(TypeError, lambda: kdf.reindex(index=['A', 'B', 'C'], axis=1))
         self.assertRaises(TypeError, lambda: kdf.reindex(index=123))
+
+    def test_rank(self):
+        pdf = pd.DataFrame(data={'col1': [1, 2, 3, 1], 'col2': [3, 4, 3, 1]},
+                           columns=['col1', 'col2'])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.rank(),
+                       kdf.rank().sort_index())
+        self.assert_eq(pdf.rank(),
+                       kdf.rank().sort_index())
+        self.assert_eq(pdf.rank(ascending=False),
+                       kdf.rank(ascending=False).sort_index())
+        self.assert_eq(pdf.rank(method='min'),
+                       kdf.rank(method='min').sort_index())
+        self.assert_eq(pdf.rank(method='max'),
+                       kdf.rank(method='max').sort_index())
+        self.assert_eq(pdf.rank(method='first'),
+                       kdf.rank(method='first').sort_index())
+        self.assert_eq(pdf.rank(method='dense'),
+                       kdf.rank(method='dense').sort_index())
+
+        msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.rank(method='nothing')

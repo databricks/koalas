@@ -229,6 +229,29 @@ class IndexOpsMixin(object):
         """
         return self._kdf._sdf.rdd.isEmpty()
 
+    @property
+    def hasnans(self):
+        """
+        Return True if it has any missing values. Otherwise, it returns False.
+
+        >>> ks.DataFrame({}, index=list('abc')).index.hasnans
+        False
+
+        >>> ks.Series(['a', None]).hasnans
+        True
+
+        >>> ks.Series([1.0, 2.0, np.nan]).hasnans
+        True
+
+        >>> ks.Series([1, 2, 3]).hasnans
+        False
+        """
+        sdf = self._kdf._sdf.select(self._scol)
+        col = self._scol
+
+        ret = sdf.select(F.max(col.isNull() | F.isnan(col))).collect()[0][0]
+        return ret
+
     def astype(self, dtype):
         """
         Cast a Koalas object to a specified dtype ``dtype``.

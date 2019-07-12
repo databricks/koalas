@@ -74,6 +74,7 @@ class _Frame(object):
         Series.cummax : Return cumulative maximum over Series axis.
         Series.cummin : Return cumulative minimum over Series axis.
         Series.cumsum : Return cumulative sum over Series axis.
+        Series.cumprod : Return cumulative product over Series axis.
 
         Examples
         --------
@@ -129,10 +130,12 @@ class _Frame(object):
         DataFrame.cummax : Return cumulative maximum over DataFrame axis.
         DataFrame.cummin : Return cumulative minimum over DataFrame axis.
         DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-        Series.max : Return the maximum over DataFrame axis.
-        Series.cummax : Return cumulative maximum over DataFrame axis.
-        Series.cummin : Return cumulative minimum over DataFrame axis.
-        Series.cumsum : Return cumulative sum over DataFrame axis.
+        DataFrame.cumprod : Return cumulative product over DataFrame axis.
+        Series.max : Return the maximum over Series axis.
+        Series.cummax : Return cumulative maximum over Series axis.
+        Series.cummin : Return cumulative minimum over Series axis.
+        Series.cumsum : Return cumulative sum over Series axis.
+        Series.cumprod : Return cumulative product over Series axis.
 
         Examples
         --------
@@ -188,10 +191,12 @@ class _Frame(object):
         DataFrame.cummax : Return cumulative maximum over DataFrame axis.
         DataFrame.cummin : Return cumulative minimum over DataFrame axis.
         DataFrame.cumsum : Return cumulative sum over DataFrame axis.
-        Series.sum : Return the sum over DataFrame axis.
-        Series.cummax : Return cumulative maximum over DataFrame axis.
-        Series.cummin : Return cumulative minimum over DataFrame axis.
-        Series.cumsum : Return cumulative sum over DataFrame axis.
+        DataFrame.cumprod : Return cumulative product over DataFrame axis.
+        Series.sum : Return the sum over Series axis.
+        Series.cummax : Return cumulative maximum over Series axis.
+        Series.cummin : Return cumulative minimum over Series axis.
+        Series.cumsum : Return cumulative sum over Series axis.
+        Series.cumprod : Return cumulative product over Series axis.
 
         Examples
         --------
@@ -219,6 +224,86 @@ class _Frame(object):
         Name: A, dtype: float64
         """
         return self._cum(F.sum, skipna)  # type: ignore
+
+    # TODO: add 'axis' parameter
+    # TODO: use pandas_udf to support negative values and other options later
+    #  other window except unbounded ones is supported as of Spark 3.0.
+    def cumprod(self, skipna: bool = True):
+        """
+        Return cumulative product over a DataFrame or Series axis.
+
+        Returns a DataFrame or Series of the same size containing the cumulative product.
+
+        .. note:: the current implementation of cumprod uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        .. note:: unliike pandas', Koalas' emulates cumulative product by ``exp(sum(log(...)))``
+            trick. Therefore, it only works for positive numbers.
+
+        Parameters
+        ----------
+        skipna : boolean, default True
+            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
+
+        Returns
+        -------
+        DataFrame or Series
+
+        See Also
+        --------
+        DataFrame.cummax : Return cumulative maximum over DataFrame axis.
+        DataFrame.cummin : Return cumulative minimum over DataFrame axis.
+        DataFrame.cumsum : Return cumulative sum over DataFrame axis.
+        DataFrame.cumprod : Return cumulative product over DataFrame axis.
+        Series.cummax : Return cumulative maximum over Series axis.
+        Series.cummin : Return cumulative minimum over Series axis.
+        Series.cumsum : Return cumulative sum over Series axis.
+        Series.cumprod : Return cumulative product over Series axis.
+
+        Raises
+        ------
+        Exception : If the values is equal to or lower than 0.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[2.0, 1.0], [3.0, None], [4.0, 10.0]], columns=list('AB'))
+        >>> df
+             A     B
+        0  2.0   1.0
+        1  3.0   NaN
+        2  4.0  10.0
+
+        By default, iterates over rows and finds the sum in each column.
+
+        >>> df.cumprod()
+              A     B
+        0   2.0   1.0
+        1   6.0   NaN
+        2  24.0  10.0
+
+        It works identically in Series.
+
+        >>> df.A.cumprod()
+        0     2.0
+        1     6.0
+        2    24.0
+        Name: A, dtype: float64
+
+        """
+        from pyspark.sql.functions import pandas_udf
+
+        def cumprod(scol):
+            @pandas_udf(returnType=self._kdf._sdf.schema[self.name].dataType)
+            def negative_check(s):
+                assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), \
+                    "values should be bigger than 0: %s" % s
+                return s
+
+            return F.sum(F.log(negative_check(scol)))
+
+        return self._cum(cumprod, skipna)  # type: ignore
 
     def get_dtype_counts(self):
         """
@@ -1156,10 +1241,10 @@ class _Frame(object):
 
     def bool(self):
         """
-        Return the bool of a single element PandasObject.
+        Return the bool of a single element in the current object.
 
         This must be a boolean scalar value, either True or False. Raise a ValueError if
-        the PandasObject does not have exactly 1 element, or that element is not boolean
+        the object does not have exactly 1 element, or that element is not boolean
 
         Examples
         --------
@@ -1196,6 +1281,70 @@ class _Frame(object):
             raise TypeError('bool() expects DataFrame or Series; however, '
                             'got [%s]' % (self,))
         return df.head(2).to_pandas().bool()
+
+    def median(self, accuracy=10000):
+        """
+        Return the median of the values for the requested axis.
+
+        .. note:: Unlike pandas', the median in Koalas is an approximated median based upon
+            approximate percentile computation because computing median across a large dataset
+            is extremely expensive.
+
+        Parameters
+        ----------
+        accuracy : int, optional
+            Default accuracy of approximation. Larger value means better accuracy.
+            The relative error can be deduced by 1.0 / accuracy.
+
+        Returns
+        -------
+        median : scalar or Series
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({
+        ...     'a': [24., 21., 25., 33., 26.], 'b': [1, 2, 3, 4, 5]}, columns=['a', 'b'])
+        >>> df
+              a  b
+        0  24.0  1
+        1  21.0  2
+        2  25.0  3
+        3  33.0  4
+        4  26.0  5
+
+        On a DataFrame:
+
+        >>> df.median()
+        a    25.0
+        b     3.0
+        Name: 0, dtype: float64
+
+        On a Series:
+
+        >>> df['a'].median()
+        25.0
+        """
+        if not isinstance(accuracy, int):
+            raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
+
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series
+
+        kdf_or_ks = self
+        if isinstance(kdf_or_ks, Series):
+            ks = kdf_or_ks
+            return self._reduce_for_stat_function(
+                lambda _: F.expr("approx_percentile(`%s`, 0.5, %s)" % (ks.name, accuracy)))
+        assert isinstance(kdf_or_ks, DataFrame)
+
+        # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
+        # to get a column name from Spark column but we need it to pass it through `expr`.
+        kdf = kdf_or_ks
+        sdf = kdf._sdf
+        median = lambda name: F.expr("approx_percentile(`%s`, 0.5, %s)" % (name, accuracy))
+        sdf = sdf.select([median(col).alias(col) for col in kdf.columns])
+        # This is expected to be small so it's fine to transpose.
+        return DataFrame(sdf).to_pandas().transpose().iloc[:, 0]
 
     @property
     def at(self):

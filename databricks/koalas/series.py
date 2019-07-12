@@ -2106,6 +2106,32 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
         return wrapped(self, *args, **kwds).rename(self.name)
 
+    def transpose(self, *args, **kwargs):
+        """
+        Return the transpose, which is by definition self.
+
+        Examples
+        --------
+        It returns the same object as the transpose of the given series object, which is by
+        definition self.
+
+        >>> s = ks.Series([1, 2, 3])
+        >>> s
+        0    1
+        1    2
+        2    3
+        Name: 0, dtype: int64
+
+        >>> s.transpose()
+        0    1
+        1    2
+        2    3
+        Name: 0, dtype: int64
+        """
+        return Series(self._kdf._internal.copy(), anchor=self._kdf)
+
+    T = property(transpose)
+
     def transform(self, func, *args, **kwargs):
         """
         Call ``func`` producing the same type as `self` with transformed values
@@ -2175,12 +2201,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return self.apply(func, args=args, **kwargs)
 
-    def rank(self, method='min', ascending=True, pct=False):
+    # TODO: add axis, numeric_only, pct, na_option parameter
+    def rank(self, method='average', ascending=True):
         """
-        Compute numerical data ranks (1 through n) along axis.
-
-        By default, equal values are assigned a rank that is the minimum of the
-        ranks of those values.
+        Compute numerical data ranks (1 through n) along axis. Equal values are
+        assigned a rank that is the average of the ranks of those values.
 
         .. note:: the current implementation of rank uses Spark's Window without
             specifying partition specification. This leads to move all data into
@@ -2189,69 +2214,64 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Parameters
         ----------
-        method : {'min'}, default 'min'
-            How to rank the group of records that have the same value
-        ascending : bool, default True
-            Whether or not the elements should be ranked in ascending order.
-        pct : boolean, default False
-            Computes percentage rank of data
+        method : {'average', 'min', 'max', 'first', 'dense'}
+            * average: average rank of group
+            * min: lowest rank in group
+            * max: highest rank in group
+            * first: ranks assigned in order they appear in the array
+            * dense: like 'min', but rank always increases by 1 between groups
+        ascending : boolean, default True
+            False for ranks by high (1) to low (N)
 
         Returns
         -------
-        same type as caller
-            Return a Series with data ranks as values.
+        ranks : same type as caller
 
         Examples
         --------
-        >>> df = ks.DataFrame(data={'Animal': ['cat', 'penguin', 'dog',
-        ...                                    'spider'],
-        ...                         'Number_legs': [4, 2, 4, 8]},
-        ...                   columns = ['Animal', 'Number_legs'])
+        >>> df = ks.DataFrame({'A': [1, 2, 2, 3], 'B': [4, 3, 2, 1]}, columns= ['A', 'B'])
         >>> df
-            Animal  Number_legs
-        0      cat            4
-        1  penguin            2
-        2      dog            4
-        3   spider            8
+           A  B
+        0  1  4
+        1  2  3
+        2  2  2
+        3  3  1
 
-        The following example shows how the method behaves with the above
-        parameters:
+        >>> df.rank().sort_index()
+             A    B
+        0  1.0  4.0
+        1  2.5  3.0
+        2  2.5  2.0
+        3  4.0  1.0
 
-        * default_rank: this is the default behaviour obtained without using
-          any parameter.
-        * min_rank: setting ``ascending = False`` the output is sorted in a
-          descending order.
-        * pct_rank: when setting ``pct = True``, the ranking is expressed as
-          percentile rank.
+        If method is set to 'min', it use lowest rank in group.
 
-        >>> df['default_rank'] = df['Number_legs'].rank()
-        >>> df['desc_rank'] = df['Number_legs'].rank(ascending=False)
-        >>> df['pct_rank'] = df['Number_legs'].rank(pct=True)
-        >>> df.sort_values(['Number_legs'])
-            Animal  Number_legs  default_rank  desc_rank  pct_rank
-        1  penguin            2           1.0        4.0  0.000000
-        0      cat            4           2.0        2.0  0.333333
-        2      dog            4           2.0        2.0  0.333333
-        3   spider            8           4.0        1.0  1.000000
+        >>> df.rank(method='min').sort_index()
+             A    B
+        0  1.0  4.0
+        1  2.0  3.0
+        2  2.0  2.0
+        3  4.0  1.0
+
+        If method is set to 'max', it use highest rank in group.
+
+        >>> df.rank(method='max').sort_index()
+             A    B
+        0  1.0  4.0
+        1  3.0  3.0
+        2  3.0  2.0
+        3  4.0  1.0
+
+        If method is set to 'dense', it leaves no gaps in group.
+
+        >>> df.rank(method='dense').sort_index()
+             A    B
+        0  1.0  4.0
+        1  2.0  3.0
+        2  2.0  2.0
+        3  3.0  1.0
         """
-        from pyspark.sql.window import Window
-
-        if method != 'min':
-            raise ValueError("Currently only 'min' method is supported.")
-
-        if ascending:
-            scol = self._scol.asc()
-        else:
-            scol = self._scol.desc()
-
-        if pct:
-            rank_func = F.percent_rank
-        else:
-            rank_func = F.rank
-
-        rank = rank_func().over(Window.orderBy(scol))
-        return Series(self._kdf._internal.copy(
-            scol=rank), anchor=self._kdf).astype("float").rename(self.name)
+        return _col(self.to_dataframe().rank(method=method, ascending=ascending))
 
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
         return _col(self.to_dataframe().describe(percentiles))
@@ -2336,6 +2356,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 # Manually sets nulls given the column defined above.
                 F.lit(None)
             ).otherwise(func(column_name).over(window))
+
+        # cumprod uses exp(sum(log(...))) trick.
+        if func.__name__ == "cumprod":
+            scol = F.exp(scol)
 
         return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
 

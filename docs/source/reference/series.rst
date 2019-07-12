@@ -30,6 +30,8 @@ Attributes
    Series.shape
    Series.size
    Series.empty
+   Series.T
+   Series.hasnans
 
 Conversion
 ----------
@@ -103,6 +105,7 @@ Computations / Descriptive Stats
    Series.cummax
    Series.cummin
    Series.cumsum
+   Series.cumprod
    Series.describe
    Series.kurt
    Series.max
@@ -115,6 +118,7 @@ Computations / Descriptive Stats
    Series.skew
    Series.std
    Series.sum
+   Series.median
    Series.var
    Series.kurtosis
    Series.unique
