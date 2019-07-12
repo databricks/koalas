@@ -2191,24 +2191,110 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition_cols,
                                 compression=compression)
 
-    def to_csv(path_or_buf=None, sep=', ', na_rep='', float_format=None,
-               columns=None, header=True, index=True, index_label=None,
-               mode='w', encoding=None, compression=None, quoting=None,
-               quotechar='"', line_terminator='\n', chunksize=None,
-               tupleize_cols=None, date_format=None, doublequote=True,
-               escapechar=None, decimal='.'):
+    def to_csv(self, path, mode=None, compression=None, sep=None, quote=None, escape=None,
+               header=None, nullValue=None, escapeQuotes=None, quoteAll=None, dateFormat=None,
+               timestampFormat=None, ignoreLeadingWhiteSpace=None, ignoreTrailingWhiteSpace=None,
+               charToEscapeQuoteEscaping=None, encoding=None, emptyValue=None):
+        """
+        Saves the content of the :class:`DataFrame` in CSV format at the specified path.
 
-        if columns is not None:
-            self
-        if index:
-            sdf = sdf.select(self._internal.columns)
-        else:
-            sdf = sdf.select(self._internal.data_columns)
+        Parameters
+        ----------
+        path: str, required
+            Path to write to.
+        mode: str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
+            Specifies the behavior of the save operation when data already exists.
 
-        self._sdf.write.csv(path=path_or_buf, sep=sep,
-                            nullValue=na_rep, header=header, encoding=encoding,
-                            , compression=compression,quote=quotechar,
-       dateFormat=date_format,)
+            - ``append``: Append contents of this :class:`DataFrame` to existing data.
+            - ``overwrite``: Overwrite existing data.
+            - ``ignore``: Silently ignore this operation if data already exists.
+            - ``error`` or ``errorifexists`` (default case): Throw an exception if data already exists.
+        compression: str {'none', 'uncompressed', 'snappy', 'gzip', 'lzo', 'brotli', 'lz4', 'zstd'}
+            Compression codec to use when saving to file. This can be one of the known
+            case-insensitive shorten names (none, bzip2, gzip, lz4, snappy and deflate).
+        sep: str, default None
+            Sets a single character as a separator for each field and value. If None is set,
+            it uses the default value, ``,``.
+        quote: str, default None
+            Sets a single character used for escaping quoted values where the separator can be part
+            of the value. If None is set, it uses the default value, ``"``. 
+            If an empty string is set, it uses ``u0000`` (null character).
+        escape: str, default None
+            Sets a single character used for escaping quotes inside an already quoted value.
+            If None is set, it uses the default value, ``\``.
+        escapeQuotes: bool, default None
+            A flag indicating whether values containing quotes should always be enclosed in quotes.
+            If None is set, it uses the default value ``true``, escaping all values containing a
+            quote character.
+        quoteAll: bool, default None
+            A flag indicating whether all values should always be enclosed in quotes.
+            If None is set, it uses the default value ``false``,
+            only escaping values containing a quote character.
+        header: bool, default None
+            Writes the names of columns as the first line.
+            If None is set, it uses the default value, ``false``.
+        nullValue: str, default None
+            Sets the string representation of a null value.
+            If None is set, it uses the default value, empty string.
+        dateFormat: str, default None
+            Sets the string that indicates a date format. Custom date formats follow the formats
+            at ``java.text.SimpleDateFormat``. This applies to date type.
+            If None is set, it uses the default value, ``yyyy-MM-dd``.
+        timestampFormat: str, default None
+            Sets the string that indicates a timestamp format.
+            Custom date formats follow the formats at ``java.text.SimpleDateFormat``.
+            This applies to timestamp type.
+            If None is set, it uses the default value, ``yyyy-MM-dd'T'HH:mm:ss.SSSXXX``.
+        ignoreLeadingWhiteSpace: bool, default None
+            A flag indicating whether or not leading whitespaces from values being written should
+            be skipped. If None is set, it uses the default value, ``true``.
+        ignoreTrailingWhiteSpace: bool, default None
+            A flag indicating whether or not trailing whitespaces from values being written should
+            be skipped. If None is set, it uses the default value, ``true``.
+        charToEscapeQuoteEscaping: str, default None
+            Sets a single character used for escaping the escape for the quote character.
+            If None is set, the default value is escape character when escape and quote characters
+            are different, ``\0`` otherwise..
+        encoding: str, default None
+            Sets the encoding (charset) of saved csv files.
+            If None is set, the default UTF-8 charset will be used.
+        emptyValue: str, default None
+            Sets the string representation of an empty value.
+            If None is set, it uses the default value, ``""``.
+
+        See Also
+        --------
+        read_csv
+        DataFrame.to_delta
+        DataFrame.to_table
+        DataFrame.to_parquet
+        DataFrame.to_spark_io
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
+
+        >>> df.to_csv('%s/to_csv/foo.csv' % path)
+
+        >>> df.to_csv('%s/to_csv/foo.csv' % path, mode = 'overwrite')
+        """
+        self._sdf.write.csv(path, mode=mode, compression=compression, sep=sep, quote=quote,
+                            escape=escape, header=header, nullValue=nullValue,
+                            escapeQuotes=escapeQuotes, quoteAll=quoteAll, dateFormat=dateFormat,
+                            timestampFormat=timestampFormat,
+                            ignoreLeadingWhiteSpace=ignoreLeadingWhiteSpace,
+                            ignoreTrailingWhiteSpace=ignoreTrailingWhiteSpace,
+                            charToEscapeQuoteEscaping=charToEscapeQuoteEscaping,
+                            encoding=encoding, emptyValue=emptyValue)
 
     def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
                     mode: str = 'error', partition_cols: Union[str, List[str], None] = None,
