@@ -2208,7 +2208,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             - ``append``: Append contents of this :class:`DataFrame` to existing data.
             - ``overwrite``: Overwrite existing data.
             - ``ignore``: Silently ignore this operation if data already exists.
-            - ``error`` or ``errorifexists`` (default case): Throw an exception if data already exists.
+            - ``error`` or ``errorifexists`` (default case): Throw an exception if data already
+                exists.
         compression: str {'none', 'uncompressed', 'snappy', 'gzip', 'lzo', 'brotli', 'lz4', 'zstd'}
             Compression codec to use when saving to file. This can be one of the known
             case-insensitive shorten names (none, bzip2, gzip, lz4, snappy and deflate).
@@ -2217,7 +2218,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             it uses the default value, ``,``.
         quote: str, default None
             Sets a single character used for escaping quoted values where the separator can be part
-            of the value. If None is set, it uses the default value, ``"``. 
+            of the value. If None is set, it uses the default value, ``"``.
             If an empty string is set, it uses ``u0000`` (null character).
         escape: str, default None
             Sets a single character used for escaping quotes inside an already quoted value.
@@ -2272,7 +2273,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-
         >>> df = ks.DataFrame(dict(
         ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
         ...    country=['KR', 'US', 'JP'],
@@ -2283,18 +2283,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1 2012-02-29 12:00:00      US     2
         2 2012-03-31 12:00:00      JP     3
 
-        >>> df.to_csv('%s/to_csv/foo.csv' % path)
-
-        >>> df.to_csv('%s/to_csv/foo.csv' % path, mode = 'overwrite')
+        >>> df.to_csv(path=r'%s/to_csv/foo.csv' % path)
         """
-        self._sdf.write.csv(path, mode=mode, compression=compression, sep=sep, quote=quote,
-                            escape=escape, header=header, nullValue=nullValue,
-                            escapeQuotes=escapeQuotes, quoteAll=quoteAll, dateFormat=dateFormat,
-                            timestampFormat=timestampFormat,
-                            ignoreLeadingWhiteSpace=ignoreLeadingWhiteSpace,
-                            ignoreTrailingWhiteSpace=ignoreTrailingWhiteSpace,
-                            charToEscapeQuoteEscaping=charToEscapeQuoteEscaping,
-                            encoding=encoding, emptyValue=emptyValue)
+        self._sdf.coalesce(1).write.csv(path, mode=mode, compression=compression, sep=sep,
+                                        quote=quote, escape=escape, header=header,
+                                        nullValue=nullValue,
+                                        escapeQuotes=escapeQuotes, quoteAll=quoteAll,
+                                        dateFormat=dateFormat,
+                                        timestampFormat=timestampFormat,
+                                        ignoreLeadingWhiteSpace=ignoreLeadingWhiteSpace,
+                                        ignoreTrailingWhiteSpace=ignoreTrailingWhiteSpace,
+                                        charToEscapeQuoteEscaping=charToEscapeQuoteEscaping,
+                                        encoding=encoding, emptyValue=emptyValue)
 
     def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
                     mode: str = 'error', partition_cols: Union[str, List[str], None] = None,
