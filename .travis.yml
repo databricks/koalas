@@ -55,17 +55,21 @@ install:
   # Replace dep1 dep2 ... with your dependencies
   - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION
   - conda activate test-environment
-  - conda config --env --add pinned_packages python=$TRAVIS_PYTHON_VERSION
-  - conda config --env --add pinned_packages pandas==$PANDAS_VERSION
-  - conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
   - conda install -c conda-forge --yes codecov
 
   # Test PyPI installation at Python 3.5. This is also because
   # one of the dependency requires Python 3.6 Conda specifically.
-  - if [[ $TRAVIS_PYTHON_VERSION == "3.5" ]]; then
-      pip install -r requirements-dev.txt && pip list;
+  - |
+    if [[ $TRAVIS_PYTHON_VERSION == "3.5" ]]; then
+      pip install -r requirements-dev.txt && \
+      pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
+      pip list;
     else
-      conda install -c conda-forge --yes --file requirements-dev.txt && conda list;
+      conda config --env --add pinned_packages python=$TRAVIS_PYTHON_VERSION && \
+      conda config --env --add pinned_packages pandas==$PANDAS_VERSION && \
+      conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION && \
+      conda install -c conda-forge --yes --file requirements-dev.txt && \
+      conda list;
     fi
 
   # Useful for to_clipboard test

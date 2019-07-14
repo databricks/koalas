@@ -98,7 +98,7 @@ _base = {
     types.BinaryType(): [bytes],
     types.ByteType(): [np.int8, 'int8', 'byte'],
     types.ShortType(): [np.int16, 'int16', 'short'],
-    types.IntegerType(): [int, 'int', np.int],
+    types.IntegerType(): [int, 'int', np.int, np.int32],
     types.LongType(): [np.int64, 'int64', 'long', 'bigint'],
     types.FloatType(): [float, 'float', np.float],
     types.DoubleType(): [np.float64, 'float64', 'double'],

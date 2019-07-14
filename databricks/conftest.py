@@ -23,6 +23,8 @@ import uuid
 import logging
 from distutils.version import LooseVersion
 
+import pandas as pd
+import pyarrow as pa
 from pyspark import __version__
 
 from databricks import koalas
@@ -43,6 +45,20 @@ else:
 @pytest.fixture(autouse=True)
 def add_ks(doctest_namespace):
     doctest_namespace['ks'] = koalas
+
+
+@pytest.fixture(autouse=True)
+def add_pd(doctest_namespace):
+    if os.getenv("PANDAS_VERSION", None) is not None:
+        assert pd.__version__ == os.getenv("PANDAS_VERSION")
+    doctest_namespace['pd'] = pd
+
+
+@pytest.fixture(autouse=True)
+def add_pa(doctest_namespace):
+    if os.getenv("PYARROW_VERSION", None) is not None:
+        assert pa.__version__ == os.getenv("PYARROW_VERSION")
+    doctest_namespace['pa'] = pa
 
 
 @pytest.fixture(autouse=True)

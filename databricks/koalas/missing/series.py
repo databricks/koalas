@@ -30,7 +30,6 @@ def unsupported_property(property_name, deprecated=False, reason=""):
 class _MissingPandasLikeSeries(object):
 
     # Properties
-    T = unsupported_property('T')
     array = unsupported_property('array')
     asobject = unsupported_property('asobject')
     axes = unsupported_property('axes')
@@ -38,7 +37,6 @@ class _MissingPandasLikeSeries(object):
     flags = unsupported_property('flags')
     ftype = unsupported_property('ftype')
     ftypes = unsupported_property('ftypes')
-    hasnans = unsupported_property('hasnans')
     iat = unsupported_property('iat')
     imag = unsupported_property('imag')
     is_copy = unsupported_property('is_copy')
@@ -67,16 +65,11 @@ class _MissingPandasLikeSeries(object):
     between = unsupported_function('between')
     between_time = unsupported_function('between_time')
     bfill = unsupported_function('bfill')
-    bool = unsupported_function('bool')
     combine = unsupported_function('combine')
     combine_first = unsupported_function('combine_first')
     compound = unsupported_function('compound')
     copy = unsupported_function('copy')
     cov = unsupported_function('cov')
-    cummax = unsupported_function('cummax')
-    cummin = unsupported_function('cummin')
-    cumprod = unsupported_function('cumprod')
-    cumsum = unsupported_function('cumsum')
     diff = unsupported_function('diff')
     divmod = unsupported_function('divmod')
     dot = unsupported_function('dot')
@@ -105,7 +98,6 @@ class _MissingPandasLikeSeries(object):
     last_valid_index = unsupported_function('last_valid_index')
     mad = unsupported_function('mad')
     mask = unsupported_function('mask')
-    median = unsupported_function('median')
     mode = unsupported_function('mode')
     pct_change = unsupported_function('pct_change')
     pop = unsupported_function('pop')
@@ -139,12 +131,10 @@ class _MissingPandasLikeSeries(object):
     to_hdf = unsupported_function('to_hdf')
     to_msgpack = unsupported_function('to_msgpack')
     to_period = unsupported_function('to_period')
-    to_pickle = unsupported_function('to_pickle')
     to_sparse = unsupported_function('to_sparse')
     to_sql = unsupported_function('to_sql')
     to_timestamp = unsupported_function('to_timestamp')
     to_xarray = unsupported_function('to_xarray')
-    transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     tshift = unsupported_function('tshift')
     tz_convert = unsupported_function('tz_convert')
@@ -175,3 +165,8 @@ class _MissingPandasLikeSeries(object):
     # Functions and properties we won't support.
     values = common.values(unsupported_property)
     memory_usage = common.memory_usage(unsupported_function)
+    # Functions and properties we won't support.
+    to_pickle = unsupported_function(
+        'to_pickle',
+        reason="For storage, we encourage you to use Delta or Parquet, instead of Python pickle "
+               "format.")
