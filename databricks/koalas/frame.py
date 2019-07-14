@@ -1874,6 +1874,66 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     notna = notnull
 
+    # TODO: add frep and axis parameter
+    def shift(self, periods=1, fill_value=None):
+        """
+        Shift index by desired number of periods.
+
+        .. note:: the current implementation of 'shift' uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        periods : int
+            Number of periods to shift. Can be positive or negative.
+        fill_value : object, optional
+            The scalar value to use for newly introduced missing values.
+            The default depends on the dtype of self. For numeric data, np.nan is used.
+
+        Returns
+        -------
+        Copy of input object, shifted.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'Col1': [10, 20, 15, 30, 45],
+        ...                    'Col2': [13, 23, 18, 33, 48],
+        ...                    'Col3': [17, 27, 22, 37, 52]})
+
+        >>> df.shift(periods=3)
+           Col1  Col2  Col3
+        0   NaN   NaN   NaN
+        1   NaN   NaN   NaN
+        2   NaN   NaN   NaN
+        3  10.0  13.0  17.0
+        4  20.0  23.0  27.0
+
+        >>> df.shift(periods=3, fill_value=0)
+           Col1  Col2  Col3
+        0     0     0     0
+        1     0     0     0
+        2     0     0     0
+        3    10    13    17
+        4    20    23    27
+        """
+        if len(self._internal.index_columns) == 0:
+            raise ValueError("Index must be set.")
+
+        if not isinstance(periods, int):
+            raise ValueError('periods should be an int; however, got [%s]' % type(periods))
+
+        index = self._internal.index_columns[0]
+        data_columns = self._internal.data_columns
+        sdf = self._sdf
+        window = Window.orderBy(index).rowsBetween(-periods, -periods)
+        for data_column in data_columns:
+            sdf = sdf.withColumn(data_column, F.lag(data_column, periods).over(window))
+        if fill_value is not None:
+            sdf = sdf.fillna(fill_value)
+        return DataFrame(self._internal.copy(sdf=sdf))
+
     def nunique(self, axis: int = 0, dropna: bool = True, approx: bool = False,
                 rsd: float = 0.05) -> pd.Series:
         """

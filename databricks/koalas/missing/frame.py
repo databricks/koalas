@@ -103,7 +103,6 @@ class _MissingPandasLikeDataFrame(object):
     rolling = unsupported_function('rolling')
     sem = unsupported_function('sem')
     set_axis = unsupported_function('set_axis')
-    shift = unsupported_function('shift')
     slice_shift = unsupported_function('slice_shift')
     squeeze = unsupported_function('squeeze')
     stack = unsupported_function('stack')
