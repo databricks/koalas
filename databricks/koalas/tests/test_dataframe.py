@@ -1074,3 +1074,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "should be an int"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.shift(1.5)
+
+    def test_diff(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+                            'b': [1, 1, 2, 3, 5, 8],
+                            'c': [1, 4, 9, 16, 25, 36]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.diff(),
+                       kdf.diff().sort_index())
+
+        msg = "should be an int"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.diff(1.5)

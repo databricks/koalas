@@ -121,6 +121,7 @@ Computations / Descriptive Stats
    DataFrame.cumsum
    DataFrame.cumprod
    DataFrame.round
+   DataFrame.diff
 
 Reindexing / Selection / Label manipulation
 -------------------------------------------
