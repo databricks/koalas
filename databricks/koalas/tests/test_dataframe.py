@@ -1040,3 +1040,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.rank(method='nothing')
+
+    def test_shift(self):
+        pdf = pd.DataFrame({'Col1': [10, 20, 15, 30, 45],
+                            'Col2': [13, 23, 18, 33, 48],
+                            'Col3': [17, 27, 22, 37, 52]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.shift(3), kdf.shift(3).sort_index())
+        self.assert_eq(pdf.shift(3, fill_value=0),
+                       kdf.shift(3, fill_value=0).sort_index())
+        msg = "Periods parameter only support int"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.shift(1.5)
