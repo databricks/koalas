@@ -1040,3 +1040,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.rank(method='nothing')
+
+    def test_diff(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+                            'b': [1, 1, 2, 3, 5, 8],
+                            'c': [1, 4, 9, 16, 25, 36]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.diff(),
+                       kdf.diff().sort_index())
+
+        msg = "periods only support int type"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.diff(1.5)
