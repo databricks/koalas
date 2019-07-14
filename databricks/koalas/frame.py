@@ -2003,7 +2003,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         elif isinstance(decimals, int):
             decimals_list = [(v, decimals) for v in self._internal.data_columns]
         else:
-            ValueError("decimals must be an integer, a dict-like or a Series")
+            raise ValueError("decimals must be an integer, a dict-like or a Series")
 
         sdf = self._sdf
         for decimal in decimals_list:

@@ -1055,3 +1055,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        kdf.round({'A': 1, 'C': 2}).sort_index())
         self.assert_eq(pdf.round(pser),
                        kdf.round(kser).sort_index())
+        msg = "decimals must be an integer, a dict-like or a Series"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.round(1.5)

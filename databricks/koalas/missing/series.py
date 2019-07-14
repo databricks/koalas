@@ -116,7 +116,6 @@ class _MissingPandasLikeSeries(object):
     replace = unsupported_function('replace')
     resample = unsupported_function('resample')
     rolling = unsupported_function('rolling')
-    round = unsupported_function('round')
     searchsorted = unsupported_function('searchsorted')
     sem = unsupported_function('sem')
     set_axis = unsupported_function('set_axis')
