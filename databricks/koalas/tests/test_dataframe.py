@@ -1047,7 +1047,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                             'Col3': [17, 27, 22, 37, 52]})
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.shift(3), kdf.shift(3).sort_index())
-        self.assert_eq(pdf.shift(periods=3, fill_value=0),
+
+        pdf = pd.DataFrame({'Col1': [0, 0, 0, 10, 20],
+                            'Col2': [0, 0, 0, 13, 23],
+                            'Col3': [0, 0, 0, 17, 27]})
+        self.assert_eq(pdf,
                        kdf.shift(periods=3, fill_value=0).sort_index())
         msg = "Periods parameter only support int"
         with self.assertRaisesRegex(ValueError, msg):
