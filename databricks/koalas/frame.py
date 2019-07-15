@@ -2285,16 +2285,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.to_csv(path=r'%s/to_csv/foo.csv' % path)
         """
-        self._sdf.coalesce(1).write.csv(path, mode=mode, compression=compression, sep=sep,
-                                        quote=quote, escape=escape, header=header,
-                                        nullValue=nullValue,
-                                        escapeQuotes=escapeQuotes, quoteAll=quoteAll,
-                                        dateFormat=dateFormat,
-                                        timestampFormat=timestampFormat,
-                                        ignoreLeadingWhiteSpace=ignoreLeadingWhiteSpace,
-                                        ignoreTrailingWhiteSpace=ignoreTrailingWhiteSpace,
-                                        charToEscapeQuoteEscaping=charToEscapeQuoteEscaping,
-                                        encoding=encoding, emptyValue=emptyValue)
+        self._sdf.write.csv(path, mode=mode, compression=compression, sep=sep,
+                            quote=quote, escape=escape, header=header,
+                            nullValue=nullValue,
+                            escapeQuotes=escapeQuotes, quoteAll=quoteAll,
+                            dateFormat=dateFormat,
+                            timestampFormat=timestampFormat,
+                            ignoreLeadingWhiteSpace=ignoreLeadingWhiteSpace,
+                            ignoreTrailingWhiteSpace=ignoreTrailingWhiteSpace,
+                            charToEscapeQuoteEscaping=charToEscapeQuoteEscaping,
+                            encoding=encoding, emptyValue=emptyValue)
 
     def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
                     mode: str = 'error', partition_cols: Union[str, List[str], None] = None,
