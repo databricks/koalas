@@ -2235,10 +2235,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2    0.88
         Name: x, dtype: float64
         """
-        if isinstance(decimals, int):
-            return _col(self.to_dataframe().round(decimals=decimals))
-        else:
+        if not isinstance(decimals, int):
             raise ValueError("decimals must be an integer")
+        column_name = self.name
+        scol = F.round(F.col(column_name), decimals)
+        return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
 
     # TODO: add axis, numeric_only, pct, na_option parameter
     def rank(self, method='average', ascending=True):
@@ -2310,6 +2311,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2  2.0  2.0
         3  3.0  1.0
         """
+
         return _col(self.to_dataframe().rank(method=method, ascending=ascending))
 
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
