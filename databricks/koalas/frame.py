@@ -1883,6 +1883,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         If 'freq' is passed (in this case, the index must be date or datetime, or it will raise
         a NotImplementedError), the index will be increased using the periods and the 'freq'.
 
+        .. note:: the current implementation of rank uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
 
         Parameters
         ----------
