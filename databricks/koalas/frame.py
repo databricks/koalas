@@ -2195,7 +2195,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                header=None, nullValue=None, escapeQuotes=None, quoteAll=None, dateFormat=None,
                timestampFormat=None, ignoreLeadingWhiteSpace=None, ignoreTrailingWhiteSpace=None,
                charToEscapeQuoteEscaping=None, encoding=None, emptyValue=None):
-        """
+        r"""
         Saves the content of the :class:`DataFrame` in CSV format at the specified path.
 
         Parameters
