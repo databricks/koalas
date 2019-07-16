@@ -175,6 +175,13 @@ Combining / joining / merging
    DataFrame.join
    DataFrame.update
 
+Time series-related
+-------------------
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.shift
+
 Cache
 -------------------------------
 .. autosummary::

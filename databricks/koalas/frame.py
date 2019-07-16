@@ -1877,9 +1877,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     # TODO: add frep and axis parameter
     def shift(self, periods=1, fill_value=None):
         """
-        Shift index by desired number of periods.
+        Shift DataFrame by desired number of periods.
 
-        .. note:: the current implementation of 'shift' uses Spark's Window without
+        .. note:: the current implementation of shift uses Spark's Window without
             specifying partition specification. This leads to move all data into
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
@@ -1894,13 +1894,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        Copy of input object, shifted.
+        Copy of input DataFrame, shifted.
 
         Examples
         --------
         >>> df = ks.DataFrame({'Col1': [10, 20, 15, 30, 45],
         ...                    'Col2': [13, 23, 18, 33, 48],
-        ...                    'Col3': [17, 27, 22, 37, 52]})
+        ...                    'Col3': [17, 27, 22, 37, 52]},
+        ...                   columns=['Col1', 'Col2', 'Col3'])
 
         >>> df.shift(periods=3)
            Col1  Col2  Col3
@@ -1919,21 +1920,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4    20    23    27
 
         """
-        if len(self._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
+        applied = []
+        for column in self._internal.data_columns:
+            applied.append(self[column].shift(periods, fill_value))
 
-        if not isinstance(periods, int):
-            raise ValueError('periods should be an int; however, got [%s]' % type(periods))
-
-        index = self._internal.index_columns[0]
-        data_columns = self._internal.data_columns
-        sdf = self._sdf
-        window = Window.orderBy(index).rowsBetween(-periods, -periods)
-        for data_column in data_columns:
-            sdf = sdf.withColumn(data_column, F.lag(data_column, periods).over(window))
-        if fill_value is not None:
-            sdf = sdf.fillna(fill_value)
-        return DataFrame(self._internal.copy(sdf=sdf))
+        sdf = self._sdf.select(
+            self._internal.index_columns + [c._scol for c in applied])
+        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
 
     # TODO: add axis parameter
     def diff(self, periods=1):
