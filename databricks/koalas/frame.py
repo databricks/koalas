@@ -2639,7 +2639,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             without specifying partition specification. This leads to move all data into
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
-        
+
         Parameters
         ----------
         value : scalar, dict, Series
