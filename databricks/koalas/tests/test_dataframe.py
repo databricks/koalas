@@ -1050,11 +1050,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([1, 0, 2], index=['A', 'B', 'C'])
         kser = ks.Series([1, 0, 2], index=['A', 'B', 'C'])
         self.assert_eq(pdf.round(2),
-                       kdf.round(2).sort_index())
+                       kdf.round(2))
         self.assert_eq(pdf.round({'A': 1, 'C': 2}),
-                       kdf.round({'A': 1, 'C': 2}).sort_index())
+                       kdf.round({'A': 1, 'C': 2}))
         self.assert_eq(pdf.round(pser),
-                       kdf.round(kser).sort_index())
+                       kdf.round(kser))
         msg = "decimals must be an integer, a dict-like or a Series"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.round(1.5)

@@ -513,8 +513,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_round(self):
         pser = pd.Series([0.028208, 0.038683, 0.877076], name='x')
         kser = koalas.from_pandas(pser)
-        self.assert_eq(pser.round(2),
-                       kser.round(2).sort_index())
+        self.assertEqual(repr(pser.round(2)), repr(kser.round(2)))
         msg = "decimals must be an integer"
         with self.assertRaisesRegex(ValueError, msg):
             kser.round(1.5)

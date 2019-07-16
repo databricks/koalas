@@ -2311,7 +2311,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2  2.0  2.0
         3  3.0  1.0
         """
-
         return _col(self.to_dataframe().rank(method=method, ascending=ascending))
 
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
