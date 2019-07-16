@@ -509,3 +509,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
         with self.assertRaisesRegex(ValueError, msg):
             kser.rank(method='nothing')
+
+    def test_round(self):
+        pser = pd.Series([0.028208, 0.038683, 0.877076], name='x')
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.round(2)), repr(kser.round(2)))
+        msg = "decimals must be an integer"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.round(1.5)

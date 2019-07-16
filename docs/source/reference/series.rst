@@ -123,6 +123,7 @@ Computations / Descriptive Stats
    Series.kurtosis
    Series.unique
    Series.value_counts
+   Series.round
 
 Reindexing / Selection / Label manipulation
 -------------------------------------------

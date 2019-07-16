@@ -101,7 +101,6 @@ class _MissingPandasLikeDataFrame(object):
     reorder_levels = unsupported_function('reorder_levels')
     resample = unsupported_function('resample')
     rolling = unsupported_function('rolling')
-    round = unsupported_function('round')
     sem = unsupported_function('sem')
     set_axis = unsupported_function('set_axis')
     shift = unsupported_function('shift')

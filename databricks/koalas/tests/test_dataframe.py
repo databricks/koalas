@@ -1040,3 +1040,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.rank(method='nothing')
+
+    def test_round(self):
+        pdf = pd.DataFrame({'A': [0.028208, 0.038683, 0.877076],
+                            'B': [0.992815, 0.645646, 0.149370],
+                            'C': [0.173891, 0.577595, 0.491027]},
+                           columns=['A', 'B', 'C'], index=['first', 'second', 'third'])
+        kdf = ks.from_pandas(pdf)
+        pser = pd.Series([1, 0, 2], index=['A', 'B', 'C'])
+        kser = ks.Series([1, 0, 2], index=['A', 'B', 'C'])
+        self.assert_eq(pdf.round(2),
+                       kdf.round(2))
+        self.assert_eq(pdf.round({'A': 1, 'C': 2}),
+                       kdf.round({'A': 1, 'C': 2}))
+        self.assert_eq(pdf.round(pser),
+                       kdf.round(kser))
+        msg = "decimals must be an integer, a dict-like or a Series"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.round(1.5)
