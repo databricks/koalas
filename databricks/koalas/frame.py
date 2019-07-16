@@ -1882,7 +1882,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Calculates the difference of a DataFrame element compared with another element in the
         DataFrame(default is the element in the same column of the previous row).
 
-        .. note:: the current implementation of rank uses Spark's Window without
+        .. note:: the current implementation of diff uses Spark's Window without
             specifying partition specification. This leads to move all data into
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
