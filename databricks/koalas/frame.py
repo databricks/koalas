@@ -1879,11 +1879,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Shift index by desired number of periods.
 
-        When 'freq' is not passed, shift the index without realigning the data.
-        If 'freq' is passed (in this case, the index must be date or datetime, or it will raise
-        a NotImplementedError), the index will be increased using the periods and the 'freq'.
-
-        .. note:: the current implementation of rank uses Spark's Window without
+        .. note:: the current implementation of 'shift' uses Spark's Window without
             specifying partition specification. This leads to move all data into
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
