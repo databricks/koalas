@@ -105,7 +105,6 @@ class _MissingPandasLikeSeries(object):
     product = unsupported_function('product')
     ptp = unsupported_function('ptp')
     put = unsupported_function('put')
-    quantile = unsupported_function('quantile')
     ravel = unsupported_function('ravel')
     rdivmod = unsupported_function('rdivmod')
     reindex = unsupported_function('reindex')
