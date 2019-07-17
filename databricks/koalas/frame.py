@@ -5515,7 +5515,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Return whether all elements are True.
 
-        Returns True unless there at least one element within a series that is
+        Returns True unless there is at least one element within a series that is
         False or equivalent (e.g. zero or empty)
 
         Parameters
@@ -5573,7 +5573,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         cols = []
         for data_column, applied_col in zip(data_columns, applied):
             cols.append(F.struct(
-                F.lit("%s" % data_column).alias(internal_index_column),
+                F.lit(data_column).alias(internal_index_column),
                 applied_col.alias(value_column)))
 
         sdf = sdf.select(
@@ -5595,7 +5595,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Return whether any element is True.
 
-        Returns False unless there at least one element within a series that is
+        Returns False unless there is at least one element within a series that is
         True or equivalent (e.g. non-zero or non-empty).
 
         Parameters
@@ -5653,7 +5653,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         cols = []
         for data_column, applied_col in zip(data_columns, applied):
             cols.append(F.struct(
-                F.lit("%s" % data_column).alias(internal_index_column),
+                F.lit(data_column).alias(internal_index_column),
                 applied_col.alias(value_column)))
 
         sdf = sdf.select(
