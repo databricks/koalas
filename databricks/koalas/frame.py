@@ -1935,7 +1935,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         First discrete difference of element.
 
         Calculates the difference of a DataFrame element compared with another element in the
-        DataFrame(default is the element in the same column of the previous row).
+        DataFrame (default is the element in the same column of the previous row).
 
         .. note:: the current implementation of diff uses Spark's Window without
             specifying partition specification. This leads to move all data into
@@ -1955,7 +1955,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         >>> df = ks.DataFrame({'a': [1, 2, 3, 4, 5, 6],
         ...                    'b': [1, 1, 2, 3, 5, 8],
-        ...                    'c': [1, 4, 9, 16, 25, 36]})
+        ...                    'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
         >>> df
            a  b   c
         0  1  1   1
@@ -1996,20 +1996,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4 -1.0 -3.0 -11.0
         5  NaN  NaN   NaN
         """
-        if len(self._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
-
-        if not isinstance(periods, int):
-            raise ValueError('periods should be an int; however, got [%s]' % type(periods))
-
-        data_columns = self._internal.data_columns
-        sdf = self._sdf
-        window = Window.orderBy(self._internal.index_columns[0]).rowsBetween(-periods, -periods)
-
-        for data_column in data_columns:
-            sdf = sdf.withColumn(data_column,
-                                 F.col(data_column) - F.lag(data_column, periods).over(window))
-        return DataFrame(self._internal.copy(sdf=sdf))
+        applied = []
+        for column in self._internal.data_columns:
+            applied.append(self[column].diff(periods))
+        sdf = self._sdf.select(
+            self._internal.index_columns + [c._scol for c in applied])
+        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
 
     def nunique(self, axis: int = 0, dropna: bool = True, approx: bool = False,
                 rsd: float = 0.05) -> pd.Series:
