@@ -2273,7 +2273,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         3
 
         >>> s.quantile([.25, .5, .75])  # doctest: +SKIP
-        q
         0.25    2
         0.50    3
         0.75    4
@@ -2314,8 +2313,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             ).select(F.explode(F.arrays_zip(F.expr("array(%s)" % args), F.col("arrays"))))
 
             # And then, explode it and manually set the index.
-            sdf = sdf.selectExpr("col.*").selectExpr("`0` as q", "arrays as value")
-            ser = DataFrame(sdf).set_index("q")["value"].rename(self.name)
+            internal_index_column = "__index_level_0__"
+            data_column = "value"
+            sdf = sdf.selectExpr("col.*").selectExpr(
+                "`0` as %s" % internal_index_column, "arrays as %s" % data_column)
+
+            internal = self._kdf._internal.copy(
+                sdf=sdf,
+                data_columns=list(data_column),
+                index_map=[(internal_index_column, None)])
+
+            ser = DataFrame(internal)[data_column].rename(self.name)
             return ser
         else:
             return self._reduce_for_stat_function(
