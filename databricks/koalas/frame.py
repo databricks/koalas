@@ -2153,6 +2153,83 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.withColumn(decimal[0], F.round(decimal[0], decimal[1]))
         return DataFrame(self._internal.copy(sdf=sdf))
 
+    def duplicated(self, subset=None, keep='first'):
+        """
+        Return boolean Series denoting duplicate rows, optionally only considering certain columns.
+        Parameters
+        ----------
+        subset : column label or sequence of labels, optional
+            Only consider certain columns for identifying duplicates,
+            by default use all of the columns
+        keep : {'first', 'last', False}, default 'first'
+           - ``first`` : Mark duplicates as ``True`` except for the first occurrence.
+           - ``last`` : Mark duplicates as ``True`` except for the last occurrence.
+           - False : Mark all duplicates as ``True``.
+
+        Returns
+        -------
+        duplicated : Series
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 1, 3],'b': [1, 1, 1, 4], 'c': [1, 1, 1, 5]})
+        >>> df
+           a  b  c
+        0  1  1  1
+        1  1  1  1
+        2  1  1  1
+        3  3  4  5
+
+        >>> df.duplicated().sort_index()
+        0    False
+        1     True
+        2     True
+        3    False
+        Name: x, dtype: bool
+
+        Mark duplicates as ``True`` except for the last occurrence.
+
+        >>> df.duplicated(keep='last').sort_index()
+        0     True
+        1     True
+        2    False
+        3    False
+        Name: x, dtype: bool
+
+        Mark all duplicates as ``True``.
+
+        >>> df.duplicated(keep=False).sort_index()
+        0     True
+        1     True
+        2     True
+        3    False
+        Name: x, dtype: bool
+        """
+        if subset is None:
+            subset = self._internal.data_columns
+        else:
+            diff = set(subset).difference(set(self._internal.data_columns))
+            if len(diff) > 0:
+                raise KeyError(','.join(diff))
+        sdf = self._sdf
+        index = self._internal.index_columns[0]
+        if keep == 'first':
+            tmp = sdf.groupby(subset).agg(F.min(index).alias(index)).withColumn('x', F.lit(False))
+            sdf = sdf.join(tmp, [index] + subset, 'left')
+        elif keep == 'last':
+            tmp = sdf.groupby(subset).agg(F.max(index).alias(index)).withColumn('x', F.lit(False))
+            sdf = sdf.join(tmp, [index] + subset, 'left')
+        elif not keep:
+            tmp = sdf.groupby(subset).agg((F.count('*') > 1).alias('x'))
+            sdf = sdf.join(tmp, subset, 'left')
+        else:
+            raise ValueError("keep only support 'first', 'last' and False")
+
+        sdf = sdf.fillna(True, subset='x').select([index] + ['x'])
+        internal = _InternalFrame(sdf=sdf, data_columns=['x'], index_map=[(index, None)])
+        kdf = DataFrame(internal)
+        return kdf[kdf.columns[0]]
+
     def to_koalas(self):
         """
         Converts the existing DataFrame into a Koalas DataFrame.
