@@ -517,3 +517,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "decimals must be an integer"
         with self.assertRaisesRegex(ValueError, msg):
             kser.round(1.5)
+
+    def test_quantile(self):
+        with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
+            koalas.Series([24., 21., 25., 33., 26.]).quantile(accuracy="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+            koalas.Series([24., 21., 25., 33., 26.]).quantile(q="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+            koalas.Series([24., 21., 25., 33., 26.]).quantile(q=["a"])

@@ -19,6 +19,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 """
 import re
 import inspect
+from collections import Iterable
 from functools import partial, wraps
 from typing import Any, Optional, List, Union, Generic, TypeVar
 
@@ -2240,6 +2241,85 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         column_name = self.name
         scol = F.round(F.col(column_name), decimals)
         return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
+
+    # TODO: add 'interpolation' parameter.
+    def quantile(self, q=0.5, accuracy=10000):
+        """
+        Return value at the given quantile.
+
+        .. note:: Unlike pandas', the quantile in Koalas is an approximated quantile based upon
+            approximate percentile computation because computing quantile across a large dataset
+            is extremely expensive.
+
+        Parameters
+        ----------
+        q : float or array-like, default 0.5 (50% quantile)
+            0 <= q <= 1, the quantile(s) to compute. If q is array-like, Spark 2.4+ is required.
+        accuracy : int, optional
+            Default accuracy of approximation. Larger value means better accuracy.
+            The relative error can be deduced by 1.0 / accuracy.
+
+        Returns
+        -------
+        float or Series
+            If the current object is a Series and ``q`` is an array, a Series will be
+            returned where the index is ``q`` and the values are the quantiles, otherwise
+            a float will be returned.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4, 5])
+        >>> s.quantile(.5)
+        3
+
+        >>> s.quantile([.25, .5, .75])  # doctest: +SKIP
+        q
+        0.25    2
+        0.50    3
+        0.75    4
+        Name: 0, dtype: int64
+        """
+        if not isinstance(accuracy, int):
+            raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
+
+        if isinstance(q, Iterable):
+            q = list(q)
+
+        for v in q if isinstance(q, list) else [q]:
+            if not isinstance(v, float):
+                raise ValueError(
+                    "q must be a float of an array of floats; however, [%s] found." % type(v))
+            if v < 0.0 or v > 1.0:
+                raise ValueError(
+                    "percentiles should all be in the interval [0, 1].")
+
+        if isinstance(q, list):
+            # TODO: avoid to use dataframe. After this, anchor will be lost.
+
+            # First calculate the percentiles and map it to given `q`.
+            #
+            # +-----------+
+            # | col       |
+            # +-----------+
+            # | [0.25, 2] |
+            # | [0.50, 3] |
+            # | [0.75, 4] |
+            # +-----------+
+            sdf = self._kdf._sdf
+            args = ", ".join(map(str, q))
+            percentile_col = F.expr(
+                "approx_percentile(`%s`, array(%s), %s)" % (self.name, args, accuracy))
+            sdf = sdf.select(
+                percentile_col.alias("arrays")
+            ).select(F.explode(F.arrays_zip(F.expr("array(%s)" % args), F.col("arrays"))))
+
+            # And then, explode it and manually set the index.
+            sdf = sdf.selectExpr("col.*").selectExpr("`0` as q", "arrays as value")
+            ser = DataFrame(sdf).set_index("q")["value"].rename(self.name)
+            return ser
+        else:
+            return self._reduce_for_stat_function(
+                lambda _: F.expr("approx_percentile(`%s`, %s, %s)" % (self.name, q, accuracy)))
 
     # TODO: add axis, numeric_only, pct, na_option parameter
     def rank(self, method='average', ascending=True):
