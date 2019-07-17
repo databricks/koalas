@@ -2254,7 +2254,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Parameters
         ----------
         q : float or array-like, default 0.5 (50% quantile)
-            0 <= q <= 1, the quantile(s) to compute. If q is array-like, Spark 2.4+ is required.
+            0 <= q <= 1, the quantile(s) to compute.
         accuracy : int, optional
             Default accuracy of approximation. Larger value means better accuracy.
             The relative error can be deduced by 1.0 / accuracy.
@@ -2272,9 +2272,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> s.quantile(.5)
         3
 
-        >>> s.quantile([.25, .5, .75])  # doctest: +SKIP
+        >>> s.quantile([.25, .5, .75])
         0.25    2
-        0.50    3
+        0.5     3
         0.75    4
         Name: 0, dtype: int64
         """
@@ -2293,37 +2293,50 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                     "percentiles should all be in the interval [0, 1].")
 
         if isinstance(q, list):
+            quantiles = q
             # TODO: avoid to use dataframe. After this, anchor will be lost.
 
-            # First calculate the percentiles and map it to given `q`.
+            # First calculate the percentiles and map it to each `quantiles`
+            # by creating each entry as a struct. So, it becomes an array of
+            # structs as below:
             #
-            # +-----------+
-            # | col       |
-            # +-----------+
-            # | [0.25, 2] |
-            # | [0.50, 3] |
-            # | [0.75, 4] |
-            # +-----------+
+            # +--------------------------------+
+            # | arrays                         |
+            # +--------------------------------+
+            # |[[0.25, 2], [0.5, 3], [0.75, 4]]|
+            # +--------------------------------+
             sdf = self._kdf._sdf
-            args = ", ".join(map(str, q))
+            args = ", ".join(map(str, quantiles))
             percentile_col = F.expr(
                 "approx_percentile(`%s`, array(%s), %s)" % (self.name, args, accuracy))
-            sdf = sdf.select(
-                percentile_col.alias("arrays")
-            ).select(F.explode(F.arrays_zip(F.expr("array(%s)" % args), F.col("arrays"))))
+            sdf = sdf.select(percentile_col.alias("percentiles"))
+
+            internal_index_column = "__index_level_0__"
+            value_column = "value"
+            cols = []
+            for i, quantile in enumerate(quantiles):
+                cols.append(F.struct(
+                    F.lit("%s" % quantile).alias(internal_index_column),
+                    F.expr("percentiles[%s]" % i).alias(value_column)))
+            sdf = sdf.select(F.array(*cols).alias("arrays"))
 
             # And then, explode it and manually set the index.
-            internal_index_column = "__index_level_0__"
-            data_column = "value"
-            sdf = sdf.selectExpr("col.*").selectExpr(
-                "`0` as %s" % internal_index_column, "arrays as %s" % data_column)
+            #
+            # +-----------------+-----+
+            # |__index_level_0__|value|
+            # +-----------------+-----+
+            # | 0.25            |    2|
+            # |  0.5            |    3|
+            # | 0.75            |    4|
+            # +-----------------+-----+
+            sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
 
             internal = self._kdf._internal.copy(
                 sdf=sdf,
-                data_columns=list(data_column),
+                data_columns=[value_column],
                 index_map=[(internal_index_column, None)])
 
-            ser = DataFrame(internal)[data_column].rename(self.name)
+            ser = DataFrame(internal)[value_column].rename(self.name)
             return ser
         else:
             return self._reduce_for_stat_function(

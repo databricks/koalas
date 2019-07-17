@@ -45,8 +45,6 @@ class _MissingPandasLikeDataFrame(object):
     agg = unsupported_function('agg')
     aggregate = unsupported_function('aggregate')
     align = unsupported_function('align')
-    all = unsupported_function('all')
-    any = unsupported_function('any')
     apply = unsupported_function('apply')
     asfreq = unsupported_function('asfreq')
     asof = unsupported_function('asof')
