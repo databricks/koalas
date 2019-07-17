@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+from distutils.version import LooseVersion
 import matplotlib
 import numpy as np
 import pandas as pd
@@ -563,7 +564,11 @@ class KoalasSeriesPlotMethods(BasePlotMethods):
                  rot=None, fontsize=None, colormap=None, table=False,
                  yerr=None, xerr=None,
                  label=None, secondary_y=False, **kwds):
-        return plot_series(self._parent, kind=kind, ax=ax, figsize=figsize,
+        if LooseVersion(pd.__version__) < LooseVersion('0.24'):
+            data = self._data
+        else:
+            data = self._parent
+        return plot_series(data, kind=kind, ax=ax, figsize=figsize,
                            use_index=use_index, title=title, grid=grid,
                            legend=legend, style=style, logx=logx, logy=logy,
                            loglog=loglog, xticks=xticks, yticks=yticks,

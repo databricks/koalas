@@ -16,6 +16,7 @@
 
 import base64
 from io import BytesIO
+
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot as plt
@@ -64,8 +65,8 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot.bar()
-        ax2 = kdf['a'].plot.bar()
+        ax1 = pdf['a'].plot.bar(colormap='Paired')
+        ax2 = kdf['a'].plot.bar(colormap='Paired')
         self.compare_plots(ax1, ax2)
 
     def test_bar_plot_limited(self):
@@ -73,11 +74,11 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         kdf = self.kdf2
 
         _, ax1 = plt.subplots(1, 1)
-        ax1 = pdf['id'][:1000].plot.bar()
+        ax1 = pdf['id'][:1000].plot.bar(colormap='Paired')
         ax1.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
                  transform=ax1.transAxes)
         _, ax2 = plt.subplots(1, 1)
-        ax2 = kdf['id'].plot.bar()
+        ax2 = kdf['id'].plot.bar(colormap='Paired')
 
         self.compare_plots(ax1, ax2)
 

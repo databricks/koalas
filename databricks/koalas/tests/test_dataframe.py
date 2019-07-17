@@ -758,6 +758,56 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
         self.assert_eq(join_pdf, join_kdf)
 
+    def test_replace(self):
+        pdf = pd.DataFrame({"name": ['Ironman', 'Captain America', 'Thor', 'Hulk'],
+                           "weapon": ['Mark-45', 'Shield', 'Mjolnir', 'Smash']})
+        kdf = ks.from_pandas(pdf)
+
+        with self.assertRaisesRegex(NotImplementedError,
+                                    "replace currently works only for method='pad"):
+            kdf.replace(method='bfill')
+        with self.assertRaisesRegex(NotImplementedError,
+                                    "replace currently works only when limit=None"):
+            kdf.replace(limit=10)
+        with self.assertRaisesRegex(NotImplementedError,
+                                    "replace currently doesn't supports regex"):
+            kdf.replace(regex='')
+
+        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'tuple'>"):
+            kdf.replace(value=(1, 2, 3))
+        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'tuple'>"):
+            kdf.replace(to_replace=(1, 2, 3))
+
+        with self.assertRaisesRegex(ValueError, 'Length of to_replace and value must be same'):
+            kdf.replace(to_replace=['Ironman'], value=['Spiderman', 'Doctor Strange'])
+
+        self.assert_eq(kdf.replace('Ironman', 'Spiderman'), pdf.replace('Ironman', 'Spiderman'))
+        self.assert_eq(
+            kdf.replace(['Ironman', 'Captain America'], ['Rescue', 'Hawkeye']),
+            pdf.replace(['Ironman', 'Captain America'], ['Rescue', 'Hawkeye'])
+        )
+
+        pdf = pd.DataFrame({'A': [0, 1, 2, 3, 4],
+                            'B': [5, 6, 7, 8, 9],
+                            'C': ['a', 'b', 'c', 'd', 'e']})
+
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(repr(kdf.replace([0, 1, 2, 3], 4)),
+                       repr(pdf.replace([0, 1, 2, 3], 4)))
+
+        self.assert_eq(repr(kdf.replace([0, 1, 2, 3], [4, 3, 2, 1])),
+                       repr(pdf.replace([0, 1, 2, 3], [4, 3, 2, 1])))
+
+        self.assert_eq(repr(kdf.replace({0: 10, 1: 100})),
+                       repr(pdf.replace({0: 10, 1: 100})))
+
+        self.assert_eq(repr(kdf.replace({'A': 0, 'B': 5}, 100)),
+                       repr(pdf.replace({'A': 0, 'B': 5}, 100)))
+
+        self.assert_eq(repr(kdf.replace({'A': {0: 100, 4: 400}})),
+                       repr(pdf.replace({'A': {0: 100, 4: 400}})))
+
     def test_update(self):
         # check base function
         def get_data():
@@ -830,7 +880,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Checking if both DataFrames have the same results (Temporary)
         np.testing.assert_equal(kdf.pivot_table(columns="a", values="b").to_numpy(),
-                                pdf.pivot_table(columns=["a"], values="b").to_numpy())
+                                pdf.pivot_table(columns=["a"], values="b").values)
 
         # Todo: self.assert_eq(kdf.pivot_table(columns="a", values="b"),
         #  pdf.pivot_table(columns=["a"], values="b"))
@@ -849,7 +899,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         #  fill_value=999), pdf.pivot_table(index=['e', 'c'], columns="a", values="b",
         #  fill_value=999))
 
-    def test_pivot_table_erros(self):
+    def test_pivot_errors(self):
+        kdf = ks.range(10)
+
+        with self.assertRaisesRegex(ValueError, "columns should be set"):
+            kdf.pivot(index='id')
+
+        with self.assertRaisesRegex(ValueError, "values should be set"):
+            kdf.pivot(index='id', columns="id")
+
+    def test_pivot_table_errors(self):
 
         pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
                             'b': [1, 2, 2, 4, 2, 4],
@@ -867,7 +926,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, msg):
             kdf.pivot_table(index="c", columns="a", values="b")
 
-        msg = "pivot_table doesn't support aggfuct as dict and without index."
+        msg = "pivot_table doesn't support aggfunc as dict and without index."
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.pivot_table(columns="a", values=['b', 'e'], aggfunc={'b': 'mean', 'e': 'sum'})
 
@@ -909,3 +968,126 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             repr(pdf2.transpose().sort_index()),
             repr(ks.DataFrame(pdf2).transpose().sort_index()))
+
+    def test_cummin(self):
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.cummin(), kdf.cummin())
+        self.assert_eq(pdf.cummin(skipna=False), kdf.cummin(skipna=False))
+
+    def test_cummax(self):
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.cummax(), kdf.cummax())
+        self.assert_eq(pdf.cummax(skipna=False), kdf.cummax(skipna=False))
+
+    def test_cumsum(self):
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.cumsum(), kdf.cumsum())
+        self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
+
+    def test_cumprod(self):
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 1.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
+        kdf = ks.from_pandas(pdf)
+        self.assertEqual(repr(pdf.cumprod()), repr(kdf.cumprod()))
+        self.assertEqual(repr(pdf.cumprod(skipna=False)), repr(kdf.cumprod(skipna=False)))
+
+    def test_reindex(self):
+        index = ['A', 'B', 'C', 'D', 'E']
+        pdf = pd.DataFrame({'numbers': [1., 2., 3., 4., 5.]}, index=index)
+        kdf = ks.DataFrame({'numbers': [1., 2., 3., 4., 5.]}, index=index)
+
+        self.assert_eq(
+            pdf.reindex(['A', 'B', 'C'], columns=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(['A', 'B', 'C'], columns=['numbers', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(['A', 'B', 'C'], index=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(['A', 'B', 'C'], index=['numbers', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(index=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(index=['numbers', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(columns=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(columns=['numbers', '2', '3']).sort_index())
+
+        self.assertRaises(TypeError, lambda: kdf.reindex(columns=['numbers', '2', '3'], axis=1))
+        self.assertRaises(TypeError, lambda: kdf.reindex(columns=['numbers', '2', '3'], axis=2))
+        self.assertRaises(TypeError, lambda: kdf.reindex(index=['A', 'B', 'C'], axis=1))
+        self.assertRaises(TypeError, lambda: kdf.reindex(index=123))
+
+    def test_rank(self):
+        pdf = pd.DataFrame(data={'col1': [1, 2, 3, 1], 'col2': [3, 4, 3, 1]},
+                           columns=['col1', 'col2'])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.rank(),
+                       kdf.rank().sort_index())
+        self.assert_eq(pdf.rank(),
+                       kdf.rank().sort_index())
+        self.assert_eq(pdf.rank(ascending=False),
+                       kdf.rank(ascending=False).sort_index())
+        self.assert_eq(pdf.rank(method='min'),
+                       kdf.rank(method='min').sort_index())
+        self.assert_eq(pdf.rank(method='max'),
+                       kdf.rank(method='max').sort_index())
+        self.assert_eq(pdf.rank(method='first'),
+                       kdf.rank(method='first').sort_index())
+        self.assert_eq(pdf.rank(method='dense'),
+                       kdf.rank(method='dense').sort_index())
+
+        msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.rank(method='nothing')
+
+    def test_round(self):
+        pdf = pd.DataFrame({'A': [0.028208, 0.038683, 0.877076],
+                            'B': [0.992815, 0.645646, 0.149370],
+                            'C': [0.173891, 0.577595, 0.491027]},
+                           columns=['A', 'B', 'C'], index=['first', 'second', 'third'])
+        kdf = ks.from_pandas(pdf)
+        pser = pd.Series([1, 0, 2], index=['A', 'B', 'C'])
+        kser = ks.Series([1, 0, 2], index=['A', 'B', 'C'])
+        self.assert_eq(pdf.round(2),
+                       kdf.round(2))
+        self.assert_eq(pdf.round({'A': 1, 'C': 2}),
+                       kdf.round({'A': 1, 'C': 2}))
+        self.assert_eq(pdf.round(pser),
+                       kdf.round(kser))
+        msg = "decimals must be an integer, a dict-like or a Series"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.round(1.5)
+
+    def test_shift(self):
+        pdf = pd.DataFrame({'Col1': [10, 20, 15, 30, 45],
+                            'Col2': [13, 23, 18, 33, 48],
+                            'Col3': [17, 27, 22, 37, 52]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.shift(3), kdf.shift(3).sort_index())
+
+        pdf = pd.DataFrame({'Col1': [0, 0, 0, 10, 20],
+                            'Col2': [0, 0, 0, 13, 23],
+                            'Col3': [0, 0, 0, 17, 27]})
+        self.assert_eq(pdf,
+                       kdf.shift(periods=3, fill_value=0).sort_index())
+        msg = "should be an int"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.shift(1.5)
+
+    def test_diff(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+                            'b': [1, 1, 2, 3, 5, 8],
+                            'c': [1, 4, 9, 16, 25, 36]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.diff(),
+                       kdf.diff().sort_index())
+
+        msg = "should be an int"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.diff(1.5)

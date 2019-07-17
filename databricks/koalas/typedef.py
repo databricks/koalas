@@ -33,65 +33,58 @@ import pyspark.sql.types as types
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 
 
-__all__ = ['Col', 'pandas_wraps', 'as_spark_type',
+__all__ = ['pandas_wraps', 'as_spark_type',
            'as_python_type', 'infer_pd_series_spark_type']
 
 
-T = typing.TypeVar("T")
-
-
-class Col(typing.Generic[T]):
-    def is_col(self):
-        return self
-
-
 # A column of data, with the data type.
-class _Column(object):
-    def __init__(self, inner):
-        self.inner = inner  # type: types.DataType
+class _Series(object):
+    def __init__(self, tpe):
+        self.tpe = tpe  # type: types.DataType
 
     def __repr__(self):
-        return "_ColumnType[{}]".format(self.inner)
+        return "_SeriesType[{}]".format(self.tpe)
 
 
 class _DataFrame(object):
+    def __init__(self, tpe):
+        # Seems we cannot specify field names. I currently gave some default names
+        # `c0, c1, ... cn`.
+        self.tpe = types.StructType(
+            [types.StructField("c%s" % i, tpe[i])
+             for i in range(len(tpe))])  # type: types.StructType
+
     def __repr__(self):
-        return "_DataFrameType"
+        return "_DataFrameType[{}]".format(self.tpe)
 
 
 # The type is a scalar type that is furthermore understood by Spark.
 class _Scalar(object):
     def __init__(self, tpe):
-        self.type = tpe  # type: types.DataType
+        self.tpe = tpe  # type: types.DataType
 
     def __repr__(self):
-        return "_ScalarType[{}]".format(self.type)
+        return "_ScalarType[{}]".format(self.tpe)
 
 
 # The type is left unspecified or we do not know about this type.
 class _Unknown(object):
     def __init__(self, tpe):
-        self.type = tpe
+        self.tpe = tpe
 
     def __repr__(self):
-        return "_UnknownType[{}]".format(self.type)
+        return "_UnknownType[{}]".format(self.tpe)
 
 
-X = typing.Union[_Column, _DataFrame, _Scalar, _Unknown]
-
-
-def _is_col(tpe):
-    return hasattr(tpe, "is_col")
-
-
-def _get_col_inner(tpe):
-    return tpe.__args__[0]
+X = typing.Union[_Series, _DataFrame, _Scalar, _Unknown]
 
 
 def _to_stype(tpe) -> X:
-    if _is_col(tpe):
-        inner = as_spark_type(_get_col_inner(tpe))
-        return _Column(inner)
+    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.Series:
+        inner = as_spark_type(tpe.__args__[0])
+        return _Series(inner)
+    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.DataFrame:
+        return _DataFrame([as_spark_type(t) for t in tpe.__args__[0].__args__])
     inner = as_spark_type(tpe)
     if inner is None:
         return _Unknown(tpe)
@@ -105,7 +98,7 @@ _base = {
     types.BinaryType(): [bytes],
     types.ByteType(): [np.int8, 'int8', 'byte'],
     types.ShortType(): [np.int16, 'int16', 'short'],
-    types.IntegerType(): [int, 'int', np.int],
+    types.IntegerType(): [int, 'int', np.int, np.int32],
     types.LongType(): [np.int64, 'int64', 'long', 'bigint'],
     types.FloatType(): [float, 'float', np.float],
     types.DoubleType(): [np.float64, 'float64', 'double'],
@@ -252,7 +245,7 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
         spark_col_args.append(col._scol)
         kw_name_tokens.append("{}={}".format(key, col.name))
     col = wrapped_udf(*spark_col_args)
-    series = Series(kdf._internal.copy(scol=col), anchor=kdf)
+    series = Series(kdf._internal.copy(scol=col), anchor=kdf)  # type: 'ks.Series'
     all_name_tokens = name_tokens + sorted(kw_name_tokens)
     name = "{}({})".format(f.__name__, ", ".join(all_name_tokens))
     series = series.astype(return_type).alias(name)
@@ -281,7 +274,7 @@ def pandas_wraps(function=None, return_col=None, return_scalar=None):
 
     Wrapping a function with python 3's type annotations:
 
-    >>> from databricks.koalas import pandas_wraps, Col
+    >>> from databricks.koalas import pandas_wraps
     >>> pdf = pd.DataFrame({"col1": [1, 2], "col2": [10, 20]}, dtype=np.int64)
     >>> df = ks.DataFrame(pdf)
 
@@ -299,7 +292,7 @@ def pandas_wraps(function=None, return_col=None, return_scalar=None):
     returns a Series of integers:
 
     >>> @pandas_wraps
-    ... def fun(col1) -> Col[np.int64]:
+    ... def fun(col1) -> ks.Series[np.int64]:
     ...     return col1.apply(lambda x: x * 2)  # Arbitrary pandas code.
 
     This function works as before on pandas Series:
@@ -359,10 +352,10 @@ def pandas_wraps(function=None, return_col=None, return_scalar=None):
         def wrapper(*args, **kwargs):
             # Extract the signature arguments from this function.
             sig_return = _infer_return_type(f, return_col, return_scalar)
-            if not isinstance(sig_return, _Column):
+            if not isinstance(sig_return, _Series):
                 raise ValueError("Expected the return type of this function to be of type column,"
                                  " but found type {}".format(sig_return))
-            spark_return_type = sig_return.inner
+            spark_return_type = sig_return.tpe
             return _make_fun(f, spark_return_type, *args, **kwargs)
         return wrapper
     if callable(function):
@@ -371,28 +364,42 @@ def pandas_wraps(function=None, return_col=None, return_scalar=None):
         return function_wrapper
 
 
-def _infer_return_type(f, return_col_hint=None, return_scalar_hint=None) -> X:
+def _infer_return_type(f, return_col=None, return_scalar=None) -> X:
+    """
+    >>> def func() -> int:
+    ...    pass
+    >>> _infer_return_type(func).tpe
+    IntegerType
+
+    >>> def func() -> ks.Series[int]:
+    ...    pass
+    >>> _infer_return_type(func).tpe
+    IntegerType
+
+    >>> def func() -> ks.DataFrame[np.float, str]:
+    ...    pass
+    >>> _infer_return_type(func).tpe
+    StructType(List(StructField(c0,FloatType,true),StructField(c1,StringType,true)))
+
+    >>> def func() -> ks.DataFrame[np.float]:
+    ...    pass
+    >>> _infer_return_type(func).tpe
+    StructType(List(StructField(c0,FloatType,true)))
+    """
     spec = getfullargspec(f)
     return_sig = spec.annotations.get("return", None)
-    return _get_return_type(return_sig, return_col_hint, return_scalar_hint)
 
-
-def _get_return_type(return_sig, return_col, return_scalar) -> X:
-    """
-    Resolves the return type.
-    :return: X
-    """
     if not (return_col or return_sig or return_scalar):
         raise ValueError(
             "Missing type information. It should either be provided as an argument to "
             "pandas_wraps, or as a python typing hint")
     if return_col is not None:
-        if isinstance(return_col, Col):
+        if isinstance(return_col, ks.Series):
             return _to_stype(return_col)
         inner = as_spark_type(return_col)
-        return _Column(inner)
+        return _Series(inner)
     if return_scalar is not None:
-        if isinstance(return_scalar, Col):
+        if isinstance(return_scalar, ks.Series):
             raise ValueError("Column return type {}, you should use 'return_col' to specify"
                              " it.".format(return_scalar))
         inner = as_spark_type(return_scalar)

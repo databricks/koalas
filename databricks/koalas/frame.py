@@ -17,26 +17,33 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
+from distutils.version import LooseVersion
 import re
 import warnings
+import inspect
 from functools import partial, reduce
-from typing import Any, Optional, List, Tuple, Union
+import sys
+from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like
-from pandas.core.dtypes.common import infer_dtype_from_object
+if LooseVersion(pd.__version__) >= LooseVersion('0.24'):
+    from pandas.core.dtypes.common import infer_dtype_from_object
+else:
+    from pandas.core.dtypes.common import _get_dtype_from_object as infer_dtype_from_object
 from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType, StructType)
 from pyspark.sql.utils import AnalysisException
+from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function
 from databricks.koalas.generic import _Frame, max_display_count
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import scol_for
@@ -170,8 +177,27 @@ triangle      9.0   32400.0
 rectangle    16.0  129600.0
 """
 
+T = TypeVar('T')
 
-class DataFrame(_Frame):
+
+if (3, 5) <= sys.version_info < (3, 7):
+    from typing import GenericMeta
+
+    # This is a workaround to support variadic generic in DataFrame in Python 3.5+.
+    # See https://github.com/python/typing/issues/193
+    # We wrap the input params by a tuple to mimic variadic generic.
+    old_getitem = GenericMeta.__getitem__  # type: ignore
+
+    def new_getitem(self, params):
+        if hasattr(self, "is_dataframe"):
+            return old_getitem(self, Tuple[params])
+        else:
+            return old_getitem(self, params)
+
+    GenericMeta.__getitem__ = new_getitem  # type: ignore
+
+
+class DataFrame(_Frame, Generic[T]):
     """
     Koala DataFrame that corresponds to Pandas DataFrame logically. This holds Spark DataFrame
     internally.
@@ -1455,6 +1481,65 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     T = property(transpose)
 
+    def transform(self, func):
+        """
+        Call ``func`` on self producing a Series with transformed values
+        and that has the same length as its input.
+
+        .. note:: unlike pandas, it is required for ``func`` to specify return type hint.
+
+        .. note:: the series within ``func`` is actually a pandas series, and
+            the length of each series is not guaranteed.
+
+        Parameters
+        ----------
+        func : function
+            Function to use for transforming the data. It must work when pandas Series
+            is passed.
+
+        Returns
+        -------
+        DataFrame
+            A DataFrame that must have the same length as self.
+
+        Raises
+        ------
+        Exception : If the returned DataFrame has a different length than self.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': range(3), 'B': range(1, 4)})
+        >>> df
+           A  B
+        0  0  1
+        1  1  2
+        2  2  3
+
+        >>> def square(x) -> ks.Series[np.int32]:
+        ...     return x ** 2
+        >>> df.transform(square)
+           A  B
+        0  0  1
+        1  1  4
+        2  4  9
+        """
+        assert callable(func), "the first argument should be a callable function."
+        spec = inspect.getfullargspec(func)
+        return_sig = spec.annotations.get("return", None)
+        if return_sig is None:
+            raise ValueError("Given function must have return type hint; however, not found.")
+
+        wrapped = ks.pandas_wraps(func)
+        applied = []
+        for column in self._internal.data_columns:
+            applied.append(wrapped(self[column]).rename(column))
+
+        sdf = self._sdf.select(
+            self._internal.index_columns + [c._scol for c in applied])
+        internal = self._internal.copy(sdf=sdf)
+
+        return DataFrame(internal)
+
     @property
     def index(self):
         """The index (row labels) Column of the DataFrame.
@@ -1790,6 +1875,136 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     notna = notnull
 
+    # TODO: add frep and axis parameter
+    def shift(self, periods=1, fill_value=None):
+        """
+        Shift DataFrame by desired number of periods.
+
+        .. note:: the current implementation of shift uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        periods : int
+            Number of periods to shift. Can be positive or negative.
+        fill_value : object, optional
+            The scalar value to use for newly introduced missing values.
+            The default depends on the dtype of self. For numeric data, np.nan is used.
+
+        Returns
+        -------
+        Copy of input DataFrame, shifted.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'Col1': [10, 20, 15, 30, 45],
+        ...                    'Col2': [13, 23, 18, 33, 48],
+        ...                    'Col3': [17, 27, 22, 37, 52]},
+        ...                   columns=['Col1', 'Col2', 'Col3'])
+
+        >>> df.shift(periods=3)
+           Col1  Col2  Col3
+        0   NaN   NaN   NaN
+        1   NaN   NaN   NaN
+        2   NaN   NaN   NaN
+        3  10.0  13.0  17.0
+        4  20.0  23.0  27.0
+
+        >>> df.shift(periods=3, fill_value=0)
+           Col1  Col2  Col3
+        0     0     0     0
+        1     0     0     0
+        2     0     0     0
+        3    10    13    17
+        4    20    23    27
+
+        """
+        applied = []
+        for column in self._internal.data_columns:
+            applied.append(self[column].shift(periods, fill_value))
+
+        sdf = self._sdf.select(
+            self._internal.index_columns + [c._scol for c in applied])
+        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
+
+    # TODO: add axis parameter
+    def diff(self, periods=1):
+        """
+        First discrete difference of element.
+
+        Calculates the difference of a DataFrame element compared with another element in the
+        DataFrame (default is the element in the same column of the previous row).
+
+        .. note:: the current implementation of diff uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        periods : int, default 1
+            Periods to shift for calculating difference, accepts negative values.
+
+        Returns
+        -------
+        diffed : DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+        ...                    'b': [1, 1, 2, 3, 5, 8],
+        ...                    'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
+        >>> df
+           a  b   c
+        0  1  1   1
+        1  2  1   4
+        2  3  2   9
+        3  4  3  16
+        4  5  5  25
+        5  6  8  36
+
+        >>> df.diff()
+             a    b     c
+        0  NaN  NaN   NaN
+        1  1.0  0.0   3.0
+        2  1.0  1.0   5.0
+        3  1.0  1.0   7.0
+        4  1.0  2.0   9.0
+        5  1.0  3.0  11.0
+
+        Difference with previous column
+
+        >>> df.diff(periods=3)
+             a    b     c
+        0  NaN  NaN   NaN
+        1  NaN  NaN   NaN
+        2  NaN  NaN   NaN
+        3  3.0  2.0  15.0
+        4  3.0  4.0  21.0
+        5  3.0  6.0  27.0
+
+        Difference with following row
+
+        >>> df.diff(periods=-1)
+             a    b     c
+        0 -1.0  0.0  -3.0
+        1 -1.0 -1.0  -5.0
+        2 -1.0 -1.0  -7.0
+        3 -1.0 -2.0  -9.0
+        4 -1.0 -3.0 -11.0
+        5  NaN  NaN   NaN
+        """
+        applied = []
+        for column in self._internal.data_columns:
+            applied.append(self[column].diff(periods))
+        sdf = self._sdf.select(
+            self._internal.index_columns + [c._scol for c in applied])
+        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
+
     def nunique(self, axis: int = 0, dropna: bool = True, approx: bool = False,
                 rsd: float = 0.05) -> pd.Series:
         """
@@ -1856,6 +2071,76 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                    .alias(c)
                                     for c in self.columns])
         return res.toPandas().T.iloc[:, 0]
+
+    def round(self, decimals=0):
+        """
+        Round a DataFrame to a variable number of decimal places.
+
+        Parameters
+        ----------
+        decimals : int, dict, Series
+            Number of decimal places to round each column to. If an int is
+            given, round each column to the same number of places.
+            Otherwise dict and Series round to variable numbers of places.
+            Column names should be in the keys if `decimals` is a
+            dict-like, or in the index if `decimals` is a Series. Any
+            columns not included in `decimals` will be left as is. Elements
+            of `decimals` which are not columns of the input will be
+            ignored.
+
+        Returns
+        -------
+        DataFrame
+
+        See Also
+        --------
+        Series.round
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A':[0.028208, 0.038683, 0.877076],
+        ...                    'B':[0.992815, 0.645646, 0.149370],
+        ...                    'C':[0.173891, 0.577595, 0.491027]},
+        ...                    columns=['A', 'B', 'C'],
+        ...                    index=['first', 'second', 'third'])
+        >>> df
+                       A         B         C
+        first   0.028208  0.992815  0.173891
+        second  0.038683  0.645646  0.577595
+        third   0.877076  0.149370  0.491027
+
+        >>> df.round(2)
+                   A     B     C
+        first   0.03  0.99  0.17
+        second  0.04  0.65  0.58
+        third   0.88  0.15  0.49
+
+        >>> df.round({'A': 1, 'C': 2})
+                  A         B     C
+        first   0.0  0.992815  0.17
+        second  0.0  0.645646  0.58
+        third   0.9  0.149370  0.49
+
+        >>> decimals = ks.Series([1, 0, 2], index=['A', 'B', 'C'])
+        >>> df.round(decimals)
+                  A    B     C
+        first   0.0  1.0  0.17
+        second  0.0  1.0  0.58
+        third   0.9  0.0  0.49
+        """
+        if isinstance(decimals, ks.Series):
+            decimals_list = [kv for kv in decimals.to_pandas().items()]
+        elif isinstance(decimals, dict):
+            decimals_list = [(k, v) for k, v in decimals.items()]
+        elif isinstance(decimals, int):
+            decimals_list = [(v, decimals) for v in self._internal.data_columns]
+        else:
+            raise ValueError("decimals must be an integer, a dict-like or a Series")
+
+        sdf = self._sdf
+        for decimal in decimals_list:
+            sdf = sdf.withColumn(decimal[0], F.round(decimal[0], decimal[1]))
+        return DataFrame(self._internal.copy(sdf=sdf))
 
     def to_koalas(self):
         """
@@ -2626,6 +2911,139 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(internal)
 
+    def replace(self, to_replace=None, value=None, subset=None, inplace=False,
+                limit=None, regex=False, method='pad'):
+        """
+        Returns a new DataFrame replacing a value with another value.
+
+        Parameters
+        ----------
+        to_replace : int, float, string, or list
+            Value to be replaced. If the value is a dict, then value is ignored and
+            to_replace must be a mapping from column name (string) to replacement value.
+            The value to be replaced must be an int, float, or string.
+        value : int, float, string, or list
+            Value to use to replace holes. The replacement value must be an int, float,
+            or string. If value is a list, value should be of the same length with to_replace.
+        subset : string, list
+            Optional list of column names to consider. Columns specified in subset that
+            do not have matching data type are ignored. For example, if value is a string,
+            and subset contains a non-string column, then the non-string column is simply ignored.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+
+        Returns
+        -------
+        DataFrame
+            Object after replacement.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({"name": ['Ironman', 'Captain America', 'Thor', 'Hulk'],
+        ...                    "weapon": ['Mark-45', 'Shield', 'Mjolnir', 'Smash']},
+        ...                   columns=['name', 'weapon'])
+        >>> df
+                      name   weapon
+        0          Ironman  Mark-45
+        1  Captain America   Shield
+        2             Thor  Mjolnir
+        3             Hulk    Smash
+
+        Scalar `to_replace` and `value`
+
+        >>> df.replace('Ironman', 'War-Machine')
+                      name   weapon
+        0      War-Machine  Mark-45
+        1  Captain America   Shield
+        2             Thor  Mjolnir
+        3             Hulk    Smash
+
+        List like `to_replace` and `value`
+
+        >>> df.replace(['Ironman', 'Captain America'], ['Rescue', 'Hawkeye'], inplace=True)
+        >>> df
+              name   weapon
+        0   Rescue  Mark-45
+        1  Hawkeye   Shield
+        2     Thor  Mjolnir
+        3     Hulk    Smash
+
+        Replacing value by specifying column
+
+        >>> df.replace('Mjolnir', 'Stormbuster', subset='weapon')
+              name       weapon
+        0   Rescue      Mark-45
+        1  Hawkeye       Shield
+        2     Thor  Stormbuster
+        3     Hulk        Smash
+
+        Dict like `to_replace`
+
+        >>> df = ks.DataFrame({'A': [0, 1, 2, 3, 4],
+        ...                    'B': [5, 6, 7, 8, 9],
+        ...                    'C': ['a', 'b', 'c', 'd', 'e']},
+        ...                   columns=['A', 'B', 'C'])
+
+        >>> df.replace({'A': {0: 100, 4: 400}})
+             A  B  C
+        0  100  5  a
+        1    1  6  b
+        2    2  7  c
+        3    3  8  d
+        4  400  9  e
+
+        >>> df.replace({'A': 0, 'B': 5}, 100)
+             A    B  C
+        0  100  100  a
+        1    1    6  b
+        2    2    7  c
+        3    3    8  d
+        4    4    9  e
+
+        Notes
+        -----
+        One difference between this implementation and pandas is that it is necessary
+        to specify the column name when you are passing dictionary in `to_replace`
+        parameter. Calling `replace` on its index such as `df.replace({0: 10, 1: 100})` will
+        throw an error. Instead specify column-name like `df.replace({'A': {0: 10, 1: 100}})`.
+        """
+        if method != 'pad':
+            raise NotImplementedError("replace currently works only for method='pad")
+        if limit is not None:
+            raise NotImplementedError("replace currently works only when limit=None")
+        if regex is not False:
+            raise NotImplementedError("replace currently doesn't supports regex")
+
+        if value is not None and not isinstance(value, (int, float, str, list, dict)):
+            raise TypeError("Unsupported type {}".format(type(value)))
+        if to_replace is not None and not isinstance(to_replace, (int, float, str, list, dict)):
+            raise TypeError("Unsupported type {}".format(type(to_replace)))
+
+        if isinstance(value, list) and isinstance(to_replace, list):
+            if len(value) != len(to_replace):
+                raise ValueError('Length of to_replace and value must be same')
+
+        sdf = self._sdf.select(self._internal.data_columns)
+        if isinstance(to_replace, dict) and value is None and \
+                (not any(isinstance(i, dict) for i in to_replace.values())):
+            sdf = sdf.replace(to_replace, value, subset)
+        elif isinstance(to_replace, dict):
+            for df_column, replacement in to_replace.items():
+                if isinstance(replacement, dict):
+                    sdf = sdf.replace(replacement, subset=df_column)
+                else:
+                    sdf = sdf.withColumn(df_column, F.when(F.col(df_column) == replacement, value)
+                                         .otherwise(F.col(df_column)))
+
+        else:
+            sdf = sdf.replace(to_replace, value, subset)
+
+        kdf = DataFrame(sdf)
+        if inplace:
+            self._internal = kdf._internal
+        else:
+            return kdf
+
     def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) \
             -> 'DataFrame':
         """
@@ -2782,7 +3200,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                          "small", "large", "small", "small",
         ...                          "large"],
         ...                    "D": [1, 2, 2, 3, 3, 4, 5, 6, 7],
-        ...                    "E": [2, 4, 5, 5, 6, 6, 8, 9, 9]})
+        ...                    "E": [2, 4, 5, 5, 6, 6, 8, 9, 9]},
+        ...                   columns=['A', 'B', 'C', 'D', 'E'])
         >>> df
              A    B      C  D  E
         0  foo  one  small  1  2
@@ -2842,7 +3261,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                              "to aggregate functions (string).")
 
         if isinstance(aggfunc, dict) and index is None:
-            raise NotImplementedError("pivot_table doesn't support aggfuct"
+            raise NotImplementedError("pivot_table doesn't support aggfunc"
                                       " as dict and without index.")
 
         if isinstance(values, list) and len(values) > 1:
@@ -2879,6 +3298,115 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 index_values = values
 
             return DataFrame(sdf.withColumn(columns, F.lit(index_values))).set_index(columns)
+
+    def pivot(self, index=None, columns=None, values=None):
+        """
+        Return reshaped DataFrame organized by given index / column values.
+
+        Reshape data (produce a "pivot" table) based on column values. Uses
+        unique values from specified `index` / `columns` to form axes of the
+        resulting DataFrame. This function does not support data
+        aggregation.
+
+        Parameters
+        ----------
+        index : string, optional
+            Column to use to make new frame's index. If None, uses
+            existing index.
+        columns : string
+            Column to use to make new frame's columns.
+        values : string, object or a list of the previous
+            Column(s) to use for populating new frame's values.
+
+        Returns
+        -------
+        DataFrame
+            Returns reshaped DataFrame.
+
+        See Also
+        --------
+        DataFrame.pivot_table : Generalization of pivot that can handle
+            duplicate values for one index/column pair.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'foo': ['one', 'one', 'one', 'two', 'two',
+        ...                            'two'],
+        ...                    'bar': ['A', 'B', 'C', 'A', 'B', 'C'],
+        ...                    'baz': [1, 2, 3, 4, 5, 6],
+        ...                    'zoo': ['x', 'y', 'z', 'q', 'w', 't']},
+        ...                   columns=['foo', 'bar', 'baz', 'zoo'])
+        >>> df
+           foo bar  baz zoo
+        0  one   A    1   x
+        1  one   B    2   y
+        2  one   C    3   z
+        3  two   A    4   q
+        4  two   B    5   w
+        5  two   C    6   t
+
+        >>> df.pivot(index='foo', columns='bar', values='baz').sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+             A  B  C
+        foo
+        one  1  2  3
+        two  4  5  6
+
+        >>> df.pivot(columns='bar', values='baz').sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+             A    B    C
+        0  1.0  NaN  NaN
+        1  NaN  2.0  NaN
+        2  NaN  NaN  3.0
+        3  4.0  NaN  NaN
+        4  NaN  5.0  NaN
+        5  NaN  NaN  6.0
+
+        Notice that, unlike pandas raises an ValueError when duplicated values are found,
+        Koalas' pivot still works with its first value it meets during operation because pivot
+        is an expensive operation and it is preferred to permissively execute over failing fast
+        when processing large data.
+
+        >>> df = ks.DataFrame({"foo": ['one', 'one', 'two', 'two'],
+        ...                    "bar": ['A', 'A', 'B', 'C'],
+        ...                    "baz": [1, 2, 3, 4]}, columns=['foo', 'bar', 'baz'])
+        >>> df
+           foo bar  baz
+        0  one   A    1
+        1  one   A    2
+        2  two   B    3
+        3  two   C    4
+
+        >>> df.pivot(index='foo', columns='bar', values='baz').sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+               A    B    C
+        foo
+        one  1.0  NaN  NaN
+        two  NaN  3.0  4.0
+        """
+        if columns is None:
+            raise ValueError("columns should be set.")
+
+        if values is None:
+            raise ValueError("values should be set.")
+
+        should_use_existing_index = index is not None
+        if should_use_existing_index:
+            index = [index]
+        else:
+            index = self._internal.index_columns
+
+        df = self.pivot_table(
+            index=index, columns=columns, values=values, aggfunc='first')
+
+        if should_use_existing_index:
+            return df
+        else:
+            index_columns = df._internal.index_columns
+            # Note that the existing indexing column won't exist in the pivoted DataFrame.
+            internal = df._internal.copy(
+                index_map=[(index_column, None) for index_column in index_columns])
+            return DataFrame(internal)
 
     @property
     def columns(self):
@@ -3344,7 +3872,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         }
         by = [mapper[(asc, na_position)](self[colname]._scol)
               for colname, asc in zip(by, ascending)]
-        kdf = DataFrame(self._internal.copy(sdf=self._sdf.sort(*by)))
+        kdf = DataFrame(self._internal.copy(sdf=self._sdf.sort(*by)))  # type: ks.DataFrame
         if inplace:
             self._internal = kdf._internal
             return None
@@ -4567,6 +5095,29 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   index_map=[('summary', None)])
         return DataFrame(internal).astype('float64')
 
+    def _cum(self, func, skipna: bool):
+        # This is used for cummin, cummax, cumxum, etc.
+        if func == F.min:
+            func = "cummin"
+        elif func == F.max:
+            func = "cummax"
+        elif func == F.sum:
+            func = "cumsum"
+        elif func.__name__ == "cumprod":
+            func = "cumprod"
+
+        if len(self._internal.index_columns) == 0:
+            raise ValueError("Index must be set.")
+
+        applied = []
+        for column in self._internal.data_columns:
+            applied.append(getattr(self[column], func)(skipna))
+
+        sdf = self._sdf.select(
+            self._internal.index_columns + [c._scol for c in applied])
+        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
+
     # TODO: implements 'keep' parameters
     def drop_duplicates(self, subset=None, inplace=False):
         """
@@ -4626,6 +5177,232 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._internal = internal
         else:
             return DataFrame(internal)
+
+    def reindex(self, labels: Optional[Any] = None, index: Optional[Any] = None,
+                columns: Optional[Any] = None, axis: Optional[Union[int, str]] = None,
+                copy: Optional[bool] = True, fill_value: Optional[Any] = None) -> 'DataFrame':
+        """
+        Conform DataFrame to new index with optional filling logic, placing
+        NA/NaN in locations having no value in the previous index. A new object
+        is produced unless the new index is equivalent to the current one and
+        ``copy=False``.
+
+        Parameters
+        ----------
+        labels: array-like, optional
+            New labels / index to conform the axis specified by ‘axis’ to.
+        index, columns: array-like, optional
+            New labels / index to conform to, should be specified using keywords.
+            Preferably an Index object to avoid duplicating data
+        axis: int or str, optional
+            Axis to target. Can be either the axis name (‘index’, ‘columns’) or
+            number (0, 1).
+        copy : bool, default True
+            Return a new object, even if the passed indexes are the same.
+        fill_value : scalar, default np.NaN
+            Value to use for missing values. Defaults to NaN, but can be any
+            "compatible" value.
+
+        Returns
+        -------
+        DataFrame with changed index.
+
+        See Also
+        --------
+        DataFrame.set_index : Set row labels.
+        DataFrame.reset_index : Remove row labels or move them to new columns.
+
+        Examples
+        --------
+
+        ``DataFrame.reindex`` supports two calling conventions
+
+        * ``(index=index_labels, columns=column_labels, ...)``
+        * ``(labels, axis={'index', 'columns'}, ...)``
+
+        We *highly* recommend using keyword arguments to clarify your
+        intent.
+
+        Create a dataframe with some fictional data.
+
+        >>> index = ['Firefox', 'Chrome', 'Safari', 'IE10', 'Konqueror']
+        >>> df = ks.DataFrame({
+        ...      'http_status': [200, 200, 404, 404, 301],
+        ...      'response_time': [0.04, 0.02, 0.07, 0.08, 1.0]},
+        ...       index=index)
+        >>> df
+                   http_status  response_time
+        Firefox            200           0.04
+        Chrome             200           0.02
+        Safari             404           0.07
+        IE10               404           0.08
+        Konqueror          301           1.00
+
+        Create a new index and reindex the dataframe. By default
+        values in the new index that do not have corresponding
+        records in the dataframe are assigned ``NaN``.
+
+        >>> new_index= ['Safari', 'Iceweasel', 'Comodo Dragon', 'IE10',
+        ...             'Chrome']
+        >>> df.reindex(new_index).sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+                       http_status  response_time
+        Chrome               200.0           0.02
+        Comodo Dragon          NaN            NaN
+        IE10                 404.0           0.08
+        Iceweasel              NaN            NaN
+        Safari               404.0           0.07
+
+        We can fill in the missing values by passing a value to
+        the keyword ``fill_value``.
+
+        >>> df.reindex(new_index, fill_value=0, copy=False).sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+                       http_status  response_time
+        Chrome                 200           0.02
+        Comodo Dragon            0           0.00
+        IE10                   404           0.08
+        Iceweasel                0           0.00
+        Safari                 404           0.07
+
+        We can also reindex the columns.
+
+        >>> df.reindex(columns=['http_status', 'user_agent']).sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+                       http_status  user_agent
+        Chrome                 200         NaN
+        Comodo Dragon            0         NaN
+        IE10                   404         NaN
+        Iceweasel                0         NaN
+        Safari                 404         NaN
+
+        Or we can use "axis-style" keyword arguments
+
+        >>> df.reindex(['http_status', 'user_agent'], axis="columns").sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
+                      http_status  user_agent
+        Chrome                 200         NaN
+        Comodo Dragon            0         NaN
+        IE10                   404         NaN
+        Iceweasel                0         NaN
+        Safari                 404         NaN
+
+        To further illustrate the filling functionality in
+        ``reindex``, we will create a dataframe with a
+        monotonically increasing index (for example, a sequence
+        of dates).
+
+        >>> date_index = pd.date_range('1/1/2010', periods=6, freq='D')
+        >>> df2 = ks.DataFrame({"prices": [100, 101, np.nan, 100, 89, 88]},
+        ...                    index=date_index)
+        >>> df2.sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                    prices
+        2010-01-01   100.0
+        2010-01-02   101.0
+        2010-01-03     NaN
+        2010-01-04   100.0
+        2010-01-05    89.0
+        2010-01-06    88.0
+
+        Suppose we decide to expand the dataframe to cover a wider
+        date range.
+
+        >>> date_index2 = pd.date_range('12/29/2009', periods=10, freq='D')
+        >>> df2.reindex(date_index2).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                    prices
+        2009-12-29     NaN
+        2009-12-30     NaN
+        2009-12-31     NaN
+        2010-01-01   100.0
+        2010-01-02   101.0
+        2010-01-03     NaN
+        2010-01-04   100.0
+        2010-01-05    89.0
+        2010-01-06    88.0
+        2010-01-07     NaN
+        """
+        if axis is not None and (index is not None or columns is not None):
+            raise TypeError("Cannot specify both 'axis' and any of 'index' or 'columns'.")
+
+        if labels is not None:
+            if axis in ('index', 0, None):
+                index = labels
+            elif axis in ('columns', 1):
+                columns = labels
+            else:
+                raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
+
+        if index is not None and not is_list_like(index):
+            raise TypeError("Index must be called with a collection of some kind, "
+                            "%s was passed" % type(index))
+
+        if columns is not None and not is_list_like(columns):
+            raise TypeError("Columns must be called with a collection of some kind, "
+                            "%s was passed" % type(columns))
+
+        df = self.copy()
+
+        if index is not None:
+            df = DataFrame(df._reindex_index(index))
+
+        if columns is not None:
+            df = DataFrame(df._reindex_columns(columns))
+
+        # Process missing values.
+        if fill_value is not None:
+            df = df.fillna(fill_value)
+
+        # Copy
+        if copy:
+            return df.copy()
+        else:
+            self._internal = df._internal
+            return self
+
+    def _reindex_index(self, index):
+        # When axis is index, we can mimic pandas' by a right outer join.
+        index_column = self._internal.index_columns
+        assert len(index_column) <= 1, "Index should be single column or not set."
+
+        if len(index_column) == 1:
+            kser = ks.Series(list(index))
+            index_column = index_column[0]
+            labels = kser._kdf._sdf.select(kser._scol.alias(index_column))
+        else:
+            index_column = None
+            labels = ks.Series(index).to_frame()._sdf
+
+        joined_df = self._sdf.join(labels, on=index_column, how="right")
+        new_data_columns = filter(lambda x: x not in index_column, joined_df.columns)
+        if index_column is not None:
+            index_map = [(index_column, None)]  # type: List[IndexMap]
+            internal = self._internal.copy(
+                sdf=joined_df,
+                data_columns=list(new_data_columns),
+                index_map=index_map)
+        else:
+            internal = self._internal.copy(
+                sdf=joined_df,
+                data_columns=list(new_data_columns))
+        return internal
+
+    def _reindex_columns(self, columns):
+        label_columns = list(columns)
+        null_columns = [
+            F.lit(np.nan).alias(label_column) for label_column
+            in label_columns if label_column not in self.columns]
+
+        # Concatenate all fields
+        sdf = self._sdf.select(
+            self._internal.index_columns +
+            list(map(F.col, self.columns)) +
+            null_columns)
+
+        # Only select label_columns (with index columns)
+        sdf = sdf.select(self._internal.index_columns + label_columns)
+        return self._internal.copy(
+            sdf=sdf,
+            data_columns=label_columns)
 
     def melt(self, id_vars=None, value_vars=None, var_name='variable',
              value_name='value'):
@@ -4739,6 +5516,275 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(exploded_df)
 
+    # TODO: axis, skipna, and many arguments should be implemented.
+    def all(self, axis: Union[int, str] = 0) -> bool:
+        """
+        Return whether all elements are True.
+
+        Returns True unless there is at least one element within a series that is
+        False or equivalent (e.g. zero or empty)
+
+        Parameters
+        ----------
+        axis : {0 or 'index'}, default 0
+            Indicate which axis or axes should be reduced.
+
+            * 0 / 'index' : reduce the index, return a Series whose index is the
+              original column labels.
+
+        Examples
+        --------
+        Create a dataframe from a dictionary.
+
+        >>> df = ks.DataFrame({
+        ...    'col1': [True, True, True],
+        ...    'col2': [True, False, False],
+        ...    'col3': [0, 0, 0],
+        ...    'col4': [1, 2, 3],
+        ...    'col5': [True, True, None],
+        ...    'col6': [True, False, None]},
+        ...    columns=['col1', 'col2', 'col3', 'col4', 'col5', 'col6'])
+
+        Default behaviour checks if column-wise values all return a boolean.
+
+        >>> df.all()
+        col1     True
+        col2    False
+        col3    False
+        col4     True
+        col5     True
+        col6    False
+        Name: all, dtype: bool
+
+        Returns
+        -------
+        Series
+        """
+
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
+
+        applied = []
+        data_columns = self._internal.data_columns
+        for column in data_columns:
+            col = self[column]._scol
+            all_col = F.min(F.coalesce(col.cast('boolean'), F.lit(True)))
+            applied.append(F.when(all_col.isNull(), True).otherwise(all_col))
+
+        # TODO: there is a similar logic to transpose in, for instance,
+        #  DataFrame.any, Series.quantile. Maybe we should deduplicate it.
+        sdf = self._sdf
+        internal_index_column = "__index_level_0__"
+        value_column = "value"
+        cols = []
+        for data_column, applied_col in zip(data_columns, applied):
+            cols.append(F.struct(
+                F.lit(data_column).alias(internal_index_column),
+                applied_col.alias(value_column)))
+
+        sdf = sdf.select(
+            F.array(*cols).alias("arrays")
+        ).select(F.explode(F.col("arrays")))
+
+        sdf = sdf.selectExpr("col.*")
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            data_columns=[value_column],
+            index_map=[(internal_index_column, None)])
+
+        ser = DataFrame(internal)[value_column].rename("all")
+        return ser
+
+    # TODO: axis, skipna, and many arguments should be implemented.
+    def any(self, axis: Union[int, str] = 0) -> bool:
+        """
+        Return whether any element is True.
+
+        Returns False unless there is at least one element within a series that is
+        True or equivalent (e.g. non-zero or non-empty).
+
+        Parameters
+        ----------
+        axis : {0 or 'index'}, default 0
+            Indicate which axis or axes should be reduced.
+
+            * 0 / 'index' : reduce the index, return a Series whose index is the
+              original column labels.
+
+        Examples
+        --------
+        Create a dataframe from a dictionary.
+
+        >>> df = ks.DataFrame({
+        ...    'col1': [False, False, False],
+        ...    'col2': [True, False, False],
+        ...    'col3': [0, 0, 1],
+        ...    'col4': [0, 1, 2],
+        ...    'col5': [False, False, None],
+        ...    'col6': [True, False, None]},
+        ...    columns=['col1', 'col2', 'col3', 'col4', 'col5', 'col6'])
+
+        Default behaviour checks if column-wise values all return a boolean.
+
+        >>> df.any()
+        col1    False
+        col2     True
+        col3     True
+        col4     True
+        col5    False
+        col6     True
+        Name: any, dtype: bool
+
+        Returns
+        -------
+        Series
+        """
+
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
+
+        applied = []
+        data_columns = self._internal.data_columns
+        for column in data_columns:
+            col = self[column]._scol
+            all_col = F.max(F.coalesce(col.cast('boolean'), F.lit(False)))
+            applied.append(F.when(all_col.isNull(), False).otherwise(all_col))
+
+        # TODO: there is a similar logic to transpose in, for instance,
+        #  DataFrame.all, Series.quantile. Maybe we should deduplicate it.
+        sdf = self._sdf
+        internal_index_column = "__index_level_0__"
+        value_column = "value"
+        cols = []
+        for data_column, applied_col in zip(data_columns, applied):
+            cols.append(F.struct(
+                F.lit(data_column).alias(internal_index_column),
+                applied_col.alias(value_column)))
+
+        sdf = sdf.select(
+            F.array(*cols).alias("arrays")
+        ).select(F.explode(F.col("arrays")))
+
+        sdf = sdf.selectExpr("col.*")
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            data_columns=[value_column],
+            index_map=[(internal_index_column, None)])
+
+        ser = DataFrame(internal)[value_column].rename("any")
+        return ser
+
+    # TODO: add axis, numeric_only, pct, na_option parameter
+    def rank(self, method='average', ascending=True):
+        """
+        Compute numerical data ranks (1 through n) along axis. Equal values are
+        assigned a rank that is the average of the ranks of those values.
+
+        .. note:: the current implementation of rank uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        method : {'average', 'min', 'max', 'first', 'dense'}
+            * average: average rank of group
+            * min: lowest rank in group
+            * max: highest rank in group
+            * first: ranks assigned in order they appear in the array
+            * dense: like 'min', but rank always increases by 1 between groups
+        ascending : boolean, default True
+            False for ranks by high (1) to low (N)
+
+        Returns
+        -------
+        ranks : same type as caller
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2, 2, 3], 'B': [4, 3, 2, 1]}, columns= ['A', 'B'])
+        >>> df
+           A  B
+        0  1  4
+        1  2  3
+        2  2  2
+        3  3  1
+
+        >>> df.rank().sort_index()
+             A    B
+        0  1.0  4.0
+        1  2.5  3.0
+        2  2.5  2.0
+        3  4.0  1.0
+
+        If method is set to 'min', it use lowest rank in group.
+
+        >>> df.rank(method='min').sort_index()
+             A    B
+        0  1.0  4.0
+        1  2.0  3.0
+        2  2.0  2.0
+        3  4.0  1.0
+
+        If method is set to 'max', it use highest rank in group.
+
+        >>> df.rank(method='max').sort_index()
+             A    B
+        0  1.0  4.0
+        1  3.0  3.0
+        2  3.0  2.0
+        3  4.0  1.0
+
+        If method is set to 'dense', it leaves no gaps in group.
+
+        >>> df.rank(method='dense').sort_index()
+             A    B
+        0  1.0  4.0
+        1  2.0  3.0
+        2  2.0  2.0
+        3  3.0  1.0
+        """
+        if method not in ['average', 'min', 'max', 'first', 'dense']:
+            msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
+            raise ValueError(msg)
+
+        if ascending:
+            asc_func = spark.functions.asc
+        else:
+            asc_func = spark.functions.desc
+
+        index_column = self._internal.index_columns[0]
+        data_columns = self._internal.data_columns
+        sdf = self._sdf
+
+        for column_name in data_columns:
+            if method == 'first':
+                window = Window.orderBy(asc_func(column_name), asc_func(index_column))\
+                    .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+                sdf = sdf.withColumn(column_name, F.row_number().over(window))
+            elif method == 'dense':
+                window = Window.orderBy(asc_func(column_name))\
+                    .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+                sdf = sdf.withColumn(column_name, F.dense_rank().over(window))
+            else:
+                if method == 'average':
+                    stat_func = F.mean
+                elif method == 'min':
+                    stat_func = F.min
+                elif method == 'max':
+                    stat_func = F.max
+                window = Window.orderBy(asc_func(column_name))\
+                    .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+                sdf = sdf.withColumn('rank', F.row_number().over(window))
+                window = Window.partitionBy(column_name)\
+                    .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+                sdf = sdf.withColumn(column_name, stat_func(F.col('rank')).over(window))
+
+        return DataFrame(self._internal.copy(sdf=sdf.select(self._internal.columns)))\
+            .astype(np.float64)
+
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
         if key is None:
@@ -4846,6 +5892,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError('No axis named {0}'.format(axis))
         # convert to numeric axis
         return {None: 0, 'index': 0, 'columns': 1}.get(axis, axis)
+
+    if sys.version_info >= (3, 7):
+        def __class_getitem__(cls, params):
+            # This is a workaround to support variadic generic in DataFrame in Python 3.7.
+            # See https://github.com/python/typing/issues/193
+            # we always wraps the given type hints by a tuple to mimic the variadic generic.
+            return super(cls, DataFrame).__class_getitem__(Tuple[params])
+    elif (3, 5) <= sys.version_info < (3, 7):
+        # This is a workaround to support variadic generic in DataFrame in Python 3.5+
+        # The implementation is in its metaclass so this flag is needed to distinguish
+        # Koalas DataFrame.
+        is_dataframe = None
 
 
 def _reduce_spark_multi(sdf, aggs):

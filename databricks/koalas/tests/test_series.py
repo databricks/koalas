@@ -426,7 +426,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # name as its internal expression which contains, for instance, '`f(x)`' in the middle of
         # column name which currently cannot be recognized in PySpark.
         @koalas.pandas_wraps
-        def f(x) -> koalas.Col[int]:
+        def f(x) -> koalas.Series[int]:
             return 2 * x
 
         df = koalas.DataFrame({"x": [1, None]})
@@ -455,3 +455,73 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['a'].hist()
         self.assert_eq(plot_to_base64(ax1), plot_to_base64(ax2))
+
+    def test_cummin(self):
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.cummin()), repr(kser.cummin()))
+        self.assertEqual(repr(pser.cummin(skipna=False)), repr(kser.cummin(skipna=False)))
+
+    def test_cummax(self):
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.cummax()), repr(kser.cummax()))
+        self.assertEqual(repr(pser.cummax(skipna=False)), repr(kser.cummax(skipna=False)))
+
+    def test_cumsum(self):
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.cumsum()), repr(kser.cumsum()))
+        self.assertEqual(repr(pser.cumsum(skipna=False)), repr(kser.cumsum(skipna=False)))
+
+    def test_cumprod(self):
+        pser = pd.Series([1.0, None, 1.0, 4.0, 9.0]).rename("a")
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.cumprod()), repr(kser.cumprod()))
+        self.assertEqual(repr(pser.cumprod(skipna=False)), repr(kser.cumprod(skipna=False)))
+
+        # TODO: due to unknown reason, this test passes in Travis CI. Unable to reproduce in local.
+        # with self.assertRaisesRegex(Exception, "values should be bigger than 0"):
+        #     repr(koalas.Series([0, 1]).cumprod())
+
+    def test_median(self):
+        with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
+            koalas.Series([24., 21., 25., 33., 26.]).median(accuracy="a")
+
+    def test_rank(self):
+        pser = pd.Series([1, 2, 3, 1], name='x')
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.rank()),
+                         repr(kser.rank().sort_index()))
+        self.assertEqual(repr(pser.rank()),
+                         repr(kser.rank().sort_index()))
+        self.assertEqual(repr(pser.rank(ascending=False)),
+                         repr(kser.rank(ascending=False).sort_index()))
+        self.assertEqual(repr(pser.rank(method='min')),
+                         repr(kser.rank(method='min').sort_index()))
+        self.assertEqual(repr(pser.rank(method='max')),
+                         repr(kser.rank(method='max').sort_index()))
+        self.assertEqual(repr(pser.rank(method='first')),
+                         repr(kser.rank(method='first').sort_index()))
+        self.assertEqual(repr(pser.rank(method='dense')),
+                         repr(kser.rank(method='dense').sort_index()))
+
+        msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.rank(method='nothing')
+
+    def test_round(self):
+        pser = pd.Series([0.028208, 0.038683, 0.877076], name='x')
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.round(2)), repr(kser.round(2)))
+        msg = "decimals must be an integer"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.round(1.5)
+
+    def test_quantile(self):
+        with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
+            koalas.Series([24., 21., 25., 33., 26.]).quantile(accuracy="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+            koalas.Series([24., 21., 25., 33., 26.]).quantile(q="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+            koalas.Series([24., 21., 25., 33., 26.]).quantile(q=["a"])

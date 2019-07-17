@@ -32,13 +32,13 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.typedef import Col, pandas_wraps
+from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.series import Series, _col
 
 
 __all__ = ["from_pandas", "range", "read_csv", "read_delta", "read_table", "read_spark_io",
            "read_parquet", "read_clipboard", "read_excel", "read_html", "to_datetime",
-           "get_dummies", "concat", "melt"]
+           "get_dummies", "concat", "melt", "isna", "isnull", "notna", "notnull"]
 
 
 def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'DataFrame']:
@@ -1247,9 +1247,158 @@ def melt(frame, id_vars=None, value_vars=None, var_name='variable',
 melt.__doc__ = DataFrame.melt.__doc__
 
 
+def isna(obj):
+    """
+    Detect missing values for an array-like object.
+
+    This function takes a scalar or array-like object and indicates
+    whether values are missing (``NaN`` in numeric arrays, ``None`` or ``NaN``
+    in object arrays).
+
+    Parameters
+    ----------
+    obj : scalar or array-like
+        Object to check for null or missing values.
+
+    Returns
+    -------
+    bool or array-like of bool
+        For scalar input, returns a scalar boolean.
+        For array input, returns an array of boolean indicating whether each
+        corresponding element is missing.
+
+    See Also
+    --------
+    notnull : Boolean inverse of pandas.isnull.
+    Series.isna : Detect missing values in a Series.
+    Series.isnull : Detect missing values in a Series.
+    DataFrame.isna : Detect missing values in a DataFrame.
+    DataFrame.isnull : Detect missing values in a DataFrame.
+    Index.isna : Detect missing values in an Index.
+    Index.isnull : Detect missing values in an Index.
+
+    Examples
+    --------
+    Scalar arguments (including strings) result in a scalar boolean.
+
+    >>> ks.isna('dog')
+    False
+
+    >>> ks.isna(np.nan)
+    True
+
+    ndarrays result in an ndarray of booleans.
+
+    >>> array = np.array([[1, np.nan, 3], [4, 5, np.nan]])
+    >>> array
+    array([[ 1., nan,  3.],
+           [ 4.,  5., nan]])
+    >>> ks.isna(array)
+    array([[False,  True, False],
+           [False, False,  True]])
+
+    For Series and DataFrame, the same type is returned, containing booleans.
+
+    >>> df = ks.DataFrame({'a': ['ant', 'bee', 'cat'], 'b': ['dog', None, 'fly']})
+    >>> df
+         a     b
+    0  ant   dog
+    1  bee  None
+    2  cat   fly
+
+    >>> ks.isna(df)
+           a      b
+    0  False  False
+    1  False   True
+    2  False  False
+
+    >>> ks.isnull(df.b)
+    0    False
+    1     True
+    2    False
+    Name: b, dtype: bool
+    """
+    if isinstance(obj, (DataFrame, Series)):
+        return obj.isnull()
+    else:
+        return pd.isnull(obj)
+
+
+isnull = isna
+
+
+def notna(obj):
+    """
+    Detect existing (non-missing) values.
+
+    Return a boolean same-sized object indicating if the values are not NA.
+    Non-missing values get mapped to True. NA values, such as None or
+    :attr:`numpy.NaN`, get mapped to False values.
+
+    Returns
+    -------
+    bool or array-like of bool
+        Mask of bool values for each element that
+        indicates whether an element is not an NA value.
+
+    See Also
+    --------
+    isna : Detect missing values for an array-like object.
+    Series.notna : Boolean inverse of Series.isna.
+    Series.notnull :Boolean inverse of Series.isnull.
+    DataFrame.notna :Boolean inverse of DataFrame.isna.
+    DataFrame.notnull : Boolean inverse of DataFrame.isnull.
+    Index.notna : Boolean inverse of Index.isna.
+    Index.notnull : Boolean inverse of Index.isnull.
+
+    Examples
+    --------
+    Show which entries in a DataFrame are not NA.
+
+    >>> df = ks.DataFrame({'age': [5, 6, np.NaN],
+    ...                    'born': [pd.NaT, pd.Timestamp('1939-05-27'),
+    ...                             pd.Timestamp('1940-04-25')],
+    ...                    'name': ['Alfred', 'Batman', ''],
+    ...                    'toy': [None, 'Batmobile', 'Joker']})
+    >>> df
+       age       born    name        toy
+    0  5.0        NaT  Alfred       None
+    1  6.0 1939-05-27  Batman  Batmobile
+    2  NaN 1940-04-25              Joker
+
+    >>> df.notnull()
+         age   born  name    toy
+    0   True  False  True  False
+    1   True   True  True   True
+    2  False   True  True   True
+
+    Show which entries in a Series are not NA.
+
+    >>> ser = ks.Series([5, 6, np.NaN])
+    >>> ser
+    0    5.0
+    1    6.0
+    2    NaN
+    Name: 0, dtype: float64
+
+    >>> ser.notna()
+    0     True
+    1     True
+    2    False
+    Name: 0, dtype: bool
+    """
+    if isinstance(obj, (DataFrame, Series)):
+        return obj.notna()
+    else:
+        return pd.notna(obj)
+
+
+notnull = notna
+
+
 # @pandas_wraps(return_col=np.datetime64)
 @pandas_wraps
-def _to_datetime1(arg, errors, format, infer_datetime_format) -> Col[np.datetime64]:
+def _to_datetime1(arg, errors, format, infer_datetime_format) -> Series[np.datetime64]:
     return pd.to_datetime(
         arg,
         errors=errors,
@@ -1260,7 +1409,7 @@ def _to_datetime1(arg, errors, format, infer_datetime_format) -> Col[np.datetime
 # @pandas_wraps(return_col=np.datetime64)
 @pandas_wraps
 def _to_datetime2(arg_year, arg_month, arg_day,
-                  errors, format, infer_datetime_format) -> Col[np.datetime64]:
+                  errors, format, infer_datetime_format) -> Series[np.datetime64]:
     arg = dict(year=arg_year, month=arg_month, day=arg_day)
     for key in arg:
         if arg[key] is None:

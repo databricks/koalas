@@ -15,6 +15,17 @@ Data manipulations and SQL
    concat
    sql
 
+Top-level missing data
+----------------------
+
+.. autosummary::
+   :toctree: api/
+
+   isna
+   isnull
+   notna
+   notnull
+
 Top-level dealing with datetimelike
 -----------------------------------
 .. autosummary::

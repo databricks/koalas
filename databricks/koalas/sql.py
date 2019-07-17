@@ -139,10 +139,13 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     return SQLProcessor(_dict, query, default_session()).execute()
 
 
+_CAPTURE_SCOPES = 2
+
+
 def _get_local_scope():
     # Get 2 scopes above (_get_local_scope -> sql -> ...) to capture the vars there.
     try:
-        return inspect.stack()[2][0].f_locals
+        return inspect.stack()[_CAPTURE_SCOPES][0].f_locals
     except Exception as e:
         # TODO (rxin, thunterdb): use a more narrow scope exception.
         # See https://github.com/databricks/koalas/pull/448
