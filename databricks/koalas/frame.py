@@ -5510,6 +5510,166 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(exploded_df)
 
+    # TODO: axis, skipna, and many arguments should be implemented.
+    def all(self, axis: Union[int, str] = 0) -> bool:
+        """
+        Return whether all elements are True.
+
+        Returns True unless there is at least one element within a series that is
+        False or equivalent (e.g. zero or empty)
+
+        Parameters
+        ----------
+        axis : {0 or 'index'}, default 0
+            Indicate which axis or axes should be reduced.
+
+            * 0 / 'index' : reduce the index, return a Series whose index is the
+              original column labels.
+
+        Examples
+        --------
+        Create a dataframe from a dictionary.
+
+        >>> df = ks.DataFrame({
+        ...    'col1': [True, True, True],
+        ...    'col2': [True, False, False],
+        ...    'col3': [0, 0, 0],
+        ...    'col4': [1, 2, 3],
+        ...    'col5': [True, True, None],
+        ...    'col6': [True, False, None]},
+        ...    columns=['col1', 'col2', 'col3', 'col4', 'col5', 'col6'])
+
+        Default behaviour checks if column-wise values all return a boolean.
+
+        >>> df.all()
+        col1     True
+        col2    False
+        col3    False
+        col4     True
+        col5     True
+        col6    False
+        Name: all, dtype: bool
+
+        Returns
+        -------
+        Series
+        """
+
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
+
+        applied = []
+        data_columns = self._internal.data_columns
+        for column in data_columns:
+            col = self[column]._scol
+            all_col = F.min(F.coalesce(col.cast('boolean'), F.lit(True)))
+            applied.append(F.when(all_col.isNull(), True).otherwise(all_col))
+
+        # TODO: there is a similar logic to transpose in, for instance,
+        #  DataFrame.any, Series.quantile. Maybe we should deduplicate it.
+        sdf = self._sdf
+        internal_index_column = "__index_level_0__"
+        value_column = "value"
+        cols = []
+        for data_column, applied_col in zip(data_columns, applied):
+            cols.append(F.struct(
+                F.lit(data_column).alias(internal_index_column),
+                applied_col.alias(value_column)))
+
+        sdf = sdf.select(
+            F.array(*cols).alias("arrays")
+        ).select(F.explode(F.col("arrays")))
+
+        sdf = sdf.selectExpr("col.*")
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            data_columns=[value_column],
+            index_map=[(internal_index_column, None)])
+
+        ser = DataFrame(internal)[value_column].rename("all")
+        return ser
+
+    # TODO: axis, skipna, and many arguments should be implemented.
+    def any(self, axis: Union[int, str] = 0) -> bool:
+        """
+        Return whether any element is True.
+
+        Returns False unless there is at least one element within a series that is
+        True or equivalent (e.g. non-zero or non-empty).
+
+        Parameters
+        ----------
+        axis : {0 or 'index'}, default 0
+            Indicate which axis or axes should be reduced.
+
+            * 0 / 'index' : reduce the index, return a Series whose index is the
+              original column labels.
+
+        Examples
+        --------
+        Create a dataframe from a dictionary.
+
+        >>> df = ks.DataFrame({
+        ...    'col1': [False, False, False],
+        ...    'col2': [True, False, False],
+        ...    'col3': [0, 0, 1],
+        ...    'col4': [0, 1, 2],
+        ...    'col5': [False, False, None],
+        ...    'col6': [True, False, None]},
+        ...    columns=['col1', 'col2', 'col3', 'col4', 'col5', 'col6'])
+
+        Default behaviour checks if column-wise values all return a boolean.
+
+        >>> df.any()
+        col1    False
+        col2     True
+        col3     True
+        col4     True
+        col5    False
+        col6     True
+        Name: any, dtype: bool
+
+        Returns
+        -------
+        Series
+        """
+
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
+
+        applied = []
+        data_columns = self._internal.data_columns
+        for column in data_columns:
+            col = self[column]._scol
+            all_col = F.max(F.coalesce(col.cast('boolean'), F.lit(False)))
+            applied.append(F.when(all_col.isNull(), False).otherwise(all_col))
+
+        # TODO: there is a similar logic to transpose in, for instance,
+        #  DataFrame.all, Series.quantile. Maybe we should deduplicate it.
+        sdf = self._sdf
+        internal_index_column = "__index_level_0__"
+        value_column = "value"
+        cols = []
+        for data_column, applied_col in zip(data_columns, applied):
+            cols.append(F.struct(
+                F.lit(data_column).alias(internal_index_column),
+                applied_col.alias(value_column)))
+
+        sdf = sdf.select(
+            F.array(*cols).alias("arrays")
+        ).select(F.explode(F.col("arrays")))
+
+        sdf = sdf.selectExpr("col.*")
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            data_columns=[value_column],
+            index_map=[(internal_index_column, None)])
+
+        ser = DataFrame(internal)[value_column].rename("any")
+        return ser
+
     # TODO: add axis, numeric_only, pct, na_option parameter
     def rank(self, method='average', ascending=True):
         """

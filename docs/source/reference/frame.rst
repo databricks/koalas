@@ -101,6 +101,8 @@ Computations / Descriptive Stats
    :toctree: api/
 
    DataFrame.abs
+   DataFrame.all
+   DataFrame.any
    DataFrame.clip
    DataFrame.corr
    DataFrame.count

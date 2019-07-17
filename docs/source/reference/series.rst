@@ -114,6 +114,7 @@ Computations / Descriptive Stats
    Series.nlargest
    Series.nsmallest
    Series.nunique
+   Series.quantile
    Series.rank
    Series.skew
    Series.std
