@@ -257,13 +257,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                             'y': [1, 2, np.nan, 4, np.nan, np.nan],
                             'z': [1, 2, 3, 4, np.nan, np.nan]},
                            index=[10, 20, 30, 40, 50, 60])
-
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf.fillna(-1), pdf.fillna(-1))
         self.assert_eq(kdf.fillna({'x': -1, 'y': -2, 'z': -5}),
                        pdf.fillna({'x': -1, 'y': -2, 'z': -5}))
+        self.assert_eq(pdf.fillna(method='ffill'), kdf.fillna(method='ffill'))
+        self.assert_eq(pdf.fillna(method='ffill', limit=2), kdf.fillna(method='ffill', limit=2))
+        self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
+        self.assert_eq(pdf.fillna(method='bfill', limit=2), kdf.fillna(method='bfill', limit=2))
+
+        pdf = pd.DataFrame({'x': [1, 2, 3, 4, 5, 6],
+                            'y': [6, 5, 4, 3, 2, 1],
+                            'z': [1, 2, 3, 4, np.nan, np.nan]}).set_index(['x', 'y'])
+        kdf = ks.from_pandas(pdf)
+        # check multi index
+        self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
+        self.assert_eq(pdf.fillna(method='ffill'), kdf.fillna(method='ffill'))
 
         pdf.fillna({'x': -1, 'y': -2, 'z': -5}, inplace=True)
         kdf.fillna({'x': -1, 'y': -2, 'z': -5}, inplace=True)
@@ -277,12 +288,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.fillna(-1, axis=1)
         with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
             kdf.fillna(-1, axis='column')
-        with self.assertRaisesRegex(ValueError, "must specify value"):
-            kdf.fillna()
+        with self.assertRaisesRegex(ValueError, "limit parameter for value is not support now"):
+            kdf.fillna(-1, limit=1)
         with self.assertRaisesRegex(TypeError, "Unsupported.*DataFrame"):
             kdf.fillna(pd.DataFrame({'x': [-1], 'y': [-1], 'z': [-1]}))
         with self.assertRaisesRegex(TypeError, "Unsupported.*numpy.int64"):
             kdf.fillna({'x': np.int64(-6), 'y': np.int64(-4), 'z': -5})
+        with self.assertRaisesRegex(ValueError, "Expecting pad, ffill, backfill or bfill."):
+            kdf.fillna(method='xxx')
+        with self.assertRaisesRegex(ValueError, "Must specify a fill 'value' or 'method'."):
+            kdf.fillna()
 
     def test_isnull(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
