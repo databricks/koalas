@@ -257,7 +257,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                             'y': [1, 2, np.nan, 4, np.nan, np.nan],
                             'z': [1, 2, 3, 4, np.nan, np.nan]},
                            index=[10, 20, 30, 40, 50, 60])
-
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf, pdf)
@@ -269,6 +268,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
         self.assert_eq(pdf.fillna(method='bfill', limit=2), kdf.fillna(method='bfill', limit=2))
 
+        pdf = pd.DataFrame({'x': [1, 2, 3, 4, 5, 6],
+                            'y': [6, 5, 4, 3, 2, 1],
+                            'z': [1, 2, 3, 4, np.nan, np.nan]}).set_index(['x', 'y'])
+        kdf = ks.from_pandas(pdf)
+        # check multi index
+        self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
+        self.assert_eq(pdf.fillna(method='ffill'), kdf.fillna(method='ffill'))
+
         pdf.fillna({'x': -1, 'y': -2, 'z': -5}, inplace=True)
         kdf.fillna({'x': -1, 'y': -2, 'z': -5}, inplace=True)
         self.assert_eq(kdf, pdf)
@@ -276,6 +283,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         s_nan = pd.Series([-1, -2, -5], index=['x', 'y', 'z'], dtype=int)
         self.assert_eq(kdf.fillna(s_nan),
                        pdf.fillna(s_nan))
+
+
+
 
         with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
             kdf.fillna(-1, axis=1)
