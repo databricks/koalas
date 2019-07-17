@@ -168,6 +168,14 @@ Combining / joining / merging
 
    Series.append
 
+Time series-related
+-------------------
+
+.. autosummary::
+   :toctree: api/
+
+   Series.shift
+
 Accessors
 ---------
 
