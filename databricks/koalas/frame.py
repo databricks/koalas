@@ -1535,7 +1535,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             applied.append(wrapped(self[column]).rename(column))
 
         sdf = self._sdf.select(
-            self._internal.index_columns + [c._scol for c in applied])
+            self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf)
 
         return DataFrame(internal)
@@ -1926,7 +1926,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             applied.append(self[column].shift(periods, fill_value))
 
         sdf = self._sdf.select(
-            self._internal.index_columns + [c._scol for c in applied])
+            self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
@@ -2001,7 +2001,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for column in self._internal.data_columns:
             applied.append(self[column].diff(periods))
         sdf = self._sdf.select(
-            self._internal.index_columns + [c._scol for c in applied])
+            self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
@@ -2139,7 +2139,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf
         for decimal in decimals_list:
-            sdf = sdf.withColumn(decimal[0], F.round(decimal[0], decimal[1]))
+            sdf = sdf.withColumn(decimal[0], F.round(scol_for(sdf, decimal[0]), decimal[1]))
         return DataFrame(self._internal.copy(sdf=sdf))
 
     def to_koalas(self):
@@ -3032,8 +3032,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 if isinstance(replacement, dict):
                     sdf = sdf.replace(replacement, subset=df_column)
                 else:
-                    sdf = sdf.withColumn(df_column, F.when(F.col(df_column) == replacement, value)
-                                         .otherwise(F.col(df_column)))
+                    sdf = sdf.withColumn(df_column,
+                                         F.when(scol_for(sdf, df_column) == replacement, value)
+                                         .otherwise(scol_for(sdf, df_column)))
 
         else:
             sdf = sdf.replace(to_replace, value, subset)
@@ -5114,7 +5115,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             applied.append(getattr(self[column], func)(skipna))
 
         sdf = self._sdf.select(
-            self._internal.index_columns + [c._scol for c in applied])
+            self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
@@ -5394,12 +5395,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         # Concatenate all fields
         sdf = self._sdf.select(
-            self._internal.index_columns +
-            list(map(F.col, self.columns)) +
+            self._internal.index_scols +
+            list(map(self._internal.scol_for, self.columns)) +
             null_columns)
 
         # Only select label_columns (with index columns)
-        sdf = sdf.select(self._internal.index_columns + label_columns)
+        sdf = sdf.select(self._internal.index_scols + [scol_for(sdf, col) for col in label_columns])
         return self._internal.copy(
             sdf=sdf,
             data_columns=label_columns)
@@ -5782,7 +5783,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
                 sdf = sdf.withColumn(column_name, stat_func(F.col('rank')).over(window))
 
-        return DataFrame(self._internal.copy(sdf=sdf.select(self._internal.columns)))\
+        return DataFrame(self._internal.copy(sdf=sdf.select([scol_for(sdf, col)
+                                                             for col in self._internal.columns])))\
             .astype(np.float64)
 
     def _pd_getitem(self, key):

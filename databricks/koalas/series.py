@@ -2241,7 +2241,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if not isinstance(decimals, int):
             raise ValueError("decimals must be an integer")
         column_name = self.name
-        scol = F.round(F.col(column_name), decimals)
+        scol = F.round(self._scol, decimals)
         return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
 
     # TODO: add 'interpolation' parameter.
