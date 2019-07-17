@@ -2749,7 +2749,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         end = Window.unboundedFollowing
                 else:
                     raise ValueError('Expecting pad, ffill, backfill or bfill.')
-                window = Window.orderBy(self._internal.index_columns[0]).rowsBetween(begin, end)
+                window = Window.orderBy(self._internal.index_columns).rowsBetween(begin, end)
                 sdf = sdf.withColumn(data_column,
                                      F.when(F.col(data_column).isNull(),
                                             func(F.col(data_column), True).over(window))

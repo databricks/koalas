@@ -284,9 +284,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.fillna(s_nan),
                        pdf.fillna(s_nan))
 
-
-
-
         with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
             kdf.fillna(-1, axis=1)
         with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
