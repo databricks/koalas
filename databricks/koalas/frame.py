@@ -1507,7 +1507,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame({'A': range(3), 'B': range(1, 4)})
+        >>> df = ks.DataFrame({'A': range(3), 'B': range(1, 4)}, columns=['A', 'B'])
         >>> df
            A  B
         0  0  1
@@ -5329,7 +5329,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({
         ...      'http_status': [200, 200, 404, 404, 301],
         ...      'response_time': [0.04, 0.02, 0.07, 0.08, 1.0]},
-        ...       index=index)
+        ...       index=index,
+        ...       columns=['http_status', 'response_time'])
         >>> df
                    http_status  response_time
         Firefox            200           0.04
