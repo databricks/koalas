@@ -1101,3 +1101,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "should be an int"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.diff(1.5)
+
+    def test_bfill(self):
+        pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
+                            'y': [1, 2, np.nan, 4, np.nan, np.nan],
+                            'z': [1, 2, 3, 4, np.nan, np.nan]},
+                           index=[10, 20, 30, 40, 50, 60])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.bfill(), pdf.bfill())
+        self.assert_eq(kdf.bfill(limit=1), pdf.bfill(limit=1))

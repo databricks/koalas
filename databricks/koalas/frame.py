@@ -2831,7 +2831,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
 
-    # TODO: add 'limit' when value parameter exists
+    # TODO: add 'limit','downcast' when value parameter exists
     def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
         """Fill NA/NaN values.
 
@@ -2959,6 +2959,61 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._internal = internal
         else:
             return DataFrame(internal)
+
+    # TODO: add 'downcast' when value parameter exists
+    def bfill(self, axis=None, inplace=False, limit=None):
+        """
+        Synonym for `DataFrame.fillna()` with ``method=`bfill```.
+
+        .. note:: the current implementation of 'bfiff' uses Spark's Window
+            without specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        axis : {0 or `index`}
+            1 and `columns` are not supported.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+        limit : int, default None
+            If method is specified, this is the maximum number of consecutive NaN values to
+            forward/backward fill. In other words, if there is a gap with more than this number of
+            consecutive NaNs, it will only be partially filled. If method is not specified,
+            this is the maximum number of entries along the entire axis where NaNs will be filled.
+            Must be greater than 0 if not None
+
+        Returns
+        -------
+        DataFrame
+            DataFrame with NA entries filled.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({
+        ...     'A': [None, 3, None, None],
+        ...     'B': [2, 4, None, 3],
+        ...     'C': [None, None, None, 1],
+        ...     'D': [0, 1, 5, 4]
+        ...     },
+        ...     columns=['A', 'B', 'C', 'D'])
+        >>> df
+             A    B    C  D
+        0  NaN  2.0  NaN  0
+        1  3.0  4.0  NaN  1
+        2  NaN  NaN  NaN  5
+        3  NaN  3.0  1.0  4
+
+        Propagate non-null values backward.
+
+        >>> df.bfill()
+             A    B    C  D
+        0  3.0  2.0  1.0  0
+        1  3.0  4.0  1.0  1
+        2  NaN  3.0  1.0  5
+        3  NaN  3.0  1.0  4
+        """
+        return self.fillna(method='bfill', axis=axis, inplace=inplace, limit=limit)
 
     def replace(self, to_replace=None, value=None, subset=None, inplace=False,
                 limit=None, regex=False, method='pad'):
