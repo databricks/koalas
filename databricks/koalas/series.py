@@ -2495,7 +2495,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             raise ValueError('periods should be an int; however, got [%s]' % type(periods))
 
         col = self._scol
-        window = Window.orderBy(self._internal.index_columns[0]).rowsBetween(-periods, -periods)
+        window = Window.orderBy(self._internal.index_scols).rowsBetween(-periods, -periods)
         return self._with_new_scol(col - F.lag(col, periods).over(window)).alias(self.name)
 
     def _cum(self, func, skipna):

@@ -2951,11 +2951,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         end = Window.unboundedFollowing
                 else:
                     raise ValueError('Expecting pad, ffill, backfill or bfill.')
-                window = Window.orderBy(self._internal.index_columns).rowsBetween(begin, end)
+                window = Window.orderBy(self._internal.index_scols).rowsBetween(begin, end)
                 sdf = sdf.withColumn(data_column,
-                                     F.when(F.col(data_column).isNull(),
-                                            func(F.col(data_column), True).over(window))
-                                     .otherwise(F.col(data_column)))
+                                     F.when(scol_for(sdf, data_column).isNull(),
+                                            func(scol_for(sdf, data_column), True).over(window))
+                                     .otherwise(scol_for(sdf, data_column)))
         internal = self._internal.copy(sdf=sdf)
         if inplace:
             self._internal = internal
@@ -5858,9 +5858,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError(msg)
 
         if ascending:
-            asc_func = spark.functions.asc
+            asc_func = lambda sdf, column_name: scol_for(sdf, column_name).asc()
         else:
-            asc_func = spark.functions.desc
+            asc_func = lambda sdf, column_name: scol_for(sdf, column_name).desc()
 
         index_column = self._internal.index_columns[0]
         data_columns = self._internal.data_columns
@@ -5868,11 +5868,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         for column_name in data_columns:
             if method == 'first':
-                window = Window.orderBy(asc_func(column_name), asc_func(index_column))\
+                window = Window.orderBy(asc_func(sdf, column_name), asc_func(sdf, index_column))\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
                 sdf = sdf.withColumn(column_name, F.row_number().over(window))
             elif method == 'dense':
-                window = Window.orderBy(asc_func(column_name))\
+                window = Window.orderBy(asc_func(sdf, column_name))\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
                 sdf = sdf.withColumn(column_name, F.dense_rank().over(window))
             else:
@@ -5882,10 +5882,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     stat_func = F.min
                 elif method == 'max':
                     stat_func = F.max
-                window = Window.orderBy(asc_func(column_name))\
+                window = Window.orderBy(asc_func(sdf, column_name))\
                     .rowsBetween(Window.unboundedPreceding, Window.currentRow)
                 sdf = sdf.withColumn('rank', F.row_number().over(window))
-                window = Window.partitionBy(column_name)\
+                window = Window.partitionBy(scol_for(sdf, column_name))\
                     .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
                 sdf = sdf.withColumn(column_name, stat_func(F.col('rank')).over(window))
 
