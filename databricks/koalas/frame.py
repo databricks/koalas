@@ -2961,11 +2961,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(internal)
 
     # TODO: add 'downcast' when value parameter exists
-    def bfill(self, axis=None, inplace=False, limit=None):
+    def ffill(self, axis=None, inplace=False, limit=None):
         """
-        Synonym for `DataFrame.fillna()` with ``method=`bfill```.
+        Synonym for `DataFrame.fillna()` with ``method=`ffill```.
 
-        .. note:: the current implementation of 'bfiff' uses Spark's Window
+        .. note:: the current implementation of 'ffiff' uses Spark's Window
             without specifying partition specification. This leads to move all data into
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
@@ -3004,16 +3004,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  NaN  NaN  NaN  5
         3  NaN  3.0  1.0  4
 
-        Propagate non-null values backward.
+        Propagate non-null values forward.
 
-        >>> df.bfill()
+        >>> df.ffill()
              A    B    C  D
-        0  3.0  2.0  1.0  0
-        1  3.0  4.0  1.0  1
-        2  NaN  3.0  1.0  5
-        3  NaN  3.0  1.0  4
+        0  NaN  2.0  NaN  0
+        1  3.0  4.0  NaN  1
+        2  3.0  4.0  NaN  5
+        3  3.0  3.0  1.0  4
         """
-        return self.fillna(method='bfill', axis=axis, inplace=inplace, limit=limit)
+        return self.fillna(method='ffill', axis=axis, inplace=inplace, limit=limit)
 
     def replace(self, to_replace=None, value=None, subset=None, inplace=False,
                 limit=None, regex=False, method='pad'):
