@@ -1,5 +1,5 @@
 # Dependencies in Koalas
-pandas>=0.23
+pandas>=0.23,<0.25
 pyarrow>=0.10
 matplotlib>=3.0.0
 numpy>=1.14
