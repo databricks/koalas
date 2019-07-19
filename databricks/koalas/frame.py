@@ -2220,10 +2220,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index = self._internal.index_columns[0]
 
         if keep == 'first':
-            tmp = sdf.groupby(subset).agg(F.min(index).alias(index)).withColumn('duplicated', F.lit(False))
+            tmp = sdf.groupby(subset).agg(F.min(index).alias(index)).withColumn('duplicated',
+                                                                                F.lit(False))
             sdf = sdf.join(tmp, [index] + subset, 'left')
         elif keep == 'last':
-            tmp = sdf.groupby(subset).agg(F.max(index).alias(index)).withColumn('duplicated', F.lit(False))
+            tmp = sdf.groupby(subset).agg(F.max(index).alias(index)).withColumn('duplicated',
+                                                                                F.lit(False))
             sdf = sdf.join(tmp, [index] + subset, 'left')
         elif not keep:
             tmp = sdf.groupby(subset).agg((F.count('*') > 1).alias('duplicated'))
