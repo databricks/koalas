@@ -1106,7 +1106,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "should be an int"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.diff(1.5)
-            
+
     def test_ffill(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
                             'y': [1, 2, np.nan, 4, np.nan, np.nan],
