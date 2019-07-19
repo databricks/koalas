@@ -47,7 +47,6 @@ from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 
-
 # These regular expression patterns are complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
 # Two patterns basically seek the footer string from Pandas'
@@ -2156,6 +2155,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def duplicated(self, subset=None, keep='first'):
         """
         Return boolean Series denoting duplicate rows, optionally only considering certain columns.
+
         Parameters
         ----------
         subset : column label or sequence of labels, optional
@@ -2172,7 +2172,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame({'a': [1, 1, 1, 3],'b': [1, 1, 1, 4], 'c': [1, 1, 1, 5]})
+        >>> df = ks.DataFrame({'a': [1, 1, 1, 3],'b': [1, 1, 1, 4], 'c': [1, 1, 1, 5]},
+        ...                   columns = ['a', 'b', 'c'])
         >>> df
            a  b  c
         0  1  1  1
@@ -2185,7 +2186,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1     True
         2     True
         3    False
-        Name: x, dtype: bool
+        Name: duplicated, dtype: bool
 
         Mark duplicates as ``True`` except for the last occurrence.
 
@@ -2194,7 +2195,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1     True
         2    False
         3    False
-        Name: x, dtype: bool
+        Name: duplicated, dtype: bool
 
         Mark all duplicates as ``True``.
 
@@ -2203,32 +2204,38 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1     True
         2     True
         3    False
-        Name: x, dtype: bool
+        Name: duplicated, dtype: bool
         """
+        if len(self._internal.index_names) > 1:
+            raise ValueError("Now we don't support Index Now.")
+
         if subset is None:
             subset = self._internal.data_columns
         else:
             diff = set(subset).difference(set(self._internal.data_columns))
             if len(diff) > 0:
                 raise KeyError(','.join(diff))
+
         sdf = self._sdf
         index = self._internal.index_columns[0]
+
         if keep == 'first':
-            tmp = sdf.groupby(subset).agg(F.min(index).alias(index)).withColumn('x', F.lit(False))
+            tmp = sdf.groupby(subset).agg(F.min(index).alias(index)).withColumn('duplicated', F.lit(False))
             sdf = sdf.join(tmp, [index] + subset, 'left')
         elif keep == 'last':
-            tmp = sdf.groupby(subset).agg(F.max(index).alias(index)).withColumn('x', F.lit(False))
+            tmp = sdf.groupby(subset).agg(F.max(index).alias(index)).withColumn('duplicated', F.lit(False))
             sdf = sdf.join(tmp, [index] + subset, 'left')
         elif not keep:
-            tmp = sdf.groupby(subset).agg((F.count('*') > 1).alias('x'))
+            tmp = sdf.groupby(subset).agg((F.count('*') > 1).alias('duplicated'))
             sdf = sdf.join(tmp, subset, 'left')
         else:
             raise ValueError("keep only support 'first', 'last' and False")
 
-        sdf = sdf.fillna(True, subset='x').select([index] + ['x'])
-        internal = _InternalFrame(sdf=sdf, data_columns=['x'], index_map=[(index, None)])
+        sdf = sdf.fillna(True, subset='duplicated').select([index] + ['duplicated'])
+        internal = _InternalFrame(sdf=sdf, data_columns=['duplicated'], index_map=[(index, None)])
         kdf = DataFrame(internal)
-        return kdf[kdf.columns[0]]
+        from databricks.koalas.series import _col
+        return _col(kdf)
 
     def to_koalas(self):
         """
