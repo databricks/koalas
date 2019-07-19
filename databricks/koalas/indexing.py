@@ -33,7 +33,7 @@ def _make_col(c):
     if isinstance(c, Series):
         return c._scol
     elif isinstance(c, str):
-        return F.col(c)
+        return F.col('`{}`'.format(c))
     else:
         raise SparkPandasNotImplementedError(
             description="Can only convert a string to a column type.")
@@ -150,8 +150,8 @@ class AtIndexer(object):
 
         row = key[0] if self._ks is None else key
         pdf = (series._kdf._sdf
-               .where(F.col(self._kdf._internal.index_columns[0]) == row)
-               .select(column)
+               .where(self._kdf._internal.index_scols[0] == row)
+               .select(_make_col(column))
                .toPandas())
         if len(pdf) < 1:
             raise KeyError("%s" % row)
@@ -411,13 +411,13 @@ class LocIndexer(object):
             cols_sel = None
 
         if cols_sel is None:
-            columns = [_make_col(c) for c in self._kdf._internal.data_columns]
+            columns = self._kdf._internal.data_scols
         elif isinstance(cols_sel, spark.Column):
             columns = [cols_sel]
         else:
             columns = [_make_col(c) for c in cols_sel]
         try:
-            kdf = DataFrame(sdf.select(self._kdf._internal.index_columns + columns))
+            kdf = DataFrame(sdf.select(self._kdf._internal.index_scols + columns))
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))
@@ -627,15 +627,15 @@ class ILocIndexer(object):
 
         # make cols_sel a 1-tuple of string if a single string
         if isinstance(cols_sel, Series):
-            columns = [_make_col(cols_sel)]
+            columns = [cols_sel._scol]
         elif isinstance(cols_sel, int):
-            columns = [_make_col(self._kdf.columns[cols_sel])]
+            columns = [self._kdf._internal.data_scols[cols_sel]]
         elif cols_sel is None or cols_sel == slice(None):
-            columns = [_make_col(col) for col in self._kdf.columns]
+            columns = self._kdf._internal.data_scols
         elif isinstance(cols_sel, slice):
             if all(s is None or isinstance(s, int)
                    for s in (cols_sel.start, cols_sel.stop, cols_sel.step)):
-                columns = [_make_col(col) for col in self._kdf.columns[cols_sel]]
+                columns = self._kdf._internal.data_scols[cols_sel]
             else:
                 not_none = cols_sel.start if cols_sel.start is not None \
                     else cols_sel.stop if cols_sel.stop is not None else cols_sel.step
@@ -643,7 +643,7 @@ class ILocIndexer(object):
                                 .format(not_none, type(not_none)))
         elif is_list_like(cols_sel):
             if all(isinstance(s, int) for s in cols_sel):
-                columns = [_make_col(col) for col in self._kdf.columns[cols_sel]]
+                columns = [self._kdf._internal.scol_for(col) for col in self._kdf.columns[cols_sel]]
             else:
                 raise TypeError('cannot perform reduce with flexible type')
         else:
@@ -651,7 +651,7 @@ class ILocIndexer(object):
                              "listlike of integers, boolean array] types, got {}".format(cols_sel))
 
         try:
-            kdf = DataFrame(sdf.select(self._kdf._internal.index_columns + columns))
+            kdf = DataFrame(sdf.select(self._kdf._internal.index_scols + columns))
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))

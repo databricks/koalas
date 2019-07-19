@@ -188,6 +188,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(['x', 'y']))
         self.assert_eq(kdf, pdf)
 
+    def test_dot_in_column_name(self):
+        self.assert_eq(
+            ks.DataFrame(ks.range(1)._sdf.selectExpr("1 as `a.b`"))['a.b'],
+            ks.Series([1]))
+
     def test_drop(self):
         kdf = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6]})
 
@@ -608,7 +613,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             left.merge(right, left_index=True, right_index=True, how='foo')
 
         with self.assertRaisesRegex(AnalysisException,
-                                    'Cannot resolve column name "id"'):
+                                    'Cannot resolve column name "`id`"'):
             left.merge(right, on='id')
 
     def test_append(self):
