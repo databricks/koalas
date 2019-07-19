@@ -31,15 +31,15 @@ class _MissingPandasLikeDataFrame(object):
 
     # Properties
     axes = unsupported_property('axes')
-    ftypes = unsupported_property('ftypes')
     iat = unsupported_property('iat')
-    is_copy = unsupported_property('is_copy')
-    ix = unsupported_property('ix')
     ndim = unsupported_property('ndim')
     style = unsupported_property('style')
 
     # Deprecated properties
     blocks = unsupported_property('blocks', deprecated=True)
+    ftypes = unsupported_property('ftypes', deprecated=True)
+    is_copy = unsupported_property('is_copy', deprecated=True)
+    ix = unsupported_property('ix', deprecated=True)
 
     # Functions
     agg = unsupported_function('agg')
@@ -65,7 +65,6 @@ class _MissingPandasLikeDataFrame(object):
     filter = unsupported_function('filter')
     first = unsupported_function('first')
     first_valid_index = unsupported_function('first_valid_index')
-    get_values = unsupported_function('get_values')
     hist = unsupported_function('hist')
     idxmax = unsupported_function('idxmax')
     idxmin = unsupported_function('idxmin')
@@ -105,17 +104,13 @@ class _MissingPandasLikeDataFrame(object):
     swaplevel = unsupported_function('swaplevel')
     tail = unsupported_function('tail')
     take = unsupported_function('take')
-    to_dense = unsupported_function('to_dense')
     to_feather = unsupported_function('to_feather')
     to_gbq = unsupported_function('to_gbq')
     to_hdf = unsupported_function('to_hdf')
-    to_msgpack = unsupported_function('to_msgpack')
     to_period = unsupported_function('to_period')
-    to_sparse = unsupported_function('to_sparse')
     to_sql = unsupported_function('to_sql')
     to_stata = unsupported_function('to_stata')
     to_timestamp = unsupported_function('to_timestamp')
-    to_xarray = unsupported_function('to_xarray')
     truncate = unsupported_function('truncate')
     tshift = unsupported_function('tshift')
     tz_convert = unsupported_function('tz_convert')
@@ -135,12 +130,15 @@ class _MissingPandasLikeDataFrame(object):
     select = unsupported_function('select', deprecated=True)
     set_value = unsupported_function('set_value', deprecated=True)
     to_panel = unsupported_function('to_panel', deprecated=True)
+    get_values = unsupported_function('get_values', deprecated=True)
+    to_dense = unsupported_function('to_dense', deprecated=True)
+    to_sparse = unsupported_function('to_sparse', deprecated=True)
+    to_msgpack = unsupported_function('to_msgpack', deprecated=True)
 
-    # Functions and properties we won't support.
-    to_pickle = unsupported_function(
-        'to_pickle',
-        reason="For storage, we encourage you to use Delta or Parquet, instead of Python pickle "
-               "format.")
-
+    # Properties we won't support.
     values = common.values(unsupported_property)
+
+    # Functions we won't support.
+    to_pickle = common.to_pickle(unsupported_function)
     memory_usage = common.memory_usage(unsupported_function)
+    to_xarray = common.to_xarray(unsupported_function)

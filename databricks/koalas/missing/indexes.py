@@ -31,18 +31,19 @@ class _MissingPandasLikeIndex(object):
 
     # Properties
     T = unsupported_property('T')
-    array = unsupported_property('array')
-    base = unsupported_property('base')
-    data = unsupported_property('data')
     flags = unsupported_property('flags')
     has_duplicates = unsupported_property('has_duplicates')
-    itemsize = unsupported_property('itemsize')
     nbytes = unsupported_property('nbytes')
     ndim = unsupported_property('ndim')
     nlevels = unsupported_property('nlevels')
     shape = unsupported_property('shape')
     size = unsupported_property('size')
-    strides = unsupported_property('strides')
+
+    # Deprecated properties
+    strides = unsupported_property('strides', deprecated=True)
+    data = unsupported_property('data', deprecated=True)
+    base = unsupported_property('base', deprecated=True)
+    itemsize = unsupported_property('itemsize', deprecated=True)
 
     # Functions
     append = unsupported_function('append')
@@ -71,7 +72,6 @@ class _MissingPandasLikeIndex(object):
     get_loc = unsupported_function('get_loc')
     get_slice_bound = unsupported_function('get_slice_bound')
     get_value = unsupported_function('get_value')
-    get_values = unsupported_function('get_values')
     groupby = unsupported_function('groupby')
     holds_integer = unsupported_function('holds_integer')
     identical = unsupported_function('identical')
@@ -111,10 +111,8 @@ class _MissingPandasLikeIndex(object):
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
     to_frame = unsupported_function('to_frame')
-    to_list = unsupported_function('to_list')
     to_native_types = unsupported_function('to_native_types')
     to_numpy = unsupported_function('to_numpy')
-    tolist = unsupported_function('tolist')
     transpose = unsupported_function('transpose')
     union = unsupported_function('union')
     unique = unsupported_function('unique')
@@ -125,24 +123,26 @@ class _MissingPandasLikeIndex(object):
     # Deprecated functions
     get_duplicates = unsupported_function('get_duplicates', deprecated=True)
     summary = unsupported_function('summary', deprecated=True)
+    get_values = unsupported_function('get_values', deprecated=True)
 
-    # Functions and properties we won't support.
+    # Properties we won't support.
     values = common.values(unsupported_property)
+    array = common.array(unsupported_property)
+
+    # Functions we won't support.
     memory_usage = common.memory_usage(unsupported_function)
+    to_list = common.to_list(unsupported_function)
+    tolist = common.tolist(unsupported_function)
 
 
 class _MissingPandasLikeMultiIndex(object):
 
     # Properties
     T = unsupported_property('T')
-    array = unsupported_property('array')
-    base = unsupported_property('base')
     codes = unsupported_property('codes')
-    data = unsupported_property('data')
     flags = unsupported_property('flags')
     has_duplicates = unsupported_property('has_duplicates')
     is_all_dates = unsupported_property('is_all_dates')
-    itemsize = unsupported_property('itemsize')
     labels = unsupported_property('labels')
     levels = unsupported_property('levels')
     levshape = unsupported_property('levshape')
@@ -150,7 +150,12 @@ class _MissingPandasLikeMultiIndex(object):
     nlevels = unsupported_property('nlevels')
     shape = unsupported_property('shape')
     size = unsupported_property('size')
-    strides = unsupported_property('strides')
+
+    # Deprecated properties
+    strides = unsupported_property('strides', deprecated=True)
+    data = unsupported_property('data', deprecated=True)
+    base = unsupported_property('base', deprecated=True)
+    itemsize = unsupported_property('itemsize', deprecated=True)
 
     # Functions
     append = unsupported_function('append')
@@ -182,7 +187,6 @@ class _MissingPandasLikeMultiIndex(object):
     get_locs = unsupported_function('get_locs')
     get_slice_bound = unsupported_function('get_slice_bound')
     get_value = unsupported_function('get_value')
-    get_values = unsupported_function('get_values')
     groupby = unsupported_function('groupby')
     holds_integer = unsupported_function('holds_integer')
     identical = unsupported_function('identical')
@@ -229,10 +233,8 @@ class _MissingPandasLikeMultiIndex(object):
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
     to_frame = unsupported_function('to_frame')
-    to_list = unsupported_function('to_list')
     to_native_types = unsupported_function('to_native_types')
     to_numpy = unsupported_function('to_numpy')
-    tolist = unsupported_function('tolist')
     transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     union = unsupported_function('union')
@@ -245,7 +247,13 @@ class _MissingPandasLikeMultiIndex(object):
     get_duplicates = unsupported_function('get_duplicates', deprecated=True)
     summary = unsupported_function('summary', deprecated=True)
     to_hierarchical = unsupported_function('to_hierarchical', deprecated=True)
+    get_values = unsupported_function('get_values', deprecated=True)
 
-    # Functions and properties we won't support.
+    # Functions we won't support.
     values = common.values(unsupported_property)
+    array = common.array(unsupported_property)
+
+    # Properties we won't support.
     memory_usage = common.memory_usage(unsupported_function)
+    to_list = common.to_list(unsupported_function)
+    tolist = common.tolist(unsupported_function)
