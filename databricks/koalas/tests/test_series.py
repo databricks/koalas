@@ -164,14 +164,29 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             ds.isin(1)
 
     def test_fillna(self):
-        ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
-        ks = koalas.from_pandas(ps)
+        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
+        kser = koalas.from_pandas(pser)
 
-        self.assert_eq(ks.fillna(0), ps.fillna(0))
+        self.assertEqual(repr(kser.fillna(-1)), repr(pser.fillna(-1)))
+        self.assertEqual(repr(pser.fillna(method='ffill')),
+                         repr(kser.fillna(method='ffill')))
+        self.assertEqual(repr(pser.fillna(method='ffill', limit=2)),
+                         repr(kser.fillna(method='ffill', limit=2)))
+        self.assertEqual(repr(pser.fillna(method='bfill')),
+                         repr(kser.fillna(method='bfill')))
+        self.assertEqual(repr(pser.fillna(method='bfill', limit=2)),
+                         repr(kser.fillna(method='bfill', limit=2)))
 
-        ks.fillna(0, inplace=True)
-        ps.fillna(0, inplace=True)
-        self.assert_eq(ks, ps)
+        with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
+            kser.fillna(-1, axis=1)
+        with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
+            kser.fillna(-1, axis='column')
+        with self.assertRaisesRegex(ValueError, "limit parameter for value is not support now"):
+            kser.fillna(-1, limit=1)
+        with self.assertRaisesRegex(ValueError, "Expecting pad, ffill, backfill or bfill."):
+            kser.fillna(method='xxx')
+        with self.assertRaisesRegex(ValueError, "Must specify a fill 'value' or 'method'."):
+            kser.fillna()
 
     def test_dropna(self):
         ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
