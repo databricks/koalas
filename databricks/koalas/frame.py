@@ -3016,7 +3016,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  NaN  3.0  1.0  4
         """
         return self.fillna(method='bfill', axis=axis, inplace=inplace, limit=limit)
-    
+
     # TODO: add 'downcast' when value parameter exists
     def ffill(self, axis=None, inplace=False, limit=None):
         """
