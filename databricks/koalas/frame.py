@@ -5795,6 +5795,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
             raise ValueError(msg)
 
+        if len(self._internal.index_names) > 1:
+            raise ValueError('rank do not support index now')
+
         if ascending:
             asc_func = spark.functions.asc
         else:
