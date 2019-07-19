@@ -1092,6 +1092,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assertEqual(repr(pd.Series(pdf.duplicated(), name='x')),
                          repr(kdf.duplicated().sort_index()))
+        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='x')),
+                         repr(kdf.duplicated().sort_index()))
         self.assertEqual(repr(pd.Series(pdf.duplicated(keep='last'), name='x')),
                          repr(kdf.duplicated(keep='last').sort_index()))
         self.assertEqual(repr(pd.Series(pdf.duplicated(keep=False), name='x')),
