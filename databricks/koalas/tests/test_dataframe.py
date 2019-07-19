@@ -188,6 +188,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(['x', 'y']))
         self.assert_eq(kdf, pdf)
 
+    def test_dot_in_column_name(self):
+        self.assert_eq(
+            ks.DataFrame(ks.range(1)._sdf.selectExpr("1 as `a.b`"))['a.b'],
+            ks.Series([1]))
+
     def test_drop(self):
         kdf = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6]})
 
@@ -608,7 +613,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             left.merge(right, left_index=True, right_index=True, how='foo')
 
         with self.assertRaisesRegex(AnalysisException,
-                                    'Cannot resolve column name "id"'):
+                                    'Cannot resolve column name "`id`"'):
             left.merge(right, on='id')
 
     def test_append(self):
@@ -1101,6 +1106,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "should be an int"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.diff(1.5)
+            
+    def test_ffill(self):
+        pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
+                            'y': [1, 2, np.nan, 4, np.nan, np.nan],
+                            'z': [1, 2, 3, 4, np.nan, np.nan]},
+                           index=[10, 20, 30, 40, 50, 60])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.ffill(), pdf.ffill())
+        self.assert_eq(kdf.ffill(limit=1), pdf.ffill(limit=1))
 
     def test_bfill(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],

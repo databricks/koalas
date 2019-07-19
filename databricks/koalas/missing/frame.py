@@ -62,7 +62,6 @@ class _MissingPandasLikeDataFrame(object):
     eval = unsupported_function('eval')
     ewm = unsupported_function('ewm')
     expanding = unsupported_function('expanding')
-    ffill = unsupported_function('ffill')
     filter = unsupported_function('filter')
     first = unsupported_function('first')
     first_valid_index = unsupported_function('first_valid_index')

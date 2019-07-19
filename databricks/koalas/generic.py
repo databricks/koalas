@@ -295,7 +295,7 @@ class _Frame(object):
         from pyspark.sql.functions import pandas_udf
 
         def cumprod(scol):
-            @pandas_udf(returnType=self._kdf._sdf.schema[self.name].dataType)
+            @pandas_udf(returnType=self._kdf._internal.spark_type_for(self.name))
             def negative_check(s):
                 assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), \
                     "values should be bigger than 0: %s" % s
@@ -1401,5 +1401,5 @@ def _spark_col_apply(kdf_or_ks, sfun):
     assert isinstance(kdf_or_ks, DataFrame)
     kdf = kdf_or_ks
     sdf = kdf._sdf
-    sdf = sdf.select([sfun(sdf[col]).alias(col) for col in kdf.columns])
+    sdf = sdf.select([sfun(kdf._internal.scol_for(col)).alias(col) for col in kdf.columns])
     return DataFrame(sdf)

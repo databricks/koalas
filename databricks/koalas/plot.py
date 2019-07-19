@@ -108,8 +108,8 @@ class KoalasBoxPlotSummary:
 
         # If shows fliers, takes the top 1k with highest absolute values
         fliers = (fliers_df
-                  .select(F.abs(F.col(self.colname)).alias(self.colname))
-                  .orderBy(F.desc(self.colname))
+                  .select(F.abs(F.col('`{}`'.format(self.colname))).alias(self.colname))
+                  .orderBy(F.desc('`{}`'.format(self.colname)))
                   .limit(1001)
                   .toPandas()[self.colname].values)
 
