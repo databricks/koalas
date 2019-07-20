@@ -1248,14 +1248,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         column_name = self.name
         scol = self._scol
         if value is not None:
-            if not isinstance(value, (float, int, str, bool, dict, pd.Series)):
+            if not isinstance(value, (float, int, str, bool)):
                 raise TypeError("Unsupported type %s" % type(value))
-            if isinstance(value, pd.Series):
-                value = value.to_dict()
-            if isinstance(value, dict):
-                for v in value.values():
-                    if not isinstance(v, (float, int, str, bool)):
-                        raise TypeError("Unsupported type %s" % type(v))
             if limit is not None:
                 raise ValueError('limit parameter for value is not support now')
             scol = F.when(scol.isNull(), value).otherwise(scol)
