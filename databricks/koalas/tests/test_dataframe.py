@@ -368,7 +368,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert invalid parameters
         self.assertRaises(ValueError, lambda: kdf.sort_index(axis=1))
-        self.assertRaises(ValueError, lambda: kdf.sort_index(level=42))
         self.assertRaises(ValueError, lambda: kdf.sort_index(kind='mergesort'))
         self.assertRaises(ValueError, lambda: kdf.sort_index(na_position='invalid'))
 
@@ -387,6 +386,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                            index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]])
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
+        self.assert_eq(kdf.sort_index(level=[1, 0]), pdf.sort_index(level=[1, 0]))
 
     def test_nlargest(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],

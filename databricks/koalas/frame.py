@@ -4041,7 +4041,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return kdf
 
-    def sort_index(self, axis: int = 0, level: int = None, ascending: bool = True,
+    def sort_index(self, axis: int = 0,
+                   level: Optional[Union[int, List[int]]] = None, ascending: bool = True,
                    inplace: bool = False, kind: str = None, na_position: str = 'last') \
             -> Optional['DataFrame']:
         """
@@ -4095,22 +4096,44 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         b    2.0
         NaN  NaN
 
+        >>> df = ks.DataFrame({'A': range(4), 'B': range(4)[::-1]},
+        ...                   index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]],
+        ...                   columns=['A', 'B'])
 
-        >>> ks.DataFrame({'A': range(4), 'B': range(4)[::-1]},
-        ...              index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]]).sort_index()
+        >>> df.sort_index()
              A  B
         a 0  3  0
           1  2  1
         b 0  1  2
           1  0  3
+
+        >>> df.sort_index(level=1)  # doctest: +SKIP
+             A  B
+        a 0  3  0
+        b 0  1  2
+        a 1  2  1
+        b 1  0  3
+
+        >>> df.sort_index(level=[1, 0])
+             A  B
+        a 0  3  0
+        b 0  1  2
+        a 1  2  1
+        b 1  0  3
         """
         if axis != 0:
             raise ValueError("No other axes than 0 are supported at the moment")
-        if level is not None:
-            raise ValueError("The 'axis' argument is not supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-        return self.sort_values(by=self._internal.index_columns, ascending=ascending,
+
+        if level is None:
+            by = self._internal.index_columns
+        elif is_list_like(level):
+            by = [self._internal.index_columns[l] for l in level]  # type: ignore
+        else:
+            by = self._internal.index_columns[level]
+
+        return self.sort_values(by=by, ascending=ascending,
                                 inplace=inplace, na_position=na_position)
 
     # TODO:  add keep = First
