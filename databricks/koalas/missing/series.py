@@ -31,10 +31,7 @@ class _MissingPandasLikeSeries(object):
 
     # Properties
     axes = unsupported_property('axes')
-    base = unsupported_property('base')
-    flags = unsupported_property('flags')
     iat = unsupported_property('iat')
-    imag = unsupported_property('imag')
     nbytes = unsupported_property('nbytes')
 
     # Deprecated properties
@@ -45,6 +42,11 @@ class _MissingPandasLikeSeries(object):
     ix = unsupported_property('ix', deprecated=True)
     asobject = unsupported_property('asobject', deprecated=True)
     strides = unsupported_property('strides', deprecated=True)
+    imag = unsupported_property('imag', deprecated=True)
+    itemsize = unsupported_property('itemsize', deprecated=True)
+    data = unsupported_property('data', deprecated=True)
+    base = unsupported_property('base', deprecated=True)
+    flags = unsupported_property('flags', deprecated=True)
 
     # Functions
     agg = unsupported_function('agg')
@@ -62,7 +64,6 @@ class _MissingPandasLikeSeries(object):
     bfill = unsupported_function('bfill')
     combine = unsupported_function('combine')
     combine_first = unsupported_function('combine_first')
-    compound = unsupported_function('compound')
     copy = unsupported_function('copy')
     cov = unsupported_function('cov')
     divmod = unsupported_function('divmod')
@@ -83,7 +84,6 @@ class _MissingPandasLikeSeries(object):
     idxmin = unsupported_function('idxmin')
     infer_objects = unsupported_function('infer_objects')
     interpolate = unsupported_function('interpolate')
-    item = unsupported_function('item')
     items = unsupported_function('items')
     iteritems = unsupported_function('iteritems')
     keys = unsupported_function('keys')
@@ -96,8 +96,6 @@ class _MissingPandasLikeSeries(object):
     pop = unsupported_function('pop')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
-    ptp = unsupported_function('ptp')
-    put = unsupported_function('put')
     ravel = unsupported_function('ravel')
     rdivmod = unsupported_function('rdivmod')
     reindex = unsupported_function('reindex')
@@ -132,8 +130,6 @@ class _MissingPandasLikeSeries(object):
     xs = unsupported_function('xs')
 
     # Deprecated functions
-    itemsize = unsupported_property('itemsize', deprecated=True)
-    data = unsupported_property('data', deprecated=True)
     as_blocks = unsupported_function('as_blocks', deprecated=True)
     as_matrix = unsupported_function('as_matrix', deprecated=True)
     clip_lower = unsupported_function('clip_lower', deprecated=True)
@@ -151,6 +147,10 @@ class _MissingPandasLikeSeries(object):
     to_dense = unsupported_function('to_dense', deprecated=True)
     to_sparse = unsupported_function('to_sparse', deprecated=True)
     to_msgpack = unsupported_function('to_msgpack', deprecated=True)
+    compound = unsupported_function('compound', deprecated=True)
+    put = unsupported_function('put', deprecated=True)
+    item = unsupported_function('item', deprecated=True)
+    ptp = unsupported_function('ptp', deprecated=True)
 
     # Properties we won't support.
     values = common.values(unsupported_property)

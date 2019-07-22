@@ -17,6 +17,7 @@
 """
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
+import warnings
 from collections import Counter
 from collections.abc import Iterable
 
@@ -309,6 +310,8 @@ class _Frame(object):
         """
         Return counts of unique dtypes in this object.
 
+        .. deprecated:: 0.14.0
+
         Returns
         -------
         dtype : pd.Series
@@ -337,6 +340,11 @@ class _Frame(object):
         object    1
         dtype: int64
         """
+        warnings.warn(
+            "`get_dtype_counts` has been deprecated and will be "
+            "removed in a future version. For DataFrames use "
+            "`.dtypes.value_counts()",
+            FutureWarning)
         if not isinstance(self.dtypes, Iterable):
             dtypes = [self.dtypes]
         else:
