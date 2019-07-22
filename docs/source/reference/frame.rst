@@ -148,6 +148,8 @@ Missing data handling
 
    DataFrame.dropna
    DataFrame.fillna
+   DataFrame.bfill
+   DataFrame.ffill
 
 Reshaping, sorting, transposing
 -------------------------------

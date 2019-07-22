@@ -291,8 +291,7 @@ class IndexOpsMixin(object):
             raise ValueError("Index must be set.")
 
         col = self._scol
-        index_columns = self._kdf._internal.index_columns
-        window = Window.orderBy(index_columns).rowsBetween(-1, -1)
+        window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
         sdf = self._kdf._sdf.withColumn(
             "__monotonic_col", (col >= F.lag(col, 1).over(window)) & col.isNotNull())
         kdf = ks.DataFrame(
@@ -341,8 +340,7 @@ class IndexOpsMixin(object):
             raise ValueError("Index must be set.")
 
         col = self._scol
-        index_columns = self._kdf._internal.index_columns
-        window = Window.orderBy(index_columns).rowsBetween(-1, -1)
+        window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
         sdf = self._kdf._sdf.withColumn(
             "__monotonic_col", (col <= F.lag(col, 1).over(window)) & col.isNotNull())
         kdf = ks.DataFrame(
@@ -672,8 +670,7 @@ class IndexOpsMixin(object):
             raise ValueError('periods should be an int; however, got [%s]' % type(periods))
 
         col = self._scol
-        index_columns = self._kdf._internal.index_columns
-        window = Window.orderBy(index_columns).rowsBetween(-periods, -periods)
+        window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-periods, -periods)
         shifted_col = F.lag(col, periods).over(window)
         col = F.when(
             shifted_col.isNull() | F.isnan(shifted_col), fill_value

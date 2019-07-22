@@ -30,23 +30,21 @@ def unsupported_property(property_name, deprecated=False, reason=""):
 class _MissingPandasLikeSeries(object):
 
     # Properties
-    array = unsupported_property('array')
-    asobject = unsupported_property('asobject')
     axes = unsupported_property('axes')
     base = unsupported_property('base')
     flags = unsupported_property('flags')
-    ftype = unsupported_property('ftype')
-    ftypes = unsupported_property('ftypes')
     iat = unsupported_property('iat')
     imag = unsupported_property('imag')
-    is_copy = unsupported_property('is_copy')
-    ix = unsupported_property('ix')
     nbytes = unsupported_property('nbytes')
-    real = unsupported_property('real')
-    strides = unsupported_property('strides')
 
     # Deprecated properties
     blocks = unsupported_property('blocks', deprecated=True)
+    ftypes = unsupported_property('ftypes', deprecated=True)
+    ftype = unsupported_property('ftype', deprecated=True)
+    is_copy = unsupported_property('is_copy', deprecated=True)
+    ix = unsupported_property('ix', deprecated=True)
+    asobject = unsupported_property('asobject', deprecated=True)
+    strides = unsupported_property('strides', deprecated=True)
 
     # Functions
     agg = unsupported_function('agg')
@@ -81,7 +79,6 @@ class _MissingPandasLikeSeries(object):
     first = unsupported_function('first')
     first_valid_index = unsupported_function('first_valid_index')
     get = unsupported_function('get')
-    get_values = unsupported_function('get_values')
     idxmax = unsupported_function('idxmax')
     idxmin = unsupported_function('idxmin')
     infer_objects = unsupported_function('infer_objects')
@@ -120,14 +117,10 @@ class _MissingPandasLikeSeries(object):
     swaplevel = unsupported_function('swaplevel')
     tail = unsupported_function('tail')
     take = unsupported_function('take')
-    to_dense = unsupported_function('to_dense')
     to_hdf = unsupported_function('to_hdf')
-    to_msgpack = unsupported_function('to_msgpack')
     to_period = unsupported_function('to_period')
-    to_sparse = unsupported_function('to_sparse')
     to_sql = unsupported_function('to_sql')
     to_timestamp = unsupported_function('to_timestamp')
-    to_xarray = unsupported_function('to_xarray')
     truncate = unsupported_function('truncate')
     tshift = unsupported_function('tshift')
     tz_convert = unsupported_function('tz_convert')
@@ -154,12 +147,19 @@ class _MissingPandasLikeSeries(object):
     select = unsupported_function('select', deprecated=True)
     set_value = unsupported_function('set_value', deprecated=True)
     valid = unsupported_function('valid', deprecated=True)
+    get_values = unsupported_function('get_values', deprecated=True)
+    to_dense = unsupported_function('to_dense', deprecated=True)
+    to_sparse = unsupported_function('to_sparse', deprecated=True)
+    to_msgpack = unsupported_function('to_msgpack', deprecated=True)
 
-    # Functions and properties we won't support.
+    # Properties we won't support.
     values = common.values(unsupported_property)
+    array = common.array(unsupported_property)
+    real = unsupported_property(
+        'real',
+        reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
+
+    # Functions we won't support.
     memory_usage = common.memory_usage(unsupported_function)
-    # Functions and properties we won't support.
-    to_pickle = unsupported_function(
-        'to_pickle',
-        reason="For storage, we encourage you to use Delta or Parquet, instead of Python pickle "
-               "format.")
+    to_pickle = common.to_pickle(unsupported_function)
+    to_xarray = common.to_xarray(unsupported_function)
