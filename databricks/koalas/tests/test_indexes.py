@@ -159,7 +159,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                                  if type_.fget.__name__ == 'deprecated_property']
         for name in deprecated_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "property.*GroupBy.*{}.*is deprecated".format(name)):
+                                        "property.*Index.*{}.*is deprecated".format(name)):
                 getattr(kdf.set_index('a').index, name)
 
         # MultiIndex properties
@@ -177,7 +177,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                                  if type_.fget.__name__ == 'deprecated_property']
         for name in deprecated_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "property.*GroupBy.*{}.*is deprecated".format(name)):
+                                        "property.*Index.*{}.*is deprecated".format(name)):
                 getattr(kdf.set_index(['a', 'b']).index, name)
 
     def test_multi_index_not_supported(self):
