@@ -574,7 +574,7 @@ class KoalasSeriesPlotMethods(PandasObject):
     """
 
     def __init__(self, data):
-        self.data = data  # can be Series or DataFrame
+        self.data = data
 
     def __call__(self, kind='line', ax=None,
                  figsize=None, use_index=True, title=None, grid=None,
