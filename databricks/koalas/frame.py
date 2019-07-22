@@ -2936,8 +2936,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             internal = self._internal.copy(sdf=sdf)
         else:
             applied = []
-            for column in self._internal.data_columns:
-                applied.append(self[column].fillna(value=value, method=method, axis=axis, limit=limit))
+            for col in self._internal.data_columns:
+                applied.append(self[col].fillna(value=value, method=method, axis=axis, limit=limit))
 
             sdf = self._sdf.select(
                 self._internal.index_columns + [c._scol for c in applied])
