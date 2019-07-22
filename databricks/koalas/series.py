@@ -1209,7 +1209,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         5    6.0
         Name: x, dtype: float64
         """
-
         kseries = _col(self.to_dataframe().fillna(value=value, axis=axis, inplace=False))
         if inplace:
             self._internal = kseries._internal
@@ -2414,7 +2413,43 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2  2.0  2.0
         3  3.0  1.0
         """
-        return _col(self.to_dataframe().rank(method=method, ascending=ascending))
+        if method not in ['average', 'min', 'max', 'first', 'dense']:
+            msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
+            raise ValueError(msg)
+
+        if len(self._internal.index_columns) > 1:
+            raise ValueError('rank do not support index now')
+
+        if ascending:
+            asc_func = spark.functions.asc
+        else:
+            asc_func = spark.functions.desc
+
+        index_column = self._internal.index_columns[0]
+        column_name = self.name
+
+        if method == 'first':
+            window = Window.orderBy(asc_func(column_name), asc_func(index_column))\
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            scol = F.row_number().over(window)
+        elif method == 'dense':
+            window = Window.orderBy(asc_func(column_name))\
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            scol = F.dense_rank().over(window)
+        else:
+            if method == 'average':
+                stat_func = F.mean
+            elif method == 'min':
+                stat_func = F.min
+            elif method == 'max':
+                stat_func = F.max
+            window1 = Window.orderBy(asc_func(column_name))\
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            window2 = Window.partitionBy(column_name)\
+                .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+            scol = stat_func(F.row_number().over(window1)).over(window2)
+        return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)\
+            .astype(np.float64)
 
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
         return _col(self.to_dataframe().describe(percentiles))
