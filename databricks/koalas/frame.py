@@ -2894,11 +2894,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         We can also propagate non-null values forward or backward.
 
         >>> df.fillna(method='ffill')
-             A    B    C  D
-        0  NaN  2.0  NaN  0
-        1  3.0  4.0  NaN  1
-        2  3.0  4.0  NaN  5
-        3  3.0  3.0  1.0  4
+             A    B    C    D
+        0  NaN  2.0  NaN  0.0
+        1  3.0  4.0  NaN  1.0
+        2  3.0  4.0  NaN  5.0
+        3  3.0  3.0  1.0  4.0
 
         Replace all NaN elements in column 'A', 'B', 'C', and 'D', with 0, 1,
         2, and 3 respectively.
@@ -2931,30 +2931,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if limit is not None:
                 raise ValueError('limit parameter for value is not support now')
             sdf = sdf.fillna(value)
+            internal = self._internal.copy(sdf=sdf)
         else:
-            for data_column in self._internal.data_columns:
-                if method in ['ffill', 'pad']:
-                    func = F.last
-                    end = (Window.currentRow - 1)
-                    if limit is not None:
-                        begin = Window.currentRow - limit
-                    else:
-                        begin = Window.unboundedPreceding
-                elif method in ['bfill', 'backfill']:
-                    func = F.first
-                    begin = Window.currentRow + 1
-                    if limit is not None:
-                        end = Window.currentRow + limit
-                    else:
-                        end = Window.unboundedFollowing
-                else:
-                    raise ValueError('Expecting pad, ffill, backfill or bfill.')
-                window = Window.orderBy(self._internal.index_columns).rowsBetween(begin, end)
-                sdf = sdf.withColumn(data_column,
-                                     F.when(F.col(data_column).isNull(),
-                                            func(F.col(data_column), True).over(window))
-                                     .otherwise(F.col(data_column)))
-        internal = self._internal.copy(sdf=sdf)
+            applied = []
+            for column in self._internal.data_columns:
+                applied.append(self[column].fillna(value=value, method=method, axis=axis, limit=limit))
+
+            sdf = self._sdf.select(
+                self._internal.index_columns + [c._scol for c in applied])
+            internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         if inplace:
             self._internal = internal
         else:
