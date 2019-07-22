@@ -52,8 +52,6 @@ class _MissingPandasLikeSeries(object):
     agg = unsupported_function('agg')
     aggregate = unsupported_function('aggregate')
     align = unsupported_function('align')
-    argmax = unsupported_function('argmax')
-    argmin = unsupported_function('argmin')
     argsort = unsupported_function('argsort')
     asfreq = unsupported_function('asfreq')
     asof = unsupported_function('asof')
@@ -151,6 +149,8 @@ class _MissingPandasLikeSeries(object):
     put = unsupported_function('put', deprecated=True)
     item = unsupported_function('item', deprecated=True)
     ptp = unsupported_function('ptp', deprecated=True)
+    argmax = unsupported_function('argmax', deprecated=True)
+    argmin = unsupported_function('argmin', deprecated=True)
 
     # Properties we won't support.
     values = common.values(unsupported_property)
