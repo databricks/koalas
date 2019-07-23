@@ -1657,12 +1657,15 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         b  1    0
         Name: 0, dtype: int64
         """
+        if len(self._internal.index_map) == 0:
+            raise ValueError("Index should be set.")
+
         if axis != 0:
             raise ValueError("No other axes than 0 are supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
 
-        if level is None:
+        if level is None or (is_list_like(level) and len(level) == 0):
             by = self._internal.index_columns
         elif is_list_like(level):
             by = [self._internal.index_columns[l] for l in level]  # type: ignore

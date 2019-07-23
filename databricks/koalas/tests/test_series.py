@@ -292,6 +292,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks.sort_index(), ps.sort_index(), almost=True)
         self.assert_eq(ks.sort_index(level=[1, 0]), ps.sort_index(level=[1, 0]), almost=True)
 
+        self.assertRaises(ValueError, lambda: ks.reset_index().sort_index())
+
     def test_to_datetime(self):
         ps = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
         ks = koalas.from_pandas(ps)
