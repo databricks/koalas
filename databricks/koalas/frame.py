@@ -2994,11 +2994,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Propagate non-null values backward.
 
         >>> df.bfill()
-             A    B    C  D
-        0  3.0  2.0  1.0  0
-        1  3.0  4.0  1.0  1
-        2  NaN  3.0  1.0  5
-        3  NaN  3.0  1.0  4
+             A    B    C    D
+        0  3.0  2.0  1.0  0.0
+        1  3.0  4.0  1.0  1.0
+        2  NaN  3.0  1.0  5.0
+        3  NaN  3.0  1.0  4.0
         """
         return self.fillna(method='bfill', axis=axis, inplace=inplace, limit=limit)
 
@@ -3049,11 +3049,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Propagate non-null values forward.
 
         >>> df.ffill()
-             A    B    C  D
-        0  NaN  2.0  NaN  0
-        1  3.0  4.0  NaN  1
-        2  3.0  4.0  NaN  5
-        3  3.0  3.0  1.0  4
+             A    B    C    D
+        0  NaN  2.0  NaN  0.0
+        1  3.0  4.0  NaN  1.0
+        2  3.0  4.0  NaN  5.0
+        3  3.0  3.0  1.0  4.0
         """
         return self.fillna(method='ffill', axis=axis, inplace=inplace, limit=limit)
 
