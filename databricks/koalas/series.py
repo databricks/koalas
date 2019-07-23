@@ -25,6 +25,7 @@ from typing import Any, Optional, List, Union, Generic, TypeVar
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_list_like
 from pandas.core.accessor import CachedAccessor
 
 from pyspark import sql as spark
@@ -1578,7 +1579,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return kseries
 
-    def sort_index(self, axis: int = 0, level: int = None, ascending: bool = True,
+    def sort_index(self, axis: int = 0,
+                   level: Optional[Union[int, List[int]]] = None, ascending: bool = True,
                    inplace: bool = False, kind: str = None, na_position: str = 'last') \
             -> Optional['Series']:
         """
@@ -1632,20 +1634,45 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         NaN    NaN
         Name: 0, dtype: float64
 
-        >>> ks.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0').sort_index()
+        >>> df = ks.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0')
+
+        >>> df.sort_index()
         a  0    3
            1    2
         b  0    1
            1    0
         Name: 0, dtype: int64
+
+        >>> df.sort_index(level=1)  # doctest: +SKIP
+        a  0    3
+        b  0    1
+        a  1    2
+        b  1    0
+        Name: 0, dtype: int64
+
+        >>> df.sort_index(level=[1, 0])
+        a  0    3
+        b  0    1
+        a  1    2
+        b  1    0
+        Name: 0, dtype: int64
         """
+        if len(self._internal.index_map) == 0:
+            raise ValueError("Index should be set.")
+
         if axis != 0:
             raise ValueError("No other axes than 0 are supported at the moment")
-        if level is not None:
-            raise ValueError("The 'axis' argument is not supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-        kseries = _col(self.to_dataframe().sort_values(by=self._internal.index_columns,
+
+        if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
+            by = self._internal.index_columns
+        elif is_list_like(level):
+            by = [self._internal.index_columns[l] for l in level]  # type: ignore
+        else:
+            by = self._internal.index_columns[level]
+
+        kseries = _col(self.to_dataframe().sort_values(by=by,
                                                        ascending=ascending,
                                                        na_position=na_position))
         if inplace:
