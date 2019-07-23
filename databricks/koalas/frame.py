@@ -4026,7 +4026,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return kdf
 
-    def sort_index(self, axis: int = 0, level: int = None, ascending: bool = True,
+    def sort_index(self, axis: int = 0,
+                   level: Optional[Union[int, List[int]]] = None, ascending: bool = True,
                    inplace: bool = False, kind: str = None, na_position: str = 'last') \
             -> Optional['DataFrame']:
         """
@@ -4080,22 +4081,47 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         b    2.0
         NaN  NaN
 
+        >>> df = ks.DataFrame({'A': range(4), 'B': range(4)[::-1]},
+        ...                   index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]],
+        ...                   columns=['A', 'B'])
 
-        >>> ks.DataFrame({'A': range(4), 'B': range(4)[::-1]},
-        ...              index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]]).sort_index()
+        >>> df.sort_index()
              A  B
         a 0  3  0
           1  2  1
         b 0  1  2
           1  0  3
+
+        >>> df.sort_index(level=1)  # doctest: +SKIP
+             A  B
+        a 0  3  0
+        b 0  1  2
+        a 1  2  1
+        b 1  0  3
+
+        >>> df.sort_index(level=[1, 0])
+             A  B
+        a 0  3  0
+        b 0  1  2
+        a 1  2  1
+        b 1  0  3
         """
+        if len(self._internal.index_map) == 0:
+            raise ValueError("Index should be set.")
+
         if axis != 0:
             raise ValueError("No other axes than 0 are supported at the moment")
-        if level is not None:
-            raise ValueError("The 'axis' argument is not supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-        return self.sort_values(by=self._internal.index_columns, ascending=ascending,
+
+        if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
+            by = self._internal.index_columns
+        elif is_list_like(level):
+            by = [self._internal.index_columns[l] for l in level]  # type: ignore
+        else:
+            by = self._internal.index_columns[level]
+
+        return self.sort_values(by=by, ascending=ascending,
                                 inplace=inplace, na_position=na_position)
 
     # TODO:  add keep = First
@@ -5894,45 +5920,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  2.0  2.0
         3  3.0  1.0
         """
-        if method not in ['average', 'min', 'max', 'first', 'dense']:
-            msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
-            raise ValueError(msg)
+        applied = []
+        for column in self._internal.data_columns:
+            applied.append(self[column].rank(method=method, ascending=ascending))
 
-        if ascending:
-            asc_func = lambda sdf, column_name: scol_for(sdf, column_name).asc()
-        else:
-            asc_func = lambda sdf, column_name: scol_for(sdf, column_name).desc()
-
-        index_column = self._internal.index_columns[0]
-        data_columns = self._internal.data_columns
-        sdf = self._sdf
-
-        for column_name in data_columns:
-            if method == 'first':
-                window = Window.orderBy(asc_func(sdf, column_name), asc_func(sdf, index_column))\
-                    .rowsBetween(Window.unboundedPreceding, Window.currentRow)
-                sdf = sdf.withColumn(column_name, F.row_number().over(window))
-            elif method == 'dense':
-                window = Window.orderBy(asc_func(sdf, column_name))\
-                    .rowsBetween(Window.unboundedPreceding, Window.currentRow)
-                sdf = sdf.withColumn(column_name, F.dense_rank().over(window))
-            else:
-                if method == 'average':
-                    stat_func = F.mean
-                elif method == 'min':
-                    stat_func = F.min
-                elif method == 'max':
-                    stat_func = F.max
-                window = Window.orderBy(asc_func(sdf, column_name))\
-                    .rowsBetween(Window.unboundedPreceding, Window.currentRow)
-                sdf = sdf.withColumn('rank', F.row_number().over(window))
-                window = Window.partitionBy(scol_for(sdf, column_name))\
-                    .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
-                sdf = sdf.withColumn(column_name, stat_func(F.col('rank')).over(window))
-
-        return DataFrame(self._internal.copy(sdf=sdf.select([scol_for(sdf, col)
-                                                             for col in self._internal.columns])))\
-            .astype(np.float64)
+        sdf = self._sdf.select(self._internal.index_columns + [column._scol for column in applied])
+        internal = self._internal.copy(sdf=sdf, data_columns=[column.name for column in applied])
+        return DataFrame(internal)
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series

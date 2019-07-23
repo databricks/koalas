@@ -25,6 +25,7 @@ from typing import Any, Optional, List, Union, Generic, TypeVar
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_list_like
 from pandas.core.accessor import CachedAccessor
 
 from pyspark import sql as spark
@@ -1642,7 +1643,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return kseries
 
-    def sort_index(self, axis: int = 0, level: int = None, ascending: bool = True,
+    def sort_index(self, axis: int = 0,
+                   level: Optional[Union[int, List[int]]] = None, ascending: bool = True,
                    inplace: bool = False, kind: str = None, na_position: str = 'last') \
             -> Optional['Series']:
         """
@@ -1696,20 +1698,45 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         NaN    NaN
         Name: 0, dtype: float64
 
-        >>> ks.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0').sort_index()
+        >>> df = ks.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0')
+
+        >>> df.sort_index()
         a  0    3
            1    2
         b  0    1
            1    0
         Name: 0, dtype: int64
+
+        >>> df.sort_index(level=1)  # doctest: +SKIP
+        a  0    3
+        b  0    1
+        a  1    2
+        b  1    0
+        Name: 0, dtype: int64
+
+        >>> df.sort_index(level=[1, 0])
+        a  0    3
+        b  0    1
+        a  1    2
+        b  1    0
+        Name: 0, dtype: int64
         """
+        if len(self._internal.index_map) == 0:
+            raise ValueError("Index should be set.")
+
         if axis != 0:
             raise ValueError("No other axes than 0 are supported at the moment")
-        if level is not None:
-            raise ValueError("The 'axis' argument is not supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-        kseries = _col(self.to_dataframe().sort_values(by=self._internal.index_columns,
+
+        if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
+            by = self._internal.index_columns
+        elif is_list_like(level):
+            by = [self._internal.index_columns[l] for l in level]  # type: ignore
+        else:
+            by = self._internal.index_columns[level]
+
+        kseries = _col(self.to_dataframe().sort_values(by=by,
                                                        ascending=ascending,
                                                        na_position=na_position))
         if inplace:
@@ -2477,7 +2504,43 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2  2.0  2.0
         3  3.0  1.0
         """
-        return _col(self.to_dataframe().rank(method=method, ascending=ascending))
+        if method not in ['average', 'min', 'max', 'first', 'dense']:
+            msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
+            raise ValueError(msg)
+
+        if len(self._internal.index_columns) > 1:
+            raise ValueError('rank do not support index now')
+
+        if ascending:
+            asc_func = spark.functions.asc
+        else:
+            asc_func = spark.functions.desc
+
+        index_column = self._internal.index_columns[0]
+        column_name = self.name
+
+        if method == 'first':
+            window = Window.orderBy(asc_func(column_name), asc_func(index_column))\
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            scol = F.row_number().over(window)
+        elif method == 'dense':
+            window = Window.orderBy(asc_func(column_name))\
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            scol = F.dense_rank().over(window)
+        else:
+            if method == 'average':
+                stat_func = F.mean
+            elif method == 'min':
+                stat_func = F.min
+            elif method == 'max':
+                stat_func = F.max
+            window1 = Window.orderBy(asc_func(column_name))\
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            window2 = Window.partitionBy(column_name)\
+                .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+            scol = stat_func(F.row_number().over(window1)).over(window2)
+        return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)\
+            .astype(np.float64)
 
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
         return _col(self.to_dataframe().describe(percentiles))

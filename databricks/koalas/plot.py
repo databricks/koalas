@@ -20,15 +20,32 @@ import numpy as np
 import pandas as pd
 
 from matplotlib.axes._base import _process_plot_format
+from pandas.core.dtypes.inference import is_integer, is_list_like
 from pandas.io.formats.printing import pprint_thing
-from pandas.plotting._core import (
-    _all_kinds, _get_standard_kind, _gca, BarPlot, BasePlotMethods, BoxPlot, HistPlot,
-    is_list_like,
-    is_integer, MPLPlot)
+from pandas.core.base import PandasObject
 
 from databricks.koalas.missing import _unsupported_function
 from pyspark.ml.feature import Bucketizer
 from pyspark.sql import functions as F
+
+
+def _gca(rc=None):
+    import matplotlib.pyplot as plt
+    with plt.rc_context(rc):
+        return plt.gca()
+
+
+def _get_standard_kind(kind):
+    return {'density': 'kde'}.get(kind, kind)
+
+
+if LooseVersion(pd.__version__) < LooseVersion('0.25'):
+    from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot
+else:
+    from pandas.plotting._core import PlotAccessor
+    from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot
+    from pandas.plotting._matplotlib.core import MPLPlot
+    _all_kinds = PlotAccessor._all_kinds
 
 
 class KoalasBarPlot(BarPlot):
@@ -547,7 +564,7 @@ def _plot(data, x=None, y=None, subplots=False,
     return plot_obj.result
 
 
-class KoalasSeriesPlotMethods(BasePlotMethods):
+class KoalasSeriesPlotMethods(PandasObject):
     """
     Series plotting accessor and method.
 
@@ -555,6 +572,9 @@ class KoalasSeriesPlotMethods(BasePlotMethods):
     with the ``kind`` argument:
     ``s.plot(kind='hist')`` is equivalent to ``s.plot.hist()``
     """
+
+    def __init__(self, data):
+        self.data = data
 
     def __call__(self, kind='line', ax=None,
                  figsize=None, use_index=True, title=None, grid=None,
@@ -564,11 +584,7 @@ class KoalasSeriesPlotMethods(BasePlotMethods):
                  rot=None, fontsize=None, colormap=None, table=False,
                  yerr=None, xerr=None,
                  label=None, secondary_y=False, **kwds):
-        if LooseVersion(pd.__version__) < LooseVersion('0.24'):
-            data = self._data
-        else:
-            data = self._parent
-        return plot_series(data, kind=kind, ax=ax, figsize=figsize,
+        return plot_series(self.data, kind=kind, ax=ax, figsize=figsize,
                            use_index=use_index, title=title, grid=grid,
                            legend=legend, style=style, logx=logx, logy=logy,
                            loglog=loglog, xticks=xticks, yticks=yticks,

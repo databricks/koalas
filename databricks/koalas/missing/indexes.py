@@ -31,7 +31,6 @@ class _MissingPandasLikeIndex(object):
 
     # Properties
     T = unsupported_property('T')
-    flags = unsupported_property('flags')
     has_duplicates = unsupported_property('has_duplicates')
     nbytes = unsupported_property('nbytes')
     ndim = unsupported_property('ndim')
@@ -42,8 +41,9 @@ class _MissingPandasLikeIndex(object):
     # Deprecated properties
     strides = unsupported_property('strides', deprecated=True)
     data = unsupported_property('data', deprecated=True)
-    base = unsupported_property('base', deprecated=True)
     itemsize = unsupported_property('itemsize', deprecated=True)
+    base = unsupported_property('base', deprecated=True)
+    flags = unsupported_property('flags', deprecated=True)
 
     # Functions
     append = unsupported_function('append')
@@ -52,7 +52,6 @@ class _MissingPandasLikeIndex(object):
     argsort = unsupported_function('argsort')
     asof = unsupported_function('asof')
     asof_locs = unsupported_function('asof_locs')
-    contains = unsupported_function('contains')
     copy = unsupported_function('copy')
     delete = unsupported_function('delete')
     difference = unsupported_function('difference')
@@ -88,7 +87,6 @@ class _MissingPandasLikeIndex(object):
     is_numeric = unsupported_function('is_numeric')
     is_object = unsupported_function('is_object')
     is_type_compatible = unsupported_function('is_type_compatible')
-    item = unsupported_function('item')
     join = unsupported_function('join')
     map = unsupported_function('map')
     max = unsupported_function('max')
@@ -124,6 +122,8 @@ class _MissingPandasLikeIndex(object):
     get_duplicates = unsupported_function('get_duplicates', deprecated=True)
     summary = unsupported_function('summary', deprecated=True)
     get_values = unsupported_function('get_values', deprecated=True)
+    item = unsupported_function('item', deprecated=True)
+    contains = unsupported_function('contains', deprecated=True)
 
     # Properties we won't support.
     values = common.values(unsupported_property)
@@ -140,10 +140,8 @@ class _MissingPandasLikeMultiIndex(object):
     # Properties
     T = unsupported_property('T')
     codes = unsupported_property('codes')
-    flags = unsupported_property('flags')
     has_duplicates = unsupported_property('has_duplicates')
     is_all_dates = unsupported_property('is_all_dates')
-    labels = unsupported_property('labels')
     levels = unsupported_property('levels')
     levshape = unsupported_property('levshape')
     ndim = unsupported_property('ndim')
@@ -156,6 +154,8 @@ class _MissingPandasLikeMultiIndex(object):
     data = unsupported_property('data', deprecated=True)
     base = unsupported_property('base', deprecated=True)
     itemsize = unsupported_property('itemsize', deprecated=True)
+    labels = unsupported_property('labels', deprecated=True)
+    flags = unsupported_property('flags', deprecated=True)
 
     # Functions
     append = unsupported_function('append')
@@ -164,7 +164,6 @@ class _MissingPandasLikeMultiIndex(object):
     argsort = unsupported_function('argsort')
     asof = unsupported_function('asof')
     asof_locs = unsupported_function('asof_locs')
-    contains = unsupported_function('contains')
     copy = unsupported_function('copy')
     delete = unsupported_function('delete')
     difference = unsupported_function('difference')
@@ -204,7 +203,6 @@ class _MissingPandasLikeMultiIndex(object):
     is_numeric = unsupported_function('is_numeric')
     is_object = unsupported_function('is_object')
     is_type_compatible = unsupported_function('is_type_compatible')
-    item = unsupported_function('item')
     join = unsupported_function('join')
     map = unsupported_function('map')
     max = unsupported_function('max')
@@ -248,6 +246,8 @@ class _MissingPandasLikeMultiIndex(object):
     summary = unsupported_function('summary', deprecated=True)
     to_hierarchical = unsupported_function('to_hierarchical', deprecated=True)
     get_values = unsupported_function('get_values', deprecated=True)
+    contains = unsupported_function('contains', deprecated=True)
+    item = unsupported_function('item', deprecated=True)
 
     # Functions we won't support.
     values = common.values(unsupported_property)

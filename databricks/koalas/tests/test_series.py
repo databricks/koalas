@@ -287,7 +287,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert invalid parameters
         self.assertRaises(ValueError, lambda: ks.sort_index(axis=1))
-        self.assertRaises(ValueError, lambda: ks.sort_index(level=42))
         self.assertRaises(ValueError, lambda: ks.sort_index(kind='mergesort'))
         self.assertRaises(ValueError, lambda: ks.sort_index(na_position='invalid'))
 
@@ -306,6 +305,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ps = pd.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0')
         ks = koalas.from_pandas(ps)
         self.assert_eq(ks.sort_index(), ps.sort_index(), almost=True)
+        self.assert_eq(ks.sort_index(level=[1, 0]), ps.sort_index(level=[1, 0]), almost=True)
+
+        self.assertRaises(ValueError, lambda: ks.reset_index().sort_index())
 
     def test_to_datetime(self):
         ps = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)

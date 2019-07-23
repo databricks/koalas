@@ -53,7 +53,6 @@ class _MissingPandasLikeDataFrame(object):
     boxplot = unsupported_function('boxplot')
     combine = unsupported_function('combine')
     combine_first = unsupported_function('combine_first')
-    compound = unsupported_function('compound')
     corrwith = unsupported_function('corrwith')
     cov = unsupported_function('cov')
     dot = unsupported_function('dot')
@@ -88,7 +87,6 @@ class _MissingPandasLikeDataFrame(object):
     product = unsupported_function('product')
     quantile = unsupported_function('quantile')
     query = unsupported_function('query')
-    reindex_axis = unsupported_function('reindex_axis')
     reindex_like = unsupported_function('reindex_like')
     rename = unsupported_function('rename')
     rename_axis = unsupported_function('rename_axis')
@@ -134,6 +132,8 @@ class _MissingPandasLikeDataFrame(object):
     to_dense = unsupported_function('to_dense', deprecated=True)
     to_sparse = unsupported_function('to_sparse', deprecated=True)
     to_msgpack = unsupported_function('to_msgpack', deprecated=True)
+    compound = unsupported_function('compound', deprecated=True)
+    reindex_axis = unsupported_function('reindex_axis', deprecated=True)
 
     # Properties we won't support.
     values = common.values(unsupported_property)
