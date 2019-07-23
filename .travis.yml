@@ -48,7 +48,7 @@ install:
   - . $HOME/miniconda/etc/profile.d/conda.sh
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
-  # - conda update -q conda
+  - conda update -q conda
   # Useful for debugging any issues with conda
   - conda info -a
 
@@ -68,7 +68,8 @@ install:
       conda config --env --add pinned_packages python=$TRAVIS_PYTHON_VERSION && \
       conda config --env --add pinned_packages pandas==$PANDAS_VERSION && \
       conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION && \
-      conda install -c conda-forge --yes --file requirements-dev.txt && \
+      conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
+      conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt && \
       conda list;
     fi
 
