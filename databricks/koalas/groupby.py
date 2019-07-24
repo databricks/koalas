@@ -387,8 +387,8 @@ class GroupBy(object):
         Examples
         --------
         >>> df = ks.DataFrame({'A': 'a a b'.split(),
-        ...                    'B': [1,2,3],
-        ...                    'C': [4,6, 5]}, columns=['A', 'B', 'C'])
+        ...                    'B': [1, 2, 3],
+        ...                    'C': [4, 6, 5]}, columns=['A', 'B', 'C'])
         >>> g = df.groupby('A')
 
         Notice that ``g`` has two groups, ``a`` and ``b``.
@@ -425,7 +425,29 @@ class GroupBy(object):
 
         return_schema = _infer_return_type(func).tpe
 
+        index_columns = self._kdf._internal.index_columns
+        index_names = self._kdf._internal.index_names
+        data_columns = self._kdf._internal.data_columns
+
         def rename_output(pdf):
+            # TODO: This logic below was borrowed from `DataFrame.pandas_df` to set the index
+            #   within each pdf properly. we might have to deduplicate it.
+            import pandas as pd
+
+            if len(index_columns) > 0:
+                append = False
+                for index_field in index_columns:
+                    drop = index_field not in data_columns
+                    pdf = pdf.set_index(index_field, drop=drop, append=append)
+                    append = True
+                pdf = pdf[data_columns]
+
+            if len(index_names) > 0:
+                if isinstance(pdf.index, pd.MultiIndex):
+                    pdf.index.names = index_names
+                else:
+                    pdf.index.name = index_names[0]
+
             pdf = func(pdf)
             # For now, just positionally map the column names to given schema's.
             pdf = pdf.rename(columns=dict(zip(pdf.columns, return_schema.fieldNames())))
@@ -434,9 +456,8 @@ class GroupBy(object):
         grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(rename_output)
 
         sdf = self._kdf._sdf
-        data_columns = self._kdf._internal.data_columns
         input_groupkeys = [s._scol for s in self._groupkeys]
-        sdf = sdf.select(data_columns).groupby(*input_groupkeys).apply(grouped_map_func)
+        sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
         internal = _InternalFrame(
             sdf=sdf, data_columns=return_schema.fieldNames(), index_map=[])  # index is lost.
         return DataFrame(internal)
