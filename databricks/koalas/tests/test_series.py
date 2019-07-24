@@ -527,3 +527,41 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             koalas.Series([24., 21., 25., 33., 26.]).quantile(q="a")
         with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
             koalas.Series([24., 21., 25., 33., 26.]).quantile(q=["a"])
+
+    def test_idxmax(self):
+        pser = pd.Series(data=[1, 4, 5], index=['A', 'B', 'C'])
+        kser = koalas.Series(pser)
+
+        self.assertEqual(kser.idxmax(), pser.idxmax())
+        self.assertEqual(kser.idxmax(skipna=False), pser.idxmax(skipna=False))
+
+        index = pd.MultiIndex.from_arrays([
+            ['a', 'a', 'b', 'b'], ['c', 'd', 'e', 'f']], names=('first', 'second'))
+        pser = pd.Series(data=[1, 2, 4, 5], index=index)
+        kser = koalas.Series(pser)
+
+        self.assertEqual(kser.idxmax(), pser.idxmax())
+        self.assertEqual(kser.idxmax(skipna=False), pser.idxmax(skipna=False))
+
+        kser = koalas.Series([])
+        with self.assertRaisesRegex(ValueError, "an empty sequence"):
+            kser.idxmax()
+
+    def test_idxmin(self):
+        pser = pd.Series(data=[1, 4, 5], index=['A', 'B', 'C'])
+        kser = koalas.Series(pser)
+
+        self.assertEqual(kser.idxmin(), pser.idxmin())
+        self.assertEqual(kser.idxmin(skipna=False), pser.idxmin(skipna=False))
+
+        index = pd.MultiIndex.from_arrays([
+            ['a', 'a', 'b', 'b'], ['c', 'd', 'e', 'f']], names=('first', 'second'))
+        pser = pd.Series(data=[1, 2, 4, 5], index=index)
+        kser = koalas.Series(pser)
+
+        self.assertEqual(kser.idxmin(), pser.idxmin())
+        self.assertEqual(kser.idxmin(skipna=False), pser.idxmin(skipna=False))
+
+        kser = koalas.Series([])
+        with self.assertRaisesRegex(ValueError, "an empty sequence"):
+            kser.idxmin()

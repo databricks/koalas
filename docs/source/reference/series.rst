@@ -138,6 +138,8 @@ Reindexing / Selection / Label manipulation
    Series.add_prefix
    Series.add_suffix
    Series.head
+   Series.idxmax
+   Series.idxmin
    Series.isin
    Series.rename
    Series.reset_index
