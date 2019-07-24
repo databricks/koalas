@@ -112,7 +112,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(ks.rename('y'), ps.rename('y'))
         self.assertEqual(ks.name, 'x')  # no mutation
-        # self.assert_eq(ks.rename(), ps.rename())
+        self.assert_eq(ks.rename(), ps.rename())
 
         ks.rename('z', inplace=True)
         ps.rename('z', inplace=True)

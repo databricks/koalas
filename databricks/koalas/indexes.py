@@ -91,14 +91,19 @@ class Index(IndexOpsMixin):
         >>> df['dogs'].index.to_pandas()
         Index(['a', 'b', 'c', 'd'], dtype='object')
         """
-        return self._kdf[[]].to_pandas().index
+        sdf = self._kdf._sdf.select(self._scol)
+        internal = self._kdf._internal.copy(
+            sdf=sdf,
+            index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
+            data_columns=[])
+        return DataFrame(internal).to_pandas().index
 
     toPandas = to_pandas
 
     @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
-        return self.to_series().dataType
+        return self.to_series().spark_type
 
     @property
     def name(self) -> str:
@@ -123,6 +128,56 @@ class Index(IndexOpsMixin):
             raise ValueError('Length of new names must be {}, got {}'
                              .format(len(internal.index_map), len(names)))
         self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
+
+    def rename(self, name, inplace=False):
+        """
+        Alter Index name.
+        Able to set new names without level. Defaults to returning new index.
+
+        Parameters
+        ----------
+        name : label or list of labels
+            Name(s) to set.
+        inplace : boolean, default False
+            Modifies the object directly, instead of creating a new Index.
+
+        Returns
+        -------
+        Index
+            The same type as the caller or None if inplace is True.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': ['A', 'C'], 'b': ['A', 'B']}, columns=['a', 'b'])
+        >>> df.index.rename("c")
+        Int64Index([0, 1], dtype='int64', name='c')
+
+        >>> df.set_index("a", inplace=True)
+        >>> df.index.rename("d")
+        Index(['A', 'C'], dtype='object', name='d')
+
+        You can also change the index name in place.
+
+        >>> df.index.rename("e", inplace=True)
+        Index(['A', 'C'], dtype='object', name='e')
+
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
+           b
+        e
+        A  A
+        C  B
+        """
+        index_columns = self._kdf._internal.index_columns
+        assert len(index_columns) == 1
+
+        sdf = self._kdf._sdf.select([self._scol] + self._kdf._internal.data_scols)
+        internal = self._kdf._internal.copy(sdf=sdf, index_map=[(sdf.schema[0].name, name)])
+
+        if inplace:
+            self._kdf._internal = internal
+            return self
+        else:
+            return DataFrame(internal).index
 
     def to_series(self, name: str = None) -> Series:
         """
@@ -166,10 +221,15 @@ class Index(IndexOpsMixin):
         raise AttributeError("'Index' object has no attribute '{}'".format(item))
 
     def __repr__(self):
-        pser = self._kdf.head(max_display_count + 1).index.to_pandas()
-        pser_length = len(pser)
-        repr_string = repr(pser[:max_display_count])
-        if pser_length > max_display_count:
+        sdf = self._kdf._sdf.select(self._scol).limit(max_display_count + 1)
+        internal = self._kdf._internal.copy(
+            sdf=sdf,
+            index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
+            data_columns=[])
+        pindex = DataFrame(internal).index.to_pandas()
+        pindex_length = len(pindex)
+        repr_string = repr(pindex[:max_display_count])
+        if pindex_length > max_display_count:
             footer = '\nShowing only the first {}'.format(max_display_count)
             return repr_string + footer
         return repr_string
@@ -217,3 +277,6 @@ class MultiIndex(Index):
             else:
                 return partial(property_or_func, self)
         raise AttributeError("'MultiIndex' object has no attribute '{}'".format(item))
+
+    def rename(self, name, inplace=False):
+        raise NotImplementedError()

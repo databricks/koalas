@@ -207,6 +207,9 @@ class IndexOpsMixin(object):
         >>> s = ks.Series(pd.date_range('20130101', periods=3))
         >>> s.dtype
         dtype('<M8[ns]')
+
+        >>> s.rename("a").to_frame().set_index("a").index.dtype
+        dtype('<M8[ns]')
         """
         if type(self.spark_type) == TimestampType:
             return np.dtype('datetime64[ns]')
@@ -244,6 +247,9 @@ class IndexOpsMixin(object):
         True
 
         >>> ks.Series([1, 2, 3]).hasnans
+        False
+
+        >>> ks.Series([1, 2, 3]).rename("a").to_frame().set_index("a").index.hasnans
         False
         """
         sdf = self._kdf._sdf.select(self._scol)
@@ -285,6 +291,9 @@ class IndexOpsMixin(object):
 
         >>> ser = ks.Series([])
         >>> ser.is_monotonic
+        True
+
+        >>> ser.rename("a").to_frame().set_index("a").index.is_monotonic
         True
         """
         if len(self._kdf._internal.index_columns) == 0:
@@ -335,6 +344,9 @@ class IndexOpsMixin(object):
         >>> ser = ks.Series([])
         >>> ser.is_monotonic_decreasing
         True
+
+        >>> ser.rename("a").to_frame().set_index("a").index.is_monotonic_decreasing
+        True
         """
         if len(self._kdf._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
@@ -378,6 +390,9 @@ class IndexOpsMixin(object):
         0    1
         1    2
         Name: 0, dtype: int64
+
+        >>> ser.rename("a").to_frame().set_index("a").index.astype('int64')
+        Int64Index([1, 2], dtype='int64', name='a')
         """
         from databricks.koalas.typedef import as_spark_type
         spark_type = as_spark_type(dtype)
@@ -425,13 +440,16 @@ class IndexOpsMixin(object):
         4     True
         5    False
         Name: animal, dtype: bool
+
+        >>> s.rename("a").to_frame().set_index("a").index.isin(['lama'])
+        Index([True, False, True, False, True, False], dtype='object', name='a')
         """
         if not is_list_like(values):
             raise TypeError("only list-like objects are allowed to be passed"
                             " to isin(), you passed a [{values_type}]"
                             .format(values_type=type(values).__name__))
 
-        return self._with_new_scol(self._scol.isin(list(values)).alias(self.name))
+        return self._with_new_scol(self._scol.isin(list(values))).rename(self.name)
 
     def isnull(self):
         """
@@ -456,11 +474,14 @@ class IndexOpsMixin(object):
         1    False
         2     True
         Name: 0, dtype: bool
+
+        >>> ser.rename("a").to_frame().set_index("a").index.isna()
+        Index([False, False, True], dtype='object', name='a')
         """
         if isinstance(self.spark_type, (FloatType, DoubleType)):
-            return self._with_new_scol(self._scol.isNull() | F.isnan(self._scol)).alias(self.name)
+            return self._with_new_scol(self._scol.isNull() | F.isnan(self._scol)).rename(self.name)
         else:
-            return self._with_new_scol(self._scol.isNull()).alias(self.name)
+            return self._with_new_scol(self._scol.isNull()).rename(self.name)
 
     isna = isnull
 
@@ -494,8 +515,11 @@ class IndexOpsMixin(object):
         1     True
         2    False
         Name: 0, dtype: bool
+
+        >>> ser.rename("a").to_frame().set_index("a").index.notna()
+        Index([True, True, False], dtype='object', name='a')
         """
-        return (~self.isnull()).alias(self.name)
+        return (~self.isnull()).rename(self.name)
 
     notna = notnull
 
@@ -540,6 +564,10 @@ class IndexOpsMixin(object):
 
         >>> ks.Series([np.nan]).all()
         True
+
+        >>> df = ks.Series([True, False, None]).rename("a").to_frame()
+        >>> df.set_index("a").index.all()
+        False
         """
 
         if axis not in [0, 'index']:
@@ -599,6 +627,10 @@ class IndexOpsMixin(object):
 
         >>> ks.Series([np.nan]).any()
         False
+
+        >>> df = ks.Series([True, False, None]).rename("a").to_frame()
+        >>> df.set_index("a").index.any()
+        True
         """
 
         if axis not in [0, 'index']:
@@ -662,6 +694,8 @@ class IndexOpsMixin(object):
         4    23
         Name: Col2, dtype: int64
 
+        >>> df.index.shift(periods=3, fill_value=0)
+        Int64Index([0, 0, 0, 0, 1], dtype='int64')
         """
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
@@ -676,4 +710,4 @@ class IndexOpsMixin(object):
             shifted_col.isNull() | F.isnan(shifted_col), fill_value
         ).otherwise(shifted_col)
 
-        return self._with_new_scol(col).alias(self.name)
+        return self._with_new_scol(col).rename(self.name)

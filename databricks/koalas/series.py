@@ -827,8 +827,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: my_name, dtype: int64
         """
         if index is None:
-            return self
-        scol = self._scol.alias(index)
+            scol = self._scol
+        else:
+            scol = self._scol.alias(index)
         if kwargs.get('inplace', False):
             self._internal = self._internal.copy(scol=scol)
             return self
