@@ -929,7 +929,7 @@ class _Frame(object):
 
         On a DataFrame:
 
-        >>> df.skew()
+        >>> df.skew()  # doctest: +SKIP
         a    0.000000e+00
         b   -3.319678e-16
         dtype: float64
