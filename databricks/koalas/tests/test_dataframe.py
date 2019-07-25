@@ -74,7 +74,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([1, 2, 3], name='x')
         self.assert_eq(pd.DataFrame(pser), ks.DataFrame(kser))
 
-    def test_dataframe_multiindex_columns(self):
+    def test_dataframe_multilevel_columns(self):
         pdf = pd.DataFrame({
             ('x', 'a', '1'): [1, 2, 3],
             ('x', 'b', '2'): [4, 5, 6],
@@ -89,7 +89,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf['x']['b'], pdf['x']['b'])
         self.assert_eq(kdf['x']['b']['2'], pdf['x']['b']['2'])
 
+        self.assert_eq(kdf.x, pdf.x)
+        self.assert_eq(kdf.x.b, pdf.x.b)
+        self.assert_eq(kdf.x.b['2'], pdf.x.b['2'])
+
         self.assertRaises(KeyError, lambda: kdf['z'])
+        self.assertRaises(AttributeError, lambda: kdf.z)
 
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
