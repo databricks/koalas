@@ -479,7 +479,7 @@ class GroupBy(object):
 
         .. note:: unlike pandas, it is required for ``func`` to specify return type hint.
 
-        .. note:: the series within ``func`` is actually a pandas dataframe. Therefore,
+        .. note:: the series within ``func`` is actually a pandas series. Therefore,
             any pandas APIs within this function is allowed.
 
         Parameters
