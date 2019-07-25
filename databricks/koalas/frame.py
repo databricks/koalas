@@ -3573,19 +3573,31 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     @property
     def columns(self):
         """The column labels of the DataFrame."""
-        return pd.Index(self._internal.data_columns)
+        if self._internal.column_index is not None:
+            return pd.MultiIndex.from_tuples(self._internal.column_index)
+        else:
+            return pd.Index(self._internal.data_columns)
 
     @columns.setter
-    def columns(self, names):
-        old_names = self._internal.data_columns
-        if len(old_names) != len(names):
-            raise ValueError(
-                "Length mismatch: Expected axis has %d elements, new values have %d elements"
-                % (len(old_names), len(names)))
-        sdf = self._sdf.select(self._internal.index_scols +
-                               [self[old_name]._scol.alias(new_name)
-                                for (old_name, new_name) in zip(old_names, names)])
-        self._internal = self._internal.copy(sdf=sdf, data_columns=names)
+    def columns(self, columns):
+        if isinstance(columns, pd.MultiIndex):
+            column_index = columns.to_list()
+            old_names = self._internal.data_columns
+            if len(old_names) != len(column_index):
+                raise ValueError(
+                    "Length mismatch: Expected axis has %d elements, new values have %d elements"
+                    % (len(old_names), len(column_index)))
+            self._internal = self._internal.copy(column_index=column_index)
+        else:
+            old_names = self._internal.data_columns
+            if len(old_names) != len(columns):
+                raise ValueError(
+                    "Length mismatch: Expected axis has %d elements, new values have %d elements"
+                    % (len(old_names), len(columns)))
+            sdf = self._sdf.select(self._internal.index_scols +
+                                   [self[old_name]._scol.alias(new_name)
+                                    for (old_name, new_name) in zip(old_names, columns)])
+            self._internal = self._internal.copy(sdf=sdf, data_columns=columns, column_index=None)
 
     @property
     def dtypes(self):

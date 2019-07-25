@@ -183,9 +183,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({('A', '0'): [1, 2, 2, 3], ('B', 1): [1, 2, 3, 4]})
         kdf = ks.from_pandas(pdf)
 
+        columns = pdf.columns
+        self.assert_eq(kdf.columns, columns)
+
         pdf.columns = ['x', 'y']
         kdf.columns = ['x', 'y']
         self.assert_eq(kdf.columns, pd.Index(['x', 'y']))
+        self.assert_eq(kdf, pdf)
+
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_eq(kdf.columns, columns)
         self.assert_eq(kdf, pdf)
 
     def test_dot_in_column_name(self):
