@@ -344,6 +344,39 @@ class GroupBy(object):
             lambda col: F.max(F.coalesce(col.cast('boolean'), F.lit(False))),
             only_numeric=False)
 
+    # TODO: groupby multiply columuns should be implemented.
+    def size(self):
+        """
+        Compute group sizes.
+
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2, 2, 3, 3, 3],
+        ...                    'B': [1, 1, 2, 3, 3, 3]},
+        ...                   columns=['A', 'B'])
+        >>> df
+           A  B
+        0  1  1
+        1  2  1
+        2  2  2
+        3  3  3
+        4  3  3
+        5  3  3
+
+        >>> df.groupby('A').size()  # doctest: +NORMALIZE_WHITESPACE
+            B
+        A
+        1  1
+        2  2
+        3  3
+        """
+        return self._reduce_for_stat_function(F.count, only_numeric=True)
+
     # TODO: Series support is not implemented yet.
     def apply(self, func):
         """

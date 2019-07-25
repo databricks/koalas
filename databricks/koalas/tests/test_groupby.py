@@ -121,6 +121,13 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby("a").agg({"b": "nunique"}),
                        pdf.groupby("a").agg({"b": "nunique"}))
 
+    def test_size(self):
+        pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
+                            'B': [1, 1, 2, 3, 3, 3]})
+        kdf = koalas.DataFrame(pdf)
+
+        self.assert_eq(kdf.groupby("A").size(), pdf.groupby("A").size())
+
     def test_missing(self):
         kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 
