@@ -1158,13 +1158,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "items should be a list-like object"):
             kdf.filter(items='b')
 
-        with self.assertRaisesRegex(ValueError, "Multiindex is not supported yet"):
+        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
             kdf.filter(items=['b'], axis=0)
 
-        with self.assertRaisesRegex(ValueError, "Multiindex is not supported yet"):
+        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
             kdf.filter(like='b', axis='index')
 
-        with self.assertRaisesRegex(ValueError, "Multiindex is not supported yet"):
+        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
             kdf.filter(regex='b.*', axis='index')
 
         with self.assertRaisesRegex(ValueError, "No axis named"):

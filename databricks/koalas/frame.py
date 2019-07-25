@@ -6021,8 +6021,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise ValueError("items should be a list-like object.")
             if axis in ('index', 0):
                 # TODO: support multi-index here
-                if len(index_scols) > 1:
-                    raise ValueError("Multiindex is not supported yet.")
+                if len(index_scols) != 1:
+                    raise ValueError("Single index must be specified.")
                 col = None
                 for item in items:
                     if col is None:
@@ -6036,8 +6036,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         elif like is not None:
             if axis in ('index', 0):
                 # TODO: support multi-index here
-                if len(index_scols) > 1:
-                    raise ValueError("Multiindex is not supported yet.")
+                if len(index_scols) != 1:
+                    raise ValueError("Single index must be specified.")
                 sdf = sdf.filter(index_scols[0].contains(like))
                 return DataFrame(self._internal.copy(sdf=sdf))
             elif axis in ('columns', 1, None):
@@ -6047,8 +6047,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         elif regex is not None:
             if axis in ('index', 0):
                 # TODO: support multi-index here
-                if len(index_scols) > 1:
-                    raise ValueError("Multiindex is not supported yet.")
+                if len(index_scols) != 1:
+                    raise ValueError("Single index must be specified.")
                 sdf = sdf.filter(index_scols[0].rlike(regex))
                 return DataFrame(self._internal.copy(sdf=sdf))
             elif axis in ('columns', 1, None):
