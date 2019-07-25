@@ -84,7 +84,14 @@ def _to_stype(tpe) -> X:
         inner = as_spark_type(tpe.__args__[0])
         return _Series(inner)
     if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.DataFrame:
-        return _DataFrame([as_spark_type(t) for t in tpe.__args__[0].__args__])
+        tuple_type = tpe.__args__[0]
+        if hasattr(tuple_type, "__tuple_params__"):
+            # Python 3.5.0 to 3.5.2 has '__tuple_params__' instead.
+            # See https://github.com/python/cpython/blob/v3.5.2/Lib/typing.py
+            parameters = getattr(tuple_type, "__tuple_params__")
+        else:
+            parameters = getattr(tuple_type, "__args__")
+        return _DataFrame([as_spark_type(t) for t in parameters])
     inner = as_spark_type(tpe)
     if inner is None:
         return _Unknown(tpe)
