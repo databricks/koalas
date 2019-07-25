@@ -6191,7 +6191,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             try:
                 return self._get_from_multilevel_column(key)
             except KeyError:
-                pass
+                raise AttributeError(
+                    "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))
         if key not in self._internal.data_columns:
             raise AttributeError(
                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))
