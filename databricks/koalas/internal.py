@@ -250,7 +250,7 @@ class _InternalFrame(object):
     2 3  7  11  15  19
     3 4  8  12  16  20
 
-    For multi-index columns, it also holds column_index
+    For multi-level columns, it also holds column_index
 
     >>> columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'),
     ...                                      ('Y', 'C'), ('Y', 'D')])
@@ -354,7 +354,7 @@ class _InternalFrame(object):
                               Field names to appear as columns. If scol is not None, this
                               argument is ignored, otherwise if this is None, calculated from sdf.
         :param column_index: list of tuples with the same length
-                              The multi-index values in the tuples.
+                              The multi-level values in the tuples.
         """
         assert isinstance(sdf, spark.DataFrame)
         assert index_map is None \
@@ -377,7 +377,8 @@ class _InternalFrame(object):
             self._data_columns = data_columns
 
         assert column_index is None or (len(column_index) == len(self._data_columns) and
-                                        all(isinstance(i, tuple) for i in column_index))
+                                        all(isinstance(i, tuple) for i in column_index) and
+                                        len(set(len(i) for i in column_index)) <= 1)
         self._column_index = column_index
 
     def scol_for(self, column_name: str) -> spark.Column:
