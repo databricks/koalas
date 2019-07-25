@@ -45,3 +45,8 @@ to_list = lambda f: f(
 tolist = lambda f: f(
     'tolist',
     reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
+
+first_valid_index = lambda f: f(
+    'first_valid_index',
+    reason="Koalas DataFrame and Series currently does not guarantee its natural order."
+           "Use `sort_index` or `sort_values` with `isnan` on columns explicitly.")

@@ -62,7 +62,6 @@ class _MissingPandasLikeDataFrame(object):
     ewm = unsupported_function('ewm')
     expanding = unsupported_function('expanding')
     first = unsupported_function('first')
-    first_valid_index = unsupported_function('first_valid_index')
     hist = unsupported_function('hist')
     idxmax = unsupported_function('idxmax')
     idxmin = unsupported_function('idxmin')
@@ -141,3 +140,4 @@ class _MissingPandasLikeDataFrame(object):
     to_pickle = common.to_pickle(unsupported_function)
     memory_usage = common.memory_usage(unsupported_function)
     to_xarray = common.to_xarray(unsupported_function)
+    first_valid_index = common.first_valid_index(unsupported_function)

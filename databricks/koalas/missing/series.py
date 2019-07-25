@@ -76,7 +76,6 @@ class _MissingPandasLikeSeries(object):
     ffill = unsupported_function('ffill')
     filter = unsupported_function('filter')
     first = unsupported_function('first')
-    first_valid_index = unsupported_function('first_valid_index')
     get = unsupported_function('get')
     infer_objects = unsupported_function('infer_objects')
     interpolate = unsupported_function('interpolate')
@@ -161,3 +160,4 @@ class _MissingPandasLikeSeries(object):
     memory_usage = common.memory_usage(unsupported_function)
     to_pickle = common.to_pickle(unsupported_function)
     to_xarray = common.to_xarray(unsupported_function)
+    first_valid_index = common.first_valid_index(unsupported_function)
