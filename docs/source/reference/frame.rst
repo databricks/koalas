@@ -133,6 +133,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.add_prefix
    DataFrame.add_suffix
    DataFrame.drop
+   DataFrame.filter
    DataFrame.head
    DataFrame.reset_index
    DataFrame.set_index

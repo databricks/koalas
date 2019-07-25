@@ -5943,6 +5943,122 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.copy(sdf=sdf, data_columns=[column.name for column in applied])
         return DataFrame(internal)
 
+    def filter(self, items=None, like=None, regex=None, axis=None):
+        """
+        Subset rows or columns of dataframe according to labels in
+        the specified index.
+
+        Note that this routine does not filter a dataframe on its
+        contents. The filter is applied to the labels of the index.
+
+        Parameters
+        ----------
+        items : list-like
+            Keep labels from axis which are in items.
+        like : string
+            Keep labels from axis for which "like in label == True".
+        regex : string (regular expression)
+            Keep labels from axis for which re.search(regex, label) == True.
+        axis : int or string axis name
+            The axis to filter on.  By default this is the info axis,
+            'index' for Series, 'columns' for DataFrame.
+
+        Returns
+        -------
+        same type as input object
+
+        See Also
+        --------
+        DataFrame.loc
+
+        Notes
+        -----
+        The ``items``, ``like``, and ``regex`` parameters are
+        enforced to be mutually exclusive.
+
+        ``axis`` defaults to the info axis that is used when indexing
+        with ``[]``.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(np.array(([1, 2, 3], [4, 5, 6])),
+        ...                   index=['mouse', 'rabbit'],
+        ...                   columns=['one', 'two', 'three'])
+
+        >>> # select columns by name
+        >>> df.filter(items=['one', 'three'])
+                one  three
+        mouse     1      3
+        rabbit    4      6
+
+        >>> # select columns by regular expression
+        >>> df.filter(regex='e$', axis=1)
+                one  three
+        mouse     1      3
+        rabbit    4      6
+
+        >>> # select rows containing 'bbi'
+        >>> df.filter(like='bbi', axis=0)
+                one  two  three
+        rabbit    4    5      6
+        """
+
+        if sum(x is not None for x in (items, like, regex)) > 1:
+            raise TypeError(
+                "Keyword arguments `items`, `like`, or `regex` "
+                "are mutually exclusive")
+
+        if axis not in ('index', 0, 'columns', 1, None):
+            raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
+
+        index_scols = self._internal.index_scols
+        sdf = self._sdf
+
+        if items is not None:
+            if is_list_like(items):
+                items = list(items)
+            else:
+                raise ValueError("items should be a list-like object.")
+            if axis in ('index', 0):
+                # TODO: support multi-index here
+                if len(index_scols) != 1:
+                    raise ValueError("Single index must be specified.")
+                col = None
+                for item in items:
+                    if col is None:
+                        col = index_scols[0] == F.lit(item)
+                    else:
+                        col = col | (index_scols[0] == F.lit(item))
+                sdf = sdf.filter(col)
+                return DataFrame(self._internal.copy(sdf=sdf))
+            elif axis in ('columns', 1, None):
+                return self[items]
+        elif like is not None:
+            if axis in ('index', 0):
+                # TODO: support multi-index here
+                if len(index_scols) != 1:
+                    raise ValueError("Single index must be specified.")
+                sdf = sdf.filter(index_scols[0].contains(like))
+                return DataFrame(self._internal.copy(sdf=sdf))
+            elif axis in ('columns', 1, None):
+                data_columns = self._internal.data_columns
+                output_columns = [c for c in data_columns if like in c]
+                return self[output_columns]
+        elif regex is not None:
+            if axis in ('index', 0):
+                # TODO: support multi-index here
+                if len(index_scols) != 1:
+                    raise ValueError("Single index must be specified.")
+                sdf = sdf.filter(index_scols[0].rlike(regex))
+                return DataFrame(self._internal.copy(sdf=sdf))
+            elif axis in ('columns', 1, None):
+                data_columns = self._internal.data_columns
+                matcher = re.compile(regex)
+                output_columns = [c for c in data_columns if matcher.search(c) is not None]
+                return self[output_columns]
+        else:
+            raise TypeError("Must pass either `items`, `like`, or `regex`")
+
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
         if key is None:

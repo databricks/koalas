@@ -1126,3 +1126,52 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.bfill(), pdf.bfill())
         self.assert_eq(kdf.bfill(limit=1), pdf.bfill(limit=1))
+
+    def test_filter(self):
+        pdf = pd.DataFrame({
+            'aa': ['aa', 'ab', 'bc', 'bd', 'ce'],
+            'ba': [1, 2, 3, 4, 5],
+            'cb': [1., 2., 3., 4., 5.],
+            'db': [1., np.nan, 3., np.nan, 5.],
+        })
+        pdf = pdf.set_index('aa')
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            kdf.filter(items=['ab', 'aa'], axis=0).sort_index(),
+            pdf.filter(items=['ab', 'aa'], axis=0).sort_index())
+        self.assert_eq(
+            kdf.filter(items=['ba', 'db'], axis=1).sort_index(),
+            pdf.filter(items=['ba', 'db'], axis=1).sort_index())
+
+        self.assert_eq(kdf.filter(like='b', axis='index'), pdf.filter(like='b', axis='index'))
+        self.assert_eq(kdf.filter(like='c', axis='columns'), pdf.filter(like='c', axis='columns'))
+
+        self.assert_eq(
+            kdf.filter(regex='b.*', axis='index'), pdf.filter(regex='b.*', axis='index'))
+        self.assert_eq(
+            kdf.filter(regex='b.*', axis='columns'), pdf.filter(regex='b.*', axis='columns'))
+
+        pdf = pdf.set_index('ba', append=True)
+        kdf = ks.from_pandas(pdf)
+
+        with self.assertRaisesRegex(ValueError, "items should be a list-like object"):
+            kdf.filter(items='b')
+
+        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
+            kdf.filter(items=['b'], axis=0)
+
+        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
+            kdf.filter(like='b', axis='index')
+
+        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
+            kdf.filter(regex='b.*', axis='index')
+
+        with self.assertRaisesRegex(ValueError, "No axis named"):
+            kdf.filter(regex='b.*', axis=123)
+
+        with self.assertRaisesRegex(TypeError, "Must pass either `items`, `like`"):
+            kdf.filter()
+
+        with self.assertRaisesRegex(TypeError, "mutually exclusive"):
+            kdf.filter(regex='b.*', like="aaa")
