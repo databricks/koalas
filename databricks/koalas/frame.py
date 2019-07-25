@@ -6076,10 +6076,33 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if key is None:
             raise KeyError("none key")
         if isinstance(key, str):
-            try:
-                return Series(self._internal.copy(scol=self._internal.scol_for(key)), anchor=self)
-            except AnalysisException:
-                raise KeyError(key)
+            if self._internal.column_index is not None:
+                columns = [(column, idx[1:]) for column, idx
+                           in zip(self._internal.data_columns, self._internal.column_index)
+                           if idx[0] == key]
+                if len(columns) == 0:
+                    raise KeyError(key)
+                if all(len(idx) == 1 for _, idx in columns):
+                    sdf = self._sdf.select(self._internal.index_scols +
+                                           [scol_for(self._sdf, col).alias(idx[0])
+                                            for col, idx in columns])
+                    return DataFrame(self._internal.copy(
+                        sdf=sdf,
+                        data_columns=[idx[0] for _, idx in columns],
+                        column_index=None))
+                else:
+                    sdf = self._sdf.select(self._internal.index_scols +
+                                           [scol_for(self._sdf, col) for col, _ in columns])
+                    return DataFrame(self._internal.copy(
+                        sdf=sdf,
+                        data_columns=[col for col, _ in columns],
+                        column_index=[idx for _, idx in columns]))
+            else:
+                try:
+                    return Series(self._internal.copy(scol=self._internal.scol_for(key)),
+                                  anchor=self)
+                except AnalysisException:
+                    raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, str)):
             raise NotImplementedError(key)
         elif isinstance(key, slice):
