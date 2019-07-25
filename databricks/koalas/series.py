@@ -2628,6 +2628,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = self._kdf._sdf
         scol = self._scol
         index_scols = self._kdf._internal.index_scols
+        # desc_nulls_(last|first) is used via Py4J directly because
+        # it's not supported in Spark 2.3.
         if skipna:
             sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()))
         else:
@@ -2718,6 +2720,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = self._kdf._sdf
         scol = self._scol
         index_scols = self._kdf._internal.index_scols
+        # asc_nulls_(list|first)is used via Py4J directly because
+        # it's not supported in Spark 2.3.
         if skipna:
             sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()))
         else:
