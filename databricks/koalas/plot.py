@@ -405,10 +405,7 @@ class KoalasHistPlot(HistPlot):
         numeric_data = data.select_dtypes(include=['byte', 'decimal', 'integer', 'float',
                                                    'long', 'double', np.datetime64])
 
-        try:
-            is_empty = numeric_data.empty
-        except AttributeError:
-            is_empty = not len(numeric_data)
+        is_empty = not len(numeric_data.columns)
 
         # no empty frames or series allowed
         if is_empty:
