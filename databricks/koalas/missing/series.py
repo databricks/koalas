@@ -78,8 +78,6 @@ class _MissingPandasLikeSeries(object):
     first = unsupported_function('first')
     first_valid_index = unsupported_function('first_valid_index')
     get = unsupported_function('get')
-    idxmax = unsupported_function('idxmax')
-    idxmin = unsupported_function('idxmin')
     infer_objects = unsupported_function('infer_objects')
     interpolate = unsupported_function('interpolate')
     items = unsupported_function('items')

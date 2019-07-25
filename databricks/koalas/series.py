@@ -29,7 +29,7 @@ from pandas.api.types import is_list_like
 from pandas.core.accessor import CachedAccessor
 
 from pyspark import sql as spark
-from pyspark.sql import functions as F
+from pyspark.sql import functions as F, Column
 from pyspark.sql.types import BooleanType, StructType
 from pyspark.sql.window import Window
 
@@ -2560,6 +2560,185 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         col = self._scol
         window = Window.orderBy(self._internal.index_scols).rowsBetween(-periods, -periods)
         return self._with_new_scol(col - F.lag(col, periods).over(window)).alias(self.name)
+
+    def idxmax(self, skipna=True):
+        """
+        Return the row label of the maximum value.
+
+        If multiple values equal the maximum, the row label with that
+        value is returned.
+
+        Parameters
+        ----------
+        skipna : bool, default True
+            Exclude NA/null values. If the entire Series is NA, the result
+            will be NA.
+
+        Returns
+        -------
+        Index
+            Label of the maximum value.
+
+        Raises
+        ------
+        ValueError
+            If the Series is empty.
+
+        See Also
+        --------
+        Series.idxmin : Return index *label* of the first occurrence
+            of minimum of values.
+
+        Examples
+        --------
+        >>> s = ks.Series(data=[1, None, 4, 3, 5],
+        ...               index=['A', 'B', 'C', 'D', 'E'])
+        >>> s
+        A    1.0
+        B    NaN
+        C    4.0
+        D    3.0
+        E    5.0
+        Name: 0, dtype: float64
+
+        >>> s.idxmax()
+        'E'
+
+        If `skipna` is False and there is an NA value in the data,
+        the function returns ``nan``.
+
+        >>> s.idxmax(skipna=False)
+        nan
+
+        In case of multi-index, you get a tuple:
+
+        >>> index = pd.MultiIndex.from_arrays([
+        ...     ['a', 'a', 'b', 'b'], ['c', 'd', 'e', 'f']], names=('first', 'second'))
+        >>> s = ks.Series(data=[1, None, 4, 5], index=index)
+        >>> s
+        first  second
+        a      c         1.0
+               d         NaN
+        b      e         4.0
+               f         5.0
+        Name: 0, dtype: float64
+
+        >>> s.idxmax()
+        ('b', 'f')
+        """
+        sdf = self._kdf._sdf
+        scol = self._scol
+        index_scols = self._kdf._internal.index_scols
+        # desc_nulls_(last|first) is used via Py4J directly because
+        # it's not supported in Spark 2.3.
+        if skipna:
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()))
+        else:
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()))
+        results = sdf.select([scol] + index_scols).take(1)
+        if len(results) == 0:
+            raise ValueError("attempt to get idxmin of an empty sequence")
+        if results[0][0] is None:
+            # This will only happens when skipna is False because we will
+            # place nulls first.
+            return np.nan
+        values = list(results[0][1:])
+        if len(values) == 1:
+            return values[0]
+        else:
+            return tuple(values)
+
+    def idxmin(self, skipna=True):
+        """
+        Return the row label of the minimum value.
+
+        If multiple values equal the minimum, the row label with that
+        value is returned.
+
+        Parameters
+        ----------
+        skipna : bool, default True
+            Exclude NA/null values. If the entire Series is NA, the result
+            will be NA.
+
+        Returns
+        -------
+        Index
+            Label of the minimum value.
+
+        Raises
+        ------
+        ValueError
+            If the Series is empty.
+
+        See Also
+        --------
+        Series.idxmax : Return index *label* of the first occurrence
+            of maximum of values.
+
+        Notes
+        -----
+        This method is the Series version of ``ndarray.argmin``. This method
+        returns the label of the minimum, while ``ndarray.argmin`` returns
+        the position. To get the position, use ``series.values.argmin()``.
+
+        Examples
+        --------
+        >>> s = ks.Series(data=[1, None, 4, 0],
+        ...               index=['A', 'B', 'C', 'D'])
+        >>> s
+        A    1.0
+        B    NaN
+        C    4.0
+        D    0.0
+        Name: 0, dtype: float64
+
+        >>> s.idxmin()
+        'D'
+
+        If `skipna` is False and there is an NA value in the data,
+        the function returns ``nan``.
+
+        >>> s.idxmin(skipna=False)
+        nan
+
+        In case of multi-index, you get a tuple:
+
+        >>> index = pd.MultiIndex.from_arrays([
+        ...     ['a', 'a', 'b', 'b'], ['c', 'd', 'e', 'f']], names=('first', 'second'))
+        >>> s = ks.Series(data=[1, None, 4, 0], index=index)
+        >>> s
+        first  second
+        a      c         1.0
+               d         NaN
+        b      e         4.0
+               f         0.0
+        Name: 0, dtype: float64
+
+        >>> s.idxmin()
+        ('b', 'f')
+        """
+        sdf = self._kdf._sdf
+        scol = self._scol
+        index_scols = self._kdf._internal.index_scols
+        # asc_nulls_(list|first)is used via Py4J directly because
+        # it's not supported in Spark 2.3.
+        if skipna:
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()))
+        else:
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()))
+        results = sdf.select([scol] + index_scols).take(1)
+        if len(results) == 0:
+            raise ValueError("attempt to get idxmin of an empty sequence")
+        if results[0][0] is None:
+            # This will only happens when skipna is False because we will
+            # place nulls first.
+            return np.nan
+        values = list(results[0][1:])
+        if len(values) == 1:
+            return values[0]
+        else:
+            return tuple(values)
 
     def _cum(self, func, skipna):
         # This is used to cummin, cummax, cumsum, etc.
