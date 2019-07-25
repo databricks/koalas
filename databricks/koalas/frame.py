@@ -3573,19 +3573,31 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     @property
     def columns(self):
         """The column labels of the DataFrame."""
-        return pd.Index(self._internal.data_columns)
+        if self._internal.column_index is not None:
+            return pd.MultiIndex.from_tuples(self._internal.column_index)
+        else:
+            return pd.Index(self._internal.data_columns)
 
     @columns.setter
-    def columns(self, names):
-        old_names = self._internal.data_columns
-        if len(old_names) != len(names):
-            raise ValueError(
-                "Length mismatch: Expected axis has %d elements, new values have %d elements"
-                % (len(old_names), len(names)))
-        sdf = self._sdf.select(self._internal.index_scols +
-                               [self[old_name]._scol.alias(new_name)
-                                for (old_name, new_name) in zip(old_names, names)])
-        self._internal = self._internal.copy(sdf=sdf, data_columns=names)
+    def columns(self, columns):
+        if isinstance(columns, pd.MultiIndex):
+            column_index = columns.tolist()
+            old_names = self._internal.data_columns
+            if len(old_names) != len(column_index):
+                raise ValueError(
+                    "Length mismatch: Expected axis has %d elements, new values have %d elements"
+                    % (len(old_names), len(column_index)))
+            self._internal = self._internal.copy(column_index=column_index)
+        else:
+            old_names = self._internal.data_columns
+            if len(old_names) != len(columns):
+                raise ValueError(
+                    "Length mismatch: Expected axis has %d elements, new values have %d elements"
+                    % (len(old_names), len(columns)))
+            sdf = self._sdf.select(self._internal.index_scols +
+                                   [self._internal.scol_for(old_name).alias(new_name)
+                                    for (old_name, new_name) in zip(old_names, columns)])
+            self._internal = self._internal.copy(sdf=sdf, data_columns=columns, column_index=None)
 
     @property
     def dtypes(self):
@@ -6059,15 +6071,41 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             raise TypeError("Must pass either `items`, `like`, or `regex`")
 
+    def _get_from_multilevel_column(self, key):
+        columns = [(column, idx[1:]) for column, idx
+                   in zip(self._internal.data_columns, self._internal.column_index)
+                   if idx[0] == key]
+        if len(columns) == 0:
+            raise KeyError(key)
+        if all(len(idx) == 1 for _, idx in columns):
+            sdf = self._sdf.select(self._internal.index_scols +
+                                   [self._internal.scol_for(col).alias(idx[0])
+                                    for col, idx in columns])
+            return DataFrame(self._internal.copy(
+                sdf=sdf,
+                data_columns=[idx[0] for _, idx in columns],
+                column_index=None))
+        else:
+            sdf = self._sdf.select(self._internal.index_scols +
+                                   [self._internal.scol_for(col) for col, _ in columns])
+            return DataFrame(self._internal.copy(
+                sdf=sdf,
+                data_columns=[col for col, _ in columns],
+                column_index=[idx for _, idx in columns]))
+
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
         if key is None:
             raise KeyError("none key")
         if isinstance(key, str):
-            try:
-                return Series(self._internal.copy(scol=self._internal.scol_for(key)), anchor=self)
-            except AnalysisException:
-                raise KeyError(key)
+            if self._internal.column_index is not None:
+                return self._get_from_multilevel_column(key)
+            else:
+                try:
+                    return Series(self._internal.copy(scol=self._internal.scol_for(key)),
+                                  anchor=self)
+                except AnalysisException:
+                    raise KeyError(key)
         if np.isscalar(key) or isinstance(key, (tuple, str)):
             raise NotImplementedError(key)
         elif isinstance(key, slice):
@@ -6148,7 +6186,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        if key not in self.columns:
+
+        if self._internal.column_index is not None:
+            try:
+                return self._get_from_multilevel_column(key)
+            except KeyError:
+                raise AttributeError(
+                    "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))
+        if key not in self._internal.data_columns:
             raise AttributeError(
                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))
         return Series(self._internal.copy(scol=self._internal.scol_for(key)), anchor=self)

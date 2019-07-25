@@ -74,6 +74,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([1, 2, 3], name='x')
         self.assert_eq(pd.DataFrame(pser), ks.DataFrame(kser))
 
+    def test_dataframe_multilevel_columns(self):
+        pdf = pd.DataFrame({
+            ('x', 'a', '1'): [1, 2, 3],
+            ('x', 'b', '2'): [4, 5, 6],
+            ('y.z', 'c.d', '3'): [7, 8, 9],
+            ('x', 'b', '4'): [10, 11, 12],
+        }, index=[0, 1, 3])
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf['x'], pdf['x'])
+        self.assert_eq(kdf['y.z'], pdf['y.z'])
+        self.assert_eq(kdf['x']['b'], pdf['x']['b'])
+        self.assert_eq(kdf['x']['b']['2'], pdf['x']['b']['2'])
+
+        self.assert_eq(kdf.x, pdf.x)
+        self.assert_eq(kdf.x.b, pdf.x.b)
+        self.assert_eq(kdf.x.b['2'], pdf.x.b['2'])
+
+        self.assertRaises(KeyError, lambda: kdf['z'])
+        self.assertRaises(AttributeError, lambda: kdf.z)
+
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
         df = ks.range(10)
@@ -183,9 +205,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({('A', '0'): [1, 2, 2, 3], ('B', 1): [1, 2, 3, 4]})
         kdf = ks.from_pandas(pdf)
 
+        columns = pdf.columns
+        self.assert_eq(kdf.columns, columns)
+
         pdf.columns = ['x', 'y']
         kdf.columns = ['x', 'y']
         self.assert_eq(kdf.columns, pd.Index(['x', 'y']))
+        self.assert_eq(kdf, pdf)
+
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_eq(kdf.columns, columns)
         self.assert_eq(kdf, pdf)
 
     def test_dot_in_column_name(self):
