@@ -3581,7 +3581,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     @columns.setter
     def columns(self, columns):
         if isinstance(columns, pd.MultiIndex):
-            column_index = columns.to_list()
+            column_index = columns.tolist()
             old_names = self._internal.data_columns
             if len(old_names) != len(column_index):
                 raise ValueError(

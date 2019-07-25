@@ -520,7 +520,7 @@ class _InternalFrame(object):
         columns = pdf.columns
         data_columns = [str(col) for col in columns]
         if isinstance(columns, pd.MultiIndex):
-            column_index = columns.to_list()
+            column_index = columns.tolist()
         else:
             column_index = None
 
