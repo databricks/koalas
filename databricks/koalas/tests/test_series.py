@@ -112,7 +112,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(ks.rename('y'), ps.rename('y'))
         self.assertEqual(ks.name, 'x')  # no mutation
-        # self.assert_eq(ks.rename(), ps.rename())
+        self.assert_eq(ks.rename(), ps.rename())
 
         ks.rename('z', inplace=True)
         ps.rename('z', inplace=True)
@@ -272,7 +272,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert invalid parameters
         self.assertRaises(ValueError, lambda: ks.sort_index(axis=1))
-        self.assertRaises(ValueError, lambda: ks.sort_index(level=42))
         self.assertRaises(ValueError, lambda: ks.sort_index(kind='mergesort'))
         self.assertRaises(ValueError, lambda: ks.sort_index(na_position='invalid'))
 
@@ -291,6 +290,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ps = pd.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0')
         ks = koalas.from_pandas(ps)
         self.assert_eq(ks.sort_index(), ps.sort_index(), almost=True)
+        self.assert_eq(ks.sort_index(level=[1, 0]), ps.sort_index(level=[1, 0]), almost=True)
+
+        self.assertRaises(ValueError, lambda: ks.reset_index().sort_index())
 
     def test_to_datetime(self):
         ps = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
@@ -455,3 +457,111 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['a'].hist()
         self.assert_eq(plot_to_base64(ax1), plot_to_base64(ax2))
+
+    def test_cummin(self):
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.cummin()), repr(kser.cummin()))
+        self.assertEqual(repr(pser.cummin(skipna=False)), repr(kser.cummin(skipna=False)))
+
+    def test_cummax(self):
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.cummax()), repr(kser.cummax()))
+        self.assertEqual(repr(pser.cummax(skipna=False)), repr(kser.cummax(skipna=False)))
+
+    def test_cumsum(self):
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.cumsum()), repr(kser.cumsum()))
+        self.assertEqual(repr(pser.cumsum(skipna=False)), repr(kser.cumsum(skipna=False)))
+
+    def test_cumprod(self):
+        pser = pd.Series([1.0, None, 1.0, 4.0, 9.0]).rename("a")
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.cumprod()), repr(kser.cumprod()))
+        self.assertEqual(repr(pser.cumprod(skipna=False)), repr(kser.cumprod(skipna=False)))
+
+        # TODO: due to unknown reason, this test passes in Travis CI. Unable to reproduce in local.
+        # with self.assertRaisesRegex(Exception, "values should be bigger than 0"):
+        #     repr(koalas.Series([0, 1]).cumprod())
+
+    def test_median(self):
+        with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
+            koalas.Series([24., 21., 25., 33., 26.]).median(accuracy="a")
+
+    def test_rank(self):
+        pser = pd.Series([1, 2, 3, 1], name='x')
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.rank()),
+                         repr(kser.rank().sort_index()))
+        self.assertEqual(repr(pser.rank()),
+                         repr(kser.rank().sort_index()))
+        self.assertEqual(repr(pser.rank(ascending=False)),
+                         repr(kser.rank(ascending=False).sort_index()))
+        self.assertEqual(repr(pser.rank(method='min')),
+                         repr(kser.rank(method='min').sort_index()))
+        self.assertEqual(repr(pser.rank(method='max')),
+                         repr(kser.rank(method='max').sort_index()))
+        self.assertEqual(repr(pser.rank(method='first')),
+                         repr(kser.rank(method='first').sort_index()))
+        self.assertEqual(repr(pser.rank(method='dense')),
+                         repr(kser.rank(method='dense').sort_index()))
+
+        msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.rank(method='nothing')
+
+    def test_round(self):
+        pser = pd.Series([0.028208, 0.038683, 0.877076], name='x')
+        kser = koalas.from_pandas(pser)
+        self.assertEqual(repr(pser.round(2)), repr(kser.round(2)))
+        msg = "decimals must be an integer"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.round(1.5)
+
+    def test_quantile(self):
+        with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
+            koalas.Series([24., 21., 25., 33., 26.]).quantile(accuracy="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+            koalas.Series([24., 21., 25., 33., 26.]).quantile(q="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+            koalas.Series([24., 21., 25., 33., 26.]).quantile(q=["a"])
+
+    def test_idxmax(self):
+        pser = pd.Series(data=[1, 4, 5], index=['A', 'B', 'C'])
+        kser = koalas.Series(pser)
+
+        self.assertEqual(kser.idxmax(), pser.idxmax())
+        self.assertEqual(kser.idxmax(skipna=False), pser.idxmax(skipna=False))
+
+        index = pd.MultiIndex.from_arrays([
+            ['a', 'a', 'b', 'b'], ['c', 'd', 'e', 'f']], names=('first', 'second'))
+        pser = pd.Series(data=[1, 2, 4, 5], index=index)
+        kser = koalas.Series(pser)
+
+        self.assertEqual(kser.idxmax(), pser.idxmax())
+        self.assertEqual(kser.idxmax(skipna=False), pser.idxmax(skipna=False))
+
+        kser = koalas.Series([])
+        with self.assertRaisesRegex(ValueError, "an empty sequence"):
+            kser.idxmax()
+
+    def test_idxmin(self):
+        pser = pd.Series(data=[1, 4, 5], index=['A', 'B', 'C'])
+        kser = koalas.Series(pser)
+
+        self.assertEqual(kser.idxmin(), pser.idxmin())
+        self.assertEqual(kser.idxmin(skipna=False), pser.idxmin(skipna=False))
+
+        index = pd.MultiIndex.from_arrays([
+            ['a', 'a', 'b', 'b'], ['c', 'd', 'e', 'f']], names=('first', 'second'))
+        pser = pd.Series(data=[1, 2, 4, 5], index=index)
+        kser = koalas.Series(pser)
+
+        self.assertEqual(kser.idxmin(), pser.idxmin())
+        self.assertEqual(kser.idxmin(skipna=False), pser.idxmin(skipna=False))
+
+        kser = koalas.Series([])
+        with self.assertRaisesRegex(ValueError, "an empty sequence"):
+            kser.idxmin()

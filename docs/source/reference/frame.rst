@@ -41,6 +41,7 @@ Conversion
    DataFrame.isnull
    DataFrame.notna
    DataFrame.notnull
+   DataFrame.bool
 
 Indexing, iteration
 -------------------
@@ -90,6 +91,7 @@ Function application, GroupBy & Window
    DataFrame.applymap
    DataFrame.pipe
    DataFrame.groupby
+   DataFrame.transform
 
 .. _api.dataframe.stats:
 
@@ -99,6 +101,8 @@ Computations / Descriptive Stats
    :toctree: api/
 
    DataFrame.abs
+   DataFrame.all
+   DataFrame.any
    DataFrame.clip
    DataFrame.corr
    DataFrame.count
@@ -108,6 +112,7 @@ Computations / Descriptive Stats
    DataFrame.max
    DataFrame.mean
    DataFrame.min
+   DataFrame.median
    DataFrame.nunique
    DataFrame.skew
    DataFrame.sum
@@ -116,6 +121,9 @@ Computations / Descriptive Stats
    DataFrame.cummin
    DataFrame.cummax
    DataFrame.cumsum
+   DataFrame.cumprod
+   DataFrame.round
+   DataFrame.diff
 
 Reindexing / Selection / Label manipulation
 -------------------------------------------
@@ -125,6 +133,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.add_prefix
    DataFrame.add_suffix
    DataFrame.drop
+   DataFrame.filter
    DataFrame.head
    DataFrame.reset_index
    DataFrame.set_index
@@ -140,6 +149,8 @@ Missing data handling
 
    DataFrame.dropna
    DataFrame.fillna
+   DataFrame.bfill
+   DataFrame.ffill
 
 Reshaping, sorting, transposing
 -------------------------------
@@ -147,6 +158,7 @@ Reshaping, sorting, transposing
    :toctree: api/
 
    DataFrame.pivot_table
+   DataFrame.pivot
    DataFrame.sort_index
    DataFrame.sort_values
    DataFrame.nlargest
@@ -154,6 +166,8 @@ Reshaping, sorting, transposing
    DataFrame.melt
    DataFrame.T
    DataFrame.transpose
+   DataFrame.reindex
+   DataFrame.rank
 
 Combining / joining / merging
 -----------------------------
@@ -165,6 +179,13 @@ Combining / joining / merging
    DataFrame.merge
    DataFrame.join
    DataFrame.update
+
+Time series-related
+-------------------
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.shift
 
 Cache
 -------------------------------

@@ -14,8 +14,10 @@ Function application
 .. autosummary::
    :toctree: api/
 
+   GroupBy.apply
    GroupBy.agg
    GroupBy.aggregate
+   GroupBy.transform
 
 Computations / Descriptive Stats
 --------------------------------

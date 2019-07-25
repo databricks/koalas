@@ -18,14 +18,18 @@
 A wrapper for GroupedData to behave similar to pandas GroupBy.
 """
 
+import inspect
+from collections import Callable
 from functools import partial
 from typing import Any, List
 import numpy as np
 
 from pyspark.sql import functions as F
-from pyspark.sql.types import FloatType, DoubleType, NumericType
+from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
+from pyspark.sql.functions import PandasUDFType, pandas_udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.typedef import _infer_return_type
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
@@ -108,9 +112,9 @@ class GroupBy(object):
         reordered = []
         for key, value in func_or_funcs.items():
             if value == "nunique":
-                reordered.append(F.expr('count(DISTINCT {0}) as {0}'.format(key)))
+                reordered.append(F.expr('count(DISTINCT `{0}`) as `{0}`'.format(key)))
             else:
-                reordered.append(F.expr('{1}({0}) as {0}'.format(key, value)))
+                reordered.append(F.expr('{1}(`{0}`) as `{0}`'.format(key, value)))
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[key for key, _ in func_or_funcs.items()],
@@ -340,6 +344,245 @@ class GroupBy(object):
             lambda col: F.max(F.coalesce(col.cast('boolean'), F.lit(False))),
             only_numeric=False)
 
+    # TODO: Series support is not implemented yet.
+    def apply(self, func):
+        """
+        Apply function `func` group-wise and combine the results together.
+
+        The function passed to `apply` must take a DataFrame as its first
+        argument and return a DataFrame. `apply` will
+        then take care of combining the results back together into a single
+        dataframe. `apply` is therefore a highly flexible
+        grouping method.
+
+        While `apply` is a very flexible method, its downside is that
+        using it can be quite a bit slower than using more specific methods
+        like `agg` or `transform`. Koalas offers a wide range of method that will
+        be much faster than using `apply` for their specific purposes, so try to
+        use them before reaching for `apply`.
+
+        .. note:: unlike pandas, it is required for ``func`` to specify return type hint.
+
+        .. note:: the output column names are `c0, c1, c2 ... cn`. These names
+            are positionally mapped to the returned DataFrame in ``func``. See examples below.
+
+        .. note:: the dataframe within ``func`` is actually a pandas dataframe. Therefore,
+            any pandas APIs within this function is allowed.
+
+        Parameters
+        ----------
+        func : callable
+            A callable that takes a DataFrame as its first argument, and
+            returns a dataframe.
+
+        Returns
+        -------
+        applied : DataFrame
+
+        See Also
+        --------
+        aggregate : Apply aggregate function to the GroupBy object.
+        Series.apply : Apply a function to a Series.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': 'a a b'.split(),
+        ...                    'B': [1, 2, 3],
+        ...                    'C': [4, 6, 5]}, columns=['A', 'B', 'C'])
+        >>> g = df.groupby('A')
+
+        Notice that ``g`` has two groups, ``a`` and ``b``.
+        Calling `apply` in various ways, we can get different grouping results:
+
+        Below the functions passed to `apply` takes a DataFrame as
+        its argument and returns a DataFrame. `apply` combines the result for
+        each group together into a new DataFrame:
+
+        >>> def pandas_div_sum(x) -> ks.DataFrame[float, float]:
+        ...    return x[['B', 'C']] / x[['B', 'C']].sum()
+        >>> g.apply(pandas_div_sum)  # doctest: +NORMALIZE_WHITESPACE
+                 c0   c1
+        0  1.000000  1.0
+        1  0.333333  0.4
+        2  0.666667  0.6
+
+        >>> def plus_max(x) -> ks.DataFrame[str, np.int, np.int]:
+        ...    return x + x.max()
+        >>> g.apply(plus_max)  # doctest: +NORMALIZE_WHITESPACE
+           c0  c1  c2
+        0  bb   6  10
+        1  aa   3  10
+        2  aa   4  12
+        """
+        if not isinstance(func, Callable):
+            raise TypeError("%s object is not callable" % type(func))
+
+        assert callable(func), "the first argument should be a callable function."
+        spec = inspect.getfullargspec(func)
+        return_sig = spec.annotations.get("return", None)
+        if return_sig is None:
+            raise ValueError("Given function must have return type hint; however, not found.")
+
+        return_schema = _infer_return_type(func).tpe
+
+        index_columns = self._kdf._internal.index_columns
+        index_names = self._kdf._internal.index_names
+        data_columns = self._kdf._internal.data_columns
+
+        def rename_output(pdf):
+            # TODO: This logic below was borrowed from `DataFrame.pandas_df` to set the index
+            #   within each pdf properly. we might have to deduplicate it.
+            import pandas as pd
+
+            if len(index_columns) > 0:
+                append = False
+                for index_field in index_columns:
+                    drop = index_field not in data_columns
+                    pdf = pdf.set_index(index_field, drop=drop, append=append)
+                    append = True
+                pdf = pdf[data_columns]
+
+            if len(index_names) > 0:
+                if isinstance(pdf.index, pd.MultiIndex):
+                    pdf.index.names = index_names
+                else:
+                    pdf.index.name = index_names[0]
+
+            pdf = func(pdf)
+            # For now, just positionally map the column names to given schema's.
+            pdf = pdf.rename(columns=dict(zip(pdf.columns, return_schema.fieldNames())))
+            return pdf
+
+        grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(rename_output)
+
+        sdf = self._kdf._sdf
+        input_groupkeys = [s._scol for s in self._groupkeys]
+        sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
+        internal = _InternalFrame(
+            sdf=sdf, data_columns=return_schema.fieldNames(), index_map=[])  # index is lost.
+        return DataFrame(internal)
+
+    # TODO: Series support is not implemented yet.
+    def transform(self, func):
+        """
+        Apply function column-by-column to the GroupBy object.
+
+        The function passed to `transform` must take a Series as its first
+        argument and return a Series. The given function is executed for
+        each series in each grouped data.
+
+        While `transform` is a very flexible method, its downside is that
+        using it can be quite a bit slower than using more specific methods
+        like `agg` or `transform`. Koalas offers a wide range of method that will
+        be much faster than using `transform` for their specific purposes, so try to
+        use them before reaching for `transform`.
+
+        .. note:: unlike pandas, it is required for ``func`` to specify return type hint.
+
+        .. note:: the series within ``func`` is actually a pandas series. Therefore,
+            any pandas APIs within this function is allowed.
+
+        Parameters
+        ----------
+        func : callable
+            A callable that takes a Series as its first argument, and
+            returns a Series.
+
+        Returns
+        -------
+        applied : DataFrame
+
+        See Also
+        --------
+        aggregate : Apply aggregate function to the GroupBy object.
+        Series.apply : Apply a function to a Series.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'A': [0, 0, 1],
+        ...                    'B': [1, 2, 3],
+        ...                    'C': [4, 6, 5]}, columns=['A', 'B', 'C'])
+
+        >>> g = df.groupby('A')
+
+        Notice that ``g`` has two groups, ``0`` and ``1``.
+        Calling `transform` in various ways, we can get different grouping results:
+        Below the functions passed to `transform` takes a Series as
+        its argument and returns a Series. `transform` applies the function on each series
+        in each grouped data, and combine them into a new DataFrame:
+
+        >>> def convert_to_string(x) -> ks.Series[str]:
+        ...    return x.apply("a string {}".format)
+        >>> g.transform(convert_to_string)  # doctest: +NORMALIZE_WHITESPACE
+                    B           C
+        0  a string 1  a string 4
+        1  a string 2  a string 6
+        2  a string 3  a string 5
+
+        >>> def plus_max(x) -> ks.Series[np.int]:
+        ...    return x + x.max()
+        >>> g.transform(plus_max)  # doctest: +NORMALIZE_WHITESPACE
+           B   C
+        0  3  10
+        1  4  12
+        2  6  10
+        """
+        # TODO: codes here are similar with GroupBy.apply. Needs to deduplicate.
+        if not isinstance(func, Callable):
+            raise TypeError("%s object is not callable" % type(func))
+
+        assert callable(func), "the first argument should be a callable function."
+        spec = inspect.getfullargspec(func)
+        return_sig = spec.annotations.get("return", None)
+        if return_sig is None:
+            raise ValueError("Given function must have return type hint; however, not found.")
+
+        return_type = _infer_return_type(func).tpe
+        input_groupnames = [s.name for s in self._groupkeys]
+        data_columns = self._kdf._internal.data_columns
+        return_schema = StructType([
+            StructField(c, return_type) for c in data_columns if c not in input_groupnames])
+
+        index_columns = self._kdf._internal.index_columns
+        index_names = self._kdf._internal.index_names
+        data_columns = self._kdf._internal.data_columns
+
+        def rename_output(pdf):
+            # TODO: This logic below was borrowed from `DataFrame.pandas_df` to set the index
+            #   within each pdf properly. we might have to deduplicate it.
+            import pandas as pd
+
+            if len(index_columns) > 0:
+                append = False
+                for index_field in index_columns:
+                    drop = index_field not in data_columns
+                    pdf = pdf.set_index(index_field, drop=drop, append=append)
+                    append = True
+                pdf = pdf[data_columns]
+
+            if len(index_names) > 0:
+                if isinstance(pdf.index, pd.MultiIndex):
+                    pdf.index.names = index_names
+                else:
+                    pdf.index.name = index_names[0]
+
+            # pandas GroupBy.transform drops grouping columns.
+            pdf = pdf.drop(columns=input_groupnames)
+            pdf = pdf.transform(func)
+            # Remaps to the original name, positionally.
+            pdf = pdf.rename(columns=dict(zip(pdf.columns, return_schema.fieldNames())))
+            return pdf
+
+        grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(rename_output)
+
+        sdf = self._kdf._sdf
+        input_groupkeys = [s._scol for s in self._groupkeys]
+        sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
+        internal = _InternalFrame(
+            sdf=sdf, data_columns=return_schema.fieldNames(), index_map=[])  # index is lost.
+        return DataFrame(internal)
+
     def _reduce_for_stat_function(self, sfun, only_numeric):
         groupkeys = self._groupkeys
         groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
@@ -426,3 +669,15 @@ class SeriesGroupBy(GroupBy):
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
         return _col(super(SeriesGroupBy, self)._reduce_for_stat_function(sfun, only_numeric))
+
+    def agg(self, func_or_funcs, *args, **kwargs):
+        raise NotImplementedError()
+
+    def aggregate(self, func_or_funcs, *args, **kwargs):
+        raise NotImplementedError()
+
+    def apply(self, func):
+        raise NotImplementedError()
+
+    def transform(self, func):
+        raise NotImplementedError()

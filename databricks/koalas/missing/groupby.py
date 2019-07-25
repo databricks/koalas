@@ -52,7 +52,6 @@ class _MissingPandasLikeDataFrameGroupBy(object):
     take = unsupported_property('take', deprecated=True)
 
     # Functions
-    apply = unsupported_function('apply')
     backfill = unsupported_function('backfill')
     bfill = unsupported_function('bfill')
     boxplot = unsupported_function('boxplot')
@@ -83,7 +82,6 @@ class _MissingPandasLikeDataFrameGroupBy(object):
     shift = unsupported_function('shift')
     size = unsupported_function('size')
     tail = unsupported_function('tail')
-    transform = unsupported_function('transform')
 
 
 class _MissingPandasLikeSeriesGroupBy(object):
@@ -115,7 +113,6 @@ class _MissingPandasLikeSeriesGroupBy(object):
     take = unsupported_property('take', deprecated=True)
 
     # Functions
-    apply = unsupported_function('apply')
     backfill = unsupported_function('backfill')
     bfill = unsupported_function('bfill')
     cumcount = unsupported_function('cumcount')
@@ -145,5 +142,4 @@ class _MissingPandasLikeSeriesGroupBy(object):
     shift = unsupported_function('shift')
     size = unsupported_function('size')
     tail = unsupported_function('tail')
-    transform = unsupported_function('transform')
     value_counts = unsupported_function('value_counts')

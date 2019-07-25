@@ -30,6 +30,8 @@ Attributes
    Series.shape
    Series.size
    Series.empty
+   Series.T
+   Series.hasnans
 
 Conversion
 ----------
@@ -37,6 +39,7 @@ Conversion
    :toctree: api/
 
    Series.astype
+   Series.bool
 
 Indexing, iteration
 -------------------
@@ -99,6 +102,10 @@ Computations / Descriptive Stats
    Series.clip
    Series.corr
    Series.count
+   Series.cummax
+   Series.cummin
+   Series.cumsum
+   Series.cumprod
    Series.describe
    Series.kurt
    Series.max
@@ -107,14 +114,21 @@ Computations / Descriptive Stats
    Series.nlargest
    Series.nsmallest
    Series.nunique
+   Series.quantile
    Series.rank
    Series.skew
    Series.std
    Series.sum
+   Series.median
    Series.var
    Series.kurtosis
    Series.unique
    Series.value_counts
+   Series.round
+   Series.diff
+   Series.is_monotonic
+   Series.is_monotonic_increasing
+   Series.is_monotonic_decreasing
 
 Reindexing / Selection / Label manipulation
 -------------------------------------------
@@ -124,6 +138,8 @@ Reindexing / Selection / Label manipulation
    Series.add_prefix
    Series.add_suffix
    Series.head
+   Series.idxmax
+   Series.idxmin
    Series.isin
    Series.rename
    Series.reset_index
@@ -155,6 +171,14 @@ Combining / joining / merging
    :toctree: api/
 
    Series.append
+
+Time series-related
+-------------------
+
+.. autosummary::
+   :toctree: api/
+
+   Series.shift
 
 Accessors
 ---------

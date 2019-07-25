@@ -74,6 +74,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([1, 2, 3], name='x')
         self.assert_eq(pd.DataFrame(pser), ks.DataFrame(kser))
 
+    def test_dataframe_multilevel_columns(self):
+        pdf = pd.DataFrame({
+            ('x', 'a', '1'): [1, 2, 3],
+            ('x', 'b', '2'): [4, 5, 6],
+            ('y.z', 'c.d', '3'): [7, 8, 9],
+            ('x', 'b', '4'): [10, 11, 12],
+        }, index=[0, 1, 3])
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf['x'], pdf['x'])
+        self.assert_eq(kdf['y.z'], pdf['y.z'])
+        self.assert_eq(kdf['x']['b'], pdf['x']['b'])
+        self.assert_eq(kdf['x']['b']['2'], pdf['x']['b']['2'])
+
+        self.assert_eq(kdf.x, pdf.x)
+        self.assert_eq(kdf.x.b, pdf.x.b)
+        self.assert_eq(kdf.x.b['2'], pdf.x.b['2'])
+
+        self.assertRaises(KeyError, lambda: kdf['z'])
+        self.assertRaises(AttributeError, lambda: kdf.z)
+
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
         df = ks.range(10)
@@ -183,10 +205,23 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({('A', '0'): [1, 2, 2, 3], ('B', 1): [1, 2, 3, 4]})
         kdf = ks.from_pandas(pdf)
 
+        columns = pdf.columns
+        self.assert_eq(kdf.columns, columns)
+
         pdf.columns = ['x', 'y']
         kdf.columns = ['x', 'y']
         self.assert_eq(kdf.columns, pd.Index(['x', 'y']))
         self.assert_eq(kdf, pdf)
+
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_eq(kdf.columns, columns)
+        self.assert_eq(kdf, pdf)
+
+    def test_dot_in_column_name(self):
+        self.assert_eq(
+            ks.DataFrame(ks.range(1)._sdf.selectExpr("1 as `a.b`"))['a.b'],
+            ks.Series([1]))
 
     def test_drop(self):
         kdf = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6]})
@@ -257,13 +292,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                             'y': [1, 2, np.nan, 4, np.nan, np.nan],
                             'z': [1, 2, 3, 4, np.nan, np.nan]},
                            index=[10, 20, 30, 40, 50, 60])
-
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf.fillna(-1), pdf.fillna(-1))
         self.assert_eq(kdf.fillna({'x': -1, 'y': -2, 'z': -5}),
                        pdf.fillna({'x': -1, 'y': -2, 'z': -5}))
+        self.assert_eq(pdf.fillna(method='ffill'), kdf.fillna(method='ffill'))
+        self.assert_eq(pdf.fillna(method='ffill', limit=2), kdf.fillna(method='ffill', limit=2))
+        self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
+        self.assert_eq(pdf.fillna(method='bfill', limit=2), kdf.fillna(method='bfill', limit=2))
+
+        pdf = pd.DataFrame({'x': [1, 2, 3, 4, 5, 6],
+                            'y': [6, 5, 4, 3, 2, 1],
+                            'z': [1, 2, 3, 4, np.nan, np.nan]}).set_index(['x', 'y'])
+        kdf = ks.from_pandas(pdf)
+        # check multi index
+        self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
+        self.assert_eq(pdf.fillna(method='ffill'), kdf.fillna(method='ffill'))
 
         pdf.fillna({'x': -1, 'y': -2, 'z': -5}, inplace=True)
         kdf.fillna({'x': -1, 'y': -2, 'z': -5}, inplace=True)
@@ -277,12 +323,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.fillna(-1, axis=1)
         with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
             kdf.fillna(-1, axis='column')
-        with self.assertRaisesRegex(ValueError, "must specify value"):
-            kdf.fillna()
+        with self.assertRaisesRegex(ValueError, "limit parameter for value is not support now"):
+            kdf.fillna(-1, limit=1)
         with self.assertRaisesRegex(TypeError, "Unsupported.*DataFrame"):
             kdf.fillna(pd.DataFrame({'x': [-1], 'y': [-1], 'z': [-1]}))
         with self.assertRaisesRegex(TypeError, "Unsupported.*numpy.int64"):
             kdf.fillna({'x': np.int64(-6), 'y': np.int64(-4), 'z': -5})
+        with self.assertRaisesRegex(ValueError, "Expecting pad, ffill, backfill or bfill."):
+            kdf.fillna(method='xxx')
+        with self.assertRaisesRegex(ValueError, "Must specify a fill 'value' or 'method'."):
+            kdf.fillna()
 
     def test_isnull(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
@@ -348,7 +398,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert invalid parameters
         self.assertRaises(ValueError, lambda: kdf.sort_index(axis=1))
-        self.assertRaises(ValueError, lambda: kdf.sort_index(level=42))
         self.assertRaises(ValueError, lambda: kdf.sort_index(kind='mergesort'))
         self.assertRaises(ValueError, lambda: kdf.sort_index(na_position='invalid'))
 
@@ -367,6 +416,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                            index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]])
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
+        self.assert_eq(kdf.sort_index(level=[1, 0]), pdf.sort_index(level=[1, 0]))
+
+        self.assertRaises(ValueError, lambda: kdf.reset_index().sort_index())
 
     def test_nlargest(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
@@ -593,7 +645,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             left.merge(right, left_index=True, right_index=True, how='foo')
 
         with self.assertRaisesRegex(AnalysisException,
-                                    'Cannot resolve column name "id"'):
+                                    'Cannot resolve column name "`id`"'):
             left.merge(right, on='id')
 
     def test_append(self):
@@ -894,7 +946,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         #  fill_value=999), pdf.pivot_table(index=['e', 'c'], columns="a", values="b",
         #  fill_value=999))
 
-    def test_pivot_table_erros(self):
+    def test_pivot_errors(self):
+        kdf = ks.range(10)
+
+        with self.assertRaisesRegex(ValueError, "columns should be set"):
+            kdf.pivot(index='id')
+
+        with self.assertRaisesRegex(ValueError, "values should be set"):
+            kdf.pivot(index='id', columns="id")
+
+    def test_pivot_table_errors(self):
 
         pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
                             'b': [1, 2, 2, 4, 2, 4],
@@ -975,3 +1036,172 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.cumsum(), kdf.cumsum())
         self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
+
+    def test_cumprod(self):
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 1.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
+        kdf = ks.from_pandas(pdf)
+        self.assertEqual(repr(pdf.cumprod()), repr(kdf.cumprod()))
+        self.assertEqual(repr(pdf.cumprod(skipna=False)), repr(kdf.cumprod(skipna=False)))
+
+    def test_reindex(self):
+        index = ['A', 'B', 'C', 'D', 'E']
+        pdf = pd.DataFrame({'numbers': [1., 2., 3., 4., 5.]}, index=index)
+        kdf = ks.DataFrame({'numbers': [1., 2., 3., 4., 5.]}, index=index)
+
+        self.assert_eq(
+            pdf.reindex(['A', 'B', 'C'], columns=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(['A', 'B', 'C'], columns=['numbers', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(['A', 'B', 'C'], index=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(['A', 'B', 'C'], index=['numbers', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(index=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(index=['numbers', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(columns=['numbers', '2', '3']).sort_index(),
+            kdf.reindex(columns=['numbers', '2', '3']).sort_index())
+
+        self.assertRaises(TypeError, lambda: kdf.reindex(columns=['numbers', '2', '3'], axis=1))
+        self.assertRaises(TypeError, lambda: kdf.reindex(columns=['numbers', '2', '3'], axis=2))
+        self.assertRaises(TypeError, lambda: kdf.reindex(index=['A', 'B', 'C'], axis=1))
+        self.assertRaises(TypeError, lambda: kdf.reindex(index=123))
+
+    def test_rank(self):
+        pdf = pd.DataFrame(data={'col1': [1, 2, 3, 1], 'col2': [3, 4, 3, 1]},
+                           columns=['col1', 'col2'])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.rank(),
+                       kdf.rank().sort_index())
+        self.assert_eq(pdf.rank(),
+                       kdf.rank().sort_index())
+        self.assert_eq(pdf.rank(ascending=False),
+                       kdf.rank(ascending=False).sort_index())
+        self.assert_eq(pdf.rank(method='min'),
+                       kdf.rank(method='min').sort_index())
+        self.assert_eq(pdf.rank(method='max'),
+                       kdf.rank(method='max').sort_index())
+        self.assert_eq(pdf.rank(method='first'),
+                       kdf.rank(method='first').sort_index())
+        self.assert_eq(pdf.rank(method='dense'),
+                       kdf.rank(method='dense').sort_index())
+
+        msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.rank(method='nothing')
+
+    def test_round(self):
+        pdf = pd.DataFrame({'A': [0.028208, 0.038683, 0.877076],
+                            'B': [0.992815, 0.645646, 0.149370],
+                            'C': [0.173891, 0.577595, 0.491027]},
+                           columns=['A', 'B', 'C'], index=['first', 'second', 'third'])
+        kdf = ks.from_pandas(pdf)
+        pser = pd.Series([1, 0, 2], index=['A', 'B', 'C'])
+        kser = ks.Series([1, 0, 2], index=['A', 'B', 'C'])
+        self.assert_eq(pdf.round(2),
+                       kdf.round(2))
+        self.assert_eq(pdf.round({'A': 1, 'C': 2}),
+                       kdf.round({'A': 1, 'C': 2}))
+        self.assert_eq(pdf.round(pser),
+                       kdf.round(kser))
+        msg = "decimals must be an integer, a dict-like or a Series"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.round(1.5)
+
+    def test_shift(self):
+        pdf = pd.DataFrame({'Col1': [10, 20, 15, 30, 45],
+                            'Col2': [13, 23, 18, 33, 48],
+                            'Col3': [17, 27, 22, 37, 52]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.shift(3), kdf.shift(3).sort_index())
+
+        pdf = pd.DataFrame({'Col1': [0, 0, 0, 10, 20],
+                            'Col2': [0, 0, 0, 13, 23],
+                            'Col3': [0, 0, 0, 17, 27]})
+        self.assert_eq(pdf,
+                       kdf.shift(periods=3, fill_value=0).sort_index())
+        msg = "should be an int"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.shift(1.5)
+
+    def test_diff(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+                            'b': [1, 1, 2, 3, 5, 8],
+                            'c': [1, 4, 9, 16, 25, 36]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.diff(),
+                       kdf.diff().sort_index())
+
+        msg = "should be an int"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.diff(1.5)
+
+    def test_ffill(self):
+        pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
+                            'y': [1, 2, np.nan, 4, np.nan, np.nan],
+                            'z': [1, 2, 3, 4, np.nan, np.nan]},
+                           index=[10, 20, 30, 40, 50, 60])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.ffill(), pdf.ffill())
+        self.assert_eq(kdf.ffill(limit=1), pdf.ffill(limit=1))
+
+    def test_bfill(self):
+        pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
+                            'y': [1, 2, np.nan, 4, np.nan, np.nan],
+                            'z': [1, 2, 3, 4, np.nan, np.nan]},
+                           index=[10, 20, 30, 40, 50, 60])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.bfill(), pdf.bfill())
+        self.assert_eq(kdf.bfill(limit=1), pdf.bfill(limit=1))
+
+    def test_filter(self):
+        pdf = pd.DataFrame({
+            'aa': ['aa', 'ab', 'bc', 'bd', 'ce'],
+            'ba': [1, 2, 3, 4, 5],
+            'cb': [1., 2., 3., 4., 5.],
+            'db': [1., np.nan, 3., np.nan, 5.],
+        })
+        pdf = pdf.set_index('aa')
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            kdf.filter(items=['ab', 'aa'], axis=0).sort_index(),
+            pdf.filter(items=['ab', 'aa'], axis=0).sort_index())
+        self.assert_eq(
+            kdf.filter(items=['ba', 'db'], axis=1).sort_index(),
+            pdf.filter(items=['ba', 'db'], axis=1).sort_index())
+
+        self.assert_eq(kdf.filter(like='b', axis='index'), pdf.filter(like='b', axis='index'))
+        self.assert_eq(kdf.filter(like='c', axis='columns'), pdf.filter(like='c', axis='columns'))
+
+        self.assert_eq(
+            kdf.filter(regex='b.*', axis='index'), pdf.filter(regex='b.*', axis='index'))
+        self.assert_eq(
+            kdf.filter(regex='b.*', axis='columns'), pdf.filter(regex='b.*', axis='columns'))
+
+        pdf = pdf.set_index('ba', append=True)
+        kdf = ks.from_pandas(pdf)
+
+        with self.assertRaisesRegex(ValueError, "items should be a list-like object"):
+            kdf.filter(items='b')
+
+        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
+            kdf.filter(items=['b'], axis=0)
+
+        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
+            kdf.filter(like='b', axis='index')
+
+        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
+            kdf.filter(regex='b.*', axis='index')
+
+        with self.assertRaisesRegex(ValueError, "No axis named"):
+            kdf.filter(regex='b.*', axis=123)
+
+        with self.assertRaisesRegex(TypeError, "Must pass either `items`, `like`"):
+            kdf.filter()
+
+        with self.assertRaisesRegex(TypeError, "mutually exclusive"):
+            kdf.filter(regex='b.*', like="aaa")
