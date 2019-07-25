@@ -96,6 +96,35 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(KeyError, lambda: kdf['z'])
         self.assertRaises(AttributeError, lambda: kdf.z)
 
+    def test_reset_index_with_multilevel_columns(self):
+        index = pd.MultiIndex.from_tuples([('bird', 'falcon'),
+                                           ('bird', 'parrot'),
+                                           ('mammal', 'lion'),
+                                           ('mammal', 'monkey')],
+                                          names=['class', 'name'])
+        columns = pd.MultiIndex.from_tuples([('speed', 'max'),
+                                             ('species', 'type')])
+        pdf = pd.DataFrame([(389.0, 'fly'),
+                            (24.0, 'fly'),
+                            (80.5, 'run'),
+                            (np.nan, 'jump')],
+                           index=index,
+                           columns=columns)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf.reset_index(), pdf.reset_index())
+        self.assert_eq(kdf.reset_index(level='class'), pdf.reset_index(level='class'))
+        self.assert_eq(kdf.reset_index(level='class', col_level=1),
+                       pdf.reset_index(level='class', col_level=1))
+        self.assert_eq(kdf.reset_index(level='class', col_level=1, col_fill='species'),
+                       pdf.reset_index(level='class', col_level=1, col_fill='species'))
+        self.assert_eq(kdf.reset_index(level='class', col_level=1, col_fill='genus'),
+                       pdf.reset_index(level='class', col_level=1, col_fill='genus'))
+
+        with self.assertRaisesRegex(IndexError, 'Index has only 2 levels, not 3'):
+            kdf.reset_index(col_level=2)
+
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
         df = ks.range(10)
