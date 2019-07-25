@@ -48,5 +48,5 @@ tolist = lambda f: f(
 
 first_valid_index = lambda f: f(
     'first_valid_index',
-    reason="Koalas DataFrame and Series currently does not guarantee its natural order."
+    reason="Koalas DataFrame and Series currently do not guarantee its natural order."
            "Use `sort_index` or `sort_values` with `isnan` on columns explicitly.")
