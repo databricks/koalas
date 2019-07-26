@@ -6168,6 +6168,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                    if idx[0] == key]
         if len(columns) == 0:
             raise KeyError(key)
+        recursive = False
+        if all([idx[0] == '' for _, idx in columns]):
+            recursive = True
+            for i, (col, idx) in enumerate(columns):
+                columns[i] = (col, tuple([key, *idx[1:]]))
         if all(len(idx) == 1 for _, idx in columns):
             sdf = self._sdf.select(self._internal.index_scols +
                                    [self._internal.scol_for(col).alias(idx[0])
@@ -6183,8 +6188,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf=sdf,
                 data_columns=[col for col, _ in columns],
                 column_index=[idx for _, idx in columns]))
-        if all([idx[0] == '' for _, idx in columns]):
-            return kdf._pd_getitem('')
+        if recursive:
+            return kdf._pd_getitem(key)
         else:
             return kdf
 
