@@ -6162,7 +6162,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             raise TypeError("Must pass either `items`, `like`, or `regex`")
 
-    def _get_from_multilevel_column(self, key):
+    def _get_from_multiindex_column(self, key):
         columns = [(column, idx[1:]) for column, idx
                    in zip(self._internal.data_columns, self._internal.column_index)
                    if idx[0] == key]
@@ -6194,7 +6194,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise KeyError("none key")
         if isinstance(key, str):
             if self._internal.column_index is not None:
-                return self._get_from_multilevel_column(key)
+                return self._get_from_multiindex_column(key)
             else:
                 try:
                     return Series(self._internal.copy(scol=self._internal.scol_for(key)),
@@ -6284,7 +6284,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if self._internal.column_index is not None:
             try:
-                return self._get_from_multilevel_column(key)
+                return self._get_from_multiindex_column(key)
             except KeyError:
                 raise AttributeError(
                     "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))

@@ -74,7 +74,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([1, 2, 3], name='x')
         self.assert_eq(pd.DataFrame(pser), ks.DataFrame(kser))
 
-    def test_dataframe_multilevel_columns(self):
+    def test_dataframe_multiindex_columns(self):
         pdf = pd.DataFrame({
             ('x', 'a', '1'): [1, 2, 3],
             ('x', 'b', '2'): [4, 5, 6],
@@ -96,7 +96,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(KeyError, lambda: kdf['z'])
         self.assertRaises(AttributeError, lambda: kdf.z)
 
-    def test_reset_index_with_multilevel_columns(self):
+    def test_reset_index_with_multiindex_columns(self):
         index = pd.MultiIndex.from_tuples([('bird', 'falcon'),
                                            ('bird', 'parrot'),
                                            ('mammal', 'lion'),
