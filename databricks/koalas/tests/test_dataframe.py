@@ -591,6 +591,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # join types
         for how in ['inner', 'left', 'right', 'outer']:
+            check(lambda left, right: left.merge(right, on='value', how=how))
             check(lambda left, right: left.merge(right, left_on='lkey', right_on='rkey', how=how))
 
         # suffix
