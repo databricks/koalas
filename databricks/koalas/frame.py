@@ -6172,17 +6172,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = self._sdf.select(self._internal.index_scols +
                                    [self._internal.scol_for(col).alias(idx[0])
                                     for col, idx in columns])
-            return DataFrame(self._internal.copy(
+            kdf = DataFrame(self._internal.copy(
                 sdf=sdf,
                 data_columns=[idx[0] for _, idx in columns],
                 column_index=None))
         else:
             sdf = self._sdf.select(self._internal.index_scols +
                                    [self._internal.scol_for(col) for col, _ in columns])
-            return DataFrame(self._internal.copy(
+            kdf = DataFrame(self._internal.copy(
                 sdf=sdf,
                 data_columns=[col for col, _ in columns],
                 column_index=[idx for _, idx in columns]))
+        if all([idx[0] == '' for _, idx in columns]):
+            return kdf._pd_getitem('')
+        else:
+            return kdf
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
