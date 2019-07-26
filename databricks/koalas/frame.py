@@ -1670,7 +1670,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(internal)
 
-    def reset_index(self, level=None, drop=False, inplace=False):
+    def reset_index(self, level=None, drop=False, inplace=False, col_level=0, col_fill=''):
         """Reset the index, or a level of it.
 
         For DataFrame with multi-level index, return new DataFrame with labeling information in
@@ -1688,6 +1688,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             the index to the default integer index.
         inplace : bool, default False
             Modify the DataFrame in place (do not create a new object).
+        col_level : int or str, default 0
+            If the columns have multiple levels, determines which level the
+            labels are inserted into. By default it is inserted into the first
+            level.
+        col_fill : object, default ''
+            If the columns have multiple levels, determines how the other
+            levels are named. If None then the index name is repeated.
 
         Returns
         -------
@@ -1733,8 +1740,79 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1    bird       24.0
         2  mammal       80.5
         3  mammal        NaN
+
+        You can also use `reset_index` with `MultiIndex`.
+
+        >>> index = pd.MultiIndex.from_tuples([('bird', 'falcon'),
+        ...                                    ('bird', 'parrot'),
+        ...                                    ('mammal', 'lion'),
+        ...                                    ('mammal', 'monkey')],
+        ...                                   names=['class', 'name'])
+        >>> columns = pd.MultiIndex.from_tuples([('speed', 'max'),
+        ...                                      ('species', 'type')])
+        >>> df = ks.DataFrame([(389.0, 'fly'),
+        ...                    ( 24.0, 'fly'),
+        ...                    ( 80.5, 'run'),
+        ...                    (np.nan, 'jump')],
+        ...                   index=index,
+        ...                   columns=columns)
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
+                       speed species
+                         max    type
+        class  name
+        bird   falcon  389.0     fly
+               parrot   24.0     fly
+        mammal lion     80.5     run
+               monkey    NaN    jump
+
+        If the index has multiple levels, we can reset a subset of them:
+
+        >>> df.reset_index(level='class')  # doctest: +NORMALIZE_WHITESPACE
+                 class  speed species
+                          max    type
+        name
+        falcon    bird  389.0     fly
+        parrot    bird   24.0     fly
+        lion    mammal   80.5     run
+        monkey  mammal    NaN    jump
+
+        If we are not dropping the index, by default, it is placed in the top
+        level. We can place it in another level:
+
+        >>> df.reset_index(level='class', col_level=1)  # doctest: +NORMALIZE_WHITESPACE
+                        speed species
+                 class    max    type
+        name
+        falcon    bird  389.0     fly
+        parrot    bird   24.0     fly
+        lion    mammal   80.5     run
+        monkey  mammal    NaN    jump
+
+        When the index is inserted under another level, we can specify under
+        which one with the parameter `col_fill`:
+
+        >>> df.reset_index(level='class', col_level=1,
+        ...                col_fill='species')  # doctest: +NORMALIZE_WHITESPACE
+                      species  speed species
+                        class    max    type
+        name
+        falcon           bird  389.0     fly
+        parrot           bird   24.0     fly
+        lion           mammal   80.5     run
+        monkey         mammal    NaN    jump
+
+        If we specify a nonexistent level for `col_fill`, it is created:
+
+        >>> df.reset_index(level='class', col_level=1,
+        ...                col_fill='genus')  # doctest: +NORMALIZE_WHITESPACE
+                        genus  speed species
+                        class    max    type
+        name
+        falcon           bird  389.0     fly
+        parrot           bird   24.0     fly
+        lion           mammal   80.5     run
+        monkey         mammal    NaN    jump
         """
-        # TODO: add example of MultiIndex back. See https://github.com/databricks/koalas/issues/301
         if len(self._internal.index_map) == 0:
             raise NotImplementedError('Can\'t reset index because there is no index.')
 
@@ -1795,8 +1873,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         internal = self._internal.copy(
             data_columns=[column for column, _ in new_index_map] + self._internal.data_columns,
-            index_map=index_map)
-        columns = [name for _, name in new_index_map] + self._internal.data_columns
+            index_map=index_map,
+            column_index=None)
+
+        if self._internal.column_index is not None:
+            column_depth = len(self._internal.column_index[0])
+            if col_level >= column_depth:
+                raise IndexError('Too many levels: Index has only {} levels, not {}'
+                                 .format(column_depth, col_level + 1))
+            columns = pd.MultiIndex.from_tuples(
+                [tuple(name if i == col_level else col_fill
+                       for i in range(column_depth))
+                 for _, name in new_index_map] + self._internal.column_index)
+        else:
+            columns = [name for _, name in new_index_map] + self._internal.data_columns
+
         if inplace:
             self._internal = internal
             self.columns = columns
