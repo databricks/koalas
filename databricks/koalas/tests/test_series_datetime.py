@@ -57,6 +57,9 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertEqual(list(kdf['diff_seconds'].toPandas()), [35545499, 33644699, 31571099])
 
+    @unittest.skip(
+        "It fails in certain OSs presumably due to different "
+        "timezone behaviours inherited from C library.")
     def test_div(self):
         pdf = self.pdf1
         kdf = ks.from_pandas(pdf)
