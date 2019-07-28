@@ -53,7 +53,8 @@ class GroupBy(object):
         Parameters
         ----------
         func : dict
-             a dict mapping from column name (string) to aggregate functions (string or list of strings).
+             a dict mapping from column name (string) to
+             aggregate functions (string or list of strings).
 
         Returns
         -------
@@ -125,13 +126,13 @@ class GroupBy(object):
         column_index = []
         for key, value in func_or_funcs.items():
             for aggfunc in [value] if isinstance(value, str) else value:
-                data_column = "('{0}', '{1}')".format(key, aggfunc) if multi_aggs else key
-                data_columns.append(data_column)
+                data_col = "('{0}', '{1}')".format(key, aggfunc) if multi_aggs else key
+                data_columns.append(data_col)
                 column_index.append((key, aggfunc))
                 if aggfunc == "nunique":
-                    reordered.append(F.expr('count(DISTINCT `{0}`) as `{1}`'.format(key, data_column)))
+                    reordered.append(F.expr('count(DISTINCT `{0}`) as `{1}`'.format(key, data_col)))
                 else:
-                    reordered.append(F.expr('{1}(`{0}`) as `{2}`'.format(key, aggfunc, data_column)))
+                    reordered.append(F.expr('{1}(`{0}`) as `{2}`'.format(key, aggfunc, data_col)))
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=data_columns,
