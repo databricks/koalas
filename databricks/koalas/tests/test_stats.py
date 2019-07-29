@@ -56,6 +56,24 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[['B', 'C']].abs(), pdf[['B', 'C']].abs())
         # self.assert_eq(kdf.select('A', 'B').abs(), pdf[['A', 'B']].abs())
 
+    def test_axis_on_dataframe(self):
+        # The number of each count is intentionally big
+        # because when data is small, it executes a shortcut.
+        pdf = pd.DataFrame({'A': [1, -2, 3, -4, 5] * 300,
+                            'B': [1., -2, 3, -4, 5] * 300,
+                            'C': [-6., -7, -8, -9, 10] * 300,
+                            'D': [True, False, True, False, False] * 300})
+        kdf = koalas.from_pandas(pdf)
+        self.assert_eq(kdf.count(axis=1), pdf.count(axis=1))
+        self.assert_eq(kdf.var(axis=1), pdf.var(axis=1))
+        self.assert_eq(kdf.std(axis=1), pdf.std(axis=1))
+        self.assert_eq(kdf.max(axis=1), pdf.max(axis=1))
+        self.assert_eq(kdf.min(axis=1), pdf.min(axis=1))
+        self.assert_eq(kdf.sum(axis=1), pdf.sum(axis=1))
+        self.assert_eq(kdf.kurtosis(axis=1), pdf.kurtosis(axis=1))
+        self.assert_eq(kdf.skew(axis=1), pdf.skew(axis=1))
+        self.assert_eq(kdf.mean(axis=1), pdf.mean(axis=1))
+
     def test_corr(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.
         with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
