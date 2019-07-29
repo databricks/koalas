@@ -128,18 +128,19 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = koalas.from_pandas(pdf)
 
         # min and max do not discard non-numeric columns by default
-        self.assertEqual(len(kdf.min()), len(kdf.min()))
-        self.assertEqual(len(kdf.max()), len(kdf.max()))
+        self.assertEqual(len(kdf.min()), len(pdf.min()))
+        self.assertEqual(len(kdf.max()), len(pdf.max()))
+
+        # TODO?: self.assertEqual(len(kdf.sum()), len(pdf.sum()))
 
         # all the others do
-        self.assertEqual(len(kdf.sum()), len(kdf.sum()))
-        self.assertEqual(len(kdf.mean()), len(kdf.mean()))
+        self.assertEqual(len(kdf.mean()), len(pdf.mean()))
 
-        self.assertEqual(len(kdf.var()), len(kdf.var()))
-        self.assertEqual(len(kdf.std()), len(kdf.std()))
+        self.assertEqual(len(kdf.var()), len(pdf.var()))
+        self.assertEqual(len(kdf.std()), len(pdf.std()))
 
-        self.assertEqual(len(kdf.kurtosis()), len(kdf.kurtosis()))
-        self.assertEqual(len(kdf.skew()), len(kdf.skew()))
+        self.assertEqual(len(kdf.kurtosis()), len(pdf.kurtosis()))
+        self.assertEqual(len(kdf.skew()), len(pdf.skew()))
 
     def test_stats_on_non_numeric_columns_should_be_discarded_if_numeric_only_is_true(self):
         pdf = pd.DataFrame({'i': [0, 1, 2],
@@ -147,14 +148,14 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                             's': ['x', 'y', 'z']})
         kdf = koalas.from_pandas(pdf)
 
-        self.assertEqual(len(kdf.sum(numeric_only=True)), len(kdf.sum(numeric_only=True)))
-        self.assertEqual(len(kdf.mean(numeric_only=True)), len(kdf.mean(numeric_only=True)))
+        self.assertEqual(len(kdf.sum(numeric_only=True)), len(pdf.sum(numeric_only=True)))
+        self.assertEqual(len(kdf.mean(numeric_only=True)), len(pdf.mean(numeric_only=True)))
 
-        self.assertEqual(len(kdf.var(numeric_only=True)), len(kdf.var(numeric_only=True)))
-        self.assertEqual(len(kdf.std(numeric_only=True)), len(kdf.std(numeric_only=True)))
+        self.assertEqual(len(kdf.var(numeric_only=True)), len(pdf.var(numeric_only=True)))
+        self.assertEqual(len(kdf.std(numeric_only=True)), len(pdf.std(numeric_only=True)))
 
-        self.assertEqual(len(kdf.kurtosis(numeric_only=True)), len(kdf.kurtosis(numeric_only=True)))
-        self.assertEqual(len(kdf.skew(numeric_only=True)), len(kdf.skew(numeric_only=True)))
+        self.assertEqual(len(kdf.kurtosis(numeric_only=True)), len(pdf.kurtosis(numeric_only=True)))
+        self.assertEqual(len(kdf.skew(numeric_only=True)), len(pdf.skew(numeric_only=True)))
 
     def test_stats_on_non_numeric_columns_should_not_be_discarded_if_numeric_only_is_false(self):
         pdf = pd.DataFrame({'i': [0, 1, 2],
@@ -162,12 +163,15 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                             's': ['x', 'y', 'z']})
         kdf = koalas.from_pandas(pdf)
 
-        self.assertEqual(len(kdf.sum(numeric_only=False)), len(kdf.sum(numeric_only=False)))
-        self.assertEqual(len(kdf.mean(numeric_only=False)), len(kdf.mean(numeric_only=False)))
+        # the lengths are the same, but the results are different.
+        self.assertEqual(len(kdf.sum(numeric_only=False)), len(pdf.sum(numeric_only=False)))
 
-        self.assertEqual(len(kdf.var(numeric_only=False)), len(kdf.var(numeric_only=False)))
-        self.assertEqual(len(kdf.std(numeric_only=False)), len(kdf.std(numeric_only=False)))
+        # pandas fails belows.
+        # self.assertEqual(len(kdf.mean(numeric_only=False)), len(pdf.mean(numeric_only=False)))
 
-        self.assertEqual(len(kdf.kurtosis(numeric_only=False)),
-                         len(kdf.kurtosis(numeric_only=False)))
-        self.assertEqual(len(kdf.skew(numeric_only=False)), len(kdf.skew(numeric_only=False)))
+        # self.assertEqual(len(kdf.var(numeric_only=False)), len(pdf.var(numeric_only=False)))
+        # self.assertEqual(len(kdf.std(numeric_only=False)), len(pdf.std(numeric_only=False)))
+
+        # self.assertEqual(len(kdf.kurtosis(numeric_only=False)),
+        #                  len(pdf.kurtosis(numeric_only=False)))
+        # self.assertEqual(len(kdf.skew(numeric_only=False)), len(pdf.skew(numeric_only=False)))
