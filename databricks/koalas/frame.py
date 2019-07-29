@@ -4659,7 +4659,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             scol = scol_for(left_table, col)
             if col in duplicate_columns:
                 if col in left_keys and col in right_keys:
-                    pass
+                    right_scol = scol_for(right_table, col)
+                    if how == 'right':
+                        scol = right_scol
+                    elif how == 'full':
+                        scol = F.when(scol.isNotNull(), scol).otherwise(right_scol).alias(col)
+                    else:
+                        pass
                 else:
                     col = col + left_suffix
                     scol = scol.alias(col)
