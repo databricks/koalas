@@ -101,7 +101,7 @@ class GroupBy(object):
 
         >>> aggregated = df.groupby('A').agg({'B': ['min', 'max']})
         >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
-             B     
+             B
            min  max
         A
         1    1    2
