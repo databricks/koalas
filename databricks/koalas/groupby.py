@@ -101,11 +101,11 @@ class GroupBy(object):
 
         >>> aggregated = df.groupby('A').agg({'B': ['min', 'max']})
         >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
-             B           C
-           min  max    sum
+             B     
+           min  max
         A
-        1    1    2  0.589
-        2    3    4  0.705
+        1    1    2
+        2    3    4
 
         """
         if not isinstance(func_or_funcs, dict) or \
