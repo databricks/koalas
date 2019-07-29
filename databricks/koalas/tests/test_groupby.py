@@ -87,6 +87,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby('A').agg({'B': 'min', 'C': 'sum'}),
                        pdf.groupby('A').agg({'B': 'min', 'C': 'sum'}))
 
+        self.assert_eq(kdf.groupby('A').agg({'B': ['min', 'max'], 'C': 'sum'}),
+                       pdf.groupby('A').agg({'B': ['min', 'max'], 'C': 'sum'}))
+
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
                             'B': [True, True, True, False, False, False, None, True, None, False]})

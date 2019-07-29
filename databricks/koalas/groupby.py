@@ -53,7 +53,8 @@ class GroupBy(object):
         Parameters
         ----------
         func : dict
-             a dict mapping from column name (string) to aggregate functions (string).
+             a dict mapping from column name (string) to
+             aggregate functions (string or list of strings).
 
         Returns
         -------
@@ -98,26 +99,44 @@ class GroupBy(object):
         1  1  0.589
         2  3  0.705
 
+        >>> aggregated = df.groupby('A').agg({'B': ['min', 'max']})
+        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+             B
+           min  max
+        A
+        1    1    2
+        2    3    4
+
         """
         if not isinstance(func_or_funcs, dict) or \
-                not all(isinstance(key, str) and isinstance(value, str)
+                not all(isinstance(key, str) and
+                        (isinstance(value, str) or
+                         isinstance(value, list) and all(isinstance(v, str) for v in value))
                         for key, value in func_or_funcs.items()):
             raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
-                             "functions (string).")
+                             "functions (string or list of strings).")
 
         sdf = self._kdf._sdf
         groupkeys = self._groupkeys
         groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
                          for i, s in enumerate(groupkeys)]
+        multi_aggs = any(isinstance(v, list) for v in func_or_funcs.values())
         reordered = []
+        data_columns = []
+        column_index = []
         for key, value in func_or_funcs.items():
-            if value == "nunique":
-                reordered.append(F.expr('count(DISTINCT `{0}`) as `{0}`'.format(key)))
-            else:
-                reordered.append(F.expr('{1}(`{0}`) as `{0}`'.format(key, value)))
+            for aggfunc in [value] if isinstance(value, str) else value:
+                data_col = "('{0}', '{1}')".format(key, aggfunc) if multi_aggs else key
+                data_columns.append(data_col)
+                column_index.append((key, aggfunc))
+                if aggfunc == "nunique":
+                    reordered.append(F.expr('count(DISTINCT `{0}`) as `{1}`'.format(key, data_col)))
+                else:
+                    reordered.append(F.expr('{1}(`{0}`) as `{2}`'.format(key, aggfunc, data_col)))
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[key for key, _ in func_or_funcs.items()],
+                                  data_columns=data_columns,
+                                  column_index=column_index if multi_aggs else None,
                                   index_map=[('__index_level_{}__'.format(i), s.name)
                                              for i, s in enumerate(groupkeys)])
         return DataFrame(internal)
