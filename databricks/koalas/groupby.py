@@ -99,7 +99,7 @@ class GroupBy(object):
         1  1  0.589
         2  3  0.705
 
-        >>> aggregated = df.groupby('A').agg({'B': ['min', 'max'], 'C': 'sum'})
+        >>> aggregated = df.groupby('A').agg({'B': ['min', 'max']})
         >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
              B           C
            min  max    sum
