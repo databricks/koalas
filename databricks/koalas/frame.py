@@ -6168,27 +6168,36 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             raise TypeError("Must pass either `items`, `like`, or `regex`")
 
-    def _get_from_multilevel_column(self, key):
+    def _get_from_multiindex_column(self, key):
         columns = [(column, idx[1:]) for column, idx
                    in zip(self._internal.data_columns, self._internal.column_index)
                    if idx[0] == key]
         if len(columns) == 0:
             raise KeyError(key)
+        recursive = False
+        if all([idx[0] == '' for _, idx in columns]):
+            recursive = True
+            for i, (col, idx) in enumerate(columns):
+                columns[i] = (col, tuple([key, *idx[1:]]))
         if all(len(idx) == 1 for _, idx in columns):
             sdf = self._sdf.select(self._internal.index_scols +
                                    [self._internal.scol_for(col).alias(idx[0])
                                     for col, idx in columns])
-            return DataFrame(self._internal.copy(
+            kdf = DataFrame(self._internal.copy(
                 sdf=sdf,
                 data_columns=[idx[0] for _, idx in columns],
                 column_index=None))
         else:
             sdf = self._sdf.select(self._internal.index_scols +
                                    [self._internal.scol_for(col) for col, _ in columns])
-            return DataFrame(self._internal.copy(
+            kdf = DataFrame(self._internal.copy(
                 sdf=sdf,
                 data_columns=[col for col, _ in columns],
                 column_index=[idx for _, idx in columns]))
+        if recursive:
+            return kdf._pd_getitem(key)
+        else:
+            return kdf
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
@@ -6196,7 +6205,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise KeyError("none key")
         if isinstance(key, str):
             if self._internal.column_index is not None:
-                return self._get_from_multilevel_column(key)
+                return self._get_from_multiindex_column(key)
             else:
                 try:
                     return Series(self._internal.copy(scol=self._internal.scol_for(key)),
@@ -6286,7 +6295,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if self._internal.column_index is not None:
             try:
-                return self._get_from_multilevel_column(key)
+                return self._get_from_multiindex_column(key)
             except KeyError:
                 raise AttributeError(
                     "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))

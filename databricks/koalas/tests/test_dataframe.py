@@ -74,7 +74,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([1, 2, 3], name='x')
         self.assert_eq(pd.DataFrame(pser), ks.DataFrame(kser))
 
-    def test_dataframe_multilevel_columns(self):
+    def test_dataframe_multiindex_columns(self):
         pdf = pd.DataFrame({
             ('x', 'a', '1'): [1, 2, 3],
             ('x', 'b', '2'): [4, 5, 6],
@@ -96,7 +96,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(KeyError, lambda: kdf['z'])
         self.assertRaises(AttributeError, lambda: kdf.z)
 
-    def test_reset_index_with_multilevel_columns(self):
+    def test_reset_index_with_multiindex_columns(self):
         index = pd.MultiIndex.from_tuples([('bird', 'falcon'),
                                            ('bird', 'parrot'),
                                            ('mammal', 'lion'),
@@ -124,6 +124,32 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(IndexError, 'Index has only 2 levels, not 3'):
             kdf.reset_index(col_level=2)
+
+    def test_multiindex_column_access(self):
+        columns = pd.MultiIndex.from_tuples([('a', '', '', 'b'),
+                                             ('c', '', 'd', ''),
+                                             ('e', '', 'f', ''),
+                                             ('e', 'g', '', ''),
+                                             ('', '', '', 'h'),
+                                             ('i', '', '', '')])
+
+        pdf = pd.DataFrame([(1, 'a', 'x', 10, 100, 1000),
+                            (2, 'b', 'y', 20, 200, 2000),
+                            (3, 'c', 'z', 30, 300, 3000)],
+                           columns=columns)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf['a'], pdf['a'])
+        self.assert_eq(kdf['a']['b'], pdf['a']['b'])
+        self.assert_eq(kdf['c'], pdf['c'])
+        self.assert_eq(kdf['c']['d'], pdf['c']['d'])
+        self.assert_eq(kdf['e'], pdf['e'])
+        self.assert_eq(kdf['e']['']['f'], pdf['e']['']['f'])
+        self.assert_eq(kdf['e']['g'], pdf['e']['g'])
+        self.assert_eq(kdf[''], pdf[''])
+        self.assert_eq(kdf['']['h'], pdf['']['h'])
+        self.assert_eq(kdf['i'], pdf['i'])
 
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
