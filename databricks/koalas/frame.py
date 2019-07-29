@@ -39,6 +39,7 @@ from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, F
                                IntegerType, LongType, NumericType, ShortType, StructType)
 from pyspark.sql.utils import AnalysisException
 from pyspark.sql.window import Window
+from pyspark.sql.functions import pandas_udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function
@@ -47,6 +48,7 @@ from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import scol_for
+from databricks.koalas.typedef import as_spark_type
 
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
@@ -306,7 +308,7 @@ class DataFrame(_Frame, Generic[T]):
     def _sdf(self) -> spark.DataFrame:
         return self._internal.sdf
 
-    def _reduce_for_stat_function(self, sfun, numeric_only=False):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=False):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
         number of columns.
@@ -314,42 +316,68 @@ class DataFrame(_Frame, Generic[T]):
         Parameters
         ----------
         sfun : either an 1-arg function that takes a Column and returns a Column, or
-        a 2-arg function that takes a Column and its DataType and returns a Column.
+            a 2-arg function that takes a Column and its DataType and returns a Column.
+            axis: used only for sanity check because series only support index axis.
+        name : original pandas API name.
+        axis : axis to apply. 0 or 1, or 'index' or 'columns.
         numeric_only : boolean, default False
             If True, sfun is applied on numeric columns (including booleans) only.
         """
         from inspect import signature
-        exprs = []
-        num_args = len(signature(sfun).parameters)
-        for col in self.columns:
-            col_sdf = self._internal.scol_for(col)
-            col_type = self._internal.spark_type_for(col)
+        from databricks.koalas import Series
 
-            is_numeric_or_boolean = isinstance(col_type, (NumericType, BooleanType))
-            min_or_max = sfun.__name__ in ('min', 'max')
-            keep_column = not numeric_only or is_numeric_or_boolean or min_or_max
+        if axis in ('index', 0, None):
+            exprs = []
+            num_args = len(signature(sfun).parameters)
+            for col in self.columns:
+                col_sdf = self._internal.scol_for(col)
+                col_type = self._internal.spark_type_for(col)
 
-            if keep_column:
-                if isinstance(col_type, BooleanType) and not min_or_max:
-                    # Stat functions cannot be used with boolean values by default
-                    # Thus, cast to integer (true to 1 and false to 0)
-                    # Exclude the min and max methods though since those work with booleans
-                    col_sdf = col_sdf.cast('integer')
-                if num_args == 1:
-                    # Only pass in the column if sfun accepts only one arg
-                    col_sdf = sfun(col_sdf)
-                else:  # must be 2
-                    assert num_args == 2
-                    # Pass in both the column and its data type if sfun accepts two args
-                    col_sdf = sfun(col_sdf, col_type)
-                exprs.append(col_sdf.alias(col))
+                is_numeric_or_boolean = isinstance(col_type, (NumericType, BooleanType))
+                min_or_max = sfun.__name__ in ('min', 'max')
+                keep_column = not numeric_only or is_numeric_or_boolean or min_or_max
 
-        sdf = self._sdf.select(*exprs)
-        pdf = sdf.toPandas()
-        assert len(pdf) == 1, (sdf, pdf)
-        row = pdf.iloc[0]
-        row.name = None
-        return row  # Return first row as a Series
+                if keep_column:
+                    if isinstance(col_type, BooleanType) and not min_or_max:
+                        # Stat functions cannot be used with boolean values by default
+                        # Thus, cast to integer (true to 1 and false to 0)
+                        # Exclude the min and max methods though since those work with booleans
+                        col_sdf = col_sdf.cast('integer')
+                    if num_args == 1:
+                        # Only pass in the column if sfun accepts only one arg
+                        col_sdf = sfun(col_sdf)
+                    else:  # must be 2
+                        assert num_args == 2
+                        # Pass in both the column and its data type if sfun accepts two args
+                        col_sdf = sfun(col_sdf, col_type)
+                    exprs.append(col_sdf.alias(col))
+
+            sdf = self._sdf.select(*exprs)
+            pdf = sdf.toPandas()
+            assert len(pdf) == 1, (sdf, pdf)
+            row = pdf.iloc[0]
+            row.name = None
+            # TODO: return Koalas series.
+            return row  # Return first row as a Series
+
+        elif axis in ('columns', 1):
+            # Here we execute with the first 1000 to get the return type.
+            # If the records were less than 1000, it uses pandas API directly for a shortcut.
+            limit = 1000
+            pdf = self.head(limit + 1).to_pandas()
+            pser = getattr(pdf, name)(axis=axis, numeric_only=numeric_only)
+            if len(pdf) <= limit:
+                return Series(pser)
+
+            @pandas_udf(returnType=as_spark_type(pser.dtype.type))
+            def calculate_columns_axis(*cols):
+                return getattr(pd.concat(cols, axis=1), name)(axis=axis, numeric_only=numeric_only)
+
+            df = self._sdf.select(calculate_columns_axis(*self._internal.data_scols).alias("0"))
+            return DataFrame(df)["0"]
+
+        else:
+            raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
 
     # Arithmetic Operators
     def _map_series_op(self, op, other):
@@ -3886,11 +3914,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                  [scol_for(self._sdf, col) for col in columns]),
             data_columns=columns))
 
-    def count(self):
+    def count(self, axis=None):
         """
         Count non-NA cells for each column.
 
         The values `None`, `NaN` are considered NA.
+
+        Parameters
+        ----------
+        axis : {0 or ‘index’, 1 or ‘columns’}, default 0
+            If 0 or ‘index’ counts are generated for each column. If 1 or ‘columns’ counts are
+            generated for each row.
 
         Returns
         -------
@@ -3928,8 +3962,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Age       4
         Single    5
         dtype: int64
+
+        >>> df.count(axis=1)
+        0    3
+        1    2
+        2    3
+        3    3
+        4    3
+        Name: 0, dtype: int64
         """
-        return self._reduce_for_stat_function(_Frame._count_expr, numeric_only=False)
+        return self._reduce_for_stat_function(
+            _Frame._count_expr, name="count", axis=axis, numeric_only=False)
 
     def drop(self, labels=None, axis=1, columns: Union[str, List[str]] = None):
         """

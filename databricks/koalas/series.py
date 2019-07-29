@@ -1972,7 +1972,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> df['Age'].count()
         4
         """
-        return self._reduce_for_stat_function(_Frame._count_expr)
+        return self._reduce_for_stat_function(_Frame._count_expr, name="count")
 
     def append(self, to_append: 'Series', ignore_index: bool = False,
                verify_integrity: bool = False) -> 'Series':
@@ -2369,7 +2369,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             return ser
         else:
             return self._reduce_for_stat_function(
-                lambda _: F.expr("approx_percentile(`%s`, %s, %s)" % (self.name, q, accuracy)))
+                lambda _: F.expr("approx_percentile(`%s`, %s, %s)" % (self.name, q, accuracy)),
+                name="median")
 
     # TODO: add axis, numeric_only, pct, na_option parameter
     def rank(self, method='average', ascending=True):
@@ -2833,12 +2834,20 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     # ----------------------------------------------------------------------
 
-    def _reduce_for_stat_function(self, sfun, numeric_only=None):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=None):
         """
-        :param sfun: the stats function to be used for aggregation
-        :param numeric_only: not used by this implementation, but passed down by stats functions
+        Applies sfun to the column and returns a scalar
+
+        Parameters
+        ----------
+        sfun : the stats function to be used for aggregation
+        name : original pandas API name.
+        axis : used only for sanity check because series only support index axis.
+        numeric_only : not used by this implementation, but passed down by stats functions
         """
         from inspect import signature
+        if axis in ('columns', 1):
+            raise ValueError("Series does not support columns axis.")
         num_args = len(signature(sfun).parameters)
         col_sdf = self._scol
         col_type = self.spark_type
