@@ -165,6 +165,15 @@ class IndexingTest(ReusedSQLTestCase):
         with self.assertRaises(TypeError):
             kdf.at[3, 'b'] = 10
 
+    def test_at_multiindex_columns(self):
+        arrays = [np.array(['bar', 'bar', 'baz', 'baz']),
+                  np.array(['one', 'two', 'one', 'two'])]
+
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.at['B', ('bar', 'one')], pdf.at['B', ('bar', 'one')])
+
     def test_loc(self):
         kdf = self.kdf
         pdf = self.pdf

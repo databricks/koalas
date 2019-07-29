@@ -143,18 +143,28 @@ class AtIndexer(object):
         if len(self._kdf._internal.index_columns) != 1:
             raise ValueError("'.at' only supports indices with level 1 right now")
 
-        column = key[1] if self._ks is None else self._ks.name
+        if self._ks is None:
+            if self._kdf._internal.column_index is not None:
+                column = dict(zip(self._kdf._internal.column_index,
+                                  self._kdf._internal.data_columns)).get(key[1], None)
+                if column is None:
+                    raise KeyError(key[1])
+            else:
+                column = key[1]
+        else:
+            column = self._ks.name
+
         if column is not None and column not in self._kdf._internal.data_columns:
-            raise KeyError("%s" % column)
-        series = self._ks if self._ks is not None else self._kdf[column]
+            raise KeyError(column)
+        sdf = self._ks._kdf._sdf if self._ks is not None else self._kdf._sdf
 
         row = key[0] if self._ks is None else key
-        pdf = (series._kdf._sdf
+        pdf = (sdf
                .where(self._kdf._internal.index_scols[0] == row)
                .select(_make_col(column))
                .toPandas())
         if len(pdf) < 1:
-            raise KeyError("%s" % row)
+            raise KeyError(row)
 
         values = pdf.iloc[:, 0].values
         return values[0] if len(values) == 1 else values
