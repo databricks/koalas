@@ -19,6 +19,7 @@ A loc indexer for Koalas DataFrame/Series.
 """
 from functools import reduce
 
+import pandas as pd
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -665,9 +666,18 @@ class ILocIndexer(object):
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))
+
+        column_index = self._kdf._internal.column_index
+        if column_index is not None:
+            if cols_sel is not None and isinstance(cols_sel, (Series, int)):
+                column_index = None
+            else:
+                column_index = pd.MultiIndex.from_tuples(column_index)[cols_sel].tolist()
+
         kdf._internal = kdf._internal.copy(
             data_columns=kdf._internal.data_columns[-len(columns):],
-            index_map=self._kdf._internal.index_map)
+            index_map=self._kdf._internal.index_map,
+            column_index=column_index)
         if cols_sel is not None and isinstance(cols_sel, (Series, int)):
             from databricks.koalas.series import _col
             return _col(kdf)
