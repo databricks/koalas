@@ -151,6 +151,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf['']['h'], pdf['']['h'])
         self.assert_eq(kdf['i'], pdf['i'])
 
+        self.assert_eq(kdf[['a', 'e']], pdf[['a', 'e']])
+        self.assert_eq(kdf[['e', 'a']], pdf[['e', 'a']])
+
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
         df = ks.range(10)

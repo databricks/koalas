@@ -280,6 +280,16 @@ class IndexingTest(ReusedSQLTestCase):
         self.assertRaises(SparkPandasIndexingError, lambda: kdf.a.loc[3:, 3])
         self.assertRaises(SparkPandasIndexingError, lambda: kdf.a.loc[kdf.a % 2 == 0, 3])
 
+    def test_loc2d_multiindex_columns(self):
+        arrays = [np.array(['bar', 'bar', 'baz', 'baz']),
+                  np.array(['one', 'two', 'one', 'two'])]
+
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.loc['B':'B', 'bar'], pdf.loc['B':'B', 'bar'])
+        self.assert_eq(kdf.loc['B':'B', ['bar']], pdf.loc['B':'B', ['bar']])
+
     def test_loc2d_with_known_divisions(self):
         pdf = pd.DataFrame(np.random.randn(20, 5),
                            index=list('abcdefghijklmnopqrst'),
