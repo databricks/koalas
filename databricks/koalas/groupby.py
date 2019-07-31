@@ -432,6 +432,16 @@ class GroupBy(object):
         0  bb   6  10
         1  aa   3  10
         2  aa   4  12
+
+        In case of Series, it works as below.
+
+        >>> def plus_max(x) -> ks.Series[np.int]:
+        ...    return x + x.max()
+        >>> df.B.groupby(df.A).apply(plus_max)
+        0    6
+        1    3
+        2    4
+        Name: B, dtype: int32
         """
         if not isinstance(func, Callable):
             raise TypeError("%s object is not callable" % type(func))
@@ -546,6 +556,14 @@ class GroupBy(object):
         0  3  10
         1  4  12
         2  6  10
+
+        In case of Series, it works as below.
+
+        >>> df.B.groupby(df.A).transform(plus_max)
+        0    3
+        1    4
+        2    6
+        Name: B, dtype: int32
         """
         # TODO: codes here are similar with GroupBy.apply. Needs to deduplicate.
         if not isinstance(func, Callable):
@@ -696,7 +714,11 @@ class SeriesGroupBy(GroupBy):
         raise NotImplementedError()
 
     def apply(self, func):
-        raise NotImplementedError()
+        return _col(super(SeriesGroupBy, self).transform(func))
+
+    apply.__doc__ = GroupBy.transform.__doc__
 
     def transform(self, func):
-        raise NotImplementedError()
+        return _col(super(SeriesGroupBy, self).transform(func))
+
+    transform.__doc__ = GroupBy.transform.__doc__
