@@ -15,9 +15,12 @@
 #
 
 import inspect
+import unittest
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
+from pyspark import __version__ as pyspark_version
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks
@@ -1079,7 +1082,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.cummin(), kdf.cummin())
         self.assert_eq(pdf.cummin(skipna=False), kdf.cummin(skipna=False))
 
+    @unittest.skipIf(
+        LooseVersion(pyspark_version) < LooseVersion('3.0'),
+        "columns axis is supported in Spark 3.0+.")
+    def test_cummin_columns_axis(self):
         # The number of each count is intentionally to trigger Spark execution path
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         pdf = pd.concat([pdf] * 600, ignore_index=True)
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.cummin(axis=1), kdf.cummin(axis=1))
@@ -1092,7 +1101,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.cummax(), kdf.cummax())
         self.assert_eq(pdf.cummax(skipna=False), kdf.cummax(skipna=False))
 
+    @unittest.skipIf(
+        LooseVersion(pyspark_version) < LooseVersion('3.0'),
+        "columns axis is supported in Spark 3.0+.")
+    def test_cummax_columns_axis(self):
         # The number of each count is intentionally to trigger Spark execution path
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         pdf = pd.concat([pdf] * 600, ignore_index=True)
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.cummax(axis='columns'), kdf.cummax(axis='columns'))
@@ -1106,7 +1121,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.cumsum(), kdf.cumsum())
         self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
 
+    @unittest.skipIf(
+        LooseVersion(pyspark_version) < LooseVersion('3.0'),
+        "columns axis is supported in Spark 3.0+.")
+    def test_cumsum_columns_axis(self):
         # The number of each count is intentionally to trigger Spark execution path
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         pdf = pd.concat([pdf] * 600, ignore_index=True)
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.cumsum(axis=1), kdf.cumsum(axis=1))
@@ -1119,7 +1140,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(repr(pdf.cumprod()), repr(kdf.cumprod()))
         self.assertEqual(repr(pdf.cumprod(skipna=False)), repr(kdf.cumprod(skipna=False)))
 
+    @unittest.skipIf(
+        LooseVersion(pyspark_version) < LooseVersion('3.0'),
+        "columns axis is supported in Spark 3.0+.")
+    def test_cumprod_columns_axis(self):
         # The number of each count is intentionally to trigger Spark execution path
+        pdf = pd.DataFrame([
+            [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         pdf = pd.concat([pdf] * 600, ignore_index=True)
         kdf = ks.from_pandas(pdf)
         self.assert_eq(

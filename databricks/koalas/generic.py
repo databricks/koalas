@@ -60,6 +60,7 @@ class _Frame(object):
         ----------
         axis : {0 or ‘index’, 1 or ‘columns’}, default 0
             The index or the name of the axis. 0 is equivalent to None or ‘index’.
+            columns axis is supported in Spark 3.0+.
         skipna : boolean, default True
             Exclude NA/null values. If an entire row/column is NA, the result will be NA.
 
@@ -99,7 +100,7 @@ class _Frame(object):
 
         To iterate over columns and find the sum in each row, use axis=1
 
-        >>> df.cummin(axis=1)
+        >>> df.cummin(axis=1)  # doctest: +SKIP
              A    B
         0  2.0  1.0
         1  3.0  NaN
@@ -130,6 +131,7 @@ class _Frame(object):
         ----------
         axis : {0 or ‘index’, 1 or ‘columns’}, default 0
             The index or the name of the axis. 0 is equivalent to None or ‘index’.
+            columns axis is supported in Spark 3.0+.
         skipna : boolean, default True
             Exclude NA/null values. If an entire row/column is NA, the result will be NA.
 
@@ -170,7 +172,7 @@ class _Frame(object):
 
         To iterate over columns and find the sum in each row, use axis=1
 
-        >>> df.cummax(axis=1)
+        >>> df.cummax(axis=1)  # doctest: +SKIP
              A    B
         0  2.0  2.0
         1  3.0  NaN
@@ -201,6 +203,7 @@ class _Frame(object):
         ----------
         axis : {0 or ‘index’, 1 or ‘columns’}, default 0
             The index or the name of the axis. 0 is equivalent to None or ‘index’.
+            columns axis is supported in Spark 3.0+.
         skipna : boolean, default True
             Exclude NA/null values. If an entire row/column is NA, the result will be NA.
 
@@ -241,7 +244,7 @@ class _Frame(object):
 
         To iterate over columns and find the sum in each row, use axis=1
 
-        >>> df.cumsum(axis=1)
+        >>> df.cumsum(axis=1)  # doctest: +SKIP
              A    B
         0  2.0  3.0
         1  3.0  NaN
@@ -277,6 +280,7 @@ class _Frame(object):
         ----------
         axis : {0 or ‘index’, 1 or ‘columns’}, default 0
             The index or the name of the axis. 0 is equivalent to None or ‘index’.
+            columns axis is supported in Spark 3.0+.
         skipna : boolean, default True
             Exclude NA/null values. If an entire row/column is NA, the result will be NA.
 
@@ -319,7 +323,7 @@ class _Frame(object):
 
         To iterate over columns and find the sum in each row, use axis=1
 
-        >>> df.cumprod(axis=1)
+        >>> df.cumprod(axis=1)  # doctest: +SKIP
              A     B
         0  2.0   2.0
         1  3.0   NaN
