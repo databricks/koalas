@@ -2741,14 +2741,15 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return tuple(values)
 
-    def _cum(self, func, skipna):
+    def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
 
         index_columns = self._internal.index_columns
         window = Window.orderBy(
-            index_columns).rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            index_columns).partitionBy(*part_cols).rowsBetween(
+                Window.unboundedPreceding, Window.currentRow)
 
         column_name = self.name
 

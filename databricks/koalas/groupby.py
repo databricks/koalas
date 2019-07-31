@@ -24,7 +24,7 @@ from functools import partial
 from typing import Any, List
 import numpy as np
 
-from pyspark.sql import functions as F
+from pyspark.sql import functions as F, Window
 from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
 from pyspark.sql.functions import PandasUDFType, pandas_udf
 
@@ -418,6 +418,207 @@ class GroupBy(object):
                                              for i, s in enumerate(groupkeys)])
         return _col(DataFrame(internal))
 
+    def cummax(self):
+        """
+        Cumulative max for each group.
+
+        Returns
+        -------
+        Series or DataFrame
+
+        See Also
+        --------
+        Series.cummax
+        DataFrame.cummax
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(
+        ...     [[1, None, 4], [1, 0.1, 3], [1, 20.0, 2], [4, 10.0, 1]],
+        ...     columns=list('ABC'))
+        >>> df
+           A     B  C
+        0  1   NaN  4
+        1  1   0.1  3
+        2  1  20.0  2
+        3  4  10.0  1
+
+        By default, iterates over rows and finds the sum in each column.
+
+        >>> df.groupby("A").cummax()
+              B  C
+        0   NaN  4
+        1   0.1  4
+        2  20.0  4
+        3  10.0  1
+
+        It works as below in Series.
+
+        >>> df.C.groupby(df.A).cummax()
+        0    4
+        1    4
+        2    4
+        3    1
+        Name: C, dtype: int64
+
+        """
+
+        return self._cum(F.max)
+
+    def cummin(self):
+        """
+        Cumulative min for each group.
+
+        Returns
+        -------
+        Series or DataFrame
+
+        See Also
+        --------
+        Series.cummin
+        DataFrame.cummin
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(
+        ...     [[1, None, 4], [1, 0.1, 3], [1, 20.0, 2], [4, 10.0, 1]],
+        ...     columns=list('ABC'))
+        >>> df
+           A     B  C
+        0  1   NaN  4
+        1  1   0.1  3
+        2  1  20.0  2
+        3  4  10.0  1
+
+        By default, iterates over rows and finds the sum in each column.
+
+        >>> df.groupby("A").cummin()
+              B  C
+        0   NaN  4
+        1   0.1  3
+        2   0.1  2
+        3  10.0  1
+
+        It works as below in Series.
+
+        >>> df.B.groupby(df.A).cummin()
+        0     NaN
+        1     0.1
+        2     0.1
+        3    10.0
+        Name: B, dtype: float64
+        """
+        return self._cum(F.min)
+
+    def cumprod(self):
+        """
+        Cumulative product for each group.
+
+        Returns
+        -------
+        Series or DataFrame
+
+        See Also
+        --------
+        Series.cumprod
+        DataFrame.cumprod
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(
+        ...     [[1, None, 4], [1, 0.1, 3], [1, 20.0, 2], [4, 10.0, 1]],
+        ...     columns=list('ABC'))
+        >>> df
+           A     B  C
+        0  1   NaN  4
+        1  1   0.1  3
+        2  1  20.0  2
+        3  4  10.0  1
+
+        By default, iterates over rows and finds the sum in each column.
+
+        >>> df.groupby("A").cumprod()
+              B     C
+        0   NaN   4.0
+        1   0.1  12.0
+        2   2.0  24.0
+        3  10.0   1.0
+
+        It works as below in Series.
+
+        >>> df.B.groupby(df.A).cumprod()
+        0     NaN
+        1     0.1
+        2     2.0
+        3    10.0
+        Name: B, dtype: float64
+
+        """
+        from pyspark.sql.functions import pandas_udf
+
+        def cumprod(scol):
+            # Note that this function will always actually called via `SeriesGroupBy._cum`,
+            # and `Series._cum`.
+            # In case of `DataFrameGroupBy`, it gose through `DataFrameGroupBy._cum`,
+            # `SeriesGroupBy.comprod`, `SeriesGroupBy._cum` and `Series._cum`
+            #
+            # This is a bit hacky. Maybe we should fix it.
+            @pandas_udf(returnType=self._ks._kdf._internal.spark_type_for(self._ks.name))
+            def negative_check(s):
+                assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), \
+                    "values should be bigger than 0: %s" % s
+                return s
+
+            return F.sum(F.log(negative_check(scol)))
+
+        return self._cum(cumprod)
+
+    def cumsum(self):
+        """
+        Cumulative sum for each group.
+
+        Returns
+        -------
+        Series or DataFrame
+
+        See Also
+        --------
+        Series.cumsum
+        DataFrame.cumsum
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(
+        ...     [[1, None, 4], [1, 0.1, 3], [1, 20.0, 2], [4, 10.0, 1]],
+        ...     columns=list('ABC'))
+        >>> df
+           A     B  C
+        0  1   NaN  4
+        1  1   0.1  3
+        2  1  20.0  2
+        3  4  10.0  1
+
+        By default, iterates over rows and finds the sum in each column.
+
+        >>> df.groupby("A").cumsum()
+              B  C
+        0   NaN  4
+        1   0.1  7
+        2  20.1  9
+        3  10.0  1
+
+        It works as below in Series.
+
+        >>> df.B.groupby(df.A).cumsum()
+        0     NaN
+        1     0.1
+        2    20.1
+        3    10.0
+        Name: B, dtype: float64
+
+        """
+        return self._cum(F.sum)
+
     # TODO: Series support is not implemented yet.
     def apply(self, func):
         """
@@ -737,6 +938,33 @@ class DataFrameGroupBy(GroupBy):
             # TODO: check that item is a list of strings
             return DataFrameGroupBy(self._kdf, self._groupkeys, item)
 
+    def _cum(self, func):
+        # This is used for cummin, cummax, cumxum, etc.
+        if func == F.min:
+            func = "cummin"
+        elif func == F.max:
+            func = "cummax"
+        elif func == F.sum:
+            func = "cumsum"
+        elif func.__name__ == "cumprod":
+            func = "cumprod"
+
+        if len(self._kdf._internal.index_columns) == 0:
+            raise ValueError("Index must be set.")
+
+        applied = []
+        kdf = self._kdf
+        groupkey_columns = [s.name for s in self._groupkeys]
+        for column in kdf._internal.data_columns:
+            # pandas groupby.cumxxx ignores the grouping key itself.
+            if column not in groupkey_columns:
+                applied.append(getattr(kdf[column].groupby(self._groupkeys), func)())
+
+        sdf = kdf._sdf.select(
+            kdf._internal.index_scols + [c._scol for c in applied])
+        internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
+
 
 class SeriesGroupBy(GroupBy):
 
@@ -753,6 +981,10 @@ class SeriesGroupBy(GroupBy):
             else:
                 return partial(property_or_func, self)
         raise AttributeError(item)
+
+    def _cum(self, func):
+        groupkey_scols = [s._scol for s in self._groupkeys]
+        return Series._cum(self._ks, func, True, part_cols=groupkey_scols)
 
     @property
     def _kdf(self) -> DataFrame:
