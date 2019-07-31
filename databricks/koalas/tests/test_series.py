@@ -464,11 +464,19 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(repr(pser.cummin()), repr(kser.cummin()))
         self.assertEqual(repr(pser.cummin(skipna=False)), repr(kser.cummin(skipna=False)))
 
+        msg = "Series.*not.*support"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.cummin(axis='columns')
+
     def test_cummax(self):
         pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
         kser = koalas.from_pandas(pser)
         self.assertEqual(repr(pser.cummax()), repr(kser.cummax()))
         self.assertEqual(repr(pser.cummax(skipna=False)), repr(kser.cummax(skipna=False)))
+
+        msg = "Series.*not.*support"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.cummax(axis=1)
 
     def test_cumsum(self):
         pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
@@ -476,11 +484,19 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(repr(pser.cumsum()), repr(kser.cumsum()))
         self.assertEqual(repr(pser.cumsum(skipna=False)), repr(kser.cumsum(skipna=False)))
 
+        msg = "Series.*not.*support"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.cumsum(axis='columns')
+
     def test_cumprod(self):
         pser = pd.Series([1.0, None, 1.0, 4.0, 9.0]).rename("a")
         kser = koalas.from_pandas(pser)
         self.assertEqual(repr(pser.cumprod()), repr(kser.cumprod()))
         self.assertEqual(repr(pser.cumprod(skipna=False)), repr(kser.cumprod(skipna=False)))
+
+        msg = "Series.*not.*support"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.cumprod(axis=1)
 
         # TODO: due to unknown reason, this test passes in Travis CI. Unable to reproduce in local.
         # with self.assertRaisesRegex(Exception, "values should be bigger than 0"):

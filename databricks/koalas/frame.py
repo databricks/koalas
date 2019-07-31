@@ -36,7 +36,8 @@ from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
-                               IntegerType, LongType, NumericType, ShortType, StructType)
+                               IntegerType, LongType, NumericType, ShortType, StructType,
+                               StructField)
 from pyspark.sql.utils import AnalysisException
 from pyspark.sql.window import Window
 from pyspark.sql.functions import pandas_udf
@@ -324,7 +325,6 @@ class DataFrame(_Frame, Generic[T]):
             If True, sfun is applied on numeric columns (including booleans) only.
         """
         from inspect import signature
-        from databricks.koalas import Series
 
         if axis in ('index', 0, None):
             exprs = []
@@ -361,23 +361,63 @@ class DataFrame(_Frame, Generic[T]):
             return row  # Return first row as a Series
 
         elif axis in ('columns', 1):
-            # Here we execute with the first 1000 to get the return type.
-            # If the records were less than 1000, it uses pandas API directly for a shortcut.
-            limit = 1000
-            pdf = self.head(limit + 1).to_pandas()
-            pser = getattr(pdf, name)(axis=axis, numeric_only=numeric_only)
-            if len(pdf) <= limit:
-                return Series(pser)
-
-            @pandas_udf(returnType=as_spark_type(pser.dtype.type))
-            def calculate_columns_axis(*cols):
-                return getattr(pd.concat(cols, axis=1), name)(axis=axis, numeric_only=numeric_only)
-
-            df = self._sdf.select(calculate_columns_axis(*self._internal.data_scols).alias("0"))
-            return DataFrame(df)["0"]
+            return self._compute_columns_axis(name, axis=axis, numeric_only=numeric_only)
 
         else:
             raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
+
+    def _compute_columns_axis(self, name, axis, *args, **kwargs):
+        import pandas as pd
+
+        from databricks.koalas import Series
+        from databricks.koalas import DataFrame
+
+        assert axis in ('columns', 1)
+
+        # Here we execute with the first 1000 to get the return type.
+        # If the records were less than 1000, it uses pandas API directly for a shortcut.
+        limit = 1000
+        pdf = self.head(limit + 1).to_pandas()
+        pser_or_df = getattr(pdf, name)(axis=axis, *args, **kwargs)
+        if len(pdf) <= limit:
+            if isinstance(pser_or_df, pd.Series):
+                return Series(pser_or_df)
+            elif isinstance(pser_or_df, pd.DataFrame):
+                return DataFrame(pser_or_df)
+            else:
+                raise RuntimeError("Unexpected output: [%s]" % pser_or_df)
+
+        if isinstance(pser_or_df, pd.Series):
+            return_type = as_spark_type(pser_or_df.dtype.type)
+        elif isinstance(pser_or_df, pd.DataFrame):
+            kdf_from_pandas = DataFrame(pser_or_df)
+            fields = kdf_from_pandas._sdf.select(
+                *kdf_from_pandas._internal.data_scols).schema.fields
+            # Turn to nullable schema in case the output schema is not matched due to
+            # nullability difference.
+            return_type = StructType([
+                StructField(field.name, field.dataType) for field in fields])
+        else:
+            raise RuntimeError("Unexpected output: [%s]" % pser_or_df)
+
+        @pandas_udf(returnType=return_type)
+        def compute_columns_axis(*cols):
+            pser_or_df = getattr(pd.concat(cols, axis=1), name)(axis=axis, *args, **kwargs)
+            if isinstance(pser_or_df, pd.DataFrame):
+                # For now, positionally match the names.
+                return pser_or_df.rename(
+                    columns=dict(zip(pser_or_df.columns, return_type.fieldNames())))
+            else:
+                return pser_or_df
+
+        df = self._sdf.select(compute_columns_axis(*self._internal.data_scols).alias("0"))
+        kdf = DataFrame(df)
+        if isinstance(pser_or_df, pd.Series):
+            return kdf["0"]
+        elif isinstance(pser_or_df, pd.DataFrame):
+            return DataFrame(kdf._sdf.selectExpr("`0`.*"))
+        else:
+            raise RuntimeError("Unexpected output: [%s]" % pser_or_df)
 
     # Arithmetic Operators
     def _map_series_op(self, op, other):
@@ -5435,7 +5475,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   index_map=[('summary', None)])
         return DataFrame(internal).astype('float64')
 
-    def _cum(self, func, skipna: bool):
+    def _cum(self, func, axis: Optional[Union[int, str]], skipna: bool):
         # This is used for cummin, cummax, cumxum, etc.
         if func == F.min:
             func = "cummin"
@@ -5446,12 +5486,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         elif func.__name__ == "cumprod":
             func = "cumprod"
 
+        if axis in ('columns', 1):
+            return self._compute_columns_axis(func, axis=axis, skipna=skipna)
+        elif axis not in ('index', 0, None):
+            raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
+
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
 
         applied = []
         for column in self._internal.data_columns:
-            applied.append(getattr(self[column], func)(skipna))
+            applied.append(getattr(self[column], func)(axis, skipna))
 
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])

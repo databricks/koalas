@@ -2741,7 +2741,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return tuple(values)
 
-    def _cum(self, func, skipna):
+    def _cum(self, func, axis, skipna):
+        if axis in ('columns', 1):
+            raise ValueError("Series does not support columns axis.")
+
         # This is used to cummin, cummax, cumsum, etc.
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")

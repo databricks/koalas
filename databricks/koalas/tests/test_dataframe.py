@@ -1079,12 +1079,25 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.cummin(), kdf.cummin())
         self.assert_eq(pdf.cummin(skipna=False), kdf.cummin(skipna=False))
 
+        # The number of each count is intentionally to trigger Spark execution path
+        pdf = pd.concat([pdf] * 600, ignore_index=True)
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.cummin(axis=1), kdf.cummin(axis=1))
+        self.assert_eq(pdf.cummin(axis=1, skipna=False), kdf.cummin(axis=1, skipna=False))
+
     def test_cummax(self):
         pdf = pd.DataFrame([
             [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.cummax(), kdf.cummax())
         self.assert_eq(pdf.cummax(skipna=False), kdf.cummax(skipna=False))
+
+        # The number of each count is intentionally to trigger Spark execution path
+        pdf = pd.concat([pdf] * 600, ignore_index=True)
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.cummax(axis='columns'), kdf.cummax(axis='columns'))
+        self.assert_eq(
+            pdf.cummax(axis='columns', skipna=False), kdf.cummax(axis='columns', skipna=False))
 
     def test_cumsum(self):
         pdf = pd.DataFrame([
@@ -1093,12 +1106,27 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.cumsum(), kdf.cumsum())
         self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
 
+        # The number of each count is intentionally to trigger Spark execution path
+        pdf = pd.concat([pdf] * 600, ignore_index=True)
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.cumsum(axis=1), kdf.cumsum(axis=1))
+        self.assert_eq(pdf.cumsum(axis=1, skipna=False), kdf.cumsum(axis=1, skipna=False))
+
     def test_cumprod(self):
         pdf = pd.DataFrame([
             [2.0, 1.0], [5, None], [1.0, 1.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         kdf = ks.from_pandas(pdf)
         self.assertEqual(repr(pdf.cumprod()), repr(kdf.cumprod()))
         self.assertEqual(repr(pdf.cumprod(skipna=False)), repr(kdf.cumprod(skipna=False)))
+
+        # The number of each count is intentionally to trigger Spark execution path
+        pdf = pd.concat([pdf] * 600, ignore_index=True)
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.cumprod(axis='columns'), kdf.cumprod(axis='columns'))
+        self.assert_eq(
+            pdf.cumprod(axis='columns', skipna=False),
+            kdf.cumprod(axis='columns', skipna=False))
 
     def test_reindex(self):
         index = ['A', 'B', 'C', 'D', 'E']

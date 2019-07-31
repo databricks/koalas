@@ -20,6 +20,7 @@ A base class to be monkey-patched to DataFrame/Column to behave similar to panda
 import warnings
 from collections import Counter
 from collections.abc import Iterable
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -44,20 +45,21 @@ class _Frame(object):
     def __init__(self, internal: _InternalFrame):
         self._internal = internal  # type: _InternalFrame
 
-    # TODO: add 'axis' parameter
-    def cummin(self, skipna: bool = True):
+    def cummin(self, axis: Optional[Union[int, str]] = None, skipna: bool = True):
         """
         Return cumulative minimum over a DataFrame or Series axis.
 
         Returns a DataFrame or Series of the same size containing the cumulative minimum.
 
-        .. note:: the current implementation of cummin uses Spark's Window without
+        .. note:: when axis is 0, the current implementation of cummin uses Spark's Window without
             specifying partition specification. This leads to move all data into
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
 
         Parameters
         ----------
+        axis : {0 or ‘index’, 1 or ‘columns’}, default 0
+            The index or the name of the axis. 0 is equivalent to None or ‘index’.
         skipna : boolean, default True
             Exclude NA/null values. If an entire row/column is NA, the result will be NA.
 
@@ -86,7 +88,8 @@ class _Frame(object):
         1  3.0  NaN
         2  1.0  0.0
 
-        By default, iterates over rows and finds the minimum in each column.
+        By default, iterates over rows and finds the sum in each column. This is equivalent
+        to axis=None or axis='index'.
 
         >>> df.cummin()
              A    B
@@ -94,7 +97,15 @@ class _Frame(object):
         1  2.0  NaN
         2  1.0  0.0
 
-        It works identically in Series.
+        To iterate over columns and find the sum in each row, use axis=1
+
+        >>> df.cummin(axis=1)
+             A    B
+        0  2.0  1.0
+        1  3.0  NaN
+        2  1.0  0.0
+
+        It works as below in Series.
 
         >>> df.A.cummin()
         0    2.0
@@ -102,22 +113,23 @@ class _Frame(object):
         2    1.0
         Name: A, dtype: float64
         """
-        return self._cum(F.min, skipna)  # type: ignore
+        return self._cum(F.min, axis, skipna)  # type: ignore
 
-    # TODO: add 'axis' parameter
-    def cummax(self, skipna: bool = True):
+    def cummax(self, axis: Optional[Union[int, str]] = None, skipna: bool = True):
         """
         Return cumulative maximum over a DataFrame or Series axis.
 
         Returns a DataFrame or Series of the same size containing the cumulative maximum.
 
-        .. note:: the current implementation of cummax uses Spark's Window without
+        .. note:: when axis is 0, the current implementation of cummax uses Spark's Window without
             specifying partition specification. This leads to move all data into
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
 
         Parameters
         ----------
+        axis : {0 or ‘index’, 1 or ‘columns’}, default 0
+            The index or the name of the axis. 0 is equivalent to None or ‘index’.
         skipna : boolean, default True
             Exclude NA/null values. If an entire row/column is NA, the result will be NA.
 
@@ -147,7 +159,8 @@ class _Frame(object):
         1  3.0  NaN
         2  1.0  0.0
 
-        By default, iterates over rows and finds the maximum in each column.
+        By default, iterates over rows and finds the sum in each column. This is equivalent
+        to axis=None or axis='index'.
 
         >>> df.cummax()
              A    B
@@ -155,7 +168,15 @@ class _Frame(object):
         1  3.0  NaN
         2  3.0  1.0
 
-        It works identically in Series.
+        To iterate over columns and find the sum in each row, use axis=1
+
+        >>> df.cummax(axis=1)
+             A    B
+        0  2.0  2.0
+        1  3.0  NaN
+        2  1.0  1.0
+
+        It works as below in Series.
 
         >>> df.B.cummax()
         0    1.0
@@ -163,22 +184,23 @@ class _Frame(object):
         2    1.0
         Name: B, dtype: float64
         """
-        return self._cum(F.max, skipna)  # type: ignore
+        return self._cum(F.max, axis, skipna)  # type: ignore
 
-    # TODO: add 'axis' parameter
-    def cumsum(self, skipna: bool = True):
+    def cumsum(self, axis: Optional[Union[int, str]] = None, skipna: bool = True):
         """
         Return cumulative sum over a DataFrame or Series axis.
 
         Returns a DataFrame or Series of the same size containing the cumulative sum.
 
-        .. note:: the current implementation of cumsum uses Spark's Window without
+        .. note:: when axis is 0, the current implementation of cumsum uses Spark's Window without
             specifying partition specification. This leads to move all data into
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
 
         Parameters
         ----------
+        axis : {0 or ‘index’, 1 or ‘columns’}, default 0
+            The index or the name of the axis. 0 is equivalent to None or ‘index’.
         skipna : boolean, default True
             Exclude NA/null values. If an entire row/column is NA, the result will be NA.
 
@@ -208,7 +230,8 @@ class _Frame(object):
         1  3.0  NaN
         2  1.0  0.0
 
-        By default, iterates over rows and finds the sum in each column.
+        By default, iterates over rows and finds the sum in each column. This is equivalent
+        to axis=None or axis='index'.
 
         >>> df.cumsum()
              A    B
@@ -216,26 +239,33 @@ class _Frame(object):
         1  5.0  NaN
         2  6.0  1.0
 
-        It works identically in Series.
+        To iterate over columns and find the sum in each row, use axis=1
 
-        >>> df.A.cumsum()
-        0    2.0
-        1    5.0
-        2    6.0
-        Name: A, dtype: float64
+        >>> df.cumsum(axis=1)
+             A    B
+        0  2.0  3.0
+        1  3.0  NaN
+        2  1.0  1.0
+
+        It works as below in Series.
+
+        >>> df.B.cumsum()
+        0    1.0
+        1    NaN
+        2    1.0
+        Name: B, dtype: float64
         """
-        return self._cum(F.sum, skipna)  # type: ignore
+        return self._cum(F.sum, axis, skipna)  # type: ignore
 
-    # TODO: add 'axis' parameter
     # TODO: use pandas_udf to support negative values and other options later
     #  other window except unbounded ones is supported as of Spark 3.0.
-    def cumprod(self, skipna: bool = True):
+    def cumprod(self, axis: Optional[Union[int, str]] = None, skipna: bool = True):
         """
         Return cumulative product over a DataFrame or Series axis.
 
         Returns a DataFrame or Series of the same size containing the cumulative product.
 
-        .. note:: the current implementation of cumprod uses Spark's Window without
+        .. note:: when axis is 0, the current implementation of cumprod uses Spark's Window without
             specifying partition specification. This leads to move all data into
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
@@ -245,6 +275,8 @@ class _Frame(object):
 
         Parameters
         ----------
+        axis : {0 or ‘index’, 1 or ‘columns’}, default 0
+            The index or the name of the axis. 0 is equivalent to None or ‘index’.
         skipna : boolean, default True
             Exclude NA/null values. If an entire row/column is NA, the result will be NA.
 
@@ -276,7 +308,8 @@ class _Frame(object):
         1  3.0   NaN
         2  4.0  10.0
 
-        By default, iterates over rows and finds the sum in each column.
+        By default, iterates over rows and finds the sum in each column. This is equivalent
+        to axis=None or axis='index'.
 
         >>> df.cumprod()
               A     B
@@ -284,13 +317,21 @@ class _Frame(object):
         1   6.0   NaN
         2  24.0  10.0
 
-        It works identically in Series.
+        To iterate over columns and find the sum in each row, use axis=1
 
-        >>> df.A.cumprod()
-        0     2.0
-        1     6.0
-        2    24.0
-        Name: A, dtype: float64
+        >>> df.cumprod(axis=1)
+             A     B
+        0  2.0   2.0
+        1  3.0   NaN
+        2  4.0  40.0
+
+        It works as below in Series.
+
+        >>> df.B.cumprod()
+        0     1.0
+        1     NaN
+        2    10.0
+        Name: B, dtype: float64
 
         """
         from pyspark.sql.functions import pandas_udf
@@ -304,7 +345,7 @@ class _Frame(object):
 
             return F.sum(F.log(negative_check(scol)))
 
-        return self._cum(cumprod, skipna)  # type: ignore
+        return self._cum(cumprod, axis, skipna)  # type: ignore
 
     def get_dtype_counts(self):
         """
