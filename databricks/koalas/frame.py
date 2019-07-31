@@ -329,7 +329,7 @@ class DataFrame(_Frame, Generic[T]):
         if axis in ('index', 0, None):
             exprs = []
             num_args = len(signature(sfun).parameters)
-            for col in self.columns:
+            for col in self._internal.data_columns:
                 col_sdf = self._internal.scol_for(col)
                 col_type = self._internal.spark_type_for(col)
 
@@ -354,7 +354,12 @@ class DataFrame(_Frame, Generic[T]):
 
             sdf = self._sdf.select(*exprs)
             pdf = sdf.toPandas()
+
+            if self._internal.column_index is not None:
+                pdf.columns = pd.MultiIndex.from_tuples(self._internal.column_index)
+
             assert len(pdf) == 1, (sdf, pdf)
+
             row = pdf.iloc[0]
             row.name = None
             # TODO: return Koalas series.
