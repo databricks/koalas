@@ -165,6 +165,15 @@ class IndexingTest(ReusedSQLTestCase):
         with self.assertRaises(TypeError):
             kdf.at[3, 'b'] = 10
 
+    def test_at_multiindex_columns(self):
+        arrays = [np.array(['bar', 'bar', 'baz', 'baz']),
+                  np.array(['one', 'two', 'one', 'two'])]
+
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.at['B', ('bar', 'one')], pdf.at['B', ('bar', 'one')])
+
     def test_loc(self):
         kdf = self.kdf
         pdf = self.pdf
@@ -270,6 +279,16 @@ class IndexingTest(ReusedSQLTestCase):
         self.assertRaises(SparkPandasIndexingError, lambda: kdf.a.loc[3, 3])
         self.assertRaises(SparkPandasIndexingError, lambda: kdf.a.loc[3:, 3])
         self.assertRaises(SparkPandasIndexingError, lambda: kdf.a.loc[kdf.a % 2 == 0, 3])
+
+    def test_loc2d_multiindex_columns(self):
+        arrays = [np.array(['bar', 'bar', 'baz', 'baz']),
+                  np.array(['one', 'two', 'one', 'two'])]
+
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.loc['B':'B', 'bar'], pdf.loc['B':'B', 'bar'])
+        self.assert_eq(kdf.loc['B':'B', ['bar']], pdf.loc['B':'B', ['bar']])
 
     def test_loc2d_with_known_divisions(self):
         pdf = pd.DataFrame(np.random.randn(20, 5),
@@ -464,6 +483,24 @@ class IndexingTest(ReusedSQLTestCase):
             self.assert_eq(kdf.iloc[:1, indexer], pdf.iloc[:1, indexer])
             self.assert_eq(kdf.iloc[:-1, indexer], pdf.iloc[:-1, indexer])
             self.assert_eq(kdf.iloc[kdf.index == 2, indexer], pdf.iloc[pdf.index == 2, indexer])
+
+    def test_iloc_multiindex_columns(self):
+        arrays = [np.array(['bar', 'bar', 'baz', 'baz']),
+                  np.array(['one', 'two', 'one', 'two'])]
+
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        kdf = ks.from_pandas(pdf)
+
+        for indexer in [0,
+                        [0],
+                        [0, 1],
+                        [1, 0],
+                        [False, True, True, True],
+                        slice(0, 1)]:
+            self.assert_eq(kdf.iloc[:, indexer], pdf.iloc[:, indexer])
+            self.assert_eq(kdf.iloc[:1, indexer], pdf.iloc[:1, indexer])
+            self.assert_eq(kdf.iloc[:-1, indexer], pdf.iloc[:-1, indexer])
+            self.assert_eq(kdf.iloc[kdf.index == 'B', indexer], pdf.iloc[pdf.index == 'B', indexer])
 
     def test_iloc_series(self):
         pseries = pd.Series([1, 2, 3])
