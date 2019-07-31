@@ -125,8 +125,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
                             'B': [1, 1, 2, 3, 3, 3]})
         kdf = koalas.DataFrame(pdf)
-
         self.assert_eq(kdf.groupby("A").size(), pdf.groupby("A").size())
+        self.assert_eq(kdf.groupby(['A', 'B']).size(), pdf.groupby(['A', 'B']).size())
 
     def test_missing(self):
         kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})

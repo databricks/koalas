@@ -369,13 +369,33 @@ class GroupBy(object):
         5  3  3
 
         >>> df.groupby('A').size()  # doctest: +NORMALIZE_WHITESPACE
-            B
         A
         1  1
         2  2
         3  3
+        Name: count, dtype: int64
+
+        >>> df.groupby(['A', 'B']).size()  # doctest: +NORMALIZE_WHITESPACE
+        A  B
+        1  1    1
+        2  1    1
+           2    1
+        3  3    3
+        Name: count, dtype: int64
         """
-        return self._reduce_for_stat_function(F.count, only_numeric=True)
+        groupkeys = self._groupkeys
+        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+                         for i, s in enumerate(groupkeys)]
+        sdf = self._kdf._sdf
+        data_columns = ['count']
+        sdf = sdf.groupby(*groupkey_cols).count()
+        sdf = sdf.sort(*groupkey_cols)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=data_columns,
+                                  index_map=[('__index_level_{}__'.format(i), s.name)
+                                             for i, s in enumerate(groupkeys)])
+        kdf = DataFrame(internal)
+        return Series(internal, anchor=kdf)
 
     # TODO: Series support is not implemented yet.
     def apply(self, func):
