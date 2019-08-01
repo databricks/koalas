@@ -28,6 +28,7 @@ Computations / Descriptive Stats
    GroupBy.any
    GroupBy.count
    GroupBy.first
+   GroupBy.filter
    GroupBy.last
    GroupBy.max
    GroupBy.mean

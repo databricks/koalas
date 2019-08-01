@@ -22,7 +22,11 @@ import inspect
 from collections import Callable
 from functools import partial
 from typing import Any, List
+
 import numpy as np
+import pandas as pd
+from pandas._libs.parsers import is_datetime64_dtype
+from pandas.core.dtypes.common import is_datetime64tz_dtype
 
 from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
@@ -453,7 +457,90 @@ class GroupBy(object):
             raise ValueError("Given function must have return type hint; however, not found.")
 
         return_schema = _infer_return_type(func).tpe
+        return self._apply(func, return_schema)
 
+    # TODO: implement 'dropna' parameter
+    def filter(self, func):
+        """
+        Return a copy of a DataFrame excluding elements from groups that
+        do not satisfy the boolean criterion specified by func.
+
+        Parameters
+        ----------
+        f : function
+            Function to apply to each subframe. Should return True or False.
+        dropna : Drop groups that do not pass the filter. True by default;
+            if False, groups that evaluate False are filled with NaNs.
+
+        Returns
+        -------
+        filtered : DataFrame
+
+        Notes
+        -----
+        Each subframe is endowed the attribute 'name' in case you need to know
+        which group you are working on.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A' : ['foo', 'bar', 'foo', 'bar',
+        ...                           'foo', 'bar'],
+        ...                    'B' : [1, 2, 3, 4, 5, 6],
+        ...                    'C' : [2.0, 5., 8., 1., 2., 9.]})
+        >>> grouped = df.groupby('A')
+        >>> grouped.filter(lambda x: x['B'].mean() > 3.)
+             A  B    C
+        1  bar  2  5.0
+        3  bar  4  1.0
+        5  bar  6  9.0
+        """
+        if not isinstance(func, Callable):
+            raise TypeError("%s object is not callable" % type(func))
+
+        data_schema = self._kdf._sdf.schema
+        groupby_names = [s.name for s in self._groupkeys]
+
+        def pandas_filter(pdf):
+            pdf = pdf.groupby(*groupby_names).filter(func)
+
+            # Here, we restore the index column back in Spark DataFrame
+            # so that Koalas can understand it as an index.
+
+            # TODO: deduplicate this logic with _InternalFrame.from_pandas
+            columns = pdf.columns
+            data_columns = [str(col) for col in columns]
+
+            index = pdf.index
+
+            index_map = []
+            if isinstance(index, pd.MultiIndex):
+                if index.names is None:
+                    index_map = [('__index_level_{}__'.format(i), None)
+                                 for i in range(len(index.levels))]
+                else:
+                    index_map = [('__index_level_{}__'.format(i) if name is None else name, name)
+                                 for i, name in enumerate(index.names)]
+            else:
+                index_map = [(index.name
+                              if index.name is not None else '__index_level_0__', index.name)]
+
+            index_columns = [index_column for index_column, _ in index_map]
+
+            reset_index = pdf.reset_index()
+            reset_index.columns = index_columns + data_columns
+            for name, col in reset_index.iteritems():
+                dt = col.dtype
+                if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
+                    continue
+                reset_index[name] = col.replace({np.nan: None})
+            return reset_index
+
+        # DataFrame.apply loses the index. We should restore the original index column information
+        # below.
+        no_index_df = self._apply(pandas_filter, data_schema)
+        return DataFrame(self._kdf._internal.copy(sdf=no_index_df._sdf))
+
+    def _apply(self, func, return_schema):
         index_columns = self._kdf._internal.index_columns
         index_names = self._kdf._internal.index_names
         data_columns = self._kdf._internal.data_columns
@@ -722,3 +809,6 @@ class SeriesGroupBy(GroupBy):
         return _col(super(SeriesGroupBy, self).transform(func))
 
     transform.__doc__ = GroupBy.transform.__doc__
+
+    def filter(self, func):
+        raise NotImplementedError()
