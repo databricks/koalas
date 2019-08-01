@@ -602,6 +602,48 @@ class GroupBy(object):
             sdf=sdf, data_columns=return_schema.fieldNames(), index_map=[])  # index is lost.
         return DataFrame(internal)
 
+    def nunique(self, dropna=True):
+        """
+        Return DataFrame with number of distinct observations per group for each column.
+
+        Parameters
+        ----------
+        dropna : boolean, default True
+            Don’t include NaN in the counts.
+
+        Returns
+        -------
+        nunique : DataFrame
+
+        Examples
+        --------
+
+        >>> df = pd.DataFrame({'id': ['spam', 'egg', 'egg', 'spam',
+        ...                           'ham', 'ham'],
+        ...                    'value1': [1, 5, 5, 2, 5, 5],
+        ...                    'value2': list('abbaxy')})
+        >>> df
+             id  value1 value2
+        0  spam       1      a
+        1   egg       5      b
+        2   egg       5      b
+        3  spam       2      a
+        4   ham       5      x
+        5   ham       5      y
+
+        >>> df.groupby('id').nunique()
+              id  value1  value2
+        id
+        egg    1       1       1
+        ham    1       1       2
+        spam   1       2       1
+        """
+        if not dropna:
+            raise ValueError('nunique do not support `drop=False` now')
+        if not self._have_agg_columns:
+            self._agg_columns = self._agg_columns + self._groupkeys
+        return self._reduce_for_stat_function(F.countDistinct, only_numeric=False)
+
     def _reduce_for_stat_function(self, sfun, only_numeric):
         groupkeys = self._groupkeys
         groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
