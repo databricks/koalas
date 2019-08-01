@@ -23,20 +23,16 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
-    def test_stat_functions(self):
-        pdf = pd.DataFrame({'A': [1, 2, 3, 4],
-                            'B': [1.0, 2.1, 3, 4]})
-        kdf = koalas.from_pandas(pdf)
-
+    def _test_stat_functions(self, pdf, kdf):
         functions = ['max', 'min', 'mean', 'sum']
         for funcname in functions:
-            self.assertEqual(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)())
+            self.assert_eq(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)())
             self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)())
 
         functions = ['std', 'var']
         for funcname in functions:
-            self.assertAlmostEqual(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)())
-            self.assertPandasAlmostEqual(getattr(kdf, funcname)(), getattr(pdf, funcname)())
+            self.assert_eq(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)(), almost=True)
+            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)(), almost=True)
 
         # NOTE: To test skew and kurt, just make sure they run.
         #       The numbers are different in spark and pandas.
@@ -44,6 +40,19 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         for funcname in functions:
             getattr(kdf.A, funcname)()
             getattr(kdf, funcname)()
+
+    def test_stat_functions(self):
+        pdf = pd.DataFrame({'A': [1, 2, 3, 4],
+                            'B': [1.0, 2.1, 3, 4]})
+        kdf = koalas.from_pandas(pdf)
+        self._test_stat_functions(pdf, kdf)
+
+    def test_stat_functions_multiindex_column(self):
+        arrays = [np.array(['A', 'A', 'B', 'B']),
+                  np.array(['one', 'two', 'one', 'two'])]
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        kdf = koalas.from_pandas(pdf)
+        self._test_stat_functions(pdf, kdf)
 
     def test_abs(self):
         pdf = pd.DataFrame({'A': [1, -2, 3, -4, 5],
