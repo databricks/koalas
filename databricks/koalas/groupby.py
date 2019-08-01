@@ -388,7 +388,7 @@ class GroupBy(object):
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
         sdf = sdf.groupby(*groupkey_cols).count()
-        if len(self._agg_columns) > 0:
+        if len(self._agg_columns) > 0 and self._have_agg_columns:
             name = self._agg_columns[0].name
             sdf = sdf.withColumnRenamed('count', name)
         else:
