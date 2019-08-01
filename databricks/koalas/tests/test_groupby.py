@@ -127,6 +127,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = koalas.DataFrame(pdf)
         self.assert_eq(kdf.groupby("A").size().sort_index(),
                        pdf.groupby("A").size().sort_index())
+        self.assert_eq(kdf.groupby("A")['B'].size().sort_index(),
+                       pdf.groupby("A")['B'].size().sort_index())
         self.assert_eq(kdf.groupby(['A', 'B']).size().sort_index(),
                        pdf.groupby(['A', 'B']).size().sort_index())
 
