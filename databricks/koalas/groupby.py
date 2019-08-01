@@ -388,8 +388,13 @@ class GroupBy(object):
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
         sdf = sdf.groupby(*groupkey_cols).count()
+        if len(self._agg_columns) > 0:
+            name = self._agg_columns[0].name
+            sdf = sdf.withColumnRenamed('count', name)
+        else:
+            name = 'count'
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=['count'],
+                                  data_columns=name,
                                   index_map=[('__index_level_{}__'.format(i), s.name)
                                              for i, s in enumerate(groupkeys)])
         return Series(internal, anchor=DataFrame(internal))
@@ -675,6 +680,7 @@ class DataFrameGroupBy(GroupBy):
             groupkey_names = set(s.name for s in self._groupkeys)
             agg_columns = [col for col in self._kdf._internal.data_columns
                            if col not in groupkey_names]
+            self._is_agg_columns = False
         self._agg_columns = [kdf[col] for col in agg_columns]
 
     def __getattr__(self, item: str) -> Any:
