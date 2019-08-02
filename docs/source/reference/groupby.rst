@@ -37,6 +37,7 @@ Computations / Descriptive Stats
    GroupBy.max
    GroupBy.mean
    GroupBy.min
+   GroupBy.rank
    GroupBy.std
    GroupBy.sum
    GroupBy.var

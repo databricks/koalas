@@ -2442,6 +2442,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2  2.0  2.0
         3  3.0  1.0
         """
+        return self._rank(method, ascending)
+
+    def _rank(self, method='average', ascending=True, part_cols=()):
         if method not in ['average', 'min', 'max', 'first', 'dense']:
             msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
             raise ValueError(msg)
@@ -2458,11 +2461,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         column_name = self.name
 
         if method == 'first':
-            window = Window.orderBy(asc_func(column_name), asc_func(index_column))\
-                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            window = Window.orderBy(
+                asc_func(column_name), asc_func(index_column)
+            ).partitionBy(*part_cols).rowsBetween(Window.unboundedPreceding, Window.currentRow)
             scol = F.row_number().over(window)
         elif method == 'dense':
-            window = Window.orderBy(asc_func(column_name))\
+            window = Window.orderBy(asc_func(column_name)).partitionBy(*part_cols) \
                 .rowsBetween(Window.unboundedPreceding, Window.currentRow)
             scol = F.dense_rank().over(window)
         else:
@@ -2472,13 +2476,15 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 stat_func = F.min
             elif method == 'max':
                 stat_func = F.max
-            window1 = Window.orderBy(asc_func(column_name))\
-                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
-            window2 = Window.partitionBy(column_name)\
-                .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+            window1 = Window.orderBy(
+                asc_func(column_name)
+            ).partitionBy(*part_cols).rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            window2 = Window.partitionBy(
+                *[column_name] + part_cols
+            ).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
             scol = stat_func(F.row_number().over(window1)).over(window2)
-        return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)\
-            .astype(np.float64)
+        kser = Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
+        return kser.astype(np.float64)
 
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
         return _col(self.to_dataframe().describe(percentiles))
