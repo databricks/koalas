@@ -2172,7 +2172,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame({'a': [1, 1, 1, 3],'b': [1, 1, 1, 4], 'c': [1, 1, 1, 5]},
+        >>> df = ks.DataFrame({'a': [1, 1, 1, 3], 'b': [1, 1, 1, 4], 'c': [1, 1, 1, 5]},
         ...                   columns = ['a', 'b', 'c'])
         >>> df
            a  b  c
@@ -2218,23 +2218,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf
         index = self._internal.index_columns[0]
+        if len(self._internal.index_names) > 0:
+            name = self._internal.index_names[0]
+        else:
+            name = 'duplicated'
 
         if keep == 'first':
-            tmp = sdf.groupby(subset).agg(F.min(index).alias(index)).withColumn('duplicated',
-                                                                                F.lit(False))
+            tmp = sdf.groupby(subset).agg(F.min(index).alias(index)).withColumn(name, F.lit(False))
             sdf = sdf.join(tmp, [index] + subset, 'left')
         elif keep == 'last':
-            tmp = sdf.groupby(subset).agg(F.max(index).alias(index)).withColumn('duplicated',
-                                                                                F.lit(False))
+            tmp = sdf.groupby(subset).agg(F.max(index).alias(index)).withColumn(name, F.lit(False))
             sdf = sdf.join(tmp, [index] + subset, 'left')
         elif not keep:
-            tmp = sdf.groupby(subset).agg((F.count('*') > 1).alias('duplicated'))
+            print(sdf.columns)
+            tmp = sdf.groupby(subset).agg((F.count('*') > 1).alias(name))
             sdf = sdf.join(tmp, subset, 'left')
         else:
             raise ValueError("keep only support 'first', 'last' and False")
 
-        sdf = sdf.fillna(True, subset='duplicated').select([index] + ['duplicated'])
-        internal = _InternalFrame(sdf=sdf, data_columns=['duplicated'], index_map=[(index, None)])
+        sdf = sdf.fillna(True, subset=name).select([index] + [name])
+        internal = _InternalFrame(sdf=sdf, data_columns=[name],
+                                  index_map=self._internal.index_map)
         kdf = DataFrame(internal)
         from databricks.koalas.series import _col
         return _col(kdf)
