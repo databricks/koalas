@@ -388,16 +388,16 @@ class GroupBy(object):
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
         sdf = sdf.groupby(*groupkey_cols).count()
-        if len(self._agg_columns) > 0 and self._have_agg_columns:
+        if (len(self._agg_columns) > 0) and (self._have_agg_columns):
             name = self._agg_columns[0].name
             sdf = sdf.withColumnRenamed('count', name)
         else:
             name = 'count'
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=name,
+                                  data_columns=[name],
                                   index_map=[('__index_level_{}__'.format(i), s.name)
                                              for i, s in enumerate(groupkeys)])
-        return Series(internal, anchor=DataFrame(internal))
+        return _col(DataFrame(internal))
 
     # TODO: Series support is not implemented yet.
     def apply(self, func):
@@ -675,12 +675,13 @@ class DataFrameGroupBy(GroupBy):
     def __init__(self, kdf: DataFrame, by: List[Series], agg_columns: List[str] = None):
         self._kdf = kdf
         self._groupkeys = by
+        self._have_agg_columns = True
 
         if agg_columns is None:
             groupkey_names = set(s.name for s in self._groupkeys)
             agg_columns = [col for col in self._kdf._internal.data_columns
                            if col not in groupkey_names]
-            self._is_agg_columns = False
+            self._have_agg_columns = False
         self._agg_columns = [kdf[col] for col in agg_columns]
 
     def __getattr__(self, item: str) -> Any:
@@ -705,6 +706,7 @@ class SeriesGroupBy(GroupBy):
     def __init__(self, ks: Series, by: List[Series]):
         self._ks = ks
         self._groupkeys = by
+        self._have_agg_columns = True
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeSeriesGroupBy, item):
