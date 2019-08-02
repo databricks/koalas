@@ -363,6 +363,61 @@ class GroupBy(object):
             lambda col: F.max(F.coalesce(col.cast('boolean'), F.lit(False))),
             only_numeric=False)
 
+    # TODO: groupby multiply columuns should be implemented.
+    def size(self):
+        """
+        Compute group sizes.
+
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2, 2, 3, 3, 3],
+        ...                    'B': [1, 1, 2, 3, 3, 3]},
+        ...                   columns=['A', 'B'])
+        >>> df
+           A  B
+        0  1  1
+        1  2  1
+        2  2  2
+        3  3  3
+        4  3  3
+        5  3  3
+
+        >>> df.groupby('A').size().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        A
+        1  1
+        2  2
+        3  3
+        Name: count, dtype: int64
+
+        >>> df.groupby(['A', 'B']).size().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        A  B
+        1  1    1
+        2  1    1
+           2    1
+        3  3    3
+        Name: count, dtype: int64
+        """
+        groupkeys = self._groupkeys
+        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+                         for i, s in enumerate(groupkeys)]
+        sdf = self._kdf._sdf
+        sdf = sdf.groupby(*groupkey_cols).count()
+        if (len(self._agg_columns) > 0) and (self._have_agg_columns):
+            name = self._agg_columns[0].name
+            sdf = sdf.withColumnRenamed('count', name)
+        else:
+            name = 'count'
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[name],
+                                  index_map=[('__index_level_{}__'.format(i), s.name)
+                                             for i, s in enumerate(groupkeys)])
+        return _col(DataFrame(internal))
+
     # TODO: Series support is not implemented yet.
     def apply(self, func):
         """
@@ -657,11 +712,13 @@ class DataFrameGroupBy(GroupBy):
     def __init__(self, kdf: DataFrame, by: List[Series], agg_columns: List[str] = None):
         self._kdf = kdf
         self._groupkeys = by
+        self._have_agg_columns = True
 
         if agg_columns is None:
             groupkey_names = set(s.name for s in self._groupkeys)
             agg_columns = [col for col in self._kdf._internal.data_columns
                            if col not in groupkey_names]
+            self._have_agg_columns = False
         self._agg_columns = [kdf[col] for col in agg_columns]
 
     def __getattr__(self, item: str) -> Any:
@@ -686,6 +743,7 @@ class SeriesGroupBy(GroupBy):
     def __init__(self, ks: Series, by: List[Series]):
         self._ks = ks
         self._groupkeys = by
+        self._have_agg_columns = True
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeSeriesGroupBy, item):
