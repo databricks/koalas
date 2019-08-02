@@ -670,10 +670,10 @@ class GroupBy(object):
                 .drop('count')
 
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=agg_column,
+                                  data_columns=[agg_column],
                                   index_map=[('__index_level_{}__'.format(i), s.name)
                                              for i, s in enumerate(groupkeys)])
-        return Series(internal, anchor=DataFrame(internal))
+        return _col(DataFrame(internal))
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
         groupkeys = self._groupkeys
