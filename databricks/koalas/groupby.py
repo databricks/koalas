@@ -633,13 +633,14 @@ class GroupBy(object):
         3  3    3
         Name: B, dtype: int64
 
-        >>> df.groupby('A')['B'].value_counts(normalize=True) # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby('A')['B'].value_counts(normalize=True).sort_index()
+        ...                                # doctest: +NORMALIZE_WHITESPACE
         A  B
-        1  1      1
+        1  1    1.0
         2  1    0.5
            2    0.5
-        3  3      1
-        Name: B, dtype: int64
+        3  3    1.0
+        Name: B, dtype: float64
         """
         if bins is not None:
             raise NotImplementedError("value_counts currently does not support bins")

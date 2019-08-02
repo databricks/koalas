@@ -130,7 +130,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = koalas.DataFrame(pdf)
         self.assert_eq(repr(kdf.groupby("A")['B'].value_counts().sort_index()),
                        repr(pdf.groupby("A")['B'].value_counts().sort_index()))
-
         self.assert_eq(repr(kdf.groupby("A")['B']
                             .value_counts(normalize=True, sort=True, ascending=False).sort_index()),
                        repr(pdf.groupby("A")['B']
