@@ -3020,11 +3020,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         We can also propagate non-null values forward or backward.
 
         >>> df.fillna(method='ffill')
-             A    B    C    D
-        0  NaN  2.0  NaN  0.0
-        1  3.0  4.0  NaN  1.0
-        2  3.0  4.0  NaN  5.0
-        3  3.0  3.0  1.0  4.0
+             A    B    C  D
+        0  NaN  2.0  NaN  0
+        1  3.0  4.0  NaN  1
+        2  3.0  4.0  NaN  5
+        3  3.0  3.0  1.0  4
 
         Replace all NaN elements in column 'A', 'B', 'C', and 'D', with 0, 1,
         2, and 3 respectively.
@@ -3063,7 +3063,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             for column in self._internal.data_columns:
                 applied.append(self[column].fillna(value=value, method=method,
                                                    axis=axis, limit=limit))
-
             sdf = self._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
             internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])

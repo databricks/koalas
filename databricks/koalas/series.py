@@ -1248,6 +1248,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         4       c
         Name: x, dtype: object
         """
+        if self.isnull().sum() == 0:
+            if inplace:
+                return
+            else:
+                return self
         if axis is None:
             axis = 0
         if not (axis == 0 or axis == "index"):
