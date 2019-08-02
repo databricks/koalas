@@ -96,6 +96,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(KeyError, lambda: kdf['z'])
         self.assertRaises(AttributeError, lambda: kdf.z)
 
+        self.assert_eq(kdf[('x',)], pdf[('x',)])
+        self.assert_eq(kdf[('x', 'a')], pdf[('x', 'a')])
+        self.assert_eq(kdf[('x', 'a', '1')], pdf[('x', 'a', '1')])
+
     def test_reset_index_with_multiindex_columns(self):
         index = pd.MultiIndex.from_tuples([('bird', 'falcon'),
                                            ('bird', 'parrot'),
@@ -153,6 +157,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf[['a', 'e']], pdf[['a', 'e']])
         self.assert_eq(kdf[['e', 'a']], pdf[['e', 'a']])
+
+        self.assert_eq(kdf[('a',)], pdf[('a',)])
+        self.assert_eq(kdf[('e', 'g')], pdf[('e', 'g')])
+        self.assert_eq(kdf[('i',)], pdf[('i',)])
+
+        self.assertRaises(KeyError, lambda: kdf[('a', 'b')])
 
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.

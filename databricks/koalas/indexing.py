@@ -417,7 +417,7 @@ class LocIndexer(object):
         column_index = self._kdf._internal.column_index
         if isinstance(cols_sel, str):
             if column_index is not None:
-                return self[rows_sel, [cols_sel]]._get_from_multiindex_column(cols_sel)
+                return self[rows_sel, [cols_sel]]._get_from_multiindex_column((cols_sel,))
             else:
                 cols_sel = _make_col(cols_sel)
         elif isinstance(cols_sel, Series):

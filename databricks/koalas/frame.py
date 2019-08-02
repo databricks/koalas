@@ -6217,35 +6217,46 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise TypeError("Must pass either `items`, `like`, or `regex`")
 
     def _get_from_multiindex_column(self, key):
-        columns = [(column, idx[1:]) for column, idx
-                   in zip(self._internal.data_columns, self._internal.column_index)
-                   if idx[0] == key]
-        if len(columns) == 0:
-            raise KeyError(key)
+        """ Select columns from multi-index columns.
+
+        :param key: the multi-index column keys represented by tuple
+        :return: DataFrame or Series
+        """
+        from databricks.koalas.series import Series
+        assert isinstance(key, tuple)
+        columns = list(zip(self._internal.data_columns, self._internal.column_index))
+        for k in key:
+            columns = [(column, idx[1:]) for column, idx in columns if idx[0] == k]
+            if len(columns) == 0:
+                raise KeyError(k)
         recursive = False
-        if all([idx[0] == '' for _, idx in columns]):
+        if all(len(idx) == 0 or idx[0] == '' for _, idx in columns):
+            # If idx is empty or the head is '', drill down recursively.
             recursive = True
             for i, (col, idx) in enumerate(columns):
-                columns[i] = (col, tuple([key, *idx[1:]]))
+                columns[i] = (col, tuple([str(key), *idx[1:]]))
         if all(len(idx) == 1 for _, idx in columns):
+            # If len(idx) == 1, then the result is not MultiIndex anymore
             sdf = self._sdf.select(self._internal.index_scols +
                                    [self._internal.scol_for(col).alias(idx[0])
                                     for col, idx in columns])
-            kdf = DataFrame(self._internal.copy(
+            kdf_or_ser = DataFrame(self._internal.copy(
                 sdf=sdf,
                 data_columns=[idx[0] for _, idx in columns],
                 column_index=None))
         else:
+            # Otherwise, the result is still MultiIndex and need to manage column_index.
             sdf = self._sdf.select(self._internal.index_scols +
                                    [self._internal.scol_for(col) for col, _ in columns])
-            kdf = DataFrame(self._internal.copy(
+            kdf_or_ser = DataFrame(self._internal.copy(
                 sdf=sdf,
                 data_columns=[col for col, _ in columns],
                 column_index=[idx for _, idx in columns]))
         if recursive:
-            return kdf._pd_getitem(key)
-        else:
-            return kdf
+            kdf_or_ser = kdf_or_ser._pd_getitem(str(key))
+        if isinstance(kdf_or_ser, Series):
+            kdf_or_ser.name = str(key)
+        return kdf_or_ser
 
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
@@ -6253,14 +6264,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise KeyError("none key")
         if isinstance(key, str):
             if self._internal.column_index is not None:
-                return self._get_from_multiindex_column(key)
+                return self._get_from_multiindex_column((key,))
             else:
                 try:
                     return Series(self._internal.copy(scol=self._internal.scol_for(key)),
                                   anchor=self)
                 except AnalysisException:
                     raise KeyError(key)
-        if np.isscalar(key) or isinstance(key, (tuple, str)):
+        if isinstance(key, tuple):
+            if self._internal.column_index is not None:
+                return self._get_from_multiindex_column(key)
+            else:
+                raise NotImplementedError(key)
+        elif np.isscalar(key):
             raise NotImplementedError(key)
         elif isinstance(key, slice):
             return self.loc[key]
@@ -6343,7 +6359,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if self._internal.column_index is not None:
             try:
-                return self._get_from_multiindex_column(key)
+                return self._get_from_multiindex_column((key,))
             except KeyError:
                 raise AttributeError(
                     "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))
