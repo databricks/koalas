@@ -1085,33 +1085,77 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             repr(pdf2.transpose().sort_index()),
             repr(ks.DataFrame(pdf2).transpose().sort_index()))
 
+    def _test_cummin(self, pdf, kdf):
+        self.assert_eq(pdf.cummin(), kdf.cummin())
+        self.assert_eq(pdf.cummin(skipna=False), kdf.cummin(skipna=False))
+
     def test_cummin(self):
         pdf = pd.DataFrame([
             [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.cummin(), kdf.cummin())
-        self.assert_eq(pdf.cummin(skipna=False), kdf.cummin(skipna=False))
+        self._test_cummin(pdf, kdf)
+
+    def test_cummin_multiindex_columns(self):
+        arrays = [np.array(['A', 'A', 'B', 'B']),
+                  np.array(['one', 'two', 'one', 'two'])]
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        pdf.at['B', ('A', 'two')] = None
+        kdf = ks.from_pandas(pdf)
+        self._test_cummin(pdf, kdf)
+
+    def _test_cummax(self, pdf, kdf):
+        self.assert_eq(pdf.cummax(), kdf.cummax())
+        self.assert_eq(pdf.cummax(skipna=False), kdf.cummax(skipna=False))
 
     def test_cummax(self):
         pdf = pd.DataFrame([
             [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.cummax(), kdf.cummax())
-        self.assert_eq(pdf.cummax(skipna=False), kdf.cummax(skipna=False))
+        self._test_cummax(pdf, kdf)
+
+    def test_cummax_multiindex_columns(self):
+        arrays = [np.array(['A', 'A', 'B', 'B']),
+                  np.array(['one', 'two', 'one', 'two'])]
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        pdf.at['B', ('A', 'two')] = None
+        kdf = ks.from_pandas(pdf)
+        self._test_cummax(pdf, kdf)
+
+    def _test_cumsum(self, pdf, kdf):
+        self.assert_eq(pdf.cumsum(), kdf.cumsum())
+        self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
 
     def test_cumsum(self):
         pdf = pd.DataFrame([
             [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.cumsum(), kdf.cumsum())
-        self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
+        self._test_cumsum(pdf, kdf)
+
+    def test_cumsum_multiindex_columns(self):
+        arrays = [np.array(['A', 'A', 'B', 'B']),
+                  np.array(['one', 'two', 'one', 'two'])]
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        pdf.at['B', ('A', 'two')] = None
+        kdf = ks.from_pandas(pdf)
+        self._test_cumsum(pdf, kdf)
+
+    def _test_cumprod(self, pdf, kdf):
+        self.assertEqual(repr(pdf.cumprod()), repr(kdf.cumprod()))
+        self.assertEqual(repr(pdf.cumprod(skipna=False)), repr(kdf.cumprod(skipna=False)))
 
     def test_cumprod(self):
         pdf = pd.DataFrame([
             [2.0, 1.0], [5, None], [1.0, 1.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         kdf = ks.from_pandas(pdf)
-        self.assertEqual(repr(pdf.cumprod()), repr(kdf.cumprod()))
-        self.assertEqual(repr(pdf.cumprod(skipna=False)), repr(kdf.cumprod(skipna=False)))
+        self._test_cumprod(pdf, kdf)
+
+    def test_cumprod_multiindex_columns(self):
+        arrays = [np.array(['A', 'A', 'B', 'B']),
+                  np.array(['one', 'two', 'one', 'two'])]
+        pdf = pd.DataFrame(np.random.rand(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        pdf.at['B', ('A', 'two')] = None
+        kdf = ks.from_pandas(pdf)
+        self._test_cumprod(pdf, kdf)
 
     def test_reindex(self):
         index = ['A', 'B', 'C', 'D', 'E']
