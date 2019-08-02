@@ -618,7 +618,7 @@ class GroupBy(object):
         Examples
         --------
 
-        >>> df = pd.DataFrame({'id': ['spam', 'egg', 'egg', 'spam',
+        >>> df = ks.DataFrame({'id': ['spam', 'egg', 'egg', 'spam',
         ...                           'ham', 'ham'],
         ...                    'value1': [1, 5, 5, 2, 5, 5],
         ...                    'value2': list('abbaxy')})
@@ -631,7 +631,7 @@ class GroupBy(object):
         4   ham       5      x
         5   ham       5      y
 
-        >>> df.groupby('id').nunique()
+        >>> df.groupby('id').nunique() # doctest: +NORMALIZE_WHITESPACE
               id  value1  value2
         id
         egg    1       1       1
@@ -641,7 +641,7 @@ class GroupBy(object):
         if not dropna:
             raise ValueError('nunique do not support `drop=False` now')
         if not self._have_agg_columns:
-            self._agg_columns = self._agg_columns + self._groupkeys
+            self._agg_columns = self._groupkeys + self._agg_columns
         return self._reduce_for_stat_function(F.countDistinct, only_numeric=False)
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
@@ -681,11 +681,13 @@ class DataFrameGroupBy(GroupBy):
     def __init__(self, kdf: DataFrame, by: List[Series], agg_columns: List[str] = None):
         self._kdf = kdf
         self._groupkeys = by
+        self._have_agg_columns = True
 
         if agg_columns is None:
             groupkey_names = set(s.name for s in self._groupkeys)
             agg_columns = [col for col in self._kdf._internal.data_columns
                            if col not in groupkey_names]
+            self._have_agg_columns = False
         self._agg_columns = [kdf[col] for col in agg_columns]
 
     def __getattr__(self, item: str) -> Any:
@@ -710,6 +712,7 @@ class SeriesGroupBy(GroupBy):
     def __init__(self, ks: Series, by: List[Series]):
         self._ks = ks
         self._groupkeys = by
+        self._have_agg_columns = True
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeSeriesGroupBy, item):
