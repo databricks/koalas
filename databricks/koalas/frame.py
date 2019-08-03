@@ -5455,7 +5455,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("Index must be set.")
 
         applied = []
-        for column in self._internal.data_columns:
+        for column in self.columns:
             applied.append(getattr(self[column], func)(skipna))
 
         sdf = self._sdf.select(
