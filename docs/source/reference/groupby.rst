@@ -36,3 +36,4 @@ Computations / Descriptive Stats
    GroupBy.sum
    GroupBy.var
    GroupBy.nunique
+   GroupBy.size

@@ -50,6 +50,17 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             """)
 
     @property
+    def csv_text_2(self):
+        return normalize_text(
+            """
+            A,B
+            item1,1
+            item2,1,2
+            item3,1,2,3,4
+            item4,1
+            """)
+
+    @property
     def csv_text_with_comments(self):
         return normalize_text(
             """
@@ -101,14 +112,20 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
 
             self.assertRaisesRegex(ValueError, 'non-unique',
                                    lambda: koalas.read_csv(fn, names=['n', 'n']))
-            self.assertRaisesRegex(ValueError, 'Names do not match.*3',
+            self.assertRaisesRegex(ValueError, 'does not match the number.*3',
                                    lambda: koalas.read_csv(fn, names=['n', 'a', 'b']))
-            self.assertRaisesRegex(ValueError, 'Names do not match.*3',
+            self.assertRaisesRegex(ValueError, 'does not match the number.*3',
                                    lambda: koalas.read_csv(fn, header=0, names=['n', 'a', 'b']))
             self.assertRaisesRegex(ValueError, 'Usecols do not match.*3',
                                    lambda: koalas.read_csv(fn, usecols=[1, 3]))
             self.assertRaisesRegex(ValueError, 'Usecols do not match.*col',
                                    lambda: koalas.read_csv(fn, usecols=['amount', 'col']))
+
+    def test_read_with_spark_schema(self):
+        with self.csv_file(self.csv_text_2) as fn:
+            actual = koalas.read_csv(fn, names="A string, B string, C long, D long, E long")
+            expected = pd.read_csv(fn, names=['A', 'B', 'C', 'D', 'E'])
+            self.assertEqual(repr(expected), repr(actual))
 
     def test_read_csv_with_comment(self):
         with self.csv_file(self.csv_text_with_comments) as fn:

@@ -79,7 +79,6 @@ class _MissingPandasLikeDataFrameGroupBy(object):
     rolling = unsupported_function('rolling')
     sem = unsupported_function('sem')
     shift = unsupported_function('shift')
-    size = unsupported_function('size')
     tail = unsupported_function('tail')
 
 
@@ -138,6 +137,5 @@ class _MissingPandasLikeSeriesGroupBy(object):
     rolling = unsupported_function('rolling')
     sem = unsupported_function('sem')
     shift = unsupported_function('shift')
-    size = unsupported_function('size')
     tail = unsupported_function('tail')
     value_counts = unsupported_function('value_counts')
