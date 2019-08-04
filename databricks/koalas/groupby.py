@@ -602,9 +602,19 @@ class GroupBy(object):
             sdf=sdf, data_columns=return_schema.fieldNames(), index_map=[])  # index is lost.
         return DataFrame(internal)
 
-    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+    # TODO: add bins, normalize parameter
+    def value_counts(self, sort=None, ascending=None, dropna=True):
         """
         Compute group sizes.
+
+        Parameters
+        ----------
+        sort : boolean, default None
+            Sort by frequencies.
+        ascending : boolean, default False
+            Sort in ascending order.
+        dropna : boolean, default True
+            Don't include counts of NaN.
 
         See Also
         --------
@@ -632,42 +642,19 @@ class GroupBy(object):
            2    1
         3  3    3
         Name: B, dtype: int64
-
-        >>> df.groupby('A')['B'].value_counts(normalize=True).sort_index()
-        ...                                # doctest: +NORMALIZE_WHITESPACE
-        A  B
-        1  1    1.0
-        2  1    0.5
-           2    0.5
-        3  3    1.0
-        Name: B, dtype: float64
         """
-        if bins is not None:
-            raise NotImplementedError("value_counts currently does not support bins")
-
         groupkeys = self._groupkeys + self._agg_columns
         groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
         agg_column = self._agg_columns[0].name
-        sdf = sdf.groupby(*groupkey_cols).count().withColumnRenamed('count', agg_column)\
-            .sort(*groupkey_cols)
+        sdf = sdf.groupby(*groupkey_cols).count().withColumnRenamed('count', agg_column)
 
         if sort:
             if ascending:
-                sdf = sdf.orderBy(F.col(agg_column))
+                sdf = sdf.orderBy(F.col(agg_column).asc())
             else:
                 sdf = sdf.orderBy(F.col(agg_column).desc())
-
-        if normalize:
-            nor_groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
-                                 for i, s in enumerate(self._groupkeys)]
-            nor_groupkey_names = ['__index_level_{}__'.format(i)
-                                  for i, s in enumerate(self._groupkeys)]
-            sum = self._kdf._sdf.groupby(nor_groupkey_cols).count()
-            sdf = sdf.join(sum, on=nor_groupkey_names, how='left')\
-                .withColumn(agg_column, F.col(agg_column) / F.col('count'))\
-                .drop('count')
 
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[agg_column],

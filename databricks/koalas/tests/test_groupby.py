@@ -131,9 +131,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(repr(kdf.groupby("A")['B'].value_counts().sort_index()),
                        repr(pdf.groupby("A")['B'].value_counts().sort_index()))
         self.assert_eq(repr(kdf.groupby("A")['B']
-                            .value_counts(normalize=True, sort=True, ascending=False).sort_index()),
+                            .value_counts(sort=True, ascending=False).sort_index()),
                        repr(pdf.groupby("A")['B']
-                            .value_counts(normalize=True, sort=True, ascending=False).sort_index()))
+                            .value_counts(sort=True, ascending=False).sort_index()))
 
     def test_missing(self):
         kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
