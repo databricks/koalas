@@ -100,6 +100,26 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[('x', 'a')], pdf[('x', 'a')])
         self.assert_eq(kdf[('x', 'a', '1')], pdf[('x', 'a', '1')])
 
+    def test_dataframe_multiindex_names_level(self):
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Y', 'D')],
+                                            names=['lvl_1', 'lvl_2'])
+        kdf = ks.DataFrame([[1, 2, 3, 4],
+                            [5, 6, 7, 8],
+                            [9, 10, 11, 12],
+                            [13, 14, 15, 16],
+                            [17, 18, 19, 20]], columns=columns)
+
+        pdf = pd.DataFrame([[1, 2, 3, 4],
+                            [5, 6, 7, 8],
+                            [9, 10, 11, 12],
+                            [13, 14, 15, 16],
+                            [17, 18, 19, 20]], columns=columns)
+
+        assert (kdf.columns.names == pdf.columns.names)
+
+        kdf1 = ks.from_pandas(pdf)
+        assert (kdf1.columns.names == pdf.columns.names)
+
     def test_reset_index_with_multiindex_columns(self):
         index = pd.MultiIndex.from_tuples([('bird', 'falcon'),
                                            ('bird', 'parrot'),
