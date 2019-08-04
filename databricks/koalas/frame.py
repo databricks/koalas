@@ -3059,6 +3059,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.fillna(value)
             internal = self._internal.copy(sdf=sdf)
         else:
+            if method not in ['pad', 'ffill', 'backfill', 'bfill']:
+                raise ValueError("Expecting pad, ffill, backfill or bfill.")
             applied = []
             for column in self._internal.data_columns:
                 applied.append(self[column].fillna(value=value, method=method,
