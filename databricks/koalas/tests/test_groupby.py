@@ -126,7 +126,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby("a").nunique())
         self.assert_eq(kdf.groupby("a")['b'].nunique(),
                        pdf.groupby("a")['b'].nunique())
-        with self.assertRaisesRegex(ValueError, 'nunique do not support `drop=False` now'):
+        with self.assertRaisesRegex(ValueError, 'nunique do not support `dropna=False` now'):
             self.assert_eq(kdf.groupby("a")['b'].nunique(dropna=False))
 
     def test_missing(self):

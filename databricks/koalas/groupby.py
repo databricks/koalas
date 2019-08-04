@@ -639,8 +639,8 @@ class GroupBy(object):
         spam   1       2       1
         """
         if not dropna:
-            raise ValueError('nunique do not support `drop=False` now')
-        if not self._have_agg_columns:
+            raise ValueError('nunique do not support `dropna=False` now')
+        if isinstance(self, DataFrameGroupBy):
             self._agg_columns = self._groupkeys + self._agg_columns
         return self._reduce_for_stat_function(F.countDistinct, only_numeric=False)
 
@@ -681,13 +681,11 @@ class DataFrameGroupBy(GroupBy):
     def __init__(self, kdf: DataFrame, by: List[Series], agg_columns: List[str] = None):
         self._kdf = kdf
         self._groupkeys = by
-        self._have_agg_columns = True
 
         if agg_columns is None:
             groupkey_names = set(s.name for s in self._groupkeys)
             agg_columns = [col for col in self._kdf._internal.data_columns
                            if col not in groupkey_names]
-            self._have_agg_columns = False
         self._agg_columns = [kdf[col] for col in agg_columns]
 
     def __getattr__(self, item: str) -> Any:
@@ -712,7 +710,6 @@ class SeriesGroupBy(GroupBy):
     def __init__(self, ks: Series, by: List[Series]):
         self._ks = ks
         self._groupkeys = by
-        self._have_agg_columns = True
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeSeriesGroupBy, item):
