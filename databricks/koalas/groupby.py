@@ -710,6 +710,13 @@ class GroupBy(object):
         egg    1       1       1
         ham    1       1       2
         spam   1       2       1
+
+        >>> df.groupby('id')['value1'].nunique() # doctest: +NORMALIZE_WHITESPACE
+        id
+        egg     1
+        ham     1
+        spam    2
+        Name: value1, dtype: int64
         """
         if not dropna:
             raise ValueError('nunique do not support `dropna=False` now')
