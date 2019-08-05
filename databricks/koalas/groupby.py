@@ -834,6 +834,70 @@ class GroupBy(object):
             sdf=sdf, data_columns=return_schema.fieldNames(), index_map=[])  # index is lost.
         return DataFrame(internal)
 
+    def rank(self, method='average', ascending=True):
+        """
+        Provide the rank of values within each group.
+
+        Parameters
+        ----------
+        method : {'average', 'min', 'max', 'first', 'dense'}, default 'average'
+            * average: average rank of group
+            * min: lowest rank in group
+            * max: highest rank in group
+            * first: ranks assigned in order they appear in the array
+            * dense: like 'min', but rank always increases by 1 between groups
+        ascending : boolean, default True
+            False for ranks by high (1) to low (N)
+
+        Returns
+        -------
+        DataFrame with ranking of values within each group
+
+        Examples
+        -------
+
+        >>> df = ks.DataFrame({
+        ...     'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+        ...     'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
+        >>> df
+           a  b
+        0  1  1
+        1  1  2
+        2  1  2
+        3  2  2
+        4  2  3
+        5  2  3
+        6  3  3
+        7  3  4
+        8  3  4
+
+        >>> df.groupby("a").rank()
+             b
+        0  1.0
+        1  2.5
+        2  2.5
+        3  1.0
+        4  2.5
+        5  2.5
+        6  1.0
+        7  2.5
+        8  2.5
+
+        >>> df.b.groupby(df.a).rank(method='max')  # doctest: +NORMALIZE_WHITESPACE
+        0    1.0
+        1    3.0
+        2    3.0
+        3    1.0
+        4    3.0
+        5    3.0
+        6    1.0
+        7    3.0
+        8    3.0
+        Name: b, dtype: float64
+
+        """
+        return self._rank(method, ascending)
+
     # TODO: Series support is not implemented yet.
     def transform(self, func):
         """
@@ -1085,6 +1149,21 @@ class DataFrameGroupBy(GroupBy):
             # TODO: check that item is a list of strings
             return DataFrameGroupBy(self._kdf, self._groupkeys, item)
 
+    def _rank(self, *args, **kwargs):
+        applied = []
+        kdf = self._kdf
+        groupkey_columns = [s.name for s in self._groupkeys]
+
+        for column in kdf._internal.data_columns:
+            # pandas groupby.rank ignores the grouping key itself.
+            if column not in groupkey_columns:
+                applied.append(kdf[column].groupby(self._groupkeys)._rank(*args, **kwargs))
+
+        sdf = kdf._sdf.select([c._scol for c in applied])
+        internal = kdf._internal.copy(
+            sdf=sdf, data_columns=[c.name for c in applied], index_map=[])  # index is lost.)
+        return DataFrame(internal)
+
     def _cum(self, func):
         # This is used for cummin, cummax, cumxum, etc.
         if func == F.min:
@@ -1133,6 +1212,10 @@ class SeriesGroupBy(GroupBy):
         groupkey_scols = [s._scol for s in self._groupkeys]
         return Series._cum(self._ks, func, True, part_cols=groupkey_scols)
 
+    def _rank(self, *args, **kwargs):
+        groupkey_scols = [s._scol for s in self._groupkeys]
+        return Series._rank(self._ks, *args, **kwargs, part_cols=groupkey_scols)
+
     @property
     def _kdf(self) -> DataFrame:
         return self._ks._kdf
@@ -1162,3 +1245,10 @@ class SeriesGroupBy(GroupBy):
 
     def filter(self, func):
         raise NotImplementedError()
+
+    def rank(self, method='average', ascending=True):
+        kdf = super(SeriesGroupBy, self).rank(method, ascending).to_dataframe()
+        return _col(DataFrame(kdf._internal.copy(
+            sdf=kdf._sdf.select(kdf._internal.data_scols), index_map=[])))  # index is lost.
+
+    rank.__doc__ = GroupBy.rank.__doc__
