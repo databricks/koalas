@@ -130,4 +130,3 @@ class _MissingPandasLikeSeriesGroupBy(object):
     sem = unsupported_function('sem')
     shift = unsupported_function('shift')
     tail = unsupported_function('tail')
-    value_counts = unsupported_function('value_counts')

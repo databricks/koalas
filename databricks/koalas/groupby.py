@@ -963,6 +963,66 @@ class GroupBy(object):
             sdf=sdf, data_columns=return_schema.fieldNames(), index_map=[])  # index is lost.
         return DataFrame(internal)
 
+    # TODO: add bins, normalize parameter
+    def value_counts(self, sort=None, ascending=None, dropna=True):
+        """
+        Compute group sizes.
+
+        Parameters
+        ----------
+        sort : boolean, default None
+            Sort by frequencies.
+        ascending : boolean, default False
+            Sort in ascending order.
+        dropna : boolean, default True
+            Don't include counts of NaN.
+
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2, 2, 3, 3, 3],
+        ...                    'B': [1, 1, 2, 3, 3, 3]},
+        ...                   columns=['A', 'B'])
+        >>> df
+           A  B
+        0  1  1
+        1  2  1
+        2  2  2
+        3  3  3
+        4  3  3
+        5  3  3
+
+        >>> df.groupby('A')['B'].value_counts().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        A  B
+        1  1    1
+        2  1    1
+           2    1
+        3  3    3
+        Name: B, dtype: int64
+        """
+        groupkeys = self._groupkeys + self._agg_columns
+        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+                         for i, s in enumerate(groupkeys)]
+        sdf = self._kdf._sdf
+        agg_column = self._agg_columns[0].name
+        sdf = sdf.groupby(*groupkey_cols).count().withColumnRenamed('count', agg_column)
+
+        if sort:
+            if ascending:
+                sdf = sdf.orderBy(F.col(agg_column).asc())
+            else:
+                sdf = sdf.orderBy(F.col(agg_column).desc())
+
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[agg_column],
+                                  index_map=[('__index_level_{}__'.format(i), s.name)
+                                             for i, s in enumerate(groupkeys)])
+        return _col(DataFrame(internal))
+
     def _reduce_for_stat_function(self, sfun, only_numeric):
         groupkeys = self._groupkeys
         groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
