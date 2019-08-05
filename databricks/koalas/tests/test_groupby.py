@@ -125,8 +125,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby("a").agg({"b": "nunique"}))
         self.assert_eq(kdf.groupby("a").nunique(),
                        pdf.groupby("a").nunique())
-        self.assert_eq(kdf.groupby("a")['b'].nunique(),
-                       pdf.groupby("a")['b'].nunique())
+        self.assert_eq(repr(kdf.groupby("a")['b'].nunique()),
+                       repr(pdf.groupby("a")['b'].nunique()))
 
     def test_size(self):
         pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
@@ -138,6 +138,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby("A")['B'].size().sort_index())
         self.assert_eq(kdf.groupby(['A', 'B']).size().sort_index(),
                        pdf.groupby(['A', 'B']).size().sort_index())
+
+    def test_diff(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+                            'b': [1, 1, 2, 3, 5, 8],
+                            'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("b").diff().sort_index(),
+                       pdf.groupby("b").diff().sort_index())
+        self.assert_eq(kdf.groupby(['a', 'b']).diff().sort_index(),
+                       pdf.groupby(['a', 'b']).diff().sort_index())
+        self.assert_eq(repr(kdf.groupby(['b'])['a'].diff().sort_index()),
+                       repr(pdf.groupby(['b'])['a'].diff().sort_index()))
 
     def test_missing(self):
         kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})

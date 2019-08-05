@@ -25,6 +25,7 @@ from typing import Any, List
 import numpy as np
 
 from pyspark.sql import functions as F
+from pyspark.sql import Window
 from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
 from pyspark.sql.functions import PandasUDFType, pandas_udf
 
@@ -417,6 +418,81 @@ class GroupBy(object):
                                   index_map=[('__index_level_{}__'.format(i), s.name)
                                              for i, s in enumerate(groupkeys)])
         return _col(DataFrame(internal))
+
+    def diff(self, periods=1):
+        """
+        First discrete difference of element.
+
+        Calculates the difference of a DataFrame element compared with another element in the
+        DataFrame (default is the element in the same column of the previous row).
+
+        .. note:: the current implementation of diff uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        periods : int, default 1
+            Periods to shift for calculating difference, accepts negative values.
+
+        Returns
+        -------
+        diffed : DataFrame or Series
+
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+        ...                    'b': [1, 1, 2, 3, 5, 8],
+        ...                    'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
+        >>> df
+           a  b   c
+        0  1  1   1
+        1  2  1   4
+        2  3  2   9
+        3  4  3  16
+        4  5  5  25
+        5  6  8  36
+
+        >>> df.groupby(['b']).diff()
+             a    c
+        0  NaN  NaN
+        1  1.0  3.0
+        2  NaN  NaN
+        3  NaN  NaN
+        4  NaN  NaN
+        5  NaN  NaN
+
+        Difference with previous column
+
+        >>> df.groupby(['b'])['a'].diff()
+        0    NaN
+        1    1.0
+        2    NaN
+        3    NaN
+        4    NaN
+        5    NaN
+        Name: a, dtype: float64
+        """
+        sdf = self._kdf._sdf
+        index = self._kdf._internal.index_columns[0]
+        for i, s in enumerate(self._agg_columns):
+            window = Window.partitionBy([s._scol for s in self._groupkeys])\
+                .orderBy(index).rowsBetween(-periods, -periods)
+            sdf = sdf.withColumn(s.name, s._scol - F.lag(s._scol, periods).over(window))
+
+        internal = _InternalFrame(sdf=sdf.orderBy(index),
+                                  data_columns=[s.name for s in self._agg_columns],
+                                  index_map=[(index, None)])
+        if isinstance(self, SeriesGroupBy):
+            return _col(DataFrame(internal)).rename(self._agg_columns[0].name)
+        else:
+            return DataFrame(internal)
 
     # TODO: Series support is not implemented yet.
     def apply(self, func):
