@@ -486,7 +486,7 @@ class GroupBy(object):
         >>> df = ks.DataFrame({'A' : ['foo', 'bar', 'foo', 'bar',
         ...                           'foo', 'bar'],
         ...                    'B' : [1, 2, 3, 4, 5, 6],
-        ...                    'C' : [2.0, 5., 8., 1., 2., 9.]})
+        ...                    'C' : [2.0, 5., 8., 1., 2., 9.]}, columns=['A', 'B', 'C'])
         >>> grouped = df.groupby('A')
         >>> grouped.filter(lambda x: x['B'].mean() > 3.)
              A  B    C
