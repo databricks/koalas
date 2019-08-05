@@ -426,11 +426,6 @@ class GroupBy(object):
         Calculates the difference of a DataFrame element compared with another element in the
         DataFrame (default is the element in the same column of the previous row).
 
-        .. note:: the current implementation of diff uses Spark's Window without
-            specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
-
         Parameters
         ----------
         periods : int, default 1
@@ -486,7 +481,7 @@ class GroupBy(object):
                 .orderBy(index).rowsBetween(-periods, -periods)
             sdf = sdf.withColumn(s.name, s._scol - F.lag(s._scol, periods).over(window))
 
-        internal = _InternalFrame(sdf=sdf.orderBy(index),
+        internal = _InternalFrame(sdf=sdf,
                                   data_columns=[s.name for s in self._agg_columns],
                                   index_map=[(index, None)])
         if isinstance(self, SeriesGroupBy):
