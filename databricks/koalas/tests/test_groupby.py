@@ -123,10 +123,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kdf.groupby("a").agg({"b": "nunique"}),
                        pdf.groupby("a").agg({"b": "nunique"}))
-        self.assert_eq(kdf.groupby("a").nunique(),
-                       pdf.groupby("a").nunique())
-        self.assert_eq(repr(kdf.groupby("a")['b'].nunique()),
-                       repr(pdf.groupby("a")['b'].nunique()))
 
     def test_size(self):
         pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
