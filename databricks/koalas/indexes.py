@@ -75,6 +75,21 @@ class Index(IndexOpsMixin):
         """
         return Index(self._kdf, scol)
 
+    @property
+    def size(self) -> int:
+        """
+        Return an int representing the number of elements in this object.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'],
+        ...                   index=list('abcd'))
+        >>> df.index.size
+        4
+        """
+        return len(self._kdf)  # type: ignore
+
     def to_pandas(self) -> pd.Index:
         """
         Return a pandas Series.
@@ -260,6 +275,21 @@ class MultiIndex(Index):
 
     def all(self, *args, **kwargs):
         raise TypeError("cannot perform all with this index type: MultiIndex")
+
+    @property
+    def size(self) -> int:
+        """
+        Return an int representing the number of elements in this object.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'],
+        ...                   index=list('abcd'))
+        >>> df.set_index('dogs', append=True).index.size
+        4
+        """
+        return len(self._kdf)  # type: ignore
 
     @property
     def name(self) -> str:
