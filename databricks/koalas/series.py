@@ -2480,7 +2480,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 asc_func(column_name)
             ).partitionBy(*part_cols).rowsBetween(Window.unboundedPreceding, Window.currentRow)
             window2 = Window.partitionBy(
-                *[column_name] + part_cols
+                *[column_name] + list(part_cols)
             ).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
             scol = stat_func(F.row_number().over(window1)).over(window2)
         kser = Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
