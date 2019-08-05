@@ -28,7 +28,12 @@ Computations / Descriptive Stats
    GroupBy.any
    GroupBy.count
    GroupBy.value_counts
+   GroupBy.cummax
+   GroupBy.cummin
+   GroupBy.cumprod
+   GroupBy.cumsum
    GroupBy.first
+   GroupBy.filter
    GroupBy.last
    GroupBy.max
    GroupBy.mean
