@@ -134,6 +134,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             .value_counts(sort=True, ascending=False).sort_index()),
                        repr(pdf.groupby("A")['B']
                             .value_counts(sort=True, ascending=False).sort_index()))
+
     def test_size(self):
         pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
                             'B': [1, 1, 2, 3, 3, 3]})
