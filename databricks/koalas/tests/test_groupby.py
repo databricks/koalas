@@ -134,6 +134,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             .value_counts(sort=True, ascending=False).sort_index()),
                        repr(pdf.groupby("A")['B']
                             .value_counts(sort=True, ascending=False).sort_index()))
+    def test_size(self):
+        pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
+                            'B': [1, 1, 2, 3, 3, 3]})
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("A").size().sort_index(),
+                       pdf.groupby("A").size().sort_index())
+        self.assert_eq(kdf.groupby("A")['B'].size().sort_index(),
+                       pdf.groupby("A")['B'].size().sort_index())
+        self.assert_eq(kdf.groupby(['A', 'B']).size().sort_index(),
+                       pdf.groupby(['A', 'B']).size().sort_index())
 
     def test_missing(self):
         kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})

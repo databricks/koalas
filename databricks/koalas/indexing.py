@@ -19,6 +19,7 @@ A loc indexer for Koalas DataFrame/Series.
 """
 from functools import reduce
 
+import pandas as pd
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -143,18 +144,28 @@ class AtIndexer(object):
         if len(self._kdf._internal.index_columns) != 1:
             raise ValueError("'.at' only supports indices with level 1 right now")
 
-        column = key[1] if self._ks is None else self._ks.name
+        if self._ks is None:
+            if self._kdf._internal.column_index is not None:
+                column = dict(zip(self._kdf._internal.column_index,
+                                  self._kdf._internal.data_columns)).get(key[1], None)
+                if column is None:
+                    raise KeyError(key[1])
+            else:
+                column = key[1]
+        else:
+            column = self._ks.name
+
         if column is not None and column not in self._kdf._internal.data_columns:
-            raise KeyError("%s" % column)
-        series = self._ks if self._ks is not None else self._kdf[column]
+            raise KeyError(column)
+        sdf = self._ks._kdf._sdf if self._ks is not None else self._kdf._sdf
 
         row = key[0] if self._ks is None else key
-        pdf = (series._kdf._sdf
+        pdf = (sdf
                .where(self._kdf._internal.index_scols[0] == row)
                .select(_make_col(column))
                .toPandas())
         if len(pdf) < 1:
-            raise KeyError("%s" % row)
+            raise KeyError(row)
 
         values = pdf.iloc[:, 0].values
         return values[0] if len(values) == 1 else values
@@ -403,7 +414,13 @@ class LocIndexer(object):
                 raiseNotImplemented("Cannot select with MultiIndex with Spark.")
 
         # make cols_sel a 1-tuple of string if a single string
-        if isinstance(cols_sel, (str, Series)):
+        column_index = self._kdf._internal.column_index
+        if isinstance(cols_sel, str):
+            if column_index is not None:
+                return self[rows_sel, [cols_sel]]._get_from_multiindex_column((cols_sel,))
+            else:
+                cols_sel = _make_col(cols_sel)
+        elif isinstance(cols_sel, Series):
             cols_sel = _make_col(cols_sel)
         elif isinstance(cols_sel, slice) and cols_sel != slice(None):
             raise raiseNotImplemented("Can only select columns either by name or reference or all")
@@ -415,15 +432,27 @@ class LocIndexer(object):
         elif isinstance(cols_sel, spark.Column):
             columns = [cols_sel]
         else:
-            columns = [_make_col(c) for c in cols_sel]
+            if column_index is not None:
+                column_to_index = list(zip(self._kdf._internal.data_columns,
+                                           self._kdf._internal.column_index))
+                columns, column_index = zip(*[(_make_col(column), idx)
+                                              for key in cols_sel
+                                              for column, idx in column_to_index
+                                              if idx[0] == key])
+                columns, column_index = list(columns), list(column_index)
+            else:
+                columns = [_make_col(c) for c in cols_sel]
+
         try:
             kdf = DataFrame(sdf.select(self._kdf._internal.index_scols + columns))
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))
+
         kdf._internal = kdf._internal.copy(
             data_columns=kdf._internal.data_columns[-len(columns):],
-            index_map=self._kdf._internal.index_map)
+            index_map=self._kdf._internal.index_map,
+            column_index=column_index)
         if cols_sel is not None and isinstance(cols_sel, spark.Column):
             from databricks.koalas.series import _col
             return _col(kdf)
@@ -655,9 +684,18 @@ class ILocIndexer(object):
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))
+
+        column_index = self._kdf._internal.column_index
+        if column_index is not None:
+            if cols_sel is not None and isinstance(cols_sel, (Series, int)):
+                column_index = None
+            else:
+                column_index = pd.MultiIndex.from_tuples(column_index)[cols_sel].tolist()
+
         kdf._internal = kdf._internal.copy(
             data_columns=kdf._internal.data_columns[-len(columns):],
-            index_map=self._kdf._internal.index_map)
+            index_map=self._kdf._internal.index_map,
+            column_index=column_index)
         if cols_sel is not None and isinstance(cols_sel, (Series, int)):
             from databricks.koalas.series import _col
             return _col(kdf)
