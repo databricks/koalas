@@ -386,7 +386,7 @@ class _InternalFrame(object):
         if column_index_names is not None and not is_list_like(column_index_names):
             raise ValueError('Column_index_names should be list-like or None for a MultiIndex')
 
-        if is_list_like(column_index_names):
+        if isinstance(column_index_names, list):
             if all(name is None for name in column_index_names):
                 self._column_index_names = None
             else:
