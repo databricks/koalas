@@ -35,18 +35,33 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                            index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
         kdf = koalas.from_pandas(pdf)
 
-        self.assert_eq(kdf.groupby('a').sum(), pdf.groupby('a').sum())
+        for as_index in [False]:
+            self.assert_eq(kdf.groupby('a', as_index=as_index).sum(),
+                           pdf.groupby('a', as_index=as_index).sum())
+            self.assert_eq(kdf.groupby('a', as_index=as_index).b.sum(),
+                           pdf.groupby('a', as_index=as_index).b.sum())
+            self.assert_eq(kdf.groupby('a', as_index=as_index)['b'].sum(),
+                           pdf.groupby('a', as_index=as_index)['b'].sum())
+            self.assert_eq(kdf.groupby('a', as_index=as_index)[['b', 'c']].sum(),
+                           pdf.groupby('a', as_index=as_index)[['b', 'c']].sum())
+            self.assert_eq(kdf.groupby('a', as_index=as_index)[[]].sum(),
+                           pdf.groupby('a', as_index=as_index)[[]].sum())
+            self.assert_eq(kdf.groupby('a', as_index=as_index)['c'].sum(),
+                           pdf.groupby('a', as_index=as_index)['c'].sum())
+
         self.assert_eq(kdf.groupby('a').a.sum(), pdf.groupby('a').a.sum())
-        self.assert_eq(kdf.groupby('a').b.sum(), pdf.groupby('a').b.sum())
         self.assert_eq(kdf.groupby('a')['a'].sum(), pdf.groupby('a')['a'].sum())
-        self.assert_eq(kdf.groupby('a')['b'].sum(), pdf.groupby('a')['b'].sum())
         self.assert_eq(kdf.groupby('a')[['a']].sum(), pdf.groupby('a')[['a']].sum())
-        self.assert_eq(kdf.groupby('a')[['b', 'c']].sum(), pdf.groupby('a')[['b', 'c']].sum())
-        self.assert_eq(kdf.groupby('a')[[]].sum(), pdf.groupby('a')[[]].sum())
-        self.assert_eq(kdf.groupby('a')['c'].sum(), pdf.groupby('a')['c'].sum())
         self.assert_eq(kdf.groupby('a')[['a', 'c']].sum(), pdf.groupby('a')[['a', 'c']].sum())
 
         self.assert_eq(kdf.a.groupby(kdf.b).sum(), pdf.a.groupby(pdf.b).sum())
+
+        self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False).a)
+        self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)['a'])
+        self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)[['a']])
+        self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)[['a', 'c']])
+
+        self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.b, as_index=False))
 
     def test_split_apply_combine_on_series(self):
         pdf = pd.DataFrame({'a': [1, 2, 6, 4, 4, 6, 4, 3, 7],
@@ -84,22 +99,30 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'C': [0.362, 0.227, 1.267, -0.562]})
         kdf = koalas.from_pandas(pdf)
 
-        self.assert_eq(kdf.groupby('A').agg({'B': 'min', 'C': 'sum'}),
-                       pdf.groupby('A').agg({'B': 'min', 'C': 'sum'}))
+        for as_index in [True, False]:
+            self.assert_eq(kdf.groupby('A', as_index=as_index).agg({'B': 'min', 'C': 'sum'}),
+                           pdf.groupby('A', as_index=as_index).agg({'B': 'min', 'C': 'sum'}))
 
-        self.assert_eq(kdf.groupby('A').agg({'B': ['min', 'max'], 'C': 'sum'}),
-                       pdf.groupby('A').agg({'B': ['min', 'max'], 'C': 'sum'}))
+            self.assert_eq(kdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'],
+                                                                    'C': 'sum'}),
+                           pdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'],
+                                                                    'C': 'sum'}))
 
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
                             'B': [True, True, True, False, False, False, None, True, None, False]})
         kdf = koalas.from_pandas(pdf)
 
-        self.assert_eq(kdf.groupby('A').all(), pdf.groupby('A').all())
-        self.assert_eq(kdf.groupby('A').any(), pdf.groupby('A').any())
+        for as_index in [True, False]:
+            self.assert_eq(kdf.groupby('A', as_index=as_index).all(),
+                           pdf.groupby('A', as_index=as_index).all())
+            self.assert_eq(kdf.groupby('A', as_index=as_index).any(),
+                           pdf.groupby('A', as_index=as_index).any())
 
-        self.assert_eq(kdf.groupby('A').all().B, pdf.groupby('A').all().B)
-        self.assert_eq(kdf.groupby('A').any().B, pdf.groupby('A').any().B)
+            self.assert_eq(kdf.groupby('A', as_index=as_index).all().B,
+                           pdf.groupby('A', as_index=as_index).all().B)
+            self.assert_eq(kdf.groupby('A', as_index=as_index).any().B,
+                           pdf.groupby('A', as_index=as_index).any().B)
 
         self.assert_eq(kdf.B.groupby(kdf.A).all(), pdf.B.groupby(pdf.A).all())
         self.assert_eq(kdf.B.groupby(kdf.A).any(), pdf.B.groupby(pdf.A).any())
@@ -121,8 +144,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'b': [2, 2, 2, 3, 3, 4, 4, 5, 5, 5]})
         kdf = koalas.DataFrame(pdf)
 
-        self.assert_eq(kdf.groupby("a").agg({"b": "nunique"}),
-                       pdf.groupby("a").agg({"b": "nunique"}))
+        for as_index in [True, False]:
+            self.assert_eq(kdf.groupby("a", as_index=as_index).agg({"b": "nunique"}),
+                           pdf.groupby("a", as_index=as_index).agg({"b": "nunique"}))
 
     def test_value_counts(self):
         pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],

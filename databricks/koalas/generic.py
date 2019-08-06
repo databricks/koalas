@@ -1238,9 +1238,9 @@ class _Frame(object):
         # TODO: The first example above should not have "Name: abs(0)".
         return _spark_col_apply(self, F.abs)
 
-    # TODO: by argument only support the grouping name only for now. Documentation should
-    # be updated when it's supported.
-    def groupby(self, by):
+    # TODO: by argument only support the grouping name and as_index only for now. Documentation
+    # should be updated when it's supported.
+    def groupby(self, by, as_index: bool = True):
         """
         Group DataFrame or Series using a Series of columns.
 
@@ -1256,6 +1256,10 @@ class _Frame(object):
             If Series is passed, the Series or dict VALUES
             will be used to determine the groups. A label or list of
             labels may be passed to group by the columns in ``self``.
+        as_index : bool, default True
+            For aggregated output, return object with group labels as the
+            index. Only relevant for DataFrame input. as_index=False is
+            effectively "SQL-style" grouped output.
 
         Returns
         -------
@@ -1285,6 +1289,11 @@ class _Frame(object):
         Animal
         Falcon      375.0
         Parrot       25.0
+
+        >>> df.groupby(['Animal'], as_index=False).mean()
+           Animal  Max Speed
+        0  Falcon      375.0
+        1  Parrot       25.0
         """
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series
@@ -1304,12 +1313,12 @@ class _Frame(object):
         if isinstance(df_or_s, DataFrame):
             df = df_or_s  # type: DataFrame
             col_by = [_resolve_col(df, col_or_s) for col_or_s in by]
-            return DataFrameGroupBy(df_or_s, col_by)
+            return DataFrameGroupBy(df_or_s, col_by, as_index=as_index)
         if isinstance(df_or_s, Series):
             col = df_or_s  # type: Series
             anchor = df_or_s._kdf
             col_by = [_resolve_col(anchor, col_or_s) for col_or_s in by]
-            return SeriesGroupBy(col, col_by)
+            return SeriesGroupBy(col, col_by, as_index=as_index)
         raise TypeError('Constructor expects DataFrame or Series; however, '
                         'got [%s]' % (df_or_s,))
 

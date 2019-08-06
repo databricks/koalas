@@ -143,7 +143,10 @@ class GroupBy(object):
                                   column_index=column_index if multi_aggs else None,
                                   index_map=[('__index_level_{}__'.format(i), s.name)
                                              for i, s in enumerate(groupkeys)])
-        return DataFrame(internal)
+        kdf = DataFrame(internal)
+        if not self._as_index:
+            kdf = kdf.reset_index()
+        return kdf
 
     agg = aggregate
 
@@ -1116,14 +1119,19 @@ class GroupBy(object):
                                   data_columns=data_columns,
                                   index_map=[('__index_level_{}__'.format(i), s.name)
                                              for i, s in enumerate(groupkeys)])
-        return DataFrame(internal)
+        kdf = DataFrame(internal)
+        if not self._as_index:
+            kdf = kdf.reset_index()
+        return kdf
 
 
 class DataFrameGroupBy(GroupBy):
 
-    def __init__(self, kdf: DataFrame, by: List[Series], agg_columns: List[str] = None):
+    def __init__(self, kdf: DataFrame, by: List[Series], as_index: bool = True,
+                 agg_columns: List[str] = None):
         self._kdf = kdf
         self._groupkeys = by
+        self._as_index = as_index
         self._have_agg_columns = True
 
         if agg_columns is None:
@@ -1143,11 +1151,18 @@ class DataFrameGroupBy(GroupBy):
         return self.__getitem__(item)
 
     def __getitem__(self, item):
-        if isinstance(item, str):
+        if isinstance(item, str) and self._as_index:
             return SeriesGroupBy(self._kdf[item], self._groupkeys)
         else:
-            # TODO: check that item is a list of strings
-            return DataFrameGroupBy(self._kdf, self._groupkeys, item)
+            if isinstance(item, str):
+                item = [item]
+            if not self._as_index:
+                groupkey_names = set(key.name for key in self._groupkeys)
+                for i in item:
+                    if i in groupkey_names:
+                        raise ValueError("cannot insert {}, already exists".format(i))
+            return DataFrameGroupBy(self._kdf, self._groupkeys, as_index=self._as_index,
+                                    agg_columns=item)
 
     def _rank(self, *args, **kwargs):
         applied = []
@@ -1194,9 +1209,12 @@ class DataFrameGroupBy(GroupBy):
 
 class SeriesGroupBy(GroupBy):
 
-    def __init__(self, ks: Series, by: List[Series]):
+    def __init__(self, ks: Series, by: List[Series], as_index: bool = True):
         self._ks = ks
         self._groupkeys = by
+        if not as_index:
+            raise TypeError('as_index=False only valid with DataFrame')
+        self._as_index = True
         self._have_agg_columns = True
 
     def __getattr__(self, item: str) -> Any:
