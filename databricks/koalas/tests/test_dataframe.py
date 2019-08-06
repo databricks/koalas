@@ -115,10 +115,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                             [13, 14, 15, 16],
                             [17, 18, 19, 20]], columns=columns)
 
-        assert (kdf.columns.names == pdf.columns.names)
+        self.assert_eq(kdf.columns.names, pdf.columns.names)
+        self.assert_eq(kdf.to_pandas().columns.names, pdf.columns.names)
 
         kdf1 = ks.from_pandas(pdf)
-        assert (kdf1.columns.names == pdf.columns.names)
+        self.assert_eq(kdf1.columns.names, pdf.columns.names)
+
+        with self.assertRaisesRegex(ValueError, 'Column_index_names should '
+                                                'be list-like or None for a MultiIndex'):
+            ks.DataFrame(kdf1._internal.copy(column_index_names='level'))
 
     def test_reset_index_with_multiindex_columns(self):
         index = pd.MultiIndex.from_tuples([('bird', 'falcon'),
