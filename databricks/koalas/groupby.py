@@ -1278,7 +1278,6 @@ class SeriesGroupBy(GroupBy):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
-
     def _diff(self, *args, **kwargs):
         groupkey_scols = [s._scol for s in self._groupkeys]
         return Series._diff(self._ks, *args, **kwargs, part_cols=groupkey_scols)
