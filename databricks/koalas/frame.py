@@ -2178,22 +2178,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if axis != 0:
             raise ValueError("The 'nunique' method only works with axis=0 at the moment")
-        count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
-        if dropna:
-            res = self._sdf.select([count_fn(self._internal.scol_for(c))
-                                   .alias(c)
-                                    for c in self.columns])
-        else:
-            res = self._sdf.select([(count_fn(self._internal.scol_for(c))
-                                     # If the count of null values in a column is at least 1,
-                                     # increase the total count by 1 else 0. This is like adding
-                                     # self.isnull().sum().clip(upper=1) but can be computed in a
-                                     # single Spark job when pulling it into the select statement.
-                                     + F.when(F.count(F.when(self._internal.scol_for(c).isNull(), 1)
-                                                      .otherwise(None))
-                                              >= 1, 1).otherwise(0))
-                                   .alias(c)
-                                    for c in self.columns])
+        res = self._sdf.select([self._nunique(c, dropna, approx, rsd) for c in self.columns])
         return res.toPandas().T.iloc[:, 0]
 
     def round(self, decimals=0):
@@ -5439,6 +5424,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   data_columns=data_columns,
                                   index_map=[('summary', None)])
         return DataFrame(internal).astype('float64')
+
+    def _nunique(self, col, dropna=True, approx=False, rsd=0.05):
+        count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
+        if dropna:
+            return count_fn(col).alias(col)
+        else:
+            return (count_fn(col) +
+                    F.when(F.count(F.when(self._internal.scol_for(col).isNull(), 1)
+                                   .otherwise(None)) >= 1, 1).otherwise(0)).alias(col)
 
     def _cum(self, func, skipna: bool):
         # This is used for cummin, cummax, cumxum, etc.

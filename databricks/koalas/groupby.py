@@ -694,7 +694,7 @@ class GroupBy(object):
         >>> df = ks.DataFrame({'id': ['spam', 'egg', 'egg', 'spam',
         ...                           'ham', 'ham'],
         ...                    'value1': [1, 5, 5, 2, 5, 5],
-        ...                    'value2': list('abbaxy')})
+        ...                    'value2': list('abbaxy')}, columns=['id', 'value1', 'value2'])
         >>> df
              id  value1 value2
         0  spam       1      a
@@ -718,11 +718,9 @@ class GroupBy(object):
         spam    2
         Name: value1, dtype: int64
         """
-        if not dropna:
-            raise ValueError('nunique do not support `dropna=False` now')
         if isinstance(self, DataFrameGroupBy):
             self._agg_columns = self._groupkeys + self._agg_columns
-        return self._reduce_for_stat_function(F.countDistinct, only_numeric=False)
+        return self._reduce_for_stat_function(self._kdf._nunique(dropna=dropna), only_numeric=False)
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
         groupkeys = self._groupkeys
