@@ -1248,11 +1248,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         4       c
         Name: x, dtype: object
         """
-        if self.isnull().sum() == 0:
-            if inplace:
-                return
-            else:
-                return self
         if axis is None:
             axis = 0
         if not (axis == 0 or axis == "index"):
@@ -1260,9 +1255,16 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if (value is None) and (method is None):
             raise ValueError("Must specify a fill 'value' or 'method'.")
 
+        if self.isnull().sum() == 0:
+            if inplace:
+                self._internal = self._internal.copy()
+                self._kdf = self._kdf.copy()
+            else:
+                return self
+
         column_name = self.name
         scol = self._scol
-        spark_type = self._kdf._sdf.schema.fields[-1].dataType
+
         if value is not None:
             if not isinstance(value, (float, int, str, bool)):
                 raise TypeError("Unsupported type %s" % type(value))
@@ -1291,8 +1293,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         kseries = Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf)\
             .rename(column_name)
-        if isinstance(spark_type, NumericType):
-            kseries = kseries.astype(np.float64)
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf
