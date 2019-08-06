@@ -129,6 +129,17 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(ValueError, 'nunique do not support `dropna=False` now'):
             self.assert_eq(kdf.groupby("a")['b'].nunique(dropna=False))
 
+    def test_value_counts(self):
+        pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
+                            'B': [1, 1, 2, 3, 3, 3]}, columns=['A', 'B'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(repr(kdf.groupby("A")['B'].value_counts().sort_index()),
+                       repr(pdf.groupby("A")['B'].value_counts().sort_index()))
+        self.assert_eq(repr(kdf.groupby("A")['B']
+                            .value_counts(sort=True, ascending=False).sort_index()),
+                       repr(pdf.groupby("A")['B']
+                            .value_counts(sort=True, ascending=False).sort_index()))
+
     def test_size(self):
         pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
                             'B': [1, 1, 2, 3, 3, 3]})

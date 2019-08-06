@@ -36,7 +36,6 @@ class _MissingPandasLikeIndex(object):
     ndim = unsupported_property('ndim')
     nlevels = unsupported_property('nlevels')
     shape = unsupported_property('shape')
-    size = unsupported_property('size')
 
     # Deprecated properties
     strides = unsupported_property('strides', deprecated=True)
@@ -146,7 +145,6 @@ class _MissingPandasLikeMultiIndex(object):
     ndim = unsupported_property('ndim')
     nlevels = unsupported_property('nlevels')
     shape = unsupported_property('shape')
-    size = unsupported_property('size')
 
     # Deprecated properties
     strides = unsupported_property('strides', deprecated=True)
