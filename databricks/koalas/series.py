@@ -30,7 +30,7 @@ from pandas.core.accessor import CachedAccessor
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.types import BooleanType, StructType
+from pyspark.sql.types import BooleanType, StructType, NumericType
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -1171,17 +1171,34 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     tolist = to_list
 
-    def fillna(self, value=None, axis=None, inplace=False):
+    def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
         """Fill NA/NaN values.
+
+        .. note:: the current implementation of 'method' parameter in fillna uses Spark's Window
+            without specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
 
         Parameters
         ----------
-        value : scalar
-            Value to use to fill holes.
+        value : scalar, dict, Series
+            Value to use to fill holes. alternately a dict/Series of values
+            specifying which value to use for each column.
+            DataFrame is not supported.
+        method : {'backfill', 'bfill', 'pad', 'ffill', None}, default None
+            Method to use for filling holes in reindexed Series pad / ffill: propagate last valid
+            observation forward to next valid backfill / bfill:
+            use NEXT valid observation to fill gap
         axis : {0 or `index`}
             1 and `columns` are not supported.
         inplace : boolean, default False
             Fill in place (do not create a new object)
+        limit : int, default None
+            If method is specified, this is the maximum number of consecutive NaN values to
+            forward/backward fill. In other words, if there is a gap with more than this number of
+            consecutive NaNs, it will only be partially filled. If method is not specified,
+            this is the maximum number of entries along the entire axis where NaNs will be filled.
+            Must be greater than 0 if not None
 
         Returns
         -------
@@ -1210,8 +1227,72 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         4    0.0
         5    6.0
         Name: x, dtype: float64
+
+        We can also propagate non-null values forward or backward.
+
+        >>> s.fillna(method='ffill')
+        0    NaN
+        1    2.0
+        2    3.0
+        3    4.0
+        4    4.0
+        5    6.0
+        Name: x, dtype: float64
+
+        >>> s = ks.Series([np.nan, 'a', 'b', 'c', np.nan], name='x')
+        >>> s.fillna(method='ffill')
+        0    None
+        1       a
+        2       b
+        3       c
+        4       c
+        Name: x, dtype: object
         """
-        kseries = _col(self.to_dataframe().fillna(value=value, axis=axis, inplace=False))
+        if axis is None:
+            axis = 0
+        if not (axis == 0 or axis == "index"):
+            raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
+        if (value is None) and (method is None):
+            raise ValueError("Must specify a fill 'value' or 'method'.")
+
+        if self.isnull().sum() == 0:
+            if inplace:
+                self._internal = self._internal.copy()
+                self._kdf = self._kdf.copy()
+            else:
+                return self
+
+        column_name = self.name
+        scol = self._scol
+
+        if value is not None:
+            if not isinstance(value, (float, int, str, bool)):
+                raise TypeError("Unsupported type %s" % type(value))
+            if limit is not None:
+                raise ValueError('limit parameter for value is not support now')
+            scol = F.when(scol.isNull(), value).otherwise(scol)
+        else:
+            if method in ['ffill', 'pad']:
+                func = F.last
+                end = (Window.currentRow - 1)
+                if limit is not None:
+                    begin = Window.currentRow - limit
+                else:
+                    begin = Window.unboundedPreceding
+            elif method in ['bfill', 'backfill']:
+                func = F.first
+                begin = Window.currentRow + 1
+                if limit is not None:
+                    end = Window.currentRow + limit
+                else:
+                    end = Window.unboundedFollowing
+            else:
+                raise ValueError('Expecting pad, ffill, backfill or bfill.')
+            window = Window.orderBy(self._internal.index_scols).rowsBetween(begin, end)
+            scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
+
+        kseries = Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf)\
+            .rename(column_name)
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf

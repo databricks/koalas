@@ -2957,7 +2957,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
 
-    # TODO: add 'limit','downcast' when value parameter exists
+    # TODO: add 'limit' when value parameter exists
     def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
         """Fill NA/NaN values.
 
@@ -3057,30 +3057,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if limit is not None:
                 raise ValueError('limit parameter for value is not support now')
             sdf = sdf.fillna(value)
+            internal = self._internal.copy(sdf=sdf)
         else:
-            for data_column in self._internal.data_columns:
-                if method in ['ffill', 'pad']:
-                    func = F.last
-                    end = (Window.currentRow - 1)
-                    if limit is not None:
-                        begin = Window.currentRow - limit
-                    else:
-                        begin = Window.unboundedPreceding
-                elif method in ['bfill', 'backfill']:
-                    func = F.first
-                    begin = Window.currentRow + 1
-                    if limit is not None:
-                        end = Window.currentRow + limit
-                    else:
-                        end = Window.unboundedFollowing
-                else:
-                    raise ValueError('Expecting pad, ffill, backfill or bfill.')
-                window = Window.orderBy(self._internal.index_scols).rowsBetween(begin, end)
-                sdf = sdf.withColumn(data_column,
-                                     F.when(scol_for(sdf, data_column).isNull(),
-                                            func(scol_for(sdf, data_column), True).over(window))
-                                     .otherwise(scol_for(sdf, data_column)))
-        internal = self._internal.copy(sdf=sdf)
+            if method not in ['pad', 'ffill', 'backfill', 'bfill']:
+                raise ValueError("Expecting pad, ffill, backfill or bfill.")
+            applied = []
+            for column in self._internal.data_columns:
+                applied.append(self[column].fillna(value=value, method=method,
+                                                   axis=axis, limit=limit))
+            sdf = self._sdf.select(
+                self._internal.index_scols + [c._scol for c in applied])
+            internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         if inplace:
             self._internal = internal
         else:
