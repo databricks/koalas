@@ -2186,7 +2186,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1     True
         2     True
         3    False
-        Name: duplicated, dtype: bool
+        Name: 0, dtype: bool
 
         Mark duplicates as ``True`` except for the last occurrence.
 
@@ -2195,7 +2195,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1     True
         2    False
         3    False
-        Name: duplicated, dtype: bool
+        Name: 0, dtype: bool
 
         Mark all duplicates as ``True``.
 
@@ -2204,45 +2204,43 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1     True
         2     True
         3    False
-        Name: duplicated, dtype: bool
+        Name: 0, dtype: bool
         """
         from databricks.koalas.series import _col
         if len(self._internal.index_names) > 1:
-            raise ValueError("Now we don't support Index Now.")
+            raise ValueError("Now we don't support multi-index Now.")
 
         if subset is None:
-            subset = self._internal.data_columns
+            group_cols = self._internal.data_columns
         else:
+            group_cols = subset
             diff = set(subset).difference(set(self._internal.data_columns))
             if len(diff) > 0:
-                raise KeyError(','.join(diff))
+                raise KeyError(', '.join(diff))
 
         sdf = self._sdf
         index = self._internal.index_columns[0]
         if self._internal.index_names[0] is not None:
             name = self._internal.index_names[0]
         else:
-            name = 'duplicated'
+            name = '0'
 
         if keep == 'first' or keep == 'last':
             if keep == 'first':
                 ord_func = spark.functions.asc
             else:
                 ord_func = spark.functions.desc
-            window = Window.partitionBy(subset).orderBy(ord_func(index)).rowsBetween(
+            window = Window.partitionBy(group_cols).orderBy(ord_func(index)).rowsBetween(
                 Window.unboundedPreceding, Window.currentRow)
             sdf = sdf.withColumn(name, F.row_number().over(window) > 1)
         elif not keep:
-            window = Window.partitionBy(subset).orderBy(F.col(index).desc())\
+            window = Window.partitionBy(group_cols).orderBy(F.col(index).desc())\
                 .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
             sdf = sdf.withColumn(name, F.count(F.col(index)).over(window) > 1)
         else:
-            raise ValueError("keep only support 'first', 'last' and False")
-
-        internal = _InternalFrame(sdf=sdf.select([index] + [name]), data_columns=[name],
-                                  index_map=self._internal.index_map)
-        kdf = DataFrame(internal)
-        return _col(kdf)
+            raise ValueError("'keep' only support 'first', 'last' and False")
+        return _col(DataFrame(_InternalFrame(sdf=sdf.select(index, name), data_columns=[name],
+                                             index_map=self._internal.index_map)))
 
     def to_koalas(self):
         """

@@ -1090,17 +1090,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_duplicated(self):
         pdf = pd.DataFrame({'a': [1, 1, 1, 3], 'b': [1, 1, 1, 4], 'c': [1, 1, 1, 5]})
         kdf = ks.from_pandas(pdf)
-        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='duplicated')),
+        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='0')),
                          repr(kdf.duplicated().sort_index()))
-        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='duplicated')),
+        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='0')),
                          repr(kdf.duplicated().sort_index()))
-        self.assertEqual(repr(pd.Series(pdf.duplicated(keep='last'), name='duplicated')),
+        self.assertEqual(repr(pd.Series(pdf.duplicated(keep='last'), name='0')),
                          repr(kdf.duplicated(keep='last').sort_index()))
-        self.assertEqual(repr(pd.Series(pdf.duplicated(keep=False), name='duplicated')),
+        self.assertEqual(repr(pd.Series(pdf.duplicated(keep=False), name='0')),
                          repr(kdf.duplicated(keep=False).sort_index()))
-        self.assertEqual(repr(pd.Series(pdf.duplicated(subset=['a']), name='duplicated')),
+        self.assertEqual(repr(pd.Series(pdf.duplicated(subset=['a']), name='0')),
                          repr(kdf.duplicated(subset=['a']).sort_index()))
-        with self.assertRaisesRegex(ValueError, "keep only support 'first', 'last' and False"):
+        with self.assertRaisesRegex(ValueError, "'keep' only support 'first', 'last' and False"):
             kdf.duplicated(keep='false')
         with self.assertRaisesRegex(KeyError, "'d'"):
             kdf.duplicated(subset=['d'])
