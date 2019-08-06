@@ -24,8 +24,7 @@ from functools import partial
 from typing import Any, List
 import numpy as np
 
-from pyspark.sql import functions as F
-from pyspark.sql import Window
+from pyspark.sql import functions as F, Window
 from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
 from pyspark.sql.functions import PandasUDFType, pandas_udf
 
@@ -424,7 +423,7 @@ class GroupBy(object):
         First discrete difference of element.
 
         Calculates the difference of a DataFrame element compared with another element in the
-        DataFrame (default is the element in the same column of the previous row).
+        DataFrame group (default is the element in the same column of the previous row).
 
         Parameters
         ----------
@@ -463,7 +462,7 @@ class GroupBy(object):
         4  NaN  NaN
         5  NaN  NaN
 
-        Difference with previous column
+        Difference with previous column in a group.
 
         >>> df.groupby(['b'])['a'].diff()
         0    NaN
