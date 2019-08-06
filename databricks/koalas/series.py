@@ -19,16 +19,18 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 """
 import re
 import inspect
+from collections import Iterable
 from functools import partial, wraps
 from typing import Any, Optional, List, Union, Generic, TypeVar
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_list_like
 from pandas.core.accessor import CachedAccessor
 
 from pyspark import sql as spark
-from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, StructType
+from pyspark.sql import functions as F, Column
+from pyspark.sql.types import BooleanType, StructType, NumericType
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -38,7 +40,7 @@ from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.internal import IndexMap, _InternalFrame
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
-from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
@@ -272,8 +274,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 s = pd.Series(
                     data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
             kdf = DataFrame(s)
-            IndexOpsMixin.__init__(self, kdf._internal.copy(
-                scol=kdf._internal._sdf[kdf._internal.data_columns[0]]), kdf)
+            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=kdf._internal.data_scols[0]), kdf)
 
     @property
     def _index_map(self) -> List[IndexMap]:
@@ -826,8 +827,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: my_name, dtype: int64
         """
         if index is None:
-            return self
-        scol = self._scol.alias(index)
+            scol = self._scol
+        else:
+            scol = self._scol.alias(index)
         if kwargs.get('inplace', False):
             self._internal = self._internal.copy(scol=scol)
             return self
@@ -1169,17 +1171,34 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     tolist = to_list
 
-    def fillna(self, value=None, axis=None, inplace=False):
+    def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
         """Fill NA/NaN values.
+
+        .. note:: the current implementation of 'method' parameter in fillna uses Spark's Window
+            without specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
 
         Parameters
         ----------
-        value : scalar
-            Value to use to fill holes.
+        value : scalar, dict, Series
+            Value to use to fill holes. alternately a dict/Series of values
+            specifying which value to use for each column.
+            DataFrame is not supported.
+        method : {'backfill', 'bfill', 'pad', 'ffill', None}, default None
+            Method to use for filling holes in reindexed Series pad / ffill: propagate last valid
+            observation forward to next valid backfill / bfill:
+            use NEXT valid observation to fill gap
         axis : {0 or `index`}
             1 and `columns` are not supported.
         inplace : boolean, default False
             Fill in place (do not create a new object)
+        limit : int, default None
+            If method is specified, this is the maximum number of consecutive NaN values to
+            forward/backward fill. In other words, if there is a gap with more than this number of
+            consecutive NaNs, it will only be partially filled. If method is not specified,
+            this is the maximum number of entries along the entire axis where NaNs will be filled.
+            Must be greater than 0 if not None
 
         Returns
         -------
@@ -1208,9 +1227,72 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         4    0.0
         5    6.0
         Name: x, dtype: float64
-        """
 
-        kseries = _col(self.to_dataframe().fillna(value=value, axis=axis, inplace=False))
+        We can also propagate non-null values forward or backward.
+
+        >>> s.fillna(method='ffill')
+        0    NaN
+        1    2.0
+        2    3.0
+        3    4.0
+        4    4.0
+        5    6.0
+        Name: x, dtype: float64
+
+        >>> s = ks.Series([np.nan, 'a', 'b', 'c', np.nan], name='x')
+        >>> s.fillna(method='ffill')
+        0    None
+        1       a
+        2       b
+        3       c
+        4       c
+        Name: x, dtype: object
+        """
+        if axis is None:
+            axis = 0
+        if not (axis == 0 or axis == "index"):
+            raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
+        if (value is None) and (method is None):
+            raise ValueError("Must specify a fill 'value' or 'method'.")
+
+        if self.isnull().sum() == 0:
+            if inplace:
+                self._internal = self._internal.copy()
+                self._kdf = self._kdf.copy()
+            else:
+                return self
+
+        column_name = self.name
+        scol = self._scol
+
+        if value is not None:
+            if not isinstance(value, (float, int, str, bool)):
+                raise TypeError("Unsupported type %s" % type(value))
+            if limit is not None:
+                raise ValueError('limit parameter for value is not support now')
+            scol = F.when(scol.isNull(), value).otherwise(scol)
+        else:
+            if method in ['ffill', 'pad']:
+                func = F.last
+                end = (Window.currentRow - 1)
+                if limit is not None:
+                    begin = Window.currentRow - limit
+                else:
+                    begin = Window.unboundedPreceding
+            elif method in ['bfill', 'backfill']:
+                func = F.first
+                begin = Window.currentRow + 1
+                if limit is not None:
+                    end = Window.currentRow + limit
+                else:
+                    end = Window.unboundedFollowing
+            else:
+                raise ValueError('Expecting pad, ffill, backfill or bfill.')
+            window = Window.orderBy(self._internal.index_scols).rowsBetween(begin, end)
+            scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
+
+        kseries = Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf)\
+            .rename(column_name)
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf
@@ -1472,7 +1554,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
 
         index_name = 'index' if self.name != 'index' else 'level_0'
-        sdf = sdf.select(sdf[self.name].alias(index_name), sdf['count'].alias(self.name))
+        sdf = sdf.select(scol_for(sdf, self.name).alias(index_name),
+                         scol_for(sdf, 'count').alias(self.name))
         internal = _InternalFrame(sdf=sdf, data_columns=[self.name], index_map=[(index_name, None)])
         return _col(DataFrame(internal))
 
@@ -1578,7 +1661,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return kseries
 
-    def sort_index(self, axis: int = 0, level: int = None, ascending: bool = True,
+    def sort_index(self, axis: int = 0,
+                   level: Optional[Union[int, List[int]]] = None, ascending: bool = True,
                    inplace: bool = False, kind: str = None, na_position: str = 'last') \
             -> Optional['Series']:
         """
@@ -1632,20 +1716,45 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         NaN    NaN
         Name: 0, dtype: float64
 
-        >>> ks.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0').sort_index()
+        >>> df = ks.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0')
+
+        >>> df.sort_index()
         a  0    3
            1    2
         b  0    1
            1    0
         Name: 0, dtype: int64
+
+        >>> df.sort_index(level=1)  # doctest: +SKIP
+        a  0    3
+        b  0    1
+        a  1    2
+        b  1    0
+        Name: 0, dtype: int64
+
+        >>> df.sort_index(level=[1, 0])
+        a  0    3
+        b  0    1
+        a  1    2
+        b  1    0
+        Name: 0, dtype: int64
         """
+        if len(self._internal.index_map) == 0:
+            raise ValueError("Index should be set.")
+
         if axis != 0:
             raise ValueError("No other axes than 0 are supported at the moment")
-        if level is not None:
-            raise ValueError("The 'axis' argument is not supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-        kseries = _col(self.to_dataframe().sort_values(by=self._internal.index_columns,
+
+        if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
+            by = self._internal.index_columns
+        elif is_list_like(level):
+            by = [self._internal.index_columns[l] for l in level]  # type: ignore
+        else:
+            by = self._internal.index_columns[level]
+
+        kseries = _col(self.to_dataframe().sort_values(by=by,
                                                        ascending=ascending,
                                                        na_position=na_position))
         if inplace:
@@ -1699,7 +1808,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         kdf = self.to_dataframe()
         internal = kdf._internal
         sdf = internal.sdf
-        sdf = sdf.select([F.concat(F.lit(prefix), sdf[index_column]).alias(index_column)
+        sdf = sdf.select([F.concat(F.lit(prefix),
+                                   scol_for(sdf, index_column)).alias(index_column)
                           for index_column in internal.index_columns] + internal.data_columns)
         kdf._internal = internal.copy(sdf=sdf)
         return Series(kdf._internal.copy(scol=self._scol), anchor=kdf)
@@ -1748,7 +1858,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         kdf = self.to_dataframe()
         internal = kdf._internal
         sdf = internal.sdf
-        sdf = sdf.select([F.concat(sdf[index_column], F.lit(suffix)).alias(index_column)
+        sdf = sdf.select([F.concat(scol_for(sdf, index_column),
+                                   F.lit(suffix)).alias(index_column)
                           for index_column in internal.index_columns] + internal.data_columns)
         kdf._internal = internal.copy(sdf=sdf)
         return Series(kdf._internal.copy(scol=self._scol), anchor=kdf)
@@ -1942,7 +2053,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> df['Age'].count()
         4
         """
-        return self._reduce_for_stat_function(_Frame._count_expr)
+        return self._reduce_for_stat_function(_Frame._count_expr, name="count")
 
     def append(self, to_append: 'Series', ignore_index: bool = False,
                verify_integrity: bool = False) -> 'Series':
@@ -2192,7 +2303,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 applied.append(self.apply(f).rename(f.__name__))
 
             sdf = self._kdf._sdf.select(
-                self._internal.index_columns + [c._scol for c in applied])
+                self._internal.index_scols + [c._scol for c in applied])
 
             internal = self.to_dataframe()._internal.copy(
                 sdf=sdf, data_columns=[c.name for c in applied])
@@ -2238,8 +2349,109 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if not isinstance(decimals, int):
             raise ValueError("decimals must be an integer")
         column_name = self.name
-        scol = F.round(F.col(column_name), decimals)
+        scol = F.round(self._scol, decimals)
         return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
+
+    # TODO: add 'interpolation' parameter.
+    def quantile(self, q=0.5, accuracy=10000):
+        """
+        Return value at the given quantile.
+
+        .. note:: Unlike pandas', the quantile in Koalas is an approximated quantile based upon
+            approximate percentile computation because computing quantile across a large dataset
+            is extremely expensive.
+
+        Parameters
+        ----------
+        q : float or array-like, default 0.5 (50% quantile)
+            0 <= q <= 1, the quantile(s) to compute.
+        accuracy : int, optional
+            Default accuracy of approximation. Larger value means better accuracy.
+            The relative error can be deduced by 1.0 / accuracy.
+
+        Returns
+        -------
+        float or Series
+            If the current object is a Series and ``q`` is an array, a Series will be
+            returned where the index is ``q`` and the values are the quantiles, otherwise
+            a float will be returned.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4, 5])
+        >>> s.quantile(.5)
+        3
+
+        >>> s.quantile([.25, .5, .75])
+        0.25    2
+        0.5     3
+        0.75    4
+        Name: 0, dtype: int64
+        """
+        if not isinstance(accuracy, int):
+            raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
+
+        if isinstance(q, Iterable):
+            q = list(q)
+
+        for v in q if isinstance(q, list) else [q]:
+            if not isinstance(v, float):
+                raise ValueError(
+                    "q must be a float of an array of floats; however, [%s] found." % type(v))
+            if v < 0.0 or v > 1.0:
+                raise ValueError(
+                    "percentiles should all be in the interval [0, 1].")
+
+        if isinstance(q, list):
+            quantiles = q
+            # TODO: avoid to use dataframe. After this, anchor will be lost.
+
+            # First calculate the percentiles and map it to each `quantiles`
+            # by creating each entry as a struct. So, it becomes an array of
+            # structs as below:
+            #
+            # +--------------------------------+
+            # | arrays                         |
+            # +--------------------------------+
+            # |[[0.25, 2], [0.5, 3], [0.75, 4]]|
+            # +--------------------------------+
+            sdf = self._kdf._sdf
+            args = ", ".join(map(str, quantiles))
+            percentile_col = F.expr(
+                "approx_percentile(`%s`, array(%s), %s)" % (self.name, args, accuracy))
+            sdf = sdf.select(percentile_col.alias("percentiles"))
+
+            internal_index_column = "__index_level_0__"
+            value_column = "value"
+            cols = []
+            for i, quantile in enumerate(quantiles):
+                cols.append(F.struct(
+                    F.lit("%s" % quantile).alias(internal_index_column),
+                    F.expr("percentiles[%s]" % i).alias(value_column)))
+            sdf = sdf.select(F.array(*cols).alias("arrays"))
+
+            # And then, explode it and manually set the index.
+            #
+            # +-----------------+-----+
+            # |__index_level_0__|value|
+            # +-----------------+-----+
+            # | 0.25            |    2|
+            # |  0.5            |    3|
+            # | 0.75            |    4|
+            # +-----------------+-----+
+            sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
+
+            internal = self._kdf._internal.copy(
+                sdf=sdf,
+                data_columns=[value_column],
+                index_map=[(internal_index_column, None)])
+
+            ser = DataFrame(internal)[value_column].rename(self.name)
+            return ser
+        else:
+            return self._reduce_for_stat_function(
+                lambda _: F.expr("approx_percentile(`%s`, %s, %s)" % (self.name, q, accuracy)),
+                name="median")
 
     # TODO: add axis, numeric_only, pct, na_option parameter
     def rank(self, method='average', ascending=True):
@@ -2311,21 +2523,320 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2  2.0  2.0
         3  3.0  1.0
         """
-        return _col(self.to_dataframe().rank(method=method, ascending=ascending))
+        return self._rank(method, ascending)
+
+    def _rank(self, method='average', ascending=True, part_cols=()):
+        if method not in ['average', 'min', 'max', 'first', 'dense']:
+            msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
+            raise ValueError(msg)
+
+        if len(self._internal.index_columns) > 1:
+            raise ValueError('rank do not support index now')
+
+        if ascending:
+            asc_func = spark.functions.asc
+        else:
+            asc_func = spark.functions.desc
+
+        index_column = self._internal.index_columns[0]
+        column_name = self.name
+
+        if method == 'first':
+            window = Window.orderBy(
+                asc_func(column_name), asc_func(index_column)
+            ).partitionBy(*part_cols).rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            scol = F.row_number().over(window)
+        elif method == 'dense':
+            window = Window.orderBy(asc_func(column_name)).partitionBy(*part_cols) \
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            scol = F.dense_rank().over(window)
+        else:
+            if method == 'average':
+                stat_func = F.mean
+            elif method == 'min':
+                stat_func = F.min
+            elif method == 'max':
+                stat_func = F.max
+            window1 = Window.orderBy(
+                asc_func(column_name)
+            ).partitionBy(*part_cols).rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            window2 = Window.partitionBy(
+                *[column_name] + list(part_cols)
+            ).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+            scol = stat_func(F.row_number().over(window1)).over(window2)
+        kser = Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
+        return kser.astype(np.float64)
 
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
         return _col(self.to_dataframe().describe(percentiles))
 
     describe.__doc__ = DataFrame.describe.__doc__
 
-    def _cum(self, func, skipna):
+    def diff(self, periods=1):
+        """
+        First discrete difference of element.
+
+        Calculates the difference of a Series element compared with another element in the
+        DataFrame (default is the element in the same column of the previous row).
+
+        .. note:: the current implementation of diff uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        periods : int, default 1
+            Periods to shift for calculating difference, accepts negative values.
+
+        Returns
+        -------
+        diffed : DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+        ...                    'b': [1, 1, 2, 3, 5, 8],
+        ...                    'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
+        >>> df
+           a  b   c
+        0  1  1   1
+        1  2  1   4
+        2  3  2   9
+        3  4  3  16
+        4  5  5  25
+        5  6  8  36
+
+        >>> df.b.diff()
+        0    NaN
+        1    0.0
+        2    1.0
+        3    1.0
+        4    2.0
+        5    3.0
+        Name: b, dtype: float64
+
+        Difference with previous value
+
+        >>> df.c.diff(periods=3)
+        0     NaN
+        1     NaN
+        2     NaN
+        3    15.0
+        4    21.0
+        5    27.0
+        Name: c, dtype: float64
+
+        Difference with following value
+
+        >>> df.c.diff(periods=-1)
+        0    -3.0
+        1    -5.0
+        2    -7.0
+        3    -9.0
+        4   -11.0
+        5     NaN
+        Name: c, dtype: float64
+        """
+
+        if len(self._internal.index_columns) == 0:
+            raise ValueError("Index must be set.")
+
+        if not isinstance(periods, int):
+            raise ValueError('periods should be an int; however, got [%s]' % type(periods))
+
+        col = self._scol
+        window = Window.orderBy(self._internal.index_scols).rowsBetween(-periods, -periods)
+        return self._with_new_scol(col - F.lag(col, periods).over(window)).alias(self.name)
+
+    def idxmax(self, skipna=True):
+        """
+        Return the row label of the maximum value.
+
+        If multiple values equal the maximum, the row label with that
+        value is returned.
+
+        Parameters
+        ----------
+        skipna : bool, default True
+            Exclude NA/null values. If the entire Series is NA, the result
+            will be NA.
+
+        Returns
+        -------
+        Index
+            Label of the maximum value.
+
+        Raises
+        ------
+        ValueError
+            If the Series is empty.
+
+        See Also
+        --------
+        Series.idxmin : Return index *label* of the first occurrence
+            of minimum of values.
+
+        Examples
+        --------
+        >>> s = ks.Series(data=[1, None, 4, 3, 5],
+        ...               index=['A', 'B', 'C', 'D', 'E'])
+        >>> s
+        A    1.0
+        B    NaN
+        C    4.0
+        D    3.0
+        E    5.0
+        Name: 0, dtype: float64
+
+        >>> s.idxmax()
+        'E'
+
+        If `skipna` is False and there is an NA value in the data,
+        the function returns ``nan``.
+
+        >>> s.idxmax(skipna=False)
+        nan
+
+        In case of multi-index, you get a tuple:
+
+        >>> index = pd.MultiIndex.from_arrays([
+        ...     ['a', 'a', 'b', 'b'], ['c', 'd', 'e', 'f']], names=('first', 'second'))
+        >>> s = ks.Series(data=[1, None, 4, 5], index=index)
+        >>> s
+        first  second
+        a      c         1.0
+               d         NaN
+        b      e         4.0
+               f         5.0
+        Name: 0, dtype: float64
+
+        >>> s.idxmax()
+        ('b', 'f')
+        """
+        sdf = self._kdf._sdf
+        scol = self._scol
+        index_scols = self._kdf._internal.index_scols
+        # desc_nulls_(last|first) is used via Py4J directly because
+        # it's not supported in Spark 2.3.
+        if skipna:
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()))
+        else:
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()))
+        results = sdf.select([scol] + index_scols).take(1)
+        if len(results) == 0:
+            raise ValueError("attempt to get idxmin of an empty sequence")
+        if results[0][0] is None:
+            # This will only happens when skipna is False because we will
+            # place nulls first.
+            return np.nan
+        values = list(results[0][1:])
+        if len(values) == 1:
+            return values[0]
+        else:
+            return tuple(values)
+
+    def idxmin(self, skipna=True):
+        """
+        Return the row label of the minimum value.
+
+        If multiple values equal the minimum, the row label with that
+        value is returned.
+
+        Parameters
+        ----------
+        skipna : bool, default True
+            Exclude NA/null values. If the entire Series is NA, the result
+            will be NA.
+
+        Returns
+        -------
+        Index
+            Label of the minimum value.
+
+        Raises
+        ------
+        ValueError
+            If the Series is empty.
+
+        See Also
+        --------
+        Series.idxmax : Return index *label* of the first occurrence
+            of maximum of values.
+
+        Notes
+        -----
+        This method is the Series version of ``ndarray.argmin``. This method
+        returns the label of the minimum, while ``ndarray.argmin`` returns
+        the position. To get the position, use ``series.values.argmin()``.
+
+        Examples
+        --------
+        >>> s = ks.Series(data=[1, None, 4, 0],
+        ...               index=['A', 'B', 'C', 'D'])
+        >>> s
+        A    1.0
+        B    NaN
+        C    4.0
+        D    0.0
+        Name: 0, dtype: float64
+
+        >>> s.idxmin()
+        'D'
+
+        If `skipna` is False and there is an NA value in the data,
+        the function returns ``nan``.
+
+        >>> s.idxmin(skipna=False)
+        nan
+
+        In case of multi-index, you get a tuple:
+
+        >>> index = pd.MultiIndex.from_arrays([
+        ...     ['a', 'a', 'b', 'b'], ['c', 'd', 'e', 'f']], names=('first', 'second'))
+        >>> s = ks.Series(data=[1, None, 4, 0], index=index)
+        >>> s
+        first  second
+        a      c         1.0
+               d         NaN
+        b      e         4.0
+               f         0.0
+        Name: 0, dtype: float64
+
+        >>> s.idxmin()
+        ('b', 'f')
+        """
+        sdf = self._kdf._sdf
+        scol = self._scol
+        index_scols = self._kdf._internal.index_scols
+        # asc_nulls_(list|first)is used via Py4J directly because
+        # it's not supported in Spark 2.3.
+        if skipna:
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()))
+        else:
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()))
+        results = sdf.select([scol] + index_scols).take(1)
+        if len(results) == 0:
+            raise ValueError("attempt to get idxmin of an empty sequence")
+        if results[0][0] is None:
+            # This will only happens when skipna is False because we will
+            # place nulls first.
+            return np.nan
+        values = list(results[0][1:])
+        if len(values) == 1:
+            return values[0]
+        else:
+            return tuple(values)
+
+    def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
 
         index_columns = self._internal.index_columns
         window = Window.orderBy(
-            index_columns).rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            index_columns).partitionBy(*part_cols).rowsBetween(
+                Window.unboundedPreceding, Window.currentRow)
 
         column_name = self.name
 
@@ -2411,15 +2922,23 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     # ----------------------------------------------------------------------
 
-    def _reduce_for_stat_function(self, sfun, numeric_only=None):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=None):
         """
-        :param sfun: the stats function to be used for aggregation
-        :param numeric_only: not used by this implementation, but passed down by stats functions
+        Applies sfun to the column and returns a scalar
+
+        Parameters
+        ----------
+        sfun : the stats function to be used for aggregation
+        name : original pandas API name.
+        axis : used only for sanity check because series only support index axis.
+        numeric_only : not used by this implementation, but passed down by stats functions
         """
         from inspect import signature
+        if axis in ('columns', 1):
+            raise ValueError("Series does not support columns axis.")
         num_args = len(signature(sfun).parameters)
         col_sdf = self._scol
-        col_type = self.schema[self.name].dataType
+        col_type = self.spark_type
         if isinstance(col_type, BooleanType) and sfun.__name__ not in ('min', 'max'):
             # Stat functions cannot be used with boolean values by default
             # Thus, cast to integer (true to 1 and false to 0)

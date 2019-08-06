@@ -87,6 +87,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby('A').agg({'B': 'min', 'C': 'sum'}),
                        pdf.groupby('A').agg({'B': 'min', 'C': 'sum'}))
 
+        self.assert_eq(kdf.groupby('A').agg({'B': ['min', 'max'], 'C': 'sum'}),
+                       pdf.groupby('A').agg({'B': ['min', 'max'], 'C': 'sum'}))
+
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
                             'B': [True, True, True, False, False, False, None, True, None, False]})
@@ -120,6 +123,28 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kdf.groupby("a").agg({"b": "nunique"}),
                        pdf.groupby("a").agg({"b": "nunique"}))
+
+    def test_value_counts(self):
+        pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
+                            'B': [1, 1, 2, 3, 3, 3]}, columns=['A', 'B'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(repr(kdf.groupby("A")['B'].value_counts().sort_index()),
+                       repr(pdf.groupby("A")['B'].value_counts().sort_index()))
+        self.assert_eq(repr(kdf.groupby("A")['B']
+                            .value_counts(sort=True, ascending=False).sort_index()),
+                       repr(pdf.groupby("A")['B']
+                            .value_counts(sort=True, ascending=False).sort_index()))
+
+    def test_size(self):
+        pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
+                            'B': [1, 1, 2, 3, 3, 3]})
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("A").size().sort_index(),
+                       pdf.groupby("A").size().sort_index())
+        self.assert_eq(kdf.groupby("A")['B'].size().sort_index(),
+                       pdf.groupby("A")['B'].size().sort_index())
+        self.assert_eq(kdf.groupby(['A', 'B']).size().sort_index(),
+                       pdf.groupby(['A', 'B']).size().sort_index())
 
     def test_missing(self):
         kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})

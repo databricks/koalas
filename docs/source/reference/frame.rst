@@ -101,6 +101,8 @@ Computations / Descriptive Stats
    :toctree: api/
 
    DataFrame.abs
+   DataFrame.all
+   DataFrame.any
    DataFrame.clip
    DataFrame.corr
    DataFrame.count
@@ -131,6 +133,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.add_prefix
    DataFrame.add_suffix
    DataFrame.drop
+   DataFrame.filter
    DataFrame.head
    DataFrame.reset_index
    DataFrame.set_index
@@ -146,6 +149,8 @@ Missing data handling
 
    DataFrame.dropna
    DataFrame.fillna
+   DataFrame.bfill
+   DataFrame.ffill
 
 Reshaping, sorting, transposing
 -------------------------------
@@ -174,6 +179,13 @@ Combining / joining / merging
    DataFrame.merge
    DataFrame.join
    DataFrame.update
+
+Time series-related
+-------------------
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.shift
 
 Cache
 -------------------------------

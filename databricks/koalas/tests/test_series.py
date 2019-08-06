@@ -112,7 +112,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(ks.rename('y'), ps.rename('y'))
         self.assertEqual(ks.name, 'x')  # no mutation
-        # self.assert_eq(ks.rename(), ps.rename())
+        self.assert_eq(ks.rename(), ps.rename())
 
         ks.rename('z', inplace=True)
         ps.rename('z', inplace=True)
@@ -272,7 +272,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert invalid parameters
         self.assertRaises(ValueError, lambda: ks.sort_index(axis=1))
-        self.assertRaises(ValueError, lambda: ks.sort_index(level=42))
         self.assertRaises(ValueError, lambda: ks.sort_index(kind='mergesort'))
         self.assertRaises(ValueError, lambda: ks.sort_index(na_position='invalid'))
 
@@ -291,6 +290,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ps = pd.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0')
         ks = koalas.from_pandas(ps)
         self.assert_eq(ks.sort_index(), ps.sort_index(), almost=True)
+        self.assert_eq(ks.sort_index(level=[1, 0]), ps.sort_index(level=[1, 0]), almost=True)
+
+        self.assertRaises(ValueError, lambda: ks.reset_index().sort_index())
 
     def test_to_datetime(self):
         ps = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
@@ -517,3 +519,49 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "decimals must be an integer"
         with self.assertRaisesRegex(ValueError, msg):
             kser.round(1.5)
+
+    def test_quantile(self):
+        with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
+            koalas.Series([24., 21., 25., 33., 26.]).quantile(accuracy="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+            koalas.Series([24., 21., 25., 33., 26.]).quantile(q="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+            koalas.Series([24., 21., 25., 33., 26.]).quantile(q=["a"])
+
+    def test_idxmax(self):
+        pser = pd.Series(data=[1, 4, 5], index=['A', 'B', 'C'])
+        kser = koalas.Series(pser)
+
+        self.assertEqual(kser.idxmax(), pser.idxmax())
+        self.assertEqual(kser.idxmax(skipna=False), pser.idxmax(skipna=False))
+
+        index = pd.MultiIndex.from_arrays([
+            ['a', 'a', 'b', 'b'], ['c', 'd', 'e', 'f']], names=('first', 'second'))
+        pser = pd.Series(data=[1, 2, 4, 5], index=index)
+        kser = koalas.Series(pser)
+
+        self.assertEqual(kser.idxmax(), pser.idxmax())
+        self.assertEqual(kser.idxmax(skipna=False), pser.idxmax(skipna=False))
+
+        kser = koalas.Series([])
+        with self.assertRaisesRegex(ValueError, "an empty sequence"):
+            kser.idxmax()
+
+    def test_idxmin(self):
+        pser = pd.Series(data=[1, 4, 5], index=['A', 'B', 'C'])
+        kser = koalas.Series(pser)
+
+        self.assertEqual(kser.idxmin(), pser.idxmin())
+        self.assertEqual(kser.idxmin(skipna=False), pser.idxmin(skipna=False))
+
+        index = pd.MultiIndex.from_arrays([
+            ['a', 'a', 'b', 'b'], ['c', 'd', 'e', 'f']], names=('first', 'second'))
+        pser = pd.Series(data=[1, 2, 4, 5], index=index)
+        kser = koalas.Series(pser)
+
+        self.assertEqual(kser.idxmin(), pser.idxmin())
+        self.assertEqual(kser.idxmin(skipna=False), pser.idxmin(skipna=False))
+
+        kser = koalas.Series([])
+        with self.assertRaisesRegex(ValueError, "an empty sequence"):
+            kser.idxmin()

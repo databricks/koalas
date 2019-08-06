@@ -14,8 +14,10 @@ Function application
 .. autosummary::
    :toctree: api/
 
+   GroupBy.apply
    GroupBy.agg
    GroupBy.aggregate
+   GroupBy.transform
 
 Computations / Descriptive Stats
 --------------------------------
@@ -25,11 +27,19 @@ Computations / Descriptive Stats
    GroupBy.all
    GroupBy.any
    GroupBy.count
+   GroupBy.value_counts
+   GroupBy.cummax
+   GroupBy.cummin
+   GroupBy.cumprod
+   GroupBy.cumsum
    GroupBy.first
+   GroupBy.filter
    GroupBy.last
    GroupBy.max
    GroupBy.mean
    GroupBy.min
+   GroupBy.rank
    GroupBy.std
    GroupBy.sum
    GroupBy.var
+   GroupBy.size

@@ -135,9 +135,11 @@ def read_csv(path, header='infer', names=None, usecols=None,
         the first line of the file, if column names are passed explicitly then
         the behavior is identical to `header=None`. Explicitly pass `header=0` to be
         able to replace existing names
-    names : array-like, optional
+    names : str or array-like, optional
         List of column names to use. If file contains no header row, then you should
         explicitly pass `header=None`. Duplicates in this list will cause an error to be issued.
+        If a string is given, it should be a DDL-formatted string in Spark SQL, which is
+        preferred to avoid schema inference for better performance.
     usecols : list-like or callable, optional
         Return a subset of the columns. If list-like, all elements must either be
         positional (i.e. integer indices into the document columns) or strings that
@@ -191,17 +193,21 @@ def read_csv(path, header='infer', names=None, usecols=None,
                 raise ValueError("Only length-1 comment characters supported")
             reader.option("comment", comment)
 
-        sdf = reader.csv(path)
-
-        if header is None:
-            sdf = sdf.selectExpr(*["`%s` as `%s`" % (field.name, i)
-                                   for i, field in enumerate(sdf.schema)])
-        if names is not None:
+        if isinstance(names, str):
+            sdf = reader.schema(names).csv(path)
+        else:
+            sdf = reader.csv(path)
+            if header is None:
+                sdf = sdf.selectExpr(*["`%s` as `%s`" % (field.name, i)
+                                       for i, field in enumerate(sdf.schema)])
+        if isinstance(names, list):
             names = list(names)
             if len(set(names)) != len(names):
                 raise ValueError('Found non-unique column index')
             if len(names) != len(sdf.schema):
-                raise ValueError('Names do not match the number of columns: %d' % len(names))
+                raise ValueError('The number of names [%s] does not match the number '
+                                 'of columns [%d]. Try names by a Spark SQL DDL-formatted '
+                                 'string.' % (len(sdf.schema), len(names)))
             sdf = sdf.selectExpr(*["`%s` as `%s`" % (field.name, name)
                                    for field, name in zip(sdf.schema, names)])
 

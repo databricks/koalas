@@ -18,17 +18,18 @@
 An internal immutable DataFrame with some metadata to manage indexes.
 """
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from pyspark import sql as spark
-from pyspark.sql.types import StructField, StructType, to_arrow_type
+from pyspark._globals import _NoValue, _NoValueType
+from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import infer_pd_series_spark_type
-from databricks.koalas.utils import default_session, lazy_property
+from databricks.koalas.utils import default_session, lazy_property, scol_for
 
 
 IndexMap = Tuple[str, Optional[str]]
@@ -249,6 +250,41 @@ class _InternalFrame(object):
     2 3  7  11  15  19
     3 4  8  12  16  20
 
+    For multi-level columns, it also holds column_index
+
+    >>> columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'),
+    ...                                      ('Y', 'C'), ('Y', 'D')])
+    >>> kdf3 = ks.DataFrame([
+    ...     [1, 2, 3, 4],
+    ...     [5, 6, 7, 8],
+    ...     [9, 10, 11, 12],
+    ...     [13, 14, 15, 16],
+    ...     [17, 18, 19, 20]], columns = columns)
+    >>> kdf3  # doctest: +NORMALIZE_WHITESPACE
+        X       Y
+        A   B   C   D
+    0   1   2   3   4
+    1   5   6   7   8
+    2   9  10  11  12
+    3  13  14  15  16
+    4  17  18  19  20
+
+    >>> internal = kdf3._internal
+    >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE
+    +-----------------+----------+----------+----------+----------+
+    |__index_level_0__|('X', 'A')|('X', 'B')|('Y', 'C')|('Y', 'D')|
+    +-----------------+----------+----------+----------+----------+
+    |                0|         1|         2|         3|         4|
+    |                1|         5|         6|         7|         8|
+    |                2|         9|        10|        11|        12|
+    |                3|        13|        14|        15|        16|
+    |                4|        17|        18|        19|        20|
+    +-----------------+----------+----------+----------+----------+
+    >>> internal.data_columns
+    ["('X', 'A')", "('X', 'B')", "('Y', 'C')", "('Y', 'D')"]
+    >>> internal.column_index
+    [('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Y', 'D')]
+
     For series, it also holds scol to represent the column.
 
     >>> kseries = kdf1.B
@@ -303,7 +339,8 @@ class _InternalFrame(object):
     def __init__(self, sdf: spark.DataFrame,
                  index_map: Optional[List[IndexMap]] = None,
                  scol: Optional[spark.Column] = None,
-                 data_columns: Optional[List[str]] = None) -> None:
+                 data_columns: Optional[List[str]] = None,
+                 column_index: Optional[List[Tuple[str]]] = None) -> None:
         """
         Create a new internal immutable DataFrame to manage Spark DataFrame, column fields and
         index fields and names.
@@ -316,6 +353,8 @@ class _InternalFrame(object):
         :param data_columns: list of string
                               Field names to appear as columns. If scol is not None, this
                               argument is ignored, otherwise if this is None, calculated from sdf.
+        :param column_index: list of tuples with the same length
+                              The multi-level values in the tuples.
         """
         assert isinstance(sdf, spark.DataFrame)
         assert index_map is None \
@@ -330,11 +369,28 @@ class _InternalFrame(object):
         self._scol = scol  # type: Optional[spark.Column]
         if scol is not None:
             self._data_columns = sdf.select(scol).columns
+            column_index = None
         elif data_columns is None:
             index_columns = set(index_column for index_column, _ in self._index_map)
             self._data_columns = [column for column in sdf.columns if column not in index_columns]
         else:
             self._data_columns = data_columns
+
+        assert column_index is None or (len(column_index) == len(self._data_columns) and
+                                        all(isinstance(i, tuple) for i in column_index) and
+                                        len(set(len(i) for i in column_index)) <= 1)
+        self._column_index = column_index
+
+    def scol_for(self, column_name: str) -> spark.Column:
+        """ Return Spark Column for the given column name. """
+        if self._scol is not None and column_name == self._data_columns[0]:
+            return self._scol
+        else:
+            return scol_for(self._sdf, column_name)
+
+    def spark_type_for(self, column_name: str) -> DataType:
+        """ Return DataType for the given column name. """
+        return self._sdf.schema[column_name].dataType
 
     @property
     def sdf(self) -> spark.DataFrame:
@@ -347,9 +403,19 @@ class _InternalFrame(object):
         return self._data_columns
 
     @lazy_property
+    def data_scols(self) -> List[spark.Column]:
+        """ Return Spark Columns for the managed data columns. """
+        return [self.scol_for(column) for column in self.data_columns]
+
+    @lazy_property
     def index_columns(self) -> List[str]:
         """ Return the managed index field names. """
         return [index_column for index_column, _ in self._index_map]
+
+    @lazy_property
+    def index_scols(self) -> List[spark.Column]:
+        """ Return Spark Columns for the managed index columns. """
+        return [self.scol_for(column) for column in self.index_columns]
 
     @lazy_property
     def columns(self) -> List[str]:
@@ -357,6 +423,11 @@ class _InternalFrame(object):
         index_columns = set(self.index_columns)
         return self.index_columns + [column for column in self._data_columns
                                      if column not in index_columns]
+
+    @lazy_property
+    def scols(self) -> List[spark.Column]:
+        """ Return Spark Columns for the managed columns including index columns. """
+        return [self.scol_for(column) for column in self.columns]
 
     @property
     def index_map(self) -> List[IndexMap]:
@@ -373,14 +444,15 @@ class _InternalFrame(object):
         """ Return the managed Spark Column. """
         return self._scol
 
+    @property
+    def column_index(self) -> Optional[List[Tuple[str]]]:
+        """ Return the managed column index. """
+        return self._column_index
+
     @lazy_property
     def spark_df(self) -> spark.DataFrame:
         """ Return as Spark DataFrame. """
-        if self._scol is None:
-            sdf = self._sdf
-        else:
-            sdf = self._sdf.select(self.index_columns + [self._scol])
-        return sdf.select(['`{}`'.format(name) for name in self.columns])
+        return self._sdf.select(self.scols)
 
     @lazy_property
     def pandas_df(self):
@@ -400,6 +472,9 @@ class _InternalFrame(object):
                 append = True
             pdf = pdf[self.data_columns]
 
+        if self._column_index is not None:
+            pdf.columns = pd.MultiIndex.from_tuples(self._column_index)
+
         index_names = self.index_names
         if len(index_names) > 0:
             if isinstance(pdf.index, pd.MultiIndex):
@@ -408,27 +483,32 @@ class _InternalFrame(object):
                 pdf.index.name = index_names[0]
         return pdf
 
-    def copy(self, sdf: Optional[spark.DataFrame] = None,
-             index_map: Optional[List[IndexMap]] = None,
-             scol: Optional[spark.Column] = None,
-             data_columns: Optional[List[str]] = None) -> '_InternalFrame':
+    def copy(self, sdf: Union[spark.DataFrame, _NoValueType] = _NoValue,
+             index_map: Union[List[IndexMap], _NoValueType] = _NoValue,
+             scol: Union[spark.Column, _NoValueType] = _NoValue,
+             data_columns: Union[List[str], _NoValueType] = _NoValue,
+             column_index: Union[List[Tuple[str]], _NoValueType] = _NoValue) -> '_InternalFrame':
         """ Copy the immutable DataFrame.
 
         :param sdf: the new Spark DataFrame. If None, then the original one is used.
         :param index_map: the new index information. If None, then the original one is used.
         :param scol: the new Spark Column. If None, then the original one is used.
         :param data_columns: the new column field names. If None, then the original ones are used.
+        :param column_index: the new column index.
         :return: the copied immutable DataFrame.
         """
-        if sdf is None:
+        if sdf is _NoValue:
             sdf = self._sdf
-        if index_map is None:
+        if index_map is _NoValue:
             index_map = self._index_map
-        if scol is None:
+        if scol is _NoValue:
             scol = self._scol
-        if data_columns is None:
+        if data_columns is _NoValue:
             data_columns = self._data_columns
-        return _InternalFrame(sdf, index_map=index_map.copy(), scol=scol, data_columns=data_columns)
+        if column_index is _NoValue:
+            column_index = self._column_index
+        return _InternalFrame(sdf, index_map=index_map, scol=scol, data_columns=data_columns,
+                              column_index=column_index)
 
     @staticmethod
     def from_pandas(pdf: pd.DataFrame) -> '_InternalFrame':
@@ -437,7 +517,12 @@ class _InternalFrame(object):
         :param pdf: :class:`pd.DataFrame`
         :return: the created immutable DataFrame
         """
-        data_columns = [str(col) for col in pdf.columns]
+        columns = pdf.columns
+        data_columns = [str(col) for col in columns]
+        if isinstance(columns, pd.MultiIndex):
+            column_index = columns.tolist()
+        else:
+            column_index = None
 
         index = pdf.index
 
@@ -466,4 +551,5 @@ class _InternalFrame(object):
                 continue
             reset_index[name] = col.replace({np.nan: None})
         sdf = default_session().createDataFrame(reset_index, schema=schema)
-        return _InternalFrame(sdf=sdf, index_map=index_map, data_columns=data_columns)
+        return _InternalFrame(sdf=sdf, index_map=index_map, data_columns=data_columns,
+                              column_index=column_index)

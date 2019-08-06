@@ -103,3 +103,8 @@ def lazy_property(fn):
         return getattr(self, attr_name)
 
     return _lazy_property
+
+
+def scol_for(sdf: spark.DataFrame, column_name: str) -> spark.Column:
+    """ Return Spark Column for the given column name. """
+    return sdf['`{}`'.format(column_name)]

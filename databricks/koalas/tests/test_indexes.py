@@ -46,8 +46,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                                  index=pd.date_range('2011-01-01', freq='D', periods=10)),
                     pd.DataFrame(np.random.randn(10, 5),
                                  columns=list('abcde')).set_index(['a', 'b'])]:
-            kdf = ks.from_pandas(pdf)
-            self.assert_eq(kdf.index, pdf.index)
+            if LooseVersion(pyspark.__version__) < LooseVersion('2.4'):
+                # PySpark < 2.4 does not support struct type with arrow enabled.
+                with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
+                    kdf = ks.from_pandas(pdf)
+                    self.assert_eq(kdf.index, pdf.index)
+            else:
+                kdf = ks.from_pandas(pdf)
+                self.assert_eq(kdf.index, pdf.index)
 
     def test_to_series(self):
         pidx = self.pdf.index
@@ -100,7 +106,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx.names = ['renamed_number', 'renamed_color']
         kidx.names = ['renamed_number', 'renamed_color']
         self.assertEqual(kidx.names, pidx.names)
-        self.assert_eq(kidx, pidx)
+        if LooseVersion(pyspark.__version__) < LooseVersion('2.4'):
+            # PySpark < 2.4 does not support struct type with arrow enabled.
+            with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
+                self.assert_eq(kidx, pidx)
+        else:
+            self.assert_eq(kidx, pidx)
 
         with self.assertRaises(PandasNotImplementedError):
             kidx.name
@@ -159,7 +170,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                                  if type_.fget.__name__ == 'deprecated_property']
         for name in deprecated_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "property.*GroupBy.*{}.*is deprecated".format(name)):
+                                        "property.*Index.*{}.*is deprecated".format(name)):
                 getattr(kdf.set_index('a').index, name)
 
         # MultiIndex properties
@@ -177,7 +188,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                                  if type_.fget.__name__ == 'deprecated_property']
         for name in deprecated_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "property.*GroupBy.*{}.*is deprecated".format(name)):
+                                        "property.*Index.*{}.*is deprecated".format(name)):
                 getattr(kdf.set_index(['a', 'b']).index, name)
 
     def test_multi_index_not_supported(self):

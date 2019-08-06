@@ -31,21 +31,18 @@ class _MissingPandasLikeIndex(object):
 
     # Properties
     T = unsupported_property('T')
-    array = unsupported_property('array')
-    base = unsupported_property('base')
-    data = unsupported_property('data')
-    flags = unsupported_property('flags')
     has_duplicates = unsupported_property('has_duplicates')
-    is_monotonic = unsupported_property('is_monotonic')
-    is_monotonic_decreasing = unsupported_property('is_monotonic_decreasing')
-    is_monotonic_increasing = unsupported_property('is_monotonic_increasing')
-    itemsize = unsupported_property('itemsize')
     nbytes = unsupported_property('nbytes')
     ndim = unsupported_property('ndim')
     nlevels = unsupported_property('nlevels')
     shape = unsupported_property('shape')
-    size = unsupported_property('size')
-    strides = unsupported_property('strides')
+
+    # Deprecated properties
+    strides = unsupported_property('strides', deprecated=True)
+    data = unsupported_property('data', deprecated=True)
+    itemsize = unsupported_property('itemsize', deprecated=True)
+    base = unsupported_property('base', deprecated=True)
+    flags = unsupported_property('flags', deprecated=True)
 
     # Functions
     append = unsupported_function('append')
@@ -54,7 +51,6 @@ class _MissingPandasLikeIndex(object):
     argsort = unsupported_function('argsort')
     asof = unsupported_function('asof')
     asof_locs = unsupported_function('asof_locs')
-    contains = unsupported_function('contains')
     copy = unsupported_function('copy')
     delete = unsupported_function('delete')
     difference = unsupported_function('difference')
@@ -74,7 +70,6 @@ class _MissingPandasLikeIndex(object):
     get_loc = unsupported_function('get_loc')
     get_slice_bound = unsupported_function('get_slice_bound')
     get_value = unsupported_function('get_value')
-    get_values = unsupported_function('get_values')
     groupby = unsupported_function('groupby')
     holds_integer = unsupported_function('holds_integer')
     identical = unsupported_function('identical')
@@ -91,7 +86,6 @@ class _MissingPandasLikeIndex(object):
     is_numeric = unsupported_function('is_numeric')
     is_object = unsupported_function('is_object')
     is_type_compatible = unsupported_function('is_type_compatible')
-    item = unsupported_function('item')
     join = unsupported_function('join')
     map = unsupported_function('map')
     max = unsupported_function('max')
@@ -100,12 +94,10 @@ class _MissingPandasLikeIndex(object):
     putmask = unsupported_function('putmask')
     ravel = unsupported_function('ravel')
     reindex = unsupported_function('reindex')
-    rename = unsupported_function('rename')
     repeat = unsupported_function('repeat')
     searchsorted = unsupported_function('searchsorted')
     set_names = unsupported_function('set_names')
     set_value = unsupported_function('set_value')
-    shift = unsupported_function('shift')
     slice_indexer = unsupported_function('slice_indexer')
     slice_locs = unsupported_function('slice_locs')
     sort = unsupported_function('sort')
@@ -115,10 +107,8 @@ class _MissingPandasLikeIndex(object):
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
     to_frame = unsupported_function('to_frame')
-    to_list = unsupported_function('to_list')
     to_native_types = unsupported_function('to_native_types')
     to_numpy = unsupported_function('to_numpy')
-    tolist = unsupported_function('tolist')
     transpose = unsupported_function('transpose')
     union = unsupported_function('union')
     unique = unsupported_function('unique')
@@ -129,33 +119,40 @@ class _MissingPandasLikeIndex(object):
     # Deprecated functions
     get_duplicates = unsupported_function('get_duplicates', deprecated=True)
     summary = unsupported_function('summary', deprecated=True)
+    get_values = unsupported_function('get_values', deprecated=True)
+    item = unsupported_function('item', deprecated=True)
+    contains = unsupported_function('contains', deprecated=True)
 
-    # Functions and properties we won't support.
+    # Properties we won't support.
     values = common.values(unsupported_property)
+    array = common.array(unsupported_property)
+
+    # Functions we won't support.
     memory_usage = common.memory_usage(unsupported_function)
+    to_list = common.to_list(unsupported_function)
+    tolist = common.tolist(unsupported_function)
 
 
 class _MissingPandasLikeMultiIndex(object):
 
     # Properties
     T = unsupported_property('T')
-    array = unsupported_property('array')
-    base = unsupported_property('base')
     codes = unsupported_property('codes')
-    data = unsupported_property('data')
-    flags = unsupported_property('flags')
     has_duplicates = unsupported_property('has_duplicates')
     is_all_dates = unsupported_property('is_all_dates')
-    is_monotonic = unsupported_property('is_monotonic')
-    itemsize = unsupported_property('itemsize')
-    labels = unsupported_property('labels')
     levels = unsupported_property('levels')
     levshape = unsupported_property('levshape')
     ndim = unsupported_property('ndim')
     nlevels = unsupported_property('nlevels')
     shape = unsupported_property('shape')
-    size = unsupported_property('size')
-    strides = unsupported_property('strides')
+
+    # Deprecated properties
+    strides = unsupported_property('strides', deprecated=True)
+    data = unsupported_property('data', deprecated=True)
+    base = unsupported_property('base', deprecated=True)
+    itemsize = unsupported_property('itemsize', deprecated=True)
+    labels = unsupported_property('labels', deprecated=True)
+    flags = unsupported_property('flags', deprecated=True)
 
     # Functions
     append = unsupported_function('append')
@@ -164,7 +161,6 @@ class _MissingPandasLikeMultiIndex(object):
     argsort = unsupported_function('argsort')
     asof = unsupported_function('asof')
     asof_locs = unsupported_function('asof_locs')
-    contains = unsupported_function('contains')
     copy = unsupported_function('copy')
     delete = unsupported_function('delete')
     difference = unsupported_function('difference')
@@ -187,7 +183,6 @@ class _MissingPandasLikeMultiIndex(object):
     get_locs = unsupported_function('get_locs')
     get_slice_bound = unsupported_function('get_slice_bound')
     get_value = unsupported_function('get_value')
-    get_values = unsupported_function('get_values')
     groupby = unsupported_function('groupby')
     holds_integer = unsupported_function('holds_integer')
     identical = unsupported_function('identical')
@@ -205,7 +200,6 @@ class _MissingPandasLikeMultiIndex(object):
     is_numeric = unsupported_function('is_numeric')
     is_object = unsupported_function('is_object')
     is_type_compatible = unsupported_function('is_type_compatible')
-    item = unsupported_function('item')
     join = unsupported_function('join')
     map = unsupported_function('map')
     max = unsupported_function('max')
@@ -215,7 +209,6 @@ class _MissingPandasLikeMultiIndex(object):
     ravel = unsupported_function('ravel')
     reindex = unsupported_function('reindex')
     remove_unused_levels = unsupported_function('remove_unused_levels')
-    rename = unsupported_function('rename')
     reorder_levels = unsupported_function('reorder_levels')
     repeat = unsupported_function('repeat')
     searchsorted = unsupported_function('searchsorted')
@@ -224,7 +217,6 @@ class _MissingPandasLikeMultiIndex(object):
     set_levels = unsupported_function('set_levels')
     set_names = unsupported_function('set_names')
     set_value = unsupported_function('set_value')
-    shift = unsupported_function('shift')
     slice_indexer = unsupported_function('slice_indexer')
     slice_locs = unsupported_function('slice_locs')
     sort = unsupported_function('sort')
@@ -235,10 +227,8 @@ class _MissingPandasLikeMultiIndex(object):
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
     to_frame = unsupported_function('to_frame')
-    to_list = unsupported_function('to_list')
     to_native_types = unsupported_function('to_native_types')
     to_numpy = unsupported_function('to_numpy')
-    tolist = unsupported_function('tolist')
     transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     union = unsupported_function('union')
@@ -251,7 +241,15 @@ class _MissingPandasLikeMultiIndex(object):
     get_duplicates = unsupported_function('get_duplicates', deprecated=True)
     summary = unsupported_function('summary', deprecated=True)
     to_hierarchical = unsupported_function('to_hierarchical', deprecated=True)
+    get_values = unsupported_function('get_values', deprecated=True)
+    contains = unsupported_function('contains', deprecated=True)
+    item = unsupported_function('item', deprecated=True)
 
-    # Functions and properties we won't support.
+    # Functions we won't support.
     values = common.values(unsupported_property)
+    array = common.array(unsupported_property)
+
+    # Properties we won't support.
     memory_usage = common.memory_usage(unsupported_function)
+    to_list = common.to_list(unsupported_function)
+    tolist = common.tolist(unsupported_function)

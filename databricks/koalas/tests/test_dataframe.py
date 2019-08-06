@@ -74,6 +74,96 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([1, 2, 3], name='x')
         self.assert_eq(pd.DataFrame(pser), ks.DataFrame(kser))
 
+    def test_dataframe_multiindex_columns(self):
+        pdf = pd.DataFrame({
+            ('x', 'a', '1'): [1, 2, 3],
+            ('x', 'b', '2'): [4, 5, 6],
+            ('y.z', 'c.d', '3'): [7, 8, 9],
+            ('x', 'b', '4'): [10, 11, 12],
+        }, index=[0, 1, 3])
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf['x'], pdf['x'])
+        self.assert_eq(kdf['y.z'], pdf['y.z'])
+        self.assert_eq(kdf['x']['b'], pdf['x']['b'])
+        self.assert_eq(kdf['x']['b']['2'], pdf['x']['b']['2'])
+
+        self.assert_eq(kdf.x, pdf.x)
+        self.assert_eq(kdf.x.b, pdf.x.b)
+        self.assert_eq(kdf.x.b['2'], pdf.x.b['2'])
+
+        self.assertRaises(KeyError, lambda: kdf['z'])
+        self.assertRaises(AttributeError, lambda: kdf.z)
+
+        self.assert_eq(kdf[('x',)], pdf[('x',)])
+        self.assert_eq(kdf[('x', 'a')], pdf[('x', 'a')])
+        self.assert_eq(kdf[('x', 'a', '1')], pdf[('x', 'a', '1')])
+
+    def test_reset_index_with_multiindex_columns(self):
+        index = pd.MultiIndex.from_tuples([('bird', 'falcon'),
+                                           ('bird', 'parrot'),
+                                           ('mammal', 'lion'),
+                                           ('mammal', 'monkey')],
+                                          names=['class', 'name'])
+        columns = pd.MultiIndex.from_tuples([('speed', 'max'),
+                                             ('species', 'type')])
+        pdf = pd.DataFrame([(389.0, 'fly'),
+                            (24.0, 'fly'),
+                            (80.5, 'run'),
+                            (np.nan, 'jump')],
+                           index=index,
+                           columns=columns)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf.reset_index(), pdf.reset_index())
+        self.assert_eq(kdf.reset_index(level='class'), pdf.reset_index(level='class'))
+        self.assert_eq(kdf.reset_index(level='class', col_level=1),
+                       pdf.reset_index(level='class', col_level=1))
+        self.assert_eq(kdf.reset_index(level='class', col_level=1, col_fill='species'),
+                       pdf.reset_index(level='class', col_level=1, col_fill='species'))
+        self.assert_eq(kdf.reset_index(level='class', col_level=1, col_fill='genus'),
+                       pdf.reset_index(level='class', col_level=1, col_fill='genus'))
+
+        with self.assertRaisesRegex(IndexError, 'Index has only 2 levels, not 3'):
+            kdf.reset_index(col_level=2)
+
+    def test_multiindex_column_access(self):
+        columns = pd.MultiIndex.from_tuples([('a', '', '', 'b'),
+                                             ('c', '', 'd', ''),
+                                             ('e', '', 'f', ''),
+                                             ('e', 'g', '', ''),
+                                             ('', '', '', 'h'),
+                                             ('i', '', '', '')])
+
+        pdf = pd.DataFrame([(1, 'a', 'x', 10, 100, 1000),
+                            (2, 'b', 'y', 20, 200, 2000),
+                            (3, 'c', 'z', 30, 300, 3000)],
+                           columns=columns)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf['a'], pdf['a'])
+        self.assert_eq(kdf['a']['b'], pdf['a']['b'])
+        self.assert_eq(kdf['c'], pdf['c'])
+        self.assert_eq(kdf['c']['d'], pdf['c']['d'])
+        self.assert_eq(kdf['e'], pdf['e'])
+        self.assert_eq(kdf['e']['']['f'], pdf['e']['']['f'])
+        self.assert_eq(kdf['e']['g'], pdf['e']['g'])
+        self.assert_eq(kdf[''], pdf[''])
+        self.assert_eq(kdf['']['h'], pdf['']['h'])
+        self.assert_eq(kdf['i'], pdf['i'])
+
+        self.assert_eq(kdf[['a', 'e']], pdf[['a', 'e']])
+        self.assert_eq(kdf[['e', 'a']], pdf[['e', 'a']])
+
+        self.assert_eq(kdf[('a',)], pdf[('a',)])
+        self.assert_eq(kdf[('e', 'g')], pdf[('e', 'g')])
+        self.assert_eq(kdf[('i',)], pdf[('i',)])
+
+        self.assertRaises(KeyError, lambda: kdf[('a', 'b')])
+
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
         df = ks.range(10)
@@ -183,10 +273,23 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({('A', '0'): [1, 2, 2, 3], ('B', 1): [1, 2, 3, 4]})
         kdf = ks.from_pandas(pdf)
 
+        columns = pdf.columns
+        self.assert_eq(kdf.columns, columns)
+
         pdf.columns = ['x', 'y']
         kdf.columns = ['x', 'y']
         self.assert_eq(kdf.columns, pd.Index(['x', 'y']))
         self.assert_eq(kdf, pdf)
+
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_eq(kdf.columns, columns)
+        self.assert_eq(kdf, pdf)
+
+    def test_dot_in_column_name(self):
+        self.assert_eq(
+            ks.DataFrame(ks.range(1)._sdf.selectExpr("1 as `a.b`"))['a.b'],
+            ks.Series([1]))
 
     def test_drop(self):
         kdf = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6]})
@@ -257,13 +360,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                             'y': [1, 2, np.nan, 4, np.nan, np.nan],
                             'z': [1, 2, 3, 4, np.nan, np.nan]},
                            index=[10, 20, 30, 40, 50, 60])
-
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf.fillna(-1), pdf.fillna(-1))
         self.assert_eq(kdf.fillna({'x': -1, 'y': -2, 'z': -5}),
                        pdf.fillna({'x': -1, 'y': -2, 'z': -5}))
+        self.assert_eq(pdf.fillna(method='ffill'), kdf.fillna(method='ffill'))
+        self.assert_eq(pdf.fillna(method='ffill', limit=2), kdf.fillna(method='ffill', limit=2))
+        self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
+        self.assert_eq(pdf.fillna(method='bfill', limit=2), kdf.fillna(method='bfill', limit=2))
+
+        pdf = pd.DataFrame({'x': [1, 2, 3, 4, 5, 6],
+                            'y': [6, 5, 4, 3, 2, 1],
+                            'z': [1, 2, 3, 4, np.nan, np.nan]}).set_index(['x', 'y'])
+        kdf = ks.from_pandas(pdf)
+        # check multi index
+        self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
+        self.assert_eq(pdf.fillna(method='ffill'), kdf.fillna(method='ffill'))
 
         pdf.fillna({'x': -1, 'y': -2, 'z': -5}, inplace=True)
         kdf.fillna({'x': -1, 'y': -2, 'z': -5}, inplace=True)
@@ -277,12 +391,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.fillna(-1, axis=1)
         with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
             kdf.fillna(-1, axis='column')
-        with self.assertRaisesRegex(ValueError, "must specify value"):
-            kdf.fillna()
+        with self.assertRaisesRegex(ValueError, "limit parameter for value is not support now"):
+            kdf.fillna(-1, limit=1)
         with self.assertRaisesRegex(TypeError, "Unsupported.*DataFrame"):
             kdf.fillna(pd.DataFrame({'x': [-1], 'y': [-1], 'z': [-1]}))
         with self.assertRaisesRegex(TypeError, "Unsupported.*numpy.int64"):
             kdf.fillna({'x': np.int64(-6), 'y': np.int64(-4), 'z': -5})
+        with self.assertRaisesRegex(ValueError, "Expecting pad, ffill, backfill or bfill."):
+            kdf.fillna(method='xxx')
+        with self.assertRaisesRegex(ValueError, "Must specify a fill 'value' or 'method'."):
+            kdf.fillna()
 
     def test_isnull(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
@@ -348,7 +466,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert invalid parameters
         self.assertRaises(ValueError, lambda: kdf.sort_index(axis=1))
-        self.assertRaises(ValueError, lambda: kdf.sort_index(level=42))
         self.assertRaises(ValueError, lambda: kdf.sort_index(kind='mergesort'))
         self.assertRaises(ValueError, lambda: kdf.sort_index(na_position='invalid'))
 
@@ -367,6 +484,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                            index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]])
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
+        self.assert_eq(kdf.sort_index(level=[1, 0]), pdf.sort_index(level=[1, 0]))
+
+        self.assertRaises(ValueError, lambda: kdf.reset_index().sort_index())
 
     def test_nlargest(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
@@ -510,6 +630,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # join types
         for how in ['inner', 'left', 'right', 'outer']:
+            check(lambda left, right: left.merge(right, on='value', how=how))
             check(lambda left, right: left.merge(right, left_on='lkey', right_on='rkey', how=how))
 
         # suffix
@@ -593,7 +714,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             left.merge(right, left_index=True, right_index=True, how='foo')
 
         with self.assertRaisesRegex(AnalysisException,
-                                    'Cannot resolve column name "id"'):
+                                    'Cannot resolve column name "`id`"'):
             left.merge(right, on='id')
 
     def test_append(self):
@@ -964,33 +1085,77 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             repr(pdf2.transpose().sort_index()),
             repr(ks.DataFrame(pdf2).transpose().sort_index()))
 
+    def _test_cummin(self, pdf, kdf):
+        self.assert_eq(pdf.cummin(), kdf.cummin())
+        self.assert_eq(pdf.cummin(skipna=False), kdf.cummin(skipna=False))
+
     def test_cummin(self):
         pdf = pd.DataFrame([
             [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.cummin(), kdf.cummin())
-        self.assert_eq(pdf.cummin(skipna=False), kdf.cummin(skipna=False))
+        self._test_cummin(pdf, kdf)
+
+    def test_cummin_multiindex_columns(self):
+        arrays = [np.array(['A', 'A', 'B', 'B']),
+                  np.array(['one', 'two', 'one', 'two'])]
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        pdf.at['B', ('A', 'two')] = None
+        kdf = ks.from_pandas(pdf)
+        self._test_cummin(pdf, kdf)
+
+    def _test_cummax(self, pdf, kdf):
+        self.assert_eq(pdf.cummax(), kdf.cummax())
+        self.assert_eq(pdf.cummax(skipna=False), kdf.cummax(skipna=False))
 
     def test_cummax(self):
         pdf = pd.DataFrame([
             [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.cummax(), kdf.cummax())
-        self.assert_eq(pdf.cummax(skipna=False), kdf.cummax(skipna=False))
+        self._test_cummax(pdf, kdf)
+
+    def test_cummax_multiindex_columns(self):
+        arrays = [np.array(['A', 'A', 'B', 'B']),
+                  np.array(['one', 'two', 'one', 'two'])]
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        pdf.at['B', ('A', 'two')] = None
+        kdf = ks.from_pandas(pdf)
+        self._test_cummax(pdf, kdf)
+
+    def _test_cumsum(self, pdf, kdf):
+        self.assert_eq(pdf.cumsum(), kdf.cumsum())
+        self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
 
     def test_cumsum(self):
         pdf = pd.DataFrame([
             [2.0, 1.0], [5, None], [1.0, 0.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.cumsum(), kdf.cumsum())
-        self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
+        self._test_cumsum(pdf, kdf)
+
+    def test_cumsum_multiindex_columns(self):
+        arrays = [np.array(['A', 'A', 'B', 'B']),
+                  np.array(['one', 'two', 'one', 'two'])]
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        pdf.at['B', ('A', 'two')] = None
+        kdf = ks.from_pandas(pdf)
+        self._test_cumsum(pdf, kdf)
+
+    def _test_cumprod(self, pdf, kdf):
+        self.assertEqual(repr(pdf.cumprod()), repr(kdf.cumprod()))
+        self.assertEqual(repr(pdf.cumprod(skipna=False)), repr(kdf.cumprod(skipna=False)))
 
     def test_cumprod(self):
         pdf = pd.DataFrame([
             [2.0, 1.0], [5, None], [1.0, 1.0], [2.0, 4.0], [4.0, 9.0]], columns=list('AB'))
         kdf = ks.from_pandas(pdf)
-        self.assertEqual(repr(pdf.cumprod()), repr(kdf.cumprod()))
-        self.assertEqual(repr(pdf.cumprod(skipna=False)), repr(kdf.cumprod(skipna=False)))
+        self._test_cumprod(pdf, kdf)
+
+    def test_cumprod_multiindex_columns(self):
+        arrays = [np.array(['A', 'A', 'B', 'B']),
+                  np.array(['one', 'two', 'one', 'two'])]
+        pdf = pd.DataFrame(np.random.rand(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        pdf.at['B', ('A', 'two')] = None
+        kdf = ks.from_pandas(pdf)
+        self._test_cumprod(pdf, kdf)
 
     def test_reindex(self):
         index = ['A', 'B', 'C', 'D', 'E']
@@ -1104,3 +1269,70 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.duplicated(keep='false')
         with self.assertRaisesRegex(KeyError, "'d'"):
             kdf.duplicated(subset=['d'])
+
+    def test_ffill(self):
+        pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
+                            'y': [1, 2, np.nan, 4, np.nan, np.nan],
+                            'z': [1, 2, 3, 4, np.nan, np.nan]},
+                           index=[10, 20, 30, 40, 50, 60])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.ffill(), pdf.ffill())
+        self.assert_eq(kdf.ffill(limit=1), pdf.ffill(limit=1))
+
+    def test_bfill(self):
+        pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
+                            'y': [1, 2, np.nan, 4, np.nan, np.nan],
+                            'z': [1, 2, 3, 4, np.nan, np.nan]},
+                           index=[10, 20, 30, 40, 50, 60])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.bfill(), pdf.bfill())
+        self.assert_eq(kdf.bfill(limit=1), pdf.bfill(limit=1))
+
+    def test_filter(self):
+        pdf = pd.DataFrame({
+            'aa': ['aa', 'ab', 'bc', 'bd', 'ce'],
+            'ba': [1, 2, 3, 4, 5],
+            'cb': [1., 2., 3., 4., 5.],
+            'db': [1., np.nan, 3., np.nan, 5.],
+        })
+        pdf = pdf.set_index('aa')
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            kdf.filter(items=['ab', 'aa'], axis=0).sort_index(),
+            pdf.filter(items=['ab', 'aa'], axis=0).sort_index())
+        self.assert_eq(
+            kdf.filter(items=['ba', 'db'], axis=1).sort_index(),
+            pdf.filter(items=['ba', 'db'], axis=1).sort_index())
+
+        self.assert_eq(kdf.filter(like='b', axis='index'), pdf.filter(like='b', axis='index'))
+        self.assert_eq(kdf.filter(like='c', axis='columns'), pdf.filter(like='c', axis='columns'))
+
+        self.assert_eq(
+            kdf.filter(regex='b.*', axis='index'), pdf.filter(regex='b.*', axis='index'))
+        self.assert_eq(
+            kdf.filter(regex='b.*', axis='columns'), pdf.filter(regex='b.*', axis='columns'))
+
+        pdf = pdf.set_index('ba', append=True)
+        kdf = ks.from_pandas(pdf)
+
+        with self.assertRaisesRegex(ValueError, "items should be a list-like object"):
+            kdf.filter(items='b')
+
+        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
+            kdf.filter(items=['b'], axis=0)
+
+        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
+            kdf.filter(like='b', axis='index')
+
+        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
+            kdf.filter(regex='b.*', axis='index')
+
+        with self.assertRaisesRegex(ValueError, "No axis named"):
+            kdf.filter(regex='b.*', axis=123)
+
+        with self.assertRaisesRegex(TypeError, "Must pass either `items`, `like`"):
+            kdf.filter()
+
+        with self.assertRaisesRegex(TypeError, "mutually exclusive"):
+            kdf.filter(regex='b.*', like="aaa")

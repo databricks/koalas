@@ -17,6 +17,7 @@
 """
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
+import warnings
 from collections import Counter
 from collections.abc import Iterable
 
@@ -295,7 +296,7 @@ class _Frame(object):
         from pyspark.sql.functions import pandas_udf
 
         def cumprod(scol):
-            @pandas_udf(returnType=self._kdf._sdf.schema[self.name].dataType)
+            @pandas_udf(returnType=self._kdf._internal.spark_type_for(self.name))
             def negative_check(s):
                 assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), \
                     "values should be bigger than 0: %s" % s
@@ -308,6 +309,8 @@ class _Frame(object):
     def get_dtype_counts(self):
         """
         Return counts of unique dtypes in this object.
+
+        .. deprecated:: 0.14.0
 
         Returns
         -------
@@ -337,6 +340,11 @@ class _Frame(object):
         object    1
         dtype: int64
         """
+        warnings.warn(
+            "`get_dtype_counts` has been deprecated and will be "
+            "removed in a future version. For DataFrames use "
+            "`.dtypes.value_counts()",
+            FutureWarning)
         if not isinstance(self.dtypes, Iterable):
             dtypes = [self.dtypes]
         else:
@@ -831,12 +839,14 @@ class _Frame(object):
         return validate_arguments_and_invoke_function(
             kdf.to_pandas(), self.to_excel, f, args)
 
-    def mean(self, numeric_only=True):
+    def mean(self, axis=None, numeric_only=True):
         """
         Return the mean of the values.
 
         Parameters
         ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
         numeric_only : bool, default None
             Include only float, int, boolean columns. If None, will attempt to use
             everything, then use only numeric data. Not implemented for Series.
@@ -858,19 +868,29 @@ class _Frame(object):
         b    0.2
         dtype: float64
 
+        >>> df.mean(axis=1)
+        0    0.55
+        1    1.10
+        2    1.65
+        3     NaN
+        Name: 0, dtype: float64
+
         On a Series:
 
         >>> df['a'].mean()
         2.0
         """
-        return self._reduce_for_stat_function(F.mean, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            F.mean, name="mean", numeric_only=numeric_only, axis=axis)
 
-    def sum(self, numeric_only=True):
+    def sum(self, axis=None, numeric_only=True):
         """
         Return the sum of the values.
 
         Parameters
         ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
         numeric_only : bool, default None
             Include only float, int, boolean columns. If None, will attempt to use
             everything, then use only numeric data. Not implemented for Series.
@@ -892,19 +912,29 @@ class _Frame(object):
         b    0.6
         dtype: float64
 
+        >>> df.sum(axis=1)
+        0    1.1
+        1    2.2
+        2    3.3
+        3    0.0
+        Name: 0, dtype: float64
+
         On a Series:
 
         >>> df['a'].sum()
         6.0
         """
-        return self._reduce_for_stat_function(F.sum, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            F.sum, name="sum", numeric_only=numeric_only, axis=axis)
 
-    def skew(self, numeric_only=True):
+    def skew(self, axis=None, numeric_only=True):
         """
         Return unbiased skew normalized by N-1.
 
         Parameters
         ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
         numeric_only : bool, default None
             Include only float, int, boolean columns. If None, will attempt to use
             everything, then use only numeric data. Not implemented for Series.
@@ -921,7 +951,7 @@ class _Frame(object):
 
         On a DataFrame:
 
-        >>> df.skew()
+        >>> df.skew()  # doctest: +SKIP
         a    0.000000e+00
         b   -3.319678e-16
         dtype: float64
@@ -931,15 +961,18 @@ class _Frame(object):
         >>> df['a'].skew()
         0.0
         """
-        return self._reduce_for_stat_function(F.skewness, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            F.skewness, name="skew", numeric_only=numeric_only, axis=axis)
 
-    def kurtosis(self, numeric_only=True):
+    def kurtosis(self, axis=None, numeric_only=True):
         """
         Return unbiased kurtosis using Fisher’s definition of kurtosis (kurtosis of normal == 0.0).
         Normalized by N-1.
 
         Parameters
         ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
         numeric_only : bool, default None
             Include only float, int, boolean columns. If None, will attempt to use
             everything, then use only numeric data. Not implemented for Series.
@@ -966,16 +999,19 @@ class _Frame(object):
         >>> df['a'].kurtosis()
         -1.5
         """
-        return self._reduce_for_stat_function(F.kurtosis, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            F.kurtosis, name="kurtosis", numeric_only=numeric_only, axis=axis)
 
     kurt = kurtosis
 
-    def min(self, numeric_only=False):
+    def min(self, axis=None, numeric_only=False):
         """
         Return the minimum of the values.
 
         Parameters
         ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
         numeric_only : bool, default None
             Include only float, int, boolean columns. If None, will attempt to use
             everything, then use only numeric data. Not implemented for Series.
@@ -997,19 +1033,29 @@ class _Frame(object):
         b    0.1
         dtype: float64
 
+        >>> df.min(axis=1)
+        0    0.1
+        1    0.2
+        2    0.3
+        3    NaN
+        Name: 0, dtype: float64
+
         On a Series:
 
         >>> df['a'].min()
         1.0
         """
-        return self._reduce_for_stat_function(F.min, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            F.min, name="min", numeric_only=numeric_only, axis=axis)
 
-    def max(self, numeric_only=False):
+    def max(self, axis=None, numeric_only=False):
         """
         Return the maximum of the values.
 
         Parameters
         ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
         numeric_only : bool, default None
             Include only float, int, boolean columns. If None, will attempt to use
             everything, then use only numeric data. Not implemented for Series.
@@ -1031,19 +1077,29 @@ class _Frame(object):
         b    0.3
         dtype: float64
 
+        >>> df.max(axis=1)
+        0    1.0
+        1    2.0
+        2    3.0
+        3    NaN
+        Name: 0, dtype: float64
+
         On a Series:
 
         >>> df['a'].max()
         3.0
         """
-        return self._reduce_for_stat_function(F.max, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            F.max, name="max", numeric_only=numeric_only, axis=axis)
 
-    def std(self, numeric_only=True):
+    def std(self, axis=None, numeric_only=True):
         """
         Return sample standard deviation.
 
         Parameters
         ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
         numeric_only : bool, default None
             Include only float, int, boolean columns. If None, will attempt to use
             everything, then use only numeric data. Not implemented for Series.
@@ -1065,19 +1121,29 @@ class _Frame(object):
         b    0.1
         dtype: float64
 
+        >>> df.std(axis=1)
+        0    0.636396
+        1    1.272792
+        2    1.909188
+        3         NaN
+        Name: 0, dtype: float64
+
         On a Series:
 
         >>> df['a'].std()
         1.0
         """
-        return self._reduce_for_stat_function(F.stddev, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            F.stddev, name="std", numeric_only=numeric_only, axis=axis)
 
-    def var(self, numeric_only=True):
+    def var(self, axis=None, numeric_only=True):
         """
         Return unbiased variance.
 
         Parameters
         ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
         numeric_only : bool, default None
             Include only float, int, boolean columns. If None, will attempt to use
             everything, then use only numeric data. Not implemented for Series.
@@ -1099,12 +1165,20 @@ class _Frame(object):
         b    0.01
         dtype: float64
 
+        >>> df.var(axis=1)
+        0    0.405
+        1    1.620
+        2    3.645
+        3      NaN
+        Name: 0, dtype: float64
+
         On a Series:
 
         >>> df['a'].var()
         1.0
         """
-        return self._reduce_for_stat_function(F.variance, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            F.variance, name="var", numeric_only=numeric_only, axis=axis)
 
     @property
     def size(self) -> int:
@@ -1334,7 +1408,8 @@ class _Frame(object):
         if isinstance(kdf_or_ks, Series):
             ks = kdf_or_ks
             return self._reduce_for_stat_function(
-                lambda _: F.expr("approx_percentile(`%s`, 0.5, %s)" % (ks.name, accuracy)))
+                lambda _: F.expr(
+                    "approx_percentile(`%s`, 0.5, %s)" % (ks.name, accuracy)), name="median")
         assert isinstance(kdf_or_ks, DataFrame)
 
         # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
@@ -1401,5 +1476,5 @@ def _spark_col_apply(kdf_or_ks, sfun):
     assert isinstance(kdf_or_ks, DataFrame)
     kdf = kdf_or_ks
     sdf = kdf._sdf
-    sdf = sdf.select([sfun(sdf[col]).alias(col) for col in kdf.columns])
+    sdf = sdf.select([sfun(kdf._internal.scol_for(col)).alias(col) for col in kdf.columns])
     return DataFrame(sdf)
