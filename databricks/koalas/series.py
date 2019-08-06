@@ -2551,16 +2551,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         5     NaN
         Name: c, dtype: float64
         """
+        return self._diff(periods)
 
+    def _diff(self, periods, part_cols=()):
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
-
         if not isinstance(periods, int):
             raise ValueError('periods should be an int; however, got [%s]' % type(periods))
-
-        col = self._scol
-        window = Window.orderBy(self._internal.index_scols).rowsBetween(-periods, -periods)
-        return self._with_new_scol(col - F.lag(col, periods).over(window)).alias(self.name)
+        window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
+            .rowsBetween(-periods, -periods)
+        scol = self._scol - F.lag(self._scol, periods).over(window)
+        return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(self.name)
 
     def idxmax(self, skipna=True):
         """

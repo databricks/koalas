@@ -453,7 +453,7 @@ class GroupBy(object):
         4  5  5  25
         5  6  8  36
 
-        >>> df.groupby(['b']).diff()
+        >>> df.groupby(['b']).diff().sort_index()
              a    c
         0  NaN  NaN
         1  1.0  3.0
@@ -464,7 +464,7 @@ class GroupBy(object):
 
         Difference with previous column in a group.
 
-        >>> df.groupby(['b'])['a'].diff()
+        >>> df.groupby(['b'])['a'].diff().sort_index()
         0    NaN
         1    1.0
         2    NaN
@@ -473,20 +473,7 @@ class GroupBy(object):
         5    NaN
         Name: a, dtype: float64
         """
-        sdf = self._kdf._sdf
-        index = self._kdf._internal.index_columns[0]
-        for i, s in enumerate(self._agg_columns):
-            window = Window.partitionBy([s._scol for s in self._groupkeys])\
-                .orderBy(index).rowsBetween(-periods, -periods)
-            sdf = sdf.withColumn(s.name, s._scol - F.lag(s._scol, periods).over(window))
-
-        internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[s.name for s in self._agg_columns],
-                                  index_map=[(index, None)])
-        if isinstance(self, SeriesGroupBy):
-            return _col(DataFrame(internal)).rename(self._agg_columns[0].name)
-        else:
-            return DataFrame(internal)
+        return self._diff(periods)
 
     # TODO: Series support is not implemented yet.
     def apply(self, func):
@@ -807,6 +794,19 @@ class DataFrameGroupBy(GroupBy):
             # TODO: check that item is a list of strings
             return DataFrameGroupBy(self._kdf, self._groupkeys, item)
 
+    def _diff(self, *args, **kwargs):
+        applied = []
+        kdf = self._kdf
+        groupkey_columns = [s.name for s in self._groupkeys]
+
+        for column in kdf._internal.data_columns:
+            if column not in groupkey_columns:
+                applied.append(kdf[column].groupby(self._groupkeys)._diff(*args, **kwargs))
+
+        sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
+        internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
+
 
 class SeriesGroupBy(GroupBy):
 
@@ -823,6 +823,10 @@ class SeriesGroupBy(GroupBy):
             else:
                 return partial(property_or_func, self)
         raise AttributeError(item)
+
+    def _diff(self, *args, **kwargs):
+        groupkey_scols = [s._scol for s in self._groupkeys]
+        return Series._diff(self._ks, *args, **kwargs, part_cols=groupkey_scols)
 
     @property
     def _kdf(self) -> DataFrame:
