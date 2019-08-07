@@ -35,7 +35,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                            index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
         kdf = koalas.from_pandas(pdf)
 
-        for as_index in [False]:
+        for as_index in [True, False]:
             self.assert_eq(kdf.groupby('a', as_index=as_index).sum(),
                            pdf.groupby('a', as_index=as_index).sum())
             self.assert_eq(kdf.groupby('a', as_index=as_index).b.sum(),
