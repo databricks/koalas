@@ -3685,13 +3685,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def columns(self):
         """The column labels of the DataFrame."""
         if self._internal.column_index is not None:
-            if self._internal.column_index_names is not None:
-                return pd.MultiIndex.from_tuples(self._internal.column_index,
-                                                 names=self._internal.column_index_names)
-            else:
-                return pd.MultiIndex.from_tuples(self._internal.column_index)
+            columns = pd.MultiIndex.from_tuples(self._internal.column_index)
         else:
-            return pd.Index(self._internal.data_columns)
+            columns = pd.Index(self._internal.data_columns)
+        if self._internal.column_index_names is not None:
+            columns.names = self._internal.column_index_names
+        return columns
 
     @columns.setter
     def columns(self, columns):
@@ -3702,17 +3701,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise ValueError(
                     "Length mismatch: Expected axis has %d elements, new values have %d elements"
                     % (len(old_names), len(column_index)))
-            self._internal = self._internal.copy(column_index=column_index)
+            column_index_names = columns.names
+            self._internal = self._internal.copy(column_index=column_index,
+                                                 column_index_names=column_index_names)
         else:
             old_names = self._internal.data_columns
             if len(old_names) != len(columns):
                 raise ValueError(
                     "Length mismatch: Expected axis has %d elements, new values have %d elements"
                     % (len(old_names), len(columns)))
+            if isinstance(columns, pd.Index):
+                column_index_names = columns.names
+            else:
+                column_index_names = None
             sdf = self._sdf.select(self._internal.index_scols +
                                    [self._internal.scol_for(old_name).alias(new_name)
                                     for (old_name, new_name) in zip(old_names, columns)])
-            self._internal = self._internal.copy(sdf=sdf, data_columns=columns, column_index=None)
+            self._internal = self._internal.copy(sdf=sdf, data_columns=columns, column_index=None,
+                                                 column_index_names=column_index_names)
 
     @property
     def dtypes(self):
@@ -6226,6 +6232,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             recursive = True
             for i, (col, idx) in enumerate(columns):
                 columns[i] = (col, tuple([str(key), *idx[1:]]))
+        column_index_names = None
+        if self._internal.column_index_names is not None:
+            # Manage column index names
+            column_index_level = set(len(idx) for _, idx in columns)
+            assert len(column_index_level) == 1
+            column_index_level = list(column_index_level)[0]
+            column_index_names = self._internal.column_index_names[-column_index_level:]
         if all(len(idx) == 1 for _, idx in columns):
             # If len(idx) == 1, then the result is not MultiIndex anymore
             sdf = self._sdf.select(self._internal.index_scols +
@@ -6234,7 +6247,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf_or_ser = DataFrame(self._internal.copy(
                 sdf=sdf,
                 data_columns=[idx[0] for _, idx in columns],
-                column_index=None))
+                column_index=None,
+                column_index_names=column_index_names))
         else:
             # Otherwise, the result is still MultiIndex and need to manage column_index.
             sdf = self._sdf.select(self._internal.index_scols +
@@ -6242,7 +6256,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf_or_ser = DataFrame(self._internal.copy(
                 sdf=sdf,
                 data_columns=[col for col, _ in columns],
-                column_index=[idx for _, idx in columns]))
+                column_index=[idx for _, idx in columns],
+                column_index_names=column_index_names))
         if recursive:
             kdf_or_ser = kdf_or_ser._pd_getitem(str(key))
         if isinstance(kdf_or_ser, Series):

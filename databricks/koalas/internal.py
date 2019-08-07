@@ -491,11 +491,9 @@ class _InternalFrame(object):
             pdf = pdf[self.data_columns]
 
         if self._column_index is not None:
-            if self.column_index_names is not None:
-                pdf.columns = pd.MultiIndex.from_tuples(self._column_index,
-                                                        names=self.column_index_names)
-            else:
-                pdf.columns = pd.MultiIndex.from_tuples(self._column_index)
+            pdf.columns = pd.MultiIndex.from_tuples(self._column_index)
+        if self._column_index_names is not None:
+            pdf.columns.names = self._column_index_names
 
         index_names = self.index_names
         if len(index_names) > 0:
@@ -547,13 +545,9 @@ class _InternalFrame(object):
         data_columns = [str(col) for col in columns]
         if isinstance(columns, pd.MultiIndex):
             column_index = columns.tolist()
-            if columns.names is not None:
-                column_index_names = columns.names
-            else:
-                column_index_names = None
         else:
             column_index = None
-            column_index_names = None
+        column_index_names = columns.names
 
         index = pdf.index
 
