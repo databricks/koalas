@@ -3685,7 +3685,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def columns(self):
         """The column labels of the DataFrame."""
         if self._internal.column_index is not None:
-            return pd.MultiIndex.from_tuples(self._internal.column_index)
+            if self._internal.column_index_names is not None:
+                return pd.MultiIndex.from_tuples(self._internal.column_index,
+                                                 names=self._internal.column_index_names)
+            else:
+                return pd.MultiIndex.from_tuples(self._internal.column_index)
         else:
             return pd.Index(self._internal.data_columns)
 
