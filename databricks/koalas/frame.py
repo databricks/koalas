@@ -47,7 +47,7 @@ from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.utils import scol_for
+from databricks.koalas.utils import column_index_level, scol_for
 from databricks.koalas.typedef import as_spark_type
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
@@ -328,7 +328,7 @@ class DataFrame(_Frame, Generic[T]):
         if axis in ('index', 0, None):
             exprs = []
             num_args = len(signature(sfun).parameters)
-            for col in self._internal.data_columns:
+            for col, idx in zip(self._internal.data_columns, self._internal.column_index):
                 col_sdf = self._internal.scol_for(col)
                 col_type = self._internal.spark_type_for(col)
 
@@ -349,12 +349,12 @@ class DataFrame(_Frame, Generic[T]):
                         assert num_args == 2
                         # Pass in both the column and its data type if sfun accepts two args
                         col_sdf = sfun(col_sdf, col_type)
-                    exprs.append(col_sdf.alias(col))
+                    exprs.append(col_sdf.alias(str(idx) if len(idx) > 1 else idx[0]))
 
             sdf = self._sdf.select(*exprs)
             pdf = sdf.toPandas()
 
-            if self._internal.column_index is not None:
+            if self._internal.column_index_level > 1:
                 pdf.columns = pd.MultiIndex.from_tuples(self._internal.column_index)
 
             assert len(pdf) == 1, (sdf, pdf)
@@ -1908,7 +1908,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             index_map=index_map,
             column_index=None)
 
-        if self._internal.column_index is not None:
+        if self._internal.column_index_level > 1:
             column_depth = len(self._internal.column_index[0])
             if col_level >= column_depth:
                 raise IndexError('Too many levels: Index has only {} levels, not {}'
@@ -3773,10 +3773,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     @property
     def columns(self):
         """The column labels of the DataFrame."""
-        if self._internal.column_index is not None:
+        if self._internal.column_index_level > 1:
             columns = pd.MultiIndex.from_tuples(self._internal.column_index)
         else:
-            columns = pd.Index(self._internal.data_columns)
+            columns = pd.Index([idx[0] for idx in self._internal.column_index])
         if self._internal.column_index_names is not None:
             columns.names = self._internal.column_index_names
         return columns
@@ -5551,7 +5551,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
-        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        # FIXME(ueshin): no need to specify `column_index`.
+        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied],
+                                       column_index=self._internal.column_index)
         return DataFrame(internal)
 
     # TODO: implements 'keep' parameters
@@ -6321,41 +6323,39 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if len(columns) == 0:
                 raise KeyError(k)
         recursive = False
-        if all(len(idx) == 0 or idx[0] == '' for _, idx in columns):
-            # If idx is empty or the head is '', drill down recursively.
+        if all(len(idx) > 0 and idx[0] == '' for _, idx in columns):
+            # If the head is '', drill down recursively.
             recursive = True
             for i, (col, idx) in enumerate(columns):
                 columns[i] = (col, tuple([str(key), *idx[1:]]))
+
         column_index_names = None
         if self._internal.column_index_names is not None:
             # Manage column index names
-            column_index_level = set(len(idx) for _, idx in columns)
-            assert len(column_index_level) == 1
-            column_index_level = list(column_index_level)[0]
-            column_index_names = self._internal.column_index_names[-column_index_level:]
-        if all(len(idx) == 1 for _, idx in columns):
-            # If len(idx) == 1, then the result is not MultiIndex anymore
-            sdf = self._sdf.select(self._internal.index_scols +
-                                   [self._internal.scol_for(col).alias(idx[0])
-                                    for col, idx in columns])
-            kdf_or_ser = DataFrame(self._internal.copy(
-                sdf=sdf,
-                data_columns=[idx[0] for _, idx in columns],
-                column_index=None,
-                column_index_names=column_index_names))
+            level = column_index_level([idx for _, idx in columns])
+            column_index_names = self._internal.column_index_names[-level:]
+
+        if all(len(idx) == 0 for _, idx in columns):
+            try:
+                cols = set(col for col, _ in columns)
+                assert len(cols) == 1
+                kdf_or_ser = \
+                    Series(self._internal.copy(scol=self._internal.scol_for(list(cols)[0])),
+                           anchor=self)
+            except AnalysisException:
+                raise KeyError(key)
         else:
-            # Otherwise, the result is still MultiIndex and need to manage column_index.
-            sdf = self._sdf.select(self._internal.index_scols +
-                                   [self._internal.scol_for(col) for col, _ in columns])
             kdf_or_ser = DataFrame(self._internal.copy(
-                sdf=sdf,
                 data_columns=[col for col, _ in columns],
                 column_index=[idx for _, idx in columns],
                 column_index_names=column_index_names))
+
         if recursive:
-            kdf_or_ser = kdf_or_ser._pd_getitem(str(key))
+            kdf_or_ser = kdf_or_ser._get_from_multiindex_column((str(key),))
         if isinstance(kdf_or_ser, Series):
-            kdf_or_ser.name = str(key)
+            name = str(key) if len(key) > 1 else key[0]
+            if kdf_or_ser.name != name:
+                kdf_or_ser.name = name
         return kdf_or_ser
 
     def _pd_getitem(self, key):
@@ -6363,19 +6363,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if key is None:
             raise KeyError("none key")
         if isinstance(key, str):
-            if self._internal.column_index is not None:
-                return self._get_from_multiindex_column((key,))
-            else:
-                try:
-                    return Series(self._internal.copy(scol=self._internal.scol_for(key)),
-                                  anchor=self)
-                except AnalysisException:
-                    raise KeyError(key)
+            return self._get_from_multiindex_column((key,))
         if isinstance(key, tuple):
-            if self._internal.column_index is not None:
-                return self._get_from_multiindex_column(key)
-            else:
-                raise NotImplementedError(key)
+            return self._get_from_multiindex_column(key)
         elif np.isscalar(key):
             raise NotImplementedError(key)
         elif isinstance(key, slice):
@@ -6447,7 +6437,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self._internal = kdf._internal
 
     def __getattr__(self, key: str) -> Any:
-        from databricks.koalas.series import Series
         if key.startswith("__") or key.startswith("_pandas_") or key.startswith("_spark_"):
             raise AttributeError(key)
         if hasattr(_MissingPandasLikeDataFrame, key):
@@ -6457,16 +6446,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 return partial(property_or_func, self)
 
-        if self._internal.column_index is not None:
-            try:
-                return self._get_from_multiindex_column((key,))
-            except KeyError:
-                raise AttributeError(
-                    "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))
-        if key not in self._internal.data_columns:
+        try:
+            return self._get_from_multiindex_column((key,))
+        except KeyError:
             raise AttributeError(
                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))
-        return Series(self._internal.copy(scol=self._internal.scol_for(key)), anchor=self)
 
     def __len__(self):
         return self._sdf.count()

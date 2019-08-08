@@ -1796,7 +1796,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                                    scol_for(sdf, index_column)).alias(index_column)
                           for index_column in internal.index_columns] + internal.data_columns)
         kdf._internal = internal.copy(sdf=sdf)
-        return Series(kdf._internal.copy(scol=self._scol), anchor=kdf)
+        return _col(kdf)
 
     def add_suffix(self, suffix):
         """
@@ -1846,7 +1846,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                                    F.lit(suffix)).alias(index_column)
                           for index_column in internal.index_columns] + internal.data_columns)
         kdf._internal = internal.copy(sdf=sdf)
-        return Series(kdf._internal.copy(scol=self._scol), anchor=kdf)
+        return _col(kdf)
 
     def corr(self, other, method='pearson'):
         """

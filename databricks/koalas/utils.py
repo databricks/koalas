@@ -18,7 +18,7 @@ Commonly used utils in Koalas.
 """
 
 import functools
-from typing import Callable, Dict, Union
+from typing import Callable, Dict, List, Tuple, Union
 
 from pyspark import sql as spark
 import pandas as pd
@@ -108,3 +108,13 @@ def lazy_property(fn):
 def scol_for(sdf: spark.DataFrame, column_name: str) -> spark.Column:
     """ Return Spark Column for the given column name. """
     return sdf['`{}`'.format(column_name)]
+
+
+def column_index_level(column_index: List[Tuple[str]]) -> int:
+    """ Return the level of the column index. """
+    if len(column_index) == 0:
+        return 0
+    else:
+        levels = set(len(idx) for idx in column_index)
+        assert len(levels) == 1, levels
+        return list(levels)[0]
