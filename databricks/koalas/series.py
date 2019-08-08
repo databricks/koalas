@@ -1804,7 +1804,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.sdf
         sdf = sdf.select([F.concat(F.lit(prefix),
                                    scol_for(sdf, index_column)).alias(index_column)
-                          for index_column in internal.index_columns] + internal.data_columns)
+                          for index_column in internal.index_columns] + internal.data_scols)
         kdf._internal = internal.copy(sdf=sdf)
         return _col(kdf)
 
@@ -1854,7 +1854,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.sdf
         sdf = sdf.select([F.concat(scol_for(sdf, index_column),
                                    F.lit(suffix)).alias(index_column)
-                          for index_column in internal.index_columns] + internal.data_columns)
+                          for index_column in internal.index_columns] + internal.data_scols)
         kdf._internal = internal.copy(sdf=sdf)
         return _col(kdf)
 

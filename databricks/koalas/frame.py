@@ -5324,13 +5324,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3      4      6
         """
         assert isinstance(prefix, str)
-        data_columns = self._internal.data_columns
-
-        sdf = self._sdf.select(self._internal.index_scols +
-                               [self._internal.scol_for(name).alias(prefix + name)
-                                for name in data_columns])
-        internal = self._internal.copy(
-            sdf=sdf, data_columns=[prefix + name for name in data_columns])
+        column_index = [tuple([prefix + i for i in idx]) for idx in self._internal.column_index]
+        internal = self._internal.copy(column_index=column_index)
         return DataFrame(internal)
 
     def add_suffix(self, suffix):
@@ -5374,13 +5369,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3      4      6
         """
         assert isinstance(suffix, str)
-        data_columns = self._internal.data_columns
-
-        sdf = self._sdf.select(self._internal.index_scols +
-                               [self._internal.scol_for(name).alias(name + suffix)
-                                for name in data_columns])
-        internal = self._internal.copy(
-            sdf=sdf, data_columns=[name + suffix for name in data_columns])
+        column_index = [tuple([i + suffix for i in idx]) for idx in self._internal.column_index]
+        internal = self._internal.copy(column_index=column_index)
         return DataFrame(internal)
 
     # TODO: include, and exclude should be implemented.

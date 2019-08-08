@@ -452,8 +452,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ks = koalas.from_pandas(ps)
         self.assert_eq(ps.add_prefix('item_'), ks.add_prefix('item_'))
 
+        ps = pd.Series([1, 2, 3], name='0',
+                       index=pd.MultiIndex.from_tuples([('A', 'X'), ('A', 'Y'), ('B', 'X')]))
+        ks = koalas.from_pandas(ps)
+        self.assert_eq(ps.add_prefix('item_'), ks.add_prefix('item_'))
+
     def test_add_suffix(self):
         ps = pd.Series([1, 2, 3, 4], name='0')
+        ks = koalas.from_pandas(ps)
+        self.assert_eq(ps.add_suffix('_item'), ks.add_suffix('_item'))
+
+        ps = pd.Series([1, 2, 3], name='0',
+                       index=pd.MultiIndex.from_tuples([('A', 'X'), ('A', 'Y'), ('B', 'X')]))
         ks = koalas.from_pandas(ps)
         self.assert_eq(ps.add_suffix('_item'), ks.add_suffix('_item'))
 
