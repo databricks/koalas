@@ -17,12 +17,14 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
+from collections import OrderedDict
 from distutils.version import LooseVersion
 import re
 import warnings
 import inspect
 from functools import partial, reduce
 import sys
+from itertools import zip_longest
 from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar
 
 import numpy as np
@@ -42,7 +44,7 @@ from pyspark.sql.window import Window
 from pyspark.sql.functions import pandas_udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
@@ -386,19 +388,32 @@ class DataFrame(_Frame, Generic[T]):
 
     # Arithmetic Operators
     def _map_series_op(self, op, other):
-        if isinstance(other, DataFrame) or is_sequence(other):
+        if not isinstance(other, DataFrame) and is_sequence(other):
             raise ValueError(
-                "%s with another DataFrame or a sequence is currently not supported; "
+                "%s with a sequence is currently not supported; "
                 "however, got %s." % (op, type(other)))
 
         applied = []
-        for column in self._internal.data_columns:
-            applied.append(getattr(self[column], op)(other))
+        if isinstance(other, DataFrame) and self is not other:
+            # Different DataFrames
+            def apply_op(kdf, this_columns, that_columns):
+                for this_column, that_column in zip(this_columns, that_columns):
+                    yield getattr(kdf[this_column], op)(kdf[that_column])
 
-        sdf = self._sdf.select(
-            self._internal.index_scols + [c._scol for c in applied])
-        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
-        return DataFrame(internal)
+            return align_diff_frames(apply_op, self, other, fillna=True, how="full")
+        elif isinstance(other, DataFrame) and self is not other:
+            # Same DataFrames
+            for column in self._internal.data_columns:
+                applied.append(getattr(self[column], op)(other[column]))
+        else:
+            # DataFrame and Series
+            for column in self._internal.data_columns:
+                applied.append(getattr(self[column], op)(other))
+
+            sdf = self._sdf.select(
+                self._internal.index_scols + [c._scol for c in applied])
+            internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+            return DataFrame(internal)
 
     def __add__(self, other):
         return self._map_series_op("add", other)
@@ -6337,17 +6352,33 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def __setitem__(self, key, value):
         from databricks.koalas.series import Series
-        # For now, we don't support realignment against different dataframes.
-        # This is too expensive in Spark.
-        # Are we assigning against a column?
-        if isinstance(value, Series):
-            assert value._kdf is self, \
-                "Cannot combine column argument because it comes from a different dataframe"
-        if isinstance(key, (tuple, list)):
-            assert isinstance(value.schema, StructType)
-            field_names = value.schema.fieldNames()
+
+        if (isinstance(value, Series) and value._kdf is not self) or \
+                (isinstance(value, DataFrame) and value is not self):
+            # Different Series or DataFrames
+            if isinstance(value, Series):
+                value = value.to_frame()
+
+            if not isinstance(key, (tuple, list)):
+                key = [key]
+
+            def assign_columns(kdf, this_columns, that_columns):
+                assert len(key) == len(that_columns)
+                # Note that here intentionally uses `zip_longest` that combine
+                # that_columns.
+                for k, this_column, that_column in zip_longest(key, this_columns, that_columns):
+                    yield kdf[that_column].rename(k)
+                    if this_column != k and this_column is not None:
+                        yield kdf[this_column]
+
+            kdf = align_diff_frames(assign_columns, self, value, fillna=False, how="left")
+        elif isinstance(key, (tuple, list)):
+            assert isinstance(value, DataFrame)
+            # Same DataFrames.
+            field_names = value.columns
             kdf = self.assign(**{k: value[c] for k, c in zip(key, field_names)})
         else:
+            # Same Series.
             kdf = self.assign(**{key: value})
 
         self._internal = kdf._internal

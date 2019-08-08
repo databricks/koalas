@@ -32,6 +32,7 @@ from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, Times
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps
+from databricks.koalas.utils import align_diff_series
 
 
 def _column_op(f):
@@ -47,16 +48,23 @@ def _column_op(f):
     """
     @wraps(f)
     def wrapper(self, *args):
-        assert all((not isinstance(arg, IndexOpsMixin))
-                   or (arg._kdf is self._kdf) for arg in args), \
-            "Cannot combine column argument because it comes from a different dataframe"
-
         # It is possible for the function `f` takes other arguments than Spark Column.
         # To cover this case, explicitly check if the argument is Koalas Series and
         # extract Spark Column. For other arguments, they are used as are.
-        args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
-        scol = f(self._scol, *args)
-        return self._with_new_scol(scol)
+        cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
+        if all(self._kdf is col._kdf for col in cols):
+            # Same DataFrame anchors
+            args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
+            scol = f(self._scol, *args)
+
+            return self._with_new_scol(scol)
+        else:
+            # Different DataFrame anchors
+            def apply_func(this_column, *that_columns):
+                return f(this_column, *that_columns)
+
+            return align_diff_series(apply_func, self, *args, how="full")
+
     return wrapper
 
 
