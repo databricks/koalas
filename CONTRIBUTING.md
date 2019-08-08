@@ -152,3 +152,19 @@ python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/koal
 # for release
 python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl dist/koalas-$package_version.tar.gz
 ```
+
+Step 5. Verify the uploaded package can be installed and executed.
+One unofficial tip is to run the doctests of Koalas within a Python interpretor after installing it.
+
+```python
+import os
+
+from pytest import main
+import databricks
+
+test_path = os.path.abspath(os.path.dirname(databricks.__file__))
+main(['-k', '-to_delta -read_delta', '--verbose', '--showlocals', '--doctest-modules', test_path])
+```
+
+Note that this way might require additional settings, for instance, environment variables.
+
