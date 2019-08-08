@@ -160,7 +160,6 @@ One unofficial tip is to run the doctests of Koalas within a Python interpretor 
 import os
 
 from pytest import main
-
 import databricks
 
 test_path = os.path.abspath(os.path.dirname(databricks.__file__))
