@@ -425,6 +425,63 @@ class GroupBy(object):
                                              for i, s in enumerate(groupkeys)])
         return _col(DataFrame(internal))
 
+    def diff(self, periods=1):
+        """
+        First discrete difference of element.
+
+        Calculates the difference of a DataFrame element compared with another element in the
+        DataFrame group (default is the element in the same column of the previous row).
+
+        Parameters
+        ----------
+        periods : int, default 1
+            Periods to shift for calculating difference, accepts negative values.
+
+        Returns
+        -------
+        diffed : DataFrame or Series
+
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+        ...                    'b': [1, 1, 2, 3, 5, 8],
+        ...                    'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
+        >>> df
+           a  b   c
+        0  1  1   1
+        1  2  1   4
+        2  3  2   9
+        3  4  3  16
+        4  5  5  25
+        5  6  8  36
+
+        >>> df.groupby(['b']).diff().sort_index()
+             a    c
+        0  NaN  NaN
+        1  1.0  3.0
+        2  NaN  NaN
+        3  NaN  NaN
+        4  NaN  NaN
+        5  NaN  NaN
+
+        Difference with previous column in a group.
+
+        >>> df.groupby(['b'])['a'].diff().sort_index()
+        0    NaN
+        1    1.0
+        2    NaN
+        3    NaN
+        4    NaN
+        5    NaN
+        Name: a, dtype: float64
+        """
+        return self._diff(periods)
+
     def cummax(self):
         """
         Cumulative max for each group.
@@ -1164,6 +1221,19 @@ class DataFrameGroupBy(GroupBy):
             return DataFrameGroupBy(self._kdf, self._groupkeys, as_index=self._as_index,
                                     agg_columns=item)
 
+    def _diff(self, *args, **kwargs):
+        applied = []
+        kdf = self._kdf
+        groupkey_columns = [s.name for s in self._groupkeys]
+
+        for column in kdf._internal.data_columns:
+            if column not in groupkey_columns:
+                applied.append(kdf[column].groupby(self._groupkeys)._diff(*args, **kwargs))
+
+        sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
+        internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
+
     def _rank(self, *args, **kwargs):
         applied = []
         kdf = self._kdf
@@ -1225,6 +1295,10 @@ class SeriesGroupBy(GroupBy):
             else:
                 return partial(property_or_func, self)
         raise AttributeError(item)
+
+    def _diff(self, *args, **kwargs):
+        groupkey_scols = [s._scol for s in self._groupkeys]
+        return Series._diff(self._ks, *args, **kwargs, part_cols=groupkey_scols)
 
     def _cum(self, func):
         groupkey_scols = [s._scol for s in self._groupkeys]
