@@ -3546,8 +3546,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Parameters
         ----------
         values : column to aggregate.
-            They should be either a list of one column or a string. A list of columns
-            is not supported yet.
+            They should be either a list less than three or a string.
         index : column (string) or list of columns
             If an array is passed, it must be the same length as the data.
             The list should contain string.
@@ -3625,28 +3624,44 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         C
         small  5.5  2.333333
         large  5.5  2.000000
+
+        The next example aggregates on multiple values.
+
+        >>> table = df.pivot_table(index=['C'], columns="A", values=['B', 'E'],
+        ...                         aggfunc={'B': 'mean', 'E': 'sum'})
+        >>> table # doctest: +NORMALIZE_WHITESPACE
+                  B         E
+        A       bar   foo bar foo
+        C
+        small  None  None  17  13
+        large  None  None  15   9
+
         """
         if not isinstance(columns, str):
-            raise ValueError("columns should be string.")
+            raise ValueError("Columns should be string.")
 
         if not isinstance(values, str) and not isinstance(values, list):
-            raise ValueError('values should be string or list of one column.')
+            raise ValueError('Values should be string or list of one column.')
 
         if not isinstance(aggfunc, str) and (not isinstance(aggfunc, dict) or not all(
                 isinstance(key, str) and isinstance(value, str) for key, value in aggfunc.items())):
-            raise ValueError("aggfunc must be a dict mapping from column name (string) "
+            raise ValueError("Aggfunc must be a dict mapping from column name (string) "
                              "to aggregate functions (string).")
 
         if isinstance(aggfunc, dict) and index is None:
-            raise NotImplementedError("pivot_table doesn't support aggfunc"
+            raise NotImplementedError("Pivot_table doesn't support aggfunc"
                                       " as dict and without index.")
+        if isinstance(values, list) and index is None:
+            raise NotImplementedError("Values can't be a list without index.")
 
-        if isinstance(values, list) and len(values) > 1:
-            raise NotImplementedError('Values as list of columns is not implemented yet.')
+        if isinstance(values, list) and len(values) > 2:
+            raise NotImplementedError("Values more than two is not supported yet!")
+
+        if columns not in self.columns.values:
+            raise ValueError("Wrong columns {}.".format(columns))
 
         if isinstance(aggfunc, str):
             agg_cols = [F.expr('{1}(`{0}`) as `{0}`'.format(values, aggfunc))]
-
         elif isinstance(aggfunc, dict):
             agg_cols = [F.expr('{1}(`{0}`) as `{0}`'.format(key, value))
                         for key, value in aggfunc.items()]
@@ -3667,21 +3682,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.fillna(fill_value)
 
         if index is not None:
-            data_columns = [column for column in sdf.columns if column not in index]
-            index_map = [(column, column) for column in index]
-            internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map)
-            return DataFrame(internal)
-        else:
             if isinstance(values, list):
-                index_values = values[-1]
-            else:
-                index_values = values
+                if len(values) == 2:
+                    data_columns = [column for column in sdf.columns if column not in index]
+                    data_columns.sort(key=lambda x: x.split('_')[1])
+                    sdf = sdf.select(index + data_columns)
+                kdf = DataFrame(sdf).set_index(index)
 
-            sdf = sdf.withColumn(columns, F.lit(index_values))
-            data_columns = [column for column in sdf.columns if column not in columns]
-            index_map = [(column, column) for column in columns]
-            internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map)
-            return DataFrame(internal)
+                if len(values) == 2:
+                    tuples = [(name.split('_')[1], self.dtypes[columns].type(name.split('_')[0]))
+                              for name in kdf._internal.data_columns]
+                    kdf.columns = pd.MultiIndex.from_tuples(tuples, names=[None, columns])
+
+                return kdf
+            else:
+                return DataFrame(sdf).set_index(index)
+        else:
+            return DataFrame(sdf.withColumn(columns, F.lit(values))).set_index(columns)
 
     def pivot(self, index=None, columns=None, values=None):
         """
