@@ -1102,9 +1102,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Todo: self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values="b"),
         #  pdf.pivot_table(index=['c'], columns=["a"], values="b"))
 
-        # Todo: self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
-        #  aggfunc={'b': 'mean', 'e': 'sum'}), pdf.pivot_table(index=['c'], columns=["a"],
-        #  values=['b', 'e'], aggfunc={'b': 'mean', 'e': 'sum'}))
+        self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
+                                       aggfunc={'b': 'mean', 'e': 'sum'}).to_pandas().sort_index(),
+                       pdf.pivot_table(index=['c'], columns=["a"],
+                                       values=['b', 'e'], aggfunc={'b': 'mean', 'e': 'sum'}))
 
         # Todo: self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b"),
         #  pdf.pivot_table(index=['e', 'c'], columns="a", values="b"))
@@ -1132,19 +1133,19 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf = ks.from_pandas(pdf)
 
-        msg = "values should be string or list of one column."
+        msg = "Values should be string or list of one column."
         with self.assertRaisesRegex(ValueError, msg):
             kdf.pivot_table(index=['c'], columns="a", values=5)
 
-        msg = "index should be a None or a list of columns."
+        msg = "Index should be a None or a list of columns."
         with self.assertRaisesRegex(ValueError, msg):
             kdf.pivot_table(index="c", columns="a", values="b")
 
-        msg = "pivot_table doesn't support aggfunc as dict and without index."
+        msg = "Pivot_table doesn't support aggfunc as dict and without index."
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.pivot_table(columns="a", values=['b', 'e'], aggfunc={'b': 'mean', 'e': 'sum'})
 
-        msg = "columns should be string."
+        msg = "Columns should be string."
         with self.assertRaisesRegex(ValueError, msg):
             kdf.pivot_table(columns=["a"], values=['b'], aggfunc={'b': 'mean', 'e': 'sum'})
 
@@ -1153,9 +1154,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.pivot_table(index=['e', 'c'], columns="a", values='b',
                             aggfunc={'b': 'mean', 'e': 'sum'})
 
-        msg = 'Values as list of columns is not implemented yet.'
+        msg = "Values can't be a list without index."
         with self.assertRaisesRegex(NotImplementedError, msg):
-            kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
+            kdf.pivot_table(columns="a", values=['b', 'e'])
+
+        msg = "Values more than two is not supported yet!"
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            kdf.pivot_table(index=['e'], columns="a", values=['b', 'e', 'c'],
+                            aggfunc={'b': 'mean', 'e': 'sum', 'c': 'sum'})
+
+        msg = "Wrong columns A."
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.pivot_table(index=['c'], columns="A", values=['b', 'e'],
                             aggfunc={'b': 'mean', 'e': 'sum'})
 
     def test_transpose(self):
