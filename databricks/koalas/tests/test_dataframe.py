@@ -543,6 +543,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(ValueError, lambda: kdf.reset_index().sort_index())
 
+        # Assert with multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+
     def test_nlargest(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
                             'b': [7, 6, 5, 4, 3, 2, 1]})
