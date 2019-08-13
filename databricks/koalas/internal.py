@@ -436,7 +436,8 @@ class _InternalFrame(object):
         if default_index_type == "one-by-one":
             sequential_index = F.row_number().over(
                 Window.orderBy(F.monotonically_increasing_id().asc())) - 1
-            return sdf.select(sequential_index.alias("__index_level_0__"), *list(sdf))
+            scols = [scol_for(sdf, column) for column in sdf.columns]
+            return sdf.select(sequential_index.alias("__index_level_0__"), *scols)
         elif default_index_type == "distributed-one-by-one":
             # 1. Calculates counts per each partition ID. `counts` here is, for instance,
             #     {
@@ -474,8 +475,9 @@ class _InternalFrame(object):
             sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
             return sdf.groupBy("__spark_partition_id").apply(grouped_map_func)
         elif default_index_type == "distributed":
+            scols = [scol_for(sdf, column) for column in sdf.columns]
             return sdf.select(
-                F.monotonically_increasing_id().alias("__index_level_0__"), *list(sdf))
+                F.monotonically_increasing_id().alias("__index_level_0__"), *scols)
         else:
             raise ValueError("'DEFAULT_INDEX' environment variable should be one of 'one-by-one',"
                              " 'distributed-one-by-one' and 'distributed'")
