@@ -565,3 +565,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = koalas.Series([])
         with self.assertRaisesRegex(ValueError, "an empty sequence"):
             kser.idxmin()
+
+    def test_shift(self):
+        pser = pd.Series([10, 20, 15, 30, 45], name='x')
+        kser = koalas.Series(pser)
+        self.assertEqual(repr(kser.shift(periods=2, fill_value=0)),
+                         repr(pser.shift(periods=2, fill_value=0)))
