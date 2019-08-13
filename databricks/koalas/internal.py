@@ -368,12 +368,13 @@ class _InternalFrame(object):
             assert column_index is None
             assert column_index_names is None
 
-            index_map = [('__index_level_0__', None)]
+            if "__index_level_0__" not in sdf.schema.names:
+                # Create default index.
+                index_map = [('__index_level_0__', None)]
+                sdf = _InternalFrame.attach_default_index(sdf)
 
-            # Create default index.
-            sdf = _InternalFrame.attach_default_index(sdf)
-
-        assert all(isinstance(index_field, str)
+        assert index_map is None \
+            or all(isinstance(index_field, str)
                    and (index_name is None or isinstance(index_name, str))
                    for index_field, index_name in index_map)
         assert scol is None or isinstance(scol, spark.Column)
