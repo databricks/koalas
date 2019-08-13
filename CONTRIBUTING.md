@@ -5,6 +5,7 @@ This document gives guidance to developers if they plan to contribute to Koalas.
 - [Types of Contributions](#types-of-contributions)
 - [Step-by-step Guide](#step-by-step-guide)
 - [Environment Setup](#environment-setup)
+- [Working with Git](#working-with-git)
 - [Running Tests](#running-tests)
 - [Building Documentation](#building-documentation)
 - [Coding Conventions](#coding-conventions)
@@ -71,6 +72,20 @@ pip install pyspark=2.4
 pip install -r requirements-dev.txt
 pip install -e .  # installs koalas from current checkout
 ```
+
+## Working with Git
+
+[The instruction on Github](https://help.github.com/set-up-git-redirect) has all steps you need to take to install git, set up
+your SSH key and fork and clone to your local repository.
+
+Your master branch should only reflect production-ready code, therefore, in order to start contributing to the project, you 
+need to create a feature branch for your changes. For example, you could do:
+
+```bash
+git checkout -b your-new-pr
+```
+And it will direct your local directory to the specified new branch. Add all the changes in this branch and make sure all tests
+are passed. And it is better to keep your master branch up to date with the latest upstream master version.
 
 ## Running Tests
 
