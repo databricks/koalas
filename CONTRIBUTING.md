@@ -84,8 +84,18 @@ need to create a feature branch for your changes. For example, you could do:
 ```bash
 git checkout -b your-new-pr
 ```
-And it will direct your local directory to the specified new branch. Add all the changes in this branch and make sure all tests
-are passed. And it is better to keep your master branch up to date with the latest upstream master version.
+
+And it will direct your local directory to the specified new branch. And it is better to keep your master branch up to date with 
+the latest upstream master version. Add all the changes in this feature branch and make sure all tests are passed. You can 
+then do:
+
+```bash
+git add changed-files
+git commit -m 'Brief description'
+git push --set-upstream origin your-new-pr
+```
+
+After this, you could go to Github koalas repository and create the PR.
 
 ## Running Tests
 
