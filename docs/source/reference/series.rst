@@ -129,7 +129,6 @@ Computations / Descriptive Stats
    Series.is_monotonic
    Series.is_monotonic_increasing
    Series.is_monotonic_decreasing
-   Series.shift
 
 Reindexing / Selection / Label manipulation
 -------------------------------------------
