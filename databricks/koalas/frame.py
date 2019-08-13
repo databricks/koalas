@@ -6489,6 +6489,65 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # Koalas DataFrame.
         is_dataframe = None
 
+    def tail(self, n=5):
+        """
+        Return the last `n` rows.
+        This function returns last `n` rows from the object based on
+        position. It is useful for quickly verifying data, for example,
+        after sorting or appending rows.
+
+        Parameters
+        ----------
+        n : int, default 5
+            Number of rows to select.
+
+        Returns
+        -------
+        type of caller
+            The last `n` rows of the caller object.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'animal':['alligator', 'bee', 'falcon', 'lion',
+        ...                    'monkey', 'parrot', 'shark', 'whale', 'zebra']})
+        >>> kdf
+              animal
+        0  alligator
+        1        bee
+        2     falcon
+        3       lion
+        4     monkey
+        5     parrot
+        6      shark
+        7      whale
+        8      zebra
+        Viewing the last 5 lines
+        >>> kdf.tail()
+           animal
+        0  monkey
+        1  parrot
+        2   shark
+        3   whale
+        4   zebra
+        Viewing the last `n` lines (three in this case)
+        >>> kdf.tail(3)
+           animal
+        0  shark
+        1  whale
+        2  zebra
+        """
+        # pick one column to perform order by
+        first_column = self.columns[0]
+
+        # calculate columns to be dropped
+        columns_to_drop = [col.name for col in self._sdf.schema if col.name not in self.columns]
+
+        # calculate last n records
+        data = self._sdf.orderBy(first_column).drop(*columns_to_drop).collect()[-n:]
+
+        # create data frame
+        return DataFrame(data, columns=self.columns)
+
 
 def _reduce_spark_multi(sdf, aggs):
     """

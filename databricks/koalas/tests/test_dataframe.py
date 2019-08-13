@@ -1391,3 +1391,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(TypeError, "mutually exclusive"):
             kdf.filter(regex='b.*', like="aaa")
+
+    def test_tail(self):
+        pdf = pd.DataFrame({'animal': ['alligator', 'bee', 'falcon',
+                                       'lion', 'monkey', 'parrot',
+                                       'shark', 'whale', 'zebra']})
+        kdf = ks.from_pandas(pdf)
+        self.assert_array_eq(pdf.values, kdf.to_numpy())
