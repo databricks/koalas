@@ -1248,13 +1248,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         4       c
         Name: x, dtype: object
         """
+        return self._fillna(value, method, axis, inplace, limit)
+
+    def _fillna(self, value=None, method=None, axis=None, inplace=False, limit=None, part_cols=()):
         if axis is None:
             axis = 0
         if not (axis == 0 or axis == "index"):
             raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
         if (value is None) and (method is None):
-            raise ValueError("Must specify a fill 'value' or 'method'.")
-
+            raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
+        if (method is not None) and (method not in ['ffill', 'pad', 'backfill', 'bfill']):
+            raise ValueError("Expecting 'pad', 'ffill', 'backfill' or 'bfill'.")
         if self.isnull().sum() == 0:
             if inplace:
                 self._internal = self._internal.copy()
@@ -1286,13 +1290,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                     end = Window.currentRow + limit
                 else:
                     end = Window.unboundedFollowing
-            else:
-                raise ValueError('Expecting pad, ffill, backfill or bfill.')
-            window = Window.orderBy(self._internal.index_scols).rowsBetween(begin, end)
-            scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
 
-        kseries = Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf)\
-            .rename(column_name)
+            window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
+                .rowsBetween(begin, end)
+            scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
+        kseries = Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf

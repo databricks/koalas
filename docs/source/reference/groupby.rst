@@ -44,3 +44,7 @@ Computations / Descriptive Stats
    GroupBy.var
    GroupBy.size
    GroupBy.diff
+   GroupBy.fillna
+   GroupBy.bfill
+   GroupBy.ffill
+   GroupBy.backfill

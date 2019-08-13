@@ -182,6 +182,41 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(repr(kdf.groupby(['b'])['a'].diff().sort_index()),
                        repr(pdf.groupby(['b'])['a'].diff().sort_index()))
 
+    def test_fillna(self):
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2],
+                            'B': [2, 4, None, 3],
+                            'C': [None, None, None, 1],
+                            'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("A").fillna(0),
+                       pdf.groupby("A").fillna(0))
+        self.assert_eq(kdf.groupby("A").fillna(method='bfill'),
+                       pdf.groupby("A").fillna(method='bfill'))
+        self.assert_eq(kdf.groupby("A").fillna(method='ffill'),
+                       pdf.groupby("A").fillna(method='ffill'))
+
+    def test_ffill(self):
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2],
+                            'B': [2, 4, None, 3],
+                            'C': [None, None, None, 1],
+                            'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("A").ffill(),
+                       pdf.groupby("A").ffill().drop('A', 1))
+        self.assert_eq(repr(kdf.groupby("A")['B'].ffill()),
+                       repr(pdf.groupby("A")['B'].ffill()))
+
+    def test_bfill(self):
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2],
+                            'B': [2, 4, None, 3],
+                            'C': [None, None, None, 1],
+                            'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("A").bfill(),
+                       pdf.groupby("A").bfill().drop('A', 1))
+        self.assert_eq(repr(kdf.groupby("A")['B'].bfill()),
+                       repr(pdf.groupby("A")['B'].bfill()))
+
     def test_missing(self):
         kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 

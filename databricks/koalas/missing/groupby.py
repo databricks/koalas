@@ -51,13 +51,10 @@ class _MissingPandasLikeDataFrameGroupBy(object):
     take = unsupported_property('take', deprecated=True)
 
     # Functions
-    backfill = unsupported_function('backfill')
-    bfill = unsupported_function('bfill')
     boxplot = unsupported_function('boxplot')
     cumcount = unsupported_function('cumcount')
     describe = unsupported_function('describe')
     expanding = unsupported_function('expanding')
-    ffill = unsupported_function('ffill')
     get_group = unsupported_function('get_group')
     head = unsupported_function('head')
     median = unsupported_function('median')
@@ -82,7 +79,6 @@ class _MissingPandasLikeSeriesGroupBy(object):
     corr = unsupported_property('corr')
     cov = unsupported_property('cov')
     dtype = unsupported_property('dtype')
-    fillna = unsupported_property('fillna')
     groups = unsupported_property('groups')
     hist = unsupported_property('hist')
     idxmax = unsupported_property('idxmax')
@@ -104,12 +100,9 @@ class _MissingPandasLikeSeriesGroupBy(object):
     take = unsupported_property('take', deprecated=True)
 
     # Functions
-    backfill = unsupported_function('backfill')
-    bfill = unsupported_function('bfill')
     cumcount = unsupported_function('cumcount')
     describe = unsupported_function('describe')
     expanding = unsupported_function('expanding')
-    ffill = unsupported_function('ffill')
     get_group = unsupported_function('get_group')
     head = unsupported_function('head')
     median = unsupported_function('median')
@@ -117,7 +110,6 @@ class _MissingPandasLikeSeriesGroupBy(object):
     nth = unsupported_function('nth')
     nunique = unsupported_function('nunique')
     ohlc = unsupported_function('ohlc')
-    pad = unsupported_function('pad')
     pct_change = unsupported_function('pct_change')
     pipe = unsupported_function('pipe')
     prod = unsupported_function('prod')
