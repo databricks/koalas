@@ -1072,7 +1072,13 @@ class GroupBy(object):
         """
         if isinstance(self, DataFrameGroupBy):
             self._agg_columns = self._groupkeys + self._agg_columns
-        return self._reduce_for_stat_function(self._kdf._nunique(dropna=dropna), only_numeric=False)
+        if dropna:
+            stat_function = lambda col: F.countDistinct(col)
+        else:
+            stat_function = lambda col: \
+                (F.countDistinct(col) +
+                 F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0))
+        return self._reduce_for_stat_function(stat_function, only_numeric=False)
 
     # TODO: add bins, normalize parameter
     def value_counts(self, sort=None, ascending=None, dropna=True):

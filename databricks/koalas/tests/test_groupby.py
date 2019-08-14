@@ -124,10 +124,12 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby("a").agg({"b": "nunique"}))
         self.assert_eq(kdf.groupby("a").nunique(),
                        pdf.groupby("a").nunique())
+        self.assert_eq(kdf.groupby("a").nunique(dropna=False),
+                       pdf.groupby("a").nunique(dropna=False))
         self.assert_eq(kdf.groupby("a")['b'].nunique(),
                        pdf.groupby("a")['b'].nunique())
-        with self.assertRaisesRegex(ValueError, 'nunique do not support `dropna=False` now'):
-            self.assert_eq(kdf.groupby("a")['b'].nunique(dropna=False))
+        self.assert_eq(kdf.groupby("a")['b'].nunique(dropna=False),
+                       pdf.groupby("a")['b'].nunique(dropna=False))
 
     def test_value_counts(self):
         pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],

@@ -1479,7 +1479,18 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> ks.Series([1, 2, 3, np.nan]).nunique(approx=True)
         3
         """
-        return self.to_dataframe().nunique(dropna=dropna, approx=approx, rsd=rsd).iloc[0]
+        res = self._kdf._sdf.select([self._nunique(dropna, approx, rsd)])
+        return res.collect()[0][0]
+
+    def _nunique(self, dropna=True, approx=False, rsd=0.05):
+        name = self.name
+        count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
+        if dropna:
+            return count_fn(name).alias(name)
+        else:
+            return (count_fn(name) +
+                    F.when(F.count(F.when(self._internal.scol_for(name).isNull(), 1)
+                                   .otherwise(None)) >= 1, 1).otherwise(0)).alias(name)
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
