@@ -202,7 +202,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'])
         kdf = koalas.DataFrame(pdf)
         self.assert_eq(kdf.groupby("A").ffill(),
-                       pdf.groupby("A").ffill().drop('A', 1))
+                       pdf.groupby("A").ffill())
         self.assert_eq(repr(kdf.groupby("A")['B'].ffill()),
                        repr(pdf.groupby("A")['B'].ffill()))
 
@@ -213,7 +213,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'])
         kdf = koalas.DataFrame(pdf)
         self.assert_eq(kdf.groupby("A").bfill(),
-                       pdf.groupby("A").bfill().drop('A', 1))
+                       pdf.groupby("A").bfill())
         self.assert_eq(repr(kdf.groupby("A")['B'].bfill()),
                        repr(pdf.groupby("A")['B'].bfill()))
 
