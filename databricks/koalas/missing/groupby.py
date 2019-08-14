@@ -61,7 +61,6 @@ class _MissingPandasLikeDataFrameGroupBy(object):
     nth = unsupported_function('nth')
     nunique = unsupported_function('nunique')
     ohlc = unsupported_function('ohlc')
-    pad = unsupported_function('pad')
     pct_change = unsupported_function('pct_change')
     pipe = unsupported_function('pipe')
     prod = unsupported_function('prod')
