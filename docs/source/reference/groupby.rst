@@ -44,3 +44,4 @@ Computations / Descriptive Stats
    GroupBy.var
    GroupBy.nunique
    GroupBy.size
+   GroupBy.diff

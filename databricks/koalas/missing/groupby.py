@@ -33,7 +33,6 @@ class _MissingPandasLikeDataFrameGroupBy(object):
     corr = unsupported_property('corr')
     corrwith = unsupported_property('corrwith')
     cov = unsupported_property('cov')
-    diff = unsupported_property('diff')
     dtypes = unsupported_property('dtypes')
     fillna = unsupported_property('fillna')
     groups = unsupported_property('groups')
@@ -81,7 +80,6 @@ class _MissingPandasLikeSeriesGroupBy(object):
     # Properties
     corr = unsupported_property('corr')
     cov = unsupported_property('cov')
-    diff = unsupported_property('diff')
     dtype = unsupported_property('dtype')
     fillna = unsupported_property('fillna')
     groups = unsupported_property('groups')

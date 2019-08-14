@@ -50,7 +50,6 @@ from databricks.koalas.ml import corr
 from databricks.koalas.utils import scol_for
 from databricks.koalas.typedef import as_spark_type
 
-
 # These regular expression patterns are complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
 # Two patterns basically seek the footer string from Pandas'
@@ -2252,6 +2251,96 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.withColumn(decimal[0], F.round(scol_for(sdf, decimal[0]), decimal[1]))
         return DataFrame(self._internal.copy(sdf=sdf))
 
+    def duplicated(self, subset=None, keep='first'):
+        """
+        Return boolean Series denoting duplicate rows, optionally only considering certain columns.
+
+        Parameters
+        ----------
+        subset : column label or sequence of labels, optional
+            Only consider certain columns for identifying duplicates,
+            by default use all of the columns
+        keep : {'first', 'last', False}, default 'first'
+           - ``first`` : Mark duplicates as ``True`` except for the first occurrence.
+           - ``last`` : Mark duplicates as ``True`` except for the last occurrence.
+           - False : Mark all duplicates as ``True``.
+
+        Returns
+        -------
+        duplicated : Series
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 1, 3], 'b': [1, 1, 1, 4], 'c': [1, 1, 1, 5]},
+        ...                   columns = ['a', 'b', 'c'])
+        >>> df
+           a  b  c
+        0  1  1  1
+        1  1  1  1
+        2  1  1  1
+        3  3  4  5
+
+        >>> df.duplicated().sort_index()
+        0    False
+        1     True
+        2     True
+        3    False
+        Name: 0, dtype: bool
+
+        Mark duplicates as ``True`` except for the last occurrence.
+
+        >>> df.duplicated(keep='last').sort_index()
+        0     True
+        1     True
+        2    False
+        3    False
+        Name: 0, dtype: bool
+
+        Mark all duplicates as ``True``.
+
+        >>> df.duplicated(keep=False).sort_index()
+        0     True
+        1     True
+        2     True
+        3    False
+        Name: 0, dtype: bool
+        """
+        from databricks.koalas.series import _col
+        if len(self._internal.index_names) > 1:
+            raise ValueError("Now we don't support multi-index Now.")
+
+        if subset is None:
+            group_cols = self._internal.data_columns
+        else:
+            group_cols = subset
+            diff = set(subset).difference(set(self._internal.data_columns))
+            if len(diff) > 0:
+                raise KeyError(', '.join(diff))
+
+        sdf = self._sdf
+        index = self._internal.index_columns[0]
+        if self._internal.index_names[0] is not None:
+            name = self._internal.index_names[0]
+        else:
+            name = '0'
+
+        if keep == 'first' or keep == 'last':
+            if keep == 'first':
+                ord_func = spark.functions.asc
+            else:
+                ord_func = spark.functions.desc
+            window = Window.partitionBy(group_cols).orderBy(ord_func(index)).rowsBetween(
+                Window.unboundedPreceding, Window.currentRow)
+            sdf = sdf.withColumn(name, F.row_number().over(window) > 1)
+        elif not keep:
+            window = Window.partitionBy(group_cols).orderBy(F.col(index).desc())\
+                .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+            sdf = sdf.withColumn(name, F.count(F.col(index)).over(window) > 1)
+        else:
+            raise ValueError("'keep' only support 'first', 'last' and False")
+        return _col(DataFrame(_InternalFrame(sdf=sdf.select(index, name), data_columns=[name],
+                                             index_map=self._internal.index_map)))
+
     def to_koalas(self):
         """
         Converts the existing DataFrame into a Koalas DataFrame.
@@ -3671,9 +3760,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def columns(self):
         """The column labels of the DataFrame."""
         if self._internal.column_index is not None:
-            return pd.MultiIndex.from_tuples(self._internal.column_index)
+            columns = pd.MultiIndex.from_tuples(self._internal.column_index)
         else:
-            return pd.Index(self._internal.data_columns)
+            columns = pd.Index(self._internal.data_columns)
+        if self._internal.column_index_names is not None:
+            columns.names = self._internal.column_index_names
+        return columns
 
     @columns.setter
     def columns(self, columns):
@@ -3684,17 +3776,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise ValueError(
                     "Length mismatch: Expected axis has %d elements, new values have %d elements"
                     % (len(old_names), len(column_index)))
-            self._internal = self._internal.copy(column_index=column_index)
+            column_index_names = columns.names
+            self._internal = self._internal.copy(column_index=column_index,
+                                                 column_index_names=column_index_names)
         else:
             old_names = self._internal.data_columns
             if len(old_names) != len(columns):
                 raise ValueError(
                     "Length mismatch: Expected axis has %d elements, new values have %d elements"
                     % (len(old_names), len(columns)))
+            if isinstance(columns, pd.Index):
+                column_index_names = columns.names
+            else:
+                column_index_names = None
             sdf = self._sdf.select(self._internal.index_scols +
                                    [self._internal.scol_for(old_name).alias(new_name)
                                     for (old_name, new_name) in zip(old_names, columns)])
-            self._internal = self._internal.copy(sdf=sdf, data_columns=columns, column_index=None)
+            self._internal = self._internal.copy(sdf=sdf, data_columns=columns, column_index=None,
+                                                 column_index_names=column_index_names)
 
     @property
     def dtypes(self):
@@ -4064,6 +4163,32 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         except (KeyError, ValueError, IndexError):
             return default
 
+    def _sort(self, by: List[Column], ascending: Union[bool, List[bool]],
+              inplace: bool, na_position: str):
+        if isinstance(ascending, bool):
+            ascending = [ascending] * len(by)
+        if len(ascending) != len(by):
+            raise ValueError('Length of ascending ({}) != length of by ({})'
+                             .format(len(ascending), len(by)))
+        if na_position not in ('first', 'last'):
+            raise ValueError("invalid na_position: '{}'".format(na_position))
+
+        # Mapper: Get a spark column function for (ascending, na_position) combination
+        # Note that 'asc_nulls_first' and friends were added as of Spark 2.4, see SPARK-23847.
+        mapper = {
+            (True, 'first'): lambda x: Column(getattr(x._jc, "asc_nulls_first")()),
+            (True, 'last'): lambda x: Column(getattr(x._jc, "asc_nulls_last")()),
+            (False, 'first'): lambda x: Column(getattr(x._jc, "desc_nulls_first")()),
+            (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
+        }
+        by = [mapper[(asc, na_position)](scol) for scol, asc in zip(by, ascending)]
+        kdf = DataFrame(self._internal.copy(sdf=self._sdf.sort(*by)))  # type: ks.DataFrame
+        if inplace:
+            self._internal = kdf._internal
+            return None
+        else:
+            return kdf
+
     def sort_values(self, by: Union[str, List[str]], ascending: Union[bool, List[bool]] = True,
                     inplace: bool = False, na_position: str = 'last') -> Optional['DataFrame']:
         """
@@ -4140,30 +4265,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if isinstance(by, str):
             by = [by]
-        if isinstance(ascending, bool):
-            ascending = [ascending] * len(by)
-        if len(ascending) != len(by):
-            raise ValueError('Length of ascending ({}) != length of by ({})'
-                             .format(len(ascending), len(by)))
-        if na_position not in ('first', 'last'):
-            raise ValueError("invalid na_position: '{}'".format(na_position))
-
-        # Mapper: Get a spark column function for (ascending, na_position) combination
-        # Note that 'asc_nulls_first' and friends were added as of Spark 2.4, see SPARK-23847.
-        mapper = {
-            (True, 'first'): lambda x: Column(getattr(x._jc, "asc_nulls_first")()),
-            (True, 'last'): lambda x: Column(getattr(x._jc, "asc_nulls_last")()),
-            (False, 'first'): lambda x: Column(getattr(x._jc, "desc_nulls_first")()),
-            (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
-        }
-        by = [mapper[(asc, na_position)](self[colname]._scol)
-              for colname, asc in zip(by, ascending)]
-        kdf = DataFrame(self._internal.copy(sdf=self._sdf.sort(*by)))  # type: ks.DataFrame
-        if inplace:
-            self._internal = kdf._internal
-            return None
-        else:
-            return kdf
+        by = [self[colname]._scol for colname in by]
+        return self._sort(by=by, ascending=ascending,
+                          inplace=inplace, na_position=na_position)
 
     def sort_index(self, axis: int = 0,
                    level: Optional[Union[int, List[int]]] = None, ascending: bool = True,
@@ -4254,14 +4358,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
 
         if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
-            by = self._internal.index_columns
+            by = self._internal.index_scols
         elif is_list_like(level):
-            by = [self._internal.index_columns[l] for l in level]  # type: ignore
+            by = [self._internal.index_scols[l] for l in level]  # type: ignore
         else:
-            by = self._internal.index_columns[level]
+            by = [self._internal.index_scols[level]]
 
-        return self.sort_values(by=by, ascending=ascending,
-                                inplace=inplace, na_position=na_position)
+        return self._sort(by=by, ascending=ascending,
+                          inplace=inplace, na_position=na_position)
 
     # TODO:  add keep = First
     def nlargest(self, n: int, columns: 'Any') -> 'DataFrame':
@@ -6208,6 +6312,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             recursive = True
             for i, (col, idx) in enumerate(columns):
                 columns[i] = (col, tuple([str(key), *idx[1:]]))
+        column_index_names = None
+        if self._internal.column_index_names is not None:
+            # Manage column index names
+            column_index_level = set(len(idx) for _, idx in columns)
+            assert len(column_index_level) == 1
+            column_index_level = list(column_index_level)[0]
+            column_index_names = self._internal.column_index_names[-column_index_level:]
         if all(len(idx) == 1 for _, idx in columns):
             # If len(idx) == 1, then the result is not MultiIndex anymore
             sdf = self._sdf.select(self._internal.index_scols +
@@ -6216,7 +6327,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf_or_ser = DataFrame(self._internal.copy(
                 sdf=sdf,
                 data_columns=[idx[0] for _, idx in columns],
-                column_index=None))
+                column_index=None,
+                column_index_names=column_index_names))
         else:
             # Otherwise, the result is still MultiIndex and need to manage column_index.
             sdf = self._sdf.select(self._internal.index_scols +
@@ -6224,7 +6336,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf_or_ser = DataFrame(self._internal.copy(
                 sdf=sdf,
                 data_columns=[col for col, _ in columns],
-                column_index=[idx for _, idx in columns]))
+                column_index=[idx for _, idx in columns],
+                column_index_names=column_index_names))
         if recursive:
             kdf_or_ser = kdf_or_ser._pd_getitem(str(key))
         if isinstance(kdf_or_ser, Series):

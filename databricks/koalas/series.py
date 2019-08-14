@@ -1750,24 +1750,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         b  1    0
         Name: 0, dtype: int64
         """
-        if len(self._internal.index_map) == 0:
-            raise ValueError("Index should be set.")
-
-        if axis != 0:
-            raise ValueError("No other axes than 0 are supported at the moment")
-        if kind is not None:
-            raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-
-        if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
-            by = self._internal.index_columns
-        elif is_list_like(level):
-            by = [self._internal.index_columns[l] for l in level]  # type: ignore
-        else:
-            by = self._internal.index_columns[level]
-
-        kseries = _col(self.to_dataframe().sort_values(by=by,
-                                                       ascending=ascending,
-                                                       na_position=na_position))
+        kseries = _col(self.to_dataframe().sort_index(axis=axis, level=level, ascending=ascending,
+                                                      kind=kind, na_position=na_position))
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf
@@ -2649,16 +2633,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         5     NaN
         Name: c, dtype: float64
         """
+        return self._diff(periods)
 
+    def _diff(self, periods, part_cols=()):
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
-
         if not isinstance(periods, int):
             raise ValueError('periods should be an int; however, got [%s]' % type(periods))
-
-        col = self._scol
-        window = Window.orderBy(self._internal.index_scols).rowsBetween(-periods, -periods)
-        return self._with_new_scol(col - F.lag(col, periods).over(window)).alias(self.name)
+        window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
+            .rowsBetween(-periods, -periods)
+        scol = self._scol - F.lag(self._scol, periods).over(window)
+        return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(self.name)
 
     def idxmax(self, skipna=True):
         """

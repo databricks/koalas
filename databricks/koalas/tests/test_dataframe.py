@@ -100,6 +100,47 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[('x', 'a')], pdf[('x', 'a')])
         self.assert_eq(kdf[('x', 'a', '1')], pdf[('x', 'a', '1')])
 
+    def test_dataframe_column_level_name(self):
+        column = pd.Index(['A', 'B', 'C'], name='X')
+        pdf = pd.DataFrame([[1, 2, 3], [4, 5, 6]], columns=column)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf.columns.names, pdf.columns.names)
+        self.assert_eq(kdf.to_pandas().columns.names, pdf.columns.names)
+
+    def test_dataframe_multiindex_names_level(self):
+        columns = pd.MultiIndex.from_tuples([('X', 'A', 'Z'), ('X', 'B', 'Z'),
+                                             ('Y', 'C', 'Z'), ('Y', 'D', 'Z')],
+                                            names=['lvl_1', 'lvl_2', 'lv_3'])
+        pdf = pd.DataFrame([[1, 2, 3, 4],
+                            [5, 6, 7, 8],
+                            [9, 10, 11, 12],
+                            [13, 14, 15, 16],
+                            [17, 18, 19, 20]], columns=columns)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.columns.names, pdf.columns.names)
+        self.assert_eq(kdf.to_pandas().columns.names, pdf.columns.names)
+
+        kdf1 = ks.from_pandas(pdf)
+        self.assert_eq(kdf1.columns.names, pdf.columns.names)
+
+        with self.assertRaisesRegex(ValueError, 'Column_index_names should '
+                                                'be list-like or None for a MultiIndex'):
+            ks.DataFrame(kdf1._internal.copy(column_index_names='level'))
+
+        self.assert_eq(kdf['X'], pdf['X'])
+        self.assert_eq(kdf['X'].columns.names, pdf['X'].columns.names)
+        self.assert_eq(kdf['X'].to_pandas().columns.names, pdf['X'].columns.names)
+        self.assert_eq(kdf['X']['A'], pdf['X']['A'])
+        self.assert_eq(kdf['X']['A'].columns.names, pdf['X']['A'].columns.names)
+        self.assert_eq(kdf['X']['A'].to_pandas().columns.names, pdf['X']['A'].columns.names)
+        self.assert_eq(kdf[('X', 'A')], pdf[('X', 'A')])
+        self.assert_eq(kdf[('X', 'A')].columns.names, pdf[('X', 'A')].columns.names)
+        self.assert_eq(kdf[('X', 'A')].to_pandas().columns.names, pdf[('X', 'A')].columns.names)
+        self.assert_eq(kdf[('X', 'A', 'Z')], pdf[('X', 'A', 'Z')])
+
     def test_reset_index_with_multiindex_columns(self):
         index = pd.MultiIndex.from_tuples([('bird', 'falcon'),
                                            ('bird', 'parrot'),
@@ -265,6 +306,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(['x', 'y']))
         self.assert_eq(kdf, pdf)
 
+        columns = pdf.columns
+        columns.name = 'lvl_1'
+
+        kdf.columns = columns
+        self.assert_eq(kdf.columns.names, ['lvl_1'])
+        self.assert_eq(kdf, pdf)
+
         msg = "Length mismatch: Expected axis has 2 elements, new values have 4 elements"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.columns = [1, 2, 3, 4]
@@ -275,6 +323,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         columns = pdf.columns
         self.assert_eq(kdf.columns, columns)
+        self.assert_eq(kdf, pdf)
 
         pdf.columns = ['x', 'y']
         kdf.columns = ['x', 'y']
@@ -284,6 +333,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = columns
         kdf.columns = columns
         self.assert_eq(kdf.columns, columns)
+        self.assert_eq(kdf, pdf)
+
+        columns.names = ['lvl_1', 'lvl_2']
+
+        kdf.columns = columns
+        self.assert_eq(kdf.columns.names, ['lvl_1', 'lvl_2'])
         self.assert_eq(kdf, pdf)
 
     def test_dot_in_column_name(self):
@@ -487,6 +542,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.sort_index(level=[1, 0]), pdf.sort_index(level=[1, 0]))
 
         self.assertRaises(ValueError, lambda: kdf.reset_index().sort_index())
+
+        # Assert with multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
     def test_nlargest(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
@@ -1251,6 +1313,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "should be an int"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.diff(1.5)
+
+    def test_duplicated(self):
+        pdf = pd.DataFrame({'a': [1, 1, 1, 3], 'b': [1, 1, 1, 4], 'c': [1, 1, 1, 5]})
+        kdf = ks.from_pandas(pdf)
+        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='0')),
+                         repr(kdf.duplicated().sort_index()))
+        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='0')),
+                         repr(kdf.duplicated().sort_index()))
+        self.assertEqual(repr(pd.Series(pdf.duplicated(keep='last'), name='0')),
+                         repr(kdf.duplicated(keep='last').sort_index()))
+        self.assertEqual(repr(pd.Series(pdf.duplicated(keep=False), name='0')),
+                         repr(kdf.duplicated(keep=False).sort_index()))
+        self.assertEqual(repr(pd.Series(pdf.duplicated(subset=['a']), name='0')),
+                         repr(kdf.duplicated(subset=['a']).sort_index()))
+        with self.assertRaisesRegex(ValueError, "'keep' only support 'first', 'last' and False"):
+            kdf.duplicated(keep='false')
+        with self.assertRaisesRegex(KeyError, "'d'"):
+            kdf.duplicated(subset=['d'])
 
     def test_ffill(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
