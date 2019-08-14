@@ -75,5 +75,6 @@ def _auto_patch():
 _auto_patch()
 
 # Import after the usage logger is attached.
+from databricks.koalas.config import *
 from databricks.koalas.namespace import *
 from databricks.koalas.sql import sql
