@@ -425,11 +425,15 @@ class _InternalFrame(object):
             group-map approach. It still generates a one-by-one sequential index globally.
             If the default index must be an one-by-one sequence in a large dataset, this
             index has to be used.
+            Note that if more data are added to the data source after creating this index,
+            then it does not guarantee the sequential index.
 
         - distributed: It implements a monotonically increasing sequence simply by using
             Spark's `monotonically_increasing_id` function. If the index does not have to be
             a one-by-one sequence, this index should be used. Performance-wise, this index
             almost does not have any penalty comparing to other index types.
+            Note that we cannot use this type of index for combining two dataframes because
+            it is not guaranteed to have the same indexes in two dataframes.
 
         """
         default_index_type = os.environ.get("DEFAULT_INDEX", "one-by-one")
