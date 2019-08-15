@@ -27,6 +27,7 @@ import numpy as np
 import pandas as pd
 from pandas._libs.parsers import is_datetime64_dtype
 from pandas.core.dtypes.common import is_datetime64tz_dtype
+
 from pyspark.sql import functions as F, Window
 from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
 from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
@@ -1047,21 +1048,18 @@ class GroupBy(object):
         index = self._kdf._internal.index_columns[0]
 
         stat_exprs = []
-        data_columns = []
         for ks in self._agg_columns:
             if skipna:
-                window = Window.partitionBy(groupkey_cols).orderBy(
-                    Column(ks._scol._jc.desc_nulls_last()))
+                order_column = Column(ks._scol._jc.desc_nulls_last())
             else:
-                window = Window.partitionBy(groupkey_cols).orderBy(
-                    Column(ks._scol._jc.desc_nulls_first()))
+                order_column = Column(ks._scol._jc.desc_nulls_first())
+            window = Window.partitionBy(groupkey_cols).orderBy(order_column)
             sdf = sdf.withColumn(ks.name, F.when(F.row_number().over(window) == 1, F.col(index))
                                  .otherwise(None))
             stat_exprs.append(F.max(F.col(ks.name)).alias(ks.name))
-            data_columns.append(ks.name)
-        tmp = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
-        internal = _InternalFrame(sdf=tmp,
-                                  data_columns=data_columns,
+        sdf = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[ks.name for ks in self._agg_columns],
                                   index_map=[('__index_level_{}__'.format(i), s.name)
                                              for i, s in enumerate(groupkeys)])
         kdf = DataFrame(internal)
@@ -1070,7 +1068,7 @@ class GroupBy(object):
     # TODO: add axis parameter
     def idxmin(self, skipna=True):
         """
-        Return index of first occurrence of maximum over requested axis in group.
+        Return index of first occurrence of minimum over requested axis in group.
         NA/null values are excluded.
 
         Parameters
@@ -1107,21 +1105,18 @@ class GroupBy(object):
         index = self._kdf._internal.index_columns[0]
 
         stat_exprs = []
-        data_columns = []
         for ks in self._agg_columns:
             if skipna:
-                window = Window.partitionBy(groupkey_cols).orderBy(
-                    Column(ks._scol._jc.asc_nulls_last()))
+                order_column = Column(ks._scol._jc.asc_nulls_last())
             else:
-                window = Window.partitionBy(groupkey_cols).orderBy(
-                    Column(ks._scol._jc.asc_nulls_first()))
+                order_column = Column(ks._scol._jc.asc_nulls_first())
+            window = Window.partitionBy(groupkey_cols).orderBy(order_column)
             sdf = sdf.withColumn(ks.name, F.when(F.row_number().over(window) == 1, F.col(index))
                                  .otherwise(None))
             stat_exprs.append(F.max(F.col(ks.name)).alias(ks.name))
-            data_columns.append(ks.name)
-        tmp = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
-        internal = _InternalFrame(sdf=tmp,
-                                  data_columns=data_columns,
+        sdf = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[ks.name for ks in self._agg_columns],
                                   index_map=[('__index_level_{}__'.format(i), s.name)
                                              for i, s in enumerate(groupkeys)])
         kdf = DataFrame(internal)
