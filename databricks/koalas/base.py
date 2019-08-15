@@ -19,7 +19,7 @@ Base and utility classes for Koalas objects.
 """
 
 from functools import wraps
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import pandas as pd

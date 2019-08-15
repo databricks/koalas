@@ -24,16 +24,15 @@ from functools import partial
 from typing import Any, List
 
 import numpy as np
-import pandas as pd
 from pandas._libs.parsers import is_datetime64_dtype
 from pandas.core.dtypes.common import is_datetime64tz_dtype
 
-from pyspark.sql import functions as F, Window
+from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
 from pyspark.sql.functions import PandasUDFType, pandas_udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.typedef import _infer_return_type, as_spark_type
+from databricks.koalas.typedef import _infer_return_type
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
