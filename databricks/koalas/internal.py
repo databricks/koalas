@@ -481,10 +481,10 @@ class _InternalFrame(object):
         """ Return as Spark DataFrame. """
         index_columns = set(self.index_columns)
         data_columns = []
-        for column, name in zip(self._data_columns, self.column_index):
+        for column, idx in zip(self._data_columns, self.column_index):
             if column not in index_columns:
                 scol = self.scol_for(column)
-                name = str(name) if len(name) > 1 else name[0]
+                name = str(idx) if len(idx) > 1 else idx[0]
                 if column != name:
                     scol = scol.alias(name)
                 data_columns.append(scol)
