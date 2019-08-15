@@ -27,10 +27,9 @@ import numpy as np
 import pandas as pd
 from pandas._libs.parsers import is_datetime64_dtype
 from pandas.core.dtypes.common import is_datetime64tz_dtype
-
 from pyspark.sql import functions as F, Window
 from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
-from pyspark.sql.functions import PandasUDFType, pandas_udf
+from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import _infer_return_type, as_spark_type
@@ -1007,6 +1006,126 @@ class GroupBy(object):
 
         """
         return self._rank(method, ascending)
+
+    # TODO: add axis parameter
+    def idxmax(self, skipna=True):
+        """
+        Return index of first occurrence of maximum over requested axis in group.
+        NA/null values are excluded.
+
+        Parameters
+        ----------
+        skipna : boolean, default True
+            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
+
+        See Also
+        --------
+        Series.idxmax
+        DataFrame.idxmax
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 2, 2, 3],
+        ...                    'b': [1, 2, 3, 4, 5],
+        ...                    'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+
+        >>> df.groupby(['a']).idxmax().sort_index() # doctest: +NORMALIZE_WHITESPACE
+           b  c
+        a
+        1  1  0
+        2  3  2
+        3  4  4
+        """
+        if len(self._kdf._internal.index_names) != 1:
+            raise ValueError('idxmax only support one-level index now')
+        groupkeys = self._groupkeys
+        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+                         for i, s in enumerate(groupkeys)]
+        sdf = self._kdf._sdf
+        index = self._kdf._internal.index_columns[0]
+
+        stat_exprs = []
+        data_columns = []
+        for ks in self._agg_columns:
+            if skipna:
+                window = Window.partitionBy(groupkey_cols).orderBy(
+                    Column(ks._scol._jc.desc_nulls_last()))
+            else:
+                window = Window.partitionBy(groupkey_cols).orderBy(
+                    Column(ks._scol._jc.desc_nulls_first()))
+            sdf = sdf.withColumn(ks.name, F.when(F.row_number().over(window) == 1, F.col(index))
+                                 .otherwise(None))
+            stat_exprs.append(F.max(F.col(ks.name)).alias(ks.name))
+            data_columns.append(ks.name)
+        tmp = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
+        internal = _InternalFrame(sdf=tmp,
+                                  data_columns=data_columns,
+                                  index_map=[('__index_level_{}__'.format(i), s.name)
+                                             for i, s in enumerate(groupkeys)])
+        kdf = DataFrame(internal)
+        return kdf
+
+    # TODO: add axis parameter
+    def idxmin(self, skipna=True):
+        """
+        Return index of first occurrence of maximum over requested axis in group.
+        NA/null values are excluded.
+
+        Parameters
+        ----------
+        skipna : boolean, default True
+            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
+
+        See Also
+        --------
+        Series.idxmin
+        DataFrame.idxmin
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 2, 2, 3],
+        ...                    'b': [1, 2, 3, 4, 5],
+        ...                    'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+
+        >>> df.groupby(['a']).idxmin().sort_index() # doctest: +NORMALIZE_WHITESPACE
+           b  c
+        a
+        1  0  1
+        2  2  3
+        3  4  4
+        """
+        if len(self._kdf._internal.index_names) != 1:
+            raise ValueError('idxmin only support one-level index now')
+        groupkeys = self._groupkeys
+        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+                         for i, s in enumerate(groupkeys)]
+        sdf = self._kdf._sdf
+        index = self._kdf._internal.index_columns[0]
+
+        stat_exprs = []
+        data_columns = []
+        for ks in self._agg_columns:
+            if skipna:
+                window = Window.partitionBy(groupkey_cols).orderBy(
+                    Column(ks._scol._jc.asc_nulls_last()))
+            else:
+                window = Window.partitionBy(groupkey_cols).orderBy(
+                    Column(ks._scol._jc.asc_nulls_first()))
+            sdf = sdf.withColumn(ks.name, F.when(F.row_number().over(window) == 1, F.col(index))
+                                 .otherwise(None))
+            stat_exprs.append(F.max(F.col(ks.name)).alias(ks.name))
+            data_columns.append(ks.name)
+        tmp = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
+        internal = _InternalFrame(sdf=tmp,
+                                  data_columns=data_columns,
+                                  index_map=[('__index_level_{}__'.format(i), s.name)
+                                             for i, s in enumerate(groupkeys)])
+        kdf = DataFrame(internal)
+        return kdf
 
     # TODO: Series support is not implemented yet.
     def transform(self, func):

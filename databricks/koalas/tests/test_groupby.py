@@ -274,6 +274,26 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby(['a', 'b']).filter(lambda x: any(x.a == 2)).sort_index(),
                        pdf.groupby(['a', 'b']).filter(lambda x: any(x.a == 2)).sort_index())
 
+    def test_idxmax(self):
+        pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3],
+                            'b': [1, 2, 3, 4, 5],
+                            'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(pdf.groupby(['a']).idxmax(),
+                       kdf.groupby(['a']).idxmax().sort_index())
+        with self.assertRaisesRegex(ValueError, 'idxmax only support one-level index now'):
+            kdf.set_index(['a', 'b']).groupby(['c']).idxmax()
+
+    def test_idxmin(self):
+        pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3],
+                            'b': [1, 2, 3, 4, 5],
+                            'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(pdf.groupby(['a']).idxmin(),
+                       kdf.groupby(['a']).idxmin().sort_index())
+        with self.assertRaisesRegex(ValueError, 'idxmin only support one-level index now'):
+            kdf.set_index(['a', 'b']).groupby(['c']).idxmin()
+
     def test_missing(self):
         kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 

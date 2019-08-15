@@ -44,3 +44,5 @@ Computations / Descriptive Stats
    GroupBy.var
    GroupBy.size
    GroupBy.diff
+   GroupBy.idxmax
+   GroupBy.idxmin
