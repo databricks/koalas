@@ -37,8 +37,6 @@ class _MissingPandasLikeDataFrameGroupBy(object):
     fillna = unsupported_property('fillna')
     groups = unsupported_property('groups')
     hist = unsupported_property('hist')
-    idxmax = unsupported_property('idxmax')
-    idxmin = unsupported_property('idxmin')
     indices = unsupported_property('indices')
     mad = unsupported_property('mad')
     ngroups = unsupported_property('ngroups')
