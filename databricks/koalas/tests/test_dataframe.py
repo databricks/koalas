@@ -875,12 +875,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_binary_operators(self):
         self.assertRaisesRegex(
             ValueError,
-            'with another DataFrame or a sequence is currently not supported',
+            'it comes from a different dataframe',
             lambda: ks.range(10).add(ks.range(10)))
 
         self.assertRaisesRegex(
             ValueError,
-            'with another DataFrame or a sequence is currently not supported',
+            'add with a sequence is currently not supported',
             lambda: ks.range(10).add(ks.range(10).id))
 
     def test_sample(self):

@@ -273,7 +273,7 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
     Examples
     --------
     >>> ks.range(1).to_delta('%s/read_delta/foo' % path)
-    >>> ks.read_delta('%s/read_delta/foo' % path)
+    >>> ks.read_delta('%s/read_delta/foo' % path)  # doctest: +SKIP
        id
     0   0
     """
@@ -307,7 +307,7 @@ def read_table(name: str) -> DataFrame:
     Examples
     --------
     >>> ks.range(1).to_table('%s.my_table' % db)
-    >>> ks.read_table('%s.my_table' % db)
+    >>> ks.read_table('%s.my_table' % db)  # doctest: +SKIP
        id
     0   0
     """
@@ -967,7 +967,7 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
         kdf = data.copy()
         if columns is None:
             columns = [column for column in kdf.columns
-                       if isinstance(data._sdf.schema[column].dataType,
+                       if isinstance(kdf._internal.spark_type_for(column),
                                      _get_dummies_default_accept_types)]
         if len(columns) == 0:
             return kdf
@@ -978,7 +978,7 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
         column_set = set(columns)
         remaining_columns = [kdf[column] for column in kdf.columns if column not in column_set]
 
-    if any(not isinstance(kdf._sdf.schema[column].dataType, _get_dummies_acceptable_types)
+    if any(not isinstance(kdf._internal.spark_type_for(column), _get_dummies_acceptable_types)
            for column in columns):
         raise ValueError("get_dummies currently only accept {} values"
                          .format(', '.join([t.typeName() for t in _get_dummies_acceptable_types])))
@@ -988,8 +988,9 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
             "Length of 'prefix' ({}) did not match the length of the columns being encoded ({})."
             .format(len(prefix), len(columns)))
 
-    all_values = _reduce_spark_multi(kdf._sdf, [F.collect_set(F.col(column)).alias(column)
-                                                for column in columns])
+    all_values = _reduce_spark_multi(kdf._sdf,
+                                     [F.collect_set(kdf._internal.scol_for(column)).alias(column)
+                                      for column in columns])
     for i, column in enumerate(columns):
         values = sorted(all_values[i])
         if drop_first:
