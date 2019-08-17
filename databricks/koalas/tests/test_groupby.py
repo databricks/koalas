@@ -179,8 +179,80 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby("b").diff().sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).diff().sort_index(),
                        pdf.groupby(['a', 'b']).diff().sort_index())
-        self.assert_eq(repr(kdf.groupby(['b'])['a'].diff().sort_index()),
-                       repr(pdf.groupby(['b'])['a'].diff().sort_index()))
+        self.assert_eq(kdf.groupby(['b'])['a'].diff().sort_index(),
+                       pdf.groupby(['b'])['a'].diff().sort_index(), almost=True)
+        self.assert_eq(kdf.groupby(['b'])[['a', 'b']].diff().sort_index(),
+                       pdf.groupby(['b'])[['a', 'b']].diff().sort_index(), almost=True)
+
+    def test_rank(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+                            'b': [1, 1, 2, 3, 5, 8],
+                            'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("b").rank().sort_index(),
+                       pdf.groupby("b").rank().sort_index())
+        self.assert_eq(kdf.groupby(['a', 'b']).rank().sort_index(),
+                       pdf.groupby(['a', 'b']).rank().sort_index())
+        self.assert_eq(kdf.groupby(['b'])['a'].rank().sort_index(),
+                       pdf.groupby(['b'])['a'].rank().sort_index(), almost=True)
+        self.assert_eq(kdf.groupby(['b'])[['a', 'c']].rank().sort_index(),
+                       pdf.groupby(['b'])[['a', 'c']].rank().sort_index(), almost=True)
+
+    def test_cummin(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+                            'b': [1, 1, 2, 3, 5, 8],
+                            'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("b").cummin().sort_index(),
+                       pdf.groupby("b").cummin().sort_index())
+        self.assert_eq(kdf.groupby(['a', 'b']).cummin().sort_index(),
+                       pdf.groupby(['a', 'b']).cummin().sort_index())
+        self.assert_eq(kdf.groupby(['b'])['a'].cummin().sort_index(),
+                       pdf.groupby(['b'])['a'].cummin().sort_index(), almost=True)
+        self.assert_eq(kdf.groupby(['b'])[['a', 'c']].cummin().sort_index(),
+                       pdf.groupby(['b'])[['a', 'c']].cummin().sort_index(), almost=True)
+
+    def test_cummax(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+                            'b': [1, 1, 2, 3, 5, 8],
+                            'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("b").cummax().sort_index(),
+                       pdf.groupby("b").cummax().sort_index())
+        self.assert_eq(kdf.groupby(['a', 'b']).cummax().sort_index(),
+                       pdf.groupby(['a', 'b']).cummax().sort_index())
+        self.assert_eq(kdf.groupby(['b'])['a'].cummax().sort_index(),
+                       pdf.groupby(['b'])['a'].cummax().sort_index(), almost=True)
+        self.assert_eq(kdf.groupby(['b'])[['a', 'c']].cummax().sort_index(),
+                       pdf.groupby(['b'])[['a', 'c']].cummax().sort_index(), almost=True)
+
+    def test_cumsum(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+                            'b': [1, 1, 2, 3, 5, 8],
+                            'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("b").cumsum().sort_index(),
+                       pdf.groupby("b").cumsum().sort_index())
+        self.assert_eq(kdf.groupby(['a', 'b']).cumsum().sort_index(),
+                       pdf.groupby(['a', 'b']).cumsum().sort_index())
+        self.assert_eq(kdf.groupby(['b'])['a'].cumsum().sort_index(),
+                       pdf.groupby(['b'])['a'].cumsum().sort_index(), almost=True)
+        self.assert_eq(kdf.groupby(['b'])[['a', 'c']].cumsum().sort_index(),
+                       pdf.groupby(['b'])[['a', 'c']].cumsum().sort_index(), almost=True)
+
+    def test_cumprod(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
+                            'b': [1, 1, 2, 3, 5, 8],
+                            'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("b").cumprod().sort_index(),
+                       pdf.groupby("b").cumprod().sort_index(), almost=True)
+        self.assert_eq(kdf.groupby(['a', 'b']).cumprod().sort_index(),
+                       pdf.groupby(['a', 'b']).cumprod().sort_index(), almost=True)
+        self.assert_eq(kdf.groupby(['b'])['a'].cumprod().sort_index(),
+                       pdf.groupby(['b'])['a'].cumprod().sort_index(), almost=True)
+        self.assert_eq(kdf.groupby(['b'])[['a', 'c']].cumprod().sort_index(),
+                       pdf.groupby(['b'])[['a', 'c']].cumprod().sort_index(), almost=True)
 
     def test_apply(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
