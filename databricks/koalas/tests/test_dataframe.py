@@ -1184,6 +1184,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.pivot_table(index=['C'], columns="A", values=['B', 'E'],
                             aggfunc={'B': 'mean', 'E': 'sum'})
 
+        msg = "values should be a numeric type."
+        with self.assertRaisesRegex(TypeError, msg):
+            kdf.pivot_table(index=['C'], columns="A", values='B',
+                            aggfunc={'B': 'mean'})
+
     def test_transpose(self):
         pdf1 = pd.DataFrame(
             data={'col1': [1, 2], 'col2': [3, 4]},

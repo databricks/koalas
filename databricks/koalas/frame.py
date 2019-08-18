@@ -3660,7 +3660,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if columns not in self.columns.values:
             raise ValueError("Wrong columns {}.".format(columns))
 
-        if not all(isinstance(self._internal.spark_type_for(col), NumericType) for col in values):
+        if isinstance(values, list):
+            if not all(isinstance(self._internal.spark_type_for(col), NumericType)
+                       for col in values):
+                raise TypeError('values should be a numeric type.')
+        elif not isinstance(self._internal.spark_type_for(values), NumericType):
             raise TypeError('values should be a numeric type.')
 
         if isinstance(aggfunc, str):
