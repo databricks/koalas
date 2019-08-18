@@ -19,13 +19,17 @@ An internal immutable DataFrame with some metadata to manage indexes.
 """
 
 from typing import List, Optional, Tuple, Union
+import os
+from itertools import accumulate
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
 from pyspark import sql as spark
 from pyspark._globals import _NoValue, _NoValueType
-from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type
+from pyspark.sql import functions as F, Window
+from pyspark.sql.functions import PandasUDFType, pandas_udf
+from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type, LongType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import infer_pd_series_spark_type
@@ -359,6 +363,16 @@ class _InternalFrame(object):
         :param column_index_names: Names for each of the index levels.
         """
         assert isinstance(sdf, spark.DataFrame)
+        if index_map is None:
+            # Here is when Koalas DataFrame is created directly from Spark DataFrame.
+            assert column_index is None
+            assert column_index_names is None
+
+            if "__index_level_0__" not in sdf.schema.names:
+                # Create default index.
+                index_map = [('__index_level_0__', None)]
+                sdf = _InternalFrame.attach_default_index(sdf)
+
         assert index_map is None \
             or all(isinstance(index_field, str)
                    and (index_name is None or isinstance(index_name, str))
@@ -393,6 +407,84 @@ class _InternalFrame(object):
                 self._column_index_names = column_index_names
         else:
             self._column_index_names = column_index_names
+
+    @staticmethod
+    def attach_default_index(sdf):
+        """
+        This method attaches a default index to Spark DataFrame. Spark does not have the index
+        notion so corresponding column should be generated.
+
+        There are three types of default index that can be controlled by `DEFAULT_INDEX`
+        environment variable.
+
+        - one-by-one: It implements an one-by-one sequence by Window function without
+            specifying partition. Therefore, it ends up with whole partition in single node.
+            This index type should be avoided when the data is large. This is default.
+
+        - distributed-one-by-one: It implements an one-by-one sequence by group-by and
+            group-map approach. It still generates a one-by-one sequential index globally.
+            If the default index must be an one-by-one sequence in a large dataset, this
+            index has to be used.
+            Note that if more data are added to the data source after creating this index,
+            then it does not guarantee the sequential index.
+
+        - distributed: It implements a monotonically increasing sequence simply by using
+            Spark's `monotonically_increasing_id` function. If the index does not have to be
+            a one-by-one sequence, this index should be used. Performance-wise, this index
+            almost does not have any penalty comparing to other index types.
+            Note that we cannot use this type of index for combining two dataframes because
+            it is not guaranteed to have the same indexes in two dataframes.
+
+        """
+        default_index_type = os.environ.get("DEFAULT_INDEX", "one-by-one")
+        if default_index_type == "one-by-one":
+            sequential_index = F.row_number().over(
+                Window.orderBy(F.monotonically_increasing_id().asc())) - 1
+            scols = [scol_for(sdf, column) for column in sdf.columns]
+            return sdf.select(sequential_index.alias("__index_level_0__"), *scols)
+        elif default_index_type == "distributed-one-by-one":
+            # 1. Calculates counts per each partition ID. `counts` here is, for instance,
+            #     {
+            #         1: 83,
+            #         6: 83,
+            #         3: 83,
+            #         ...
+            #     }
+            counts = map(lambda x: (x["key"], x["count"]),
+                         sdf.groupby(F.spark_partition_id().alias("key")).count().collect())
+
+            # 2. Calculates cumulative sum in an order of partition id.
+            #     Note that it does not matter if partition id guarantees its order or not.
+            #     We just need a one-by-one sequential id.
+
+            # sort by partition key.
+            sorted_counts = sorted(counts, key=lambda x: x[0])
+            # get cumulative sum in an order of partition key.
+            cumulative_counts = accumulate(map(lambda count: count[1], sorted_counts))
+            # zip it with partition key.
+            sums = dict(zip(map(lambda count: count[0], sorted_counts), cumulative_counts))
+
+            # 3. Group by partition id and assign each range.
+            def default_index(pdf):
+                current_partition_max = sums[pdf["__spark_partition_id"].iloc[0]]
+                offset = len(pdf)
+                pdf["__index_level_0__"] = list(range(
+                    current_partition_max - offset, current_partition_max))
+                return pdf.drop(columns=["__spark_partition_id"])
+
+            return_schema = StructType(
+                [StructField("__index_level_0__", LongType())] + list(sdf.schema))
+            grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(default_index)
+
+            sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
+            return sdf.groupBy("__spark_partition_id").apply(grouped_map_func)
+        elif default_index_type == "distributed":
+            scols = [scol_for(sdf, column) for column in sdf.columns]
+            return sdf.select(
+                F.monotonically_increasing_id().alias("__index_level_0__"), *scols)
+        else:
+            raise ValueError("'DEFAULT_INDEX' environment variable should be one of 'one-by-one',"
+                             " 'distributed-one-by-one' and 'distributed'")
 
     def scol_for(self, column_name: str) -> spark.Column:
         """ Return Spark Column for the given column name. """

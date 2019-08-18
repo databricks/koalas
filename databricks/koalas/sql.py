@@ -92,7 +92,7 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
 
     >>> mydf = ks.range(10)
     >>> x = range(4)
-    >>> ks.sql("SELECT * from {mydf} WHERE id IN {x}")
+    >>> ks.sql("SELECT * from {mydf} WHERE id IN {x}")  # doctest: +SKIP
        id
     0   0
     1   1

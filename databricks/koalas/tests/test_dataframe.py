@@ -543,6 +543,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(ValueError, lambda: kdf.reset_index().sort_index())
 
+        # Assert with multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+
     def test_nlargest(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
                             'b': [7, 6, 5, 4, 3, 2, 1]})
@@ -868,12 +875,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_binary_operators(self):
         self.assertRaisesRegex(
             ValueError,
-            'with another DataFrame or a sequence is currently not supported',
+            'it comes from a different dataframe',
             lambda: ks.range(10).add(ks.range(10)))
 
         self.assertRaisesRegex(
             ValueError,
-            'with another DataFrame or a sequence is currently not supported',
+            'add with a sequence is currently not supported',
             lambda: ks.range(10).add(ks.range(10).id))
 
     def test_sample(self):

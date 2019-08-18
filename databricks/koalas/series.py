@@ -25,12 +25,11 @@ from typing import Any, Optional, List, Union, Generic, TypeVar
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_list_like
 from pandas.core.accessor import CachedAccessor
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.types import BooleanType, StructType, NumericType
+from pyspark.sql.types import BooleanType, StructType
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -1739,24 +1738,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         b  1    0
         Name: 0, dtype: int64
         """
-        if len(self._internal.index_map) == 0:
-            raise ValueError("Index should be set.")
-
-        if axis != 0:
-            raise ValueError("No other axes than 0 are supported at the moment")
-        if kind is not None:
-            raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-
-        if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
-            by = self._internal.index_columns
-        elif is_list_like(level):
-            by = [self._internal.index_columns[l] for l in level]  # type: ignore
-        else:
-            by = self._internal.index_columns[level]
-
-        kseries = _col(self.to_dataframe().sort_values(by=by,
-                                                       ascending=ascending,
-                                                       na_position=na_position))
+        kseries = _col(self.to_dataframe().sort_index(axis=axis, level=level, ascending=ascending,
+                                                      kind=kind, na_position=na_position))
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf
