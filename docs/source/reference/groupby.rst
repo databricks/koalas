@@ -44,3 +44,5 @@ Computations / Descriptive Stats
    GroupBy.var
    GroupBy.size
    GroupBy.diff
+   GroupBy.nsmallest
+   GroupBy.nlargest

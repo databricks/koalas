@@ -958,6 +958,100 @@ class GroupBy(object):
         """
         return self._rank(method, ascending)
 
+    # TODO: add keep= parameter
+    def nsmallest(self, n=5):
+        """
+        Return the first n rows ordered by columns in ascending order in group.
+
+        Return the first n rows with the smallest values in columns, in ascending order.
+        The columns that are not specified are returned as well, but not used for ordering.
+
+        Parameters
+        ----------
+        n : int
+            Number of items to retrieve.
+
+        See Also
+        --------
+        Series.nsmallest
+        DataFrame.nsmallest
+        databricks.koalas.Series.nsmallest
+        databricks.koalas.DataFrame.nsmallest
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+        ...                    'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
+
+        >>> df.groupby(['a'])['b'].nsmallest(1).sort_index() # doctest: +NORMALIZE_WHITESPACE
+        a
+        1  0    1
+        2  3    2
+        3  6    3
+        Name: b, dtype: int64
+        """
+        if len(self._kdf._internal.index_names) > 1:
+            raise ValueError('idxmax do not support multi-index now')
+        groupkeys = self._groupkeys
+        sdf = self._kdf._sdf
+        name = self._agg_columns[0].name
+        index = self._kdf._internal.index_columns[0]
+        window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name))
+        sdf = sdf.withColumn('order', F.row_number().over(window)).filter(F.col('order') <= n)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[name],
+                                  index_map=[(s.name, s.name) for s in self._groupkeys] +
+                                            [(index, None)])
+        kdf = _col(DataFrame(internal))
+        return kdf
+
+    # TODO: add keep= parameter
+    def nlargest(self, n=5):
+        """
+        Return the first n rows ordered by columns in descending order in group.
+
+        Return the first n rows with the smallest values in columns, in descending order.
+        The columns that are not specified are returned as well, but not used for ordering.
+
+        Parameters
+        ----------
+        n : int
+            Number of items to retrieve.
+
+        See Also
+        --------
+        Series.nlargest
+        DataFrame.nlargest
+        databricks.koalas.Series.nlargest
+        databricks.koalas.DataFrame.nlargest
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+        ...                    'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
+
+        >>> df.groupby(['a'])['b'].nlargest(1).sort_index() # doctest: +NORMALIZE_WHITESPACE
+        a
+        1  1    2
+        2  4    3
+        3  7    4
+        Name: b, dtype: int64
+        """
+        if len(self._kdf._internal.index_names) > 1:
+            raise ValueError('idxmax do not support multi-index now')
+        groupkeys = self._groupkeys
+        sdf = self._kdf._sdf
+        name = self._agg_columns[0].name
+        index = self._kdf._internal.index_columns[0]
+        window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name).desc())
+        sdf = sdf.withColumn('order', F.row_number().over(window)).filter(F.col('order') <= n)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[name],
+                                  index_map=[(s.name, s.name) for s in self._groupkeys] +
+                                            [(index, None)])
+        kdf = _col(DataFrame(internal))
+        return kdf
+
     # TODO: Series support is not implemented yet.
     def transform(self, func):
         """

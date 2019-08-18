@@ -182,6 +182,32 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(repr(kdf.groupby(['b'])['a'].diff().sort_index()),
                        repr(pdf.groupby(['b'])['a'].diff().sort_index()))
 
+    def test_nsmallest(self):
+        pdf = pd.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+                            'b': [1, 2, 2, 2, 3, 3, 3, 4, 4],
+                            'c': [1, 2, 2, 2, 3, 3, 3, 4, 4],
+                            'd': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b', 'c', 'd'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(repr(kdf.groupby(['a'])['b'].nsmallest(1).sort_values()),
+                       repr(pdf.groupby(['a'])['b'].nsmallest(1).sort_values()))
+        self.assert_eq(repr(kdf.groupby(['a'])['b'].nsmallest(2).sort_index()),
+                       repr(pdf.groupby(['a'])['b'].nsmallest(2).sort_index()))
+        with self.assertRaisesRegex(ValueError, "idxmax do not support multi-index now"):
+            kdf.set_index(['a', 'b']).groupby(['c'])['d'].nlargest(1)
+
+    def test_nlargest(self):
+        pdf = pd.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+                            'b': [1, 2, 2, 2, 3, 3, 3, 4, 4],
+                            'c': [1, 2, 2, 2, 3, 3, 3, 4, 4],
+                            'd': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b', 'c', 'd'])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(repr(kdf.groupby(['a'])['b'].nlargest(1).sort_values()),
+                       repr(pdf.groupby(['a'])['b'].nlargest(1).sort_values()))
+        self.assert_eq(repr(kdf.groupby(['a'])['b'].nlargest(2).sort_index()),
+                       repr(pdf.groupby(['a'])['b'].nlargest(2).sort_index()))
+        with self.assertRaisesRegex(ValueError, "idxmax do not support multi-index now"):
+            kdf.set_index(['a', 'b']).groupby(['c'])['d'].nlargest(1)
+
     def test_missing(self):
         kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 
