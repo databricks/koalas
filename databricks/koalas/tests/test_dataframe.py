@@ -1245,6 +1245,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(TypeError, lambda: kdf.reindex(index=['A', 'B', 'C'], axis=1))
         self.assertRaises(TypeError, lambda: kdf.reindex(index=123))
 
+        columns = pd.MultiIndex.from_tuples([('X', 'numbers')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(
+            pdf.reindex(columns=[('X', 'numbers'), ('Y', '2'), ('Y', '3')]).sort_index(),
+            kdf.reindex(columns=[('X', 'numbers'), ('Y', '2'), ('Y', '3')]).sort_index())
+
+        self.assertRaises(TypeError, lambda: kdf.reindex(columns=['X']))
+        self.assertRaises(ValueError, lambda: kdf.reindex(columns=[('X',)]))
+
     def test_rank(self):
         pdf = pd.DataFrame(data={'col1': [1, 2, 3, 1], 'col2': [3, 4, 3, 1]},
                            columns=['col1', 'col2'])
