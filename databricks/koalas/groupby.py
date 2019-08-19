@@ -980,7 +980,7 @@ class GroupBy(object):
         7  3  4
         8  3  4
 
-        >>> df.groupby("a").rank()
+        >>> df.groupby("a").rank().sort_index()
              b
         0  1.0
         1  2.5
@@ -992,7 +992,7 @@ class GroupBy(object):
         7  2.5
         8  2.5
 
-        >>> df.b.groupby(df.a).rank(method='max')  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.b.groupby(df.a).rank(method='max').sort_index()
         0    1.0
         1    3.0
         2    3.0
@@ -1276,11 +1276,9 @@ class DataFrameGroupBy(GroupBy):
     def _diff(self, *args, **kwargs):
         applied = []
         kdf = self._kdf
-        groupkey_columns = [s.name for s in self._groupkeys]
 
-        for column in kdf._internal.data_columns:
-            if column not in groupkey_columns:
-                applied.append(kdf[column].groupby(self._groupkeys)._diff(*args, **kwargs))
+        for column in self._agg_columns:
+            applied.append(column.groupby(self._groupkeys)._diff(*args, **kwargs))
 
         sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
         internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
@@ -1289,16 +1287,15 @@ class DataFrameGroupBy(GroupBy):
     def _rank(self, *args, **kwargs):
         applied = []
         kdf = self._kdf
-        groupkey_columns = [s.name for s in self._groupkeys]
+        groupkey_columns = set(s.name for s in self._groupkeys)
 
-        for column in kdf._internal.data_columns:
+        for column in self._agg_columns:
             # pandas groupby.rank ignores the grouping key itself.
-            if column not in groupkey_columns:
-                applied.append(kdf[column].groupby(self._groupkeys)._rank(*args, **kwargs))
+            if column.name not in groupkey_columns:
+                applied.append(column.groupby(self._groupkeys)._rank(*args, **kwargs))
 
-        sdf = kdf._sdf.select([c._scol for c in applied])
-        internal = kdf._internal.copy(
-            sdf=sdf, data_columns=[c.name for c in applied], index_map=[])  # index is lost.)
+        sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
+        internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
     def _cum(self, func):
@@ -1317,11 +1314,12 @@ class DataFrameGroupBy(GroupBy):
 
         applied = []
         kdf = self._kdf
-        groupkey_columns = [s.name for s in self._groupkeys]
-        for column in kdf._internal.data_columns:
+        groupkey_columns = set(s.name for s in self._groupkeys)
+
+        for column in self._agg_columns:
             # pandas groupby.cumxxx ignores the grouping key itself.
-            if column not in groupkey_columns:
-                applied.append(getattr(kdf[column].groupby(self._groupkeys), func)())
+            if column.name not in groupkey_columns:
+                applied.append(getattr(column.groupby(self._groupkeys), func)())
 
         sdf = kdf._sdf.select(
             kdf._internal.index_scols + [c._scol for c in applied])
@@ -1389,10 +1387,3 @@ class SeriesGroupBy(GroupBy):
 
     def filter(self, func):
         raise NotImplementedError()
-
-    def rank(self, method='average', ascending=True):
-        kdf = super(SeriesGroupBy, self).rank(method, ascending).to_dataframe()
-        return _col(DataFrame(kdf._internal.copy(
-            sdf=kdf._sdf.select(kdf._internal.data_scols), index_map=[])))  # index is lost.
-
-    rank.__doc__ = GroupBy.rank.__doc__
