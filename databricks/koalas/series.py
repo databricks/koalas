@@ -2667,15 +2667,18 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         fill_value : object, optional
             The scalar value to use for newly introduced missing values.
             The default depends on the dtype of self. For numeric data, np.nan is used.
+
         Returns
         -------
         Copy of input DataFrame, shifted.
+
         Examples
         --------
         >>> df = ks.DataFrame({'Col1': [10, 20, 15, 30, 45],
         ...                    'Col2': [13, 23, 18, 33, 48],
         ...                    'Col3': [17, 27, 22, 37, 52]},
         ...                   columns=['Col1', 'Col2', 'Col3'])
+
         >>> df['Col1'].shift(periods=3)
         0     NaN
         1     NaN
@@ -2683,6 +2686,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         3    10.0
         4    20.0
         Name: Col1, dtype: float64
+
         >>> df['Col1'].shift(periods=3, fill_value=0)
         0     0
         1     0
@@ -2700,8 +2704,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             raise ValueError('periods should be an int')
         window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
             .rowsBetween(-periods, -periods)
-        scol = F.when(F.lag(self._scol, periods).over(window).isNotNull(),
-                      F.lag(self._scol, periods).over(window)).otherwise(fill_value)
+        lag_col = F.lag(self._scol, periods).over(window)
+        scol = F.when(lag_col.isNull(), fill_value).otherwise(lag_col)
         return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(self.name)
 
     def idxmax(self, skipna=True):
