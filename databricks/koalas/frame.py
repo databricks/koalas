@@ -1872,15 +1872,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if level is None:
             new_index_map = [(column, name if name is not None else rename(i))
                              for i, (column, name) in enumerate(self._internal.index_map)]
-            new_data_columns = [
-                self._internal.scol_for(column).alias(name) for column, name in new_index_map]
-            sdf = self._sdf.select(new_data_columns + self._internal.data_columns)
-
-            # Now, new internal Spark columns are named as same as index name.
-            new_index_map = [(name, name) for column, name in new_index_map]
-
-            index_map = [('__index_level_0__', None)]
-            sdf = _InternalFrame.attach_default_index(sdf)
+            index_map = []
         else:
             if isinstance(level, (int, str)):
                 level = [level]
@@ -1918,7 +1910,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                      index_name if index_name is not None else rename(index_name)))
                 index_map.remove(info)
 
-            sdf = self._sdf
+        new_data_columns = [
+            self._internal.scol_for(column).alias(name) for column, name in new_index_map]
+
+        if len(index_map) > 0:
+            index_columns = [column for column, _ in index_map]
+            sdf = self._sdf.select(
+                index_columns + new_data_columns + self._internal.data_columns)
+        else:
+            sdf = self._sdf.select(new_data_columns + self._internal.data_columns)
+
+            # Now, new internal Spark columns are named as same as index name.
+            new_index_map = [(name, name) for column, name in new_index_map]
+
+            index_map = [('__index_level_0__', None)]
+            sdf = _InternalFrame.attach_default_index(sdf)
 
         if drop:
             new_index_map = []
