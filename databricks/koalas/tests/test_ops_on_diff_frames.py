@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 import os
-import unittest
 
 import pandas as pd
 
@@ -104,10 +103,10 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
     def kdf6(self):
         return ks.from_pandas(self.pdf6)
 
-    @unittest.skip('FIXME: Now that we can handle this case?')
-    def test_no_index(self):
-        with self.assertRaisesRegex(AssertionError, "cannot join with no overlapping index name"):
-            ks.range(10) + ks.range(10)
+    def test_ranges(self):
+        self.assertEqual(
+            ks.range(10) + ks.range(10),
+            ks.DataFrame({'id': list(range(10))}) + ks.DataFrame({'id': list(range(10))}))
 
     def test_no_matched_index(self):
         with self.assertRaisesRegex(ValueError, "Index names must be exactly matched"):
@@ -257,8 +256,8 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf = ks.from_pandas(self.pdf5)
         pdf = self.pdf5.copy()
-        kdf['x'] = self.kdf6.e
-        pdf['x'] = self.pdf6.e
+        kdf['e'] = self.kdf6.e
+        pdf['e'] = self.pdf6.e
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 

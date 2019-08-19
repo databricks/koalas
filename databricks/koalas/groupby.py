@@ -682,7 +682,6 @@ class GroupBy(object):
         """
         return self._cum(F.sum)
 
-    # TODO: Series support is not implemented yet.
     def apply(self, func):
         """
         Apply function `func` group-wise and combine the results together.
@@ -797,7 +796,31 @@ class GroupBy(object):
             return_schema = None  # schema will inferred.
         else:
             return_schema = _infer_return_type(func).tpe
-        return self._apply(func, return_schema, retain_index=return_schema is None)
+
+        should_infer_schema = return_schema is None
+        input_groupnames = [s.name for s in self._groupkeys]
+
+        if should_infer_schema:
+            # Here we execute with the first 1000 to get the return type.
+            # If the records were less than 1000, it uses pandas API directly for a shortcut.
+            limit = 1000
+            pdf = self._kdf.head(limit + 1).to_pandas()
+            pdf = pdf.groupby(input_groupnames).apply(func)
+            kdf = DataFrame(pdf)
+            return_schema = kdf._sdf.schema
+            if len(pdf) <= limit:
+                return kdf
+
+        sdf = self._spark_group_map_apply(
+            func, return_schema, retain_index=should_infer_schema)
+
+        if should_infer_schema:
+            # If schema is inferred, we can restore indexes too.
+            internal = kdf._internal.copy(sdf=sdf)
+        else:
+            # Otherwise, it loses index.
+            internal = _InternalFrame(sdf=sdf)
+        return DataFrame(internal)
 
     # TODO: implement 'dropna' parameter
     def filter(self, func):
@@ -843,24 +866,11 @@ class GroupBy(object):
         def pandas_filter(pdf):
             return pdf.groupby(groupby_names).filter(func)
 
-        kdf = self._apply(pandas_filter, data_schema, retain_index=True)
-        return DataFrame(self._kdf._internal.copy(sdf=kdf._sdf))
+        sdf = self._spark_group_map_apply(
+            pandas_filter, data_schema, retain_index=True)
+        return DataFrame(self._kdf._internal.copy(sdf=sdf))
 
-    def _apply(self, func, return_schema, retain_index):
-        should_infer_schema = return_schema is None
-        input_groupnames = [s.name for s in self._groupkeys]
-
-        if should_infer_schema:
-            # Here we execute with the first 1000 to get the return type.
-            # If the records were less than 1000, it uses pandas API directly for a shortcut.
-            limit = 1000
-            pdf = self._kdf.head(limit + 1).to_pandas()
-            pdf = pdf.groupby(input_groupnames).apply(func)
-            kdf = DataFrame(pdf)
-            return_schema = kdf._sdf.schema
-            if len(pdf) <= limit:
-                return kdf
-
+    def _spark_group_map_apply(self, func, return_schema, retain_index):
         index_columns = self._kdf._internal.index_columns
         index_names = self._kdf._internal.index_names
         data_columns = self._kdf._internal.data_columns
@@ -934,14 +944,7 @@ class GroupBy(object):
         input_groupkeys = [s._scol for s in self._groupkeys]
         sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
 
-        if should_infer_schema:
-            # If schema is inferred, we can restore indexes too.
-            internal = kdf._internal.copy(sdf=sdf)
-        else:
-            # Otherwise, it loses index.
-            internal = _InternalFrame(
-                sdf=sdf, data_columns=return_schema.fieldNames(), index_map=[])
-        return DataFrame(internal)
+        return sdf
 
     def rank(self, method='average', ascending=True):
         """
@@ -1007,7 +1010,6 @@ class GroupBy(object):
         """
         return self._rank(method, ascending)
 
-    # TODO: Series support is not implemented yet.
     def transform(self, func):
         """
         Apply function column-by-column to the GroupBy object.
@@ -1117,7 +1119,9 @@ class GroupBy(object):
             pdf = pdf.drop(columns=input_groupnames)
             return pdf.transform(func)
 
-        if return_sig is None:
+        should_infer_schema = return_sig is None
+
+        if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = 1000
@@ -1128,16 +1132,22 @@ class GroupBy(object):
             if len(pdf) <= limit:
                 return pdf
 
-            applied_kdf = self._apply(pandas_transform, return_schema, retain_index=True)
-            # kdf inferred from pdf holds a correct index.
-            return DataFrame(kdf._internal.copy(sdf=applied_kdf._sdf))
+            sdf = self._spark_group_map_apply(
+                pandas_transform, return_schema, retain_index=True)
+            # If schema is inferred, we can restore indexes too.
+            internal = kdf._internal.copy(sdf=sdf)
         else:
             return_type = _infer_return_type(func).tpe
             data_columns = self._kdf._internal.data_columns
             return_schema = StructType([
                 StructField(c, return_type) for c in data_columns if c not in input_groupnames])
 
-            return self._apply(pandas_transform, return_schema, retain_index=False)
+            sdf = self._spark_group_map_apply(
+                pandas_transform, return_schema, retain_index=False)
+            # Otherwise, it loses index.
+            internal = _InternalFrame(sdf=sdf)
+
+        return DataFrame(internal)
 
     def nunique(self, dropna=True):
         """
@@ -1361,9 +1371,6 @@ class DataFrameGroupBy(GroupBy):
             func = "cumsum"
         elif func.__name__ == "cumprod":
             func = "cumprod"
-
-        if len(self._kdf._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
 
         applied = []
         kdf = self._kdf

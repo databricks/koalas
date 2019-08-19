@@ -273,7 +273,7 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
     Examples
     --------
     >>> ks.range(1).to_delta('%s/read_delta/foo' % path)
-    >>> ks.read_delta('%s/read_delta/foo' % path)  # doctest: +SKIP
+    >>> ks.read_delta('%s/read_delta/foo' % path)
        id
     0   0
     """
@@ -307,7 +307,7 @@ def read_table(name: str) -> DataFrame:
     Examples
     --------
     >>> ks.range(1).to_table('%s.my_table' % db)
-    >>> ks.read_table('%s.my_table' % db)  # doctest: +SKIP
+    >>> ks.read_table('%s.my_table' % db)
        id
     0   0
     """

@@ -1598,9 +1598,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Index
         """
         from databricks.koalas.indexes import Index, MultiIndex
-        if len(self._internal.index_map) == 0:
-            return None
-        elif len(self._internal.index_map) == 1:
+        if len(self._internal.index_map) == 1:
             return Index(self)
         else:
             return MultiIndex(self)
@@ -1860,9 +1858,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         lion           mammal   80.5     run
         monkey         mammal    NaN    jump
         """
-        if len(self._internal.index_map) == 0:
-            raise NotImplementedError('Can\'t reset index because there is no index.')
-
         multi_index = len(self._internal.index_map) > 1
 
         def rename(index):
@@ -1915,10 +1910,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                      index_name if index_name is not None else rename(index_name)))
                 index_map.remove(info)
 
+        new_data_columns = [
+            self._internal.scol_for(column).alias(name) for column, name in new_index_map]
+
+        if len(index_map) > 0:
+            index_columns = [column for column, _ in index_map]
+            sdf = self._sdf.select(
+                index_columns + new_data_columns + self._internal.data_columns)
+        else:
+            sdf = self._sdf.select(new_data_columns + self._internal.data_columns)
+
+            # Now, new internal Spark columns are named as same as index name.
+            new_index_map = [(name, name) for column, name in new_index_map]
+
+            index_map = [('__index_level_0__', None)]
+            sdf = _InternalFrame.attach_default_index(sdf)
+
         if drop:
             new_index_map = []
 
         internal = self._internal.copy(
+            sdf=sdf,
             data_columns=[column for column, _ in new_index_map] + self._internal.data_columns,
             index_map=index_map,
             column_index=None)
@@ -2382,13 +2394,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> spark_df = df.to_spark()
         >>> spark_df
-        DataFrame[__index_level_0__: bigint, col1: bigint, col2: bigint]
+        DataFrame[col1: bigint, col2: bigint]
 
         >>> kdf = spark_df.to_koalas()
         >>> kdf
-           __index_level_0__  col1  col2
-        0                  0     1     3
-        1                  1     2     4
+           col1  col2
+        0     1     3
+        1     2     4
 
         Calling to_koalas on a Koalas DataFrame simply returns itself.
 
@@ -2493,8 +2505,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.to_table('%s.my_table' % db, partition_cols='date')
         """
-        self._sdf.write.saveAsTable(name=name, format=format, mode=mode,
-                                    partitionBy=partition_cols, options=options)
+        self.to_spark().write.saveAsTable(name=name, format=format, mode=mode,
+                                          partitionBy=partition_cols, options=options)
 
     def to_delta(self, path: str, mode: str = 'error',
                  partition_cols: Union[str, List[str], None] = None, **options):
@@ -2604,8 +2616,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...     mode = 'overwrite',
         ...     partition_cols=['date', 'country'])
         """
-        self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition_cols,
-                                compression=compression)
+        self.to_spark().write.parquet(
+            path=path, mode=mode, partitionBy=partition_cols, compression=compression)
 
     def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
                     mode: str = 'error', partition_cols: Union[str, List[str], None] = None,
@@ -2657,12 +2669,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.to_spark_io(path='%s/to_spark_io/foo.json' % path, format='json')
         """
-        self._sdf.write.save(path=path, format=format, mode=mode, partitionBy=partition_cols,
-                             options=options)
+        self.to_spark().write.save(
+            path=path, format=format, mode=mode, partitionBy=partition_cols, options=options)
 
     def to_spark(self):
         """
         Return the current DataFrame as a Spark DataFrame.
+
+        .. note:: Index information is lost. So, if the index columns are not present in
+            actual columns, they are lost.
 
         See Also
         --------
@@ -3653,14 +3668,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.fillna(fill_value)
 
         if index is not None:
-            return DataFrame(sdf).set_index(index)
+            data_columns = [column for column in sdf.columns if column not in index]
+            index_map = [(column, column) for column in index]
+            internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map)
+            return DataFrame(internal)
         else:
             if isinstance(values, list):
                 index_values = values[-1]
             else:
                 index_values = values
 
-            return DataFrame(sdf.withColumn(columns, F.lit(index_values))).set_index(columns)
+            sdf = sdf.withColumn(columns, F.lit(index_values))
+            data_columns = [column for column in sdf.columns if column not in columns]
+            index_map = [(column, column) for column in columns]
+            internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map)
+            return DataFrame(internal)
 
     def pivot(self, index=None, columns=None, values=None):
         """
@@ -4364,9 +4386,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         a 1  2  1
         b 1  0  3
         """
-        if len(self._internal.index_map) == 0:
-            raise ValueError("Index should be set.")
-
         if axis != 0:
             raise ValueError("No other axes than 0 are supported at the moment")
         if kind is not None:
@@ -4959,12 +4978,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         original DataFrame’s index in the result.
 
         >>> join_kdf = kdf1.join(kdf2.set_index('key'), on='key')
-        >>> join_kdf.sort_values(by=join_kdf.columns)
+        >>> join_kdf.sort_index()
           key   A     B
-        0  K0  A0    B0
-        1  K1  A1    B1
-        2  K2  A2    B2
-        3  K3  A3  None
+        0  K3  A3  None
+        1  K0  A0    B0
+        2  K1  A1    B1
+        3  K2  A2    B2
         """
         if on:
             self = self.set_index(on)
@@ -5542,9 +5561,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             func = "cumsum"
         elif func.__name__ == "cumprod":
             func = "cumprod"
-
-        if len(self._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
 
         applied = []
         for column in self.columns:

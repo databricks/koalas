@@ -73,7 +73,7 @@ class _InternalFrame(object):
     However, all columns including index column are also stored in Spark DataFrame internally
     as below.
 
-    >>> kdf.to_spark().show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> kdf._internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
     +-----------------+---+---+---+---+---+
@@ -122,7 +122,7 @@ class _InternalFrame(object):
     [None]
     >>> internal.index_map
     [('__index_level_0__', None)]
-    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
     +-----------------+---+---+---+---+---+
@@ -149,7 +149,7 @@ class _InternalFrame(object):
     3  7  11  15  19
     4  8  12  16  20
 
-    >>> kdf1.to_spark().show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> kdf1._internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+---+---+---+
     |  A|  B|  C|  D|  E|
     +---+---+---+---+---+
@@ -179,7 +179,7 @@ class _InternalFrame(object):
     ['A']
     >>> internal.index_map
     [('A', 'A')]
-    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+---+---+---+
     |  A|  B|  C|  D|  E|
     +---+---+---+---+---+
@@ -207,7 +207,7 @@ class _InternalFrame(object):
     2 3  7  11  15  19
     3 4  8  12  16  20
 
-    >>> kdf2.to_spark().show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> kdf2._internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
     +-----------------+---+---+---+---+---+
@@ -237,7 +237,7 @@ class _InternalFrame(object):
     [None, 'A']
     >>> internal.index_map
     [('__index_level_0__', None), ('A', 'A')]
-    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
     +-----------------+---+---+---+---+---+
@@ -322,7 +322,7 @@ class _InternalFrame(object):
     ['A']
     >>> internal.index_map
     [('A', 'A')]
-    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+
     |  A|  B|
     +---+---+
@@ -367,21 +367,22 @@ class _InternalFrame(object):
             # Here is when Koalas DataFrame is created directly from Spark DataFrame.
             assert column_index is None
             assert column_index_names is None
+            assert "__index_level_0__" not in sdf.schema.names, \
+                "Default index column should not appear in columns of the Spark DataFrame"
 
-            if "__index_level_0__" not in sdf.schema.names:
-                # Create default index.
-                index_map = [('__index_level_0__', None)]
-                sdf = _InternalFrame.attach_default_index(sdf)
+            # Create default index.
+            index_map = [('__index_level_0__', None)]
+            sdf = _InternalFrame.attach_default_index(sdf)
 
-        assert index_map is None \
-            or all(isinstance(index_field, str)
+        assert index_map is not None
+        assert all(isinstance(index_field, str)
                    and (index_name is None or isinstance(index_name, str))
                    for index_field, index_name in index_map)
         assert scol is None or isinstance(scol, spark.Column)
         assert data_columns is None or all(isinstance(col, str) for col in data_columns)
 
         self._sdf = sdf  # type: spark.DataFrame
-        self._index_map = (index_map if index_map is not None else [])  # type: List[IndexMap]
+        self._index_map = index_map  # type: List[IndexMap]
         self._scol = scol  # type: Optional[spark.Column]
         if scol is not None:
             self._data_columns = sdf.select(scol).columns
@@ -541,6 +542,7 @@ class _InternalFrame(object):
     @property
     def index_map(self) -> List[IndexMap]:
         """ Return the managed index information. """
+        assert len(self._index_map) > 0
         return self._index_map
 
     @lazy_property
@@ -569,8 +571,11 @@ class _InternalFrame(object):
         return self._column_index_names
 
     @lazy_property
-    def spark_df(self) -> spark.DataFrame:
-        """ Return as Spark DataFrame. """
+    def spark_internal_df(self) -> spark.DataFrame:
+        """
+        Return as Spark DataFrame. This contains index columns as well
+        and should be only used for internal purposes.
+        """
         index_columns = set(self.index_columns)
         data_columns = []
         for column, idx in zip(self._data_columns, self.column_index):
@@ -583,9 +588,23 @@ class _InternalFrame(object):
         return self._sdf.select(self.index_scols + data_columns)
 
     @lazy_property
+    def spark_df(self) -> spark.DataFrame:
+        """ Return as Spark DataFrame. """
+        index_columns = set(self.index_columns)
+        data_columns = []
+        for column, idx in zip(self._data_columns, self.column_index):
+            if column not in index_columns:
+                scol = self.scol_for(column)
+                name = str(idx) if len(idx) > 1 else idx[0]
+                if column != name:
+                    scol = scol.alias(name)
+                data_columns.append(scol)
+        return self._sdf.select(data_columns)
+
+    @lazy_property
     def pandas_df(self):
         """ Return as pandas DataFrame. """
-        sdf = self.spark_df
+        sdf = self.spark_internal_df
         pdf = sdf.toPandas()
         if len(pdf) == 0 and len(sdf.schema) > 0:
             pdf = pdf.astype({field.name: to_arrow_type(field.dataType).to_pandas_dtype()

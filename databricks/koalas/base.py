@@ -304,9 +304,6 @@ class IndexOpsMixin(object):
         >>> ser.rename("a").to_frame().set_index("a").index.is_monotonic
         True
         """
-        if len(self._kdf._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
-
         col = self._scol
         window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
         sdf = self._kdf._sdf.withColumn(
@@ -356,9 +353,6 @@ class IndexOpsMixin(object):
         >>> ser.rename("a").to_frame().set_index("a").index.is_monotonic_decreasing
         True
         """
-        if len(self._kdf._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
-
         col = self._scol
         window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
         sdf = self._kdf._sdf.withColumn(
@@ -705,9 +699,6 @@ class IndexOpsMixin(object):
         >>> df.index.shift(periods=3, fill_value=0)
         Int64Index([0, 0, 0, 0, 1], dtype='int64')
         """
-        if len(self._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
-
         if not isinstance(periods, int):
             raise ValueError('periods should be an int; however, got [%s]' % type(periods))
 
