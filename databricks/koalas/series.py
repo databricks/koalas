@@ -1000,7 +1000,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2    c
         """
         renamed = self.rename(name)
-        sdf = renamed._internal.spark_df
+        sdf = renamed._internal.spark_internal_df
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[sdf.schema[-1].name],
                                   index_map=renamed._internal.index_map)
@@ -2635,8 +2635,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return self._diff(periods)
 
     def _diff(self, periods, part_cols=()):
-        if len(self._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
         if not isinstance(periods, int):
             raise ValueError('periods should be an int; however, got [%s]' % type(periods))
         window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
@@ -2825,9 +2823,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
-        if len(self._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
-
         index_columns = self._internal.index_columns
         window = Window.orderBy(
             index_columns).partitionBy(*part_cols).rowsBetween(

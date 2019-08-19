@@ -540,8 +540,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
         self.assert_eq(kdf.sort_index(level=[1, 0]), pdf.sort_index(level=[1, 0]))
-
-        self.assertRaises(ValueError, lambda: kdf.reset_index().sort_index())
+        self.assert_eq(kdf.reset_index().sort_index(), pdf.reset_index().sort_index())
 
         # Assert with multi-index columns
         columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B')])
@@ -934,7 +933,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         join_kdf = kdf1.join(kdf2.set_index('key'), on='key', lsuffix='_left', rsuffix='_right')
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
-        self.assert_eq(join_pdf, join_kdf)
+        self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
 
     def test_replace(self):
         pdf = pd.DataFrame({"name": ['Ironman', 'Captain America', 'Thor', 'Hulk'],

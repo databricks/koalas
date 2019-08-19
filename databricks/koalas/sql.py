@@ -92,7 +92,7 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
 
     >>> mydf = ks.range(10)
     >>> x = range(4)
-    >>> ks.sql("SELECT * from {mydf} WHERE id IN {x}")  # doctest: +SKIP
+    >>> ks.sql("SELECT * from {mydf} WHERE id IN {x}")
        id
     0   0
     1   1
@@ -105,9 +105,9 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     ...     mydf2 = ks.DataFrame({"x": range(2)})
     ...     return ks.sql("SELECT * from {mydf2}")
     >>> statement()
-       __index_level_0__  x
-    0                  0  0
-    1                  1  1
+       x
+    0  0
+    1  1
 
     Mixing Koalas and pandas DataFrames in a join operation. Note that the index is dropped.
 
