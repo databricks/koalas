@@ -2698,8 +2698,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return self._shift(periods, fill_value)
 
     def _shift(self, periods, fill_value, part_cols=()):
-        if len(self._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
         if not isinstance(periods, int):
             raise ValueError('periods should be an int')
         window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
