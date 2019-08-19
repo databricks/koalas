@@ -1139,6 +1139,59 @@ class GroupBy(object):
 
             return self._apply(pandas_transform, return_schema, retain_index=False)
 
+    def nunique(self, dropna=True):
+        """
+        Return DataFrame with number of distinct observations per group for each column.
+
+        Parameters
+        ----------
+        dropna : boolean, default True
+            Don’t include NaN in the counts.
+
+        Returns
+        -------
+        nunique : DataFrame
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'id': ['spam', 'egg', 'egg', 'spam',
+        ...                           'ham', 'ham'],
+        ...                    'value1': [1, 5, 5, 2, 5, 5],
+        ...                    'value2': list('abbaxy')}, columns=['id', 'value1', 'value2'])
+        >>> df
+             id  value1 value2
+        0  spam       1      a
+        1   egg       5      b
+        2   egg       5      b
+        3  spam       2      a
+        4   ham       5      x
+        5   ham       5      y
+
+        >>> df.groupby('id').nunique() # doctest: +NORMALIZE_WHITESPACE
+              id  value1  value2
+        id
+        egg    1       1       1
+        ham    1       1       2
+        spam   1       2       1
+
+        >>> df.groupby('id')['value1'].nunique() # doctest: +NORMALIZE_WHITESPACE
+        id
+        egg     1
+        ham     1
+        spam    2
+        Name: value1, dtype: int64
+        """
+        if isinstance(self, DataFrameGroupBy):
+            self._agg_columns = self._groupkeys + self._agg_columns
+        if dropna:
+            stat_function = lambda col: F.countDistinct(col)
+        else:
+            stat_function = lambda col: \
+                (F.countDistinct(col) +
+                 F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0))
+        return self._reduce_for_stat_function(stat_function, only_numeric=False)
+
     # TODO: add bins, normalize parameter
     def value_counts(self, sort=None, ascending=None, dropna=True):
         """

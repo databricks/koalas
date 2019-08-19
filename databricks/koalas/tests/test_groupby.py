@@ -143,6 +143,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
                             'b': [2, 2, 2, 3, 3, 4, 4, 5, 5, 5]})
         kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("a").agg({"b": "nunique"}),
+                       pdf.groupby("a").agg({"b": "nunique"}))
+        self.assert_eq(kdf.groupby("a").nunique(),
+                       pdf.groupby("a").nunique())
+        self.assert_eq(kdf.groupby("a").nunique(dropna=False),
+                       pdf.groupby("a").nunique(dropna=False))
+        self.assert_eq(kdf.groupby("a")['b'].nunique(),
+                       pdf.groupby("a")['b'].nunique())
+        self.assert_eq(kdf.groupby("a")['b'].nunique(dropna=False),
+                       pdf.groupby("a")['b'].nunique(dropna=False))
 
         for as_index in [True, False]:
             self.assert_eq(kdf.groupby("a", as_index=as_index).agg({"b": "nunique"}),
