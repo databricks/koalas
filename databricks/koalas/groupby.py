@@ -1032,6 +1032,13 @@ class GroupBy(object):
         ...                    'b': [1, 2, 3, 4, 5],
         ...                    'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
 
+        >>> df.groupby(['a'])['b'].idxmax().sort_index() # doctest: +NORMALIZE_WHITESPACE
+           b
+        a
+        1  1
+        2  3
+        3  4
+
         >>> df.groupby(['a']).idxmax().sort_index() # doctest: +NORMALIZE_WHITESPACE
            b  c
         a
@@ -1088,6 +1095,13 @@ class GroupBy(object):
         >>> df = ks.DataFrame({'a': [1, 1, 2, 2, 3],
         ...                    'b': [1, 2, 3, 4, 5],
         ...                    'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+
+        >>> df.groupby(['a'])['b'].idxmin().sort_index() # doctest: +NORMALIZE_WHITESPACE
+           b
+        a
+        1  0
+        2  2
+        3  4
 
         >>> df.groupby(['a']).idxmin().sort_index() # doctest: +NORMALIZE_WHITESPACE
            b  c
