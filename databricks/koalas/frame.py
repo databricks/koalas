@@ -4066,7 +4066,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._reduce_for_stat_function(
             _Frame._count_expr, name="count", axis=axis, numeric_only=False)
 
-    def drop(self, labels=None, axis=1, columns: Union[str, List[str]] = None):
+    def drop(self, labels=None, axis=1,
+             columns: Union[str, Tuple[str], List[str], List[Tuple[str]]] = None):
         """
         Drop specified labels from columns.
 
