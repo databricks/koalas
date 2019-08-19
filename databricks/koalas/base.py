@@ -32,7 +32,7 @@ from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, Times
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps
-from databricks.koalas.utils import align_diff_series
+from databricks.koalas.utils import align_diff_series, scol_for
 
 
 def _column_op(f):
@@ -582,7 +582,7 @@ class IndexOpsMixin(object):
             raise ValueError('axis should be either 0 or "index" currently.')
 
         sdf = self._kdf._sdf.select(self._scol)
-        col = self._scol
+        col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
         # any and every was added as of Spark 3.0
@@ -645,7 +645,7 @@ class IndexOpsMixin(object):
             raise ValueError('axis should be either 0 or "index" currently.')
 
         sdf = self._kdf._sdf.select(self._scol)
-        col = self._scol
+        col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
         # any and every was added as of Spark 3.0

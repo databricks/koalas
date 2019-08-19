@@ -254,6 +254,40 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks.notnull(), ps.notnull())
         self.assert_eq(ks.isnull(), ps.isnull())
 
+    def test_all(self):
+        for ps in [pd.Series([True, True], name='x'),
+                   pd.Series([True, False], name='x'),
+                   pd.Series([0, 1], name='x'),
+                   pd.Series([1, 2, 3], name='x'),
+                   pd.Series([True, True, None], name='x'),
+                   pd.Series([True, False, None], name='x'),
+                   pd.Series([], name='x'),
+                   pd.Series([np.nan], name='x')]:
+            ks = koalas.from_pandas(ps)
+            self.assert_eq(ks.all(), ps.all())
+
+        ps = pd.Series([1, 2, 3, 4], name='x')
+        ks = koalas.from_pandas(ps)
+
+        self.assert_eq((ks % 2 == 0).all(), (ps % 2 == 0).all())
+
+    def test_any(self):
+        for ps in [pd.Series([False, False], name='x'),
+                   pd.Series([True, False], name='x'),
+                   pd.Series([0, 1], name='x'),
+                   pd.Series([1, 2, 3], name='x'),
+                   pd.Series([True, True, None], name='x'),
+                   pd.Series([True, False, None], name='x'),
+                   pd.Series([], name='x'),
+                   pd.Series([np.nan], name='x')]:
+            ks = koalas.from_pandas(ps)
+            self.assert_eq(ks.any(), ps.any())
+
+        ps = pd.Series([1, 2, 3, 4], name='x')
+        ks = koalas.from_pandas(ps)
+
+        self.assert_eq((ks % 2 == 0).any(), (ps % 2 == 0).any())
+
     def test_sort_values(self):
         ps = pd.Series([1, 2, 3, 4, 5, None, 7], name='0')
         ks = koalas.from_pandas(ps)
