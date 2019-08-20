@@ -17,12 +17,14 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
+from collections import OrderedDict
 from distutils.version import LooseVersion
 import re
 import warnings
 import inspect
 from functools import partial, reduce
 import sys
+from itertools import zip_longest
 from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar
 
 import numpy as np
@@ -42,12 +44,12 @@ from pyspark.sql.window import Window
 from pyspark.sql.functions import pandas_udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame, max_display_count
 from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.utils import scol_for
+from databricks.koalas.utils import column_index_level, scol_for
 from databricks.koalas.typedef import as_spark_type
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
@@ -328,7 +330,7 @@ class DataFrame(_Frame, Generic[T]):
         if axis in ('index', 0, None):
             exprs = []
             num_args = len(signature(sfun).parameters)
-            for col in self._internal.data_columns:
+            for col, idx in zip(self._internal.data_columns, self._internal.column_index):
                 col_sdf = self._internal.scol_for(col)
                 col_type = self._internal.spark_type_for(col)
 
@@ -349,12 +351,12 @@ class DataFrame(_Frame, Generic[T]):
                         assert num_args == 2
                         # Pass in both the column and its data type if sfun accepts two args
                         col_sdf = sfun(col_sdf, col_type)
-                    exprs.append(col_sdf.alias(col))
+                    exprs.append(col_sdf.alias(str(idx) if len(idx) > 1 else idx[0]))
 
             sdf = self._sdf.select(*exprs)
             pdf = sdf.toPandas()
 
-            if self._internal.column_index is not None:
+            if self._internal.column_index_level > 1:
                 pdf.columns = pd.MultiIndex.from_tuples(self._internal.column_index)
 
             assert len(pdf) == 1, (sdf, pdf)
@@ -385,19 +387,32 @@ class DataFrame(_Frame, Generic[T]):
 
     # Arithmetic Operators
     def _map_series_op(self, op, other):
-        if isinstance(other, DataFrame) or is_sequence(other):
+        if not isinstance(other, DataFrame) and is_sequence(other):
             raise ValueError(
-                "%s with another DataFrame or a sequence is currently not supported; "
+                "%s with a sequence is currently not supported; "
                 "however, got %s." % (op, type(other)))
 
         applied = []
-        for column in self._internal.data_columns:
-            applied.append(getattr(self[column], op)(other))
+        if isinstance(other, DataFrame) and self is not other:
+            # Different DataFrames
+            def apply_op(kdf, this_columns, that_columns):
+                for this_column, that_column in zip(this_columns, that_columns):
+                    yield getattr(kdf[this_column], op)(kdf[that_column])
 
-        sdf = self._sdf.select(
-            self._internal.index_scols + [c._scol for c in applied])
-        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
-        return DataFrame(internal)
+            return align_diff_frames(apply_op, self, other, fillna=True, how="full")
+        elif isinstance(other, DataFrame) and self is not other:
+            # Same DataFrames
+            for column in self._internal.data_columns:
+                applied.append(getattr(self[column], op)(other[column]))
+        else:
+            # DataFrame and Series
+            for column in self._internal.data_columns:
+                applied.append(getattr(self[column], op)(other))
+
+            sdf = self._sdf.select(
+                self._internal.index_scols + [c._scol for c in applied])
+            internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+            return DataFrame(internal)
 
     def __add__(self, other):
         return self._map_series_op("add", other)
@@ -1583,9 +1598,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Index
         """
         from databricks.koalas.indexes import Index, MultiIndex
-        if len(self._internal.index_map) == 0:
-            return None
-        elif len(self._internal.index_map) == 1:
+        if len(self._internal.index_map) == 1:
             return Index(self)
         else:
             return MultiIndex(self)
@@ -1845,9 +1858,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         lion           mammal   80.5     run
         monkey         mammal    NaN    jump
         """
-        if len(self._internal.index_map) == 0:
-            raise NotImplementedError('Can\'t reset index because there is no index.')
-
         multi_index = len(self._internal.index_map) > 1
 
         def rename(index):
@@ -1900,15 +1910,32 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                      index_name if index_name is not None else rename(index_name)))
                 index_map.remove(info)
 
+        new_data_columns = [
+            self._internal.scol_for(column).alias(name) for column, name in new_index_map]
+
+        if len(index_map) > 0:
+            index_columns = [column for column, _ in index_map]
+            sdf = self._sdf.select(
+                index_columns + new_data_columns + self._internal.data_columns)
+        else:
+            sdf = self._sdf.select(new_data_columns + self._internal.data_columns)
+
+            # Now, new internal Spark columns are named as same as index name.
+            new_index_map = [(name, name) for column, name in new_index_map]
+
+            index_map = [('__index_level_0__', None)]
+            sdf = _InternalFrame.attach_default_index(sdf)
+
         if drop:
             new_index_map = []
 
         internal = self._internal.copy(
+            sdf=sdf,
             data_columns=[column for column, _ in new_index_map] + self._internal.data_columns,
             index_map=index_map,
             column_index=None)
 
-        if self._internal.column_index is not None:
+        if self._internal.column_index_level > 1:
             column_depth = len(self._internal.column_index[0])
             if col_level >= column_depth:
                 raise IndexError('Too many levels: Index has only {} levels, not {}'
@@ -2177,22 +2204,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if axis != 0:
             raise ValueError("The 'nunique' method only works with axis=0 at the moment")
-        count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
-        if dropna:
-            res = self._sdf.select([count_fn(self._internal.scol_for(c))
-                                   .alias(c)
-                                    for c in self.columns])
-        else:
-            res = self._sdf.select([(count_fn(self._internal.scol_for(c))
-                                     # If the count of null values in a column is at least 1,
-                                     # increase the total count by 1 else 0. This is like adding
-                                     # self.isnull().sum().clip(upper=1) but can be computed in a
-                                     # single Spark job when pulling it into the select statement.
-                                     + F.when(F.count(F.when(self._internal.scol_for(c).isNull(), 1)
-                                                      .otherwise(None))
-                                              >= 1, 1).otherwise(0))
-                                   .alias(c)
-                                    for c in self.columns])
+        res = self._sdf.select([self[column]._nunique(dropna, approx, rsd)
+                                for column in self.columns])
         return res.toPandas().T.iloc[:, 0]
 
     def round(self, decimals=0):
@@ -2381,13 +2394,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> spark_df = df.to_spark()
         >>> spark_df
-        DataFrame[__index_level_0__: bigint, col1: bigint, col2: bigint]
+        DataFrame[col1: bigint, col2: bigint]
 
         >>> kdf = spark_df.to_koalas()
         >>> kdf
-           __index_level_0__  col1  col2
-        0                  0     1     3
-        1                  1     2     4
+           col1  col2
+        0     1     3
+        1     2     4
 
         Calling to_koalas on a Koalas DataFrame simply returns itself.
 
@@ -2492,8 +2505,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.to_table('%s.my_table' % db, partition_cols='date')
         """
-        self._sdf.write.saveAsTable(name=name, format=format, mode=mode,
-                                    partitionBy=partition_cols, options=options)
+        self.to_spark().write.saveAsTable(name=name, format=format, mode=mode,
+                                          partitionBy=partition_cols, options=options)
 
     def to_delta(self, path: str, mode: str = 'error',
                  partition_cols: Union[str, List[str], None] = None, **options):
@@ -2603,8 +2616,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...     mode = 'overwrite',
         ...     partition_cols=['date', 'country'])
         """
-        self._sdf.write.parquet(path=path, mode=mode, partitionBy=partition_cols,
-                                compression=compression)
+        self.to_spark().write.parquet(
+            path=path, mode=mode, partitionBy=partition_cols, compression=compression)
 
     def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
                     mode: str = 'error', partition_cols: Union[str, List[str], None] = None,
@@ -2656,12 +2669,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.to_spark_io(path='%s/to_spark_io/foo.json' % path, format='json')
         """
-        self._sdf.write.save(path=path, format=format, mode=mode, partitionBy=partition_cols,
-                             options=options)
+        self.to_spark().write.save(
+            path=path, format=format, mode=mode, partitionBy=partition_cols, options=options)
 
     def to_spark(self):
         """
         Return the current DataFrame as a Spark DataFrame.
+
+        .. note:: Index information is lost. So, if the index columns are not present in
+            actual columns, they are lost.
 
         See Also
         --------
@@ -3126,15 +3142,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  0.0  1.0  2.0  5
         3  0.0  3.0  1.0  4
         """
-        if axis is None:
-            axis = 0
-        if not (axis == 0 or axis == "index"):
-            raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
-        if (value is None) and (method is None):
-            raise ValueError("Must specify a fill 'value' or 'method'.")
-
         sdf = self._sdf
         if value is not None:
+            if axis is None:
+                axis = 0
+            if not (axis == 0 or axis == "index"):
+                raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
+            if (value is None) and (method is None):
+                raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
             if not isinstance(value, (float, int, str, bool, dict, pd.Series)):
                 raise TypeError("Unsupported type %s" % type(value))
             if isinstance(value, pd.Series):
@@ -3148,15 +3163,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.fillna(value)
             internal = self._internal.copy(sdf=sdf)
         else:
-            if method not in ['pad', 'ffill', 'backfill', 'bfill']:
-                raise ValueError("Expecting pad, ffill, backfill or bfill.")
             applied = []
-            for column in self._internal.data_columns:
-                applied.append(self[column].fillna(value=value, method=method,
-                                                   axis=axis, limit=limit))
-            sdf = self._sdf.select(
-                self._internal.index_scols + [c._scol for c in applied])
-            internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+            for col in self._internal.data_columns:
+                applied.append(self[col].fillna(value=value, method=method, axis=axis,
+                                                inplace=False, limit=limit))
+            sdf = self._sdf.select(self._internal.index_columns + [col._scol for col in applied])
+            internal = self._internal.copy(sdf=sdf, data_columns=[col.name for col in applied])
         if inplace:
             self._internal = internal
         else:
@@ -3652,14 +3664,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.fillna(fill_value)
 
         if index is not None:
-            return DataFrame(sdf).set_index(index)
+            data_columns = [column for column in sdf.columns if column not in index]
+            index_map = [(column, column) for column in index]
+            internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map)
+            return DataFrame(internal)
         else:
             if isinstance(values, list):
                 index_values = values[-1]
             else:
                 index_values = values
 
-            return DataFrame(sdf.withColumn(columns, F.lit(index_values))).set_index(columns)
+            sdf = sdf.withColumn(columns, F.lit(index_values))
+            data_columns = [column for column in sdf.columns if column not in columns]
+            index_map = [(column, column) for column in columns]
+            internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map)
+            return DataFrame(internal)
 
     def pivot(self, index=None, columns=None, values=None):
         """
@@ -3773,10 +3792,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     @property
     def columns(self):
         """The column labels of the DataFrame."""
-        if self._internal.column_index is not None:
+        if self._internal.column_index_level > 1:
             columns = pd.MultiIndex.from_tuples(self._internal.column_index)
         else:
-            columns = pd.Index(self._internal.data_columns)
+            columns = pd.Index([idx[0] for idx in self._internal.column_index])
         if self._internal.column_index_names is not None:
             columns.names = self._internal.column_index_names
         return columns
@@ -4177,6 +4196,32 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         except (KeyError, ValueError, IndexError):
             return default
 
+    def _sort(self, by: List[Column], ascending: Union[bool, List[bool]],
+              inplace: bool, na_position: str):
+        if isinstance(ascending, bool):
+            ascending = [ascending] * len(by)
+        if len(ascending) != len(by):
+            raise ValueError('Length of ascending ({}) != length of by ({})'
+                             .format(len(ascending), len(by)))
+        if na_position not in ('first', 'last'):
+            raise ValueError("invalid na_position: '{}'".format(na_position))
+
+        # Mapper: Get a spark column function for (ascending, na_position) combination
+        # Note that 'asc_nulls_first' and friends were added as of Spark 2.4, see SPARK-23847.
+        mapper = {
+            (True, 'first'): lambda x: Column(getattr(x._jc, "asc_nulls_first")()),
+            (True, 'last'): lambda x: Column(getattr(x._jc, "asc_nulls_last")()),
+            (False, 'first'): lambda x: Column(getattr(x._jc, "desc_nulls_first")()),
+            (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
+        }
+        by = [mapper[(asc, na_position)](scol) for scol, asc in zip(by, ascending)]
+        kdf = DataFrame(self._internal.copy(sdf=self._sdf.sort(*by)))  # type: ks.DataFrame
+        if inplace:
+            self._internal = kdf._internal
+            return None
+        else:
+            return kdf
+
     def sort_values(self, by: Union[str, List[str]], ascending: Union[bool, List[bool]] = True,
                     inplace: bool = False, na_position: str = 'last') -> Optional['DataFrame']:
         """
@@ -4253,30 +4298,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if isinstance(by, str):
             by = [by]
-        if isinstance(ascending, bool):
-            ascending = [ascending] * len(by)
-        if len(ascending) != len(by):
-            raise ValueError('Length of ascending ({}) != length of by ({})'
-                             .format(len(ascending), len(by)))
-        if na_position not in ('first', 'last'):
-            raise ValueError("invalid na_position: '{}'".format(na_position))
-
-        # Mapper: Get a spark column function for (ascending, na_position) combination
-        # Note that 'asc_nulls_first' and friends were added as of Spark 2.4, see SPARK-23847.
-        mapper = {
-            (True, 'first'): lambda x: Column(getattr(x._jc, "asc_nulls_first")()),
-            (True, 'last'): lambda x: Column(getattr(x._jc, "asc_nulls_last")()),
-            (False, 'first'): lambda x: Column(getattr(x._jc, "desc_nulls_first")()),
-            (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
-        }
-        by = [mapper[(asc, na_position)](self[colname]._scol)
-              for colname, asc in zip(by, ascending)]
-        kdf = DataFrame(self._internal.copy(sdf=self._sdf.sort(*by)))  # type: ks.DataFrame
-        if inplace:
-            self._internal = kdf._internal
-            return None
-        else:
-            return kdf
+        by = [self[colname]._scol for colname in by]
+        return self._sort(by=by, ascending=ascending,
+                          inplace=inplace, na_position=na_position)
 
     def sort_index(self, axis: int = 0,
                    level: Optional[Union[int, List[int]]] = None, ascending: bool = True,
@@ -4358,23 +4382,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         a 1  2  1
         b 1  0  3
         """
-        if len(self._internal.index_map) == 0:
-            raise ValueError("Index should be set.")
-
         if axis != 0:
             raise ValueError("No other axes than 0 are supported at the moment")
         if kind is not None:
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
 
         if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
-            by = self._internal.index_columns
+            by = self._internal.index_scols
         elif is_list_like(level):
-            by = [self._internal.index_columns[l] for l in level]  # type: ignore
+            by = [self._internal.index_scols[l] for l in level]  # type: ignore
         else:
-            by = self._internal.index_columns[level]
+            by = [self._internal.index_scols[level]]
 
-        return self.sort_values(by=by, ascending=ascending,
-                                inplace=inplace, na_position=na_position)
+        return self._sort(by=by, ascending=ascending,
+                          inplace=inplace, na_position=na_position)
 
     # TODO:  add keep = First
     def nlargest(self, n: int, columns: 'Any') -> 'DataFrame':
@@ -4685,11 +4706,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> merged.sort_values(by=['lkey', 'value_x', 'rkey', 'value_y'])
           lkey  value_x rkey  value_y
         0  bar        2  bar        6
-        1  baz        3  baz        7
-        2  foo        1  foo        5
-        3  foo        1  foo        8
-        4  foo        5  foo        5
-        5  foo        5  foo        8
+        5  baz        3  baz        7
+        1  foo        1  foo        5
+        2  foo        1  foo        8
+        3  foo        5  foo        5
+        4  foo        5  foo        8
 
         >>> left_kdf = ks.DataFrame({'A': [1, 2]})
         >>> right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
@@ -4953,12 +4974,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         original DataFrame’s index in the result.
 
         >>> join_kdf = kdf1.join(kdf2.set_index('key'), on='key')
-        >>> join_kdf.sort_values(by=join_kdf.columns)
+        >>> join_kdf.sort_index()
           key   A     B
-        0  K0  A0    B0
-        1  K1  A1    B1
-        2  K2  A2    B2
-        3  K3  A3  None
+        0  K3  A3  None
+        1  K0  A0    B0
+        2  K1  A1    B1
+        3  K2  A2    B2
         """
         if on:
             self = self.set_index(on)
@@ -5318,13 +5339,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3      4      6
         """
         assert isinstance(prefix, str)
-        data_columns = self._internal.data_columns
-
-        sdf = self._sdf.select(self._internal.index_scols +
-                               [self._internal.scol_for(name).alias(prefix + name)
-                                for name in data_columns])
-        internal = self._internal.copy(
-            sdf=sdf, data_columns=[prefix + name for name in data_columns])
+        column_index = [tuple([prefix + i for i in idx]) for idx in self._internal.column_index]
+        internal = self._internal.copy(column_index=column_index)
         return DataFrame(internal)
 
     def add_suffix(self, suffix):
@@ -5368,13 +5384,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3      4      6
         """
         assert isinstance(suffix, str)
-        data_columns = self._internal.data_columns
-
-        sdf = self._sdf.select(self._internal.index_scols +
-                               [self._internal.scol_for(name).alias(name + suffix)
-                                for name in data_columns])
-        internal = self._internal.copy(
-            sdf=sdf, data_columns=[name + suffix for name in data_columns])
+        column_index = [tuple([i + suffix for i in idx]) for idx in self._internal.column_index]
+        internal = self._internal.copy(column_index=column_index)
         return DataFrame(internal)
 
     # TODO: include, and exclude should be implemented.
@@ -5537,16 +5548,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         elif func.__name__ == "cumprod":
             func = "cumprod"
 
-        if len(self._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
-
         applied = []
         for column in self.columns:
             applied.append(getattr(self[column], func)(skipna))
 
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
-        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        # FIXME(ueshin): no need to specify `column_index`.
+        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied],
+                                       column_index=self._internal.column_index)
         return DataFrame(internal)
 
     # TODO: implements 'keep' parameters
@@ -6316,41 +6326,39 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if len(columns) == 0:
                 raise KeyError(k)
         recursive = False
-        if all(len(idx) == 0 or idx[0] == '' for _, idx in columns):
-            # If idx is empty or the head is '', drill down recursively.
+        if all(len(idx) > 0 and idx[0] == '' for _, idx in columns):
+            # If the head is '', drill down recursively.
             recursive = True
             for i, (col, idx) in enumerate(columns):
                 columns[i] = (col, tuple([str(key), *idx[1:]]))
+
         column_index_names = None
         if self._internal.column_index_names is not None:
             # Manage column index names
-            column_index_level = set(len(idx) for _, idx in columns)
-            assert len(column_index_level) == 1
-            column_index_level = list(column_index_level)[0]
-            column_index_names = self._internal.column_index_names[-column_index_level:]
-        if all(len(idx) == 1 for _, idx in columns):
-            # If len(idx) == 1, then the result is not MultiIndex anymore
-            sdf = self._sdf.select(self._internal.index_scols +
-                                   [self._internal.scol_for(col).alias(idx[0])
-                                    for col, idx in columns])
-            kdf_or_ser = DataFrame(self._internal.copy(
-                sdf=sdf,
-                data_columns=[idx[0] for _, idx in columns],
-                column_index=None,
-                column_index_names=column_index_names))
+            level = column_index_level([idx for _, idx in columns])
+            column_index_names = self._internal.column_index_names[-level:]
+
+        if all(len(idx) == 0 for _, idx in columns):
+            try:
+                cols = set(col for col, _ in columns)
+                assert len(cols) == 1
+                kdf_or_ser = \
+                    Series(self._internal.copy(scol=self._internal.scol_for(list(cols)[0])),
+                           anchor=self)
+            except AnalysisException:
+                raise KeyError(key)
         else:
-            # Otherwise, the result is still MultiIndex and need to manage column_index.
-            sdf = self._sdf.select(self._internal.index_scols +
-                                   [self._internal.scol_for(col) for col, _ in columns])
             kdf_or_ser = DataFrame(self._internal.copy(
-                sdf=sdf,
                 data_columns=[col for col, _ in columns],
                 column_index=[idx for _, idx in columns],
                 column_index_names=column_index_names))
+
         if recursive:
-            kdf_or_ser = kdf_or_ser._pd_getitem(str(key))
+            kdf_or_ser = kdf_or_ser._get_from_multiindex_column((str(key),))
         if isinstance(kdf_or_ser, Series):
-            kdf_or_ser.name = str(key)
+            name = str(key) if len(key) > 1 else key[0]
+            if kdf_or_ser.name != name:
+                kdf_or_ser.name = name
         return kdf_or_ser
 
     def _pd_getitem(self, key):
@@ -6358,19 +6366,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if key is None:
             raise KeyError("none key")
         if isinstance(key, str):
-            if self._internal.column_index is not None:
-                return self._get_from_multiindex_column((key,))
-            else:
-                try:
-                    return Series(self._internal.copy(scol=self._internal.scol_for(key)),
-                                  anchor=self)
-                except AnalysisException:
-                    raise KeyError(key)
+            return self._get_from_multiindex_column((key,))
         if isinstance(key, tuple):
-            if self._internal.column_index is not None:
-                return self._get_from_multiindex_column(key)
-            else:
-                raise NotImplementedError(key)
+            return self._get_from_multiindex_column(key)
         elif np.isscalar(key):
             raise NotImplementedError(key)
         elif isinstance(key, slice):
@@ -6426,23 +6424,38 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def __setitem__(self, key, value):
         from databricks.koalas.series import Series
-        # For now, we don't support realignment against different dataframes.
-        # This is too expensive in Spark.
-        # Are we assigning against a column?
-        if isinstance(value, Series):
-            assert value._kdf is self, \
-                "Cannot combine column argument because it comes from a different dataframe"
-        if isinstance(key, (tuple, list)):
-            assert isinstance(value.schema, StructType)
-            field_names = value.schema.fieldNames()
+
+        if (isinstance(value, Series) and value._kdf is not self) or \
+                (isinstance(value, DataFrame) and value is not self):
+            # Different Series or DataFrames
+            if isinstance(value, Series):
+                value = value.to_frame()
+
+            if not isinstance(key, (tuple, list)):
+                key = [key]
+
+            def assign_columns(kdf, this_columns, that_columns):
+                assert len(key) == len(that_columns)
+                # Note that here intentionally uses `zip_longest` that combine
+                # that_columns.
+                for k, this_column, that_column in zip_longest(key, this_columns, that_columns):
+                    yield kdf[that_column].rename(k)
+                    if this_column != k and this_column is not None:
+                        yield kdf[this_column]
+
+            kdf = align_diff_frames(assign_columns, self, value, fillna=False, how="left")
+        elif isinstance(key, (tuple, list)):
+            assert isinstance(value, DataFrame)
+            # Same DataFrames.
+            field_names = value.columns
             kdf = self.assign(**{k: value[c] for k, c in zip(key, field_names)})
         else:
+            # Same Series.
             kdf = self.assign(**{key: value})
 
         self._internal = kdf._internal
 
     def __getattr__(self, key: str) -> Any:
-        from databricks.koalas.series import Series
         if key.startswith("__") or key.startswith("_pandas_") or key.startswith("_spark_"):
             raise AttributeError(key)
         if hasattr(_MissingPandasLikeDataFrame, key):
@@ -6452,16 +6465,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 return partial(property_or_func, self)
 
-        if self._internal.column_index is not None:
-            try:
-                return self._get_from_multiindex_column((key,))
-            except KeyError:
-                raise AttributeError(
-                    "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))
-        if key not in self._internal.data_columns:
+        try:
+            return self._get_from_multiindex_column((key,))
+        except KeyError:
             raise AttributeError(
                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))
-        return Series(self._internal.copy(scol=self._internal.scol_for(key)), anchor=self)
 
     def __len__(self):
         return self._sdf.count()

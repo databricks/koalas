@@ -34,14 +34,15 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({'A': [0, 2, 4], 'B': [1, 3, 5]})
         kdf = ks.from_pandas(pdf)
 
+        self.assert_eq(
+            ks.concat([kdf, kdf.reset_index()]),
+            pd.concat([pdf, pdf.reset_index()]))
+
         self.assertRaisesRegex(TypeError, "first argument must be", lambda: ks.concat(kdf))
         self.assertRaisesRegex(
             TypeError, "cannot concatenate object", lambda: ks.concat([kdf, 1]))
 
         kdf2 = kdf.set_index('B', append=True)
-        self.assertRaisesRegex(
-            ValueError, "Index type and names should be same", lambda: ks.concat([kdf, kdf2]))
-        kdf2 = kdf.reset_index()
         self.assertRaisesRegex(
             ValueError, "Index type and names should be same", lambda: ks.concat([kdf, kdf2]))
 
