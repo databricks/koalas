@@ -306,12 +306,7 @@ class IndexOpsMixin(object):
         """
         col = self._scol
         window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
-        sdf = self._kdf._sdf.withColumn(
-            "__monotonic_col", (col >= F.lag(col, 1).over(window)) & col.isNotNull())
-        kdf = ks.DataFrame(
-            self._kdf._internal.copy(
-                sdf=sdf, data_columns=self._kdf._internal.data_columns + ["__monotonic_col"]))
-        return kdf["__monotonic_col"].all()
+        return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull()).all()
 
     is_monotonic_increasing = is_monotonic
 
@@ -355,12 +350,7 @@ class IndexOpsMixin(object):
         """
         col = self._scol
         window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
-        sdf = self._kdf._sdf.withColumn(
-            "__monotonic_col", (col <= F.lag(col, 1).over(window)) & col.isNotNull())
-        kdf = ks.DataFrame(
-            self._kdf._internal.copy(
-                sdf=sdf, data_columns=self._kdf._internal.data_columns + ["__monotonic_col"]))
-        return kdf["__monotonic_col"].all()
+        return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull()).all()
 
     def astype(self, dtype):
         """
