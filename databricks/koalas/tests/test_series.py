@@ -569,7 +569,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_shift(self):
         pser = pd.Series([10, 20, 15, 30, 45], name='x')
         kser = koalas.Series(pser)
-        self.assertEqual(repr(kser.shift(periods=2, fill_value=0)),
-                         repr(pser.shift(periods=2, fill_value=0)))
+        if LooseVersion(pd.__version__) < LooseVersion('0.24.2'):
+            self.assertEqual(repr(kser.shift(periods=2)),
+                             repr(pser.shift(periods=2)))
+        else:
+            self.assertEqual(repr(kser.shift(periods=2, fill_value=0)),
+                             repr(pser.shift(periods=2, fill_value=0)))
         with self.assertRaisesRegex(ValueError, 'periods should be an int'):
             kser.shift(periods=1.5)
