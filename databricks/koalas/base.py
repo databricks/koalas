@@ -697,17 +697,17 @@ class IndexOpsMixin(object):
         >>> df.index.shift(periods=3, fill_value=0)
         Int64Index([0, 0, 0, 0, 1], dtype='int64')
         """
+        return self._shift(periods, fill_value)
+
+    def _shift(self, periods, fill_value, part_cols=()):
         if len(self._internal.index_columns) == 0:
             raise ValueError("Index must be set.")
-
         if not isinstance(periods, int):
-            raise ValueError('periods should be an int; however, got [%s]' % type(periods))
+            raise ValueError('periods should be an int')
 
         col = self._scol
-        window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-periods, -periods)
-        shifted_col = F.lag(col, periods).over(window)
-        col = F.when(
-            shifted_col.isNull() | F.isnan(shifted_col), fill_value
-        ).otherwise(shifted_col)
-
+        window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
+            .rowsBetween(-periods, -periods)
+        lag_col = F.lag(col, periods).over(window)
+        col = F.when(lag_col.isNull(), fill_value).otherwise(lag_col)
         return self._with_new_scol(col).rename(self.name)
