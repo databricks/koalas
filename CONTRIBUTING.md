@@ -67,7 +67,7 @@ conda activate koalas-dev-env
 
 You can use `pip` alternatively if your Python is 3.5+.
 ```bash
-pip install pyspark=2.4
+pip install pyspark==2.4
 pip install -r requirements-dev.txt
 pip install -e .  # installs koalas from current checkout
 ```

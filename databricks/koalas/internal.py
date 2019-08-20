@@ -19,17 +19,21 @@ An internal immutable DataFrame with some metadata to manage indexes.
 """
 
 from typing import List, Optional, Tuple, Union
+import os
+from itertools import accumulate
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
 from pyspark import sql as spark
 from pyspark._globals import _NoValue, _NoValueType
-from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type
+from pyspark.sql import functions as F, Window
+from pyspark.sql.functions import PandasUDFType, pandas_udf
+from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type, LongType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import infer_pd_series_spark_type
-from databricks.koalas.utils import default_session, lazy_property, scol_for
+from databricks.koalas.utils import column_index_level, default_session, lazy_property, scol_for
 
 
 IndexMap = Tuple[str, Optional[str]]
@@ -69,7 +73,7 @@ class _InternalFrame(object):
     However, all columns including index column are also stored in Spark DataFrame internally
     as below.
 
-    >>> kdf.to_spark().show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> kdf._internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
     +-----------------+---+---+---+---+---+
@@ -118,7 +122,7 @@ class _InternalFrame(object):
     [None]
     >>> internal.index_map
     [('__index_level_0__', None)]
-    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
     +-----------------+---+---+---+---+---+
@@ -145,7 +149,7 @@ class _InternalFrame(object):
     3  7  11  15  19
     4  8  12  16  20
 
-    >>> kdf1.to_spark().show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> kdf1._internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+---+---+---+
     |  A|  B|  C|  D|  E|
     +---+---+---+---+---+
@@ -175,7 +179,7 @@ class _InternalFrame(object):
     ['A']
     >>> internal.index_map
     [('A', 'A')]
-    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+---+---+---+
     |  A|  B|  C|  D|  E|
     +---+---+---+---+---+
@@ -203,7 +207,7 @@ class _InternalFrame(object):
     2 3  7  11  15  19
     3 4  8  12  16  20
 
-    >>> kdf2.to_spark().show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> kdf2._internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
     +-----------------+---+---+---+---+---+
@@ -233,7 +237,7 @@ class _InternalFrame(object):
     [None, 'A']
     >>> internal.index_map
     [('__index_level_0__', None), ('A', 'A')]
-    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
     +-----------------+---+---+---+---+---+
@@ -318,7 +322,7 @@ class _InternalFrame(object):
     ['A']
     >>> internal.index_map
     [('A', 'A')]
-    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal.spark_internal_df.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+
     |  A|  B|
     +---+---+
@@ -359,29 +363,44 @@ class _InternalFrame(object):
         :param column_index_names: Names for each of the index levels.
         """
         assert isinstance(sdf, spark.DataFrame)
-        assert index_map is None \
-            or all(isinstance(index_field, str)
+        if index_map is None:
+            # Here is when Koalas DataFrame is created directly from Spark DataFrame.
+            assert column_index is None
+            assert column_index_names is None
+            assert "__index_level_0__" not in sdf.schema.names, \
+                "Default index column should not appear in columns of the Spark DataFrame"
+
+            # Create default index.
+            index_map = [('__index_level_0__', None)]
+            sdf = _InternalFrame.attach_default_index(sdf)
+
+        assert index_map is not None
+        assert all(isinstance(index_field, str)
                    and (index_name is None or isinstance(index_name, str))
                    for index_field, index_name in index_map)
         assert scol is None or isinstance(scol, spark.Column)
         assert data_columns is None or all(isinstance(col, str) for col in data_columns)
 
         self._sdf = sdf  # type: spark.DataFrame
-        self._index_map = (index_map if index_map is not None else [])  # type: List[IndexMap]
+        self._index_map = index_map  # type: List[IndexMap]
         self._scol = scol  # type: Optional[spark.Column]
         if scol is not None:
             self._data_columns = sdf.select(scol).columns
             column_index = None
+            column_index_names = None
         elif data_columns is None:
             index_columns = set(index_column for index_column, _ in self._index_map)
             self._data_columns = [column for column in sdf.columns if column not in index_columns]
         else:
             self._data_columns = data_columns
 
-        assert column_index is None or (len(column_index) == len(self._data_columns) and
-                                        all(isinstance(i, tuple) for i in column_index) and
-                                        len(set(len(i) for i in column_index)) <= 1)
-        self._column_index = column_index
+        if column_index is None:
+            self._column_index = [(col,) for col in self._data_columns]
+        else:
+            assert (len(column_index) == len(self._data_columns) and
+                    all(isinstance(i, tuple) for i in column_index) and
+                    len(set(len(i) for i in column_index)) <= 1)
+            self._column_index = column_index
 
         if column_index_names is not None and not is_list_like(column_index_names):
             raise ValueError('Column_index_names should be list-like or None for a MultiIndex')
@@ -393,6 +412,84 @@ class _InternalFrame(object):
                 self._column_index_names = column_index_names
         else:
             self._column_index_names = column_index_names
+
+    @staticmethod
+    def attach_default_index(sdf):
+        """
+        This method attaches a default index to Spark DataFrame. Spark does not have the index
+        notion so corresponding column should be generated.
+
+        There are three types of default index that can be controlled by `DEFAULT_INDEX`
+        environment variable.
+
+        - one-by-one: It implements an one-by-one sequence by Window function without
+            specifying partition. Therefore, it ends up with whole partition in single node.
+            This index type should be avoided when the data is large. This is default.
+
+        - distributed-one-by-one: It implements an one-by-one sequence by group-by and
+            group-map approach. It still generates a one-by-one sequential index globally.
+            If the default index must be an one-by-one sequence in a large dataset, this
+            index has to be used.
+            Note that if more data are added to the data source after creating this index,
+            then it does not guarantee the sequential index.
+
+        - distributed: It implements a monotonically increasing sequence simply by using
+            Spark's `monotonically_increasing_id` function. If the index does not have to be
+            a one-by-one sequence, this index should be used. Performance-wise, this index
+            almost does not have any penalty comparing to other index types.
+            Note that we cannot use this type of index for combining two dataframes because
+            it is not guaranteed to have the same indexes in two dataframes.
+
+        """
+        default_index_type = os.environ.get("DEFAULT_INDEX", "one-by-one")
+        if default_index_type == "one-by-one":
+            sequential_index = F.row_number().over(
+                Window.orderBy(F.monotonically_increasing_id().asc())) - 1
+            scols = [scol_for(sdf, column) for column in sdf.columns]
+            return sdf.select(sequential_index.alias("__index_level_0__"), *scols)
+        elif default_index_type == "distributed-one-by-one":
+            # 1. Calculates counts per each partition ID. `counts` here is, for instance,
+            #     {
+            #         1: 83,
+            #         6: 83,
+            #         3: 83,
+            #         ...
+            #     }
+            counts = map(lambda x: (x["key"], x["count"]),
+                         sdf.groupby(F.spark_partition_id().alias("key")).count().collect())
+
+            # 2. Calculates cumulative sum in an order of partition id.
+            #     Note that it does not matter if partition id guarantees its order or not.
+            #     We just need a one-by-one sequential id.
+
+            # sort by partition key.
+            sorted_counts = sorted(counts, key=lambda x: x[0])
+            # get cumulative sum in an order of partition key.
+            cumulative_counts = accumulate(map(lambda count: count[1], sorted_counts))
+            # zip it with partition key.
+            sums = dict(zip(map(lambda count: count[0], sorted_counts), cumulative_counts))
+
+            # 3. Group by partition id and assign each range.
+            def default_index(pdf):
+                current_partition_max = sums[pdf["__spark_partition_id"].iloc[0]]
+                offset = len(pdf)
+                pdf["__index_level_0__"] = list(range(
+                    current_partition_max - offset, current_partition_max))
+                return pdf.drop(columns=["__spark_partition_id"])
+
+            return_schema = StructType(
+                [StructField("__index_level_0__", LongType())] + list(sdf.schema))
+            grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(default_index)
+
+            sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
+            return sdf.groupBy("__spark_partition_id").apply(grouped_map_func)
+        elif default_index_type == "distributed":
+            scols = [scol_for(sdf, column) for column in sdf.columns]
+            return sdf.select(
+                F.monotonically_increasing_id().alias("__index_level_0__"), *scols)
+        else:
+            raise ValueError("'DEFAULT_INDEX' environment variable should be one of 'one-by-one',"
+                             " 'distributed-one-by-one' and 'distributed'")
 
     def scol_for(self, column_name: str) -> spark.Column:
         """ Return Spark Column for the given column name. """
@@ -445,6 +542,7 @@ class _InternalFrame(object):
     @property
     def index_map(self) -> List[IndexMap]:
         """ Return the managed index information. """
+        assert len(self._index_map) > 0
         return self._index_map
 
     @lazy_property
@@ -458,9 +556,14 @@ class _InternalFrame(object):
         return self._scol
 
     @property
-    def column_index(self) -> Optional[List[Tuple[str]]]:
+    def column_index(self) -> List[Tuple[str]]:
         """ Return the managed column index. """
         return self._column_index
+
+    @lazy_property
+    def column_index_level(self) -> int:
+        """ Return the level of the column index. """
+        return column_index_level(self._column_index)
 
     @property
     def column_index_names(self) -> Optional[List[str]]:
@@ -468,14 +571,40 @@ class _InternalFrame(object):
         return self._column_index_names
 
     @lazy_property
+    def spark_internal_df(self) -> spark.DataFrame:
+        """
+        Return as Spark DataFrame. This contains index columns as well
+        and should be only used for internal purposes.
+        """
+        index_columns = set(self.index_columns)
+        data_columns = []
+        for column, idx in zip(self._data_columns, self.column_index):
+            if column not in index_columns:
+                scol = self.scol_for(column)
+                name = str(idx) if len(idx) > 1 else idx[0]
+                if column != name:
+                    scol = scol.alias(name)
+                data_columns.append(scol)
+        return self._sdf.select(self.index_scols + data_columns)
+
+    @lazy_property
     def spark_df(self) -> spark.DataFrame:
         """ Return as Spark DataFrame. """
-        return self._sdf.select(self.scols)
+        index_columns = set(self.index_columns)
+        data_columns = []
+        for column, idx in zip(self._data_columns, self.column_index):
+            if column not in index_columns:
+                scol = self.scol_for(column)
+                name = str(idx) if len(idx) > 1 else idx[0]
+                if column != name:
+                    scol = scol.alias(name)
+                data_columns.append(scol)
+        return self._sdf.select(data_columns)
 
     @lazy_property
     def pandas_df(self):
         """ Return as pandas DataFrame. """
-        sdf = self.spark_df
+        sdf = self.spark_internal_df
         pdf = sdf.toPandas()
         if len(pdf) == 0 and len(sdf.schema) > 0:
             pdf = pdf.astype({field.name: to_arrow_type(field.dataType).to_pandas_dtype()
@@ -488,19 +617,18 @@ class _InternalFrame(object):
                 drop = index_field not in self.data_columns
                 pdf = pdf.set_index(index_field, drop=drop, append=append)
                 append = True
-            pdf = pdf[self.data_columns]
+            pdf = pdf[[str(name) if len(name) > 1 else name[0] for name in self.column_index]]
 
-        if self._column_index is not None:
+        if self.column_index_level > 1:
             pdf.columns = pd.MultiIndex.from_tuples(self._column_index)
+        else:
+            pdf.columns = [idx[0] for idx in self._column_index]
         if self._column_index_names is not None:
             pdf.columns.names = self._column_index_names
 
         index_names = self.index_names
         if len(index_names) > 0:
-            if isinstance(pdf.index, pd.MultiIndex):
-                pdf.index.names = index_names
-            else:
-                pdf.index.name = index_names[0]
+            pdf.index.names = index_names
         return pdf
 
     def copy(self, sdf: Union[spark.DataFrame, _NoValueType] = _NoValue,
@@ -525,10 +653,17 @@ class _InternalFrame(object):
             index_map = self._index_map
         if scol is _NoValue:
             scol = self._scol
+        # FIXME(ueshin): this if-clause should be removed.
+        if column_index is _NoValue:
+            if data_columns is not _NoValue:
+                column_index = None
+            else:
+                column_index = self._column_index
         if data_columns is _NoValue:
             data_columns = self._data_columns
-        if column_index is _NoValue:
-            column_index = self._column_index
+        # FIXME(ueshin): this if-clause should be used instead of the above.
+        # if column_index is _NoValue:
+        #     column_index = self._column_index
         if column_index_names is _NoValue:
             column_index_names = self._column_index_names
         return _InternalFrame(sdf, index_map=index_map, scol=scol, data_columns=data_columns,
