@@ -24,16 +24,15 @@ from functools import partial
 from typing import Any, List
 
 import numpy as np
-import pandas as pd
 from pandas._libs.parsers import is_datetime64_dtype
 from pandas.core.dtypes.common import is_datetime64tz_dtype
 
-from pyspark.sql import functions as F, Window
+from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
 from pyspark.sql.functions import PandasUDFType, pandas_udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.typedef import _infer_return_type, as_spark_type
+from databricks.koalas.typedef import _infer_return_type
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
@@ -683,7 +682,6 @@ class GroupBy(object):
         """
         return self._cum(F.sum)
 
-    # TODO: Series support is not implemented yet.
     def apply(self, func):
         """
         Apply function `func` group-wise and combine the results together.
@@ -798,7 +796,31 @@ class GroupBy(object):
             return_schema = None  # schema will inferred.
         else:
             return_schema = _infer_return_type(func).tpe
-        return self._apply(func, return_schema, retain_index=return_schema is None)
+
+        should_infer_schema = return_schema is None
+        input_groupnames = [s.name for s in self._groupkeys]
+
+        if should_infer_schema:
+            # Here we execute with the first 1000 to get the return type.
+            # If the records were less than 1000, it uses pandas API directly for a shortcut.
+            limit = 1000
+            pdf = self._kdf.head(limit + 1).to_pandas()
+            pdf = pdf.groupby(input_groupnames).apply(func)
+            kdf = DataFrame(pdf)
+            return_schema = kdf._sdf.schema
+            if len(pdf) <= limit:
+                return kdf
+
+        sdf = self._spark_group_map_apply(
+            func, return_schema, retain_index=should_infer_schema)
+
+        if should_infer_schema:
+            # If schema is inferred, we can restore indexes too.
+            internal = kdf._internal.copy(sdf=sdf)
+        else:
+            # Otherwise, it loses index.
+            internal = _InternalFrame(sdf=sdf)
+        return DataFrame(internal)
 
     # TODO: implement 'dropna' parameter
     def filter(self, func):
@@ -844,24 +866,11 @@ class GroupBy(object):
         def pandas_filter(pdf):
             return pdf.groupby(groupby_names).filter(func)
 
-        kdf = self._apply(pandas_filter, data_schema, retain_index=True)
-        return DataFrame(self._kdf._internal.copy(sdf=kdf._sdf))
+        sdf = self._spark_group_map_apply(
+            pandas_filter, data_schema, retain_index=True)
+        return DataFrame(self._kdf._internal.copy(sdf=sdf))
 
-    def _apply(self, func, return_schema, retain_index):
-        should_infer_schema = return_schema is None
-        input_groupnames = [s.name for s in self._groupkeys]
-
-        if should_infer_schema:
-            # Here we execute with the first 1000 to get the return type.
-            # If the records were less than 1000, it uses pandas API directly for a shortcut.
-            limit = 1000
-            pdf = self._kdf.head(limit + 1).to_pandas()
-            pdf = pdf.groupby(input_groupnames).apply(func)
-            kdf = DataFrame(pdf)
-            return_schema = kdf._sdf.schema
-            if len(pdf) <= limit:
-                return kdf
-
+    def _spark_group_map_apply(self, func, return_schema, retain_index):
         index_columns = self._kdf._internal.index_columns
         index_names = self._kdf._internal.index_names
         data_columns = self._kdf._internal.data_columns
@@ -935,14 +944,7 @@ class GroupBy(object):
         input_groupkeys = [s._scol for s in self._groupkeys]
         sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
 
-        if should_infer_schema:
-            # If schema is inferred, we can restore indexes too.
-            internal = kdf._internal.copy(sdf=sdf)
-        else:
-            # Otherwise, it loses index.
-            internal = _InternalFrame(
-                sdf=sdf, data_columns=return_schema.fieldNames(), index_map=[])
-        return DataFrame(internal)
+        return sdf
 
     def rank(self, method='average', ascending=True):
         """
@@ -981,7 +983,7 @@ class GroupBy(object):
         7  3  4
         8  3  4
 
-        >>> df.groupby("a").rank()
+        >>> df.groupby("a").rank().sort_index()
              b
         0  1.0
         1  2.5
@@ -993,7 +995,7 @@ class GroupBy(object):
         7  2.5
         8  2.5
 
-        >>> df.b.groupby(df.a).rank(method='max')  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.b.groupby(df.a).rank(method='max').sort_index()
         0    1.0
         1    3.0
         2    3.0
@@ -1283,7 +1285,9 @@ class GroupBy(object):
             pdf = pdf.drop(columns=input_groupnames)
             return pdf.transform(func)
 
-        if return_sig is None:
+        should_infer_schema = return_sig is None
+
+        if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = 1000
@@ -1294,16 +1298,75 @@ class GroupBy(object):
             if len(pdf) <= limit:
                 return pdf
 
-            applied_kdf = self._apply(pandas_transform, return_schema, retain_index=True)
-            # kdf inferred from pdf holds a correct index.
-            return DataFrame(kdf._internal.copy(sdf=applied_kdf._sdf))
+            sdf = self._spark_group_map_apply(
+                pandas_transform, return_schema, retain_index=True)
+            # If schema is inferred, we can restore indexes too.
+            internal = kdf._internal.copy(sdf=sdf)
         else:
             return_type = _infer_return_type(func).tpe
             data_columns = self._kdf._internal.data_columns
             return_schema = StructType([
                 StructField(c, return_type) for c in data_columns if c not in input_groupnames])
 
-            return self._apply(pandas_transform, return_schema, retain_index=False)
+            sdf = self._spark_group_map_apply(
+                pandas_transform, return_schema, retain_index=False)
+            # Otherwise, it loses index.
+            internal = _InternalFrame(sdf=sdf)
+
+        return DataFrame(internal)
+
+    def nunique(self, dropna=True):
+        """
+        Return DataFrame with number of distinct observations per group for each column.
+
+        Parameters
+        ----------
+        dropna : boolean, default True
+            Don’t include NaN in the counts.
+
+        Returns
+        -------
+        nunique : DataFrame
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'id': ['spam', 'egg', 'egg', 'spam',
+        ...                           'ham', 'ham'],
+        ...                    'value1': [1, 5, 5, 2, 5, 5],
+        ...                    'value2': list('abbaxy')}, columns=['id', 'value1', 'value2'])
+        >>> df
+             id  value1 value2
+        0  spam       1      a
+        1   egg       5      b
+        2   egg       5      b
+        3  spam       2      a
+        4   ham       5      x
+        5   ham       5      y
+
+        >>> df.groupby('id').nunique() # doctest: +NORMALIZE_WHITESPACE
+              id  value1  value2
+        id
+        egg    1       1       1
+        ham    1       1       2
+        spam   1       2       1
+
+        >>> df.groupby('id')['value1'].nunique() # doctest: +NORMALIZE_WHITESPACE
+        id
+        egg     1
+        ham     1
+        spam    2
+        Name: value1, dtype: int64
+        """
+        if isinstance(self, DataFrameGroupBy):
+            self._agg_columns = self._groupkeys + self._agg_columns
+        if dropna:
+            stat_function = lambda col: F.countDistinct(col)
+        else:
+            stat_function = lambda col: \
+                (F.countDistinct(col) +
+                 F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0))
+        return self._reduce_for_stat_function(stat_function, only_numeric=False)
 
     # TODO: add bins, normalize parameter
     def value_counts(self, sort=None, ascending=None, dropna=True):
@@ -1442,11 +1505,9 @@ class DataFrameGroupBy(GroupBy):
     def _diff(self, *args, **kwargs):
         applied = []
         kdf = self._kdf
-        groupkey_columns = [s.name for s in self._groupkeys]
 
-        for column in kdf._internal.data_columns:
-            if column not in groupkey_columns:
-                applied.append(kdf[column].groupby(self._groupkeys)._diff(*args, **kwargs))
+        for column in self._agg_columns:
+            applied.append(column.groupby(self._groupkeys)._diff(*args, **kwargs))
 
         sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
         internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
@@ -1455,16 +1516,15 @@ class DataFrameGroupBy(GroupBy):
     def _rank(self, *args, **kwargs):
         applied = []
         kdf = self._kdf
-        groupkey_columns = [s.name for s in self._groupkeys]
+        groupkey_columns = set(s.name for s in self._groupkeys)
 
-        for column in kdf._internal.data_columns:
+        for column in self._agg_columns:
             # pandas groupby.rank ignores the grouping key itself.
-            if column not in groupkey_columns:
-                applied.append(kdf[column].groupby(self._groupkeys)._rank(*args, **kwargs))
+            if column.name not in groupkey_columns:
+                applied.append(column.groupby(self._groupkeys)._rank(*args, **kwargs))
 
-        sdf = kdf._sdf.select([c._scol for c in applied])
-        internal = kdf._internal.copy(
-            sdf=sdf, data_columns=[c.name for c in applied], index_map=[])  # index is lost.)
+        sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
+        internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
     def _cum(self, func):
@@ -1478,16 +1538,14 @@ class DataFrameGroupBy(GroupBy):
         elif func.__name__ == "cumprod":
             func = "cumprod"
 
-        if len(self._kdf._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
-
         applied = []
         kdf = self._kdf
-        groupkey_columns = [s.name for s in self._groupkeys]
-        for column in kdf._internal.data_columns:
+        groupkey_columns = set(s.name for s in self._groupkeys)
+
+        for column in self._agg_columns:
             # pandas groupby.cumxxx ignores the grouping key itself.
-            if column not in groupkey_columns:
-                applied.append(getattr(kdf[column].groupby(self._groupkeys), func)())
+            if column.name not in groupkey_columns:
+                applied.append(getattr(column.groupby(self._groupkeys), func)())
 
         sdf = kdf._sdf.select(
             kdf._internal.index_scols + [c._scol for c in applied])
@@ -1573,10 +1631,3 @@ class SeriesGroupBy(GroupBy):
 
     def filter(self, func):
         raise NotImplementedError()
-
-    def rank(self, method='average', ascending=True):
-        kdf = super(SeriesGroupBy, self).rank(method, ascending).to_dataframe()
-        return _col(DataFrame(kdf._internal.copy(
-            sdf=kdf._sdf.select(kdf._internal.data_scols), index_map=[])))  # index is lost.
-
-    rank.__doc__ = GroupBy.rank.__doc__
