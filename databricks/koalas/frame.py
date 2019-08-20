@@ -6064,7 +6064,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             data_columns=[value_column],
             index_map=[(internal_index_column(i), index_column_name(i))
                        for i in range(self._internal.column_index_level)],
-            column_index=None)
+            column_index=None,
+            column_index_names=None)
 
         return DataFrame(internal)[value_column].rename("all")
 
@@ -6147,7 +6148,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             data_columns=[value_column],
             index_map=[(internal_index_column(i), index_column_name(i))
                        for i in range(self._internal.column_index_level)],
-            column_index=None)
+            column_index=None,
+            column_index_names=None)
 
         return DataFrame(internal)[value_column].rename("any")
 
