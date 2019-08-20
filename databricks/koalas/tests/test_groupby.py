@@ -15,7 +15,7 @@
 #
 
 import inspect
-
+from distutils.version import LooseVersion
 import pandas as pd
 
 from databricks import koalas
@@ -289,6 +289,50 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        repr(pdf.groupby(['a'])['b'].nlargest(2).sort_index()))
         with self.assertRaisesRegex(ValueError, "idxmax do not support multi-index now"):
             kdf.set_index(['a', 'b']).groupby(['c'])['d'].nlargest(1)
+
+    def test_fillna(self):
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2],
+                            'B': [2, 4, None, 3],
+                            'C': [None, None, None, 1],
+                            'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'], index=[0, 1, 2, 3])
+        kdf = koalas.DataFrame(pdf)
+        self.assert_eq(kdf.groupby("A").fillna(0),
+                       pdf.groupby("A").fillna(0))
+        self.assert_eq(kdf.groupby("A").fillna(method='bfill'),
+                       pdf.groupby("A").fillna(method='bfill'))
+        self.assert_eq(kdf.groupby("A").fillna(method='ffill'),
+                       pdf.groupby("A").fillna(method='ffill'))
+
+    def test_ffill(self):
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2],
+                            'B': [2, 4, None, 3],
+                            'C': [None, None, None, 1],
+                            'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'], index=[0, 1, 2, 3])
+        kdf = koalas.DataFrame(pdf)
+
+        if LooseVersion(pd.__version__) <= LooseVersion("0.24.2"):
+            self.assert_eq(kdf.groupby("A").ffill(),
+                           pdf.groupby("A").ffill().drop('A', 1))
+        else:
+            self.assert_eq(kdf.groupby("A").ffill(),
+                           pdf.groupby("A").ffill())
+        self.assert_eq(repr(kdf.groupby("A")['B'].ffill()),
+                       repr(pdf.groupby("A")['B'].ffill()))
+
+    def test_bfill(self):
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2],
+                            'B': [2, 4, None, 3],
+                            'C': [None, None, None, 1],
+                            'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'], index=[0, 1, 2, 3])
+        kdf = koalas.DataFrame(pdf)
+        if LooseVersion(pd.__version__) <= LooseVersion("0.24.2"):
+            self.assert_eq(kdf.groupby("A").bfill(),
+                           pdf.groupby("A").bfill().drop('A', 1))
+        else:
+            self.assert_eq(kdf.groupby("A").bfill(),
+                           pdf.groupby("A").bfill())
+        self.assert_eq(repr(kdf.groupby("A")['B'].bfill()),
+                       repr(pdf.groupby("A")['B'].bfill()))
 
     def test_apply(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],

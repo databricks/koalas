@@ -47,3 +47,7 @@ Computations / Descriptive Stats
    GroupBy.diff
    GroupBy.nsmallest
    GroupBy.nlargest
+   GroupBy.fillna
+   GroupBy.bfill
+   GroupBy.ffill
+   GroupBy.backfill
