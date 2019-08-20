@@ -85,8 +85,6 @@ class _MissingPandasLikeSeriesGroupBy(object):
     is_monotonic_increasing = unsupported_property('is_monotonic_increasing')
     mad = unsupported_property('mad')
     ngroups = unsupported_property('ngroups')
-    nlargest = unsupported_property('nlargest')
-    nsmallest = unsupported_property('nsmallest')
     plot = unsupported_property('plot')
     quantile = unsupported_property('quantile')
     skew = unsupported_property('skew')
