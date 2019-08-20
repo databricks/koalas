@@ -4173,6 +4173,32 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         except (KeyError, ValueError, IndexError):
             return default
 
+    def _sort(self, by: List[Column], ascending: Union[bool, List[bool]],
+              inplace: bool, na_position: str):
+        if isinstance(ascending, bool):
+            ascending = [ascending] * len(by)
+        if len(ascending) != len(by):
+            raise ValueError('Length of ascending ({}) != length of by ({})'
+                             .format(len(ascending), len(by)))
+        if na_position not in ('first', 'last'):
+            raise ValueError("invalid na_position: '{}'".format(na_position))
+
+        # Mapper: Get a spark column function for (ascending, na_position) combination
+        # Note that 'asc_nulls_first' and friends were added as of Spark 2.4, see SPARK-23847.
+        mapper = {
+            (True, 'first'): lambda x: Column(getattr(x._jc, "asc_nulls_first")()),
+            (True, 'last'): lambda x: Column(getattr(x._jc, "asc_nulls_last")()),
+            (False, 'first'): lambda x: Column(getattr(x._jc, "desc_nulls_first")()),
+            (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
+        }
+        by = [mapper[(asc, na_position)](scol) for scol, asc in zip(by, ascending)]
+        kdf = DataFrame(self._internal.copy(sdf=self._sdf.sort(*by)))  # type: ks.DataFrame
+        if inplace:
+            self._internal = kdf._internal
+            return None
+        else:
+            return kdf
+
     def sort_values(self, by: Union[str, List[str]], ascending: Union[bool, List[bool]] = True,
                     inplace: bool = False, na_position: str = 'last') -> Optional['DataFrame']:
         """
@@ -4249,30 +4275,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if isinstance(by, str):
             by = [by]
-        if isinstance(ascending, bool):
-            ascending = [ascending] * len(by)
-        if len(ascending) != len(by):
-            raise ValueError('Length of ascending ({}) != length of by ({})'
-                             .format(len(ascending), len(by)))
-        if na_position not in ('first', 'last'):
-            raise ValueError("invalid na_position: '{}'".format(na_position))
-
-        # Mapper: Get a spark column function for (ascending, na_position) combination
-        # Note that 'asc_nulls_first' and friends were added as of Spark 2.4, see SPARK-23847.
-        mapper = {
-            (True, 'first'): lambda x: Column(getattr(x._jc, "asc_nulls_first")()),
-            (True, 'last'): lambda x: Column(getattr(x._jc, "asc_nulls_last")()),
-            (False, 'first'): lambda x: Column(getattr(x._jc, "desc_nulls_first")()),
-            (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
-        }
-        by = [mapper[(asc, na_position)](self[colname]._scol)
-              for colname, asc in zip(by, ascending)]
-        kdf = DataFrame(self._internal.copy(sdf=self._sdf.sort(*by)))  # type: ks.DataFrame
-        if inplace:
-            self._internal = kdf._internal
-            return None
-        else:
-            return kdf
+        by = [self[colname]._scol for colname in by]
+        return self._sort(by=by, ascending=ascending,
+                          inplace=inplace, na_position=na_position)
 
     def sort_index(self, axis: int = 0,
                    level: Optional[Union[int, List[int]]] = None, ascending: bool = True,
@@ -4363,14 +4368,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("Specifying the sorting algorithm is supported at the moment.")
 
         if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
-            by = self._internal.index_columns
+            by = self._internal.index_scols
         elif is_list_like(level):
-            by = [self._internal.index_columns[l] for l in level]  # type: ignore
+            by = [self._internal.index_scols[l] for l in level]  # type: ignore
         else:
-            by = self._internal.index_columns[level]
+            by = [self._internal.index_scols[level]]
 
-        return self.sort_values(by=by, ascending=ascending,
-                                inplace=inplace, na_position=na_position)
+        return self._sort(by=by, ascending=ascending,
+                          inplace=inplace, na_position=na_position)
 
     # TODO:  add keep = First
     def nlargest(self, n: int, columns: 'Any') -> 'DataFrame':
