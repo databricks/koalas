@@ -1033,11 +1033,11 @@ class GroupBy(object):
         ...                    'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
 
         >>> df.groupby(['a'])['b'].idxmax().sort_index() # doctest: +NORMALIZE_WHITESPACE
-           b
         a
         1  1
         2  3
         3  4
+        Name: b, dtype: int64
 
         >>> df.groupby(['a']).idxmax().sort_index() # doctest: +NORMALIZE_WHITESPACE
            b  c
@@ -1097,11 +1097,11 @@ class GroupBy(object):
         ...                    'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
 
         >>> df.groupby(['a'])['b'].idxmin().sort_index() # doctest: +NORMALIZE_WHITESPACE
-           b
         a
-        1  0
-        2  2
-        3  4
+        1    0
+        2    2
+        3    4
+        Name: b, dtype: int64
 
         >>> df.groupby(['a']).idxmin().sort_index() # doctest: +NORMALIZE_WHITESPACE
            b  c
@@ -1525,3 +1525,9 @@ class SeriesGroupBy(GroupBy):
             sdf=kdf._sdf.select(kdf._internal.data_scols), index_map=[])))  # index is lost.
 
     rank.__doc__ = GroupBy.rank.__doc__
+
+    def idxmin(self, skipna=True):
+        return _col(super(SeriesGroupBy, self).idxmin(skipna))
+
+    def idxmax(self, skipna=True):
+        return _col(super(SeriesGroupBy, self).idxmax(skipna))
