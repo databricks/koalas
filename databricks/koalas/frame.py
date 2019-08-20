@@ -22,6 +22,7 @@ from distutils.version import LooseVersion
 import re
 import warnings
 import inspect
+import json
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
@@ -1454,8 +1455,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1    float64
         dtype: object
         """
-        if len(self._internal.index_columns) != 1:
-            raise ValueError("Single index must be set to transpose the current DataFrame.")
         if limit is not None:
             pdf = self.head(limit + 1).to_pandas()
             if len(pdf) > limit:
@@ -1465,11 +1464,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     "Note that, before changing the given 'limit', this operation is considerably "
                     "expensive." % (limit, limit))
             return DataFrame(pdf.transpose())
-
-        index_columns = self._internal.index_columns
-        index_column = index_columns[0]
-        data_columns = self._internal.data_columns
-        sdf = self._sdf
 
         # Explode the data to be pairs.
         #
@@ -1498,31 +1492,36 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |   y3| x2|    2|
         # |   y3| x3|    1|
         # +-----+---+-----+
+        internal_index_column = "__index_level_{}__".format
         pairs = F.explode(F.array(*[
             F.struct(
-                F.lit(column).alias("key"),
-                scol_for(sdf, column).alias("value")
-            ) for column in data_columns]))
+                [F.lit(col).alias(internal_index_column(i)) for i, col in enumerate(idx)] +
+                [self[idx]._scol.alias("value")]
+            ) for idx in self._internal.column_index]))
 
-        exploded_df = sdf.withColumn("pairs", pairs).select(
-            [scol_for(sdf, index_column), F.col("pairs.key"), F.col("pairs.value")])
+        exploded_df = self._sdf.withColumn("pairs", pairs).select(
+            [F.to_json(F.array([scol.cast('string')
+                                for scol in self._internal.index_scols])).alias('index'),
+             F.col("pairs.*")])
 
         # After that, executes pivot with key and its index column.
         # Note that index column should contain unique values since column names
         # should be unique.
-        pivoted_df = exploded_df.groupBy(F.col("key")).pivot('`{}`'.format(index_column))
+        internal_index_columns = [internal_index_column(i)
+                                  for i in range(self._internal.column_index_level)]
+        pivoted_df = exploded_df.groupBy(internal_index_columns).pivot('index')
 
-        # New index column is always single index.
-        internal_index_column = "__index_level_0__"
-        transposed_df = pivoted_df.agg(
-            F.first(F.col("value"))).withColumnRenamed("key", internal_index_column)
+        transposed_df = pivoted_df.agg(F.first(F.col("value")))
 
-        new_data_columns = filter(lambda x: x != internal_index_column, transposed_df.columns)
+        new_data_columns = list(filter(lambda x: x not in internal_index_columns,
+                                       transposed_df.columns))
 
         internal = self._internal.copy(
             sdf=transposed_df,
-            data_columns=list(new_data_columns),
-            index_map=[(internal_index_column, None)])
+            data_columns=new_data_columns,
+            index_map=[(col, None) for col in internal_index_columns],
+            column_index=[tuple(json.loads(col)) for col in new_data_columns],
+            column_index_names=None)
 
         return DataFrame(internal)
 
