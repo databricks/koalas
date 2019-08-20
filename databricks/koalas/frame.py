@@ -3142,15 +3142,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  0.0  1.0  2.0  5
         3  0.0  3.0  1.0  4
         """
-        if axis is None:
-            axis = 0
-        if not (axis == 0 or axis == "index"):
-            raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
-        if (value is None) and (method is None):
-            raise ValueError("Must specify a fill 'value' or 'method'.")
-
         sdf = self._sdf
         if value is not None:
+            if axis is None:
+                axis = 0
+            if not (axis == 0 or axis == "index"):
+                raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
+            if (value is None) and (method is None):
+                raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
             if not isinstance(value, (float, int, str, bool, dict, pd.Series)):
                 raise TypeError("Unsupported type %s" % type(value))
             if isinstance(value, pd.Series):
@@ -3164,15 +3163,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.fillna(value)
             internal = self._internal.copy(sdf=sdf)
         else:
-            if method not in ['pad', 'ffill', 'backfill', 'bfill']:
-                raise ValueError("Expecting pad, ffill, backfill or bfill.")
             applied = []
-            for column in self._internal.data_columns:
-                applied.append(self[column].fillna(value=value, method=method,
-                                                   axis=axis, limit=limit))
-            sdf = self._sdf.select(
-                self._internal.index_scols + [c._scol for c in applied])
-            internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+            for col in self._internal.data_columns:
+                applied.append(self[col].fillna(value=value, method=method, axis=axis,
+                                                inplace=False, limit=limit))
+            sdf = self._sdf.select(self._internal.index_columns + [col._scol for col in applied])
+            internal = self._internal.copy(sdf=sdf, data_columns=[col.name for col in applied])
         if inplace:
             self._internal = internal
         else:

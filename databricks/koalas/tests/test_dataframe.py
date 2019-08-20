@@ -452,9 +452,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.fillna(pd.DataFrame({'x': [-1], 'y': [-1], 'z': [-1]}))
         with self.assertRaisesRegex(TypeError, "Unsupported.*numpy.int64"):
             kdf.fillna({'x': np.int64(-6), 'y': np.int64(-4), 'z': -5})
-        with self.assertRaisesRegex(ValueError, "Expecting pad, ffill, backfill or bfill."):
+        with self.assertRaisesRegex(ValueError, "Expecting 'pad', 'ffill', 'backfill' or 'bfill'."):
             kdf.fillna(method='xxx')
-        with self.assertRaisesRegex(ValueError, "Must specify a fill 'value' or 'method'."):
+        with self.assertRaisesRegex(ValueError,
+                                    "Must specify a fillna 'value' or 'method' parameter."):
             kdf.fillna()
 
     def test_isnull(self):
