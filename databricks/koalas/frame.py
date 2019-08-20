@@ -5843,22 +5843,35 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return internal
 
     def _reindex_columns(self, columns):
-        label_columns = list(columns)
-        null_columns = [
-            F.lit(np.nan).alias(label_column) for label_column
-            in label_columns if label_column not in self.columns]
+        level = self._internal.column_index_level
+        if level > 1:
+            label_columns = list(columns)
+            for col in label_columns:
+                if not isinstance(col, tuple):
+                    raise TypeError('Expected tuple, got {}'.format(type(col)))
+        else:
+            label_columns = [(col,) for col in columns]
+        for col in label_columns:
+            if len(col) != level:
+                raise ValueError("shape (1,{}) doesn't match the shape (1,{})"
+                                 .format(len(col), level))
+        index_to_column = dict(zip(self._internal.column_index, self._internal.data_columns))
+        scols, columns, idx = [], [], []
+        null_columns = False
+        for label in label_columns:
+            if index_to_column.get(label, None) is not None:
+                scols.append(self._internal.scol_for(index_to_column[label]))
+                columns.append(index_to_column[label])
+            else:
+                scols.append(F.lit(np.nan).alias(str(label)))
+                columns.append(str(label))
+                null_columns = True
+            idx.append(label)
 
-        # Concatenate all fields
-        sdf = self._sdf.select(
-            self._internal.index_scols +
-            list(map(self._internal.scol_for, self.columns)) +
-            null_columns)
+        if null_columns:
+            sdf = self._sdf.select(self._internal.index_scols + list(scols))
 
-        # Only select label_columns (with index columns)
-        sdf = sdf.select(self._internal.index_scols + [scol_for(sdf, col) for col in label_columns])
-        return self._internal.copy(
-            sdf=sdf,
-            data_columns=label_columns)
+        return self._internal.copy(sdf=sdf, data_columns=columns, column_index=idx)
 
     def melt(self, id_vars=None, value_vars=None, var_name='variable',
              value_name='value'):
