@@ -1010,7 +1010,7 @@ class GroupBy(object):
         """
         return self._rank(method, ascending)
 
-    # TODO: add keep= parameter
+    # TODO: add keep parameter
     def nsmallest(self, n=5):
         """
         Return the first n rows ordered by columns in ascending order in group.
@@ -1028,7 +1028,6 @@ class GroupBy(object):
         Series.nsmallest
         DataFrame.nsmallest
         databricks.koalas.Series.nsmallest
-        databricks.koalas.DataFrame.nsmallest
 
         Examples
         --------
@@ -1049,7 +1048,7 @@ class GroupBy(object):
         name = self._agg_columns[0].name
         index = self._kdf._internal.index_columns[0]
         window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name))
-        sdf = sdf.withColumn('order', F.row_number().over(window)).filter(F.col('order') <= n)
+        sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[name],
                                   index_map=[(s.name, s.name) for s in self._groupkeys] +
@@ -1057,7 +1056,7 @@ class GroupBy(object):
         kdf = _col(DataFrame(internal))
         return kdf
 
-    # TODO: add keep= parameter
+    # TODO: add keep parameter
     def nlargest(self, n=5):
         """
         Return the first n rows ordered by columns in descending order in group.
@@ -1075,7 +1074,6 @@ class GroupBy(object):
         Series.nlargest
         DataFrame.nlargest
         databricks.koalas.Series.nlargest
-        databricks.koalas.DataFrame.nlargest
 
         Examples
         --------
@@ -1096,7 +1094,7 @@ class GroupBy(object):
         name = self._agg_columns[0].name
         index = self._kdf._internal.index_columns[0]
         window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name).desc())
-        sdf = sdf.withColumn('order', F.row_number().over(window)).filter(F.col('order') <= n)
+        sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[name],
                                   index_map=[(s.name, s.name) for s in self._groupkeys] +
@@ -1104,7 +1102,6 @@ class GroupBy(object):
         kdf = _col(DataFrame(internal))
         return kdf
 
-    # TODO: Series support is not implemented yet.
     def transform(self, func):
         """
         Apply function column-by-column to the GroupBy object.

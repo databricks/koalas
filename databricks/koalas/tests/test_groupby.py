@@ -277,6 +277,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(ValueError, "idxmax do not support multi-index now"):
             kdf.set_index(['a', 'b']).groupby(['c'])['d'].nlargest(1)
 
+    def test_nlargest(self):
         pdf = pd.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
                             'b': [1, 2, 2, 2, 3, 3, 3, 4, 4],
                             'c': [1, 2, 2, 2, 3, 3, 3, 4, 4],
