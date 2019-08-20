@@ -109,8 +109,6 @@ class BasicIndexingTest(ComparisonTestBase):
 
         self.assertRaisesRegex(ValueError, 'Level should be all int or all string.',
                                lambda: df.reset_index([1, 'month']))
-        self.assertRaisesRegex(NotImplementedError, 'Can\'t reset index because there is no index.',
-                               lambda: df.reset_index().reset_index())
 
 
 class IndexingTest(ReusedSQLTestCase):
@@ -231,7 +229,7 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kdf[['a']], pdf[['a']])
 
         self.assert_eq(kdf.loc[:], pdf.loc[:])
-        self.assertRaises(NotImplementedError, lambda: kdf.loc[5:5])
+        self.assert_eq(kdf.loc[5:5], pdf.loc[5:5])
 
     def test_loc_multiindex(self):
         kdf = self.kdf

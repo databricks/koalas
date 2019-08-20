@@ -113,7 +113,7 @@ class Index(IndexOpsMixin):
         internal = self._kdf._internal.copy(
             sdf=sdf,
             index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
-            data_columns=[])
+            data_columns=[], column_index=[], column_index_names=None)
         return DataFrame(internal).to_pandas().index
 
     toPandas = to_pandas

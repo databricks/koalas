@@ -42,6 +42,7 @@ Computations / Descriptive Stats
    GroupBy.std
    GroupBy.sum
    GroupBy.var
+   GroupBy.nunique
    GroupBy.size
    GroupBy.diff
    GroupBy.fillna
