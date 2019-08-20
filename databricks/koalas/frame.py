@@ -2772,7 +2772,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         data_columns = set(self._internal.data_columns)
         adding_columns = [name for name, _ in pairs if name not in data_columns]
         level = self._internal.column_index_level
-        adding_column_index = [tuple([col, *[''] * (level - 1)]) for col in adding_columns]
+        adding_column_index = [tuple([col, *([''] * (level - 1))]) for col in adding_columns]
         internal = self._internal.copy(
             sdf=sdf,
             data_columns=(self._internal.data_columns + adding_columns),
