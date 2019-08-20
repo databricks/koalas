@@ -186,7 +186,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2],
                             'B': [2, 4, None, 3],
                             'C': [None, None, None, 1],
-                            'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'])
+                            'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'], index=[0, 1, 2, 3])
         kdf = koalas.DataFrame(pdf)
         self.assert_eq(kdf.groupby("A").fillna(0),
                        pdf.groupby("A").fillna(0))
@@ -199,7 +199,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2],
                             'B': [2, 4, None, 3],
                             'C': [None, None, None, 1],
-                            'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'])
+                            'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'], index=[0, 1, 2, 3])
         kdf = koalas.DataFrame(pdf)
 
         if LooseVersion(pd.__version__) <= LooseVersion("0.24.2"):
@@ -215,7 +215,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2],
                             'B': [2, 4, None, 3],
                             'C': [None, None, None, 1],
-                            'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'])
+                            'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'], index=[0, 1, 2, 3])
         kdf = koalas.DataFrame(pdf)
         if LooseVersion(pd.__version__) <= LooseVersion("0.24.2"):
             self.assert_eq(kdf.groupby("A").bfill(),
