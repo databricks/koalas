@@ -1561,9 +1561,8 @@ class DataFrameGroupBy(GroupBy):
             if column not in groupkey_columns:
                 applied.append(kdf[column].groupby(self._groupkeys)._fillna(*args, **kwargs))
 
-        sdf = kdf._sdf.select([c._scol for c in applied])
-        internal = kdf._internal.copy(
-            sdf=sdf, data_columns=[c.name for c in applied], index_map=[])  # index is lost.)
+        sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
+        internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
 
