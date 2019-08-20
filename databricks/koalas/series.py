@@ -2440,10 +2440,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             internal = self._kdf._internal.copy(
                 sdf=sdf,
                 data_columns=[value_column],
-                index_map=[(internal_index_column, None)])
+                index_map=[(internal_index_column, None)],
+                column_index=None,
+                column_index_names=None)
 
-            ser = DataFrame(internal)[value_column].rename(self.name)
-            return ser
+            return DataFrame(internal)[value_column].rename(self.name)
         else:
             return self._reduce_for_stat_function(
                 lambda _: F.expr("approx_percentile(`%s`, %s, %s)" % (self.name, q, accuracy)),
