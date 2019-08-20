@@ -1292,6 +1292,56 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=['X']))
         self.assertRaises(ValueError, lambda: kdf.reindex(columns=[('X',)]))
 
+    def test_all(self):
+        pdf = pd.DataFrame({
+            'col1': [False, False, False],
+            'col2': [True, False, False],
+            'col3': [0, 0, 1],
+            'col4': [0, 1, 2],
+            'col5': [False, False, None],
+            'col6': [True, False, None]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.all(), pdf.all())
+
+        columns = pd.MultiIndex.from_tuples([('a', 'col1'), ('a', 'col2'), ('a', 'col3'),
+                                             ('b', 'col4'), ('b', 'col5'), ('c', 'col6')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.all(), pdf.all())
+
+        columns.names = ['X', 'Y']
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.all(), pdf.all())
+
+    def test_any(self):
+        pdf = pd.DataFrame({
+            'col1': [False, False, False],
+            'col2': [True, False, False],
+            'col3': [0, 0, 1],
+            'col4': [0, 1, 2],
+            'col5': [False, False, None],
+            'col6': [True, False, None]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.any(), pdf.any())
+
+        columns = pd.MultiIndex.from_tuples([('a', 'col1'), ('a', 'col2'), ('a', 'col3'),
+                                             ('b', 'col4'), ('b', 'col5'), ('c', 'col6')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.any(), pdf.any())
+
+        columns.names = ['X', 'Y']
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.any(), pdf.any())
+
     def test_rank(self):
         pdf = pd.DataFrame(data={'col1': [1, 2, 3, 1], 'col2': [3, 4, 3, 1]},
                            columns=['col1', 'col2'])

@@ -6034,22 +6034,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError('axis should be either 0 or "index" currently.')
 
         applied = []
-        data_columns = self._internal.data_columns
-        for column in data_columns:
-            col = self[column]._scol
+        column_index = self._internal.column_index
+        for idx in column_index:
+            col = self[idx]._scol
             all_col = F.min(F.coalesce(col.cast('boolean'), F.lit(True)))
             applied.append(F.when(all_col.isNull(), True).otherwise(all_col))
 
         # TODO: there is a similar logic to transpose in, for instance,
         #  DataFrame.any, Series.quantile. Maybe we should deduplicate it.
         sdf = self._sdf
-        internal_index_column = "__index_level_0__"
+        internal_index_column = "__index_level_{}__".format
         value_column = "value"
         cols = []
-        for data_column, applied_col in zip(data_columns, applied):
+        for idx, applied_col in zip(column_index, applied):
             cols.append(F.struct(
-                F.lit(data_column).alias(internal_index_column),
-                applied_col.alias(value_column)))
+                [F.lit(col).alias(internal_index_column(i)) for i, col in enumerate(idx)] +
+                [applied_col.alias(value_column)]))
 
         sdf = sdf.select(
             F.array(*cols).alias("arrays")
@@ -6057,13 +6057,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = sdf.selectExpr("col.*")
 
+        index_column_name = lambda i: (None if self._internal.column_index_names is None
+                                       else self._internal.column_index_names[i])
         internal = self._internal.copy(
             sdf=sdf,
             data_columns=[value_column],
-            index_map=[(internal_index_column, None)])
+            index_map=[(internal_index_column(i), index_column_name(i))
+                       for i in range(self._internal.column_index_level)],
+            column_index=None)
 
-        ser = DataFrame(internal)[value_column].rename("all")
-        return ser
+        return DataFrame(internal)[value_column].rename("all")
 
     # TODO: axis, skipna, and many arguments should be implemented.
     def any(self, axis: Union[int, str] = 0) -> bool:
@@ -6114,22 +6117,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError('axis should be either 0 or "index" currently.')
 
         applied = []
-        data_columns = self._internal.data_columns
-        for column in data_columns:
-            col = self[column]._scol
+        column_index = self._internal.column_index
+        for idx in column_index:
+            col = self[idx]._scol
             all_col = F.max(F.coalesce(col.cast('boolean'), F.lit(False)))
             applied.append(F.when(all_col.isNull(), False).otherwise(all_col))
 
         # TODO: there is a similar logic to transpose in, for instance,
         #  DataFrame.all, Series.quantile. Maybe we should deduplicate it.
         sdf = self._sdf
-        internal_index_column = "__index_level_0__"
+        internal_index_column = "__index_level_{}__".format
         value_column = "value"
         cols = []
-        for data_column, applied_col in zip(data_columns, applied):
+        for idx, applied_col in zip(column_index, applied):
             cols.append(F.struct(
-                F.lit(data_column).alias(internal_index_column),
-                applied_col.alias(value_column)))
+                [F.lit(col).alias(internal_index_column(i)) for i, col in enumerate(idx)] +
+                [applied_col.alias(value_column)]))
 
         sdf = sdf.select(
             F.array(*cols).alias("arrays")
@@ -6137,13 +6140,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = sdf.selectExpr("col.*")
 
+        index_column_name = lambda i: (None if self._internal.column_index_names is None
+                                       else self._internal.column_index_names[i])
         internal = self._internal.copy(
             sdf=sdf,
             data_columns=[value_column],
-            index_map=[(internal_index_column, None)])
+            index_map=[(internal_index_column(i), index_column_name(i))
+                       for i in range(self._internal.column_index_level)],
+            column_index=None)
 
-        ser = DataFrame(internal)[value_column].rename("any")
-        return ser
+        return DataFrame(internal)[value_column].rename("any")
 
     # TODO: add axis, numeric_only, pct, na_option parameter
     def rank(self, method='average', ascending=True):
