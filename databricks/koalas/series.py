@@ -2302,7 +2302,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 self._internal.index_scols + [c._scol for c in applied])
 
             internal = self.to_dataframe()._internal.copy(
-                sdf=sdf, data_columns=[c.name for c in applied])
+                sdf=sdf, data_columns=[c.name for c in applied],
+                column_index=None, column_index_names=None)
 
             return DataFrame(internal)
         else:
