@@ -267,6 +267,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf, pdf)
 
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'w')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        pdf['Z'] = 'ZZ'
+        kdf['Z'] = 'ZZ'
+
+        self.assert_eq(kdf, pdf)
+
     def test_head_tail(self):
         kdf = self.kdf
         pdf = self.pdf
@@ -847,6 +856,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Skip index level check when ignore_index=True
         self.assert_eq(kdf.append(multi_index_kdf, ignore_index=True),
                        pdf.append(multi_index_pdf, ignore_index=True))
+
+        columns = pd.MultiIndex.from_tuples([('A', 'X'), ('A', 'Y')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.append(kdf), pdf.append(pdf))
 
     def test_clip(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})

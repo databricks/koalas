@@ -2785,10 +2785,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.withColumn(name, F.lit(c))
 
         data_columns = set(self._internal.data_columns)
+        adding_columns = [name for name, _ in pairs if name not in data_columns]
+        level = self._internal.column_index_level
+        adding_column_index = [tuple([col, *([''] * (level - 1))]) for col in adding_columns]
         internal = self._internal.copy(
             sdf=sdf,
-            data_columns=(self._internal.data_columns +
-                          [name for name, _ in pairs if name not in data_columns]))
+            data_columns=(self._internal.data_columns + adding_columns),
+            column_index=(self._internal.column_index + adding_column_index))
         return DataFrame(internal)
 
     @staticmethod
