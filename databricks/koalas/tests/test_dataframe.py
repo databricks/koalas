@@ -378,6 +378,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         expected_output = pd.DataFrame({'y': [3, 4], 'z': [5, 6]})
         self.assert_eq(kdf.drop(labels=['x'], columns=['y']), expected_output)
 
+        columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')])
+        kdf.columns = columns
+        pdf = kdf.to_pandas()
+
+        self.assert_eq(kdf.drop(columns='a'), pdf.drop(columns='a'))
+        self.assert_eq(kdf.drop(columns=('a', 'x')), pdf.drop(columns=('a', 'x')))
+        self.assert_eq(kdf.drop(columns=[('a', 'x'), 'b']), pdf.drop(columns=[('a', 'x'), 'b']))
+
+        self.assertRaises(KeyError, lambda: kdf.drop(columns='c'))
+        self.assertRaises(KeyError, lambda: kdf.drop(columns=('a', 'z')))
+
     def test_dropna(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
                             'y': [1, 2, np.nan, 4, np.nan, np.nan],

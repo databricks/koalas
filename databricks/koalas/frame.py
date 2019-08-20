@@ -4087,7 +4087,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._reduce_for_stat_function(
             _Frame._count_expr, name="count", axis=axis, numeric_only=False)
 
-    def drop(self, labels=None, axis=1, columns: Union[str, List[str]] = None):
+    def drop(self, labels=None, axis=1,
+             columns: Union[str, Tuple[str], List[str], List[Tuple[str]]] = None):
         """
         Drop specified labels from columns.
 
@@ -4150,11 +4151,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise NotImplementedError("Drop currently only works for axis=1")
         elif columns is not None:
             if isinstance(columns, str):
+                columns = [(columns,)]
+            elif isinstance(columns, tuple):
                 columns = [columns]
-            sdf = self._sdf.drop(*columns)
-            internal = self._internal.copy(
-                sdf=sdf,
-                data_columns=[column for column in self.columns if column not in columns])
+            else:
+                columns = [col if isinstance(col, tuple) else (col,) for col in columns]
+            drop_column_index = set(idx for idx in self._internal.column_index
+                                    for col in columns
+                                    if idx[:len(col)] == col)
+            if len(drop_column_index) == 0:
+                raise KeyError(columns)
+            cols, idx = zip(*((column, idx)
+                              for column, idx
+                              in zip(self._internal.data_columns, self._internal.column_index)
+                              if idx not in drop_column_index))
+            internal = self._internal.copy(data_columns=list(cols), column_index=list(idx))
             return DataFrame(internal)
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'columns'")
