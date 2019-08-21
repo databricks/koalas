@@ -618,7 +618,7 @@ class KoalasSeriesPlotMethods(PandasObject):
 
     def box(self, **kwds):
         """
-        Boxplot.
+        Make a box plot of the DataFrame columns.
 
         Parameters
         ----------
@@ -651,7 +651,7 @@ class KoalasSeriesPlotMethods(PandasObject):
 
     def hist(self, bins=10, **kwds):
         """
-        Histogram.
+        Draw one histogram of the DataFrame’s columns.
 
         Parameters
         ----------
