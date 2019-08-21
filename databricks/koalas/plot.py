@@ -724,11 +724,6 @@ class KoalasSeriesPlotMethods(PandasObject):
 
         Examples
         --------
-        In the example below we have a DataFrame with the information about
-        planet's mass and radius. We pass the the 'mass' column to the
-        pie function to get a pie plot.
-
-
         >>> df = ks.DataFrame({'mass': [0.330, 4.87 , 5.97],
         ...                    'radius': [2439.7, 6051.8, 6378.1]},
         ...                   index=['Mercury', 'Venus', 'Earth'])
