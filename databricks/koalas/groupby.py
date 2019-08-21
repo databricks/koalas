@@ -1529,5 +1529,9 @@ class SeriesGroupBy(GroupBy):
     def idxmin(self, skipna=True):
         return _col(super(SeriesGroupBy, self).idxmin(skipna))
 
+    idxmin.__doc__ = GroupBy.idxmin.__doc__
+
     def idxmax(self, skipna=True):
         return _col(super(SeriesGroupBy, self).idxmax(skipna))
+
+    idxmax.__doc__ = GroupBy.idxmax.__doc__
