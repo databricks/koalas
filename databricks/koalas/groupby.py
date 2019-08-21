@@ -1850,13 +1850,6 @@ class SeriesGroupBy(GroupBy):
     def filter(self, func):
         raise NotImplementedError()
 
-    def rank(self, method='average', ascending=True):
-        kdf = super(SeriesGroupBy, self).rank(method, ascending).to_dataframe()
-        return _col(DataFrame(kdf._internal.copy(
-            sdf=kdf._sdf.select(kdf._internal.data_scols), index_map=[])))  # index is lost.
-
-    rank.__doc__ = GroupBy.rank.__doc__
-
     def idxmin(self, skipna=True):
         return _col(super(SeriesGroupBy, self).idxmin(skipna))
 
