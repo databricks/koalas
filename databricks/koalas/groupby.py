@@ -24,7 +24,6 @@ from functools import partial
 from typing import Any, List
 
 import numpy as np
-import pandas as pd
 from pandas._libs.parsers import is_datetime64_dtype
 from pandas.core.dtypes.common import is_datetime64tz_dtype
 
@@ -33,7 +32,7 @@ from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, S
 from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.typedef import _infer_return_type, as_spark_type
+from databricks.koalas.typedef import _infer_return_type
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
@@ -683,7 +682,6 @@ class GroupBy(object):
         """
         return self._cum(F.sum)
 
-    # TODO: Series support is not implemented yet.
     def apply(self, func):
         """
         Apply function `func` group-wise and combine the results together.
@@ -798,7 +796,31 @@ class GroupBy(object):
             return_schema = None  # schema will inferred.
         else:
             return_schema = _infer_return_type(func).tpe
-        return self._apply(func, return_schema, retain_index=return_schema is None)
+
+        should_infer_schema = return_schema is None
+        input_groupnames = [s.name for s in self._groupkeys]
+
+        if should_infer_schema:
+            # Here we execute with the first 1000 to get the return type.
+            # If the records were less than 1000, it uses pandas API directly for a shortcut.
+            limit = 1000
+            pdf = self._kdf.head(limit + 1).to_pandas()
+            pdf = pdf.groupby(input_groupnames).apply(func)
+            kdf = DataFrame(pdf)
+            return_schema = kdf._sdf.schema
+            if len(pdf) <= limit:
+                return kdf
+
+        sdf = self._spark_group_map_apply(
+            func, return_schema, retain_index=should_infer_schema)
+
+        if should_infer_schema:
+            # If schema is inferred, we can restore indexes too.
+            internal = kdf._internal.copy(sdf=sdf)
+        else:
+            # Otherwise, it loses index.
+            internal = _InternalFrame(sdf=sdf)
+        return DataFrame(internal)
 
     # TODO: implement 'dropna' parameter
     def filter(self, func):
@@ -844,24 +866,11 @@ class GroupBy(object):
         def pandas_filter(pdf):
             return pdf.groupby(groupby_names).filter(func)
 
-        kdf = self._apply(pandas_filter, data_schema, retain_index=True)
-        return DataFrame(self._kdf._internal.copy(sdf=kdf._sdf))
+        sdf = self._spark_group_map_apply(
+            pandas_filter, data_schema, retain_index=True)
+        return DataFrame(self._kdf._internal.copy(sdf=sdf))
 
-    def _apply(self, func, return_schema, retain_index):
-        should_infer_schema = return_schema is None
-        input_groupnames = [s.name for s in self._groupkeys]
-
-        if should_infer_schema:
-            # Here we execute with the first 1000 to get the return type.
-            # If the records were less than 1000, it uses pandas API directly for a shortcut.
-            limit = 1000
-            pdf = self._kdf.head(limit + 1).to_pandas()
-            pdf = pdf.groupby(input_groupnames).apply(func)
-            kdf = DataFrame(pdf)
-            return_schema = kdf._sdf.schema
-            if len(pdf) <= limit:
-                return kdf
-
+    def _spark_group_map_apply(self, func, return_schema, retain_index):
         index_columns = self._kdf._internal.index_columns
         index_names = self._kdf._internal.index_names
         data_columns = self._kdf._internal.data_columns
@@ -935,14 +944,7 @@ class GroupBy(object):
         input_groupkeys = [s._scol for s in self._groupkeys]
         sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
 
-        if should_infer_schema:
-            # If schema is inferred, we can restore indexes too.
-            internal = kdf._internal.copy(sdf=sdf)
-        else:
-            # Otherwise, it loses index.
-            internal = _InternalFrame(
-                sdf=sdf, data_columns=return_schema.fieldNames(), index_map=[])
-        return DataFrame(internal)
+        return sdf
 
     def rank(self, method='average', ascending=True):
         """
@@ -981,7 +983,7 @@ class GroupBy(object):
         7  3  4
         8  3  4
 
-        >>> df.groupby("a").rank()
+        >>> df.groupby("a").rank().sort_index()
              b
         0  1.0
         1  2.5
@@ -993,7 +995,7 @@ class GroupBy(object):
         7  2.5
         8  2.5
 
-        >>> df.b.groupby(df.a).rank(method='max')  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.b.groupby(df.a).rank(method='max').sort_index()
         0    1.0
         1    3.0
         2    3.0
@@ -1136,7 +1138,263 @@ class GroupBy(object):
         kdf = DataFrame(internal)
         return kdf
 
-    # TODO: Series support is not implemented yet.
+    # TODO: add keep parameter
+    def nsmallest(self, n=5):
+        """
+        Return the first n rows ordered by columns in ascending order in group.
+
+        Return the first n rows with the smallest values in columns, in ascending order.
+        The columns that are not specified are returned as well, but not used for ordering.
+
+        Parameters
+        ----------
+        n : int
+            Number of items to retrieve.
+
+        See Also
+        --------
+        Series.nsmallest
+        DataFrame.nsmallest
+        databricks.koalas.Series.nsmallest
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+        ...                    'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
+
+        >>> df.groupby(['a'])['b'].nsmallest(1).sort_index() # doctest: +NORMALIZE_WHITESPACE
+        a
+        1  0    1
+        2  3    2
+        3  6    3
+        Name: b, dtype: int64
+        """
+        if len(self._kdf._internal.index_names) > 1:
+            raise ValueError('idxmax do not support multi-index now')
+        groupkeys = self._groupkeys
+        sdf = self._kdf._sdf
+        name = self._agg_columns[0].name
+        index = self._kdf._internal.index_columns[0]
+        window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name))
+        sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[name],
+                                  index_map=[(s.name, s.name) for s in self._groupkeys] +
+                                            [(index, None)])
+        kdf = _col(DataFrame(internal))
+        return kdf
+
+    # TODO: add keep parameter
+    def nlargest(self, n=5):
+        """
+        Return the first n rows ordered by columns in descending order in group.
+
+        Return the first n rows with the smallest values in columns, in descending order.
+        The columns that are not specified are returned as well, but not used for ordering.
+
+        Parameters
+        ----------
+        n : int
+            Number of items to retrieve.
+
+        See Also
+        --------
+        Series.nlargest
+        DataFrame.nlargest
+        databricks.koalas.Series.nlargest
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+        ...                    'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
+
+        >>> df.groupby(['a'])['b'].nlargest(1).sort_index() # doctest: +NORMALIZE_WHITESPACE
+        a
+        1  1    2
+        2  4    3
+        3  7    4
+        Name: b, dtype: int64
+        """
+        if len(self._kdf._internal.index_names) > 1:
+            raise ValueError('idxmax do not support multi-index now')
+        groupkeys = self._groupkeys
+        sdf = self._kdf._sdf
+        name = self._agg_columns[0].name
+        index = self._kdf._internal.index_columns[0]
+        window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name).desc())
+        sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[name],
+                                  index_map=[(s.name, s.name) for s in self._groupkeys] +
+                                            [(index, None)])
+        kdf = _col(DataFrame(internal))
+        return kdf
+
+    def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
+        """Fill NA/NaN values in group.
+
+        Parameters
+        ----------
+        value : scalar, dict, Series
+            Value to use to fill holes. alternately a dict/Series of values
+            specifying which value to use for each column.
+            DataFrame is not supported.
+        method : {'backfill', 'bfill', 'pad', 'ffill', None}, default None
+            Method to use for filling holes in reindexed Series pad / ffill: propagate last valid
+            observation forward to next valid backfill / bfill:
+            use NEXT valid observation to fill gap
+        axis : {0 or `index`}
+            1 and `columns` are not supported.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+        limit : int, default None
+            If method is specified, this is the maximum number of consecutive NaN values to
+            forward/backward fill. In other words, if there is a gap with more than this number of
+            consecutive NaNs, it will only be partially filled. If method is not specified,
+            this is the maximum number of entries along the entire axis where NaNs will be filled.
+            Must be greater than 0 if not None
+
+        Returns
+        -------
+        DataFrame
+            DataFrame with NA entries filled.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({
+        ...     'A': [1, 1, 2, 2],
+        ...     'B': [2, 4, None, 3],
+        ...     'C': [None, None, None, 1],
+        ...     'D': [0, 1, 5, 4]
+        ...     },
+        ...     columns=['A', 'B', 'C', 'D'])
+        >>> df
+           A    B    C  D
+        0  1  2.0  NaN  0
+        1  1  4.0  NaN  1
+        2  2  NaN  NaN  5
+        3  2  3.0  1.0  4
+
+        We can also propagate non-null values forward or backward in group.
+
+        >>> df.groupby(['A'])['B'].fillna(method='ffill')
+        0    2.0
+        1    4.0
+        2    NaN
+        3    3.0
+        Name: B, dtype: float64
+
+        >>> df.groupby(['A']).fillna(method='bfill')
+             B    C  D
+        0  2.0  NaN  0
+        1  4.0  NaN  1
+        2  3.0  1.0  5
+        3  3.0  1.0  4
+        """
+        return self._fillna(value, method, axis, inplace, limit)
+
+    def bfill(self, limit=None):
+        """
+        Synonym for `DataFrame.fillna()` with ``method=`bfill```.
+
+        Parameters
+        ----------
+        axis : {0 or `index`}
+            1 and `columns` are not supported.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+        limit : int, default None
+            If method is specified, this is the maximum number of consecutive NaN values to
+            forward/backward fill. In other words, if there is a gap with more than this number of
+            consecutive NaNs, it will only be partially filled. If method is not specified,
+            this is the maximum number of entries along the entire axis where NaNs will be filled.
+            Must be greater than 0 if not None
+
+        Returns
+        -------
+        DataFrame
+            DataFrame with NA entries filled.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({
+        ...     'A': [1, 1, 2, 2],
+        ...     'B': [2, 4, None, 3],
+        ...     'C': [None, None, None, 1],
+        ...     'D': [0, 1, 5, 4]
+        ...     },
+        ...     columns=['A', 'B', 'C', 'D'])
+        >>> df
+           A    B    C  D
+        0  1  2.0  NaN  0
+        1  1  4.0  NaN  1
+        2  2  NaN  NaN  5
+        3  2  3.0  1.0  4
+
+        Propagate non-null values backward.
+
+        >>> df.groupby(['A']).bfill()
+             B    C  D
+        0  2.0  NaN  0
+        1  4.0  NaN  1
+        2  3.0  1.0  5
+        3  3.0  1.0  4
+        """
+        return self._fillna(method='bfill', limit=limit)
+
+    backfill = bfill
+
+    def ffill(self, limit=None):
+        """
+        Synonym for `DataFrame.fillna()` with ``method=`ffill```.
+
+        Parameters
+        ----------
+        axis : {0 or `index`}
+            1 and `columns` are not supported.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+        limit : int, default None
+            If method is specified, this is the maximum number of consecutive NaN values to
+            forward/backward fill. In other words, if there is a gap with more than this number of
+            consecutive NaNs, it will only be partially filled. If method is not specified,
+            this is the maximum number of entries along the entire axis where NaNs will be filled.
+            Must be greater than 0 if not None
+
+        Returns
+        -------
+        DataFrame
+            DataFrame with NA entries filled.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({
+        ...     'A': [1, 1, 2, 2],
+        ...     'B': [2, 4, None, 3],
+        ...     'C': [None, None, None, 1],
+        ...     'D': [0, 1, 5, 4]
+        ...     },
+        ...     columns=['A', 'B', 'C', 'D'])
+        >>> df
+           A    B    C  D
+        0  1  2.0  NaN  0
+        1  1  4.0  NaN  1
+        2  2  NaN  NaN  5
+        3  2  3.0  1.0  4
+
+        Propagate non-null values forward.
+
+        >>> df.groupby(['A']).ffill()
+             B    C  D
+        0  2.0  NaN  0
+        1  4.0  NaN  1
+        2  NaN  NaN  5
+        3  3.0  1.0  4
+        """
+        return self._fillna(method='ffill', limit=limit)
+
+    pad = ffill
+
     def transform(self, func):
         """
         Apply function column-by-column to the GroupBy object.
@@ -1246,7 +1504,9 @@ class GroupBy(object):
             pdf = pdf.drop(columns=input_groupnames)
             return pdf.transform(func)
 
-        if return_sig is None:
+        should_infer_schema = return_sig is None
+
+        if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = 1000
@@ -1257,16 +1517,75 @@ class GroupBy(object):
             if len(pdf) <= limit:
                 return pdf
 
-            applied_kdf = self._apply(pandas_transform, return_schema, retain_index=True)
-            # kdf inferred from pdf holds a correct index.
-            return DataFrame(kdf._internal.copy(sdf=applied_kdf._sdf))
+            sdf = self._spark_group_map_apply(
+                pandas_transform, return_schema, retain_index=True)
+            # If schema is inferred, we can restore indexes too.
+            internal = kdf._internal.copy(sdf=sdf)
         else:
             return_type = _infer_return_type(func).tpe
             data_columns = self._kdf._internal.data_columns
             return_schema = StructType([
                 StructField(c, return_type) for c in data_columns if c not in input_groupnames])
 
-            return self._apply(pandas_transform, return_schema, retain_index=False)
+            sdf = self._spark_group_map_apply(
+                pandas_transform, return_schema, retain_index=False)
+            # Otherwise, it loses index.
+            internal = _InternalFrame(sdf=sdf)
+
+        return DataFrame(internal)
+
+    def nunique(self, dropna=True):
+        """
+        Return DataFrame with number of distinct observations per group for each column.
+
+        Parameters
+        ----------
+        dropna : boolean, default True
+            Don’t include NaN in the counts.
+
+        Returns
+        -------
+        nunique : DataFrame
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'id': ['spam', 'egg', 'egg', 'spam',
+        ...                           'ham', 'ham'],
+        ...                    'value1': [1, 5, 5, 2, 5, 5],
+        ...                    'value2': list('abbaxy')}, columns=['id', 'value1', 'value2'])
+        >>> df
+             id  value1 value2
+        0  spam       1      a
+        1   egg       5      b
+        2   egg       5      b
+        3  spam       2      a
+        4   ham       5      x
+        5   ham       5      y
+
+        >>> df.groupby('id').nunique() # doctest: +NORMALIZE_WHITESPACE
+              id  value1  value2
+        id
+        egg    1       1       1
+        ham    1       1       2
+        spam   1       2       1
+
+        >>> df.groupby('id')['value1'].nunique() # doctest: +NORMALIZE_WHITESPACE
+        id
+        egg     1
+        ham     1
+        spam    2
+        Name: value1, dtype: int64
+        """
+        if isinstance(self, DataFrameGroupBy):
+            self._agg_columns = self._groupkeys + self._agg_columns
+        if dropna:
+            stat_function = lambda col: F.countDistinct(col)
+        else:
+            stat_function = lambda col: \
+                (F.countDistinct(col) +
+                 F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0))
+        return self._reduce_for_stat_function(stat_function, only_numeric=False)
 
     # TODO: add bins, normalize parameter
     def value_counts(self, sort=None, ascending=None, dropna=True):
@@ -1405,11 +1724,9 @@ class DataFrameGroupBy(GroupBy):
     def _diff(self, *args, **kwargs):
         applied = []
         kdf = self._kdf
-        groupkey_columns = [s.name for s in self._groupkeys]
 
-        for column in kdf._internal.data_columns:
-            if column not in groupkey_columns:
-                applied.append(kdf[column].groupby(self._groupkeys)._diff(*args, **kwargs))
+        for column in self._agg_columns:
+            applied.append(column.groupby(self._groupkeys)._diff(*args, **kwargs))
 
         sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
         internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
@@ -1418,16 +1735,15 @@ class DataFrameGroupBy(GroupBy):
     def _rank(self, *args, **kwargs):
         applied = []
         kdf = self._kdf
-        groupkey_columns = [s.name for s in self._groupkeys]
+        groupkey_columns = set(s.name for s in self._groupkeys)
 
-        for column in kdf._internal.data_columns:
+        for column in self._agg_columns:
             # pandas groupby.rank ignores the grouping key itself.
-            if column not in groupkey_columns:
-                applied.append(kdf[column].groupby(self._groupkeys)._rank(*args, **kwargs))
+            if column.name not in groupkey_columns:
+                applied.append(column.groupby(self._groupkeys)._rank(*args, **kwargs))
 
-        sdf = kdf._sdf.select([c._scol for c in applied])
-        internal = kdf._internal.copy(
-            sdf=sdf, data_columns=[c.name for c in applied], index_map=[])  # index is lost.)
+        sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
+        internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
     def _cum(self, func):
@@ -1441,19 +1757,30 @@ class DataFrameGroupBy(GroupBy):
         elif func.__name__ == "cumprod":
             func = "cumprod"
 
-        if len(self._kdf._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
-
         applied = []
         kdf = self._kdf
-        groupkey_columns = [s.name for s in self._groupkeys]
-        for column in kdf._internal.data_columns:
+        groupkey_columns = set(s.name for s in self._groupkeys)
+
+        for column in self._agg_columns:
             # pandas groupby.cumxxx ignores the grouping key itself.
-            if column not in groupkey_columns:
-                applied.append(getattr(kdf[column].groupby(self._groupkeys), func)())
+            if column.name not in groupkey_columns:
+                applied.append(getattr(column.groupby(self._groupkeys), func)())
 
         sdf = kdf._sdf.select(
             kdf._internal.index_scols + [c._scol for c in applied])
+        internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        return DataFrame(internal)
+
+    def _fillna(self, *args, **kwargs):
+        applied = []
+        kdf = self._kdf
+        groupkey_columns = [s.name for s in self._groupkeys]
+
+        for column in kdf._internal.data_columns:
+            if column not in groupkey_columns:
+                applied.append(kdf[column].groupby(self._groupkeys)._fillna(*args, **kwargs))
+
+        sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
         internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
@@ -1488,6 +1815,10 @@ class SeriesGroupBy(GroupBy):
     def _rank(self, *args, **kwargs):
         groupkey_scols = [s._scol for s in self._groupkeys]
         return Series._rank(self._ks, *args, **kwargs, part_cols=groupkey_scols)
+
+    def _fillna(self, *args, **kwargs):
+        groupkey_scols = [s._scol for s in self._groupkeys]
+        return Series._fillna(self._ks, *args, **kwargs, part_cols=groupkey_scols)
 
     @property
     def _kdf(self) -> DataFrame:

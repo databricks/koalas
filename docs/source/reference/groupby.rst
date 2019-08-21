@@ -42,7 +42,14 @@ Computations / Descriptive Stats
    GroupBy.std
    GroupBy.sum
    GroupBy.var
+   GroupBy.nunique
    GroupBy.size
    GroupBy.diff
    GroupBy.idxmax
    GroupBy.idxmin
+   GroupBy.nsmallest
+   GroupBy.nlargest
+   GroupBy.fillna
+   GroupBy.bfill
+   GroupBy.ffill
+   GroupBy.backfill

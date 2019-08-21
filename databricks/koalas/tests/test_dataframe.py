@@ -267,6 +267,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf, pdf)
 
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'w')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        pdf['Z'] = 'ZZ'
+        kdf['Z'] = 'ZZ'
+
+        self.assert_eq(kdf, pdf)
+
     def test_head_tail(self):
         kdf = self.kdf
         pdf = self.pdf
@@ -369,6 +378,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         expected_output = pd.DataFrame({'y': [3, 4], 'z': [5, 6]})
         self.assert_eq(kdf.drop(labels=['x'], columns=['y']), expected_output)
 
+        columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')])
+        kdf.columns = columns
+        pdf = kdf.to_pandas()
+
+        self.assert_eq(kdf.drop(columns='a'), pdf.drop(columns='a'))
+        self.assert_eq(kdf.drop(columns=('a', 'x')), pdf.drop(columns=('a', 'x')))
+        self.assert_eq(kdf.drop(columns=[('a', 'x'), 'b']), pdf.drop(columns=[('a', 'x'), 'b']))
+
+        self.assertRaises(KeyError, lambda: kdf.drop(columns='c'))
+        self.assertRaises(KeyError, lambda: kdf.drop(columns=('a', 'z')))
+
     def test_dropna(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
                             'y': [1, 2, np.nan, 4, np.nan, np.nan],
@@ -452,9 +472,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.fillna(pd.DataFrame({'x': [-1], 'y': [-1], 'z': [-1]}))
         with self.assertRaisesRegex(TypeError, "Unsupported.*numpy.int64"):
             kdf.fillna({'x': np.int64(-6), 'y': np.int64(-4), 'z': -5})
-        with self.assertRaisesRegex(ValueError, "Expecting pad, ffill, backfill or bfill."):
+        with self.assertRaisesRegex(ValueError, "Expecting 'pad', 'ffill', 'backfill' or 'bfill'."):
             kdf.fillna(method='xxx')
-        with self.assertRaisesRegex(ValueError, "Must specify a fill 'value' or 'method'."):
+        with self.assertRaisesRegex(ValueError,
+                                    "Must specify a fillna 'value' or 'method' parameter."):
             kdf.fillna()
 
     def test_isnull(self):
@@ -540,8 +561,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
         self.assert_eq(kdf.sort_index(level=[1, 0]), pdf.sort_index(level=[1, 0]))
-
-        self.assertRaises(ValueError, lambda: kdf.reset_index().sort_index())
+        self.assert_eq(kdf.reset_index().sort_index(), pdf.reset_index().sort_index())
 
         # Assert with multi-index columns
         columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B')])
@@ -848,6 +868,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.append(multi_index_kdf, ignore_index=True),
                        pdf.append(multi_index_pdf, ignore_index=True))
 
+        columns = pd.MultiIndex.from_tuples([('A', 'X'), ('A', 'Y')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.append(kdf), pdf.append(pdf))
+
     def test_clip(self):
         pdf = pd.DataFrame({'A': [0, 2, 4]})
         kdf = ks.from_pandas(pdf)
@@ -875,12 +901,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_binary_operators(self):
         self.assertRaisesRegex(
             ValueError,
-            'with another DataFrame or a sequence is currently not supported',
+            'it comes from a different dataframe',
             lambda: ks.range(10).add(ks.range(10)))
 
         self.assertRaisesRegex(
             ValueError,
-            'with another DataFrame or a sequence is currently not supported',
+            'add with a sequence is currently not supported',
             lambda: ks.range(10).add(ks.range(10).id))
 
     def test_sample(self):
@@ -905,9 +931,19 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]})
         self.assert_eq(pdf.add_prefix('col_'), kdf.add_prefix('col_'))
 
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B')])
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_eq(pdf.add_prefix('col_'), kdf.add_prefix('col_'))
+
     def test_add_suffix(self):
         pdf = pd.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]})
         kdf = ks.DataFrame({'A': [1, 2, 3, 4], 'B': [3, 4, 5, 6]})
+        self.assert_eq(pdf.add_suffix('_col'), kdf.add_suffix('_col'))
+
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B')])
+        pdf.columns = columns
+        kdf.columns = columns
         self.assert_eq(pdf.add_suffix('_col'), kdf.add_suffix('_col'))
 
     def test_join(self):
@@ -934,7 +970,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         join_kdf = kdf1.join(kdf2.set_index('key'), on='key', lsuffix='_left', rsuffix='_right')
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
-        self.assert_eq(join_pdf, join_kdf)
+        self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
 
     def test_replace(self):
         pdf = pd.DataFrame({"name": ['Ironman', 'Captain America', 'Thor', 'Hulk'],
@@ -1244,6 +1280,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=['numbers', '2', '3'], axis=2))
         self.assertRaises(TypeError, lambda: kdf.reindex(index=['A', 'B', 'C'], axis=1))
         self.assertRaises(TypeError, lambda: kdf.reindex(index=123))
+
+        columns = pd.MultiIndex.from_tuples([('X', 'numbers')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(
+            pdf.reindex(columns=[('X', 'numbers'), ('Y', '2'), ('Y', '3')]).sort_index(),
+            kdf.reindex(columns=[('X', 'numbers'), ('Y', '2'), ('Y', '3')]).sort_index())
+
+        self.assertRaises(TypeError, lambda: kdf.reindex(columns=['X']))
+        self.assertRaises(ValueError, lambda: kdf.reindex(columns=[('X',)]))
 
     def test_rank(self):
         pdf = pd.DataFrame(data={'col1': [1, 2, 3, 1], 'col2': [3, 4, 3, 1]},
