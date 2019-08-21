@@ -569,7 +569,7 @@ class _Frame(object):
                             'got [%s]' % (self,))
 
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_csv, f, args)
+            kdf._to_pandas(), self.to_csv, f, args)
 
     def to_json(self, path_or_buf=None, orient=None, date_format=None,
                 double_precision=10, force_ascii=True, date_unit='ms',
@@ -722,7 +722,7 @@ class _Frame(object):
                             'got [%s]' % (self,))
 
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_json, f, args)
+            kdf._to_pandas(), self.to_json, f, args)
 
     def to_excel(self, excel_writer, sheet_name="Sheet1", na_rep="", float_format=None,
                  columns=None, header=True, index=True, index_label=None, startrow=0,
@@ -837,7 +837,7 @@ class _Frame(object):
             raise TypeError('Constructor expects DataFrame or Series; however, '
                             'got [%s]' % (self,))
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_excel, f, args)
+            kdf._to_pandas(), self.to_excel, f, args)
 
     def mean(self, axis=None, numeric_only=True):
         """
@@ -1363,7 +1363,7 @@ class _Frame(object):
         else:
             raise TypeError('bool() expects DataFrame or Series; however, '
                             'got [%s]' % (self,))
-        return df.head(2).to_pandas().bool()
+        return df.head(2)._to_pandas().bool()
 
     def median(self, accuracy=10000):
         """
@@ -1428,7 +1428,7 @@ class _Frame(object):
         median = lambda name: F.expr("approx_percentile(`%s`, 0.5, %s)" % (name, accuracy))
         sdf = sdf.select([median(col).alias(col) for col in kdf.columns])
         # This is expected to be small so it's fine to transpose.
-        return DataFrame(sdf).to_pandas().transpose().iloc[:, 0]
+        return DataFrame(sdf)._to_pandas().transpose().iloc[:, 0]
 
     @property
     def at(self):

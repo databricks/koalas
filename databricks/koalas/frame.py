@@ -370,7 +370,7 @@ class DataFrame(_Frame, Generic[T]):
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = 1000
-            pdf = self.head(limit + 1).to_pandas()
+            pdf = self.head(limit + 1)._to_pandas()
             pser = getattr(pdf, name)(axis=axis, numeric_only=numeric_only)
             if len(pdf) <= limit:
                 return Series(pser)
@@ -949,7 +949,7 @@ class DataFrame(_Frame, Generic[T]):
         args = locals()
         kdf = self
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_clipboard, pd.DataFrame.to_clipboard, args)
+            kdf._to_pandas(), self.to_clipboard, pd.DataFrame.to_clipboard, args)
 
     def to_html(self, buf=None, columns=None, col_space=None, header=True, index=True,
                 na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
@@ -1048,7 +1048,7 @@ class DataFrame(_Frame, Generic[T]):
             kdf = self
 
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_html, pd.DataFrame.to_html, args)
+            kdf._to_pandas(), self.to_html, pd.DataFrame.to_html, args)
 
     def to_string(self, buf=None, columns=None, col_space=None, header=True,
                   index=True, na_rep='NaN', formatters=None, float_format=None,
@@ -1148,7 +1148,7 @@ class DataFrame(_Frame, Generic[T]):
             kdf = self
 
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_string, pd.DataFrame.to_string, args)
+            kdf._to_pandas(), self.to_string, pd.DataFrame.to_string, args)
 
     def to_dict(self, orient='dict', into=dict):
         """
@@ -1244,7 +1244,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         args = locals()
         kdf = self
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_dict, pd.DataFrame.to_dict, args)
+            kdf._to_pandas(), self.to_dict, pd.DataFrame.to_dict, args)
 
     def to_latex(self, buf=None, columns=None, col_space=None, header=True, index=True,
                  na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
@@ -1343,7 +1343,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         args = locals()
         kdf = self
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_latex, pd.DataFrame.to_latex, args)
+            kdf._to_pandas(), self.to_latex, pd.DataFrame.to_latex, args)
 
     # TODO: enable doctests once we drop Spark 2.3.x (due to type coercion logic
     #  when creating arrays)
@@ -1457,7 +1457,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if len(self._internal.index_columns) != 1:
             raise ValueError("Single index must be set to transpose the current DataFrame.")
         if limit is not None:
-            pdf = self.head(limit + 1).to_pandas()
+            pdf = self.head(limit + 1)._to_pandas()
             if len(pdf) > limit:
                 raise ValueError(
                     "Current DataFrame has more then the given limit %s rows. Please use "
@@ -2265,7 +2265,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         third   0.9  0.0  0.49
         """
         if isinstance(decimals, ks.Series):
-            decimals_list = [kv for kv in decimals.to_pandas().items()]
+            decimals_list = [kv for kv in decimals._to_pandas().items()]
         elif isinstance(decimals, dict):
             decimals_list = [(k, v) for k, v in decimals.items()]
         elif isinstance(decimals, int):
@@ -2687,7 +2687,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def to_pandas(self):
         """
-        Return a Pandas DataFrame.
+        Return a pandas DataFrame.
 
         .. note:: This method should only be used if the resulting Pandas DataFrame is expected
             to be small, as all the data is loaded into the driver's memory.
@@ -2931,7 +2931,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf = self
 
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_records, pd.DataFrame.to_records, args)
+            kdf._to_pandas(), self.to_records, pd.DataFrame.to_records, args)
 
     def copy(self) -> 'DataFrame':
         """
@@ -6425,8 +6425,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(self._internal.copy(sdf=self._sdf.filter(bcol)))
         raise NotImplementedError(key)
 
+    def _to_pandas(self):
+        """
+        Return a pandas DataFrame directly from _internal to avoid overhead of copy.
+
+        This method is for internal use only.
+        """
+        return self._internal.pandas_df
+
     def __repr__(self):
-        pdf = self.head(max_display_count + 1).to_pandas()
+        pdf = self.head(max_display_count + 1)._to_pandas()
         pdf_length = len(pdf)
         repr_string = repr(pdf.iloc[:max_display_count])
         if pdf_length > max_display_count:
@@ -6440,7 +6448,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return repr_string
 
     def _repr_html_(self):
-        pdf = self.head(max_display_count + 1).to_pandas()
+        pdf = self.head(max_display_count + 1)._to_pandas()
         pdf_length = len(pdf)
         repr_html = pdf[:max_display_count]._repr_html_()
         if pdf_length > max_display_count:
