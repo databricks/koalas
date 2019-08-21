@@ -41,10 +41,10 @@ def _get_standard_kind(kind):
 
 if LooseVersion(pd.__version__) < LooseVersion('0.25'):
     from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot, PiePlot, \
-        AreaPlot
+        AreaPlot, LinePlot
 else:
     from pandas.plotting._core import PlotAccessor
-    from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot, AreaPlot
+    from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot, AreaPlot, LinePlot
     from pandas.plotting._matplotlib.core import MPLPlot
     _all_kinds = PlotAccessor._all_kinds
 
@@ -469,7 +469,28 @@ class KoalasAreaPlot(AreaPlot):
         super(KoalasAreaPlot, self)._make_plot()
 
 
-_klasses = [KoalasHistPlot, KoalasBarPlot, KoalasBoxPlot, KoalasPiePlot, KoalasAreaPlot]
+class KoalasLinePlot(LinePlot):
+    def __init__(self, data, **kwargs):
+        from databricks.koalas import DataFrame
+
+        self.fraction = 1 / (len(data) / 1000)  # make sure the records are roughly 1000.
+        if self.fraction > 1:
+            self.fraction = 1
+        sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
+        data = DataFrame(data._kdf._internal.copy(sdf=sampled)).to_pandas()
+        super(KoalasLinePlot, self).__init__(data, **kwargs)
+
+    def _make_plot(self):
+        if self.fraction < 1:
+            self._get_ax(0).text(
+                1, 1, 'showing the sampled result by fraction %s' % self.fraction,
+                size=6, ha='right', va='bottom',
+                transform=self._get_ax(0).transAxes)
+
+        super(KoalasLinePlot, self)._make_plot()
+
+
+_klasses = [KoalasHistPlot, KoalasBarPlot, KoalasBoxPlot, KoalasAreaPlot, KoalasLinePlot]
 _plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
 
 
@@ -639,8 +660,42 @@ class KoalasSeriesPlotMethods(PandasObject):
                            **kwds)
     __call__.__doc__ = plot_series.__doc__
 
-    def line(self, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='line')()
+    def line(self, x=None, y=None, **kwargs):
+        """
+        Plot Series or DataFrame as lines.
+
+        This function is useful to plot lines using DataFrame's values
+        as coordinates.
+
+        Parameters
+        ----------
+        x : int or str, optional
+            Columns to use for the horizontal axis.
+            Either the location or the label of the columns to be used.
+            By default, it will use the DataFrame indices.
+        y : int, str, or list of them, optional
+            The values to be plotted.
+            Either the location or the label of the columns to be used.
+            By default, it will use the remaining DataFrame numeric columns.
+        **kwds
+            Keyword arguments to pass on to :meth:`DataFrame.plot`.
+
+        Returns
+        -------
+        :class:`matplotlib.axes.Axes` or :class:`numpy.ndarray`
+            Return an ndarray when ``subplots=True``.
+
+        See Also
+        --------
+        matplotlib.pyplot.plot : Plot y versus x as lines and/or markers.
+
+        Examples
+        --------
+
+        >>> s = ks.Series([1, 3, 2])
+        >>> p = s.plot.line()
+        """
+        return self(kind="line", x=x, y=y, **kwargs)
 
     def bar(self, **kwds):
         """

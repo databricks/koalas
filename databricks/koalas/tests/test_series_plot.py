@@ -102,7 +102,14 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
                  transform=ax1.transAxes)
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['id'].plot.pie(colormap='Paired')
+        self.compare_plots(ax1, ax2)
 
+    def test_line_plot(self):
+        pdf = self.pdf1
+        kdf = self.kdf1
+
+        ax1 = pdf['a'].plot("line", colormap='Paired')
+        ax2 = kdf['a'].plot("line", colormap='Paired')
         self.compare_plots(ax1, ax2)
 
     def test_hist_plot(self):
@@ -203,7 +210,11 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
         ks = self.kdf1['a']
 
+<<<<<<< HEAD
         unsupported_functions = ['kde', 'barh', 'line']
+=======
+        unsupported_functions = ['area', 'kde', 'pie', 'barh']
+>>>>>>> Add plot.line in Series
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*Series.*{}.*not implemented".format(name)):
