@@ -1479,19 +1479,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         #
         # Output of `exploded_df` becomes as below:
         #
-        # +-----------+-----------------+-----------------+-----+
-        # |      index|__index_level_0__|__index_level_1__|value|
-        # +-----------+-----------------+-----------------+-----+
-        # |["y1","z1"]|                a|               x1|    1|
-        # |["y1","z1"]|                a|               x2|    0|
-        # |["y1","z1"]|                b|               x3|    0|
-        # |["y2","z2"]|                a|               x1|    0|
-        # |["y2","z2"]|                a|               x2|   50|
-        # |["y2","z2"]|                b|               x3|    0|
-        # |["y3","z3"]|                a|               x1|    3|
-        # |["y3","z3"]|                a|               x2|    2|
-        # |["y3","z3"]|                b|               x3|    1|
-        # +-----------+-----------------+-----------------+-----+
+        # +-----------------+-----------------+-----------------+-----+
+        # |            index|__index_level_0__|__index_level_1__|value|
+        # +-----------------+-----------------+-----------------+-----+
+        # |{"a":["y1","z1"]}|                a|               x1|    1|
+        # |{"a":["y1","z1"]}|                a|               x2|    0|
+        # |{"a":["y1","z1"]}|                b|               x3|    0|
+        # |{"a":["y2","z2"]}|                a|               x1|    0|
+        # |{"a":["y2","z2"]}|                a|               x2|   50|
+        # |{"a":["y2","z2"]}|                b|               x3|    0|
+        # |{"a":["y3","z3"]}|                a|               x1|    3|
+        # |{"a":["y3","z3"]}|                a|               x2|    2|
+        # |{"a":["y3","z3"]}|                b|               x3|    1|
+        # +-----------------+-----------------+-----------------+-----+
         internal_index_column = "__index_level_{}__".format
         pairs = F.explode(F.array(*[
             F.struct(
@@ -1500,8 +1500,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ) for idx in self._internal.column_index]))
 
         exploded_df = self._sdf.withColumn("pairs", pairs).select(
-            [F.to_json(F.array([scol.cast('string')
-                                for scol in self._internal.index_scols])).alias('index'),
+            [F.to_json(F.struct(F.array([scol.cast('string')
+                                         for scol in self._internal.index_scols])
+                                .alias('a'))).alias('index'),
              F.col("pairs.*")])
 
         # After that, executes pivot with key and its index column.
@@ -1520,7 +1521,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf=transposed_df,
             data_columns=new_data_columns,
             index_map=[(col, None) for col in internal_index_columns],
-            column_index=[tuple(json.loads(col)) for col in new_data_columns],
+            column_index=[tuple(json.loads(col)['a']) for col in new_data_columns],
             column_index_names=None)
 
         return DataFrame(internal)
