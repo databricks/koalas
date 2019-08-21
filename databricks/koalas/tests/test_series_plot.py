@@ -65,8 +65,8 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot.bar(colormap='Paired')
-        ax2 = kdf['a'].plot.bar(colormap='Paired')
+        ax1 = pdf['a'].plot("bar", colormap='Paired')
+        ax2 = kdf['a'].plot("bar", colormap='Paired')
         self.compare_plots(ax1, ax2)
 
     def test_bar_plot_limited(self):
