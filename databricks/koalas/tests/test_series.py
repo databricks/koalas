@@ -619,5 +619,5 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         else:
             self.assertEqual(repr(kser.shift(periods=2, fill_value=0)),
                              repr(pser.shift(periods=2, fill_value=0)))
-        with self.assertRaisesRegex(ValueError, 'periods should be an int'):
+        with self.assertRaisesRegex(ValueError, 'periods should be an int; however'):
             kser.shift(periods=1.5)
