@@ -18,7 +18,6 @@ import base64
 from io import BytesIO
 
 import matplotlib
-matplotlib.use('agg')
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -27,6 +26,9 @@ from databricks import koalas
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.plot import KoalasHistPlotSummary, KoalasBoxPlotSummary
+
+
+matplotlib.use('agg')
 
 
 class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
@@ -201,7 +203,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
         ks = self.kdf1['a']
 
-        unsupported_functions = ['area', 'kde', 'barh', 'line']
+        unsupported_functions = ['kde', 'barh', 'line']
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*Series.*{}.*not implemented".format(name)):

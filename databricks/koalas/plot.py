@@ -40,10 +40,11 @@ def _get_standard_kind(kind):
 
 
 if LooseVersion(pd.__version__) < LooseVersion('0.25'):
-    from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot, PiePlot
+    from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot, PiePlot, \
+        AreaPlot
 else:
     from pandas.plotting._core import PlotAccessor
-    from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot
+    from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot, AreaPlot
     from pandas.plotting._matplotlib.core import MPLPlot
     _all_kinds = PlotAccessor._all_kinds
 
@@ -447,7 +448,28 @@ class KoalasPiePlot(PiePlot):
         super(KoalasPiePlot, self)._make_plot()
 
 
-_klasses = [KoalasHistPlot, KoalasBarPlot, KoalasBoxPlot, KoalasPiePlot]
+class KoalasAreaPlot(AreaPlot):
+    def __init__(self, data, **kwargs):
+        from databricks.koalas import DataFrame
+
+        self.fraction = 1 / (len(data) / 1000)  # make sure the records are roughly 1000.
+        if self.fraction > 1:
+            self.fraction = 1
+        sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
+        data = DataFrame(data._kdf._internal.copy(sdf=sampled)).to_pandas()
+        super(KoalasAreaPlot, self).__init__(data, **kwargs)
+
+    def _make_plot(self):
+        if self.fraction < 1:
+            self._get_ax(0).text(
+                1, 1, 'showing the sampled result by fraction %s' % self.fraction,
+                size=6, ha='right', va='bottom',
+                transform=self._get_ax(0).transAxes)
+
+        super(KoalasAreaPlot, self)._make_plot()
+
+
+_klasses = [KoalasHistPlot, KoalasBarPlot, KoalasBoxPlot, KoalasPiePlot, KoalasAreaPlot]
 _plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
 
 
@@ -696,7 +718,41 @@ class KoalasSeriesPlotMethods(PandasObject):
     density = kde
 
     def area(self, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='area')()
+        """
+        Draw a stacked area plot.
+
+        An area plot displays quantitative data visually.
+        This function wraps the matplotlib area function.
+
+        Parameters
+        ----------
+        x : label or position, optional
+            Coordinates for the X axis. By default uses the index.
+        y : label or position, optional
+            Column to plot. By default uses all columns.
+        stacked : bool, default True
+            Area plots are stacked by default. Set to False to create a
+            unstacked plot.
+        **kwds : optional
+            Additional keyword arguments are documented in
+            :meth:`DataFrame.plot`.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or numpy.ndarray
+            Area plot, or array of area plots if subplots is True.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({
+        ...     'sales': [3, 2, 3, 9, 10, 6],
+        ...     'signups': [5, 5, 6, 12, 14, 13],
+        ...     'visits': [20, 42, 28, 62, 81, 50],
+        ... }, index=pd.date_range(start='2018/01/01', end='2018/07/01',
+        ...                        freq='M'))
+        >>> ax = df.sales.plot.area()
+        """
+        return self(kind='area', **kwds)
 
     def pie(self, **kwds):
         """

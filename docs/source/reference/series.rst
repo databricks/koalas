@@ -329,6 +329,7 @@ specific plotting methods of the form ``Series.plot.<kind>``.
    :toctree: api/
 
    Series.plot
+   Series.plot.area
    Series.plot.bar
    Series.plot.box
    Series.plot.hist
