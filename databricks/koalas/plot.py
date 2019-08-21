@@ -41,10 +41,11 @@ def _get_standard_kind(kind):
 
 if LooseVersion(pd.__version__) < LooseVersion('0.25'):
     from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot, PiePlot, \
-        AreaPlot, LinePlot
+        AreaPlot, LinePlot, BarhPlot
 else:
     from pandas.plotting._core import PlotAccessor
-    from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot, AreaPlot, LinePlot
+    from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot, AreaPlot, \
+        LinePlot, BarhPlot
     from pandas.plotting._matplotlib.core import MPLPlot
     _all_kinds = PlotAccessor._all_kinds
 
@@ -490,8 +491,38 @@ class KoalasLinePlot(LinePlot):
         super(KoalasLinePlot, self)._make_plot()
 
 
+class KoalasBarhPlot(BarhPlot):
+    max_rows = 1000
+
+    def __init__(self, data, **kwargs):
+        # Simply use the first 1k elements and make it into a pandas dataframe
+        # For categorical variables, it is likely called from df.x.value_counts().plot.barh()
+        data = data.head(KoalasBarhPlot.max_rows + 1).to_pandas().to_frame()
+        self.partial = False
+        if len(data) > KoalasBarhPlot.max_rows:
+            self.partial = True
+            data = data.iloc[:KoalasBarhPlot.max_rows]
+        super(KoalasBarhPlot, self).__init__(data, **kwargs)
+
+    def _make_plot(self):
+        if self.partial:
+            self._get_ax(0).text(
+                1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
+                transform=self._get_ax(0).transAxes)
+            self.data = self.data.iloc[:KoalasBarhPlot.max_rows]
+
+        super(KoalasBarhPlot, self)._make_plot()
+
+
 _klasses = [
-    KoalasHistPlot, KoalasBarPlot, KoalasBoxPlot, KoalasPiePlot, KoalasAreaPlot, KoalasLinePlot]
+    KoalasHistPlot,
+    KoalasBarPlot,
+    KoalasBoxPlot,
+    KoalasPiePlot,
+    KoalasAreaPlot,
+    KoalasLinePlot,
+    KoalasBarhPlot,
+]
 _plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
 
 
@@ -715,7 +746,38 @@ class KoalasSeriesPlotMethods(PandasObject):
         return self(kind='bar', **kwds)
 
     def barh(self, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='barh')()
+        """
+        Make a horizontal bar plot.
+
+        A horizontal bar plot is a plot that presents quantitative data with
+        rectangular bars with lengths proportional to the values that they
+        represent. A bar plot shows comparisons among discrete categories. One
+        axis of the plot shows the specific categories being compared, and the
+        other axis represents a measured value.
+
+        Parameters
+        ----------
+        x : label or position, default DataFrame.index
+            Column to be used for categories.
+        y : label or position, default All numeric columns in dataframe
+            Columns to be plotted from the DataFrame.
+        **kwds
+            Keyword arguments to pass on to :meth:`databricks.koalas.DataFrame.plot`.
+
+        Returns
+        -------
+        :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+
+        See Also
+        --------
+        matplotlib.axes.Axes.bar : Plot a vertical bar plot using matplotlib.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
+        >>> ax = df.val.plot.barh()
+        """
+        return self(kind='barh', **kwds)
 
     def box(self, **kwds):
         """

@@ -331,6 +331,7 @@ specific plotting methods of the form ``Series.plot.<kind>``.
    Series.plot
    Series.plot.area
    Series.plot.bar
+   Series.plot.barh
    Series.plot.box
    Series.plot.hist
    Series.plot.line
