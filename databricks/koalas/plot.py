@@ -26,8 +26,6 @@ from pandas.core.base import PandasObject
 from pyspark.ml.feature import Bucketizer
 from pyspark.sql import functions as F
 
-from databricks.koalas.missing import _unsupported_function
-
 
 def _gca(rc=None):
     import matplotlib.pyplot as plt
@@ -41,11 +39,11 @@ def _get_standard_kind(kind):
 
 if LooseVersion(pd.__version__) < LooseVersion('0.25'):
     from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot, PiePlot, \
-        AreaPlot, LinePlot, BarhPlot
+        AreaPlot, LinePlot, BarhPlot, KdePlot
 else:
     from pandas.plotting._core import PlotAccessor
     from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot, AreaPlot, \
-        LinePlot, BarhPlot
+        LinePlot, BarhPlot, KdePlot
     from pandas.plotting._matplotlib.core import MPLPlot
     _all_kinds = PlotAccessor._all_kinds
 
@@ -514,6 +512,27 @@ class KoalasBarhPlot(BarhPlot):
         super(KoalasBarhPlot, self)._make_plot()
 
 
+class KoalasKdePlot(KdePlot):
+    def __init__(self, data, bw_method=None, ind=None, **kwargs):
+        from databricks.koalas import DataFrame
+
+        self.fraction = 1 / (len(data) / 1000)  # make sure the records are roughly 1000.
+        if self.fraction > 1:
+            self.fraction = 1
+        sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
+        data = DataFrame(data._kdf._internal.copy(sdf=sampled)).to_pandas()
+        super(KoalasKdePlot, self).__init__(data, bw_method, ind, **kwargs)
+
+    def _make_plot(self):
+        if self.fraction < 1:
+            self._get_ax(0).text(
+                1, 1, 'showing the sampled result by fraction %s' % self.fraction,
+                size=6, ha='right', va='bottom',
+                transform=self._get_ax(0).transAxes)
+
+        super(KoalasKdePlot, self)._make_plot()
+
+
 _klasses = [
     KoalasHistPlot,
     KoalasBarPlot,
@@ -522,6 +541,7 @@ _klasses = [
     KoalasAreaPlot,
     KoalasLinePlot,
     KoalasBarhPlot,
+    KoalasKdePlot,
 ]
 _plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
 
@@ -831,7 +851,67 @@ class KoalasSeriesPlotMethods(PandasObject):
         return self(kind='hist', bins=bins, **kwds)
 
     def kde(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='kde')()
+        """
+        Generate Kernel Density Estimate plot using Gaussian kernels.
+
+        In statistics, `kernel density estimation`_ (KDE) is a non-parametric
+        way to estimate the probability density function (PDF) of a random
+        variable. This function uses Gaussian kernels and includes automatic
+        bandwidth determination.
+
+        .. _kernel density estimation:
+            https://en.wikipedia.org/wiki/Kernel_density_estimation
+
+        Parameters
+        ----------
+        bw_method : str, scalar or callable, optional
+            The method used to calculate the estimator bandwidth. This can be
+            'scott', 'silverman', a scalar constant or a callable.
+            If None (default), 'scott' is used.
+            See :class:`scipy.stats.gaussian_kde` for more information.
+        ind : NumPy array or integer, optional
+            Evaluation points for the estimated PDF. If None (default),
+            1000 equally spaced points are used. If `ind` is a NumPy array, the
+            KDE is evaluated at the points passed. If `ind` is an integer,
+            `ind` number of equally spaced points are used.
+        **kwds : optional
+            Additional keyword arguments are documented in
+            :meth:`koalas.Series.plot`.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or numpy.ndarray of them
+
+        See Also
+        --------
+        scipy.stats.gaussian_kde : Representation of a kernel-density
+            estimate using Gaussian kernels. This is the function used
+            internally to estimate the PDF.
+
+        Examples
+        --------
+        Given a Series of points randomly sampled from an unknown
+        distribution, estimate its PDF using KDE with automatic
+        bandwidth determination and plot the results, evaluating them at
+        1000 equally spaced points (default):
+
+        >>> s = ks.Series([1, 2, 2.5, 3, 3.5, 4, 5])
+        >>> ax = s.plot.kde()
+
+        A scalar bandwidth can be specified. Using a small bandwidth value can
+        lead to over-fitting, while using a large bandwidth value may result
+        in under-fitting:
+
+        >>> ax = s.plot.kde(bw_method=0.3)
+
+        >>> ax = s.plot.kde(bw_method=3)
+
+        Finally, the `ind` parameter determines the evaluation points for the
+        plot of the estimated PDF:
+
+        >>> ax = s.plot.kde(ind=[1, 2, 3, 4, 5])
+        """
+        return self(kind='kde', bw_method=bw_method, ind=ind, **kwds)
 
     density = kde
 

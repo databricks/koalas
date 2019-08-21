@@ -23,7 +23,6 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas
-from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.plot import KoalasHistPlotSummary, KoalasBoxPlotSummary
 
@@ -69,6 +68,14 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
         ax1 = pdf['a'].plot("bar", colormap='Paired')
         ax2 = kdf['a'].plot("bar", colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+    def test_kde_plot(self):
+        pdf = self.pdf1
+        kdf = self.kdf1
+
+        ax1 = pdf['a'].plot("kde", colormap='Paired')
+        ax2 = kdf['a'].plot("kde", colormap='Paired')
         self.compare_plots(ax1, ax2)
 
     def test_bar_plot_limited(self):
@@ -227,12 +234,3 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(expected_whiskers[0], whiskers[0])
         self.assert_eq(expected_whiskers[1], whiskers[1])
         self.assert_eq(expected_fliers, fliers)
-
-    def test_missing(self):
-        ks = self.kdf1['a']
-
-        unsupported_functions = ['kde']
-        for name in unsupported_functions:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "method.*Series.*{}.*not implemented".format(name)):
-                getattr(ks.plot, name)()
