@@ -82,6 +82,27 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
         self.compare_plots(ax1, ax2)
 
+    def test_pie_plot(self):
+        pdf = self.pdf1
+        kdf = self.kdf1
+
+        ax1 = pdf['a'].plot.pie(colormap='Paired')
+        ax2 = kdf['a'].plot.pie(colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+    def test_pie_plot_limited(self):
+        pdf = self.pdf2
+        kdf = self.kdf2
+
+        _, ax1 = plt.subplots(1, 1)
+        ax1 = pdf['id'][:1000].plot.pie(colormap='Paired')
+        ax1.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
+                 transform=ax1.transAxes)
+        _, ax2 = plt.subplots(1, 1)
+        ax2 = kdf['id'].plot.pie(colormap='Paired')
+
+        self.compare_plots(ax1, ax2)
+
     def test_hist_plot(self):
         pdf = self.pdf1
         kdf = self.kdf1

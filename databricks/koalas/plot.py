@@ -15,18 +15,18 @@
 #
 
 from distutils.version import LooseVersion
+
 import matplotlib
 import numpy as np
 import pandas as pd
-
 from matplotlib.axes._base import _process_plot_format
 from pandas.core.dtypes.inference import is_integer, is_list_like
 from pandas.io.formats.printing import pprint_thing
 from pandas.core.base import PandasObject
-
-from databricks.koalas.missing import _unsupported_function
 from pyspark.ml.feature import Bucketizer
 from pyspark.sql import functions as F
+
+from databricks.koalas.missing import _unsupported_function
 
 
 def _gca(rc=None):
@@ -40,10 +40,10 @@ def _get_standard_kind(kind):
 
 
 if LooseVersion(pd.__version__) < LooseVersion('0.25'):
-    from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot
+    from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot, PiePlot
 else:
     from pandas.plotting._core import PlotAccessor
-    from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot
+    from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot
     from pandas.plotting._matplotlib.core import MPLPlot
     _all_kinds = PlotAccessor._all_kinds
 
@@ -59,7 +59,7 @@ class KoalasBarPlot(BarPlot):
         if len(data) > KoalasBarPlot.max_rows:
             self.partial = True
             data = data.iloc[:KoalasBarPlot.max_rows]
-        super().__init__(data, **kwargs)
+        super(KoalasBarPlot, self).__init__(data, **kwargs)
 
     def _plot(self, ax, x, y, w, start=0, log=False, **kwds):
         if self.partial:
@@ -424,7 +424,30 @@ class KoalasHistPlot(HistPlot):
         self.data = summary.calc_histogram(self.bins)
 
 
-_klasses = [KoalasHistPlot, KoalasBarPlot, KoalasBoxPlot]
+class KoalasPiePlot(PiePlot):
+    max_rows = 1000
+
+    def __init__(self, data, **kwargs):
+        # Simply use the first 1k elements and make it into a pandas dataframe
+        # For categorical variables, it is likely called from df.x.value_counts().plot.pie()
+        data = data.head(KoalasPiePlot.max_rows + 1).to_pandas().to_frame()
+        self.partial = False
+        if len(data) > KoalasPiePlot.max_rows:
+            self.partial = True
+            data = data.iloc[:KoalasPiePlot.max_rows]
+        super(KoalasPiePlot, self).__init__(data, **kwargs)
+
+    def _make_plot(self):
+        if self.partial:
+            self._get_ax(0).text(
+                1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
+                transform=self._get_ax(0).transAxes)
+            self.data = self.data.iloc[:KoalasPiePlot.max_rows]
+
+        super(KoalasPiePlot, self)._make_plot()
+
+
+_klasses = [KoalasHistPlot, KoalasBarPlot, KoalasBoxPlot, KoalasPiePlot]
 _plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
 
 
@@ -676,4 +699,41 @@ class KoalasSeriesPlotMethods(PandasObject):
         return _unsupported_function(class_name='pd.Series', method_name='area')()
 
     def pie(self, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='pie')()
+        """
+        Generate a pie plot.
+
+        A pie plot is a proportional representation of the numerical data in a
+        column. This function wraps :meth:`matplotlib.pyplot.pie` for the
+        specified column. If no column reference is passed and
+        ``subplots=True`` a pie plot is drawn for each numerical column
+        independently.
+
+        Parameters
+        ----------
+        y : int or label, optional
+            Label or position of the column to plot.
+            If not provided, ``subplots=True`` argument must be passed.
+        **kwds
+            Keyword arguments to pass on to :meth:`Koalas.Series.plot`.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or np.ndarray of them
+            A NumPy array is returned when `subplots` is True.
+
+
+        Examples
+        --------
+        In the example below we have a DataFrame with the information about
+        planet's mass and radius. We pass the the 'mass' column to the
+        pie function to get a pie plot.
+
+
+        >>> df = ks.DataFrame({'mass': [0.330, 4.87 , 5.97],
+        ...                    'radius': [2439.7, 6051.8, 6378.1]},
+        ...                   index=['Mercury', 'Venus', 'Earth'])
+        >>> plot = df.mass.plot.pie(figsize=(5, 5))
+
+        >>> plot = df.mass.plot.pie(subplots=True, figsize=(6, 3))
+        """
+        return self(kind='pie', **kwds)
