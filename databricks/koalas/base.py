@@ -703,11 +703,11 @@ class IndexOpsMixin(object):
 
     def _shift(self, periods, fill_value, part_cols=()):
         if not isinstance(periods, int):
-            raise ValueError('periods should be an int')
+            raise ValueError('periods should be an int; however, got [%s]' % type(periods))
 
         col = self._scol
         window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
             .rowsBetween(-periods, -periods)
         lag_col = F.lag(col, periods).over(window)
-        col = F.when(lag_col.isNull(), fill_value).otherwise(lag_col)
+        col = F.when(lag_col.isNull() | F.isnan(lag_col), fill_value).otherwise(lag_col)
         return self._with_new_scol(col).rename(self.name)
