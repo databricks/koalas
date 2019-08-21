@@ -1162,26 +1162,42 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf1 = pd.DataFrame(
             data={'col1': [1, 2], 'col2': [3, 4]},
             columns=['col1', 'col2'])
+        kdf1 = ks.from_pandas(pdf1)
 
         pdf2 = pd.DataFrame(
             data={'score': [9, 8], 'kids': [0, 0], 'age': [12, 22]},
             columns=['score', 'kids', 'age'])
+        kdf2 = ks.from_pandas(pdf2)
 
         self.assertEqual(
             repr(pdf1.transpose().sort_index()),
-            repr(ks.DataFrame(pdf1).transpose(limit=None).sort_index()))
+            repr(kdf1.transpose(limit=None).sort_index()))
 
         self.assert_eq(
             repr(pdf2.transpose().sort_index()),
-            repr(ks.DataFrame(pdf2).transpose(limit=None).sort_index()))
+            repr(kdf2.transpose(limit=None).sort_index()))
 
         self.assertEqual(
             repr(pdf1.transpose().sort_index()),
-            repr(ks.DataFrame(pdf1).transpose().sort_index()))
+            repr(kdf1.transpose().sort_index()))
 
         self.assert_eq(
             repr(pdf2.transpose().sort_index()),
-            repr(ks.DataFrame(pdf2).transpose().sort_index()))
+            repr(kdf2.transpose().sort_index()))
+
+        pdf3 = pd.DataFrame({('cg1', 'a'): [1, 2, 3], ('cg1', 'b'): [4, 5, 6],
+                             ('cg2', 'c'): [7, 8, 9], ('cg3', 'd'): [9, 9, 9]},
+                            index=pd.MultiIndex.from_tuples([('rg1', 'x'), ('rg1', 'y'),
+                                                             ('rg2', 'z')]))
+        kdf3 = ks.from_pandas(pdf3)
+
+        self.assertEqual(
+            repr(pdf3.transpose().sort_index()),
+            repr(kdf3.transpose(limit=None).sort_index()))
+
+        self.assertEqual(
+            repr(pdf3.transpose().sort_index()),
+            repr(kdf3.transpose().sort_index()))
 
     def _test_cummin(self, pdf, kdf):
         self.assert_eq(pdf.cummin(), kdf.cummin())
