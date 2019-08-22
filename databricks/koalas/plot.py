@@ -490,7 +490,8 @@ class KoalasLinePlot(LinePlot):
         super(KoalasLinePlot, self)._make_plot()
 
 
-_klasses = [KoalasHistPlot, KoalasBarPlot, KoalasBoxPlot, KoalasAreaPlot, KoalasLinePlot]
+_klasses = [
+    KoalasHistPlot, KoalasBarPlot, KoalasBoxPlot, KoalasPiePlot, KoalasAreaPlot, KoalasLinePlot]
 _plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
 
 
