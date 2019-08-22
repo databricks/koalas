@@ -50,25 +50,53 @@ else:
     _all_kinds = PlotAccessor._all_kinds
 
 
-class KoalasBarPlot(BarPlot):
+class TopNPlot:
     max_rows = 1000
 
-    def __init__(self, data, **kwargs):
+    def get_top_n(self, data):
         # Simply use the first 1k elements and make it into a pandas dataframe
-        # For categorical variables, it is likely called from df.x.value_counts().plot.bar()
-        data = data.head(KoalasBarPlot.max_rows + 1).to_pandas().to_frame()
+        # For categorical variables, it is likely called from df.x.value_counts().plot.xxx().
+        data = data.head(TopNPlot.max_rows + 1).to_pandas().to_frame()
         self.partial = False
-        if len(data) > KoalasBarPlot.max_rows:
+        if len(data) > TopNPlot.max_rows:
             self.partial = True
-            data = data.iloc[:KoalasBarPlot.max_rows]
-        super(KoalasBarPlot, self).__init__(data, **kwargs)
+            data = data.iloc[:TopNPlot.max_rows]
+        return data
 
-    def _plot(self, ax, x, y, w, start=0, log=False, **kwds):
+    def set_result_text(self, ax):
+        assert hasattr(self, "partial")
+
         if self.partial:
             ax.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
                     transform=ax.transAxes)
-            self.data = self.data.iloc[:KoalasBarPlot.max_rows]
 
+
+class SampledPlot:
+    def get_sampled(self, data):
+        from databricks.koalas import DataFrame
+
+        self.fraction = 1 / (len(data) / 1000)  # make sure the records are roughly 1000.
+        if self.fraction > 1:
+            self.fraction = 1
+        sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
+        return DataFrame(data._kdf._internal.copy(sdf=sampled)).to_pandas()
+
+    def set_result_text(self, ax):
+        assert hasattr(self, "fraction")
+
+        if self.fraction < 1:
+            ax.text(
+                1, 1, 'showing the sampled result by fraction %s' % self.fraction,
+                size=6, ha='right', va='bottom',
+                transform=ax.transAxes)
+
+
+class KoalasBarPlot(BarPlot, TopNPlot):
+    def __init__(self, data, **kwargs):
+        super(KoalasBarPlot, self).__init__(self.get_top_n(data), **kwargs)
+
+    def _plot(self, ax, x, y, w, start=0, log=False, **kwds):
+        self.set_result_text(ax)
         return ax.bar(x, y, w, bottom=start, log=log, **kwds)
 
 
@@ -426,91 +454,43 @@ class KoalasHistPlot(HistPlot):
         self.data = summary.calc_histogram(self.bins)
 
 
-class KoalasPiePlot(PiePlot):
+class KoalasPiePlot(PiePlot, TopNPlot):
     max_rows = 1000
 
     def __init__(self, data, **kwargs):
-        # Simply use the first 1k elements and make it into a pandas dataframe
-        # For categorical variables, it is likely called from df.x.value_counts().plot.pie()
-        data = data.head(KoalasPiePlot.max_rows + 1).to_pandas().to_frame()
-        self.partial = False
-        if len(data) > KoalasPiePlot.max_rows:
-            self.partial = True
-            data = data.iloc[:KoalasPiePlot.max_rows]
-        super(KoalasPiePlot, self).__init__(data, **kwargs)
+        super(KoalasPiePlot, self).__init__(self.get_top_n(data), **kwargs)
 
     def _make_plot(self):
-        if self.partial:
-            self._get_ax(0).text(
-                1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
-                transform=self._get_ax(0).transAxes)
-            self.data = self.data.iloc[:KoalasPiePlot.max_rows]
-
+        self.set_result_text(self._get_ax(0))
         super(KoalasPiePlot, self)._make_plot()
 
 
-class KoalasAreaPlot(AreaPlot):
+class KoalasAreaPlot(AreaPlot, SampledPlot):
     def __init__(self, data, **kwargs):
-        from databricks.koalas import DataFrame
-
-        self.fraction = 1 / (len(data) / 1000)  # make sure the records are roughly 1000.
-        if self.fraction > 1:
-            self.fraction = 1
-        sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
-        data = DataFrame(data._kdf._internal.copy(sdf=sampled)).to_pandas()
-        super(KoalasAreaPlot, self).__init__(data, **kwargs)
+        super(KoalasAreaPlot, self).__init__(self.get_sampled(data), **kwargs)
 
     def _make_plot(self):
-        if self.fraction < 1:
-            self._get_ax(0).text(
-                1, 1, 'showing the sampled result by fraction %s' % self.fraction,
-                size=6, ha='right', va='bottom',
-                transform=self._get_ax(0).transAxes)
-
+        self.set_result_text(self._get_ax(0))
         super(KoalasAreaPlot, self)._make_plot()
 
 
-class KoalasLinePlot(LinePlot):
+class KoalasLinePlot(LinePlot, SampledPlot):
     def __init__(self, data, **kwargs):
-        from databricks.koalas import DataFrame
-
-        self.fraction = 1 / (len(data) / 1000)  # make sure the records are roughly 1000.
-        if self.fraction > 1:
-            self.fraction = 1
-        sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
-        data = DataFrame(data._kdf._internal.copy(sdf=sampled)).to_pandas()
-        super(KoalasLinePlot, self).__init__(data, **kwargs)
+        super(KoalasLinePlot, self).__init__(self.get_sampled(data), **kwargs)
 
     def _make_plot(self):
-        if self.fraction < 1:
-            self._get_ax(0).text(
-                1, 1, 'showing the sampled result by fraction %s' % self.fraction,
-                size=6, ha='right', va='bottom',
-                transform=self._get_ax(0).transAxes)
-
+        self.set_result_text(self._get_ax(0))
         super(KoalasLinePlot, self)._make_plot()
 
 
-class KoalasBarhPlot(BarhPlot):
+class KoalasBarhPlot(BarhPlot, TopNPlot):
     max_rows = 1000
 
     def __init__(self, data, **kwargs):
-        # Simply use the first 1k elements and make it into a pandas dataframe
-        # For categorical variables, it is likely called from df.x.value_counts().plot.barh()
-        data = data.head(KoalasBarhPlot.max_rows + 1).to_pandas().to_frame()
-        self.partial = False
-        if len(data) > KoalasBarhPlot.max_rows:
-            self.partial = True
-            data = data.iloc[:KoalasBarhPlot.max_rows]
-        super(KoalasBarhPlot, self).__init__(data, **kwargs)
+        super(KoalasBarhPlot, self).__init__(self.get_top_n(data), **kwargs)
 
     def _make_plot(self):
-        if self.partial:
-            self._get_ax(0).text(
-                1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
-                transform=self._get_ax(0).transAxes)
-            self.data = self.data.iloc[:KoalasBarhPlot.max_rows]
-
+        self.set_result_text(self._get_ax(0))
         super(KoalasBarhPlot, self)._make_plot()
 
 
@@ -720,12 +700,6 @@ class KoalasSeriesPlotMethods(PandasObject):
         See Also
         --------
         matplotlib.pyplot.plot : Plot y versus x as lines and/or markers.
-
-        Examples
-        --------
-
-        >>> s = ks.Series([1, 3, 2])
-        >>> p = s.plot.line()
         """
         return self(kind="line", x=x, y=y, **kwargs)
 
@@ -775,7 +749,7 @@ class KoalasSeriesPlotMethods(PandasObject):
         Examples
         --------
         >>> df = ks.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
-        >>> ax = df.val.plot.barh()
+        >>> plot = df.val.plot.barh()
         """
         return self(kind='barh', **kwds)
 
@@ -868,7 +842,7 @@ class KoalasSeriesPlotMethods(PandasObject):
         ...     'visits': [20, 42, 28, 62, 81, 50],
         ... }, index=pd.date_range(start='2018/01/01', end='2018/07/01',
         ...                        freq='M'))
-        >>> ax = df.sales.plot.area()
+        >>> plot = df.sales.plot.area()
         """
         return self(kind='area', **kwds)
 
@@ -894,7 +868,6 @@ class KoalasSeriesPlotMethods(PandasObject):
         -------
         matplotlib.axes.Axes or np.ndarray of them
             A NumPy array is returned when `subplots` is True.
-
 
         Examples
         --------
