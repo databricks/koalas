@@ -2278,6 +2278,94 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.withColumn(decimal[0], F.round(scol_for(sdf, decimal[0]), decimal[1]))
         return DataFrame(self._internal.copy(sdf=sdf))
 
+    def idxmax(self, skipna=True):
+        """
+        Return index of first occurrence of maximum over requested axis.
+        NA/null values are excluded.
+
+        Parameters
+        ----------
+        skipna : bool, default True
+            Exclude NA/null values. If the entire Series is NA, the result
+            will be NA.
+
+        Returns
+        -------
+        Series
+            Indexes of maxima along the specified axis.
+
+        See Also
+        --------
+        Series.idxmax
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 2, 2, 3],
+        ...                    'b': [1, 2, 3, 4, 5],
+        ...                    'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+
+        >>> df.idxmax()
+        a    4
+        b    4
+        c    0
+        dtype: int64
+
+        >>> df.set_index(['a','b']).idxmax()
+        c    (1, 1)
+        dtype: object
+        """
+        idxmax_data = []
+        idxmax_index = []
+        for col in self._internal.data_columns:
+            idxmax_tuple = self[col].idxmax(skipna=skipna)
+            idxmax_index.append(col)
+            idxmax_data.append(idxmax_tuple)
+        return pd.Series(data=idxmax_data, index=idxmax_index)
+
+    def idxmin(self, skipna=True):
+        """
+        Return index of first occurrence of minimum over requested axis.
+        NA/null values are excluded.
+
+        Parameters
+        ----------
+        skipna : bool, default True
+            Exclude NA/null values. If the entire Series is NA, the result
+            will be NA.
+
+        Returns
+        -------
+        Series
+            Indexes of minimum along the specified axis.
+
+        See Also
+        --------
+        Series.idxmin
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 2, 2, 2, 3],
+        ...                    'b': [1, 2, 3, 4, 5],
+        ...                    'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+
+        >>> df.idxmin()
+        a    0
+        b    0
+        c    4
+        dtype: int64
+
+        >>> df.set_index(['a','b']).idxmin()
+        c    (3, 5)
+        dtype: object
+        """
+        idxmin_data = []
+        idxmin_index = []
+        for col in self._internal.data_columns:
+            idxmin_tuple = self[col].idxmin(skipna=skipna)
+            idxmin_index.append(col)
+            idxmin_data.append(idxmin_tuple)
+        return pd.Series(data=idxmin_data, index=idxmin_index)
+
     def duplicated(self, subset=None, keep='first'):
         """
         Return boolean Series denoting duplicate rows, optionally only considering certain columns.

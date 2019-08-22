@@ -170,6 +170,8 @@ Reshaping, sorting, transposing
    DataFrame.transpose
    DataFrame.reindex
    DataFrame.rank
+   DataFrame.idxmax
+   DataFrame.idxmin
 
 Combining / joining / merging
 -----------------------------

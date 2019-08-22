@@ -1511,3 +1511,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(TypeError, "mutually exclusive"):
             kdf.filter(regex='b.*', like="aaa")
+
+    def test_idxmax(self):
+        pdf = pd.DataFrame({'a': [1, 2, 2, 2, 3],
+                            'b': [1, 2, 3, 4, 5],
+                            'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.idxmax(), pdf.idxmax())
+
+    def test_idxmin(self):
+        pdf = pd.DataFrame({'a': [1, 2, 2, 2, 3],
+                            'b': [1, 2, 3, 4, 5],
+                            'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.idxmin(), pdf.idxmin())
