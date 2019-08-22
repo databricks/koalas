@@ -45,6 +45,8 @@ Computations / Descriptive Stats
    GroupBy.nunique
    GroupBy.size
    GroupBy.diff
+   GroupBy.idxmax
+   GroupBy.idxmin
    GroupBy.nsmallest
    GroupBy.nlargest
    GroupBy.fillna
