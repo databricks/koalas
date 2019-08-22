@@ -112,6 +112,27 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         ax2 = kdf['a'].plot("line", colormap='Paired')
         self.compare_plots(ax1, ax2)
 
+    def test_barh_plot(self):
+        pdf = self.pdf1
+        kdf = self.kdf1
+
+        ax1 = pdf['a'].plot("barh", colormap='Paired')
+        ax2 = kdf['a'].plot("barh", colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+    def test_barh_plot_limited(self):
+        pdf = self.pdf2
+        kdf = self.kdf2
+
+        _, ax1 = plt.subplots(1, 1)
+        ax1 = pdf['id'][:1000].plot.barh(colormap='Paired')
+        ax1.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
+                 transform=ax1.transAxes)
+        _, ax2 = plt.subplots(1, 1)
+        ax2 = kdf['id'].plot.barh(colormap='Paired')
+
+        self.compare_plots(ax1, ax2)
+
     def test_hist_plot(self):
         pdf = self.pdf1
         kdf = self.kdf1
@@ -210,7 +231,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
         ks = self.kdf1['a']
 
-        unsupported_functions = ['kde', 'barh']
+        unsupported_functions = ['kde']
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*Series.*{}.*not implemented".format(name)):
