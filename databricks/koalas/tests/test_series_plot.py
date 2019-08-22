@@ -210,11 +210,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
         ks = self.kdf1['a']
 
-<<<<<<< HEAD
-        unsupported_functions = ['kde', 'barh', 'line']
-=======
-        unsupported_functions = ['area', 'kde', 'pie', 'barh']
->>>>>>> Add plot.line in Series
+        unsupported_functions = ['kde', 'barh']
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*Series.*{}.*not implemented".format(name)):
