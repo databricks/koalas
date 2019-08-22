@@ -878,6 +878,85 @@ class DataFrame(_Frame, Generic[T]):
         cols = list(self.columns)
         return list((col_name, self[col_name]) for col_name in cols)
 
+    def to_csv(self, path_or_buf=None, sep=',', na_rep='', columns=None, header=True,
+               index=True, encoding=None, quotechar='"', date_format=None, escapechar=None):
+        r"""
+        Write object to a comma-separated values (csv) file.
+
+        .. note:: Spark writes files to HDFS by default.
+        If you want to save the file locally, you need to use path like below
+        `'files:/' + local paths`  like 'files:/work/data.csv'. Otherwise,
+        you will write the file to the HDFS path where the spark program starts.
+
+        Parameters
+        ----------
+        path_or_buf : str or file handle, default None
+            File path or object, if None is provided the result is returned as
+            a string.
+        sep : str, default ','
+            String of length 1. Field delimiter for the output file.
+        na_rep : str, default ''
+            Missing data representation.
+        columns : sequence, optional
+            Columns to write.
+        header : bool or list of str, default True
+            Write out the column names. If a list of strings is given it is
+            assumed to be aliases for the column names.
+        index : bool, default True
+            Write row names (index).
+        encoding : str, optional
+            A string representing the encoding to use in the output file,
+            defaults to 'utf-8'.
+        quotechar : str, default '\"'
+            String of length 1. Character used to quote fields.
+        date_format : str, default None
+            Format string for datetime objects.
+        escapechar : str, default None
+            String of length 1. Character used to escape `sep` and `quotechar`
+            when appropriate.
+
+        See Also
+        --------
+        read_csv
+        DataFrame.to_delta
+        DataFrame.to_table
+        DataFrame.to_parquet
+        DataFrame.to_spark_io
+        Examples
+        --------
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
+        >>> df.to_csv(path=r'%s/to_csv/foo.csv' % path)
+        """
+        if columns is not None:
+            data_columns = columns
+        else:
+            data_columns = self._internal.data_columns
+
+        if index:
+            index_columns = self._internal.index_columns
+        else:
+            index_columns = []
+
+        if isinstance(header, list):
+            sdf = self._sdf.select(index_columns +
+                                   [self._internal.scol_for(old_name).alias(new_name)
+                                    for (old_name, new_name) in zip(data_columns, header)])
+            header = True
+        else:
+            sdf = self._sdf.select(index_columns + data_columns)
+
+        sdf.write.csv(path=path_or_buf, sep=sep, nullValue=na_rep, header=header,
+                      encoding=encoding, quote=quotechar, dateFormat=date_format,
+                      charToEscapeQuoteEscaping=escapechar)
+
     def to_clipboard(self, excel=True, sep=None, **kwargs):
         """
         Copy object to the system clipboard.
