@@ -1066,7 +1066,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             kseries = self
 
         return validate_arguments_and_invoke_function(
-            kseries.to_pandas(), self.to_string, pd.Series.to_string, args)
+            kseries._to_internal_pandas(), self.to_string, pd.Series.to_string, args)
 
     def to_clipboard(self, excel=True, sep=None, **kwargs):
         # Docstring defined below by reusing DataFrame.to_clipboard's.
@@ -1074,7 +1074,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         kseries = self
 
         return validate_arguments_and_invoke_function(
-            kseries.to_pandas(), self.to_clipboard, pd.Series.to_clipboard, args)
+            kseries._to_internal_pandas(), self.to_clipboard, pd.Series.to_clipboard, args)
 
     to_clipboard.__doc__ = DataFrame.to_clipboard.__doc__
 
@@ -1117,7 +1117,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         args = locals()
         kseries = self
         return validate_arguments_and_invoke_function(
-            kseries.to_pandas(), self.to_dict, pd.Series.to_dict, args)
+            kseries._to_internal_pandas(), self.to_dict, pd.Series.to_dict, args)
 
     def to_latex(self, buf=None, columns=None, col_space=None, header=True, index=True,
                  na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
@@ -1127,7 +1127,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         args = locals()
         kseries = self
         return validate_arguments_and_invoke_function(
-            kseries.to_pandas(), self.to_latex, pd.Series.to_latex, args)
+            kseries._to_internal_pandas(), self.to_latex, pd.Series.to_latex, args)
 
     to_latex.__doc__ = DataFrame.to_latex.__doc__
 
@@ -1166,7 +1166,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             to be small, as all the data is loaded into the driver's memory.
 
         """
-        return self.to_pandas().to_list()
+        return self._to_internal_pandas().to_list()
 
     tolist = to_list
 
@@ -2967,8 +2967,16 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def __str__(self):
         return self._pandas_orig_repr()
 
+    def _to_internal_pandas(self):
+        """
+        Return a pandas Series directly from _internal to avoid overhead of copy.
+
+        This method is for internal use only.
+        """
+        return _col(self._internal.pandas_df)
+
     def __repr__(self):
-        pser = self.head(max_display_count + 1).to_pandas()
+        pser = self.head(max_display_count + 1)._to_internal_pandas()
         pser_length = len(pser)
         repr_string = repr(pser.iloc[:max_display_count])
         if pser_length > max_display_count:

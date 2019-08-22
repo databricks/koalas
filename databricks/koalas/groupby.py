@@ -804,7 +804,7 @@ class GroupBy(object):
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = 1000
-            pdf = self._kdf.head(limit + 1).to_pandas()
+            pdf = self._kdf.head(limit + 1)._to_internal_pandas()
             pdf = pdf.groupby(input_groupnames).apply(func)
             kdf = DataFrame(pdf)
             return_schema = kdf._sdf.schema
@@ -1382,7 +1382,7 @@ class GroupBy(object):
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = 1000
-            pdf = self._kdf.head(limit + 1).to_pandas()
+            pdf = self._kdf.head(limit + 1)._to_internal_pandas()
             pdf = pdf.groupby(input_groupnames).transform(func)
             kdf = DataFrame(pdf)
             return_schema = kdf._sdf.schema
