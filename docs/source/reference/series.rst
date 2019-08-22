@@ -336,7 +336,6 @@ specific plotting methods of the form ``Series.plot.<kind>``.
    Series.plot.hist
    Series.plot.line
    Series.plot.pie
-   Series.plot.line
 
 .. currentmodule:: databricks.koalas
 .. autosummary::
