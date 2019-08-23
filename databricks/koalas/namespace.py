@@ -1225,14 +1225,14 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                 "Only can inner (intersect) or outer (union) join the other axis.")
 
     if ignore_index:
-        sdfs = [kdf._internal.spark_df for kdf in kdfs]
+        sdfs = [kdf._sdf.select(kdf._internal.data_scols) for kdf in kdfs]
     else:
-        sdfs = [kdf._internal.spark_internal_df for kdf in kdfs]
+        sdfs = [kdf._sdf.select(kdf._internal.index_scols + kdf._internal.data_scols)
+                for kdf in kdfs]
     concatenated = reduce(lambda x, y: x.union(y), sdfs)
 
     index_map = None if ignore_index else kdfs[0]._internal.index_map
-    result_kdf = DataFrame(kdfs[0]._internal.copy(sdf=concatenated, data_columns=None,
-                                                  column_index=merged_columns, index_map=index_map))
+    result_kdf = DataFrame(kdfs[0]._internal.copy(sdf=concatenated, index_map=index_map))
 
     if should_return_series:
         # If all input were Series, we should return Series.
