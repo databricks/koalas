@@ -489,16 +489,29 @@ class _InternalFrame(object):
             raise ValueError("'DEFAULT_INDEX' environment variable should be one of 'one-by-one',"
                              " 'distributed-one-by-one' and 'distributed'")
 
-    def scol_for(self, column_name: str) -> spark.Column:
-        """ Return Spark Column for the given column name. """
-        if self._scol is not None and column_name == self._data_columns[0]:
+    @lazy_property
+    def _column_index_map(self):
+        return dict(zip(self.column_index, self.data_columns))
+
+    def column_name_for(self, column_name_or_index: Union[str, Tuple[str]]) -> str:
+        """ Return the actual Spark column name for the given column name or index. """
+        if column_name_or_index not in self._column_index_map:
+            # TODO: assert column_name_or_index not in self.data_columns
+            return column_name_or_index
+        else:
+            return self._column_index_map[column_name_or_index]
+
+    def scol_for(self, column_name_or_index: Union[str, Tuple[str]]) -> spark.Column:
+        """ Return Spark Column for the given column name or index. """
+        if self._scol is not None and (column_name_or_index == self._data_columns[0]
+                                       or column_name_or_index == self._column_index[0]):
             return self._scol
         else:
-            return scol_for(self._sdf, column_name)
+            return scol_for(self._sdf, self.column_name_for(column_name_or_index))
 
-    def spark_type_for(self, column_name: str) -> DataType:
-        """ Return DataType for the given column name. """
-        return self._sdf.schema[column_name].dataType
+    def spark_type_for(self, column_name_or_index: Union[str, Tuple[str]]) -> DataType:
+        """ Return DataType for the given column name or index. """
+        return self._sdf.schema[self.column_name_for(column_name_or_index)].dataType
 
     @property
     def sdf(self) -> spark.DataFrame:
@@ -513,7 +526,7 @@ class _InternalFrame(object):
     @lazy_property
     def data_scols(self) -> List[spark.Column]:
         """ Return Spark Columns for the managed data columns. """
-        return [self.scol_for(column) for column in self.data_columns]
+        return [self.scol_for(column) for column in self.column_index]
 
     @lazy_property
     def index_columns(self) -> List[str]:
@@ -578,7 +591,7 @@ class _InternalFrame(object):
         data_columns = []
         for column, idx in zip(self._data_columns, self.column_index):
             if column not in index_columns:
-                scol = self.scol_for(column)
+                scol = self.scol_for(idx)
                 name = str(idx) if len(idx) > 1 else idx[0]
                 if column != name:
                     scol = scol.alias(name)
@@ -592,7 +605,7 @@ class _InternalFrame(object):
         data_columns = []
         for column, idx in zip(self._data_columns, self.column_index):
             if column not in index_columns:
-                scol = self.scol_for(column)
+                scol = self.scol_for(idx)
                 name = str(idx) if len(idx) > 1 else idx[0]
                 if column != name:
                     scol = scol.alias(name)

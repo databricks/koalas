@@ -6357,37 +6357,37 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.series import Series
         assert isinstance(key, tuple)
-        columns = list(zip(self._internal.data_columns, self._internal.column_index))
+        indexes = [(idx, idx) for idx in self._internal.column_index]
         for k in key:
-            columns = [(column, idx[1:]) for column, idx in columns if idx[0] == k]
-            if len(columns) == 0:
+            indexes = [(index, idx[1:]) for index, idx in indexes if idx[0] == k]
+            if len(indexes) == 0:
                 raise KeyError(k)
         recursive = False
-        if all(len(idx) > 0 and idx[0] == '' for _, idx in columns):
+        if all(len(idx) > 0 and idx[0] == '' for _, idx in indexes):
             # If the head is '', drill down recursively.
             recursive = True
-            for i, (col, idx) in enumerate(columns):
-                columns[i] = (col, tuple([str(key), *idx[1:]]))
+            for i, (col, idx) in enumerate(indexes):
+                indexes[i] = (col, tuple([str(key), *idx[1:]]))
 
         column_index_names = None
         if self._internal.column_index_names is not None:
             # Manage column index names
-            level = column_index_level([idx for _, idx in columns])
+            level = column_index_level([idx for _, idx in indexes])
             column_index_names = self._internal.column_index_names[-level:]
 
-        if all(len(idx) == 0 for _, idx in columns):
+        if all(len(idx) == 0 for _, idx in indexes):
             try:
-                cols = set(col for col, _ in columns)
-                assert len(cols) == 1
+                idxes = set(idx for idx, _ in indexes)
+                assert len(idxes) == 1
                 kdf_or_ser = \
-                    Series(self._internal.copy(scol=self._internal.scol_for(list(cols)[0])),
+                    Series(self._internal.copy(scol=self._internal.scol_for(list(idxes)[0])),
                            anchor=self)
             except AnalysisException:
                 raise KeyError(key)
         else:
             kdf_or_ser = DataFrame(self._internal.copy(
-                data_columns=[col for col, _ in columns],
-                column_index=[idx for _, idx in columns],
+                data_columns=[self._internal.column_name_for(idx) for idx, _ in indexes],
+                column_index=[idx for _, idx in indexes],
                 column_index_names=column_index_names))
 
         if recursive:
