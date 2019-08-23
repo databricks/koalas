@@ -3595,7 +3595,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
         ...                        columns='C', aggfunc='sum')
         >>> table  # doctest: +NORMALIZE_WHITESPACE
-                 large  small
+        C        large  small
         A   B
         foo one    4.0      1
             two    NaN      6
@@ -3607,7 +3607,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
         ...                        columns='C', aggfunc='sum', fill_value=0)
         >>> table  # doctest: +NORMALIZE_WHITESPACE
-                 large  small
+        C        large  small
         A   B
         foo one      4      1
             two      0      6
@@ -3620,7 +3620,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> table = df.pivot_table(values = ['D'], index =['C'],
         ...                        columns="A", aggfunc={'D':'mean'})
         >>> table  # doctest: +NORMALIZE_WHITESPACE
-               bar       foo
+        A      bar       foo
         C
         small  5.5  2.333333
         large  5.5  2.000000
@@ -3690,6 +3690,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if index is not None:
             if isinstance(values, list):
+                data_columns = [column for column in sdf.columns if column not in index]
+
                 if len(values) == 2:
                     # If we have two values, Spark will return column's name
                     # in this format: column_values, where column contains
@@ -3697,23 +3699,43 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     # the column list passed to the pivot_table().
                     # E.g. if column is b and values is ['b','e'],
                     # then ['2_b', '2_e', '3_b', '3_e'].
-                    data_columns = [column for column in sdf.columns if column not in index]
+
                     # We sort the columns of Spark DataFrame by values.
                     data_columns.sort(key=lambda x: x.split('_', 1)[1])
                     sdf = sdf.select(index + data_columns)
-                kdf = DataFrame(sdf).set_index(index)
 
-                if len(values) == 2:
+                    index_map = [(column, column) for column in index]
+                    internal = _InternalFrame(sdf=sdf, data_columns=data_columns,
+                                              index_map=index_map)
+                    kdf = DataFrame(internal)
+
                     # We build the MultiIndex from the list of columns returned by Spark.
                     tuples = [(name.split('_')[1], self.dtypes[columns].type(name.split('_')[0]))
                               for name in kdf._internal.data_columns]
                     kdf.columns = pd.MultiIndex.from_tuples(tuples, names=[None, columns])
-
+                else:
+                    index_map = [(column, column) for column in index]
+                    internal = _InternalFrame(sdf=sdf, data_columns=data_columns,
+                                              index_map=index_map, column_index_names=[columns])
+                    kdf = DataFrame(internal)
                 return kdf
             else:
-                return DataFrame(sdf).set_index(index)
+                data_columns = [column for column in sdf.columns if column not in index]
+                index_map = [(column, column) for column in index]
+                internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map,
+                                          column_index_names=[columns])
+                return DataFrame(internal)
         else:
-            return DataFrame(sdf.withColumn(columns, F.lit(values))).set_index(columns)
+            if isinstance(values, list):
+                index_values = values[-1]
+            else:
+                index_values = values
+            sdf = sdf.withColumn(columns, F.lit(index_values))
+            data_columns = [column for column in sdf.columns if column not in [columns]]
+            index_map = [(column, column) for column in [columns]]
+            internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map,
+                                      column_index_names=[columns])
+            return DataFrame(internal)
 
     def pivot(self, index=None, columns=None, values=None):
         """
@@ -3763,14 +3785,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.pivot(index='foo', columns='bar', values='baz').sort_index()
         ... # doctest: +NORMALIZE_WHITESPACE
-             A  B  C
+        bar  A  B  C
         foo
         one  1  2  3
         two  4  5  6
 
         >>> df.pivot(columns='bar', values='baz').sort_index()
         ... # doctest: +NORMALIZE_WHITESPACE
-             A    B    C
+        bar  A    B    C
         0  1.0  NaN  NaN
         1  NaN  2.0  NaN
         2  NaN  NaN  3.0
@@ -3795,7 +3817,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.pivot(index='foo', columns='bar', values='baz').sort_index()
         ... # doctest: +NORMALIZE_WHITESPACE
-               A    B    C
+        bar    A    B    C
         foo
         one  1.0  NaN  NaN
         two  NaN  3.0  4.0
