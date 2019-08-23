@@ -38,6 +38,17 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
             ks.concat([kdf, kdf.reset_index()]),
             pd.concat([pdf, pdf.reset_index()]))
 
+        self.assert_eq(
+            ks.concat([kdf, kdf[['A']]], ignore_index=True),
+            pd.concat([pdf, pdf[['A']]], ignore_index=True))
+
+        self.assert_eq(
+            ks.concat([kdf, kdf[['A']]], join="inner"),
+            pd.concat([pdf, pdf[['A']]], join="inner"))
+
+        self.assert_eq(repr(ks.concat([kdf, kdf.A, kdf.B])),
+                       repr(pd.concat([pdf, pdf.A, pdf.B])))
+
         self.assertRaisesRegex(TypeError, "first argument must be", lambda: ks.concat(kdf))
         self.assertRaisesRegex(
             TypeError, "cannot concatenate object", lambda: ks.concat([kdf, 1]))
@@ -46,8 +57,31 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaisesRegex(
             ValueError, "Index type and names should be same", lambda: ks.concat([kdf, kdf2]))
 
+        self.assertRaisesRegex(ValueError, "No objects to concatenate", lambda: ks.concat([]))
+
         self.assertRaisesRegex(
             ValueError, "All objects passed", lambda: ks.concat([None, None]))
 
         self.assertRaisesRegex(
             ValueError, 'axis should be either 0 or', lambda: ks.concat([kdf, kdf], axis=1))
+
+        pdf3 = pdf.copy()
+        kdf3 = kdf.copy()
+
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B')])
+        pdf3.columns = columns
+        kdf3.columns = columns
+
+        self.assert_eq(ks.concat([kdf3, kdf3.reset_index()]),
+                       pd.concat([pdf3, pdf3.reset_index()]))
+
+        self.assert_eq(
+            ks.concat([kdf3, kdf3[[('X', 'A')]]], ignore_index=True),
+            pd.concat([pdf3, pdf3[[('X', 'A')]]], ignore_index=True))
+
+        self.assert_eq(
+            ks.concat([kdf3, kdf3[[('X', 'A')]]], join="inner"),
+            pd.concat([pdf3, pdf3[[('X', 'A')]]], join="inner"))
+
+        self.assertRaisesRegex(ValueError, "MultiIndex columns should have the same levels",
+                               lambda: ks.concat([kdf, kdf3]))

@@ -434,15 +434,24 @@ class LocIndexer(object):
         elif all(isinstance(key, Series) for key in cols_sel):
             columns = [_make_col(key) for key in cols_sel]
             column_index = None
+        elif (any(isinstance(key, str) for key in cols_sel)
+              and any(isinstance(key, tuple) for key in cols_sel)):
+            raise TypeError('Expected tuple, got str')
         else:
+            if all(isinstance(key, tuple) for key in cols_sel):
+                level = self._kdf._internal.column_index_level
+                if any(len(key) != level for key in cols_sel):
+                    raise ValueError('All the key level should be the same as column index level.')
+
             column_to_index = list(zip(self._kdf._internal.data_columns,
                                        self._kdf._internal.column_index))
+
             columns = []
             column_index = []
             for key in cols_sel:
                 found = False
                 for column, idx in column_to_index:
-                    if idx[0] == key:
+                    if idx == key or idx[0] == key:
                         columns.append(_make_col(column))
                         column_index.append(idx)
                         found = True
