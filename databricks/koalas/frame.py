@@ -3594,8 +3594,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
         ...                        columns='C', aggfunc='sum')
-        >>> table  # doctest: +SKIP
-        C        large  small
+        >>> table  # doctest: +NORMALIZE_WHITESPACE
+                 large  small
         A   B
         foo one    4.0      1
             two    NaN      6
@@ -3606,8 +3606,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
         ...                        columns='C', aggfunc='sum', fill_value=0)
-        >>> table  # doctest: +SKIP
-        C        large  small
+        >>> table  # doctest: +NORMALIZE_WHITESPACE
+                 large  small
         A   B
         foo one      4      1
             two      0      6
@@ -3619,8 +3619,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> table = df.pivot_table(values = ['D'], index =['C'],
         ...                        columns="A", aggfunc={'D':'mean'})
-        >>> table  # doctest: +SKIP
-        A      bar       foo
+        >>> table  # doctest: +NORMALIZE_WHITESPACE
+               bar       foo
         C
         small  5.5  2.333333
         large  5.5  2.000000
