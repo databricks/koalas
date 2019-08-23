@@ -18,7 +18,7 @@
 An internal immutable DataFrame with some metadata to manage indexes.
 """
 
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 import os
 from itertools import accumulate
 
@@ -490,13 +490,14 @@ class _InternalFrame(object):
                              " 'distributed-one-by-one' and 'distributed'")
 
     @lazy_property
-    def _column_index_map(self):
+    def _column_index_map(self) -> Dict[Tuple[str], str]:
         return dict(zip(self.column_index, self.data_columns))
 
     def column_name_for(self, column_name_or_index: Union[str, Tuple[str]]) -> str:
         """ Return the actual Spark column name for the given column name or index. """
         if column_name_or_index not in self._column_index_map:
             # TODO: assert column_name_or_index not in self.data_columns
+            assert isinstance(column_name_or_index, str)
             return column_name_or_index
         else:
             return self._column_index_map[column_name_or_index]
