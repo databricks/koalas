@@ -46,9 +46,6 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
             ks.concat([kdf, kdf[['A']]], join="inner"),
             pd.concat([pdf, pdf[['A']]], join="inner"))
 
-        self.assert_eq(repr(ks.concat([kdf, kdf.A, kdf.B])),
-                       repr(pd.concat([pdf, pdf.A, pdf.B])))
-
         self.assertRaisesRegex(TypeError, "first argument must be", lambda: ks.concat(kdf))
         self.assertRaisesRegex(
             TypeError, "cannot concatenate object", lambda: ks.concat([kdf, 1]))
