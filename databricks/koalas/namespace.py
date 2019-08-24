@@ -20,6 +20,7 @@ Wrappers around spark that correspond to common pandas functions.
 from typing import Optional, Union
 from collections import OrderedDict
 from collections.abc import Iterable
+from functools import reduce
 import itertools
 
 import numpy as np
@@ -967,7 +968,7 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
         kdf = data.copy()
         if columns is None:
             columns = [column for column in kdf.columns
-                       if isinstance(data._sdf.schema[column].dataType,
+                       if isinstance(kdf._internal.spark_type_for(column),
                                      _get_dummies_default_accept_types)]
         if len(columns) == 0:
             return kdf
@@ -978,7 +979,7 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
         column_set = set(columns)
         remaining_columns = [kdf[column] for column in kdf.columns if column not in column_set]
 
-    if any(not isinstance(kdf._sdf.schema[column].dataType, _get_dummies_acceptable_types)
+    if any(not isinstance(kdf._internal.spark_type_for(column), _get_dummies_acceptable_types)
            for column in columns):
         raise ValueError("get_dummies currently only accept {} values"
                          .format(', '.join([t.typeName() for t in _get_dummies_acceptable_types])))
@@ -988,8 +989,9 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
             "Length of 'prefix' ({}) did not match the length of the columns being encoded ({})."
             .format(len(prefix), len(columns)))
 
-    all_values = _reduce_spark_multi(kdf._sdf, [F.collect_set(F.col(column)).alias(column)
-                                                for column in columns])
+    all_values = _reduce_spark_multi(kdf._sdf,
+                                     [F.collect_set(kdf._internal.scol_for(column)).alias(column)
+                                      for column in columns])
     for i, column in enumerate(columns):
         values = sorted(all_values[i])
         if drop_first:
@@ -1129,7 +1131,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
     0      c       3
     1      d       4
     """
-    if not isinstance(objs, (dict, Iterable)):
+    if not isinstance(objs, Iterable):  # TODO: support dict
         raise TypeError('first argument must be an iterable of koalas '
                         'objects, you passed an object of type '
                         '"{name}"'.format(name=type(objs).__name__))
@@ -1137,9 +1139,11 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
     if axis not in [0, 'index']:
         raise ValueError('axis should be either 0 or "index" currently.')
 
-    if all(map(lambda obj: obj is None, objs)):
-        raise ValueError("All objects passed were None")
+    if len(objs) == 0:
+        raise ValueError('No objects to concatenate')
     objs = list(filter(lambda obj: obj is not None, objs))
+    if len(objs) == 0:
+        raise ValueError('All objects passed were None')
 
     for obj in objs:
         if not isinstance(obj, (Series, DataFrame)):
@@ -1155,88 +1159,80 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
     new_objs = []
     for obj in objs:
         if isinstance(obj, Series):
-            obj = obj.to_dataframe()
+            obj = obj.rename('0').to_dataframe()
         new_objs.append(obj)
     objs = new_objs
+
+    column_index_levels = set(obj._internal.column_index_level for obj in objs)
+    if len(column_index_levels) != 1:
+        raise ValueError('MultiIndex columns should have the same levels')
 
     # DataFrame, DataFrame, ...
     # All Series are converted into DataFrame and then compute concat.
     if not ignore_index:
-        indices_of_kdfs = [kdf._internal.index_map for kdf in objs]
+        indices_of_kdfs = [kdf.index for kdf in objs]
         index_of_first_kdf = indices_of_kdfs[0]
         for index_of_kdf in indices_of_kdfs:
-            if index_of_first_kdf != index_of_kdf:
+            if index_of_first_kdf.names != index_of_kdf.names:
                 raise ValueError(
                     'Index type and names should be same in the objects to concatenate. '
                     'You passed different indices '
                     '{index_of_first_kdf} and {index_of_kdf}'.format(
-                        index_of_first_kdf=index_of_first_kdf, index_of_kdf=index_of_kdf))
+                        index_of_first_kdf=index_of_first_kdf.names,
+                        index_of_kdf=index_of_kdf.names))
 
-    columns_of_kdfs = [kdf._internal.columns for kdf in objs]
-    first_kdf = objs[0]
+    column_indexes_of_kdfs = [kdf._internal.column_index for kdf in objs]
     if ignore_index:
-        columns_of_first_kdf = first_kdf._internal.data_columns
+        index_names_of_kdfs = [[] for _ in objs]
     else:
-        columns_of_first_kdf = first_kdf._internal.columns
-    if all(current_kdf == columns_of_first_kdf for current_kdf in columns_of_kdfs):
+        index_names_of_kdfs = [kdf._internal.index_names for kdf in objs]
+    if (all(name == index_names_of_kdfs[0] for name in index_names_of_kdfs)
+            and all(idx == column_indexes_of_kdfs[0] for idx in column_indexes_of_kdfs)):
         # If all columns are in the same order and values, use it.
         kdfs = objs
+        merged_columns = column_indexes_of_kdfs[0]
     else:
-        if ignore_index:
-            columns_to_apply = [kdf._internal.data_columns for kdf in objs]
-        else:
-            columns_to_apply = [kdf._internal.columns for kdf in objs]
-
         if join == "inner":
-            interested_columns = set.intersection(*map(set, columns_to_apply))
+            interested_columns = set.intersection(*map(set, column_indexes_of_kdfs))
             # Keep the column order with its firsts DataFrame.
-            interested_columns = list(map(
-                lambda c: columns_of_first_kdf[columns_of_first_kdf.index(c)],
-                interested_columns))
+            merged_columns = sorted(list(map(
+                lambda c: column_indexes_of_kdfs[0][column_indexes_of_kdfs[0].index(c)],
+                interested_columns)))
 
-            kdfs = []
-            for kdf in objs:
-                sdf = kdf._sdf.select(interested_columns)
-                if ignore_index:
-                    kdfs.append(DataFrame(sdf))
-                else:
-                    kdfs.append(DataFrame(first_kdf._internal.copy(sdf=sdf)))
+            kdfs = [kdf[merged_columns] for kdf in objs]
         elif join == "outer":
             # If there are columns unmatched, just sort the column names.
-            merged_columns = set(
-                itertools.chain.from_iterable(columns_to_apply))
+            merged_columns = \
+                sorted(list(set(itertools.chain.from_iterable(column_indexes_of_kdfs))))
 
             kdfs = []
             for kdf in objs:
-                if ignore_index:
-                    columns_to_add = merged_columns - set(kdf._internal.data_columns)
-                else:
-                    columns_to_add = merged_columns - set(kdf._internal.columns)
+                columns_to_add = list(set(merged_columns) - set(kdf._internal.column_index))
 
                 # TODO: NaN and None difference for missing values. pandas seems filling NaN.
-                kdf = kdf.assign(**dict(zip(columns_to_add, [None] * len(columns_to_add))))
+                sdf = kdf._sdf
+                for idx in columns_to_add:
+                    sdf = sdf.withColumn(str(idx), F.lit(None))
 
-                if ignore_index:
-                    sdf = kdf._sdf.select(sorted(kdf._internal.data_columns))
-                else:
-                    sdf = kdf._sdf.select(
-                        kdf._internal.index_columns + sorted(kdf._internal.data_columns))
+                kdf = DataFrame(kdf._internal.copy(
+                    sdf=sdf,
+                    data_columns=kdf._internal.data_columns + [str(idx) for idx in columns_to_add],
+                    column_index=kdf._internal.column_index + columns_to_add))
 
-                kdf = DataFrame(kdf._internal.copy(sdf=sdf,
-                                                   data_columns=sorted(kdf._internal.data_columns)))
-                kdfs.append(kdf)
+                kdfs.append(kdf[merged_columns])
         else:
             raise ValueError(
                 "Only can inner (intersect) or outer (union) join the other axis.")
 
-    concatenated = kdfs[0]._sdf
-    for kdf in kdfs[1:]:
-        concatenated = concatenated.unionByName(kdf._sdf)
-
     if ignore_index:
-        result_kdf = DataFrame(concatenated.select(kdfs[0]._internal.data_columns))
+        sdfs = [kdf._sdf.select(kdf._internal.data_scols) for kdf in kdfs]
     else:
-        result_kdf = DataFrame(kdfs[0]._internal.copy(sdf=concatenated))
+        sdfs = [kdf._sdf.select(kdf._internal.index_scols + kdf._internal.data_scols)
+                for kdf in kdfs]
+    concatenated = reduce(lambda x, y: x.union(y), sdfs)
+
+    index_map = None if ignore_index else kdfs[0]._internal.index_map
+    result_kdf = DataFrame(kdfs[0]._internal.copy(sdf=concatenated, index_map=index_map))
 
     if should_return_series:
         # If all input were Series, we should return Series.

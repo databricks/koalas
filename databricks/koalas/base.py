@@ -19,7 +19,7 @@ Base and utility classes for Koalas objects.
 """
 
 from functools import wraps
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -32,6 +32,7 @@ from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, Times
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps
+from databricks.koalas.utils import align_diff_series, scol_for
 
 
 def _column_op(f):
@@ -47,16 +48,23 @@ def _column_op(f):
     """
     @wraps(f)
     def wrapper(self, *args):
-        assert all((not isinstance(arg, IndexOpsMixin))
-                   or (arg._kdf is self._kdf) for arg in args), \
-            "Cannot combine column argument because it comes from a different dataframe"
-
         # It is possible for the function `f` takes other arguments than Spark Column.
         # To cover this case, explicitly check if the argument is Koalas Series and
         # extract Spark Column. For other arguments, they are used as are.
-        args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
-        scol = f(self._scol, *args)
-        return self._with_new_scol(scol)
+        cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
+        if all(self._kdf is col._kdf for col in cols):
+            # Same DataFrame anchors
+            args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
+            scol = f(self._scol, *args)
+
+            return self._with_new_scol(scol)
+        else:
+            # Different DataFrame anchors
+            def apply_func(this_column, *that_columns):
+                return f(this_column, *that_columns)
+
+            return align_diff_series(apply_func, self, *args, how="full")
+
     return wrapper
 
 
@@ -296,17 +304,9 @@ class IndexOpsMixin(object):
         >>> ser.rename("a").to_frame().set_index("a").index.is_monotonic
         True
         """
-        if len(self._kdf._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
-
         col = self._scol
         window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
-        sdf = self._kdf._sdf.withColumn(
-            "__monotonic_col", (col >= F.lag(col, 1).over(window)) & col.isNotNull())
-        kdf = ks.DataFrame(
-            self._kdf._internal.copy(
-                sdf=sdf, data_columns=self._kdf._internal.data_columns + ["__monotonic_col"]))
-        return kdf["__monotonic_col"].all()
+        return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull()).all()
 
     is_monotonic_increasing = is_monotonic
 
@@ -348,17 +348,9 @@ class IndexOpsMixin(object):
         >>> ser.rename("a").to_frame().set_index("a").index.is_monotonic_decreasing
         True
         """
-        if len(self._kdf._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
-
         col = self._scol
         window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
-        sdf = self._kdf._sdf.withColumn(
-            "__monotonic_col", (col <= F.lag(col, 1).over(window)) & col.isNotNull())
-        kdf = ks.DataFrame(
-            self._kdf._internal.copy(
-                sdf=sdf, data_columns=self._kdf._internal.data_columns + ["__monotonic_col"]))
-        return kdf["__monotonic_col"].all()
+        return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull()).all()
 
     def astype(self, dtype):
         """
@@ -574,7 +566,7 @@ class IndexOpsMixin(object):
             raise ValueError('axis should be either 0 or "index" currently.')
 
         sdf = self._kdf._sdf.select(self._scol)
-        col = self._scol
+        col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
         # any and every was added as of Spark 3.0
@@ -637,7 +629,7 @@ class IndexOpsMixin(object):
             raise ValueError('axis should be either 0 or "index" currently.')
 
         sdf = self._kdf._sdf.select(self._scol)
-        col = self._scol
+        col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
         # any and every was added as of Spark 3.0
@@ -697,17 +689,15 @@ class IndexOpsMixin(object):
         >>> df.index.shift(periods=3, fill_value=0)
         Int64Index([0, 0, 0, 0, 1], dtype='int64')
         """
-        if len(self._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
+        return self._shift(periods, fill_value)
 
+    def _shift(self, periods, fill_value, part_cols=()):
         if not isinstance(periods, int):
             raise ValueError('periods should be an int; however, got [%s]' % type(periods))
 
         col = self._scol
-        window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-periods, -periods)
-        shifted_col = F.lag(col, periods).over(window)
-        col = F.when(
-            shifted_col.isNull() | F.isnan(shifted_col), fill_value
-        ).otherwise(shifted_col)
-
+        window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
+            .rowsBetween(-periods, -periods)
+        lag_col = F.lag(col, periods).over(window)
+        col = F.when(lag_col.isNull() | F.isnan(lag_col), fill_value).otherwise(lag_col)
         return self._with_new_scol(col).rename(self.name)

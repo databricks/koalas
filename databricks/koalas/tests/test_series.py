@@ -254,6 +254,40 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks.notnull(), ps.notnull())
         self.assert_eq(ks.isnull(), ps.isnull())
 
+    def test_all(self):
+        for ps in [pd.Series([True, True], name='x'),
+                   pd.Series([True, False], name='x'),
+                   pd.Series([0, 1], name='x'),
+                   pd.Series([1, 2, 3], name='x'),
+                   pd.Series([True, True, None], name='x'),
+                   pd.Series([True, False, None], name='x'),
+                   pd.Series([], name='x'),
+                   pd.Series([np.nan], name='x')]:
+            ks = koalas.from_pandas(ps)
+            self.assert_eq(ks.all(), ps.all())
+
+        ps = pd.Series([1, 2, 3, 4], name='x')
+        ks = koalas.from_pandas(ps)
+
+        self.assert_eq((ks % 2 == 0).all(), (ps % 2 == 0).all())
+
+    def test_any(self):
+        for ps in [pd.Series([False, False], name='x'),
+                   pd.Series([True, False], name='x'),
+                   pd.Series([0, 1], name='x'),
+                   pd.Series([1, 2, 3], name='x'),
+                   pd.Series([True, True, None], name='x'),
+                   pd.Series([True, False, None], name='x'),
+                   pd.Series([], name='x'),
+                   pd.Series([np.nan], name='x')]:
+            ks = koalas.from_pandas(ps)
+            self.assert_eq(ks.any(), ps.any())
+
+        ps = pd.Series([1, 2, 3, 4], name='x')
+        ks = koalas.from_pandas(ps)
+
+        self.assert_eq((ks % 2 == 0).any(), (ps % 2 == 0).any())
+
     def test_sort_values(self):
         ps = pd.Series([1, 2, 3, 4, 5, None, 7], name='0')
         ks = koalas.from_pandas(ps)
@@ -292,7 +326,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks.sort_index(), ps.sort_index(), almost=True)
         self.assert_eq(ks.sort_index(level=[1, 0]), ps.sort_index(level=[1, 0]), almost=True)
 
-        self.assertRaises(ValueError, lambda: ks.reset_index().sort_index())
+        self.assert_eq(ks.reset_index().sort_index(), ps.reset_index().sort_index())
 
     def test_to_datetime(self):
         ps = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
@@ -418,8 +452,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ks = koalas.from_pandas(ps)
         self.assert_eq(ps.add_prefix('item_'), ks.add_prefix('item_'))
 
+        ps = pd.Series([1, 2, 3], name='0',
+                       index=pd.MultiIndex.from_tuples([('A', 'X'), ('A', 'Y'), ('B', 'X')]))
+        ks = koalas.from_pandas(ps)
+        self.assert_eq(ps.add_prefix('item_'), ks.add_prefix('item_'))
+
     def test_add_suffix(self):
         ps = pd.Series([1, 2, 3, 4], name='0')
+        ks = koalas.from_pandas(ps)
+        self.assert_eq(ps.add_suffix('_item'), ks.add_suffix('_item'))
+
+        ps = pd.Series([1, 2, 3], name='0',
+                       index=pd.MultiIndex.from_tuples([('A', 'X'), ('A', 'Y'), ('B', 'X')]))
         ks = koalas.from_pandas(ps)
         self.assert_eq(ps.add_suffix('_item'), ks.add_suffix('_item'))
 
@@ -565,3 +609,15 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = koalas.Series([])
         with self.assertRaisesRegex(ValueError, "an empty sequence"):
             kser.idxmin()
+
+    def test_shift(self):
+        pser = pd.Series([10, 20, 15, 30, 45], name='x')
+        kser = koalas.Series(pser)
+        if LooseVersion(pd.__version__) < LooseVersion('0.24.2'):
+            self.assertEqual(repr(kser.shift(periods=2)),
+                             repr(pser.shift(periods=2)))
+        else:
+            self.assertEqual(repr(kser.shift(periods=2, fill_value=0)),
+                             repr(pser.shift(periods=2, fill_value=0)))
+        with self.assertRaisesRegex(ValueError, 'periods should be an int; however'):
+            kser.shift(periods=1.5)

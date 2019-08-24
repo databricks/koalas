@@ -25,12 +25,11 @@ from typing import Any, Optional, List, Union, Generic, TypeVar
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_list_like
 from pandas.core.accessor import CachedAccessor
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.types import BooleanType, StructType, NumericType
+from pyspark.sql.types import BooleanType, StructType
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -1001,7 +1000,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2    c
         """
         renamed = self.rename(name)
-        sdf = renamed._internal.spark_df
+        sdf = renamed._internal.spark_internal_df
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[sdf.schema[-1].name],
                                   index_map=renamed._internal.index_map)
@@ -1067,7 +1066,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             kseries = self
 
         return validate_arguments_and_invoke_function(
-            kseries.to_pandas(), self.to_string, pd.Series.to_string, args)
+            kseries._to_internal_pandas(), self.to_string, pd.Series.to_string, args)
 
     def to_clipboard(self, excel=True, sep=None, **kwargs):
         # Docstring defined below by reusing DataFrame.to_clipboard's.
@@ -1075,7 +1074,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         kseries = self
 
         return validate_arguments_and_invoke_function(
-            kseries.to_pandas(), self.to_clipboard, pd.Series.to_clipboard, args)
+            kseries._to_internal_pandas(), self.to_clipboard, pd.Series.to_clipboard, args)
 
     to_clipboard.__doc__ = DataFrame.to_clipboard.__doc__
 
@@ -1118,7 +1117,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         args = locals()
         kseries = self
         return validate_arguments_and_invoke_function(
-            kseries.to_pandas(), self.to_dict, pd.Series.to_dict, args)
+            kseries._to_internal_pandas(), self.to_dict, pd.Series.to_dict, args)
 
     def to_latex(self, buf=None, columns=None, col_space=None, header=True, index=True,
                  na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
@@ -1128,7 +1127,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         args = locals()
         kseries = self
         return validate_arguments_and_invoke_function(
-            kseries.to_pandas(), self.to_latex, pd.Series.to_latex, args)
+            kseries._to_internal_pandas(), self.to_latex, pd.Series.to_latex, args)
 
     to_latex.__doc__ = DataFrame.to_latex.__doc__
 
@@ -1167,7 +1166,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             to be small, as all the data is loaded into the driver's memory.
 
         """
-        return self.to_pandas().to_list()
+        return self._to_internal_pandas().to_list()
 
     tolist = to_list
 
@@ -1248,13 +1247,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         4       c
         Name: x, dtype: object
         """
+        return self._fillna(value, method, axis, inplace, limit)
+
+    def _fillna(self, value=None, method=None, axis=None, inplace=False, limit=None, part_cols=()):
         if axis is None:
             axis = 0
         if not (axis == 0 or axis == "index"):
             raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
         if (value is None) and (method is None):
-            raise ValueError("Must specify a fill 'value' or 'method'.")
-
+            raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
+        if (method is not None) and (method not in ['ffill', 'pad', 'backfill', 'bfill']):
+            raise ValueError("Expecting 'pad', 'ffill', 'backfill' or 'bfill'.")
         if self.isnull().sum() == 0:
             if inplace:
                 self._internal = self._internal.copy()
@@ -1286,13 +1289,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                     end = Window.currentRow + limit
                 else:
                     end = Window.unboundedFollowing
-            else:
-                raise ValueError('Expecting pad, ffill, backfill or bfill.')
-            window = Window.orderBy(self._internal.index_scols).rowsBetween(begin, end)
-            scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
 
-        kseries = Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf)\
-            .rename(column_name)
+            window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
+                .rowsBetween(begin, end)
+            scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
+        kseries = Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf
@@ -1479,7 +1480,18 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> ks.Series([1, 2, 3, np.nan]).nunique(approx=True)
         3
         """
-        return self.to_dataframe().nunique(dropna=dropna, approx=approx, rsd=rsd).iloc[0]
+        res = self._kdf._sdf.select([self._nunique(dropna, approx, rsd)])
+        return res.collect()[0][0]
+
+    def _nunique(self, dropna=True, approx=False, rsd=0.05):
+        name = self.name
+        count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
+        if dropna:
+            return count_fn(name).alias(name)
+        else:
+            return (count_fn(name) +
+                    F.when(F.count(F.when(self._internal.scol_for(name).isNull(), 1)
+                                   .otherwise(None)) >= 1, 1).otherwise(0)).alias(name)
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
@@ -1739,24 +1751,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         b  1    0
         Name: 0, dtype: int64
         """
-        if len(self._internal.index_map) == 0:
-            raise ValueError("Index should be set.")
-
-        if axis != 0:
-            raise ValueError("No other axes than 0 are supported at the moment")
-        if kind is not None:
-            raise ValueError("Specifying the sorting algorithm is supported at the moment.")
-
-        if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
-            by = self._internal.index_columns
-        elif is_list_like(level):
-            by = [self._internal.index_columns[l] for l in level]  # type: ignore
-        else:
-            by = self._internal.index_columns[level]
-
-        kseries = _col(self.to_dataframe().sort_values(by=by,
-                                                       ascending=ascending,
-                                                       na_position=na_position))
+        kseries = _col(self.to_dataframe().sort_index(axis=axis, level=level, ascending=ascending,
+                                                      kind=kind, na_position=na_position))
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf
@@ -1810,9 +1806,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.sdf
         sdf = sdf.select([F.concat(F.lit(prefix),
                                    scol_for(sdf, index_column)).alias(index_column)
-                          for index_column in internal.index_columns] + internal.data_columns)
+                          for index_column in internal.index_columns] + internal.data_scols)
         kdf._internal = internal.copy(sdf=sdf)
-        return Series(kdf._internal.copy(scol=self._scol), anchor=kdf)
+        return _col(kdf)
 
     def add_suffix(self, suffix):
         """
@@ -1860,9 +1856,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.sdf
         sdf = sdf.select([F.concat(scol_for(sdf, index_column),
                                    F.lit(suffix)).alias(index_column)
-                          for index_column in internal.index_columns] + internal.data_columns)
+                          for index_column in internal.index_columns] + internal.data_scols)
         kdf._internal = internal.copy(sdf=sdf)
-        return Series(kdf._internal.copy(scol=self._scol), anchor=kdf)
+        return _col(kdf)
 
     def corr(self, other, method='pearson'):
         """
@@ -2306,7 +2302,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 self._internal.index_scols + [c._scol for c in applied])
 
             internal = self.to_dataframe()._internal.copy(
-                sdf=sdf, data_columns=[c.name for c in applied])
+                sdf=sdf, data_columns=[c.name for c in applied],
+                column_index=None, column_index_names=None)
 
             return DataFrame(internal)
         else:
@@ -2444,10 +2441,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             internal = self._kdf._internal.copy(
                 sdf=sdf,
                 data_columns=[value_column],
-                index_map=[(internal_index_column, None)])
+                index_map=[(internal_index_column, None)],
+                column_index=None,
+                column_index_names=None)
 
-            ser = DataFrame(internal)[value_column].rename(self.name)
-            return ser
+            return DataFrame(internal)[value_column].rename(self.name)
         else:
             return self._reduce_for_stat_function(
                 lambda _: F.expr("approx_percentile(`%s`, %s, %s)" % (self.name, q, accuracy)),
@@ -2641,8 +2639,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return self._diff(periods)
 
     def _diff(self, periods, part_cols=()):
-        if len(self._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
         if not isinstance(periods, int):
             raise ValueError('periods should be an int; however, got [%s]' % type(periods))
         window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
@@ -2831,9 +2827,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
-        if len(self._internal.index_columns) == 0:
-            raise ValueError("Index must be set.")
-
         index_columns = self._internal.index_columns
         window = Window.orderBy(
             index_columns).partitionBy(*part_cols).rowsBetween(
@@ -2974,8 +2967,16 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def __str__(self):
         return self._pandas_orig_repr()
 
+    def _to_internal_pandas(self):
+        """
+        Return a pandas Series directly from _internal to avoid overhead of copy.
+
+        This method is for internal use only.
+        """
+        return _col(self._internal.pandas_df)
+
     def __repr__(self):
-        pser = self.head(max_display_count + 1).to_pandas()
+        pser = self.head(max_display_count + 1)._to_internal_pandas()
         pser_length = len(pser)
         repr_string = repr(pser.iloc[:max_display_count])
         if pser_length > max_display_count:

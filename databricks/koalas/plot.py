@@ -15,18 +15,18 @@
 #
 
 from distutils.version import LooseVersion
+
 import matplotlib
 import numpy as np
 import pandas as pd
-
 from matplotlib.axes._base import _process_plot_format
 from pandas.core.dtypes.inference import is_integer, is_list_like
 from pandas.io.formats.printing import pprint_thing
 from pandas.core.base import PandasObject
-
-from databricks.koalas.missing import _unsupported_function
 from pyspark.ml.feature import Bucketizer
 from pyspark.sql import functions as F
+
+from databricks.koalas.missing import _unsupported_function
 
 
 def _gca(rc=None):
@@ -40,33 +40,63 @@ def _get_standard_kind(kind):
 
 
 if LooseVersion(pd.__version__) < LooseVersion('0.25'):
-    from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot
+    from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot, PiePlot, \
+        AreaPlot, LinePlot, BarhPlot
 else:
     from pandas.plotting._core import PlotAccessor
-    from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot
+    from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot, AreaPlot, \
+        LinePlot, BarhPlot
     from pandas.plotting._matplotlib.core import MPLPlot
     _all_kinds = PlotAccessor._all_kinds
 
 
-class KoalasBarPlot(BarPlot):
+class TopNPlot:
     max_rows = 1000
 
-    def __init__(self, data, **kwargs):
+    def get_top_n(self, data):
         # Simply use the first 1k elements and make it into a pandas dataframe
-        # For categorical variables, it is likely called from df.x.value_counts().plot.bar()
-        data = data.head(KoalasBarPlot.max_rows + 1).to_pandas().to_frame()
+        # For categorical variables, it is likely called from df.x.value_counts().plot.xxx().
+        data = data.head(TopNPlot.max_rows + 1).to_pandas().to_frame()
         self.partial = False
-        if len(data) > KoalasBarPlot.max_rows:
+        if len(data) > TopNPlot.max_rows:
             self.partial = True
-            data = data.iloc[:KoalasBarPlot.max_rows]
-        super().__init__(data, **kwargs)
+            data = data.iloc[:TopNPlot.max_rows]
+        return data
 
-    def _plot(self, ax, x, y, w, start=0, log=False, **kwds):
+    def set_result_text(self, ax):
+        assert hasattr(self, "partial")
+
         if self.partial:
             ax.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
                     transform=ax.transAxes)
-            self.data = self.data.iloc[:KoalasBarPlot.max_rows]
 
+
+class SampledPlot:
+    def get_sampled(self, data):
+        from databricks.koalas import DataFrame
+
+        self.fraction = 1 / (len(data) / 1000)  # make sure the records are roughly 1000.
+        if self.fraction > 1:
+            self.fraction = 1
+        sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
+        return DataFrame(data._kdf._internal.copy(sdf=sampled)).to_pandas()
+
+    def set_result_text(self, ax):
+        assert hasattr(self, "fraction")
+
+        if self.fraction < 1:
+            ax.text(
+                1, 1, 'showing the sampled result by fraction %s' % self.fraction,
+                size=6, ha='right', va='bottom',
+                transform=ax.transAxes)
+
+
+class KoalasBarPlot(BarPlot, TopNPlot):
+    def __init__(self, data, **kwargs):
+        super(KoalasBarPlot, self).__init__(self.get_top_n(data), **kwargs)
+
+    def _plot(self, ax, x, y, w, start=0, log=False, **kwds):
+        self.set_result_text(ax)
         return ax.bar(x, y, w, bottom=start, log=log, **kwds)
 
 
@@ -424,7 +454,55 @@ class KoalasHistPlot(HistPlot):
         self.data = summary.calc_histogram(self.bins)
 
 
-_klasses = [KoalasHistPlot, KoalasBarPlot, KoalasBoxPlot]
+class KoalasPiePlot(PiePlot, TopNPlot):
+    max_rows = 1000
+
+    def __init__(self, data, **kwargs):
+        super(KoalasPiePlot, self).__init__(self.get_top_n(data), **kwargs)
+
+    def _make_plot(self):
+        self.set_result_text(self._get_ax(0))
+        super(KoalasPiePlot, self)._make_plot()
+
+
+class KoalasAreaPlot(AreaPlot, SampledPlot):
+    def __init__(self, data, **kwargs):
+        super(KoalasAreaPlot, self).__init__(self.get_sampled(data), **kwargs)
+
+    def _make_plot(self):
+        self.set_result_text(self._get_ax(0))
+        super(KoalasAreaPlot, self)._make_plot()
+
+
+class KoalasLinePlot(LinePlot, SampledPlot):
+    def __init__(self, data, **kwargs):
+        super(KoalasLinePlot, self).__init__(self.get_sampled(data), **kwargs)
+
+    def _make_plot(self):
+        self.set_result_text(self._get_ax(0))
+        super(KoalasLinePlot, self)._make_plot()
+
+
+class KoalasBarhPlot(BarhPlot, TopNPlot):
+    max_rows = 1000
+
+    def __init__(self, data, **kwargs):
+        super(KoalasBarhPlot, self).__init__(self.get_top_n(data), **kwargs)
+
+    def _make_plot(self):
+        self.set_result_text(self._get_ax(0))
+        super(KoalasBarhPlot, self)._make_plot()
+
+
+_klasses = [
+    KoalasHistPlot,
+    KoalasBarPlot,
+    KoalasBoxPlot,
+    KoalasPiePlot,
+    KoalasAreaPlot,
+    KoalasLinePlot,
+    KoalasBarhPlot,
+]
 _plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
 
 
@@ -594,8 +672,36 @@ class KoalasSeriesPlotMethods(PandasObject):
                            **kwds)
     __call__.__doc__ = plot_series.__doc__
 
-    def line(self, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='line')()
+    def line(self, x=None, y=None, **kwargs):
+        """
+        Plot Series or DataFrame as lines.
+
+        This function is useful to plot lines using DataFrame's values
+        as coordinates.
+
+        Parameters
+        ----------
+        x : int or str, optional
+            Columns to use for the horizontal axis.
+            Either the location or the label of the columns to be used.
+            By default, it will use the DataFrame indices.
+        y : int, str, or list of them, optional
+            The values to be plotted.
+            Either the location or the label of the columns to be used.
+            By default, it will use the remaining DataFrame numeric columns.
+        **kwds
+            Keyword arguments to pass on to :meth:`DataFrame.plot`.
+
+        Returns
+        -------
+        :class:`matplotlib.axes.Axes` or :class:`numpy.ndarray`
+            Return an ndarray when ``subplots=True``.
+
+        See Also
+        --------
+        matplotlib.pyplot.plot : Plot y versus x as lines and/or markers.
+        """
+        return self(kind="line", x=x, y=y, **kwargs)
 
     def bar(self, **kwds):
         """
@@ -614,11 +720,42 @@ class KoalasSeriesPlotMethods(PandasObject):
         return self(kind='bar', **kwds)
 
     def barh(self, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='barh')()
+        """
+        Make a horizontal bar plot.
+
+        A horizontal bar plot is a plot that presents quantitative data with
+        rectangular bars with lengths proportional to the values that they
+        represent. A bar plot shows comparisons among discrete categories. One
+        axis of the plot shows the specific categories being compared, and the
+        other axis represents a measured value.
+
+        Parameters
+        ----------
+        x : label or position, default DataFrame.index
+            Column to be used for categories.
+        y : label or position, default All numeric columns in dataframe
+            Columns to be plotted from the DataFrame.
+        **kwds
+            Keyword arguments to pass on to :meth:`databricks.koalas.DataFrame.plot`.
+
+        Returns
+        -------
+        :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+
+        See Also
+        --------
+        matplotlib.axes.Axes.bar : Plot a vertical bar plot using matplotlib.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
+        >>> plot = df.val.plot.barh()
+        """
+        return self(kind='barh', **kwds)
 
     def box(self, **kwds):
         """
-        Boxplot.
+        Make a box plot of the DataFrame columns.
 
         Parameters
         ----------
@@ -651,7 +788,7 @@ class KoalasSeriesPlotMethods(PandasObject):
 
     def hist(self, bins=10, **kwds):
         """
-        Histogram.
+        Draw one histogram of the DataFrame’s columns.
 
         Parameters
         ----------
@@ -673,7 +810,72 @@ class KoalasSeriesPlotMethods(PandasObject):
     density = kde
 
     def area(self, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='area')()
+        """
+        Draw a stacked area plot.
+
+        An area plot displays quantitative data visually.
+        This function wraps the matplotlib area function.
+
+        Parameters
+        ----------
+        x : label or position, optional
+            Coordinates for the X axis. By default uses the index.
+        y : label or position, optional
+            Column to plot. By default uses all columns.
+        stacked : bool, default True
+            Area plots are stacked by default. Set to False to create a
+            unstacked plot.
+        **kwds : optional
+            Additional keyword arguments are documented in
+            :meth:`DataFrame.plot`.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or numpy.ndarray
+            Area plot, or array of area plots if subplots is True.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({
+        ...     'sales': [3, 2, 3, 9, 10, 6],
+        ...     'signups': [5, 5, 6, 12, 14, 13],
+        ...     'visits': [20, 42, 28, 62, 81, 50],
+        ... }, index=pd.date_range(start='2018/01/01', end='2018/07/01',
+        ...                        freq='M'))
+        >>> plot = df.sales.plot.area()
+        """
+        return self(kind='area', **kwds)
 
     def pie(self, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='pie')()
+        """
+        Generate a pie plot.
+
+        A pie plot is a proportional representation of the numerical data in a
+        column. This function wraps :meth:`matplotlib.pyplot.pie` for the
+        specified column. If no column reference is passed and
+        ``subplots=True`` a pie plot is drawn for each numerical column
+        independently.
+
+        Parameters
+        ----------
+        y : int or label, optional
+            Label or position of the column to plot.
+            If not provided, ``subplots=True`` argument must be passed.
+        **kwds
+            Keyword arguments to pass on to :meth:`Koalas.Series.plot`.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or np.ndarray of them
+            A NumPy array is returned when `subplots` is True.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'mass': [0.330, 4.87 , 5.97],
+        ...                    'radius': [2439.7, 6051.8, 6378.1]},
+        ...                   index=['Mercury', 'Venus', 'Earth'])
+        >>> plot = df.mass.plot.pie(figsize=(5, 5))
+
+        >>> plot = df.mass.plot.pie(subplots=True, figsize=(6, 3))
+        """
+        return self(kind='pie', **kwds)

@@ -67,7 +67,7 @@ conda activate koalas-dev-env
 
 You can use `pip` alternatively if your Python is 3.5+.
 ```bash
-pip install pyspark=2.4
+pip install pyspark==2.4
 pip install -r requirements-dev.txt
 pip install -e .  # installs koalas from current checkout
 ```
@@ -120,7 +120,7 @@ We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception:
 ## Doctest Conventions
 
 When writing doctests, usually the doctests in pandas are converted into Koalas to make sure the same codes work in Koalas.
-In general, doctests should be grouped logically by seperating a newline.
+In general, doctests should be grouped logically by separating a newline.
 
 For instance, the first block is for the statements for preparation, the second block is for using the function with a specific argument,
 and third block is for another argument. As a example, please refer [DataFrame.rsub](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.rsub.html#pandas.DataFrame.rsub) in pandas.
@@ -154,7 +154,7 @@ python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/ko
 ```
 
 Step 5. Verify the uploaded package can be installed and executed.
-One unofficial tip is to run the doctests of Koalas within a Python interpretor after installing it.
+One unofficial tip is to run the doctests of Koalas within a Python interpreter after installing it.
 
 ```python
 import os

@@ -24,7 +24,7 @@ from typing import Union
 
 import pandas as pd
 
-from databricks.koalas import namespace, sql
+from databricks.koalas import config, namespace, sql
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
@@ -58,7 +58,7 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
 
     logger = getattr(logger_module, 'get_logger')()
 
-    modules = [namespace]
+    modules = [config, namespace]
     classes = [DataFrame, Series, Index, MultiIndex,
                DataFrameGroupBy, SeriesGroupBy, DatetimeMethods, StringMethods]
 
