@@ -365,8 +365,6 @@ class _InternalFrame(object):
         assert isinstance(sdf, spark.DataFrame)
         if index_map is None:
             # Here is when Koalas DataFrame is created directly from Spark DataFrame.
-            assert column_index is None
-            assert column_index_names is None
             assert "__index_level_0__" not in sdf.schema.names, \
                 "Default index column should not appear in columns of the Spark DataFrame"
 

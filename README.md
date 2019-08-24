@@ -105,7 +105,7 @@ Project docs are published here: https://koalas.readthedocs.io
 
 ## Mailing List
 
-We use Google Groups for mailling list: https://groups.google.com/forum/#!forum/koalas-dev
+We use Google Groups for mailing list: https://groups.google.com/forum/#!forum/koalas-dev
 
 
 ## Development Guide
@@ -115,7 +115,7 @@ See [CONTRIBUTING.md](https://github.com/databricks/koalas/blob/master/CONTRIBUT
 
 ## Design Principles
 
-This section outlines design princples guiding the Koalas project.
+This section outlines design principles guiding the Koalas project.
 
 ### Be Pythonic
 
