@@ -149,3 +149,23 @@ class ReshapeTest(ReusedSQLTestCase):
             exp = exp.astype({'A_a': 'float64', 'A_b': 'float64'})
         res = ks.get_dummies(kdf, dtype='float64')
         self.assert_eq(res, exp, almost=True)
+
+    def test_get_dummies_multiindex_columns(self):
+        pdf = pd.DataFrame({('x', 'a', '1'): [1, 2, 3, 4, 4, 3, 2, 1],
+                            ('x', 'b', '2'): list('abcdabcd'),
+                            ('y', 'c', '3'): list('abcdabcd')})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf), almost=True)
+        self.assert_eq(ks.get_dummies(kdf, columns=[('y', 'c', '3'), ('x', 'a', '1')]),
+                       pd.get_dummies(pdf, columns=[('y', 'c', '3'), ('x', 'a', '1')]), almost=True)
+        self.assert_eq(ks.get_dummies(kdf, columns=['x']),
+                       pd.get_dummies(pdf, columns=['x']), almost=True)
+        self.assert_eq(ks.get_dummies(kdf, columns=('x', 'a')),
+                       pd.get_dummies(pdf, columns=('x', 'a')), almost=True)
+        self.assert_eq(ks.get_dummies(kdf, columns='x'),
+                       pd.get_dummies(pdf, columns='x'), almost=True)
+
+        self.assertRaises(KeyError, lambda: ks.get_dummies(kdf, columns='z'))
+        self.assertRaises(KeyError, lambda: ks.get_dummies(kdf, columns=('x', 'c')))
+        self.assertRaises(ValueError, lambda: ks.get_dummies(kdf, columns=[('x',), 'c']))
