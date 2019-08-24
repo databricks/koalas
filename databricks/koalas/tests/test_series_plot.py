@@ -97,7 +97,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.compare_plots(ax1, ax2)
 
         ax1 = pdf['a'].plot(kind='pie', colormap='Paired')
-        ax2 = kdf['a'].pie(kind='pie', colormap='Paired')
+        ax2 = kdf['a'].plot(kind='pie', colormap='Paired')
         self.compare_plots(ax1, ax2)
 
     def test_pie_plot_limited(self):
