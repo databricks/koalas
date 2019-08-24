@@ -73,13 +73,20 @@ class TopNPlot:
 
 class SampledPlot:
     def get_sampled(self, data):
-        from databricks.koalas import DataFrame
+        from databricks.koalas import DataFrame, Series
 
         self.fraction = 1 / (len(data) / 1000)  # make sure the records are roughly 1000.
         if self.fraction > 1:
             self.fraction = 1
-        sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
-        return DataFrame(data._kdf._internal.copy(sdf=sampled)).to_pandas()
+
+        if isinstance(data, DataFrame):
+            sampled = data._sdf.sample(fraction=float(self.fraction))
+            return DataFrame(data._internal.copy(sdf=sampled)).to_pandas()
+        elif isinstance(data, Series):
+            sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
+            return DataFrame(data._kdf._internal.copy(sdf=sampled)).to_pandas()
+        else:
+            ValueError("Only DataFrame and Series are supported for plotting.")
 
     def set_result_text(self, ax):
         assert hasattr(self, "fraction")
@@ -635,11 +642,42 @@ def _plot(data, x=None, y=None, subplots=False,
         klass = _plot_klass[kind]
     else:
         raise ValueError("%r is not a valid plot kind" % kind)
-
     plot_obj = klass(data, subplots=subplots, ax=ax, kind=kind, **kwds)
     plot_obj.generate()
     plot_obj.draw()
     return plot_obj.result
+
+class KoalasFramePlotMethods(PandasObject):
+    # TODO: not sure if Koalas wanna combine plot method for Series and DataFrame
+    """
+    DataFrame plotting accessor and method.
+
+    Plotting methods can also be accessed by calling the accessor as a method
+    with the ``kind`` argument:
+    ``df.plot(kind='hist')`` is equivalent to ``df.plot.hist()``
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def __call__(self, x=None, y=None, kind='line', ax=None,
+               subplots=None, sharex=None, sharey=False, layout=None,
+               figsize=None, use_index=True, title=None, grid=None,
+               legend=True, style=None, logx=False, logy=False,
+               loglog=False, xticks=None, yticks=None, xlim=None,
+               ylim=None, rot=None, fontsize=None, colormap=None,
+               table=False, yerr=None, xerr=None, secondary_y=False,
+               sort_columns=False, **kwds):
+        return plot_frame(self.data, x=x, y=y, kind=kind, ax=ax,
+               subplots=subplots, sharex=sharex, sharey=sharey, layout=layout,
+               figsize=figsize, use_index=use_index, title=title, grid=grid,
+               legend=legend, style=style, logx=logx, logy=logy,
+               loglog=loglog, xticks=xticks, yticks=yticks, xlim=xlim,
+               ylim=ylim, rot=rot, fontsize=fontsize, colormap=colormap,
+               table=table, yerr=yerr, xerr=xerr, secondary_y=secondary_y,
+               sort_columns=sort_columns, **kwds)
+
+    def line(self, x=None, y=None, **kwargs):
+        return self(kind='line', x=x, y=y, **kwargs)
 
 
 class KoalasSeriesPlotMethods(PandasObject):
@@ -879,3 +917,122 @@ class KoalasSeriesPlotMethods(PandasObject):
         >>> plot = df.mass.plot.pie(subplots=True, figsize=(6, 3))
         """
         return self(kind='pie', **kwds)
+
+
+def plot_frame(data, x=None, y=None, kind='line', ax=None,
+               subplots=None, sharex=None, sharey=False, layout=None,
+               figsize=None, use_index=True, title=None, grid=None,
+               legend=True, style=None, logx=False, logy=False,
+               loglog=False, xticks=None, yticks=None, xlim=None,
+               ylim=None, rot=None, fontsize=None, colormap=None,
+               table=False, yerr=None, xerr=None, secondary_y=False,
+               sort_columns=False, **kwds):
+    """
+    Make plots of DataFrames using matplotlib / pylab.
+
+    Each plot kind has a corresponding method on the
+    ``DataFrame.plot`` accessor:
+    ``kdf.plot(kind='line')`` is equivalent to
+    ``kdf.plot.line()``.
+
+    Parameters
+    ----------
+    data : DataFrame
+
+    kind : str
+        - 'line' : line plot (default)
+        - 'bar' : vertical bar plot
+        - 'barh' : horizontal bar plot
+        - 'hist' : histogram
+        - 'box' : boxplot
+        - 'kde' : Kernel Density Estimation plot
+        - 'density' : same as 'kde'
+        - 'area' : area plot
+        - 'pie' : pie plot
+    ax : matplotlib axes object
+        If not passed, uses gca()
+    x : label or position, default None
+    y : label, position or list of label, positions, default None
+        Allows plotting of one column versus another.
+    figsize : a tuple (width, height) in inches
+    use_index : boolean, default True
+        Use index as ticks for x axis
+    title : string or list
+        Title to use for the plot. If a string is passed, print the string at
+        the top of the figure. If a list is passed and `subplots` is True,
+        print each item in the list above the corresponding subplot.
+    grid : boolean, default None (matlab style default)
+        Axis grid lines
+    legend : False/True/'reverse'
+        Place legend on axis subplots
+    style : list or dict
+        matplotlib line style per column
+    logx : boolean, default False
+        Use log scaling on x axis
+    logy : boolean, default False
+        Use log scaling on y axis
+    loglog : boolean, default False
+        Use log scaling on both x and y axes
+    xticks : sequence
+        Values to use for the xticks
+    yticks : sequence
+        Values to use for the yticks
+    xlim : 2-tuple/list
+    ylim : 2-tuple/list
+    sharex: bool or None, default is None
+        Whether to share x axis or not.
+    sharey: bool, default is False
+        Whether to share y axis or not.
+    rot : int, default None
+        Rotation for ticks (xticks for vertical, yticks for horizontal plots)
+    fontsize : int, default None
+        Font size for xticks and yticks
+    colormap : str or matplotlib colormap object, default None
+        Colormap to select colors from. If string, load colormap with that name
+        from matplotlib.
+    colorbar : boolean, optional
+        If True, plot colorbar (only relevant for 'scatter' and 'hexbin' plots)
+    position : float
+        Specify relative alignments for bar plot layout.
+        From 0 (left/bottom-end) to 1 (right/top-end). Default is 0.5 (center)
+    table : boolean, Series or DataFrame, default False
+        If True, draw a table using the data in the DataFrame and the data will
+        be transposed to meet matplotlib's default layout.
+        If a Series or DataFrame is passed, use passed data to draw a table.
+    yerr : DataFrame, Series, array-like, dict and str
+        See :ref:`Plotting with Error Bars <visualization.errorbars>` for
+        detail.
+    xerr : same types as yerr.
+    label : label argument to provide to plot
+    secondary_y : boolean or sequence of ints, default False
+        If True then y-axis will be on the right
+    mark_right : boolean, default True
+        When using a secondary_y axis, automatically mark the column
+        labels with "(right)" in the legend
+    sort_columns: bool, default is False
+        When True, will sort values on plots.
+    `**kwds` : keywords
+        Options to pass to matplotlib plotting method
+
+    Returns
+    -------
+    axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+
+    Notes
+    -----
+
+    - See matplotlib documentation online for more on this subject
+    - If `kind` = 'bar' or 'barh', you can specify relative alignments
+      for bar plot layout by `position` keyword.
+      From 0 (left/bottom-end) to 1 (right/top-end). Default is 0.5 (center)
+    """
+
+    return _plot(data, kind=kind, x=x, y=y, ax=ax,
+                 figsize=figsize, use_index=use_index, title=title,
+                 grid=grid, legend=legend, subplots=subplots,
+                 style=style, logx=logx, logy=logy, loglog=loglog,
+                 xticks=xticks, yticks=yticks, xlim=xlim, ylim=ylim,
+                 rot=rot, fontsize=fontsize, colormap=colormap, table=table,
+                 yerr=yerr, xerr=xerr, sharex=sharex, sharey=sharey,
+                 secondary_y=secondary_y, layout=layout, sort_columns=sort_columns,
+                 **kwds)
