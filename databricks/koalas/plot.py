@@ -647,38 +647,6 @@ def _plot(data, x=None, y=None, subplots=False,
     plot_obj.draw()
     return plot_obj.result
 
-class KoalasFramePlotMethods(PandasObject):
-    # TODO: not sure if Koalas wanna combine plot method for Series and DataFrame
-    """
-    DataFrame plotting accessor and method.
-
-    Plotting methods can also be accessed by calling the accessor as a method
-    with the ``kind`` argument:
-    ``df.plot(kind='hist')`` is equivalent to ``df.plot.hist()``
-    """
-    def __init__(self, data):
-        self.data = data
-
-    def __call__(self, x=None, y=None, kind='line', ax=None,
-               subplots=None, sharex=None, sharey=False, layout=None,
-               figsize=None, use_index=True, title=None, grid=None,
-               legend=True, style=None, logx=False, logy=False,
-               loglog=False, xticks=None, yticks=None, xlim=None,
-               ylim=None, rot=None, fontsize=None, colormap=None,
-               table=False, yerr=None, xerr=None, secondary_y=False,
-               sort_columns=False, **kwds):
-        return plot_frame(self.data, x=x, y=y, kind=kind, ax=ax,
-               subplots=subplots, sharex=sharex, sharey=sharey, layout=layout,
-               figsize=figsize, use_index=use_index, title=title, grid=grid,
-               legend=legend, style=style, logx=logx, logy=logy,
-               loglog=loglog, xticks=xticks, yticks=yticks, xlim=xlim,
-               ylim=ylim, rot=rot, fontsize=fontsize, colormap=colormap,
-               table=table, yerr=yerr, xerr=xerr, secondary_y=secondary_y,
-               sort_columns=sort_columns, **kwds)
-
-    def line(self, x=None, y=None, **kwargs):
-        return self(kind='line', x=x, y=y, **kwargs)
-
 
 class KoalasSeriesPlotMethods(PandasObject):
     """
@@ -917,6 +885,39 @@ class KoalasSeriesPlotMethods(PandasObject):
         >>> plot = df.mass.plot.pie(subplots=True, figsize=(6, 3))
         """
         return self(kind='pie', **kwds)
+
+
+class KoalasFramePlotMethods(PandasObject):
+    # TODO: not sure if Koalas wanna combine plot method for Series and DataFrame
+    """
+    DataFrame plotting accessor and method.
+
+    Plotting methods can also be accessed by calling the accessor as a method
+    with the ``kind`` argument:
+    ``df.plot(kind='hist')`` is equivalent to ``df.plot.hist()``
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def __call__(self, x=None, y=None, kind='line', ax=None,
+                 subplots=None, sharex=None, sharey=False, layout=None,
+                 figsize=None, use_index=True, title=None, grid=None,
+                 legend=True, style=None, logx=False, logy=False,
+                 loglog=False, xticks=None, yticks=None, xlim=None,
+                 ylim=None, rot=None, fontsize=None, colormap=None,
+                 table=False, yerr=None, xerr=None, secondary_y=False,
+                 sort_columns=False, **kwds):
+        return plot_frame(self.data, x=x, y=y, kind=kind, ax=ax,
+                          subplots=subplots, sharex=sharex, sharey=sharey, layout=layout,
+                          figsize=figsize, use_index=use_index, title=title, grid=grid,
+                          legend=legend, style=style, logx=logx, logy=logy,
+                          loglog=loglog, xticks=xticks, yticks=yticks, xlim=xlim,
+                          ylim=ylim, rot=rot, fontsize=fontsize, colormap=colormap,
+                          table=table, yerr=yerr, xerr=xerr, secondary_y=secondary_y,
+                          sort_columns=sort_columns, **kwds)
+
+    def line(self, x=None, y=None, **kwargs):
+        return self(kind='line', x=x, y=y, **kwargs)
 
 
 def plot_frame(data, x=None, y=None, kind='line', ax=None,
