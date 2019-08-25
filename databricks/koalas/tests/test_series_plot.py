@@ -71,6 +71,10 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         ax2 = kdf['a'].plot("bar", colormap='Paired')
         self.compare_plots(ax1, ax2)
 
+        ax1 = pdf['a'].plot(kind='bar', colormap='Paired')
+        ax2 = kdf['a'].plot(kind='bar', colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
     def test_bar_plot_limited(self):
         pdf = self.pdf2
         kdf = self.kdf2
@@ -92,6 +96,10 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         ax2 = kdf['a'].plot.pie(colormap='Paired')
         self.compare_plots(ax1, ax2)
 
+        ax1 = pdf['a'].plot(kind='pie', colormap='Paired')
+        ax2 = kdf['a'].plot(kind='pie', colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
     def test_pie_plot_limited(self):
         pdf = self.pdf2
         kdf = self.kdf2
@@ -110,6 +118,10 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
         ax1 = pdf['a'].plot("line", colormap='Paired')
         ax2 = kdf['a'].plot("line", colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax1 = pdf['a'].plot.line(colormap='Paired')
+        ax2 = kdf['a'].plot.line(colormap='Paired')
         self.compare_plots(ax1, ax2)
 
     def test_barh_plot(self):
@@ -145,6 +157,10 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
         ax1 = pdf['a'].plot.hist(bins=15)
         ax2 = kdf['a'].plot.hist(bins=15)
+        self.compare_plots(ax1, ax2)
+
+        ax1 = pdf['a'].plot(kind='hist', bins=15)
+        ax2 = kdf['a'].plot(kind='hist', bins=15)
         self.compare_plots(ax1, ax2)
 
         ax1 = pdf['a'].plot.hist(bins=3, bottom=[2, 1, 3])
