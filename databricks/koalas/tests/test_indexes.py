@@ -97,7 +97,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx.names = 'hi'
 
         expected_error_message = ("Length of new names must be {}, got {}"
-            .format(len(kdf._internal.index_map), len(['0', '1'])))
+                                  .format(len(kdf._internal.index_map), len(['0', '1'])))
         with self.assertRaisesRegex(ValueError, expected_error_message):
             kidx.names = ['0', '1']
 
