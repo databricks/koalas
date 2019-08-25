@@ -273,6 +273,10 @@ class MultiIndex(Index):
         """
         return MultiIndex(self._kdf, scol)
 
+    # TODO: This is a temporary measure to avoid confusion, so the logic should be changed later.
+    def __repr__(self):
+        return super().__repr__().replace("Index", "MultiIndex", 1)
+
     def any(self, *args, **kwargs):
         raise TypeError("cannot perform any with this index type: MultiIndex")
 
@@ -297,4 +301,4 @@ class MultiIndex(Index):
         raise AttributeError("'MultiIndex' object has no attribute '{}'".format(item))
 
     def rename(self, name, inplace=False):
-        raise NotImplementedError()
+        raise PandasNotImplementedError(class_name='pd.MultiIndex')
