@@ -29,7 +29,7 @@ from pandas.core.dtypes.common import is_datetime64tz_dtype
 
 from pyspark.sql import Window, functions as F
 from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
-from pyspark.sql.functions import PandasUDFType, pandas_udf
+from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import _infer_return_type
@@ -804,7 +804,7 @@ class GroupBy(object):
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = 1000
-            pdf = self._kdf.head(limit + 1).to_pandas()
+            pdf = self._kdf.head(limit + 1)._to_internal_pandas()
             pdf = pdf.groupby(input_groupnames).apply(func)
             kdf = DataFrame(pdf)
             return_schema = kdf._sdf.schema
@@ -1009,6 +1009,134 @@ class GroupBy(object):
 
         """
         return self._rank(method, ascending)
+
+    # TODO: add axis parameter
+    def idxmax(self, skipna=True):
+        """
+        Return index of first occurrence of maximum over requested axis in group.
+        NA/null values are excluded.
+
+        Parameters
+        ----------
+        skipna : boolean, default True
+            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
+
+        See Also
+        --------
+        Series.idxmax
+        DataFrame.idxmax
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 2, 2, 3],
+        ...                    'b': [1, 2, 3, 4, 5],
+        ...                    'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+
+        >>> df.groupby(['a'])['b'].idxmax().sort_index() # doctest: +NORMALIZE_WHITESPACE
+        a
+        1  1
+        2  3
+        3  4
+        Name: b, dtype: int64
+
+        >>> df.groupby(['a']).idxmax().sort_index() # doctest: +NORMALIZE_WHITESPACE
+           b  c
+        a
+        1  1  0
+        2  3  2
+        3  4  4
+        """
+        if len(self._kdf._internal.index_names) != 1:
+            raise ValueError('idxmax only support one-level index now')
+        groupkeys = self._groupkeys
+        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+                         for i, s in enumerate(groupkeys)]
+        sdf = self._kdf._sdf
+        index = self._kdf._internal.index_columns[0]
+
+        stat_exprs = []
+        for ks in self._agg_columns:
+            if skipna:
+                order_column = Column(ks._scol._jc.desc_nulls_last())
+            else:
+                order_column = Column(ks._scol._jc.desc_nulls_first())
+            window = Window.partitionBy(groupkey_cols).orderBy(order_column)
+            sdf = sdf.withColumn(ks.name, F.when(F.row_number().over(window) == 1, F.col(index))
+                                 .otherwise(None))
+            stat_exprs.append(F.max(F.col(ks.name)).alias(ks.name))
+        sdf = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[ks.name for ks in self._agg_columns],
+                                  index_map=[('__index_level_{}__'.format(i), s.name)
+                                             for i, s in enumerate(groupkeys)])
+        kdf = DataFrame(internal)
+        return kdf
+
+    # TODO: add axis parameter
+    def idxmin(self, skipna=True):
+        """
+        Return index of first occurrence of minimum over requested axis in group.
+        NA/null values are excluded.
+
+        Parameters
+        ----------
+        skipna : boolean, default True
+            Exclude NA/null values. If an entire row/column is NA, the result will be NA.
+
+        See Also
+        --------
+        Series.idxmin
+        DataFrame.idxmin
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 2, 2, 3],
+        ...                    'b': [1, 2, 3, 4, 5],
+        ...                    'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+
+        >>> df.groupby(['a'])['b'].idxmin().sort_index() # doctest: +NORMALIZE_WHITESPACE
+        a
+        1    0
+        2    2
+        3    4
+        Name: b, dtype: int64
+
+        >>> df.groupby(['a']).idxmin().sort_index() # doctest: +NORMALIZE_WHITESPACE
+           b  c
+        a
+        1  0  1
+        2  2  3
+        3  4  4
+        """
+        if len(self._kdf._internal.index_names) != 1:
+            raise ValueError('idxmin only support one-level index now')
+        groupkeys = self._groupkeys
+        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+                         for i, s in enumerate(groupkeys)]
+        sdf = self._kdf._sdf
+        index = self._kdf._internal.index_columns[0]
+
+        stat_exprs = []
+        for ks in self._agg_columns:
+            if skipna:
+                order_column = Column(ks._scol._jc.asc_nulls_last())
+            else:
+                order_column = Column(ks._scol._jc.asc_nulls_first())
+            window = Window.partitionBy(groupkey_cols).orderBy(order_column)
+            sdf = sdf.withColumn(ks.name, F.when(F.row_number().over(window) == 1, F.col(index))
+                                 .otherwise(None))
+            stat_exprs.append(F.max(F.col(ks.name)).alias(ks.name))
+        sdf = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[ks.name for ks in self._agg_columns],
+                                  index_map=[('__index_level_{}__'.format(i), s.name)
+                                             for i, s in enumerate(groupkeys)])
+        kdf = DataFrame(internal)
+        return kdf
 
     # TODO: add keep parameter
     def nsmallest(self, n=5):
@@ -1382,7 +1510,7 @@ class GroupBy(object):
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = 1000
-            pdf = self._kdf.head(limit + 1).to_pandas()
+            pdf = self._kdf.head(limit + 1)._to_internal_pandas()
             pdf = pdf.groupby(input_groupnames).transform(func)
             kdf = DataFrame(pdf)
             return_schema = kdf._sdf.schema
@@ -1721,3 +1849,13 @@ class SeriesGroupBy(GroupBy):
 
     def filter(self, func):
         raise NotImplementedError()
+
+    def idxmin(self, skipna=True):
+        return _col(super(SeriesGroupBy, self).idxmin(skipna))
+
+    idxmin.__doc__ = GroupBy.idxmin.__doc__
+
+    def idxmax(self, skipna=True):
+        return _col(super(SeriesGroupBy, self).idxmax(skipna))
+
+    idxmax.__doc__ = GroupBy.idxmax.__doc__

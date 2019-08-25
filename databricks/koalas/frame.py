@@ -22,6 +22,7 @@ from distutils.version import LooseVersion
 import re
 import warnings
 import inspect
+import json
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
@@ -370,7 +371,7 @@ class DataFrame(_Frame, Generic[T]):
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = 1000
-            pdf = self.head(limit + 1).to_pandas()
+            pdf = self.head(limit + 1)._to_internal_pandas()
             pser = getattr(pdf, name)(axis=axis, numeric_only=numeric_only)
             if len(pdf) <= limit:
                 return Series(pser)
@@ -949,7 +950,7 @@ class DataFrame(_Frame, Generic[T]):
         args = locals()
         kdf = self
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_clipboard, pd.DataFrame.to_clipboard, args)
+            kdf._to_internal_pandas(), self.to_clipboard, pd.DataFrame.to_clipboard, args)
 
     def to_html(self, buf=None, columns=None, col_space=None, header=True, index=True,
                 na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
@@ -1048,7 +1049,7 @@ class DataFrame(_Frame, Generic[T]):
             kdf = self
 
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_html, pd.DataFrame.to_html, args)
+            kdf._to_internal_pandas(), self.to_html, pd.DataFrame.to_html, args)
 
     def to_string(self, buf=None, columns=None, col_space=None, header=True,
                   index=True, na_rep='NaN', formatters=None, float_format=None,
@@ -1148,7 +1149,7 @@ class DataFrame(_Frame, Generic[T]):
             kdf = self
 
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_string, pd.DataFrame.to_string, args)
+            kdf._to_internal_pandas(), self.to_string, pd.DataFrame.to_string, args)
 
     def to_dict(self, orient='dict', into=dict):
         """
@@ -1244,7 +1245,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         args = locals()
         kdf = self
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_dict, pd.DataFrame.to_dict, args)
+            kdf._to_internal_pandas(), self.to_dict, pd.DataFrame.to_dict, args)
 
     def to_latex(self, buf=None, columns=None, col_space=None, header=True, index=True,
                  na_rep='NaN', formatters=None, float_format=None, sparsify=None, index_names=True,
@@ -1343,7 +1344,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         args = locals()
         kdf = self
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_latex, pd.DataFrame.to_latex, args)
+            kdf._to_internal_pandas(), self.to_latex, pd.DataFrame.to_latex, args)
 
     # TODO: enable doctests once we drop Spark 2.3.x (due to type coercion logic
     #  when creating arrays)
@@ -1454,10 +1455,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1    float64
         dtype: object
         """
-        if len(self._internal.index_columns) != 1:
-            raise ValueError("Single index must be set to transpose the current DataFrame.")
         if limit is not None:
-            pdf = self.head(limit + 1).to_pandas()
+            pdf = self.head(limit + 1)._to_internal_pandas()
             if len(pdf) > limit:
                 raise ValueError(
                     "Current DataFrame has more then the given limit %s rows. Please use "
@@ -1466,63 +1465,64 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     "expensive." % (limit, limit))
             return DataFrame(pdf.transpose())
 
-        index_columns = self._internal.index_columns
-        index_column = index_columns[0]
-        data_columns = self._internal.data_columns
-        sdf = self._sdf
-
         # Explode the data to be pairs.
         #
         # For instance, if the current input DataFrame is as below:
         #
-        # +-----+---+---+---+
-        # |index| x1| x2| x3|
-        # +-----+---+---+---+
-        # |   y1|  1|  0|  0|
-        # |   y2|  0| 50|  0|
-        # |   y3|  3|  2|  1|
-        # +-----+---+---+---+
+        # +------+------+------+------+------+
+        # |index1|index2|(a,x1)|(a,x2)|(b,x3)|
+        # +------+------+------+------+------+
+        # |    y1|    z1|     1|     0|     0|
+        # |    y2|    z2|     0|    50|     0|
+        # |    y3|    z3|     3|     2|     1|
+        # +------+------+------+------+------+
         #
         # Output of `exploded_df` becomes as below:
         #
-        # +-----+---+-----+
-        # |index|key|value|
-        # +-----+---+-----+
-        # |   y1| x1|    1|
-        # |   y1| x2|    0|
-        # |   y1| x3|    0|
-        # |   y2| x1|    0|
-        # |   y2| x2|   50|
-        # |   y2| x3|    0|
-        # |   y3| x1|    3|
-        # |   y3| x2|    2|
-        # |   y3| x3|    1|
-        # +-----+---+-----+
+        # +-----------------+-----------------+-----------------+-----+
+        # |            index|__index_level_0__|__index_level_1__|value|
+        # +-----------------+-----------------+-----------------+-----+
+        # |{"a":["y1","z1"]}|                a|               x1|    1|
+        # |{"a":["y1","z1"]}|                a|               x2|    0|
+        # |{"a":["y1","z1"]}|                b|               x3|    0|
+        # |{"a":["y2","z2"]}|                a|               x1|    0|
+        # |{"a":["y2","z2"]}|                a|               x2|   50|
+        # |{"a":["y2","z2"]}|                b|               x3|    0|
+        # |{"a":["y3","z3"]}|                a|               x1|    3|
+        # |{"a":["y3","z3"]}|                a|               x2|    2|
+        # |{"a":["y3","z3"]}|                b|               x3|    1|
+        # +-----------------+-----------------+-----------------+-----+
+        internal_index_column = "__index_level_{}__".format
         pairs = F.explode(F.array(*[
             F.struct(
-                F.lit(column).alias("key"),
-                scol_for(sdf, column).alias("value")
-            ) for column in data_columns]))
+                [F.lit(col).alias(internal_index_column(i)) for i, col in enumerate(idx)] +
+                [self[idx]._scol.alias("value")]
+            ) for idx in self._internal.column_index]))
 
-        exploded_df = sdf.withColumn("pairs", pairs).select(
-            [scol_for(sdf, index_column), F.col("pairs.key"), F.col("pairs.value")])
+        exploded_df = self._sdf.withColumn("pairs", pairs).select(
+            [F.to_json(F.struct(F.array([scol.cast('string')
+                                         for scol in self._internal.index_scols])
+                                .alias('a'))).alias('index'),
+             F.col("pairs.*")])
 
         # After that, executes pivot with key and its index column.
         # Note that index column should contain unique values since column names
         # should be unique.
-        pivoted_df = exploded_df.groupBy(F.col("key")).pivot('`{}`'.format(index_column))
+        internal_index_columns = [internal_index_column(i)
+                                  for i in range(self._internal.column_index_level)]
+        pivoted_df = exploded_df.groupBy(internal_index_columns).pivot('index')
 
-        # New index column is always single index.
-        internal_index_column = "__index_level_0__"
-        transposed_df = pivoted_df.agg(
-            F.first(F.col("value"))).withColumnRenamed("key", internal_index_column)
+        transposed_df = pivoted_df.agg(F.first(F.col("value")))
 
-        new_data_columns = filter(lambda x: x != internal_index_column, transposed_df.columns)
+        new_data_columns = list(filter(lambda x: x not in internal_index_columns,
+                                       transposed_df.columns))
 
         internal = self._internal.copy(
             sdf=transposed_df,
-            data_columns=list(new_data_columns),
-            index_map=[(internal_index_column, None)])
+            data_columns=new_data_columns,
+            index_map=[(col, None) for col in internal_index_columns],
+            column_index=[tuple(json.loads(col)['a']) for col in new_data_columns],
+            column_index_names=None)
 
         return DataFrame(internal)
 
@@ -2265,7 +2265,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         third   0.9  0.0  0.49
         """
         if isinstance(decimals, ks.Series):
-            decimals_list = [kv for kv in decimals.to_pandas().items()]
+            decimals_list = [kv for kv in decimals._to_internal_pandas().items()]
         elif isinstance(decimals, dict):
             decimals_list = [(k, v) for k, v in decimals.items()]
         elif isinstance(decimals, int):
@@ -2687,7 +2687,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def to_pandas(self):
         """
-        Return a Pandas DataFrame.
+        Return a pandas DataFrame.
 
         .. note:: This method should only be used if the resulting Pandas DataFrame is expected
             to be small, as all the data is loaded into the driver's memory.
@@ -2931,7 +2931,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf = self
 
         return validate_arguments_and_invoke_function(
-            kdf.to_pandas(), self.to_records, pd.DataFrame.to_records, args)
+            kdf._to_internal_pandas(), self.to_records, pd.DataFrame.to_records, args)
 
     def copy(self) -> 'DataFrame':
         """
@@ -3979,7 +3979,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 inc_ex=set(include).intersection(set(exclude))))
 
         # Handle Spark types
-        columns = []
         include_spark_type = []
         for inc in include:
             try:
@@ -4009,23 +4008,26 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             except:
                 pass
 
-        for col in self._internal.data_columns:
+        columns = []
+        column_index = []
+        for idx, col in zip(self._internal.column_index, self._internal.data_columns):
             if len(include) > 0:
                 should_include = (
-                    infer_dtype_from_object(self[col].dtype.name) in include_numpy_type or
-                    self._sdf.schema[col].dataType in include_spark_type)
+                    infer_dtype_from_object(self[idx].dtype.name) in include_numpy_type or
+                    self._internal.spark_type_for(col) in include_spark_type)
             else:
                 should_include = not (
-                    infer_dtype_from_object(self[col].dtype.name) in exclude_numpy_type or
-                    self._sdf.schema[col].dataType in exclude_spark_type)
+                    infer_dtype_from_object(self[idx].dtype.name) in exclude_numpy_type or
+                    self._internal.spark_type_for(col) in exclude_spark_type)
 
             if should_include:
-                columns += col
+                columns.append(col)
+                column_index.append(idx)
 
         return DataFrame(self._internal.copy(
             sdf=self._sdf.select(self._internal.index_scols +
-                                 [scol_for(self._sdf, col) for col in columns]),
-            data_columns=columns))
+                                 [self._internal.scol_for(col) for col in columns]),
+            data_columns=columns, column_index=column_index))
 
     def count(self, axis=None):
         """
@@ -6034,22 +6036,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError('axis should be either 0 or "index" currently.')
 
         applied = []
-        data_columns = self._internal.data_columns
-        for column in data_columns:
-            col = self[column]._scol
+        column_index = self._internal.column_index
+        for idx in column_index:
+            col = self[idx]._scol
             all_col = F.min(F.coalesce(col.cast('boolean'), F.lit(True)))
             applied.append(F.when(all_col.isNull(), True).otherwise(all_col))
 
         # TODO: there is a similar logic to transpose in, for instance,
         #  DataFrame.any, Series.quantile. Maybe we should deduplicate it.
         sdf = self._sdf
-        internal_index_column = "__index_level_0__"
+        internal_index_column = "__index_level_{}__".format
         value_column = "value"
         cols = []
-        for data_column, applied_col in zip(data_columns, applied):
+        for idx, applied_col in zip(column_index, applied):
             cols.append(F.struct(
-                F.lit(data_column).alias(internal_index_column),
-                applied_col.alias(value_column)))
+                [F.lit(col).alias(internal_index_column(i)) for i, col in enumerate(idx)] +
+                [applied_col.alias(value_column)]))
 
         sdf = sdf.select(
             F.array(*cols).alias("arrays")
@@ -6057,13 +6059,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = sdf.selectExpr("col.*")
 
+        index_column_name = lambda i: (None if self._internal.column_index_names is None
+                                       else self._internal.column_index_names[i])
         internal = self._internal.copy(
             sdf=sdf,
             data_columns=[value_column],
-            index_map=[(internal_index_column, None)])
+            index_map=[(internal_index_column(i), index_column_name(i))
+                       for i in range(self._internal.column_index_level)],
+            column_index=None,
+            column_index_names=None)
 
-        ser = DataFrame(internal)[value_column].rename("all")
-        return ser
+        return DataFrame(internal)[value_column].rename("all")
 
     # TODO: axis, skipna, and many arguments should be implemented.
     def any(self, axis: Union[int, str] = 0) -> bool:
@@ -6114,22 +6120,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError('axis should be either 0 or "index" currently.')
 
         applied = []
-        data_columns = self._internal.data_columns
-        for column in data_columns:
-            col = self[column]._scol
+        column_index = self._internal.column_index
+        for idx in column_index:
+            col = self[idx]._scol
             all_col = F.max(F.coalesce(col.cast('boolean'), F.lit(False)))
             applied.append(F.when(all_col.isNull(), False).otherwise(all_col))
 
         # TODO: there is a similar logic to transpose in, for instance,
         #  DataFrame.all, Series.quantile. Maybe we should deduplicate it.
         sdf = self._sdf
-        internal_index_column = "__index_level_0__"
+        internal_index_column = "__index_level_{}__".format
         value_column = "value"
         cols = []
-        for data_column, applied_col in zip(data_columns, applied):
+        for idx, applied_col in zip(column_index, applied):
             cols.append(F.struct(
-                F.lit(data_column).alias(internal_index_column),
-                applied_col.alias(value_column)))
+                [F.lit(col).alias(internal_index_column(i)) for i, col in enumerate(idx)] +
+                [applied_col.alias(value_column)]))
 
         sdf = sdf.select(
             F.array(*cols).alias("arrays")
@@ -6137,13 +6143,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = sdf.selectExpr("col.*")
 
+        index_column_name = lambda i: (None if self._internal.column_index_names is None
+                                       else self._internal.column_index_names[i])
         internal = self._internal.copy(
             sdf=sdf,
             data_columns=[value_column],
-            index_map=[(internal_index_column, None)])
+            index_map=[(internal_index_column(i), index_column_name(i))
+                       for i in range(self._internal.column_index_level)],
+            column_index=None,
+            column_index_names=None)
 
-        ser = DataFrame(internal)[value_column].rename("any")
-        return ser
+        return DataFrame(internal)[value_column].rename("any")
 
     # TODO: add axis, numeric_only, pct, na_option parameter
     def rank(self, method='average', ascending=True):
@@ -6415,8 +6425,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(self._internal.copy(sdf=self._sdf.filter(bcol)))
         raise NotImplementedError(key)
 
+    def _to_internal_pandas(self):
+        """
+        Return a pandas DataFrame directly from _internal to avoid overhead of copy.
+
+        This method is for internal use only.
+        """
+        return self._internal.pandas_df
+
     def __repr__(self):
-        pdf = self.head(max_display_count + 1).to_pandas()
+        pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
         repr_string = repr(pdf.iloc[:max_display_count])
         if pdf_length > max_display_count:
@@ -6430,7 +6448,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return repr_string
 
     def _repr_html_(self):
-        pdf = self.head(max_display_count + 1).to_pandas()
+        pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
         repr_html = pdf[:max_display_count]._repr_html_()
         if pdf_length > max_display_count:

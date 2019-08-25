@@ -328,9 +328,14 @@ specific plotting methods of the form ``Series.plot.<kind>``.
 .. autosummary::
    :toctree: api/
 
+   Series.plot
+   Series.plot.area
    Series.plot.bar
+   Series.plot.barh
    Series.plot.box
    Series.plot.hist
+   Series.plot.line
+   Series.plot.pie
 
 .. currentmodule:: databricks.koalas
 .. autosummary::
