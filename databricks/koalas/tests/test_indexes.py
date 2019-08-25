@@ -93,6 +93,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(kidx.names, pidx.names)
         self.assert_eq(kidx, pidx)
 
+        with self.assertRaisesRegex(ValueError, "Names must be a list-like"):
+            kidx.names = 'hi'
+
+        expected_error_message = ("Length of new names must be {}, got {}"
+            .format(len(kdf._internal.index_map), len(['0', '1'])))
+        with self.assertRaisesRegex(ValueError, expected_error_message):
+            kidx.names = ['0', '1']
+
     def test_multi_index_names(self):
         arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
         idx = pd.MultiIndex.from_arrays(arrays, names=('number', 'color'))
