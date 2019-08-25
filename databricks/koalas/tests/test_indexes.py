@@ -74,6 +74,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kidx.to_series(), pidx.to_series())
             self.assert_eq(kidx.to_series(name='a'), pidx.to_series(name='a'))
 
+    def test_to_pandas(self):
+        kidx = self.kdf.index
+        pidx = self.pdf.index
+        self.assert_eq(kidx.toPandas(), pidx)
+
     def test_index_names(self):
         kdf = self.kdf
         self.assertIsNone(kdf.index.name)
