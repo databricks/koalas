@@ -226,6 +226,7 @@ Plotting
 -------------------------------
 ``DataFrame.plot`` is both a callable method and a namespace attribute for
 specific plotting methods of the form ``DataFrame.plot.<kind>``.
+
 .. currentmodule:: databricks.koalas.frame
 .. autosummary::
    :toctree: api/
