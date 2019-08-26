@@ -26,8 +26,8 @@ class OneByOneDefaultIndexTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
         super(OneByOneDefaultIndexTest, cls).setUpClass()
-        cls.default_index = os.environ.get('DEFAULT_INDEX', 'one-by-one')
-        os.environ['DEFAULT_INDEX'] = 'one-by-one'
+        cls.default_index = os.environ.get('DEFAULT_INDEX', 'sequence')
+        os.environ['DEFAULT_INDEX'] = 'sequence'
 
     @classmethod
     def tearDownClass(cls):
@@ -44,8 +44,8 @@ class DistributedOneByOneDefaultIndexTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
         super(DistributedOneByOneDefaultIndexTest, cls).setUpClass()
-        cls.default_index = os.environ.get('DEFAULT_INDEX', 'one-by-one')
-        os.environ['DEFAULT_INDEX'] = 'distributed-one-by-one'
+        cls.default_index = os.environ.get('DEFAULT_INDEX', 'sequence')
+        os.environ['DEFAULT_INDEX'] = 'distributed-sequence'
 
     @classmethod
     def tearDownClass(cls):
@@ -62,7 +62,7 @@ class DistributedDefaultIndexTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
         super(DistributedDefaultIndexTest, cls).setUpClass()
-        cls.default_index = os.environ.get('DEFAULT_INDEX', 'one-by-one')
+        cls.default_index = os.environ.get('DEFAULT_INDEX', 'sequence')
         os.environ['DEFAULT_INDEX'] = 'distributed'
 
     @classmethod
