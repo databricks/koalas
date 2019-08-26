@@ -64,7 +64,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
         ks = self.kdf1
 
-        unsupported_functions = ['area', 'bar', 'barh', 'box', 'density', 'hexbin',
+        unsupported_functions = ['bar', 'barh', 'box', 'density', 'hexbin',
                                  'hist', 'kde', 'pie', 'scatter']
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
