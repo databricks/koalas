@@ -49,10 +49,22 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         ax4 = kdf.plot.line(colormap='Paired')
         self.compare_plots(ax3, ax4)
 
+    def test_barh_plot(self):
+        pdf = pd.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
+        kdf = koalas.from_pandas(pdf)
+
+        ax1 = pdf.plot(kind="barh", colormap='Paired')
+        ax2 = kdf.plot(kind="barh", colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax3 = pdf.plot.barh(colormap='Paired')
+        ax4 = kdf.plot.barh(colormap='Paired')
+        self.compare_plots(ax3, ax4)
+
     def test_missing(self):
         ks = self.kdf1
 
-        unsupported_functions = ['area', 'bar', 'barh', 'box', 'density', 'hexbin',
+        unsupported_functions = ['area', 'bar', 'box', 'density', 'hexbin',
                                  'hist', 'kde', 'pie', 'scatter']
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
