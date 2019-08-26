@@ -220,7 +220,7 @@ Serialization / IO / Conversion
    DataFrame.to_records
    DataFrame.to_latex
 
-.. _api.frame.plot:
+.. _api.dataframe.plot:
 
 Plotting
 -------------------------------
