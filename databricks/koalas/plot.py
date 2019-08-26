@@ -54,9 +54,16 @@ class TopNPlot:
     max_rows = 1000
 
     def get_top_n(self, data):
+        from databricks.koalas import DataFrame, Series
         # Simply use the first 1k elements and make it into a pandas dataframe
         # For categorical variables, it is likely called from df.x.value_counts().plot.xxx().
-        data = data.head(TopNPlot.max_rows + 1).to_pandas().to_frame()
+        if isinstance(data, Series):
+            data = data.head(TopNPlot.max_rows + 1).to_pandas().to_frame()
+        elif isinstance(data, DataFrame):
+            data = data.head(TopNPlot.max_rows + 1).to_pandas()
+        else:
+            ValueError("Only DataFrame and Series are supported for plotting.")
+
         self.partial = False
         if len(data) > TopNPlot.max_rows:
             self.partial = True
@@ -949,8 +956,27 @@ class KoalasFramePlotMethods(PandasObject):
     def area(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='area')()
 
-    def bar(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='bar')()
+    def bar(self, x=None, y=None, **kwds):
+        """
+        Vertical bar plot.
+
+        Parameters
+        ----------
+        x : label or position, optional
+            Allows plotting of one column versus another.
+            If not specified, the index of the DataFrame is used.
+        y : label or position, optional
+            Allows plotting of one column versus another.
+            If not specified, all numerical columns are used.
+        `**kwds` : optional
+            Additional keyword arguments are documented in
+            :meth:`Koalas.DataFrame.plot`.
+
+        Returns
+        -------
+        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+        """
+        return self(kind='bar', x=x, y=y, **kwds)
 
     def barh(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='barh')()
