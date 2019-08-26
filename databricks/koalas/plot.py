@@ -946,7 +946,7 @@ class KoalasFramePlotMethods(PandasObject):
     def pie(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='pie')()
 
-    def area(self, x=None, y=None, **kwds):
+    def area(self, x=None, y=None, stacked=True, **kwds):
         """
         Draw a stacked area plot.
 
@@ -971,7 +971,7 @@ class KoalasFramePlotMethods(PandasObject):
         matplotlib.axes.Axes or numpy.ndarray
             Area plot, or array of area plots if subplots is True.
         """
-        return self(kind='area', x=x, y=y, **kwds)
+        return self(kind='area', x=x, y=y, stacked=stacked, **kwds)
 
     def bar(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='bar')()
