@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 
 from databricks import koalas
+from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
@@ -47,3 +48,13 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         ax3 = pdf.plot.line(colormap='Paired')
         ax4 = kdf.plot.line(colormap='Paired')
         self.compare_plots(ax3, ax4)
+
+    def test_missing(self):
+        ks = self.kdf1
+
+        unsupported_functions = ['area', 'bar', 'barh', 'box', 'density', 'hexbin',
+                                 'hist', 'kde', 'pie', 'scatter']
+        for name in unsupported_functions:
+            with self.assertRaisesRegex(PandasNotImplementedError,
+                                        "method.*DataFrame.*{}.*not implemented".format(name)):
+                getattr(ks.plot, name)()

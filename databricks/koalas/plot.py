@@ -917,7 +917,58 @@ class KoalasFramePlotMethods(PandasObject):
                           sort_columns=sort_columns, **kwds)
 
     def line(self, x=None, y=None, **kwargs):
+        """
+        Plot DataFrame as lines.
+
+        Parameters
+        ----------
+        x: int or str, optional
+            Columns to use for the horizontal axis.
+        y : int, str, or list of them, optional
+            The values to be plotted.
+        **kwargs
+            Keyword arguments to pass on to :meth:`DataFrame.plot`.
+
+        Returns
+        -------
+        :class:`matplotlib.axes.Axes` or :class:`numpy.ndarray`
+            Return an ndarray when ``subplots=True``.
+
+        See Also
+        --------
+        matplotlib.pyplot.plot : Plot y versus x as lines and/or markers.
+        """
         return self(kind='line', x=x, y=y, **kwargs)
+
+    def kde(self, bw_method=None, ind=None, **kwds):
+        return _unsupported_function(class_name='pd.DataFrame', method_name='kde')()
+
+    def pie(self, bw_method=None, ind=None, **kwds):
+        return _unsupported_function(class_name='pd.DataFrame', method_name='pie')()
+
+    def area(self, bw_method=None, ind=None, **kwds):
+        return _unsupported_function(class_name='pd.DataFrame', method_name='area')()
+
+    def bar(self, bw_method=None, ind=None, **kwds):
+        return _unsupported_function(class_name='pd.DataFrame', method_name='bar')()
+
+    def barh(self, bw_method=None, ind=None, **kwds):
+        return _unsupported_function(class_name='pd.DataFrame', method_name='barh')()
+
+    def hexbin(self, bw_method=None, ind=None, **kwds):
+        return _unsupported_function(class_name='pd.DataFrame', method_name='hexbin')()
+
+    def density(self, bw_method=None, ind=None, **kwds):
+        return _unsupported_function(class_name='pd.DataFrame', method_name='density')()
+
+    def box(self, bw_method=None, ind=None, **kwds):
+        return _unsupported_function(class_name='pd.DataFrame', method_name='box')()
+
+    def hist(self, bw_method=None, ind=None, **kwds):
+        return _unsupported_function(class_name='pd.DataFrame', method_name='hist')()
+
+    def scatter(self, bw_method=None, ind=None, **kwds):
+        return _unsupported_function(class_name='pd.DataFrame', method_name='scatter')()
 
 
 def plot_frame(data, x=None, y=None, kind='line', ax=None,

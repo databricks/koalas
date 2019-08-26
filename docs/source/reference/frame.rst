@@ -219,3 +219,16 @@ Serialization / IO / Conversion
    DataFrame.to_clipboard
    DataFrame.to_records
    DataFrame.to_latex
+
+.. _api.series.plot:
+
+Plotting
+-------------------------------
+``DataFrame.plot`` is both a callable method and a namespace attribute for
+specific plotting methods of the form ``DataFrame.plot.<kind>``.
+.. currentmodule:: databricks.koalas.frame
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.plot
+   DataFrame.plot.line
