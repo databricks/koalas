@@ -22,6 +22,7 @@ import pandas as pd
 import pyspark
 
 import databricks.koalas as ks
+from databricks.koalas.generic import max_display_count
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
@@ -54,6 +55,35 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             else:
                 kdf = ks.from_pandas(pdf)
                 self.assert_eq(kdf.index, pdf.index)
+
+    def test_index_repr(self):
+        kidx = ks.DataFrame({'a': range(max_display_count + 1)}).index
+
+        # Check that the footer outputs correctly
+        # when the index length exceeds the maximum value.
+        expected_footer = ("Showing only the first {}"
+                           .format(max_display_count))
+        self.assert_eq(repr(kidx)[-len(expected_footer):], expected_footer)
+
+    def test_index_getattr(self):
+        kidx = self.kdf.index
+        item = 'databricks'
+
+        expected_error_message = ("'Index' object has no attribute '{}'".format(item))
+        with self.assertRaisesRegex(AttributeError, expected_error_message):
+            kidx.__getattr__(item)
+
+    def test_multi_index_getattr(self):
+        arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
+        idx = pd.MultiIndex.from_arrays(arrays, names=('number', 'color'))
+        pdf = pd.DataFrame(np.random.randn(4, 5), idx)
+        kdf = ks.from_pandas(pdf)
+        kidx = kdf.index
+        item = 'databricks'
+
+        expected_error_message = ("'MultiIndex' object has no attribute '{}'".format(item))
+        with self.assertRaisesRegex(AttributeError, expected_error_message):
+            kidx.__getattr__(item)
 
     def test_to_series(self):
         pidx = self.pdf.index
@@ -92,6 +122,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(kidx.name, pidx.name)
         self.assertEqual(kidx.names, pidx.names)
         self.assert_eq(kidx, pidx)
+
+        with self.assertRaisesRegex(ValueError, "Names must be a list-like"):
+            kidx.names = 'hi'
+
+        expected_error_message = ("Length of new names must be {}, got {}"
+                                  .format(len(kdf._internal.index_map), len(['0', '1'])))
+        with self.assertRaisesRegex(ValueError, expected_error_message):
+            kidx.names = ['0', '1']
 
     def test_multi_index_names(self):
         arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
