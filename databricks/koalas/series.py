@@ -73,20 +73,41 @@ Series.{reverse}
 _add_example_SERIES = """
 Examples
 --------
->>> df = ks.DataFrame({'a': [1, 1, 1, np.nan],
-...                    'b': [1, np.nan, 1, np.nan]},
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
 ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
 >>> df
      a    b
-a  1.0  1.0
-b  1.0  NaN
-c  1.0  1.0
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
 d  NaN  NaN
 
 >>> df.a.add(df.b)
-a    2.0
+a    4.0
 b    NaN
-c    2.0
+c    6.0
+d    NaN
+Name: a, dtype: float64
+"""
+
+_radd_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+
+>>> df.a.radd(df.b)
+a    4.0
+b    NaN
+c    6.0
 d    NaN
 Name: a, dtype: float64
 """
@@ -94,20 +115,41 @@ Name: a, dtype: float64
 _sub_example_SERIES = """
 Examples
 --------
->>> df = ks.DataFrame({'a': [1, 1, 1, np.nan],
-...                    'b': [1, np.nan, 1, np.nan]},
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
 ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
 >>> df
      a    b
-a  1.0  1.0
-b  1.0  NaN
-c  1.0  1.0
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
 d  NaN  NaN
 
 >>> df.a.subtract(df.b)
 a    0.0
 b    NaN
-c    0.0
+c    2.0
+d    NaN
+Name: a, dtype: float64
+"""
+
+_rsub_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+
+>>> df.a.rsub(df.b)
+a    0.0
+b    NaN
+c   -2.0
 d    NaN
 Name: a, dtype: float64
 """
@@ -126,6 +168,27 @@ c  4.0  2.0
 d  NaN  NaN
 
 >>> df.a.multiply(df.b)
+a    4.0
+b    NaN
+c    8.0
+d    NaN
+Name: a, dtype: float64
+"""
+
+_rmul_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+
+>>> df.a.rmul(df.b)
 a    4.0
 b    NaN
 c    8.0
@@ -154,6 +217,27 @@ d    NaN
 Name: a, dtype: float64
 """
 
+_rdiv_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+
+>>> df.a.rdiv(df.b)
+a    1.0
+b    NaN
+c    0.5
+d    NaN
+Name: a, dtype: float64
+"""
+
 _pow_example_SERIES = """
 Examples
 --------
@@ -172,6 +256,27 @@ a     4.0
 b     NaN
 c    16.0
 d     NaN
+Name: a, dtype: float64
+"""
+
+_rpow_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+
+>>> df.a.rpow(df.b)
+a    0.0
+b    NaN
+c   -2.0
+d    NaN
 Name: a, dtype: float64
 """
 
@@ -196,6 +301,27 @@ d    NaN
 Name: a, dtype: float64
 """
 
+_rmod_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+
+>>> df.a.rmod(df.b)
+a    0.0
+b    NaN
+c    2.0
+d    NaN
+Name: a, dtype: float64
+"""
+
 _floordiv_example_SERIES = """
 Examples
 --------
@@ -213,6 +339,27 @@ d  NaN  NaN
 a    1.0
 b    NaN
 c    2.0
+d    NaN
+Name: a, dtype: float64
+"""
+
+_rfloordiv_example_SERIES = """
+Examples
+--------
+>>> df = ks.DataFrame({'a': [2, 2, 4, np.nan],
+...                    'b': [2, np.nan, 2, np.nan]},
+...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
+>>> df
+     a    b
+a  2.0  2.0
+b  2.0  NaN
+c  4.0  2.0
+d  NaN  NaN
+
+>>> df.a.rfloordiv(df.b)
+a    0.0
+b    NaN
+c   -2.0
 d    NaN
 Name: a, dtype: float64
 """
@@ -320,11 +467,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return (other + self).rename(self.name)
 
     radd.__doc__ = _flex_doc_SERIES.format(
-        desc='Addition',
+        desc='Reverse Addition',
         op_name="+",
         equiv="other + series",
         reverse='add',
-        series_examples=_add_example_SERIES)
+        series_examples=_radd_example_SERIES)
 
     def div(self, other):
         return (self / other).rename(self.name)
@@ -342,11 +489,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return (other / self).rename(self.name)
 
     rdiv.__doc__ = _flex_doc_SERIES.format(
-        desc='Floating division',
+        desc='Reverse Floating division',
         op_name="/",
         equiv="other / series",
         reverse='div',
-        series_examples=_div_example_SERIES)
+        series_examples=_rdiv_example_SERIES)
 
     def truediv(self, other):
         return (self / other).rename(self.name)
@@ -362,11 +509,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return (other / self).rename(self.name)
 
     rtruediv.__doc__ = _flex_doc_SERIES.format(
-        desc='Floating division',
+        desc='Reverse Floating division',
         op_name="/",
         equiv="other / series",
         reverse='truediv',
-        series_examples=_div_example_SERIES)
+        series_examples=_rdiv_example_SERIES)
 
     def mul(self, other):
         return (self * other).rename(self.name)
@@ -384,11 +531,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return (other * self).rename(self.name)
 
     rmul.__doc__ = _flex_doc_SERIES.format(
-        desc='Multiplication',
+        desc='Reverse Multiplication',
         op_name="*",
         equiv="other * series",
         reverse='mul',
-        series_examples=_mul_example_SERIES)
+        series_examples=_rmul_example_SERIES)
 
     def sub(self, other):
         return (self - other).rename(self.name)
@@ -406,11 +553,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return (other - self).rename(self.name)
 
     rsub.__doc__ = _flex_doc_SERIES.format(
-        desc='Subtraction',
+        desc='Reverse Subtraction',
         op_name="-",
         equiv="other - series",
         reverse='sub',
-        series_examples=_sub_example_SERIES)
+        series_examples=_rsub_example_SERIES)
 
     def mod(self, other):
         return (self % other).rename(self.name)
@@ -426,11 +573,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return (other % self).rename(self.name)
 
     rmod.__doc__ = _flex_doc_SERIES.format(
-        desc='Modulo',
+        desc='Reverse Modulo',
         op_name='%',
         equiv='other % series',
         reverse='mod',
-        series_examples=_mod_example_SERIES)
+        series_examples=_rmod_example_SERIES)
 
     def pow(self, other):
         return (self ** other).rename(self.name)
@@ -446,11 +593,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return (other - self).rename(self.name)
 
     rpow.__doc__ = _flex_doc_SERIES.format(
-        desc='Exponential power',
+        desc='Reverse Exponential power',
         op_name='**',
         equiv='other ** series',
         reverse='pow',
-        series_examples=_pow_example_SERIES)
+        series_examples=_rpow_example_SERIES)
 
     def floordiv(self, other):
         return (self // other).rename(self.name)
@@ -466,11 +613,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return (other - self).rename(self.name)
 
     rfloordiv.__doc__ = _flex_doc_SERIES.format(
-        desc='Integer division',
+        desc='Reverse Integer division',
         op_name='//',
         equiv='other // series',
         reverse='floordiv',
-        series_examples=_floordiv_example_SERIES)
+        series_examples=_rfloordiv_example_SERIES)
 
     # Comparison Operators
     def eq(self, other):
