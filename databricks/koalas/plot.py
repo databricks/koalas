@@ -57,7 +57,6 @@ class TopNPlot:
         from databricks.koalas import DataFrame, Series
         # Simply use the first 1k elements and make it into a pandas dataframe
         # For categorical variables, it is likely called from df.x.value_counts().plot.xxx().
-        data = data.head(TopNPlot.max_rows + 1).to_pandas().to_frame()
         if isinstance(data, Series):
             data = data.head(TopNPlot.max_rows + 1).to_pandas().to_frame()
         elif isinstance(data, DataFrame):
@@ -641,7 +640,7 @@ def plot_series(data, kind='line', ax=None,                    # Series unique
 
 def _plot(data, x=None, y=None, subplots=False,
           ax=None, kind='line', **kwds):
-
+    from databricks.koalas import DataFrame
     # function copied from pandas.plotting._core
     # and adapted to handle Koalas DataFrame and Series
 
@@ -650,6 +649,15 @@ def _plot(data, x=None, y=None, subplots=False,
         klass = _plot_klass[kind]
     else:
         raise ValueError("%r is not a valid plot kind" % kind)
+
+    # check data type and do preprocess before applying plot
+    if isinstance(data, DataFrame):
+        if x is not None:
+            data = data.set_index(x)
+        # TODO: check if value of y is plottable
+        if y is not None:
+            data = data[y]
+
     plot_obj = klass(data, subplots=subplots, ax=ax, kind=kind, **kwds)
     plot_obj.generate()
     plot_obj.draw()
@@ -960,7 +968,7 @@ class KoalasFramePlotMethods(PandasObject):
     def bar(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='bar')()
 
-    def barh(self, x=None, y=None, **kwds):
+    def barh(self, x=None, y=None, **kwargs):
         """
         Make a horizontal bar plot.
 
@@ -986,7 +994,7 @@ class KoalasFramePlotMethods(PandasObject):
         --------
         matplotlib.axes.Axes.bar : Plot a vertical bar plot using matplotlib.
         """
-        return self(kind='barh', x=x, y=y, **kwds)
+        return self(kind='barh', x=x, y=y, **kwargs)
 
     def hexbin(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='hexbin')()

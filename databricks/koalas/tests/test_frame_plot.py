@@ -49,8 +49,22 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         ax4 = kdf.plot.line(colormap='Paired')
         self.compare_plots(ax3, ax4)
 
+    def test_barh_plot_with_x_y(self):
+        # this is testing plot with specified x and y
+        pdf = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
+        kdf = koalas.from_pandas(pdf)
+
+        ax1 = pdf.plot(kind="barh", x='lab', y='val', colormap='Paired')
+        ax2 = kdf.plot(kind="barh", x='lab', y='val', colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax3 = pdf.plot.barh(x='lab', y='val', colormap='Paired')
+        ax4 = kdf.plot.barh(x='lab', y='val', colormap='Paired')
+        self.compare_plots(ax3, ax4)
+
     def test_barh_plot(self):
-        pdf = pd.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
+        # this is testing when x or y is not assigned
+        pdf = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
         kdf = koalas.from_pandas(pdf)
 
         ax1 = pdf.plot(kind="barh", colormap='Paired')
