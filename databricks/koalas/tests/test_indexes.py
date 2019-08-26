@@ -56,15 +56,6 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 kdf = ks.from_pandas(pdf)
                 self.assert_eq(kdf.index, pdf.index)
 
-    def test_index_repr(self):
-        kidx = ks.DataFrame({'a': range(max_display_count + 1)}).index
-
-        # Check that the footer outputs correctly
-        # when the index length exceeds the maximum value.
-        expected_footer = ("Showing only the first {}"
-                           .format(max_display_count))
-        self.assert_eq(repr(kidx)[-len(expected_footer):], expected_footer)
-
     def test_index_getattr(self):
         kidx = self.kdf.index
         item = 'databricks'
