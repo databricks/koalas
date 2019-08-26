@@ -35,6 +35,7 @@ if LooseVersion(pd.__version__) >= LooseVersion('0.24'):
     from pandas.core.dtypes.common import infer_dtype_from_object
 else:
     from pandas.core.dtypes.common import _get_dtype_from_object as infer_dtype_from_object
+from pandas.core.accessor import CachedAccessor
 from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
@@ -52,6 +53,7 @@ from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, scol_for
 from databricks.koalas.typedef import as_spark_type
+from databricks.koalas.plot import KoalasFramePlotMethods
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
@@ -465,6 +467,9 @@ class DataFrame(_Frame, Generic[T]):
 
     def add(self, other):
         return self + other
+
+    # create accessor for plot
+    plot = CachedAccessor("plot", KoalasFramePlotMethods)
 
     add.__doc__ = _flex_doc_FRAME.format(
         desc='Addition',
