@@ -946,8 +946,32 @@ class KoalasFramePlotMethods(PandasObject):
     def pie(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='pie')()
 
-    def area(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='area')()
+    def area(self, x=None, y=None, **kwds):
+        """
+        Draw a stacked area plot.
+
+        An area plot displays quantitative data visually.
+        This function wraps the matplotlib area function.
+
+        Parameters
+        ----------
+        x : label or position, optional
+            Coordinates for the X axis. By default uses the index.
+        y : label or position, optional
+            Column to plot. By default uses all columns.
+        stacked : bool, default True
+            Area plots are stacked by default. Set to False to create a
+            unstacked plot.
+        **kwds : optional
+            Additional keyword arguments are documented in
+            :meth:`DataFrame.plot`.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or numpy.ndarray
+            Area plot, or array of area plots if subplots is True.
+        """
+        return self(kind='area', x=x, y=y, **kwds)
 
     def bar(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='bar')()

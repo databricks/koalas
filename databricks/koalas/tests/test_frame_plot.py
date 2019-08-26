@@ -49,6 +49,18 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         ax4 = kdf.plot.line(colormap='Paired')
         self.compare_plots(ax3, ax4)
 
+    def test_area_plot(self):
+        pdf = self.pdf1
+        kdf = self.kdf1
+
+        ax1 = pdf.plot(kind="area", colormap='Paired')
+        ax2 = kdf.plot(kind="area", colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax3 = pdf.plot.area(colormap='Paired')
+        ax4 = kdf.plot.area(colormap='Paired')
+        self.compare_plots(ax3, ax4)
+
     def test_missing(self):
         ks = self.kdf1
 
