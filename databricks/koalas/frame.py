@@ -3551,8 +3551,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Parameters
         ----------
         values : column to aggregate.
-            They should be either a list of one column or a string. A list of columns
-            is not supported yet.
+            They should be either a list less than three or a string.
         index : column (string) or list of columns
             If an array is passed, it must be the same length as the data.
             The list should contain string.
@@ -3601,7 +3600,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
         ...                        columns='C', aggfunc='sum')
         >>> table  # doctest: +NORMALIZE_WHITESPACE
-                 large  small
+        C        large  small
         A   B
         foo one    4.0      1
             two    NaN      6
@@ -3613,7 +3612,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
         ...                        columns='C', aggfunc='sum', fill_value=0)
         >>> table  # doctest: +NORMALIZE_WHITESPACE
-                 large  small
+        C        large  small
         A   B
         foo one      4      1
             two      0      6
@@ -3626,10 +3625,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> table = df.pivot_table(values = ['D'], index =['C'],
         ...                        columns="A", aggfunc={'D':'mean'})
         >>> table  # doctest: +NORMALIZE_WHITESPACE
-               bar       foo
+        A      bar       foo
         C
         small  5.5  2.333333
         large  5.5  2.000000
+
+        The next example aggregates on multiple values.
+
+        >>> table = df.pivot_table(index=['C'], columns="A", values=['D', 'E'],
+        ...                         aggfunc={'D': 'mean', 'E': 'sum'})
+        >>> table # doctest: +NORMALIZE_WHITESPACE
+                 D             E
+        A      bar       foo bar foo
+        C
+        small  5.5  2.333333  17  13
+        large  5.5  2.000000  15   9
+
         """
         if not isinstance(columns, str):
             raise ValueError("columns should be string.")
@@ -3645,13 +3656,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(aggfunc, dict) and index is None:
             raise NotImplementedError("pivot_table doesn't support aggfunc"
                                       " as dict and without index.")
+        if isinstance(values, list) and index is None:
+            raise NotImplementedError("values can't be a list without index.")
 
-        if isinstance(values, list) and len(values) > 1:
-            raise NotImplementedError('Values as list of columns is not implemented yet.')
+        if isinstance(values, list) and len(values) > 2:
+            raise NotImplementedError("values more than two is not supported yet!")
+
+        if columns not in self.columns.values:
+            raise ValueError("Wrong columns {}.".format(columns))
+
+        if isinstance(values, list):
+            if not all(isinstance(self._internal.spark_type_for(col), NumericType)
+                       for col in values):
+                raise TypeError('values should be a numeric type.')
+        elif not isinstance(self._internal.spark_type_for(values), NumericType):
+            raise TypeError('values should be a numeric type.')
 
         if isinstance(aggfunc, str):
             agg_cols = [F.expr('{1}(`{0}`) as `{0}`'.format(values, aggfunc))]
-
         elif isinstance(aggfunc, dict):
             agg_cols = [F.expr('{1}(`{0}`) as `{0}`'.format(key, value))
                         for key, value in aggfunc.items()]
@@ -3672,20 +3694,52 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.fillna(fill_value)
 
         if index is not None:
-            data_columns = [column for column in sdf.columns if column not in index]
-            index_map = [(column, column) for column in index]
-            internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map)
-            return DataFrame(internal)
+            if isinstance(values, list):
+                data_columns = [column for column in sdf.columns if column not in index]
+
+                if len(values) == 2:
+                    # If we have two values, Spark will return column's name
+                    # in this format: column_values, where column contains
+                    # their values in the DataFrame and values is
+                    # the column list passed to the pivot_table().
+                    # E.g. if column is b and values is ['b','e'],
+                    # then ['2_b', '2_e', '3_b', '3_e'].
+
+                    # We sort the columns of Spark DataFrame by values.
+                    data_columns.sort(key=lambda x: x.split('_', 1)[1])
+                    sdf = sdf.select(index + data_columns)
+
+                    index_map = [(column, column) for column in index]
+                    internal = _InternalFrame(sdf=sdf, data_columns=data_columns,
+                                              index_map=index_map)
+                    kdf = DataFrame(internal)
+
+                    # We build the MultiIndex from the list of columns returned by Spark.
+                    tuples = [(name.split('_')[1], self.dtypes[columns].type(name.split('_')[0]))
+                              for name in kdf._internal.data_columns]
+                    kdf.columns = pd.MultiIndex.from_tuples(tuples, names=[None, columns])
+                else:
+                    index_map = [(column, column) for column in index]
+                    internal = _InternalFrame(sdf=sdf, data_columns=data_columns,
+                                              index_map=index_map, column_index_names=[columns])
+                    kdf = DataFrame(internal)
+                return kdf
+            else:
+                data_columns = [column for column in sdf.columns if column not in index]
+                index_map = [(column, column) for column in index]
+                internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map,
+                                          column_index_names=[columns])
+                return DataFrame(internal)
         else:
             if isinstance(values, list):
                 index_values = values[-1]
             else:
                 index_values = values
-
             sdf = sdf.withColumn(columns, F.lit(index_values))
-            data_columns = [column for column in sdf.columns if column not in columns]
-            index_map = [(column, column) for column in columns]
-            internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map)
+            data_columns = [column for column in sdf.columns if column not in [columns]]
+            index_map = [(column, column) for column in [columns]]
+            internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map,
+                                      column_index_names=[columns])
             return DataFrame(internal)
 
     def pivot(self, index=None, columns=None, values=None):
@@ -3736,14 +3790,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.pivot(index='foo', columns='bar', values='baz').sort_index()
         ... # doctest: +NORMALIZE_WHITESPACE
-             A  B  C
+        bar  A  B  C
         foo
         one  1  2  3
         two  4  5  6
 
         >>> df.pivot(columns='bar', values='baz').sort_index()
         ... # doctest: +NORMALIZE_WHITESPACE
-             A    B    C
+        bar  A    B    C
         0  1.0  NaN  NaN
         1  NaN  2.0  NaN
         2  NaN  NaN  3.0
@@ -3768,7 +3822,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.pivot(index='foo', columns='bar', values='baz').sort_index()
         ... # doctest: +NORMALIZE_WHITESPACE
-               A    B    C
+        bar    A    B    C
         foo
         one  1.0  NaN  NaN
         two  NaN  3.0  4.0
