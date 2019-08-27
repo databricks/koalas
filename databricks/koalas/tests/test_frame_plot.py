@@ -49,10 +49,35 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         ax4 = kdf.plot.line(colormap='Paired')
         self.compare_plots(ax3, ax4)
 
+    def test_bar_plot(self):
+        pdf = self.pdf1
+        kdf = self.kdf1
+
+        ax1 = pdf.plot(kind='bar', colormap='Paired')
+        ax2 = kdf.plot(kind='bar', colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax3 = pdf.plot.bar(colormap='Paired')
+        ax4 = kdf.plot.bar(colormap='Paired')
+        self.compare_plots(ax3, ax4)
+
+    def test_bar_with_x_y(self):
+        # this is testing plot with specified x and y
+        pdf = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
+        kdf = koalas.from_pandas(pdf)
+
+        ax1 = pdf.plot(kind="bar", x='lab', y='val', colormap='Paired')
+        ax2 = kdf.plot(kind="bar", x='lab', y='val', colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax3 = pdf.plot.bar(x='lab', y='val', colormap='Paired')
+        ax4 = kdf.plot.bar(x='lab', y='val', colormap='Paired')
+        self.compare_plots(ax3, ax4)
+
     def test_missing(self):
         ks = self.kdf1
 
-        unsupported_functions = ['area', 'bar', 'barh', 'box', 'density', 'hexbin',
+        unsupported_functions = ['area', 'barh', 'box', 'density', 'hexbin',
                                  'hist', 'kde', 'pie', 'scatter']
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
