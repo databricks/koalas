@@ -640,7 +640,7 @@ def plot_series(data, kind='line', ax=None,                    # Series unique
 
 def _plot(data, x=None, y=None, subplots=False,
           ax=None, kind='line', **kwds):
-
+    from databricks.koalas import DataFrame
     # function copied from pandas.plotting._core
     # and adapted to handle Koalas DataFrame and Series
 
@@ -649,6 +649,15 @@ def _plot(data, x=None, y=None, subplots=False,
         klass = _plot_klass[kind]
     else:
         raise ValueError("%r is not a valid plot kind" % kind)
+
+    # check data type and do preprocess before applying plot
+    if isinstance(data, DataFrame):
+        if x is not None:
+            data = data.set_index(x)
+        # TODO: check if value of y is plottable
+        if y is not None:
+            data = data[y]
+
     plot_obj = klass(data, subplots=subplots, ax=ax, kind=kind, **kwds)
     plot_obj.generate()
     plot_obj.draw()
