@@ -188,11 +188,16 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         kdf = koalas.from_pandas(pdf)
 
         ax1 = pdf['sales'].plot("area", colormap='Paired')
-        ax2 = kdf['sales'].plot("barh", colormap='Paired')
+        ax2 = kdf['sales'].plot("area", colormap='Paired')
         self.compare_plots(ax1, ax2)
 
         ax1 = pdf['sales'].plot.area(colormap='Paired')
         ax2 = kdf['sales'].plot.area(colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        # just a sanity check for df.col type
+        ax1 = pdf.sales.plot("area", colormap='Paired')
+        ax2 = kdf.sales.plot("area", colormap='Paired')
         self.compare_plots(ax1, ax2)
 
     def boxplot_comparison(self, *args, **kwargs):
