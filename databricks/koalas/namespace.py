@@ -951,64 +951,85 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
     if sparse is not False:
         raise NotImplementedError("get_dummies currently does not support sparse")
 
-    if isinstance(columns, str):
-        columns = [columns]
     if dtype is None:
         dtype = 'byte'
 
     if isinstance(data, Series):
         if prefix is not None:
             prefix = [str(prefix)]
-        columns = [data.name]
+        column_index = [(data.name,)]
         kdf = data.to_dataframe()
         remaining_columns = []
     else:
         if isinstance(prefix, str):
             raise ValueError("get_dummies currently does not support prefix as string types")
         kdf = data.copy()
+
         if columns is None:
-            columns = [column for column in kdf.columns
-                       if isinstance(kdf._internal.spark_type_for(column),
-                                     _get_dummies_default_accept_types)]
-        if len(columns) == 0:
+            column_index = [idx for idx in kdf._internal.column_index
+                            if isinstance(kdf._internal.spark_type_for(idx),
+                                          _get_dummies_default_accept_types)]
+        else:
+            if isinstance(columns, (str, tuple)):
+                if isinstance(columns, str):
+                    key = (columns,)
+                else:
+                    key = columns
+                column_index = [idx for idx in kdf._internal.column_index
+                                if idx[:len(key)] == key]
+                if len(column_index) == 0:
+                    raise KeyError(column_index)
+                if prefix is None:
+                    prefix = [str(idx[len(key):]) if len(idx) > len(key) + 1
+                              else idx[len(key)] if len(idx) == len(key) + 1 else ''
+                              for idx in column_index]
+            elif (any(isinstance(col, str) for col in columns)
+                    and any(isinstance(col, tuple) for col in columns)):
+                raise ValueError('Expected tuple, got str')
+            else:
+                column_index = [idx for key in columns
+                                for idx in kdf._internal.column_index
+                                if idx == key or idx[0] == key]
+        if len(column_index) == 0:
             return kdf
 
         if prefix is None:
-            prefix = columns
+            prefix = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
 
-        column_set = set(columns)
-        remaining_columns = [kdf[column] for column in kdf.columns if column not in column_set]
+        column_index_set = set(column_index)
+        remaining_columns = [kdf[idx] for idx in kdf._internal.column_index
+                             if idx not in column_index_set]
 
-    if any(not isinstance(kdf._internal.spark_type_for(column), _get_dummies_acceptable_types)
-           for column in columns):
+    if any(not isinstance(kdf._internal.spark_type_for(idx), _get_dummies_acceptable_types)
+           for idx in column_index):
         raise ValueError("get_dummies currently only accept {} values"
                          .format(', '.join([t.typeName() for t in _get_dummies_acceptable_types])))
 
-    if prefix is not None and len(columns) != len(prefix):
+    if prefix is not None and len(column_index) != len(prefix):
         raise ValueError(
             "Length of 'prefix' ({}) did not match the length of the columns being encoded ({})."
-            .format(len(prefix), len(columns)))
+            .format(len(prefix), len(column_index)))
 
     all_values = _reduce_spark_multi(kdf._sdf,
-                                     [F.collect_set(kdf._internal.scol_for(column)).alias(column)
-                                      for column in columns])
-    for i, column in enumerate(columns):
+                                     [F.collect_set(kdf._internal.scol_for(idx))
+                                      for idx in column_index])
+    for i, idx in enumerate(column_index):
         values = sorted(all_values[i])
         if drop_first:
             values = values[1:]
 
         def column_name(value):
-            if prefix is None:
+            if prefix is None or prefix[i] == '':
                 return str(value)
             else:
                 return '{}{}{}'.format(prefix[i], prefix_sep, value)
 
         for value in values:
-            remaining_columns.append((kdf[column].notnull() & (kdf[column] == value))
+            remaining_columns.append((kdf[idx].notnull() & (kdf[idx] == value))
                                      .astype(dtype)
                                      .rename(column_name(value)))
         if dummy_na:
-            remaining_columns.append(kdf[column].isnull().astype(dtype).rename(column_name('nan')))
+            remaining_columns.append(kdf[idx].isnull().astype(dtype).rename(column_name('nan')))
 
     return kdf[remaining_columns]
 

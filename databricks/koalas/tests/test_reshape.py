@@ -21,173 +21,151 @@ from distutils.version import LooseVersion
 import numpy as np
 import pandas as pd
 
-from databricks import koalas
+from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase
 
 
 class ReshapeTest(ReusedSQLTestCase):
 
     def test_get_dummies(self):
-        for data in [pd.Series([1, 1, 1, 2, 2, 1, 3, 4]),
-                     # pd.Series([1, 1, 1, 2, 2, 1, 3, 4], dtype='category'),
-                     # pd.Series(pd.Categorical([1, 1, 1, 2, 2, 1, 3, 4], categories=[4, 3, 2, 1])),
-                     pd.DataFrame({'a': [1, 2, 3, 4, 4, 3, 2, 1],
-                                   # 'b': pd.Categorical(list('abcdabcd')),
-                                   'b': list('abcdabcd')})]:
-            exp = pd.get_dummies(data)
+        for pdf_or_ps in [pd.Series([1, 1, 1, 2, 2, 1, 3, 4]),
+                          # pd.Series([1, 1, 1, 2, 2, 1, 3, 4], dtype='category'),
+                          # pd.Series(pd.Categorical([1, 1, 1, 2, 2, 1, 3, 4],
+                          #                          categories=[4, 3, 2, 1])),
+                          pd.DataFrame({'a': [1, 2, 3, 4, 4, 3, 2, 1],
+                                        # 'b': pd.Categorical(list('abcdabcd')),
+                                        'b': list('abcdabcd')})]:
+            kdf_or_ks = ks.from_pandas(pdf_or_ps)
 
-            ddata = koalas.from_pandas(data)
-            res = koalas.get_dummies(ddata)
-            self.assertPandasAlmostEqual(res.toPandas(), exp)
+            self.assert_eq(ks.get_dummies(kdf_or_ks), pd.get_dummies(pdf_or_ps), almost=True)
 
     def test_get_dummies_object(self):
-        df = pd.DataFrame({'a': [1, 2, 3, 4, 4, 3, 2, 1],
-                           # 'a': pd.Categorical([1, 2, 3, 4, 4, 3, 2, 1]),
-                           'b': list('abcdabcd'),
-                           # 'c': pd.Categorical(list('abcdabcd')),
-                           'c': list('abcdabcd')})
-        ddf = koalas.from_pandas(df)
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 4, 3, 2, 1],
+                            # 'a': pd.Categorical([1, 2, 3, 4, 4, 3, 2, 1]),
+                            'b': list('abcdabcd'),
+                            # 'c': pd.Categorical(list('abcdabcd')),
+                            'c': list('abcdabcd')})
+        kdf = ks.from_pandas(pdf)
 
         # Explicitly exclude object columns
-        exp = pd.get_dummies(df, columns=['a', 'c'])
-        res = koalas.get_dummies(ddf, columns=['a', 'c'])
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
+        self.assert_eq(ks.get_dummies(kdf, columns=['a', 'c']),
+                       pd.get_dummies(pdf, columns=['a', 'c']), almost=True)
 
-        exp = pd.get_dummies(df)
-        res = koalas.get_dummies(ddf)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
-
-        exp = pd.get_dummies(df.b)
-        res = koalas.get_dummies(ddf.b)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
-
-        exp = pd.get_dummies(df, columns=['b'])
-        res = koalas.get_dummies(ddf, columns=['b'])
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
+        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf), almost=True)
+        self.assert_eq(ks.get_dummies(kdf.b), pd.get_dummies(pdf.b), almost=True)
+        self.assert_eq(ks.get_dummies(kdf, columns=['b']),
+                       pd.get_dummies(pdf, columns=['b']), almost=True)
 
     def test_get_dummies_date_datetime(self):
-        df = pd.DataFrame({'d': [datetime.date(2019, 1, 1),
-                                 datetime.date(2019, 1, 2),
-                                 datetime.date(2019, 1, 1)],
-                           'dt': [datetime.datetime(2019, 1, 1, 0, 0, 0),
-                                  datetime.datetime(2019, 1, 1, 0, 0, 1),
-                                  datetime.datetime(2019, 1, 1, 0, 0, 0)]})
-        ddf = koalas.from_pandas(df)
+        pdf = pd.DataFrame({'d': [datetime.date(2019, 1, 1),
+                                  datetime.date(2019, 1, 2),
+                                  datetime.date(2019, 1, 1)],
+                            'dt': [datetime.datetime(2019, 1, 1, 0, 0, 0),
+                                   datetime.datetime(2019, 1, 1, 0, 0, 1),
+                                   datetime.datetime(2019, 1, 1, 0, 0, 0)]})
+        kdf = ks.from_pandas(pdf)
 
-        exp = pd.get_dummies(df)
-        res = koalas.get_dummies(ddf)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
-
-        exp = pd.get_dummies(df.d)
-        res = koalas.get_dummies(ddf.d)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
-
-        exp = pd.get_dummies(df.dt)
-        res = koalas.get_dummies(ddf.dt)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
+        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf), almost=True)
+        self.assert_eq(ks.get_dummies(kdf.d), pd.get_dummies(pdf.d), almost=True)
+        self.assert_eq(ks.get_dummies(kdf.dt), pd.get_dummies(pdf.dt), almost=True)
 
     def test_get_dummies_boolean(self):
-        df = pd.DataFrame({'b': [True, False, True]})
-        ddf = koalas.from_pandas(df)
+        pdf = pd.DataFrame({'b': [True, False, True]})
+        kdf = ks.from_pandas(pdf)
 
-        exp = pd.get_dummies(df)
-        res = koalas.get_dummies(ddf)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
-
-        exp = pd.get_dummies(df.b)
-        res = koalas.get_dummies(ddf.b)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
+        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf), almost=True)
+        self.assert_eq(ks.get_dummies(kdf.b), pd.get_dummies(pdf.b), almost=True)
 
     def test_get_dummies_decimal(self):
-        df = pd.DataFrame({'d': [Decimal(1.0), Decimal(2.0), Decimal(1)]})
-        ddf = koalas.from_pandas(df)
+        pdf = pd.DataFrame({'d': [Decimal(1.0), Decimal(2.0), Decimal(1)]})
+        kdf = ks.from_pandas(pdf)
 
-        exp = pd.get_dummies(df)
-        res = koalas.get_dummies(ddf)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
-
-        exp = pd.get_dummies(df.d)
-        res = koalas.get_dummies(ddf.d)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
+        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf), almost=True)
+        self.assert_eq(ks.get_dummies(kdf.d), pd.get_dummies(pdf.d), almost=True)
 
     def test_get_dummies_kwargs(self):
-        # s = pd.Series([1, 1, 1, 2, 2, 1, 3, 4], dtype='category')
-        s = pd.Series([1, 1, 1, 2, 2, 1, 3, 4])
-        exp = pd.get_dummies(s, prefix='X', prefix_sep='-')
+        # pser = pd.Series([1, 1, 1, 2, 2, 1, 3, 4], dtype='category')
+        pser = pd.Series([1, 1, 1, 2, 2, 1, 3, 4])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(ks.get_dummies(kser, prefix='X', prefix_sep='-'),
+                       pd.get_dummies(pser, prefix='X', prefix_sep='-'), almost=True)
 
-        ds = koalas.from_pandas(s)
-        res = koalas.get_dummies(ds, prefix='X', prefix_sep='-')
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
-
-        exp = pd.get_dummies(s, drop_first=True)
-
-        ds = koalas.from_pandas(s)
-        res = koalas.get_dummies(ds, drop_first=True)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
+        self.assert_eq(ks.get_dummies(kser, drop_first=True),
+                       pd.get_dummies(pser, drop_first=True), almost=True)
 
         # nan
-        # s = pd.Series([1, 1, 1, 2, np.nan, 3, np.nan, 5], dtype='category')
-        s = pd.Series([1, 1, 1, 2, np.nan, 3, np.nan, 5])
-        exp = pd.get_dummies(s)
-
-        ds = koalas.from_pandas(s)
-        res = koalas.get_dummies(ds)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
+        # pser = pd.Series([1, 1, 1, 2, np.nan, 3, np.nan, 5], dtype='category')
+        pser = pd.Series([1, 1, 1, 2, np.nan, 3, np.nan, 5])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(ks.get_dummies(kser), pd.get_dummies(pser), almost=True)
 
         # dummy_na
-        exp = pd.get_dummies(s, dummy_na=True)
-
-        ds = koalas.from_pandas(s)
-        res = koalas.get_dummies(ds, dummy_na=True)
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
+        self.assert_eq(ks.get_dummies(kser, dummy_na=True),
+                       pd.get_dummies(pser, dummy_na=True), almost=True)
 
     def test_get_dummies_prefix(self):
-        df = pd.DataFrame({
+        pdf = pd.DataFrame({
             "A": ['a', 'b', 'a'],
             "B": ['b', 'a', 'c'],
             "D": [0, 0, 1],
         })
-        ddf = koalas.from_pandas(df)
+        kdf = ks.from_pandas(pdf)
 
-        exp = pd.get_dummies(df, prefix=['foo', 'bar'])
-        res = koalas.get_dummies(ddf, prefix=['foo', 'bar'])
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
+        self.assert_eq(ks.get_dummies(kdf, prefix=['foo', 'bar']),
+                       pd.get_dummies(pdf, prefix=['foo', 'bar']), almost=True)
 
-        exp = pd.get_dummies(df, prefix=['foo'], columns=['B'])
-        res = koalas.get_dummies(ddf, prefix=['foo'], columns=['B'])
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
+        self.assert_eq(ks.get_dummies(kdf, prefix=['foo'], columns=['B']),
+                       pd.get_dummies(pdf, prefix=['foo'], columns=['B']), almost=True)
 
         with self.assertRaisesRegex(ValueError, "string types"):
-            koalas.get_dummies(ddf, prefix='foo')
+            ks.get_dummies(kdf, prefix='foo')
         with self.assertRaisesRegex(ValueError, "Length of 'prefix' \\(1\\) .* \\(2\\)"):
-            koalas.get_dummies(ddf, prefix=['foo'])
+            ks.get_dummies(kdf, prefix=['foo'])
         with self.assertRaisesRegex(ValueError, "Length of 'prefix' \\(2\\) .* \\(1\\)"):
-            koalas.get_dummies(ddf, prefix=['foo', 'bar'], columns=['B'])
+            ks.get_dummies(kdf, prefix=['foo', 'bar'], columns=['B'])
 
-        s = pd.Series([1, 1, 1, 2, 2, 1, 3, 4], name='A')
-        ds = koalas.from_pandas(s)
+        pser = pd.Series([1, 1, 1, 2, 2, 1, 3, 4], name='A')
+        kser = ks.from_pandas(pser)
 
-        exp = pd.get_dummies(s, prefix='foo')
-        res = koalas.get_dummies(ds, prefix='foo')
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
+        self.assert_eq(ks.get_dummies(kser, prefix='foo'),
+                       pd.get_dummies(pser, prefix='foo'), almost=True)
 
         # columns are ignored.
-        exp = pd.get_dummies(s, prefix=['foo'], columns=['B'])
-        res = koalas.get_dummies(ds, prefix=['foo'], columns=['B'])
-        self.assertPandasAlmostEqual(res.toPandas(), exp)
+        self.assert_eq(ks.get_dummies(kser, prefix=['foo'], columns=['B']),
+                       pd.get_dummies(pser, prefix=['foo'], columns=['B']), almost=True)
 
     def test_get_dummies_dtype(self):
-        df = pd.DataFrame({
+        pdf = pd.DataFrame({
             # "A": pd.Categorical(['a', 'b', 'a'], categories=['a', 'b', 'c']),
             "A": ['a', 'b', 'a'],
             "B": [0, 0, 1],
         })
-        ddf = koalas.from_pandas(df)
+        kdf = ks.from_pandas(pdf)
 
         if LooseVersion("0.23.0") <= LooseVersion(pd.__version__):
-            exp = pd.get_dummies(df, dtype='float64')
+            exp = pd.get_dummies(pdf, dtype='float64')
         else:
-            exp = pd.get_dummies(df)
+            exp = pd.get_dummies(pdf)
             exp = exp.astype({'A_a': 'float64', 'A_b': 'float64'})
-        res = koalas.get_dummies(ddf, dtype='float64')
-        self.assertPandasAlmostEqual(exp, res.toPandas())
+        res = ks.get_dummies(kdf, dtype='float64')
+        self.assert_eq(res, exp, almost=True)
+
+    def test_get_dummies_multiindex_columns(self):
+        pdf = pd.DataFrame({('x', 'a', '1'): [1, 2, 3, 4, 4, 3, 2, 1],
+                            ('x', 'b', '2'): list('abcdabcd'),
+                            ('y', 'c', '3'): list('abcdabcd')})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf), almost=True)
+        self.assert_eq(ks.get_dummies(kdf, columns=[('y', 'c', '3'), ('x', 'a', '1')]),
+                       pd.get_dummies(pdf, columns=[('y', 'c', '3'), ('x', 'a', '1')]), almost=True)
+        self.assert_eq(ks.get_dummies(kdf, columns=['x']),
+                       pd.get_dummies(pdf, columns=['x']), almost=True)
+        self.assert_eq(ks.get_dummies(kdf, columns=('x', 'a')),
+                       pd.get_dummies(pdf, columns=('x', 'a')), almost=True)
+        self.assert_eq(ks.get_dummies(kdf, columns='x'),
+                       pd.get_dummies(pdf, columns='x'), almost=True)
+
+        self.assertRaises(KeyError, lambda: ks.get_dummies(kdf, columns='z'))
+        self.assertRaises(KeyError, lambda: ks.get_dummies(kdf, columns=('x', 'c')))
+        self.assertRaises(ValueError, lambda: ks.get_dummies(kdf, columns=[('x',), 'c']))

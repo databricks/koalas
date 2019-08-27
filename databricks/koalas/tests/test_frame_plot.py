@@ -61,11 +61,61 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         ax4 = kdf.plot.area(colormap='Paired')
         self.compare_plots(ax3, ax4)
 
+    def test_barh_plot_with_x_y(self):
+        # this is testing plot with specified x and y
+        pdf = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
+        kdf = koalas.from_pandas(pdf)
+
+        ax1 = pdf.plot(kind="barh", x='lab', y='val', colormap='Paired')
+        ax2 = kdf.plot(kind="barh", x='lab', y='val', colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax3 = pdf.plot.barh(x='lab', y='val', colormap='Paired')
+        ax4 = kdf.plot.barh(x='lab', y='val', colormap='Paired')
+        self.compare_plots(ax3, ax4)
+
+    def test_barh_plot(self):
+        # this is testing when x or y is not assigned
+        pdf = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
+        kdf = koalas.from_pandas(pdf)
+
+        ax1 = pdf.plot(kind="barh", colormap='Paired')
+        ax2 = kdf.plot(kind="barh", colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax3 = pdf.plot.barh(colormap='Paired')
+        ax4 = kdf.plot.barh(colormap='Paired')
+        self.compare_plots(ax3, ax4)
+
+    def test_bar_plot(self):
+        pdf = self.pdf1
+        kdf = self.kdf1
+
+        ax1 = pdf.plot(kind='bar', colormap='Paired')
+        ax2 = kdf.plot(kind='bar', colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax3 = pdf.plot.bar(colormap='Paired')
+        ax4 = kdf.plot.bar(colormap='Paired')
+        self.compare_plots(ax3, ax4)
+
+    def test_bar_with_x_y(self):
+        # this is testing plot with specified x and y
+        pdf = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
+        kdf = koalas.from_pandas(pdf)
+
+        ax1 = pdf.plot(kind="bar", x='lab', y='val', colormap='Paired')
+        ax2 = kdf.plot(kind="bar", x='lab', y='val', colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax3 = pdf.plot.bar(x='lab', y='val', colormap='Paired')
+        ax4 = kdf.plot.bar(x='lab', y='val', colormap='Paired')
+        self.compare_plots(ax3, ax4)
+
     def test_missing(self):
         ks = self.kdf1
 
-        unsupported_functions = ['bar', 'barh', 'box', 'density', 'hexbin',
-                                 'hist', 'kde', 'pie', 'scatter']
+        unsupported_functions = ['box', 'density', 'hexbin', 'hist', 'kde', 'pie', 'scatter']
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*DataFrame.*{}.*not implemented".format(name)):
