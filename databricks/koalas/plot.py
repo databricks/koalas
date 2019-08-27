@@ -56,7 +56,7 @@ class TopNPlot:
     def get_top_n(self, data):
         # Simply use the first 1k elements and make it into a pandas dataframe
         # For categorical variables, it is likely called from df.x.value_counts().plot.xxx().
-        data = data.head(TopNPlot.max_rows + 1).to_pandas().to_frame()
+        data = data.head(TopNPlot.max_rows + 1).to_pandas()
         self.partial = False
         if len(data) > TopNPlot.max_rows:
             self.partial = True
@@ -949,8 +949,35 @@ class KoalasFramePlotMethods(PandasObject):
     def area(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='area')()
 
-    def bar(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='bar')()
+    def bar(self, x=None, y=None, **kwargs):
+        """
+        Vertical bar plot.
+
+        Parameters
+        ----------
+        x : label or position, optional
+            Allows plotting of one column versus another. If not specified,
+            the index of the DataFrame is used.
+        y : label or position, optional
+            Allows plotting of one column versus another. If not specified,
+            all numerical columns are used.
+        **kwargs
+            Additional keyword arguments are documented in
+            :meth:`DataFrame.plot`.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or np.ndarray of them
+            An ndarray is returned with one :class:`matplotlib.axes.Axes`
+            per column when ``subplots=True``.
+
+        See Also
+        --------
+        DataFrame.plot.barh : Horizontal bar plot.
+        DataFrame.plot : Make plots of a DataFrame.
+        matplotlib.pyplot.bar : Make a bar plot with matplotlib.
+        """
+        return self(kind='bar', x=x, y=y, **kwargs)
 
     def barh(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='barh')()
