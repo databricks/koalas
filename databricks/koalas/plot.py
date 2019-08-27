@@ -959,8 +959,38 @@ class KoalasFramePlotMethods(PandasObject):
     def kde(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='kde')()
 
-    def pie(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='pie')()
+    def pie(self, y=None, **kwds):
+        """
+        Generate a pie plot.
+        A pie plot is a proportional representation of the numerical data in a
+        column. This function wraps :meth:`matplotlib.pyplot.pie` for the
+        specified column. If no column reference is passed and
+        ``subplots=True`` a pie plot is drawn for each numerical column
+        independently.
+
+        Parameters
+        ----------
+        y : int or label, optional
+            Label or position of the column to plot.
+            If not provided, ``subplots=True`` argument must be passed.
+        **kwds
+            Keyword arguments to pass on to :meth:`Koalas.DataFrame.plot`.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or np.ndarray of them
+            A NumPy array is returned when `subplots` is True.
+        """
+        from databricks.koalas import DataFrame
+
+        # Pandas will raise an error if y is None and subplots if not True
+        if (
+                isinstance(self.data, DataFrame)
+                and y is None
+                and not kwds.get("subplots", False)
+        ):
+            raise ValueError("pie requires either y column or 'subplots=True'")
+        return self(kind='pie', y=y, **kwds)
 
     def area(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='area')()

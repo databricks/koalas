@@ -235,3 +235,4 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    DataFrame.plot.line
    DataFrame.plot.barh
    DataFrame.plot.bar
+   DataFrame.plot.pie
