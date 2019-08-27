@@ -965,8 +965,27 @@ class KoalasFramePlotMethods(PandasObject):
     def area(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='area')()
 
-    def bar(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='bar')()
+    def bar(self, x=None, y=None, **kwds):
+        """
+        Vertical bar plot.
+
+        Parameters
+        ----------
+        x : label or position, optional
+            Allows plotting of one column versus another.
+            If not specified, the index of the DataFrame is used.
+        y : label or position, optional
+            Allows plotting of one column versus another.
+            If not specified, all numerical columns are used.
+        `**kwds` : optional
+            Additional keyword arguments are documented in
+            :meth:`Koalas.DataFrame.plot`.
+
+        Returns
+        -------
+        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+        """
+        return self(kind='bar', x=x, y=y, **kwds)
 
     def barh(self, x=None, y=None, **kwargs):
         """

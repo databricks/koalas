@@ -1102,9 +1102,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Todo: self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values="b"),
         #  pdf.pivot_table(index=['c'], columns=["a"], values="b"))
 
-        # Todo: self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
-        #  aggfunc={'b': 'mean', 'e': 'sum'}), pdf.pivot_table(index=['c'], columns=["a"],
-        #  values=['b', 'e'], aggfunc={'b': 'mean', 'e': 'sum'}))
+        self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
+                                       aggfunc={'b': 'mean', 'e': 'sum'}).sort_index(),
+                       pdf.pivot_table(index=['c'], columns=["a"],
+                                       values=['b', 'e'], aggfunc={'b': 'mean', 'e': 'sum'}))
 
         # Todo: self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b"),
         #  pdf.pivot_table(index=['e', 'c'], columns="a", values="b"))
@@ -1153,10 +1154,40 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.pivot_table(index=['e', 'c'], columns="a", values='b',
                             aggfunc={'b': 'mean', 'e': 'sum'})
 
-        msg = 'Values as list of columns is not implemented yet.'
+        msg = "values can't be a list without index."
         with self.assertRaisesRegex(NotImplementedError, msg):
-            kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
+            kdf.pivot_table(columns="a", values=['b', 'e'])
+
+        msg = "values more than two is not supported yet!"
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            kdf.pivot_table(index=['e'], columns="a", values=['b', 'e', 'c'],
+                            aggfunc={'b': 'mean', 'e': 'sum', 'c': 'sum'})
+
+        msg = "Wrong columns A."
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.pivot_table(index=['c'], columns="A", values=['b', 'e'],
                             aggfunc={'b': 'mean', 'e': 'sum'})
+
+        kdf = ks.DataFrame({"A": ["foo", "foo", "foo", "foo", "foo",
+                                  "bar", "bar", "bar", "bar"],
+                            "B": ["one", "one", "one", "two", "two",
+                                  "one", "one", "two", "two"],
+                            "C": ["small", "large", "large", "small",
+                                  "small", "large", "small", "small",
+                                  "large"],
+                            "D": [1, 2, 2, 3, 3, 4, 5, 6, 7],
+                            "E": [2, 4, 5, 5, 6, 6, 8, 9, 9]},
+                           columns=['A', 'B', 'C', 'D', 'E'])
+
+        msg = "values should be a numeric type."
+        with self.assertRaisesRegex(TypeError, msg):
+            kdf.pivot_table(index=['C'], columns="A", values=['B', 'E'],
+                            aggfunc={'B': 'mean', 'E': 'sum'})
+
+        msg = "values should be a numeric type."
+        with self.assertRaisesRegex(TypeError, msg):
+            kdf.pivot_table(index=['C'], columns="A", values='B',
+                            aggfunc={'B': 'mean'})
 
     def test_transpose(self):
         pdf1 = pd.DataFrame(
