@@ -354,6 +354,20 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
 
+    @property
+    def nbytes(self):
+        """Return the number of bytes in the underlying data.
+
+        >>> pser = pd.Series(list('abc'))
+        >>> kser = ks.Series(list('abc'))
+        >>> pser.nbytes == kser.nbytes
+        True
+        """
+        n = len(self)
+        if n:
+            return n * self.dtype.itemsize
+        return 0
+
     # Arithmetic Operators
     def add(self, other):
         return (self + other).rename(self.name)

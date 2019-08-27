@@ -25,6 +25,7 @@ Attributes
 
    Series.dtype
    Series.dtypes
+   Series.nbytes
    Series.name
    Series.schema
    Series.shape
