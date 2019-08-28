@@ -100,11 +100,46 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         ax4 = kdf.plot.bar(x='lab', y='val', colormap='Paired')
         self.compare_plots(ax3, ax4)
 
+    def test_pie_plot(self):
+        pdf = pd.DataFrame({'mass': [0.330, 4.87, 5.97], 'radius': [2439.7, 6051.8, 6378.1]},
+                           index=['Mercury', 'Venus', 'Earth'])
+        kdf = koalas.from_pandas(pdf)
+
+        ax1 = pdf.plot.pie(y='mass', figsize=(5, 5), colormap='Paired')
+        ax2 = kdf.plot.pie(y='mass', figsize=(5, 5), colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax1 = pdf.plot(kind="pie", y='mass', figsize=(5, 5), colormap='Paired')
+        ax2 = kdf.plot(kind="pie", y='mass', figsize=(5, 5), colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax11, ax12 = pdf.plot.pie(figsize=(5, 5), subplots=True, colormap='Paired')
+        ax21, ax22 = kdf.plot.pie(figsize=(5, 5), subplots=True, colormap='Paired')
+        self.compare_plots(ax11, ax21)
+        self.compare_plots(ax12, ax22)
+
+        ax11, ax12 = pdf.plot(kind="pie", figsize=(5, 5), subplots=True, colormap='Paired')
+        ax21, ax22 = kdf.plot(kind="pie", figsize=(5, 5), subplots=True, colormap='Paired')
+        self.compare_plots(ax11, ax21)
+        self.compare_plots(ax12, ax22)
+
+    def test_pie_plot_error_message(self):
+        # this is to test if error is correctly raising when y is not specified
+        # and subplots is not set to True
+        pdf = pd.DataFrame({'mass': [0.330, 4.87, 5.97], 'radius': [2439.7, 6051.8, 6378.1]},
+                           index=['Mercury', 'Venus', 'Earth'])
+        kdf = koalas.from_pandas(pdf)
+
+        with self.assertRaises(ValueError) as context:
+            kdf.plot.pie(figsize=(5, 5), colormap='Paired')
+        error_message = "pie requires either y column or 'subplots=True'"
+        self.assertTrue(error_message in str(context.exception))
+
     def test_missing(self):
         ks = self.kdf1
 
         unsupported_functions = ['area', 'box', 'density', 'hexbin',
-                                 'hist', 'kde', 'pie', 'scatter']
+                                 'hist', 'kde', 'scatter']
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*DataFrame.*{}.*not implemented".format(name)):
