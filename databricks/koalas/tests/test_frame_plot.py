@@ -49,6 +49,44 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         ax4 = kdf.plot.line(colormap='Paired')
         self.compare_plots(ax3, ax4)
 
+    def test_area_plot(self):
+        pdf = self.pdf1
+        kdf = self.kdf1
+
+        ax1 = pdf.plot(kind="area", colormap='Paired')
+        ax2 = kdf.plot(kind="area", colormap='Paired')
+        self.compare_plots(ax1, ax2)
+
+        ax3 = pdf.plot.area(colormap='Paired')
+        ax4 = kdf.plot.area(colormap='Paired')
+        self.compare_plots(ax3, ax4)
+
+    def test_area_plot_stacked_false(self):
+        # test if frame area plot is correct when stacked=False because default is True
+        pdf = pd.DataFrame({
+            'sales': [3, 2, 3, 9, 10, 6],
+            'signups': [5, 5, 6, 12, 14, 13],
+            'visits': [20, 42, 28, 62, 81, 50],
+        }, index=pd.date_range(start='2018/01/01', end='2018/07/01', freq='M'))
+        kdf = koalas.from_pandas(pdf)
+
+        ax1 = pdf.plot.area(stacked=False)
+        ax2 = kdf.plot.area(stacked=False)
+        self.compare_plots(ax1, ax2)
+
+    def test_area_plot_y(self):
+        # test if frame area plot is correct when y is specified
+        pdf = pd.DataFrame({
+            'sales': [3, 2, 3, 9, 10, 6],
+            'signups': [5, 5, 6, 12, 14, 13],
+            'visits': [20, 42, 28, 62, 81, 50],
+        }, index=pd.date_range(start='2018/01/01', end='2018/07/01', freq='M'))
+        kdf = koalas.from_pandas(pdf)
+
+        ax1 = pdf.plot.area(y='sales')
+        ax2 = kdf.plot.area(y='sales')
+        self.compare_plots(ax1, ax2)
+
     def test_barh_plot_with_x_y(self):
         # this is testing plot with specified x and y
         pdf = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
@@ -138,8 +176,8 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
         ks = self.kdf1
 
-        unsupported_functions = ['area', 'box', 'density', 'hexbin',
-                                 'hist', 'kde', 'scatter']
+        unsupported_functions = ['box', 'density', 'hexbin', 'hist', 'kde', 'scatter']
+
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*DataFrame.*{}.*not implemented".format(name)):
