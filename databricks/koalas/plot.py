@@ -90,7 +90,7 @@ class SampledPlot:
             sampled = data._sdf.sample(fraction=float(self.fraction))
             return DataFrame(data._internal.copy(sdf=sampled)).to_pandas()
         elif isinstance(data, Series):
-            scol = data._kdf._internal.data_scols[0]
+            scol = data._scol
             sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
             return DataFrame(data._kdf._internal.copy(sdf=sampled, scol=scol)).to_pandas()
         else:
