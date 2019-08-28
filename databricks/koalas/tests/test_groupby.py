@@ -108,6 +108,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                            pdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'],
                                                                     'C': 'sum'}))
 
+        expected_error_message = (r"aggs must be a dict mapping from column name \(string\) "
+                                  r"to aggregate functions \(string or list of strings\).")
+        with self.assertRaisesRegex(ValueError, expected_error_message):
+            kdf.groupby('A', as_index=as_index).agg(0)
+
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
                             'B': [True, True, True, False, False, False, None, True, None, False]})
@@ -168,6 +173,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             .value_counts(sort=True, ascending=False).sort_index()),
                        repr(pdf.groupby("A")['B']
                             .value_counts(sort=True, ascending=False).sort_index()))
+        self.assert_eq(repr(kdf.groupby("A")['B']
+                            .value_counts(sort=True, ascending=True).sort_index()),
+                       repr(pdf.groupby("A")['B']
+                            .value_counts(sort=True, ascending=True).sort_index()))
 
     def test_size(self):
         pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
@@ -275,7 +284,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(repr(kdf.groupby(['a'])['b'].nsmallest(2).sort_index()),
                        repr(pdf.groupby(['a'])['b'].nsmallest(2).sort_index()))
         with self.assertRaisesRegex(ValueError, "idxmax do not support multi-index now"):
-            kdf.set_index(['a', 'b']).groupby(['c'])['d'].nlargest(1)
+            kdf.set_index(['a', 'b']).groupby(['c'])['d'].nsmallest(1)
 
     def test_nlargest(self):
         pdf = pd.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
@@ -357,6 +366,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index())
         self.assert_eq(kdf.groupby(['b'])['a'].apply(lambda x: x).sort_index(),
                        pdf.groupby(['b'])['a'].apply(lambda x: x).sort_index())
+        with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
+            kdf.groupby("b").apply(1)
 
     def test_apply_with_new_dataframe(self):
         # Less than 1000 records will execute a shortcut by using collected pandas dataframe
@@ -405,6 +416,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby(['a', 'b']).transform(lambda x: x * x).sort_index())
         self.assert_eq(kdf.groupby(['b'])['a'].transform(lambda x: x).sort_index(),
                        pdf.groupby(['b'])['a'].transform(lambda x: x).sort_index())
+        with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
+            kdf.groupby("b").transform(1)
 
     def test_filter(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
@@ -425,6 +438,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby("b").filter(lambda x: x.b.mean() < 4).sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).filter(lambda x: any(x.a == 2)).sort_index(),
                        pdf.groupby(['a', 'b']).filter(lambda x: any(x.a == 2)).sort_index())
+        with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
+            kdf.groupby("b").filter(1)
 
     def test_idxmax(self):
         pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3],
@@ -433,6 +448,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = koalas.DataFrame(pdf)
         self.assert_eq(pdf.groupby(['a']).idxmax(),
                        kdf.groupby(['a']).idxmax().sort_index())
+        self.assert_eq(pdf.groupby(['a']).idxmax(skipna=False),
+                       kdf.groupby(['a']).idxmax(skipna=False).sort_index())
         with self.assertRaisesRegex(ValueError, 'idxmax only support one-level index now'):
             kdf.set_index(['a', 'b']).groupby(['c']).idxmax()
 
@@ -443,6 +460,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = koalas.DataFrame(pdf)
         self.assert_eq(pdf.groupby(['a']).idxmin(),
                        kdf.groupby(['a']).idxmin().sort_index())
+        self.assert_eq(pdf.groupby(['a']).idxmin(skipna=False),
+                       kdf.groupby(['a']).idxmin(skipna=False).sort_index())
         with self.assertRaisesRegex(ValueError, 'idxmin only support one-level index now'):
             kdf.set_index(['a', 'b']).groupby(['c']).idxmin()
 
