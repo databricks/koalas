@@ -67,8 +67,8 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot("bar", colormap='Paired')
-        ax2 = kdf['a'].plot("bar", colormap='Paired')
+        ax1 = pdf['a'].plot(kind='bar', colormap='Paired')
+        ax2 = kdf['a'].plot(kind='bar', colormap='Paired')
         self.compare_plots(ax1, ax2)
 
         ax1 = pdf['a'].plot(kind='bar', colormap='Paired')
@@ -116,8 +116,8 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot("line", colormap='Paired')
-        ax2 = kdf['a'].plot("line", colormap='Paired')
+        ax1 = pdf['a'].plot(kind='line', colormap='Paired')
+        ax2 = kdf['a'].plot(kind='line', colormap='Paired')
         self.compare_plots(ax1, ax2)
 
         ax1 = pdf['a'].plot.line(colormap='Paired')
@@ -128,8 +128,8 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot("barh", colormap='Paired')
-        ax2 = kdf['a'].plot("barh", colormap='Paired')
+        ax1 = pdf['a'].plot(kind='barh', colormap='Paired')
+        ax2 = kdf['a'].plot(kind='barh', colormap='Paired')
         self.compare_plots(ax1, ax2)
 
     def test_barh_plot_limited(self):
@@ -187,8 +187,8 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         }, index=pd.date_range(start='2018/01/01', end='2018/07/01', freq='M'))
         kdf = koalas.from_pandas(pdf)
 
-        ax1 = pdf['sales'].plot("area", colormap='Paired')
-        ax2 = kdf['sales'].plot("area", colormap='Paired')
+        ax1 = pdf['sales'].plot(kind='area', colormap='Paired')
+        ax2 = kdf['sales'].plot(kind='area', colormap='Paired')
         self.compare_plots(ax1, ax2)
 
         ax1 = pdf['sales'].plot.area(colormap='Paired')
@@ -196,8 +196,8 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.compare_plots(ax1, ax2)
 
         # just a sanity check for df.col type
-        ax1 = pdf.sales.plot("area", colormap='Paired')
-        ax2 = kdf.sales.plot("area", colormap='Paired')
+        ax1 = pdf.sales.plot(kind='area', colormap='Paired')
+        ax2 = kdf.sales.plot(kind='area', colormap='Paired')
         self.compare_plots(ax1, ax2)
 
     def boxplot_comparison(self, *args, **kwargs):
@@ -269,24 +269,24 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        kax = pdf['a'].plot("kde", colormap='Paired')
-        pax = kdf['a'].plot("kde", colormap='Paired')
+        kax = pdf['a'].plot(kind='kde', colormap='Paired')
+        pax = kdf['a'].plot(kind='kde', colormap='Paired')
         self.compare_plots(kax, pax)
 
         kax = pdf['a'].plot.kde(colormap='Paired')
         pax = kdf['a'].plot.kde(colormap='Paired')
         self.compare_plots(kax, pax)
 
-        kax = pdf['a'].plot("kde", bw_method=0.3)
-        pax = kdf['a'].plot("kde", bw_method=0.3)
+        kax = pdf['a'].plot(kind='kde', bw_method=0.3)
+        pax = kdf['a'].plot(kind='kde', bw_method=0.3)
         self.compare_plots(kax, pax)
 
         kax = pdf['a'].plot.kde(bw_method=0.3)
         pax = kdf['a'].plot.kde(bw_method=0.3)
         self.compare_plots(kax, pax)
 
-        kax = pdf['a'].plot("kde", ind=[1, 2, 3, 4, 5])
-        pax = kdf['a'].plot("kde", ind=[1, 2, 3, 4, 5])
+        kax = pdf['a'].plot(kind='kde', ind=[1, 2, 3, 4, 5])
+        pax = kdf['a'].plot(kind='kde', ind=[1, 2, 3, 4, 5])
         self.compare_plots(kax, pax)
 
         kax = pdf['a'].plot.kde(ind=[1, 2, 3, 4, 5])
