@@ -41,11 +41,11 @@ def _get_standard_kind(kind):
 
 if LooseVersion(pd.__version__) < LooseVersion('0.25'):
     from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot, PiePlot, \
-        AreaPlot, LinePlot, BarhPlot
+        AreaPlot, LinePlot, BarhPlot, KdePlot
 else:
     from pandas.plotting._core import PlotAccessor
     from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot, AreaPlot, \
-        LinePlot, BarhPlot
+        LinePlot, BarhPlot, KdePlot
     from pandas.plotting._matplotlib.core import MPLPlot
     _all_kinds = PlotAccessor._all_kinds
 
@@ -509,6 +509,17 @@ class KoalasBarhPlot(BarhPlot, TopNPlot):
         super(KoalasBarhPlot, self)._make_plot()
 
 
+class KoalasKdePlot(KdePlot, TopNPlot):
+    max_rows = 1000
+
+    def __init__(self, data, **kwargs):
+        super(KoalasKdePlot, self).__init__(self.get_top_n(data), **kwargs)
+
+    def _make_plot(self):
+        self.set_result_text(self._get_ax(0))
+        super(KoalasKdePlot, self)._make_plot()
+
+
 _klasses = [
     KoalasHistPlot,
     KoalasBarPlot,
@@ -517,6 +528,7 @@ _klasses = [
     KoalasAreaPlot,
     KoalasLinePlot,
     KoalasBarhPlot,
+    KoalasKdePlot,
 ]
 _plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
 
@@ -827,8 +839,31 @@ class KoalasSeriesPlotMethods(PandasObject):
         """
         return self(kind='hist', bins=bins, **kwds)
 
-    def kde(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='kde')()
+    def kde(self, bw_method=None, ind=None, **kwargs):
+        """
+        Generate Kernel Density Estimate plot using Gaussian kernels.
+
+        Parameters
+        ----------
+        bw_method : str, scalar or callable, optional
+            The method used to calculate the estimator bandwidth. This can be
+            'scott', 'silverman', a scalar constant or a callable.
+            If None (default), 'scott' is used.
+            See :class:`scipy.stats.gaussian_kde` for more information.
+        ind : NumPy array or integer, optional
+            Evaluation points for the estimated PDF. If None (default),
+            1000 equally spaced points are used. If `ind` is a NumPy array, the
+            KDE is evaluated at the points passed. If `ind` is an integer,
+            `ind` number of equally spaced points are used.
+        **kwargs : optional
+            Additional keyword arguments are documented in
+            :ref:`plot <api.series.plot>`
+
+        Returns
+        -------
+        matplotlib.axes.Axes or numpy.ndarray of them
+        """
+        return self(kind="kde", bw_method=bw_method, ind=ind, **kwargs)
 
     density = kde
 
