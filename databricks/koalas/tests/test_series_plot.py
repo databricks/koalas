@@ -244,11 +244,10 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(expected_whiskers[1], whiskers[1])
         self.assert_eq(expected_fliers, fliers)
 
-    def test_missing(self):
-        ks = self.kdf1['a']
+    def test_kde_plot(self):
+        pdf = self.pdf1
+        kdf = self.kdf1
 
-        unsupported_functions = ['kde']
-        for name in unsupported_functions:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "method.*Series.*{}.*not implemented".format(name)):
-                getattr(ks.plot, name)()
+        ax1 = pdf['a'].plot("kde", colormap='Paired')
+        ax2 = kdf['a'].plot("kde", colormap='Paired')
+        self.compare_plots(ax1, ax2)
