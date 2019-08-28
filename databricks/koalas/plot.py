@@ -90,8 +90,9 @@ class SampledPlot:
             sampled = data._sdf.sample(fraction=float(self.fraction))
             return DataFrame(data._internal.copy(sdf=sampled)).to_pandas()
         elif isinstance(data, Series):
+            scol = data._kdf._internal.data_scols[0]
             sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
-            return DataFrame(data._kdf._internal.copy(sdf=sampled)).to_pandas()
+            return DataFrame(data._kdf._internal.copy(sdf=sampled, scol=scol)).to_pandas()
         else:
             ValueError("Only DataFrame and Series are supported for plotting.")
 
