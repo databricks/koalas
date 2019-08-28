@@ -236,3 +236,4 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    DataFrame.plot.area
    DataFrame.plot.barh
    DataFrame.plot.bar
+   DataFrame.plot.pie
