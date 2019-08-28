@@ -856,7 +856,7 @@ class KoalasSeriesPlotMethods(PandasObject):
             `ind` number of equally spaced points are used.
         **kwargs : optional
             Additional keyword arguments are documented in
-            :meth:`pandas.%(this-datatype)s.plot`.
+            :ref:`plot <api.series.plot>`
 
         Returns
         -------

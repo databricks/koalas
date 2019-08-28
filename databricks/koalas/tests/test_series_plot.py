@@ -248,6 +248,26 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot("kde", colormap='Paired')
-        ax2 = kdf['a'].plot("kde", colormap='Paired')
-        self.compare_plots(ax1, ax2)
+        kax = pdf['a'].plot("kde", colormap='Paired')
+        pax = kdf['a'].plot("kde", colormap='Paired')
+        self.compare_plots(kax, pax)
+
+        kax = pdf['a'].plot.kde(colormap='Paired')
+        pax = kdf['a'].plot.kde(colormap='Paired')
+        self.compare_plots(kax, pax)
+
+        kax = pdf['a'].plot("kde", bw_method=0.3)
+        pax = kdf['a'].plot("kde", bw_method=0.3)
+        self.compare_plots(kax, pax)
+
+        kax = pdf['a'].plot.kde(bw_method=0.3)
+        pax = kdf['a'].plot.kde(bw_method=0.3)
+        self.compare_plots(kax, pax)
+
+        kax = pdf['a'].plot("kde", ind=[1, 2, 3, 4, 5])
+        pax = kdf['a'].plot("kde", ind=[1, 2, 3, 4, 5])
+        self.compare_plots(kax, pax)
+
+        kax = pdf['a'].plot.kde(ind=[1, 2, 3, 4, 5])
+        pax = kdf['a'].plot.kde(ind=[1, 2, 3, 4, 5])
+        self.compare_plots(kax, pax)
