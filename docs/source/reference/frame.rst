@@ -219,6 +219,7 @@ Serialization / IO / Conversion
    DataFrame.to_clipboard
    DataFrame.to_records
    DataFrame.to_latex
+   DataFrame.style
 
 .. _api.dataframe.plot:
 
