@@ -30,10 +30,10 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         pidx = pdf.index
         kidx = kdf.index
 
-        expected_error_message = f'Unknown data type: {type(kidx)}'
+        expected_error_message = 'Unknown data type: {}'.format(type(kidx))
         with self.assertRaisesRegex(ValueError, expected_error_message):
             ks.from_pandas(kidx)
-        expected_error_message = f'Unknown data type: {type(pidx)}'
+        expected_error_message = 'Unknown data type: {}'.format(type(pidx))
         with self.assertRaisesRegex(ValueError, expected_error_message):
             ks.from_pandas(pidx)
 
