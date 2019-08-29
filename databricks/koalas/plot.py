@@ -1135,7 +1135,7 @@ class KoalasFramePlotMethods(PandasObject):
             - A column name or position whose values will be used to color the
               marker points according to a colormap.
         **kwds: Optional
-            Keyword arguments to pass on to :meth:`koalas.DataFrame.plot`.
+            Keyword arguments to pass on to :meth:`databricks.koalas.DataFrame.plot`.
 
         Returns
         -------
