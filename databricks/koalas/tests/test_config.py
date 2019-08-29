@@ -23,10 +23,16 @@ class ConfigTest(ReusedSQLTestCase):
 
     def setUp(self):
         config._registered_options['test.config'] = 'default'
+        config._registered_options['test.config.list'] = []
+        config._registered_options['test.config.float'] = 1.2
+        config._registered_options['test.config.int'] = 1
 
     def tearDown(self):
         ks.reset_option('test.config')
         del config._registered_options['test.config']
+        del config._registered_options['test.config.list']
+        del config._registered_options['test.config.float']
+        del config._registered_options['test.config.int']
 
     def test_get_set_reset_option(self):
         self.assertEqual(ks.get_option('test.config'), 'default')
@@ -37,12 +43,39 @@ class ConfigTest(ReusedSQLTestCase):
         ks.reset_option('test.config')
         self.assertEqual(ks.get_option('test.config'), 'default')
 
+    def test_get_set_reset_option_different_types(self):
+        ks.set_option('test.config.list', [1, 2, 3, 4])
+        self.assertEqual(ks.get_option('test.config.list'), [1, 2, 3, 4])
+        ks.set_option('test.config.list', None)
+        self.assertEqual(ks.get_option('test.config.list'), None)
+
+        ks.set_option('test.config.float', None)
+        self.assertEqual(ks.get_option('test.config.float'), None)
+        ks.set_option('test.config.float', 5.0)
+        self.assertEqual(ks.get_option('test.config.float'), 5.0)
+
+        ks.set_option('test.config.int', 123)
+        self.assertEqual(ks.get_option('test.config.int'), 123)
+
+    def test_different_types(self):
+        with self.assertRaisesRegex(TypeError, "The configuration value for 'test.config'"):
+            ks.set_option('test.config', 1)
+
+        with self.assertRaisesRegex(TypeError, "was <class 'int'>"):
+            ks.set_option('test.config.list', 1)
+
+        with self.assertRaisesRegex(TypeError, "however, <class 'float'> is expected."):
+            ks.set_option('test.config.float', 'abc')
+
+        with self.assertRaisesRegex(TypeError, "however, <class 'int'> is expected."):
+            ks.set_option('test.config.int', 'abc')
+
     def test_unknown_option(self):
-        with self.assertRaisesRegex(config.OptionError, 'No such key'):
+        with self.assertRaisesRegex(config.OptionError, 'No such option'):
             ks.get_option('unknown')
 
-        with self.assertRaisesRegex(config.OptionError, "No such key"):
+        with self.assertRaisesRegex(config.OptionError, "Available options"):
             ks.set_option('unknown', 'value')
 
-        with self.assertRaisesRegex(config.OptionError, "No such key"):
-            ks.reset_option('unknows')
+        with self.assertRaisesRegex(config.OptionError, "test.config"):
+            ks.reset_option('unknown')

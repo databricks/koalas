@@ -14,42 +14,51 @@
 # limitations under the License.
 #
 from databricks import koalas as ks
-from databricks.koalas.generic import max_display_count
+from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase
 
 
 class ReprTests(ReusedSQLTestCase):
+    max_display_count = 123
+
+    @classmethod
+    def setUpClass(cls):
+        set_option("display.max_rows", ReprTests.max_display_count)
+
+    @classmethod
+    def tearDownClass(cls):
+        reset_option("display.max_rows")
 
     def test_repr_dataframe(self):
-        kdf = ks.range(max_display_count)
+        kdf = ks.range(ReprTests.max_display_count)
         self.assertTrue("Showing only the first" not in repr(kdf))
         self.assert_eq(repr(kdf), repr(kdf.to_pandas()))
 
-        kdf = ks.range(max_display_count + 1)
+        kdf = ks.range(ReprTests.max_display_count + 1)
         self.assertTrue("Showing only the first" in repr(kdf))
 
     def test_repr_series(self):
-        kser = ks.range(max_display_count).id
+        kser = ks.range(ReprTests.max_display_count).id
         self.assertTrue("Showing only the first" not in repr(kser))
         self.assert_eq(repr(kser), repr(kser.to_pandas()))
 
-        kser = ks.range(max_display_count + 1).id
+        kser = ks.range(ReprTests.max_display_count + 1).id
         self.assertTrue("Showing only the first" in repr(kser))
 
     def test_repr_indexes(self):
-        kdf = ks.range(max_display_count)
+        kdf = ks.range(ReprTests.max_display_count)
         kidx = kdf.index
         self.assertTrue("Showing only the first" not in repr(kidx))
         self.assert_eq(repr(kidx), repr(kidx.to_pandas()))
 
-        kdf = ks.range(max_display_count + 1)
+        kdf = ks.range(ReprTests.max_display_count + 1)
         kidx = kdf.index
         self.assertTrue("Showing only the first" in repr(kidx))
 
     def test_html_repr(self):
-        kdf = ks.range(max_display_count)
+        kdf = ks.range(ReprTests.max_display_count)
         self.assertTrue("Showing only the first" not in kdf._repr_html_())
         self.assertEqual(kdf._repr_html_(), kdf.to_pandas()._repr_html_())
 
-        kdf = ks.range(max_display_count + 1)
+        kdf = ks.range(ReprTests.max_display_count + 1)
         self.assertTrue("Showing only the first" in kdf._repr_html_())

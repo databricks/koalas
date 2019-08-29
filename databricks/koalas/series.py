@@ -33,9 +33,10 @@ from pyspark.sql.types import BooleanType, StructType
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.config import get_option
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.generic import _Frame, max_display_count
+from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import IndexMap, _InternalFrame
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
@@ -3025,6 +3026,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return _col(self._internal.pandas_df)
 
     def __repr__(self):
+        max_display_count = get_option("display.max_rows")
         pser = self.head(max_display_count + 1)._to_internal_pandas()
         pser_length = len(pser)
         repr_string = repr(pser.iloc[:max_display_count])
