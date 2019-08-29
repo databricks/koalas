@@ -17,7 +17,8 @@
 """
 Infrastructure of configuration for Koalas.
 """
-from typing import Dict, Union
+import json
+from typing import Dict, Union, Any
 
 from pyspark._globals import _NoValue, _NoValueType
 
@@ -28,7 +29,9 @@ __all__ = ['get_option', 'set_option', 'reset_option']
 
 
 # dict to store registered options and their default values (key -> default).
-_registered_options = {}  # type: Dict[str, str]
+_registered_options = {
+    "display.max_rows": 1000,
+}  # type: Dict[str, Any]
 
 
 _key_format = 'koalas.{}'.format
@@ -38,7 +41,7 @@ class OptionError(AttributeError, KeyError):
     pass
 
 
-def get_option(key: str, default: Union[str, _NoValueType] = _NoValue) -> str:
+def get_option(key: str, default: Union[str, _NoValueType] = _NoValue) -> Any:
     """
     Retrieves the value of the specified option.
 
@@ -46,9 +49,8 @@ def get_option(key: str, default: Union[str, _NoValueType] = _NoValue) -> str:
     ----------
     key : str
         The key which should match a single option.
-
-    default : str
-        The default value if the option is not set yet.
+    default : object
+        The default value if the option is not set yet. The value should be JSON serializable.
 
     Returns
     -------
@@ -58,13 +60,13 @@ def get_option(key: str, default: Union[str, _NoValueType] = _NoValue) -> str:
     ------
     OptionError : if no such option exists and the default is not provided
     """
-    _check_option_key(key)
+    _check_option(key, default)
     if default is _NoValue:
         default = _registered_options[key]
-    return default_session().conf.get(_key_format(key), default=default)
+    return json.loads(default_session().conf.get(_key_format(key), default=json.dumps(default)))
 
 
-def set_option(key: str, value: str) -> None:
+def set_option(key: str, value: Any) -> None:
     """
     Sets the value of the specified option.
 
@@ -73,14 +75,14 @@ def set_option(key: str, value: str) -> None:
     key : str
         The key which should match a single option.
     value : object
-        New value of option.
+        New value of option. The value should be JSON serializable.
 
     Returns
     -------
     None
     """
-    _check_option_key(key)
-    default_session().conf.set(_key_format(key), value)
+    _check_option(key, value)
+    default_session().conf.set(_key_format(key), json.dumps(value))
 
 
 def reset_option(key: str) -> None:
@@ -98,10 +100,16 @@ def reset_option(key: str) -> None:
     -------
     None
     """
-    _check_option_key(key)
+    _check_option(key)
     default_session().conf.unset(_key_format(key))
 
 
-def _check_option_key(key: str) -> None:
+def _check_option(key: str, value: Union[str, _NoValueType] = _NoValue) -> None:
     if key not in _registered_options:
-        raise OptionError("No such key: '{}'".format(key))
+        raise OptionError(
+            "No such option: '{}'. Available options are [{}]".format(
+                key, ", ".join(list(_registered_options.keys()))))
+
+    if value is not _NoValue and not isinstance(value, type(_registered_options[key])):
+        raise TypeError("The configuration value for '%s' was %s; however, %s is expected." % (
+            key, type(value), type(_registered_options[key])))

@@ -47,13 +47,14 @@ from pyspark.sql.functions import pandas_udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
-from databricks.koalas.generic import _Frame, max_display_count
+from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, scol_for
 from databricks.koalas.typedef import as_spark_type
 from databricks.koalas.plot import KoalasFramePlotMethods
+from databricks.koalas.config import get_option
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
@@ -6493,6 +6494,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._internal.pandas_df
 
     def __repr__(self):
+        max_display_count = get_option("display.max_rows")
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
         repr_string = repr(pdf.iloc[:max_display_count])
@@ -6507,6 +6509,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return repr_string
 
     def _repr_html_(self):
+        max_display_count = get_option("display.max_rows")
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
         repr_html = pdf[:max_display_count]._repr_html_()
