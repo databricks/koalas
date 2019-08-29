@@ -62,9 +62,7 @@ def combine_frames(this, *args, how="full"):
 
     if os.environ.get("OPS_ON_DIFF_FRAMES", "false").lower() == "true":
         this_index_map = this._internal.index_map
-        this_data_columns = this._internal.data_columns
         that_index_map = that._internal.index_map
-        that_data_columns = that._internal.data_columns
         assert len(this_index_map) == len(that_index_map)
 
         join_scols = []
@@ -90,18 +88,25 @@ def combine_frames(this, *args, how="full"):
 
         assert len(join_scols) > 0, "cannot join with no overlapping index names"
 
-        index_columns = this._internal.index_columns
         joined_df = this._sdf.alias("this").join(
             that._sdf.alias("that"), on=join_scols, how=how)
 
         joined_df = joined_df.select(
             merged_index_scols +
-            [this[c]._scol.alias("__this_%s" % this[c].name) for c in this_data_columns] +
-            [that[c]._scol.alias("__that_%s" % that[c].name) for c in that_data_columns])
+            [this[idx]._scol.alias("__this_%s" % this._internal.column_name_for(idx))
+             for idx in this._internal.column_index] +
+            [that[idx]._scol.alias("__that_%s" % that._internal.column_name_for(idx))
+             for idx in that._internal.column_index])
 
+        index_columns = set(this._internal.index_columns)
         new_data_columns = [c for c in joined_df.columns if c not in index_columns]
+        column_index = ([tuple(['this', *idx]) for idx in this._internal.column_index]
+                        + [tuple(['that', *idx]) for idx in that._internal.column_index])
+        column_index_names = (([None] + this._internal.column_index_names)
+                              if this._internal.column_index_names is not None else None)
         return DataFrame(
-            this._internal.copy(sdf=joined_df, data_columns=new_data_columns))
+            this._internal.copy(sdf=joined_df, data_columns=new_data_columns,
+                                column_index=column_index, column_index_names=column_index_names))
     else:
         raise ValueError("Cannot combine column argument because "
                          "it comes from a different dataframe")
@@ -124,16 +129,16 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
         >>> kdf1 = ks.DataFrame({'a': [9, 8, 7, 6, 5, 4, 3, 2, 1]})
         >>> kdf2 = ks.DataFrame({'a': [9, 8, 7, 6, 5, 4, 3, 2, 1]})
         >>>
-        >>> def func(kdf, this_columns, that_columns):
+        >>> def func(kdf, this_column_index, that_column_index):
         ...    kdf  # conceptually this is A + B.
         ...
         ...    # Within this function, Series from A or B can be performed against `kdf`.
-        ...    this_column = this_columns[0]  # this is 'a' from kdf1.
-        ...    that_column = that_columns[0]  # this is 'a' from kdf2.
-        ...    new_series = kdf[this_column] - kdf[that_column]
+        ...    this_idx = this_column_index[0]  # this is ('a',) from kdf1.
+        ...    that_idx = that_column_index[0]  # this is ('a',) from kdf2.
+        ...    new_series = (kdf[this_idx] - kdf[that_idx]).rename(str(this_idx))
         ...
         ...    # This new series will be placed in new DataFrame.
-        ...    yield new_series.rename(this_column)  # or list(new_series)
+        ...    yield (new_series, this_idx)
         >>>
         >>>
         >>> align_diff_frames(func, kdf1, kdf2).sort_index()
@@ -162,109 +167,95 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
             B, C but `that_columns` are B, C, D.
     :return: Alined DataFrame
     """
-    from databricks.koalas import DataFrame
-
     assert how == "full" or how == "left"
 
-    this_data_columns = this._internal.data_columns
-    that_data_columns = that._internal.data_columns
-    common_columns = set(this_data_columns).intersection(that_data_columns)
+    this_column_index = this._internal.column_index
+    that_column_index = that._internal.column_index
+    common_column_index = set(this_column_index).intersection(that_column_index)
 
     # 1. Full outer join given two dataframes.
     combined = combine_frames(this, that, how=how)
 
     # 2. Apply given function to transform the columns in a batch and keep the new columns.
-    combined_data_columns = combined._internal.data_columns
+    combined_column_index = combined._internal.column_index
 
     that_columns_to_apply = []
     this_columns_to_apply = []
     additional_that_columns = []
     columns_to_keep = []
+    column_index_to_keep = []
 
-    for combined_column in combined_data_columns:
-        for common_column in common_columns:
-            if combined_column == "__this_%s" % common_column:
-                this_columns_to_apply.append(combined_column)
+    for combined_idx in combined_column_index:
+        for common_idx in common_column_index:
+            if combined_idx == tuple(['this', *common_idx]):
+                this_columns_to_apply.append(combined_idx)
                 break
-            elif combined_column == "__that_%s" % common_column:
-                that_columns_to_apply.append(combined_column)
+            elif combined_idx == tuple(['that', *common_idx]):
+                that_columns_to_apply.append(combined_idx)
                 break
         else:
             if how == "left" and \
-                    combined_column in ["__that_%s" % c for c in that_data_columns]:
+                    combined_idx in [tuple(['that', *idx]) for idx in that_column_index]:
                 # In this case, we will drop `that_columns` in `columns_to_keep` but passes
                 # it later to `func`. `func` should resolve it.
                 # Note that adding this into a separate list (`additional_that_columns`)
                 # is intentional so that `this_columns` and `that_columns` can be paired.
-                additional_that_columns.append(combined_column)
+                additional_that_columns.append(combined_idx)
             elif fillna:
-                columns_to_keep.append(F.lit(None).cast(FloatType()).alias(combined_column))
+                columns_to_keep.append(F.lit(None).cast(FloatType()).alias(str(combined_idx)))
+                column_index_to_keep.append(combined_idx)
             else:
-                columns_to_keep.append(F.col(combined_column))
+                columns_to_keep.append(combined._internal.scol_for(combined_idx))
+                column_index_to_keep.append(combined_idx)
 
     that_columns_to_apply += additional_that_columns
 
     # Should extract columns to apply and do it in a batch in case
     # it adds new columns for example.
-    kser_set = list(resolve_func(combined, this_columns_to_apply, that_columns_to_apply))
-    columns_applied = [c._scol for c in kser_set]
+    if len(this_columns_to_apply) > 0 or len(that_columns_to_apply) > 0:
+        kser_set, column_index_applied = \
+            zip(*resolve_func(combined, this_columns_to_apply, that_columns_to_apply))
+        columns_applied = [c._scol for c in kser_set]
+        column_index_applied = list(column_index_applied)
+    else:
+        columns_applied = []
+        column_index_applied = []
 
-    sdf = combined._sdf.select(
-        combined._internal.index_scols + columns_applied + columns_to_keep)
+    applied = combined[columns_applied + columns_to_keep]
+    applied.columns = pd.MultiIndex.from_tuples(column_index_applied + column_index_to_keep)
 
     # 3. Restore the names back and deduplicate columns.
-    this_columns = OrderedDict()
+    this_idxes = OrderedDict()
     # Add columns in an order of its original frame.
-    new_data_columns = [c for c in sdf.columns if c not in combined._internal.index_columns]
-    for this_data_column in this_data_columns:
-        for new_column in new_data_columns:
-            striped = new_column
-            if new_column.startswith("__this_") or new_column.startswith("__that_"):
-                striped = new_column[7:]  # cut out the prefix (either __this_ or __that_).
-
-            # Respect the applied columns first if there are duplicated columns found.
-            if striped not in this_columns and this_data_column == striped:
-                this_columns[striped] = F.col(new_column).alias(striped)
-                break
+    for this_idx in this_column_index:
+        for new_idx in applied._internal.column_index:
+            if new_idx[1:] not in this_idxes and this_idx == new_idx[1:]:
+                this_idxes[new_idx[1:]] = new_idx
 
     # After that, we will add the rest columns.
-    other_columns = OrderedDict()
-    for new_column in new_data_columns:
-        striped = new_column
-        if new_column.startswith("__this_") or new_column.startswith("__that_"):
-            striped = new_column[7:]  # cut out the prefix (either __this_ or __that_).
+    other_idxes = OrderedDict()
+    for new_idx in applied._internal.column_index:
+        if new_idx[1:] not in this_idxes:
+            other_idxes[new_idx[1:]] = new_idx
 
-        # Respect the applied columns first if there are duplicated columns found.
-        if striped not in this_columns:
-            other_columns[striped] = F.col(new_column).alias(striped)
-
-    sdf = sdf.select(
-        combined._internal.index_scols +
-        list(this_columns.values()) +
-        list(other_columns.values()))
-
-    new_data_columns = [c for c in sdf.columns if c not in combined._internal.index_columns]
-    internal = combined._internal.copy(sdf=sdf, data_columns=new_data_columns)
-    return DataFrame(internal)
+    kdf = applied[list(this_idxes.values()) + list(other_idxes.values())]
+    kdf.columns = kdf.columns.droplevel()
+    return kdf
 
 
-def align_diff_series(func, this, *args, how="full"):
+def align_diff_series(func, this_series, *args, how="full"):
     from databricks.koalas.base import IndexOpsMixin
+    from databricks.koalas.series import Series
 
     cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
-    this_series = this
-    combined = combine_frames(this._kdf, *cols, how=how)
+    combined = combine_frames(this_series.to_frame(), *cols, how=how)
 
-    that_columns = [F.col("__that_%s" % arg.name)
+    that_columns = [combined[('that', arg.name)]._scol
                     if isinstance(arg, IndexOpsMixin) else arg for arg in args]
 
-    scol = func(F.col("__this_%s" % this_series.name), *that_columns).alias(this_series.name)
+    scol = func(combined[('this', this_series.name)]._scol, *that_columns).alias(this_series.name)
 
-    this_series._kdf = combined
-    series = this_series._with_new_scol(scol)
-
-    # To make the anchor frame to only have the new Series. This loses the original anchor.
-    return series.to_frame()[this_series.name]
+    return Series(combined._internal.copy(scol=scol), anchor=combined)
 
 
 def default_session(conf=None):

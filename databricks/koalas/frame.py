@@ -395,22 +395,21 @@ class DataFrame(_Frame, Generic[T]):
                 "%s with a sequence is currently not supported; "
                 "however, got %s." % (op, type(other)))
 
-        applied = []
         if isinstance(other, DataFrame) and self is not other:
+            if self._internal.column_index_level != other._internal.column_index_level:
+                raise ValueError('cannot join with no overlapping index names')
+
             # Different DataFrames
-            def apply_op(kdf, this_columns, that_columns):
-                for this_column, that_column in zip(this_columns, that_columns):
-                    yield getattr(kdf[this_column], op)(kdf[that_column])
+            def apply_op(kdf, this_column_index, that_column_index):
+                for this_idx, that_idx in zip(this_column_index, that_column_index):
+                    yield (getattr(kdf[this_idx], op)(kdf[that_idx]), this_idx)
 
             return align_diff_frames(apply_op, self, other, fillna=True, how="full")
-        elif isinstance(other, DataFrame) and self is not other:
-            # Same DataFrames
-            for column in self._internal.data_columns:
-                applied.append(getattr(self[column], op)(other[column]))
         else:
             # DataFrame and Series
-            for column in self._internal.data_columns:
-                applied.append(getattr(self[column], op)(other))
+            applied = []
+            for idx in self._internal.column_index:
+                applied.append(getattr(self[idx], op)(other))
 
             sdf = self._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
@@ -6532,20 +6531,38 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if (isinstance(value, Series) and value._kdf is not self) or \
                 (isinstance(value, DataFrame) and value is not self):
             # Different Series or DataFrames
+            level = self._internal.column_index_level
             if isinstance(value, Series):
                 value = value.to_frame()
+                value.columns = pd.MultiIndex.from_tuples(
+                    [tuple(list(value._internal.column_index[0]) + ([''] * (level - 1)))])
+            else:
+                assert isinstance(value, DataFrame)
+                value_level = value._internal.column_index_level
+                if value_level > level:
+                    value.columns = pd.MultiIndex.from_tuples(
+                        [idx[level:] for idx in value._internal.column_index])
+                elif value_level < level:
+                    value.columns = pd.MultiIndex.from_tuples(
+                        [tuple(list(idx) + ([''] * (level - value_level)))
+                         for idx in value._internal.column_index])
 
-            if not isinstance(key, (tuple, list)):
+            if isinstance(key, str):
+                key = [(key,)]
+            elif isinstance(key, tuple):
                 key = [key]
+            else:
+                key = [k if isinstance(k, tuple) else (k,) for k in key]
 
-            def assign_columns(kdf, this_columns, that_columns):
-                assert len(key) == len(that_columns)
+            def assign_columns(kdf, this_column_index, that_column_index):
+                assert len(key) == len(that_column_index)
                 # Note that here intentionally uses `zip_longest` that combine
                 # that_columns.
-                for k, this_column, that_column in zip_longest(key, this_columns, that_columns):
-                    yield kdf[that_column].rename(k)
-                    if this_column != k and this_column is not None:
-                        yield kdf[this_column]
+                for k, this_idx, that_idx \
+                        in zip_longest(key, this_column_index, that_column_index):
+                    yield (kdf[that_idx], tuple(['that', *k]))
+                    if this_idx is not None and this_idx[1:] != k:
+                        yield (kdf[this_idx], this_idx)
 
             kdf = align_diff_frames(assign_columns, self, value, fillna=False, how="left")
         elif isinstance(key, (tuple, list)):
