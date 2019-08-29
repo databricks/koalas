@@ -1102,6 +1102,7 @@ class KoalasFramePlotMethods(PandasObject):
     def scatter(self, x, y, s=None, c=None, **kwargs):
         """
         Create a scatter plot with varying marker point size and color.
+
         The coordinates of each point are defined by two dataframe columns and
         filled circles are used to represent each point. This kind of plot is
         useful to see complex correlations between two variables. Points could
@@ -1133,12 +1134,13 @@ class KoalasFramePlotMethods(PandasObject):
               yellow, alternatively.
             - A column name or position whose values will be used to color the
               marker points according to a colormap.
-        **kwargs
+        **kwargs: Optional
             Keyword arguments to pass on to :meth:`koalas.DataFrame.plot`.
 
         Returns
         -------
         :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+
         See Also
         --------
         matplotlib.pyplot.scatter : Scatter plot using multiple input data
