@@ -120,6 +120,12 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
                                    lambda: koalas.read_csv(fn, usecols=[1, 3]))
             self.assertRaisesRegex(ValueError, 'Usecols do not match.*col',
                                    lambda: koalas.read_csv(fn, usecols=['amount', 'col']))
+            self.assertRaisesRegex(ValueError, 'Unknown header argument 1',
+                                   lambda: koalas.read_csv(fn, header='1'))
+            expected_error_message = ("'usecols' must either be list-like of all strings, "
+                                      "all unicode, all integers or a callable.")
+            self.assertRaisesRegex(ValueError, expected_error_message,
+                                   lambda: koalas.read_csv(fn, usecols=[1, 'amount']))
 
     def test_read_with_spark_schema(self):
         with self.csv_file(self.csv_text_2) as fn:

@@ -22,13 +22,30 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
+    def test_from_pandas(self):
+        pdf = pd.DataFrame({'year': [2015, 2016],
+                            'month': [2, 3],
+                            'day': [4, 5]})
+        kdf = ks.from_pandas(pdf)
+        pidx = pdf.index
+        kidx = kdf.index
+
+        expected_error_message = f'Unknown data type: {type(kidx)}'
+        with self.assertRaisesRegex(ValueError, expected_error_message):
+            ks.from_pandas(kidx)
+        expected_error_message = f'Unknown data type: {type(pidx)}'
+        with self.assertRaisesRegex(ValueError, expected_error_message):
+            ks.from_pandas(pidx)
+
     def test_to_datetime(self):
         pdf = pd.DataFrame({'year': [2015, 2016],
                             'month': [2, 3],
                             'day': [4, 5]})
         kdf = ks.from_pandas(pdf)
+        dict_from_pdf = pdf.to_dict()
 
         self.assert_eq(pd.to_datetime(pdf), ks.to_datetime(kdf))
+        self.assert_eq(pd.to_datetime(dict_from_pdf), ks.to_datetime(dict_from_pdf))
 
     def test_concat(self):
         pdf = pd.DataFrame({'A': [0, 2, 4], 'B': [1, 3, 5]})
@@ -82,3 +99,9 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaisesRegex(ValueError, "MultiIndex columns should have the same levels",
                                lambda: ks.concat([kdf, kdf3]))
+
+        pdf4 = pd.DataFrame({'A': [0, 2, 4], 'B': [1, 3, 5], 'C': [10, 20, 30]})
+        kdf4 = ks.from_pandas(pdf4)
+        self.assertRaisesRegex(
+            ValueError, r'Only can inner \(intersect\) or outer \(union\) join the other axis.',
+            lambda: ks.concat([kdf, kdf4], join=''))
