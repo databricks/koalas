@@ -34,6 +34,7 @@ _registered_options = {
     # For example, this value determines whether the repr() for a dataframe prints out fully or
     # just a truncated repr.
     "display.max_rows": 1000,  # TODO: None should support unlimited.
+    "compute.shortcut_limit": 1000,
 }  # type: Dict[str, Any]
 
 
