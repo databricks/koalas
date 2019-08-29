@@ -177,7 +177,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
     def test_scatter_plot(self):
         # Use pandas scatter plot example
         pdf = pd.DataFrame(np.random.rand(50, 4), columns=['a', 'b', 'c', 'd'])
-        kdf = pdf.from_pandas(pdf)
+        kdf = koalas.from_pandas(pdf)
 
         ax1 = pdf.plot.scatter(x='a', y='b')
         ax2 = kdf.plot.scatter(x='a', y='b')
@@ -195,7 +195,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
         ks = self.kdf1
 
-        unsupported_functions = ['box', 'density', 'hexbin', 'hist', 'kde', 'scatter']
+        unsupported_functions = ['box', 'density', 'hexbin', 'hist', 'kde']
 
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
