@@ -175,6 +175,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         self.assertTrue(error_message in str(context.exception))
 
     def test_scatter_plot(self):
+        # Use pandas scatter plot example
         pdf = pd.DataFrame(np.random.rand(50, 4), columns=['a', 'b', 'c', 'd'])
         kdf = pdf.from_pandas(pdf)
 
