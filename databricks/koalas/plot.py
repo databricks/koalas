@@ -1099,7 +1099,7 @@ class KoalasFramePlotMethods(PandasObject):
     def hist(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='hist')()
 
-    def scatter(self, x, y, s=None, c=None, **kwargs):
+    def scatter(self, x, y, s=None, c=None, **kwds):
         """
         Create a scatter plot with varying marker point size and color.
 
@@ -1122,7 +1122,7 @@ class KoalasFramePlotMethods(PandasObject):
             The size of each point. Possible values are:
             - A single scalar so all points have the same size.
             - A sequence of scalars, which will be used for each point's size
-              recursively. For instance, when passing [2,14] all points size
+              recursively. For instance, when passing [2, 14] all points size
               will be either 2 or 14, alternatively.
         c : str, int or array_like, optional
             The color of each point. Possible values are:
@@ -1130,11 +1130,11 @@ class KoalasFramePlotMethods(PandasObject):
               for instance 'red' or '#a98d19'.
             - A sequence of color strings referred to by name, RGB or RGBA
               code, which will be used for each point's color recursively. For
-              instance ['green','yellow'] all points will be filled in green or
+              instance ['green', 'yellow'] all points will be filled in green or
               yellow, alternatively.
             - A column name or position whose values will be used to color the
               marker points according to a colormap.
-        **kwargs: Optional
+        **kwds: Optional
             Keyword arguments to pass on to :meth:`koalas.DataFrame.plot`.
 
         Returns
@@ -1146,7 +1146,7 @@ class KoalasFramePlotMethods(PandasObject):
         matplotlib.pyplot.scatter : Scatter plot using multiple input data
             formats.
         """
-        return self(kind="scatter", x=x, y=y, s=s, c=c, **kwargs)
+        return self(kind="scatter", x=x, y=y, s=s, c=c, **kwds)
 
 
 def plot_frame(data, x=None, y=None, kind='line', ax=None,
@@ -1179,6 +1179,7 @@ def plot_frame(data, x=None, y=None, kind='line', ax=None,
         - 'density' : same as 'kde'
         - 'area' : area plot
         - 'pie' : pie plot
+        - 'scatter' : scatter plot
     ax : matplotlib axes object
         If not passed, uses gca()
     x : label or position, default None
