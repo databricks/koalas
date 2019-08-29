@@ -30,7 +30,10 @@ __all__ = ['get_option', 'set_option', 'reset_option']
 
 # dict to store registered options and their default values (key -> default).
 _registered_options = {
-    "display.max_rows": 1000,
+    # This sets the maximum number of rows koalas should output when printing out various output.
+    # For example, this value determines whether the repr() for a dataframe prints out fully or
+    # just a truncated repr.
+    "display.max_rows": 1000,  # TODO: None should support unlimited.
 }  # type: Dict[str, Any]
 
 
@@ -110,6 +113,8 @@ def _check_option(key: str, value: Union[str, _NoValueType] = _NoValue) -> None:
             "No such option: '{}'. Available options are [{}]".format(
                 key, ", ".join(list(_registered_options.keys()))))
 
+    if value is None:
+        return  # None is allowed for all types.
     if value is not _NoValue and not isinstance(value, type(_registered_options[key])):
         raise TypeError("The configuration value for '%s' was %s; however, %s is expected." % (
             key, type(value), type(_registered_options[key])))

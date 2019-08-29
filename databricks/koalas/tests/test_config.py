@@ -46,7 +46,11 @@ class ConfigTest(ReusedSQLTestCase):
     def test_get_set_reset_option_different_types(self):
         ks.set_option('test.config.list', [1, 2, 3, 4])
         self.assertEqual(ks.get_option('test.config.list'), [1, 2, 3, 4])
+        ks.set_option('test.config.list', None)
+        self.assertEqual(ks.get_option('test.config.list'), None)
 
+        ks.set_option('test.config.float', None)
+        self.assertEqual(ks.get_option('test.config.float'), None)
         ks.set_option('test.config.float', 5.0)
         self.assertEqual(ks.get_option('test.config.float'), 5.0)
 
@@ -57,8 +61,8 @@ class ConfigTest(ReusedSQLTestCase):
         with self.assertRaisesRegex(TypeError, "The configuration value for 'test.config'"):
             ks.set_option('test.config', 1)
 
-        with self.assertRaisesRegex(TypeError, "was <class 'NoneType'>"):
-            ks.set_option('test.config.list', None)
+        with self.assertRaisesRegex(TypeError, "was <class 'int'>"):
+            ks.set_option('test.config.list', 1)
 
         with self.assertRaisesRegex(TypeError, "however, <class 'float'> is expected."):
             ks.set_option('test.config.float', 'abc')
