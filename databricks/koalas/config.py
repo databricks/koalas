@@ -38,6 +38,9 @@ _registered_options = {
     # `plotting.max_rows` sets the visual limit on TopN plots. If it is set to 1000, the first 1000
     # data points will be used for plotting, and this number will be seen on the right up corner.
     "plotting.max_rows": 1000,
+
+    # This sets the default index type: sequence, distributed and distributed-sequence.
+    "compute.default_index_type": "sequence",
 }  # type: Dict[str, Any]
 
 
