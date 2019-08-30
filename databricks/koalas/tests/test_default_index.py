@@ -13,11 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
-
 import pandas as pd
 
 from databricks import koalas as ks
+from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
@@ -26,13 +25,12 @@ class OneByOneDefaultIndexTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
         super(OneByOneDefaultIndexTest, cls).setUpClass()
-        cls.default_index = os.environ.get('DEFAULT_INDEX', 'sequence')
-        os.environ['DEFAULT_INDEX'] = 'sequence'
+        set_option('compute.default_index_type', 'sequence')
 
     @classmethod
     def tearDownClass(cls):
         super(OneByOneDefaultIndexTest, cls).tearDownClass()
-        os.environ['DEFAULT_INDEX'] = cls.default_index
+        reset_option('compute.default_index_type')
 
     def test_default_index(self):
         sdf = self.spark.range(1000)
@@ -44,13 +42,12 @@ class DistributedOneByOneDefaultIndexTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
         super(DistributedOneByOneDefaultIndexTest, cls).setUpClass()
-        cls.default_index = os.environ.get('DEFAULT_INDEX', 'sequence')
-        os.environ['DEFAULT_INDEX'] = 'distributed-sequence'
+        set_option('compute.default_index_type', 'distributed-sequence')
 
     @classmethod
     def tearDownClass(cls):
         super(DistributedOneByOneDefaultIndexTest, cls).tearDownClass()
-        os.environ['DEFAULT_INDEX'] = cls.default_index
+        reset_option('compute.default_index_type')
 
     def test_default_index(self):
         sdf = self.spark.range(1000)
@@ -62,13 +59,12 @@ class DistributedDefaultIndexTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
         super(DistributedDefaultIndexTest, cls).setUpClass()
-        cls.default_index = os.environ.get('DEFAULT_INDEX', 'sequence')
-        os.environ['DEFAULT_INDEX'] = 'distributed'
+        set_option('compute.default_index_type', 'distributed')
 
     @classmethod
     def tearDownClass(cls):
         super(DistributedDefaultIndexTest, cls).tearDownClass()
-        os.environ['DEFAULT_INDEX'] = cls.default_index
+        reset_option('compute.default_index_type')
 
     def test_default_index(self):
         sdf = self.spark.range(1000)

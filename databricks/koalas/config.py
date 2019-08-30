@@ -35,26 +35,8 @@ _registered_options = {
     # just a truncated repr.
     "display.max_rows": 1000,  # TODO: None should support unlimited.
 
-    # This sets the default index type
-    # There are three types of default index that can be configured by `compute.default_index_type`
-    # environment variable.
-    # - sequence: It implements a sequence that increases one by one, by Window function without
-    #     specifying partition. Therefore, it ends up with whole partition in single node.
-    #     This index type should be avoided when the data is large. This is default.
-    # - distributed: It implements a monotonically increasing sequence simply by using
-    #     Spark's `monotonically_increasing_id` function. If the index does not have to be
-    #     a sequence that increases one by one, this index should be used.
-    #     Performance-wise, this index almost does not have any penalty comparing to
-    #     other index types. Note that we cannot use this type of index for combining
-    #     two dataframes because it is not guaranteed to have the same indexes in two
-    #     dataframes.
-    # - distributed-sequence: It implements a sequence that increases one by one, by group-by and
-    #     group-map approach. It still generates the sequential index globally.
-    #     If the default index must be the sequence in a large dataset, this
-    #     index has to be used.
-    #     Note that if more data are added to the data source after creating this index,
-    #     then it does not guarantee the sequential index.
-    "compute.default_index_type": "sequence"
+    # This sets the default index type: sequence, distributed and distributed-sequence.
+    "compute.default_index_type": "sequence",
 }  # type: Dict[str, Any]
 
 
