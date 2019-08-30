@@ -34,6 +34,11 @@ _registered_options = {
     # For example, this value determines whether the repr() for a dataframe prints out fully or
     # just a truncated repr.
     "display.max_rows": 1000,  # TODO: None should support unlimited.
+
+    # 'compute.max_rows sets the limit of the current DataFrame. Set `None` to unlimit
+    # the input length. When the limit is set, it is executed by the shortcut by collecting
+    # the data into driver side, and then using pandas API. If the limit is unset,
+    # the operation is executed by PySpark. Default is 1000.
     "compute.max_rows": 1000,  # TODO: None should support unlimited.
 }  # type: Dict[str, Any]
 

@@ -1354,7 +1354,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     # TODO: enable doctests once we drop Spark 2.3.x (due to type coercion logic
     #  when creating arrays)
-    def transpose(self, limit: Optional[int] = get_option("compute.max_rows")):
+    def transpose(self):
         """
         Transpose index and columns.
 
@@ -1365,23 +1365,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         .. note:: This method is based on an expensive operation due to the nature
             of big data. Internally it needs to generate each row for each value, and
             then group twice - it is a huge operation. To prevent misusage, this method
-            has the default limit of input length, 1000 and raises a ValueError.
+            has the 'compute.max_rows' default limit of input length, and raises a ValueError.
 
+                >>> from databricks.koalas.config import get_option, set_option
+                >>> set_option('compute.max_rows', 1000)
                 >>> ks.DataFrame({'a': range(1001)}).transpose()  # doctest: +NORMALIZE_WHITESPACE
                 Traceback (most recent call last):
                   ...
                 ValueError: Current DataFrame has more then the given limit 1000 rows.
-                Please use df.transpose(limit=<maximum number of rows>) to retrieve more than
-                1000 rows. Note that, before changing the given 'limit', this operation is
+                Please use 'databricks.koalas.config.set_option' to retrieve more than
+                1000 rows. Note that, before changing the 'compute.max_rows', this operation is
                 considerably expensive.
-
-        Parameters
-        ----------
-        limit : int, optional
-            This parameter sets the limit of the current DataFrame. Set `None` to unlimit
-            the input length. When the limit is set, it is executed by the shortcut by collecting
-            the data into driver side, and then using pandas API. If the limit is unset,
-            the operation is executed by PySpark. Default is 1000.
 
         Returns
         -------
@@ -1461,14 +1455,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1    float64
         dtype: object
         """
-        if limit is not None:
-            pdf = self.head(limit + 1)._to_internal_pandas()
-            if len(pdf) > limit:
+        max_compute_count = get_option("compute.max_rows")
+        if max_compute_count:
+            pdf = self.head(max_compute_count + 1)._to_internal_pandas()
+            if len(pdf) > max_compute_count:
                 raise ValueError(
-                    "Current DataFrame has more then the given limit %s rows. Please use "
-                    "df.transpose(limit=<maximum number of rows>) to retrieve more than %s rows. "
-                    "Note that, before changing the given 'limit', this operation is considerably "
-                    "expensive." % (limit, limit))
+                    "Current DataFrame has more then the given limit {0} rows. "
+                    "Please use 'databricks.koalas.config.set_option' to retrieve more than "
+                    "{0} rows. Note that, before changing the 'compute.max_rows', "
+                    "this operation is considerably expensive.".format(max_compute_count))
             return DataFrame(pdf.transpose())
 
         # Explode the data to be pairs.
