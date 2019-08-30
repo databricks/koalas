@@ -204,10 +204,11 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
                 getattr(ks.plot, name)()
 
     def test_topn_max_rows(self):
-        pdf = pd.DataFrame({'a': [1, 2, 4] * 1000})
+        pdf = pd.DataFrame(np.random.rand(2500, 4), columns=['a', 'b', 'c', 'd'])
         kdf = koalas.from_pandas(pdf)
 
         koalas.set_option("plotting.max_rows", 2000)
 
-        ax1 = pdf.plot.bar()
-        self.assertEqual(len(data), 2000)
+        ax1 = pdf.iloc[: 2000].plot.scatter(x='a', y='b')
+        ax2 = kdf.plot.scatter(x='a', y='b')
+        self.compare_plots(ax1, ax2)

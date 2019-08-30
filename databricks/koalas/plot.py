@@ -512,6 +512,7 @@ class KoalasBarhPlot(BarhPlot, TopNPlot):
 class KoalasScatterPlot(ScatterPlot, TopNPlot):
 
     def __init__(self, data, x, y, **kwargs):
+        print(TopNPlot.max_rows)
         super().__init__(self.get_top_n(data), x, y, **kwargs)
 
     def _make_plot(self):

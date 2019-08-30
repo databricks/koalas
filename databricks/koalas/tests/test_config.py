@@ -79,17 +79,3 @@ class ConfigTest(ReusedSQLTestCase):
 
         with self.assertRaisesRegex(config.OptionError, "test.config"):
             ks.reset_option('unknown')
-
-    def test_topn_max_rows(self):
-        import pandas as pd
-        from databricks.koalas.plot import TopNPlot
-
-        pdf = pd.DataFrame({'a': [1, 2, 4] * 1000})
-        kdf = ks.from_pandas(pdf)
-
-        data = TopNPlot().get_top_n(kdf)
-        self.assertEqual(len(data), 1000)
-
-        ks.set_option("plotting.max_rows", 2000)
-        data = TopNPlot().get_top_n(kdf)
-        self.assertEqual(len(data), 2000)
