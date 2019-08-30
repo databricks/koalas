@@ -1354,7 +1354,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     # TODO: enable doctests once we drop Spark 2.3.x (due to type coercion logic
     #  when creating arrays)
-    def transpose(self, limit: Optional[int] = 1000):
+    def transpose(self, limit: Optional[int] = get_option("compute.max_rows")):
         """
         Transpose index and columns.
 
