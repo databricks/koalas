@@ -13,12 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
-
 import pandas as pd
 
 from databricks import koalas as ks
-from databricks.koalas.config import get_option, set_option, reset_option
+from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
