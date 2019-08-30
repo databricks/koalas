@@ -1202,14 +1202,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf2 = ks.from_pandas(pdf2)
 
         set_option("compute.max_rows", None)
-        self.assertEqual(
-            repr(pdf1.transpose().sort_index()),
-            repr(kdf1.transpose().sort_index()))
+        try:
+            self.assertEqual(
+                repr(pdf1.transpose().sort_index()),
+                repr(kdf1.transpose().sort_index()))
 
-        self.assert_eq(
-            repr(pdf2.transpose().sort_index()),
-            repr(kdf2.transpose().sort_index()))
-        reset_option("compute.max_rows")
+            self.assert_eq(
+                repr(pdf2.transpose().sort_index()),
+                repr(kdf2.transpose().sort_index()))
+        except:
+            reset_option("compute.max_rows")
 
         self.assertEqual(
             repr(pdf1.transpose().sort_index()),
@@ -1225,11 +1227,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                                              ('rg2', 'z')]))
         kdf3 = ks.from_pandas(pdf3)
 
-        set_option("compute.max_rows", None)
-        self.assertEqual(
-            repr(pdf3.transpose().sort_index()),
-            repr(kdf3.transpose().sort_index()))
-        reset_option("compute.max_rows")
+        try:
+            set_option("compute.max_rows", None)
+            self.assertEqual(
+                repr(pdf3.transpose().sort_index()),
+                repr(kdf3.transpose().sort_index()))
+        finally:
+            reset_option("compute.max_rows")
 
         self.assertEqual(
             repr(pdf3.transpose().sort_index()),

@@ -1373,9 +1373,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 Traceback (most recent call last):
                   ...
                 ValueError: Current DataFrame has more then the given limit 1000 rows.
-                Please use 'databricks.koalas.config.set_option' to retrieve more than
-                1000 rows. Note that, before changing the 'compute.max_rows', this operation is
-                considerably expensive.
+                Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option'
+                to retrieve to retrieve more than 1000 rows. Note that, before changing the
+                'compute.max_rows', this operation is considerably expensive.
 
         Returns
         -------
@@ -1460,10 +1460,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             pdf = self.head(max_compute_count + 1)._to_internal_pandas()
             if len(pdf) > max_compute_count:
                 raise ValueError(
-                    "Current DataFrame has more then the given limit {0} rows. "
-                    "Please use 'databricks.koalas.config.set_option' to retrieve more than "
-                    "{0} rows. Note that, before changing the 'compute.max_rows', "
-                    "this operation is considerably expensive.".format(max_compute_count))
+                    "Current DataFrame has more then the given limit 1000 rows. "
+                    "Please set '{}' by using 'databricks.koalas.config.set_option' "
+                    "to retrieve to retrieve more than 1000 rows. Note that, before changing the "
+                    "'{}', this operation is considerably expensive.".format(max_compute_count))
             return DataFrame(pdf.transpose())
 
         # Explode the data to be pairs.
