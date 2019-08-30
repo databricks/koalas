@@ -1461,9 +1461,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if len(pdf) > max_compute_count:
                 raise ValueError(
                     "Current DataFrame has more then the given limit 1000 rows. "
-                    "Please set '{}' by using 'databricks.koalas.config.set_option' "
+                    "Please set '{0}' by using 'databricks.koalas.config.set_option' "
                     "to retrieve to retrieve more than 1000 rows. Note that, before changing the "
-                    "'{}', this operation is considerably expensive.".format(max_compute_count))
+                    "'{0}', this operation is considerably expensive.".format(max_compute_count))
             return DataFrame(pdf.transpose())
 
         # Explode the data to be pairs.
