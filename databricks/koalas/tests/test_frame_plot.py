@@ -9,6 +9,7 @@ import numpy as np
 from databricks import koalas
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koalas.config import set_option
 
 
 matplotlib.use('agg')
@@ -206,7 +207,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame(np.random.rand(2500, 4), columns=['a', 'b', 'c', 'd'])
         kdf = koalas.from_pandas(pdf)
 
-        koalas.set_option("plotting.max_rows", 2000)
+        set_option("plotting.max_rows", 2000)
 
         ax1 = pdf.iloc[: 2000].plot.scatter(x='a', y='b')
         ax2 = kdf.plot.scatter(x='a', y='b')
