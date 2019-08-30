@@ -2711,27 +2711,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> s.idxmax()
         ('b', 'f')
         """
-        sdf = self._kdf._sdf
-        scol = self._scol
-        index_scols = self._kdf._internal.index_scols
-        # desc_nulls_(last|first) is used via Py4J directly because
-        # it's not supported in Spark 2.3.
-        if skipna:
-            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()))
-        else:
-            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()))
-        results = sdf.select([scol] + index_scols).take(1)
-        if len(results) == 0:
-            raise ValueError("attempt to get idxmin of an empty sequence")
-        if results[0][0] is None:
-            # This will only happens when skipna is False because we will
-            # place nulls first.
-            return np.nan
-        values = list(results[0][1:])
-        if len(values) == 1:
-            return values[0]
-        else:
-            return tuple(values)
+        return self._idx(func='idxmax', skipna=skipna)
 
     def idxmin(self, skipna=True):
         """
@@ -2803,18 +2783,29 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> s.idxmin()
         ('b', 'f')
         """
+        return self._idx(func='idxmin', skipna=skipna)
+
+    def _idx(self, func, skipna):
+        # This is used to idxmax and idxmin
         sdf = self._kdf._sdf
         scol = self._scol
         index_scols = self._kdf._internal.index_scols
         # asc_nulls_(list|first)is used via Py4J directly because
         # it's not supported in Spark 2.3.
-        if skipna:
-            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()))
-        else:
-            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()))
+        if func == 'idxmin':
+            if skipna:
+                sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()))
+            else:
+                sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()))
+        elif func == 'idxmax':
+            if skipna:
+                sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()))
+            else:
+                sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()))
+
         results = sdf.select([scol] + index_scols).take(1)
         if len(results) == 0:
-            raise ValueError("attempt to get idxmin of an empty sequence")
+            raise ValueError("attempt to get {} of an empty sequence".format(func))
         if results[0][0] is None:
             # This will only happens when skipna is False because we will
             # place nulls first.

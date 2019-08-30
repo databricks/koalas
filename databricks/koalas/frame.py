@@ -2314,13 +2314,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         c    (1, 1)
         dtype: object
         """
-        idxmax_data = []
-        idxmax_index = []
-        for col in self._internal.data_columns:
-            idxmax_tuple = self[col].idxmax(skipna=skipna)
-            idxmax_index.append(col)
-            idxmax_data.append(idxmax_tuple)
-        return pd.Series(data=idxmax_data, index=idxmax_index)
+        return self._idx(func='idxmax', skipna=skipna)
 
     def idxmin(self, skipna=True):
         """
@@ -2358,13 +2352,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         c    (3, 5)
         dtype: object
         """
-        idxmin_data = []
-        idxmin_index = []
+        return self._idx(func='idxmin', skipna=skipna)
+
+    def _idx(self, func, skipna):
+        idx_data = []
+        idx_index = []
         for col in self._internal.data_columns:
-            idxmin_tuple = self[col].idxmin(skipna=skipna)
-            idxmin_index.append(col)
-            idxmin_data.append(idxmin_tuple)
-        return pd.Series(data=idxmin_data, index=idxmin_index)
+            idx_tuple = self[col]._idx(func=func, skipna=skipna)
+            idx_index.append(col)
+            idx_data.append(idx_tuple)
+        return pd.Series(data=idx_data, index=idx_index)
 
     def duplicated(self, subset=None, keep='first'):
         """
