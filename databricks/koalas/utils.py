@@ -29,7 +29,6 @@ import pandas as pd
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 
-
 def combine_frames(this, *args, how="full"):
     """
     This method combines `this` DataFrame with a different `that` DataFrame or
@@ -44,6 +43,7 @@ def combine_frames(this, *args, how="full"):
     """
     from databricks.koalas import Series
     from databricks.koalas import DataFrame
+    from databricks.koalas.config import get_option
 
     if all(isinstance(arg, Series) for arg in args):
         assert all(arg._kdf is args[0]._kdf for arg in args), \
@@ -60,7 +60,7 @@ def combine_frames(this, *args, how="full"):
         raise AssertionError("args should be single DataFrame or "
                              "single/multiple Series")
 
-    if os.environ.get("OPS_ON_DIFF_FRAMES", "false").lower() == "true":
+    if get_option("compute.ops_on_diff_frames"):
         this_index_map = this._internal.index_map
         this_data_columns = this._internal.data_columns
         that_index_map = that._internal.index_map
