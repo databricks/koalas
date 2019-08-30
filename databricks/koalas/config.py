@@ -39,7 +39,7 @@ _registered_options = {
     # For example, 'combine_frames' function internally performs a join operation which can be
     # expensive in general.
     # So, if `compute.ops_on_diff_frames` variable is not True, that method throws an exception.
-    "compute.ops_on_diff_frames": True,
+    "compute.ops_on_diff_frames": False,
 }  # type: Dict[str, Any]
 
 
