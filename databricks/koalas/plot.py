@@ -75,7 +75,8 @@ class TopNPlot:
         assert hasattr(self, "partial")
 
         if self.partial:
-            ax.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
+            ax.text(1, 1, 'showing top {} elements only'.format(TopNPlot.max_rows),
+                    size=6, ha='right', va='bottom',
                     transform=ax.transAxes)
 
 
