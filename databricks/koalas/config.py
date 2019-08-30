@@ -34,6 +34,9 @@ _registered_options = {
     # For example, this value determines whether the repr() for a dataframe prints out fully or
     # just a truncated repr.
     "display.max_rows": 1000,  # TODO: None should support unlimited.
+
+    # This sets the default index type: sequence, distributed and distributed-sequence.
+    "compute.default_index_type": "sequence",
 }  # type: Dict[str, Any]
 
 
