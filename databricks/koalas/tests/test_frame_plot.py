@@ -9,7 +9,6 @@ import numpy as np
 from databricks import koalas
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
-from databricks.koalas.plot import TopNPlot
 
 
 matplotlib.use('agg')
