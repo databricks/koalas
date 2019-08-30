@@ -417,8 +417,7 @@ class _InternalFrame(object):
         This method attaches a default index to Spark DataFrame. Spark does not have the index
         notion so corresponding column should be generated.
 
-        There are three types of default index that can be configured by `compute.default_index_type`
-        environment variable.
+        There are three types of default index can be configured by `compute.default_index_type`
 
         - sequence: It implements a sequence that increases one by one, by Window function without
             specifying partition. Therefore, it ends up with whole partition in single node.
