@@ -110,11 +110,20 @@ class GroupBy(object):
         1    1    2
         2    3    4
 
+        >>> aggregated = df.groupby('A').agg({'B': [np.std, np.var]})
+        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+             B
+           std  var
+        A
+        1    1  0.5
+        2    1  0.5
         """
+        print(func_or_funcs)
+        for key, value in func_or_funcs.items():
+            print(key, value)
         if not isinstance(func_or_funcs, dict) or \
                 not all(isinstance(key, str) and
-                        (isinstance(value, str) or
-                         isinstance(value, list) and all(isinstance(v, str) for v in value))
+                        isinstance(value, (str, list, Callable))
                         for key, value in func_or_funcs.items()):
             raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
                              "functions (string or list of strings).")
@@ -128,14 +137,36 @@ class GroupBy(object):
         data_columns = []
         column_index = []
         for key, value in func_or_funcs.items():
-            for aggfunc in [value] if isinstance(value, str) else value:
-                data_col = "('{0}', '{1}')".format(key, aggfunc) if multi_aggs else key
-                data_columns.append(data_col)
-                column_index.append((key, aggfunc))
-                if aggfunc == "nunique":
-                    reordered.append(F.expr('count(DISTINCT `{0}`) as `{1}`'.format(key, data_col)))
+            for aggfunc in [value] if isinstance(value, (str, Callable)) else value:
+                if isinstance(aggfunc, Callable):
+                    func_name = aggfunc.__name__
+                    data_col = "('{0}', '{1}')".format(key, func_name) if multi_aggs else key
+                    data_columns.append(data_col)
+                    column_index.append((key, func_name))
+
+                    # Here we execute with the first 1000 to get the return type.
+                    # If the records were less than 1000,
+                    # it uses pandas API directly for a shortcut.
+                    limit = 1000
+                    pdf = self._kdf.head(limit + 1)._to_internal_pandas()
+                    groupkeys_name = [s.name for s in groupkeys]
+                    return_type = pdf.groupby(groupkeys_name).agg({key: aggfunc}).dtypes[0]
+                    if return_type == np.dtype('int'):
+                        return_type = 'integer'
+                    elif return_type == np.dtype('float'):
+                        return_type = 'double'
+                    pandas_func = F.pandas_udf(aggfunc, returnType=return_type,
+                                               functionType=F.PandasUDFType.GROUPED_AGG)
+                    reordered.append(pandas_func(key).alias(data_col))
                 else:
-                    reordered.append(F.expr('{1}(`{0}`) as `{2}`'.format(key, aggfunc, data_col)))
+                    data_col = "('{0}', '{1}')".format(key, aggfunc) if multi_aggs else key
+                    data_columns.append(data_col)
+                    column_index.append((key, aggfunc))
+                    if aggfunc == "nunique":
+                        reordered.append(F.expr('count(DISTINCT `{0}`) as `{1}`'.format(key, data_col)))
+                    else:
+                        reordered.append(F.expr('{1}(`{0}`) as `{2}`'.format(key, aggfunc, data_col)))
+
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=data_columns,
