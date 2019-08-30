@@ -29,6 +29,7 @@ import pandas as pd
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 
+
 def combine_frames(this, *args, how="full"):
     """
     This method combines `this` DataFrame with a different `that` DataFrame or
