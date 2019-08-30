@@ -27,6 +27,7 @@ from pyspark.ml.feature import Bucketizer
 from pyspark.sql import functions as F
 
 from databricks.koalas.missing import _unsupported_function
+from databricks.koalas.config import get_option
 
 
 def _gca(rc=None):
@@ -51,7 +52,7 @@ else:
 
 
 class TopNPlot:
-    max_rows = 1000
+    max_rows = get_option("plotting.max_rows")
 
     def get_top_n(self, data):
         from databricks.koalas import DataFrame, Series
@@ -470,7 +471,6 @@ class KoalasHistPlot(HistPlot):
 
 
 class KoalasPiePlot(PiePlot, TopNPlot):
-    max_rows = 1000
 
     def __init__(self, data, **kwargs):
         super(KoalasPiePlot, self).__init__(self.get_top_n(data), **kwargs)
@@ -499,7 +499,6 @@ class KoalasLinePlot(LinePlot, SampledPlot):
 
 
 class KoalasBarhPlot(BarhPlot, TopNPlot):
-    max_rows = 1000
 
     def __init__(self, data, **kwargs):
         super(KoalasBarhPlot, self).__init__(self.get_top_n(data), **kwargs)
