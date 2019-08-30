@@ -34,7 +34,12 @@ _registered_options = {
     # For example, this value determines whether the repr() for a dataframe prints out fully or
     # just a truncated repr.
     "display.max_rows": 1000,  # TODO: None should support unlimited.
-    "compute.ops_on_diff_frames": True,  # TODO: None should support unlimited.
+
+    # This determines whether or not to operate between two different dataframs.
+    # For example, 'combine_frames' function internally performs a join operation which can be
+    # expensive in general.
+    # So, if `compute.ops_on_diff_frames` variable is not True, that method throws an exception.
+    "compute.ops_on_diff_frames": True,
 }  # type: Dict[str, Any]
 
 
