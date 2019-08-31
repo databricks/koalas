@@ -1456,7 +1456,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         dtype: object
         """
         max_compute_count = get_option("compute.max_rows")
-        if max_compute_count:
+        if max_compute_count is not None:
             pdf = self.head(max_compute_count + 1)._to_internal_pandas()
             if len(pdf) > max_compute_count:
                 raise ValueError(

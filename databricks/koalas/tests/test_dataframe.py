@@ -1227,8 +1227,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                                              ('rg2', 'z')]))
         kdf3 = ks.from_pandas(pdf3)
 
+        set_option("compute.max_rows", None)
         try:
-            set_option("compute.max_rows", None)
             self.assertEqual(
                 repr(pdf3.transpose().sort_index()),
                 repr(kdf3.transpose().sort_index()))
