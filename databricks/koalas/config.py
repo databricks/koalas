@@ -40,6 +40,9 @@ _registered_options = {
     # the data into driver side, and then using pandas API. If the limit is unset,
     # the operation is executed by PySpark. Default is 1000.
     "compute.max_rows": 1000,  # TODO: None should support unlimited.
+
+    # This sets the default index type: sequence, distributed and distributed-sequence.
+    "compute.default_index_type": "sequence",
 }  # type: Dict[str, Any]
 
 

@@ -41,11 +41,11 @@ def _get_standard_kind(kind):
 
 if LooseVersion(pd.__version__) < LooseVersion('0.25'):
     from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot, PiePlot, \
-        AreaPlot, LinePlot, BarhPlot
+        AreaPlot, LinePlot, BarhPlot, ScatterPlot
 else:
     from pandas.plotting._core import PlotAccessor
     from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot, AreaPlot, \
-        LinePlot, BarhPlot
+        LinePlot, BarhPlot, ScatterPlot
     from pandas.plotting._matplotlib.core import MPLPlot
     _all_kinds = PlotAccessor._all_kinds
 
@@ -509,6 +509,16 @@ class KoalasBarhPlot(BarhPlot, TopNPlot):
         super(KoalasBarhPlot, self)._make_plot()
 
 
+class KoalasScatterPlot(ScatterPlot, TopNPlot):
+
+    def __init__(self, data, x, y, **kwargs):
+        super().__init__(self.get_top_n(data), x, y, **kwargs)
+
+    def _make_plot(self):
+        self.set_result_text(self._get_ax(0))
+        super(KoalasScatterPlot, self)._make_plot()
+
+
 _klasses = [
     KoalasHistPlot,
     KoalasBarPlot,
@@ -517,6 +527,7 @@ _klasses = [
     KoalasAreaPlot,
     KoalasLinePlot,
     KoalasBarhPlot,
+    KoalasScatterPlot,
 ]
 _plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
 
@@ -651,15 +662,20 @@ def _plot(data, x=None, y=None, subplots=False,
     else:
         raise ValueError("%r is not a valid plot kind" % kind)
 
-    # check data type and do preprocess before applying plot
-    if isinstance(data, DataFrame):
-        if x is not None:
-            data = data.set_index(x)
-        # TODO: check if value of y is plottable
-        if y is not None:
-            data = data[y]
+    # scatter and hexbin are inherited from PlanePlot which require x and y
+    if kind in ('scatter', 'hexbin'):
+        plot_obj = klass(data, x, y, subplots=subplots, ax=ax, kind=kind, **kwds)
+    else:
 
-    plot_obj = klass(data, subplots=subplots, ax=ax, kind=kind, **kwds)
+        # check data type and do preprocess before applying plot
+        if isinstance(data, DataFrame):
+            if x is not None:
+                data = data.set_index(x)
+            # TODO: check if value of y is plottable
+            if y is not None:
+                data = data[y]
+
+        plot_obj = klass(data, subplots=subplots, ax=ax, kind=kind, **kwds)
     plot_obj.generate()
     plot_obj.draw()
     return plot_obj.result
@@ -1082,8 +1098,41 @@ class KoalasFramePlotMethods(PandasObject):
     def hist(self, bw_method=None, ind=None, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='hist')()
 
-    def scatter(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='scatter')()
+    def scatter(self, x, y, s=None, c=None, **kwds):
+        """
+        Create a scatter plot with varying marker point size and color.
+
+        The coordinates of each point are defined by two dataframe columns and
+        filled circles are used to represent each point. This kind of plot is
+        useful to see complex correlations between two variables. Points could
+        be for instance natural 2D coordinates like longitude and latitude in
+        a map or, in general, any pair of metrics that can be plotted against
+        each other.
+
+        Parameters
+        ----------
+        x : int or str
+            The column name or column position to be used as horizontal
+            coordinates for each point.
+        y : int or str
+            The column name or column position to be used as vertical
+            coordinates for each point.
+        s : scalar or array_like, optional
+        c : str, int or array_like, optional
+
+        **kwds: Optional
+            Keyword arguments to pass on to :meth:`databricks.koalas.DataFrame.plot`.
+
+        Returns
+        -------
+        :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+
+        See Also
+        --------
+        matplotlib.pyplot.scatter : Scatter plot using multiple input data
+            formats.
+        """
+        return self(kind="scatter", x=x, y=y, s=s, c=c, **kwds)
 
 
 def plot_frame(data, x=None, y=None, kind='line', ax=None,
@@ -1116,6 +1165,7 @@ def plot_frame(data, x=None, y=None, kind='line', ax=None,
         - 'density' : same as 'kde'
         - 'area' : area plot
         - 'pie' : pie plot
+        - 'scatter' : scatter plot
     ax : matplotlib axes object
         If not passed, uses gca()
     x : label or position, default None
