@@ -106,14 +106,6 @@ class DatetimeMethods(object):
         return _wrap_accessor_spark(self, F.second, LongType()).alias(self.name)
 
     @property
-    def millisecond(self) -> 'ks.Series':
-        """
-        The milliseconds of the datetime.
-        """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.dt.millisecond, LongType()).alias(self.name)
-
-    @property
     def microsecond(self) -> 'ks.Series':
         """
         The microseconds of the datetime.

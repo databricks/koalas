@@ -115,6 +115,9 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
     def test_dayofweek(self):
         self.check_func(lambda x: x.dt.dayofweek)
 
+    def test_weekday(self):
+        self.check_func(lambda x: x.dt.weekday)
+
     def test_dayofyear(self):
         self.check_func(lambda x: x.dt.dayofyear)
 
