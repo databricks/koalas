@@ -38,7 +38,7 @@ def combine_frames(this, *args, how="full"):
     the columns names from both DataFrames
 
     It internally performs a join operation which can be expensive in general.
-    So, if `compute.ops_on_diff_frames` variable is not True,
+    So, if `compute.ops_on_diff_frames` option is False,
     this method throws an exception.
     """
     from databricks.koalas import Series
