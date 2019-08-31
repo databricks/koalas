@@ -54,9 +54,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[kdf['b'] > 2], pdf[pdf['b'] > 2])
         self.assert_eq(kdf[['a', 'b']], pdf[['a', 'b']])
         self.assert_eq(kdf.a, pdf.a)
-        # TODO: assert d.b.mean().compute() == pdf.b.mean()
-        # TODO: assert np.allclose(d.b.var().compute(), pdf.b.var())
-        # TODO: assert np.allclose(d.b.std().compute(), pdf.b.std())
+        self.assert_eq(kdf.compute().b.mean(), pdf.b.mean())
+        self.assert_eq(np.allclose(kdf.compute().b.var(), pdf.b.var()), True)
+        self.assert_eq(np.allclose(kdf.compute().b.std(), pdf.b.std()), True)
 
         assert repr(kdf)
 
@@ -1542,3 +1542,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(TypeError, "mutually exclusive"):
             kdf.filter(regex='b.*', like="aaa")
+
+    def test_pipe(self):
+        kdf = ks.DataFrame({'category': ['A', 'A', 'B'],
+                            'col1': [1, 2, 3],
+                            'col2': [4, 5, 6]},
+                           columns=['category', 'col1', 'col2'])
+
+        self.assertRaisesRegex(
+            ValueError,
+            "arg is both the pipe target and a keyword argument",
+            lambda: kdf.pipe((lambda x: x, 'arg'), arg='1')
+        )
