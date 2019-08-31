@@ -19,7 +19,6 @@ Commonly used utils in Koalas.
 
 import functools
 from collections import OrderedDict
-import os
 from typing import Callable, Dict, List, Tuple, Union
 
 from pyspark import sql as spark
@@ -39,11 +38,12 @@ def combine_frames(this, *args, how="full"):
     the columns names from both DataFrames
 
     It internally performs a join operation which can be expensive in general.
-    So, if `OPS_ON_DIFF_FRAMES` environment variable is not set,
+    So, if `compute.ops_on_diff_frames` option is False,
     this method throws an exception.
     """
     from databricks.koalas import Series
     from databricks.koalas import DataFrame
+    from databricks.koalas.config import get_option
 
     if all(isinstance(arg, Series) for arg in args):
         assert all(arg._kdf is args[0]._kdf for arg in args), \
@@ -60,7 +60,7 @@ def combine_frames(this, *args, how="full"):
         raise AssertionError("args should be single DataFrame or "
                              "single/multiple Series")
 
-    if os.environ.get("OPS_ON_DIFF_FRAMES", "false").lower() == "true":
+    if get_option("compute.ops_on_diff_frames"):
         this_index_map = this._internal.index_map
         this_data_columns = this._internal.data_columns
         that_index_map = that._internal.index_map
@@ -111,15 +111,14 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
     """
     This method aligns two different DataFrames with a given `func`. Columns are resolved and
     handled within the given `func`.
-    To use this, `OPS_ON_DIFF_FRAMES` environment variable should be enabled, for now.
+    To use this, `compute.ops_on_diff_frames` should be True, for now.
 
     :param resolve_func: Takes aligned (joined) DataFrame, the column of the current DataFrame, and
         the column of another DataFrame. It returns an iterable that produces Series.
 
-        >>> import os
+        >>> from databricks.koalas.config import set_option, reset_option
         >>>
-        >>> prev = os.environ.get("OPS_ON_DIFF_FRAMES", "false")
-        >>> os.environ["OPS_ON_DIFF_FRAMES"] = "true"
+        >>> set_option("compute.ops_on_diff_frames", True)
         >>>
         >>> kdf1 = ks.DataFrame({'a': [9, 8, 7, 6, 5, 4, 3, 2, 1]})
         >>> kdf2 = ks.DataFrame({'a': [9, 8, 7, 6, 5, 4, 3, 2, 1]})
@@ -147,7 +146,7 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
         6  0
         7  0
         8  0
-        >>> os.environ["OPS_ON_DIFF_FRAMES"] = prev
+        >>> reset_option("compute.ops_on_diff_frames")
 
     :param this: a DataFrame to align
     :param that: another DataFrame to align

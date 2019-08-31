@@ -35,6 +35,12 @@ _registered_options = {
     # just a truncated repr.
     "display.max_rows": 1000,  # TODO: None should support unlimited.
 
+    # This determines whether or not to operate between two different dataframs.
+    # For example, 'combine_frames' function internally performs a join operation which can be
+    # expensive in general.
+    # So, if `compute.ops_on_diff_frames` variable is not True, that method throws an exception.
+    "compute.ops_on_diff_frames": False,
+
     # This sets the default index type: sequence, distributed and distributed-sequence.
     "compute.default_index_type": "sequence",
 }  # type: Dict[str, Any]
