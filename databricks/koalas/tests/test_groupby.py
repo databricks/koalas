@@ -60,6 +60,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)['a'])
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)[['a']])
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)[['a', 'c']])
+        self.assertRaises(ValueError, lambda: kdf.groupby(0, as_index=False)[['a', 'c']])
+        self.assertRaises(ValueError, lambda: kdf.groupby([0], as_index=False)[['a', 'c']])
 
         self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.b, as_index=False))
 
