@@ -40,6 +40,9 @@ _registered_options = {
     # expensive in general.
     # So, if `compute.ops_on_diff_frames` variable is not True, that method throws an exception.
     "compute.ops_on_diff_frames": False,
+
+    # This sets the default index type: sequence, distributed and distributed-sequence.
+    "compute.default_index_type": "sequence",
 }  # type: Dict[str, Any]
 
 

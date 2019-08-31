@@ -4,6 +4,7 @@ from io import BytesIO
 import matplotlib
 from matplotlib import pyplot as plt
 import pandas as pd
+import numpy as np
 
 from databricks import koalas
 from databricks.koalas.exceptions import PandasNotImplementedError
@@ -173,10 +174,28 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         error_message = "pie requires either y column or 'subplots=True'"
         self.assertTrue(error_message in str(context.exception))
 
+    def test_scatter_plot(self):
+        # Use pandas scatter plot example
+        pdf = pd.DataFrame(np.random.rand(50, 4), columns=['a', 'b', 'c', 'd'])
+        kdf = koalas.from_pandas(pdf)
+
+        ax1 = pdf.plot.scatter(x='a', y='b')
+        ax2 = kdf.plot.scatter(x='a', y='b')
+        self.compare_plots(ax1, ax2)
+
+        ax1 = pdf.plot(kind='scatter', x='a', y='b')
+        ax2 = kdf.plot(kind='scatter', x='a', y='b')
+        self.compare_plots(ax1, ax2)
+
+        # check when keyword c is given as name of a column
+        ax1 = pdf.plot.scatter(x='a', y='b', c='c', s=50)
+        ax2 = kdf.plot.scatter(x='a', y='b', c='c', s=50)
+        self.compare_plots(ax1, ax2)
+
     def test_missing(self):
         ks = self.kdf1
 
-        unsupported_functions = ['box', 'density', 'hexbin', 'hist', 'kde', 'scatter']
+        unsupported_functions = ['box', 'density', 'hexbin', 'hist', 'kde']
 
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,

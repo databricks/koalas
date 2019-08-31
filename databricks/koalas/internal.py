@@ -19,7 +19,6 @@ An internal immutable DataFrame with some metadata to manage indexes.
 """
 
 from typing import Dict, List, Optional, Tuple, Union
-import os
 from itertools import accumulate
 
 import numpy as np
@@ -32,6 +31,7 @@ from pyspark.sql.functions import PandasUDFType, pandas_udf
 from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type, LongType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.config import get_option
 from databricks.koalas.typedef import infer_pd_series_spark_type
 from databricks.koalas.utils import column_index_level, default_session, lazy_property, scol_for
 
@@ -417,8 +417,7 @@ class _InternalFrame(object):
         This method attaches a default index to Spark DataFrame. Spark does not have the index
         notion so corresponding column should be generated.
 
-        There are three types of default index that can be controlled by `DEFAULT_INDEX`
-        environment variable.
+        There are three types of default index can be configured by `compute.default_index_type`
 
         - sequence: It implements a sequence that increases one by one, by Window function without
             specifying partition. Therefore, it ends up with whole partition in single node.
@@ -474,7 +473,7 @@ class _InternalFrame(object):
             [25769803776, 60129542144, 94489280512]
 
         """
-        default_index_type = os.environ.get("DEFAULT_INDEX", "sequence")
+        default_index_type = get_option("compute.default_index_type")
         if default_index_type == "sequence":
             sequential_index = F.row_number().over(
                 Window.orderBy(F.monotonically_increasing_id().asc())) - 1
@@ -521,7 +520,7 @@ class _InternalFrame(object):
             return sdf.select(
                 F.monotonically_increasing_id().alias("__index_level_0__"), *scols)
         else:
-            raise ValueError("'DEFAULT_INDEX' environment variable should be one of 'sequence',"
+            raise ValueError("'compute.default_index_type' should be one of 'sequence',"
                              " 'distributed-sequence' and 'distributed'")
 
     @lazy_property
