@@ -35,9 +35,9 @@ _registered_options = {
     # just a truncated repr.
     "display.max_rows": 1000,  # TODO: None should support unlimited.
 
-    # compute.shortcut_limit sets the shortcut value by using collected pandas dataframe directly.
-    # When the input value over this will executed by PySpark.
-    # Set `None` to unlimit.
+    # 'compute.shortcut_limit' sets the limit for a shortcut.
+    # It computes specified number of rows and use its schema.
+    # When the dataframe length is larger than this limit, Koalas uses PySpark to compute.
     "compute.shortcut_limit": 1000,  # TODO: None should support unlimited.
 }  # type: Dict[str, Any]
 
