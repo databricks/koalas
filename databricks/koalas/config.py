@@ -35,6 +35,10 @@ _registered_options = {
     # just a truncated repr.
     "display.max_rows": 1000,  # TODO: None should support unlimited.
 
+    # `plotting.max_rows` sets the visual limit on TopN plots. If it is set to 1000, the first 1000
+    # data points will be used for plotting, and this number will be seen on the right up corner.
+    "plotting.max_rows": 1000,
+
     # 'compute.max_rows sets the limit of the current DataFrame. Set `None` to unlimit
     # the input length. When the limit is set, it is executed by the shortcut by collecting
     # the data into driver side, and then using pandas API. If the limit is unset,

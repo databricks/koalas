@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas
+from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.plot import KoalasHistPlotSummary, KoalasBoxPlotSummary
@@ -32,6 +33,16 @@ matplotlib.use('agg')
 
 
 class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
+
+    @classmethod
+    def setUpClass(cls):
+        super(SeriesPlotTest, cls).setUpClass()
+        set_option('plotting.max_rows', 1000)
+
+    @classmethod
+    def tearDownClass(cls):
+        super(SeriesPlotTest, cls).tearDownClass()
+        reset_option('plotting.max_rows')
 
     @property
     def pdf1(self):
@@ -81,7 +92,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
         _, ax1 = plt.subplots(1, 1)
         ax1 = pdf['id'][:1000].plot.bar(colormap='Paired')
-        ax1.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
+        ax1.text(1, 1, 'showing top 1000 elements only', size=6, ha='right', va='bottom',
                  transform=ax1.transAxes)
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['id'].plot.bar(colormap='Paired')
@@ -106,7 +117,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
         _, ax1 = plt.subplots(1, 1)
         ax1 = pdf['id'][:1000].plot.pie(colormap='Paired')
-        ax1.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
+        ax1.text(1, 1, 'showing top 1000 elements only', size=6, ha='right', va='bottom',
                  transform=ax1.transAxes)
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['id'].plot.pie(colormap='Paired')
@@ -138,7 +149,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
         _, ax1 = plt.subplots(1, 1)
         ax1 = pdf['id'][:1000].plot.barh(colormap='Paired')
-        ax1.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
+        ax1.text(1, 1, 'showing top 1000 elements only', size=6, ha='right', va='bottom',
                  transform=ax1.transAxes)
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['id'].plot.barh(colormap='Paired')
