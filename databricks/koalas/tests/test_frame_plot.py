@@ -222,5 +222,4 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         kdf = koalas.from_pandas(pdf)
 
         data = TopNPlot().get_top_n(kdf)
-        self.tearDownClass()
         self.assertEqual(len(data), 2000)
