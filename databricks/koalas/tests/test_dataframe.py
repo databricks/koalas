@@ -21,6 +21,7 @@ import pandas as pd
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks
+from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
@@ -1200,13 +1201,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             columns=['score', 'kids', 'age'])
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assertEqual(
-            repr(pdf1.transpose().sort_index()),
-            repr(kdf1.transpose(limit=None).sort_index()))
+        set_option("compute.max_rows", None)
+        try:
+            self.assertEqual(
+                repr(pdf1.transpose().sort_index()),
+                repr(kdf1.transpose().sort_index()))
 
-        self.assert_eq(
-            repr(pdf2.transpose().sort_index()),
-            repr(kdf2.transpose(limit=None).sort_index()))
+            self.assert_eq(
+                repr(pdf2.transpose().sort_index()),
+                repr(kdf2.transpose().sort_index()))
+        except:
+            reset_option("compute.max_rows")
 
         self.assertEqual(
             repr(pdf1.transpose().sort_index()),
@@ -1222,9 +1227,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                                              ('rg2', 'z')]))
         kdf3 = ks.from_pandas(pdf3)
 
-        self.assertEqual(
-            repr(pdf3.transpose().sort_index()),
-            repr(kdf3.transpose(limit=None).sort_index()))
+        set_option("compute.max_rows", None)
+        try:
+            self.assertEqual(
+                repr(pdf3.transpose().sort_index()),
+                repr(kdf3.transpose().sort_index()))
+        finally:
+            reset_option("compute.max_rows")
 
         self.assertEqual(
             repr(pdf3.transpose().sort_index()),

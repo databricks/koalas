@@ -35,6 +35,12 @@ _registered_options = {
     # just a truncated repr.
     "display.max_rows": 1000,  # TODO: None should support unlimited.
 
+    # 'compute.max_rows sets the limit of the current DataFrame. Set `None` to unlimit
+    # the input length. When the limit is set, it is executed by the shortcut by collecting
+    # the data into driver side, and then using pandas API. If the limit is unset,
+    # the operation is executed by PySpark. Default is 1000.
+    "compute.max_rows": 1000,  # TODO: None should support unlimited.
+
     # This determines whether or not to operate between two different dataframs.
     # For example, 'combine_frames' function internally performs a join operation which can be
     # expensive in general.
