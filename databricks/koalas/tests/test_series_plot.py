@@ -87,7 +87,6 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.compare_plots(ax1, ax2)
 
     def test_bar_plot_limited(self):
-        self.setUpClass()
         pdf = self.pdf2
         kdf = self.kdf2
 
@@ -145,7 +144,6 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.compare_plots(ax1, ax2)
 
     def test_barh_plot_limited(self):
-        self.setUpClass()
         pdf = self.pdf2
         kdf = self.kdf2
 
