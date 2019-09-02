@@ -21,6 +21,7 @@ import pandas as pd
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks
+from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
@@ -54,9 +55,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[kdf['b'] > 2], pdf[pdf['b'] > 2])
         self.assert_eq(kdf[['a', 'b']], pdf[['a', 'b']])
         self.assert_eq(kdf.a, pdf.a)
-        # TODO: assert d.b.mean().compute() == pdf.b.mean()
-        # TODO: assert np.allclose(d.b.var().compute(), pdf.b.var())
-        # TODO: assert np.allclose(d.b.std().compute(), pdf.b.std())
+        self.assert_eq(kdf.compute().b.mean(), pdf.b.mean())
+        self.assert_eq(np.allclose(kdf.compute().b.var(), pdf.b.var()), True)
+        self.assert_eq(np.allclose(kdf.compute().b.std(), pdf.b.std()), True)
 
         assert repr(kdf)
 
@@ -1200,13 +1201,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             columns=['score', 'kids', 'age'])
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assertEqual(
-            repr(pdf1.transpose().sort_index()),
-            repr(kdf1.transpose(limit=None).sort_index()))
+        set_option("compute.max_rows", None)
+        try:
+            self.assertEqual(
+                repr(pdf1.transpose().sort_index()),
+                repr(kdf1.transpose().sort_index()))
 
-        self.assert_eq(
-            repr(pdf2.transpose().sort_index()),
-            repr(kdf2.transpose(limit=None).sort_index()))
+            self.assert_eq(
+                repr(pdf2.transpose().sort_index()),
+                repr(kdf2.transpose().sort_index()))
+        except:
+            reset_option("compute.max_rows")
 
         self.assertEqual(
             repr(pdf1.transpose().sort_index()),
@@ -1222,9 +1227,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                                              ('rg2', 'z')]))
         kdf3 = ks.from_pandas(pdf3)
 
-        self.assertEqual(
-            repr(pdf3.transpose().sort_index()),
-            repr(kdf3.transpose(limit=None).sort_index()))
+        set_option("compute.max_rows", None)
+        try:
+            self.assertEqual(
+                repr(pdf3.transpose().sort_index()),
+                repr(kdf3.transpose().sort_index()))
+        finally:
+            reset_option("compute.max_rows")
 
         self.assertEqual(
             repr(pdf3.transpose().sort_index()),
@@ -1542,3 +1551,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(TypeError, "mutually exclusive"):
             kdf.filter(regex='b.*', like="aaa")
+
+    def test_pipe(self):
+        kdf = ks.DataFrame({'category': ['A', 'A', 'B'],
+                            'col1': [1, 2, 3],
+                            'col2': [4, 5, 6]},
+                           columns=['category', 'col1', 'col2'])
+
+        self.assertRaisesRegex(
+            ValueError,
+            "arg is both the pipe target and a keyword argument",
+            lambda: kdf.pipe((lambda x: x, 'arg'), arg='1')
+        )

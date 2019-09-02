@@ -396,22 +396,21 @@ class DataFrame(_Frame, Generic[T]):
                 "%s with a sequence is currently not supported; "
                 "however, got %s." % (op, type(other)))
 
-        applied = []
         if isinstance(other, DataFrame) and self is not other:
+            if self._internal.column_index_level != other._internal.column_index_level:
+                raise ValueError('cannot join with no overlapping index names')
+
             # Different DataFrames
-            def apply_op(kdf, this_columns, that_columns):
-                for this_column, that_column in zip(this_columns, that_columns):
-                    yield getattr(kdf[this_column], op)(kdf[that_column])
+            def apply_op(kdf, this_column_index, that_column_index):
+                for this_idx, that_idx in zip(this_column_index, that_column_index):
+                    yield (getattr(kdf[this_idx], op)(kdf[that_idx]), this_idx)
 
             return align_diff_frames(apply_op, self, other, fillna=True, how="full")
-        elif isinstance(other, DataFrame) and self is not other:
-            # Same DataFrames
-            for column in self._internal.data_columns:
-                applied.append(getattr(self[column], op)(other[column]))
         else:
             # DataFrame and Series
-            for column in self._internal.data_columns:
-                applied.append(getattr(self[column], op)(other))
+            applied = []
+            for idx in self._internal.column_index:
+                applied.append(getattr(self[idx], op)(other))
 
             sdf = self._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
@@ -1354,7 +1353,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     # TODO: enable doctests once we drop Spark 2.3.x (due to type coercion logic
     #  when creating arrays)
-    def transpose(self, limit: Optional[int] = 1000):
+    def transpose(self):
         """
         Transpose index and columns.
 
@@ -1365,23 +1364,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         .. note:: This method is based on an expensive operation due to the nature
             of big data. Internally it needs to generate each row for each value, and
             then group twice - it is a huge operation. To prevent misusage, this method
-            has the default limit of input length, 1000 and raises a ValueError.
+            has the 'compute.max_rows' default limit of input length, and raises a ValueError.
 
+                >>> from databricks.koalas.config import get_option, set_option
+                >>> set_option('compute.max_rows', 1000)
                 >>> ks.DataFrame({'a': range(1001)}).transpose()  # doctest: +NORMALIZE_WHITESPACE
                 Traceback (most recent call last):
                   ...
                 ValueError: Current DataFrame has more then the given limit 1000 rows.
-                Please use df.transpose(limit=<maximum number of rows>) to retrieve more than
-                1000 rows. Note that, before changing the given 'limit', this operation is
-                considerably expensive.
-
-        Parameters
-        ----------
-        limit : int, optional
-            This parameter sets the limit of the current DataFrame. Set `None` to unlimit
-            the input length. When the limit is set, it is executed by the shortcut by collecting
-            the data into driver side, and then using pandas API. If the limit is unset,
-            the operation is executed by PySpark. Default is 1000.
+                Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option'
+                to retrieve to retrieve more than 1000 rows. Note that, before changing the
+                'compute.max_rows', this operation is considerably expensive.
 
         Returns
         -------
@@ -1461,14 +1454,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1    float64
         dtype: object
         """
-        if limit is not None:
-            pdf = self.head(limit + 1)._to_internal_pandas()
-            if len(pdf) > limit:
+        max_compute_count = get_option("compute.max_rows")
+        if max_compute_count is not None:
+            pdf = self.head(max_compute_count + 1)._to_internal_pandas()
+            if len(pdf) > max_compute_count:
                 raise ValueError(
-                    "Current DataFrame has more then the given limit %s rows. Please use "
-                    "df.transpose(limit=<maximum number of rows>) to retrieve more than %s rows. "
-                    "Note that, before changing the given 'limit', this operation is considerably "
-                    "expensive." % (limit, limit))
+                    "Current DataFrame has more then the given limit {0} rows. "
+                    "Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option' "
+                    "to retrieve to retrieve more than {0} rows. Note that, before changing the "
+                    "'compute.max_rows', this operation is considerably expensive."
+                    .format(max_compute_count))
             return DataFrame(pdf.transpose())
 
         # Explode the data to be pairs.
@@ -1626,6 +1621,28 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         True
         """
         return len(self._internal.data_columns) == 0 or self._sdf.rdd.isEmpty()
+
+    @property
+    def style(self):
+        """
+        Property returning a Styler object containing methods for
+        building a styled HTML representation fo the DataFrame.
+
+        .. note:: currently it collects top 1000 rows and return its
+            pandas `pandas.io.formats.style.Styler` instance.
+
+        Examples
+        --------
+        >>> ks.range(1001).style  # doctest: +ELLIPSIS
+        <pandas.io.formats.style.Styler object at ...>
+        """
+        # TODO: Add a configuration to control the limit
+        max_results = 1000
+        pdf = self.head(max_results + 1).to_pandas()
+        if len(pdf) > max_results:
+            warnings.warn(
+                "'style' property will only use top %s rows." % max_results, UserWarning)
+        return pdf.head(max_results).style
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns.
@@ -6535,20 +6552,38 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if (isinstance(value, Series) and value._kdf is not self) or \
                 (isinstance(value, DataFrame) and value is not self):
             # Different Series or DataFrames
+            level = self._internal.column_index_level
             if isinstance(value, Series):
                 value = value.to_frame()
+                value.columns = pd.MultiIndex.from_tuples(
+                    [tuple(list(value._internal.column_index[0]) + ([''] * (level - 1)))])
+            else:
+                assert isinstance(value, DataFrame)
+                value_level = value._internal.column_index_level
+                if value_level > level:
+                    value.columns = pd.MultiIndex.from_tuples(
+                        [idx[level:] for idx in value._internal.column_index])
+                elif value_level < level:
+                    value.columns = pd.MultiIndex.from_tuples(
+                        [tuple(list(idx) + ([''] * (level - value_level)))
+                         for idx in value._internal.column_index])
 
-            if not isinstance(key, (tuple, list)):
+            if isinstance(key, str):
+                key = [(key,)]
+            elif isinstance(key, tuple):
                 key = [key]
+            else:
+                key = [k if isinstance(k, tuple) else (k,) for k in key]
 
-            def assign_columns(kdf, this_columns, that_columns):
-                assert len(key) == len(that_columns)
+            def assign_columns(kdf, this_column_index, that_column_index):
+                assert len(key) == len(that_column_index)
                 # Note that here intentionally uses `zip_longest` that combine
                 # that_columns.
-                for k, this_column, that_column in zip_longest(key, this_columns, that_columns):
-                    yield kdf[that_column].rename(k)
-                    if this_column != k and this_column is not None:
-                        yield kdf[this_column]
+                for k, this_idx, that_idx \
+                        in zip_longest(key, this_column_index, that_column_index):
+                    yield (kdf[that_idx], tuple(['that', *k]))
+                    if this_idx is not None and this_idx[1:] != k:
+                        yield (kdf[this_idx], this_idx)
 
             kdf = align_diff_frames(assign_columns, self, value, fillna=False, how="left")
         elif isinstance(key, (tuple, list)):
