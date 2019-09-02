@@ -216,7 +216,6 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
                 getattr(ks.plot, name)()
 
     def test_topn_max_rows(self):
-        self.setUpClass()
 
         pdf = pd.DataFrame(np.random.rand(2500, 4), columns=['a', 'b', 'c', 'd'])
         kdf = koalas.from_pandas(pdf)
