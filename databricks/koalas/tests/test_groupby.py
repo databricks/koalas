@@ -396,8 +396,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
             # 1000+ records will only infer the schema.
             pdf = pd.DataFrame({
-                "timestamp": [0.0, 0.5, 1.0, 0.0, 0.5],
-                "car_id": ['A', 'A', 'A', 'B', 'B']
+                "timestamp": [0.0, 0.5, 1.0, 0.0, 0.5] * 300,
+                "car_id": ['A', 'A', 'A', 'B', 'B'] * 300
             })
             kdf = koalas.DataFrame(pdf)
 
