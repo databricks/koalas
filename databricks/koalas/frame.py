@@ -46,6 +46,7 @@ from pyspark.sql.window import Window
 from pyspark.sql.functions import pandas_udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.config import get_option
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import _InternalFrame, IndexMap
@@ -1636,8 +1637,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> ks.range(1001).style  # doctest: +ELLIPSIS
         <pandas.io.formats.style.Styler object at ...>
         """
-        # TODO: Add a configuration to control the limit
-        max_results = 1000
+        max_results = get_option('compute.max_rows')
         pdf = self.head(max_results + 1).to_pandas()
         if len(pdf) > max_results:
             warnings.warn(

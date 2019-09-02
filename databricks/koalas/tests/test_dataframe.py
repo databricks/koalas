@@ -1373,6 +1373,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.all(), pdf.all())
 
+        with self.assertRaisesRegex(ValueError, 'axis should be either 0 or "index" currently.'):
+            kdf.all(axis=1)
+
     def test_any(self):
         pdf = pd.DataFrame({
             'col1': [False, False, False],
@@ -1397,6 +1400,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.columns = columns
 
         self.assert_eq(kdf.any(), pdf.any())
+
+        with self.assertRaisesRegex(ValueError, 'axis should be either 0 or "index" currently.'):
+            kdf.any(axis=1)
 
     def test_rank(self):
         pdf = pd.DataFrame(data={'col1': [1, 2, 3, 1], 'col2': [3, 4, 3, 1]},

@@ -7,6 +7,8 @@ import pandas as pd
 import numpy as np
 
 from databricks import koalas
+from databricks.koalas.config import set_option, reset_option
+from databricks.koalas.plot import TopNPlot
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
@@ -15,6 +17,17 @@ matplotlib.use('agg')
 
 
 class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
+
+    @classmethod
+    def setUpClass(cls):
+        super(DataFramePlotTest, cls).setUpClass()
+        set_option('plotting.max_rows', 2000)
+
+    @classmethod
+    def tearDownClass(cls):
+        super(DataFramePlotTest, cls).tearDownClass()
+        reset_option('plotting.max_rows')
+
     @property
     def pdf1(self):
         return pd.DataFrame({
@@ -201,3 +214,11 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*DataFrame.*{}.*not implemented".format(name)):
                 getattr(ks.plot, name)()
+
+    def test_topn_max_rows(self):
+
+        pdf = pd.DataFrame(np.random.rand(2500, 4), columns=['a', 'b', 'c', 'd'])
+        kdf = koalas.from_pandas(pdf)
+
+        data = TopNPlot().get_top_n(kdf)
+        self.assertEqual(len(data), 2000)
