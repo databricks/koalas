@@ -465,8 +465,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def mod(self, other):
         return (self % other).rename(self.name)
 
-    mode = mod
-
     mod.__doc__ = _flex_doc_SERIES.format(
         desc='Modulo',
         op_name='%',
