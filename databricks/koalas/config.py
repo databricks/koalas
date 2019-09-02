@@ -39,6 +39,15 @@ _registered_options = {
     # It computes specified number of rows and use its schema.
     # When the dataframe length is larger than this limit, Koalas uses PySpark to compute.
     "compute.shortcut_limit": 1000,  # TODO: None should support unlimited.
+
+    # This determines whether or not to operate between two different dataframs.
+    # For example, 'combine_frames' function internally performs a join operation which can be
+    # expensive in general.
+    # So, if `compute.ops_on_diff_frames` variable is not True, that method throws an exception.
+    "compute.ops_on_diff_frames": False,
+
+    # This sets the default index type: sequence, distributed and distributed-sequence.
+    "compute.default_index_type": "sequence",
 }  # type: Dict[str, Any]
 
 

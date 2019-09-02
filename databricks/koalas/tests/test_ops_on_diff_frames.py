@@ -13,11 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
-
 import pandas as pd
 
 from databricks import koalas as ks
+from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
@@ -26,13 +25,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
     def setUpClass(cls):
         super(OpsOnDiffFramesEnabledTest, cls).setUpClass()
-        cls.should_ops_on_diff_frames = os.environ.get('OPS_ON_DIFF_FRAMES', 'false')
-        os.environ['OPS_ON_DIFF_FRAMES'] = 'true'
+        set_option('compute.ops_on_diff_frames', True)
 
     @classmethod
     def tearDownClass(cls):
         super(OpsOnDiffFramesEnabledTest, cls).tearDownClass()
-        os.environ['OPS_ON_DIFF_FRAMES'] = cls.should_ops_on_diff_frames
+        reset_option('compute.ops_on_diff_frames')
 
     @property
     def pdf1(self):
@@ -297,13 +295,12 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
     def setUpClass(cls):
         super(OpsOnDiffFramesDisabledTest, cls).setUpClass()
-        cls.should_ops_on_diff_frames = os.environ.get('OPS_ON_DIFF_FRAMES', 'false')
-        os.environ['OPS_ON_DIFF_FRAMES'] = 'false'
+        set_option('compute.ops_on_diff_frames', False)
 
     @classmethod
     def tearDownClass(cls):
         super(OpsOnDiffFramesDisabledTest, cls).tearDownClass()
-        os.environ['OPS_ON_DIFF_FRAMES'] = cls.should_ops_on_diff_frames
+        reset_option('compute.ops_on_diff_frames')
 
     @property
     def pdf1(self):
