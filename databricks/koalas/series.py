@@ -208,7 +208,7 @@ a     4.0
 b     NaN
 c    16.0
 d     NaN
-Name: b, dtype: float64
+Name: a, dtype: float64
 """
 
 _mod_example_SERIES = """
