@@ -465,6 +465,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def mod(self, other):
         return (self % other).rename(self.name)
 
+    mode = mod
+
     mod.__doc__ = _flex_doc_SERIES.format(
         desc='Modulo',
         op_name='%',
@@ -493,7 +495,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         series_examples=_pow_example_SERIES)
 
     def rpow(self, other):
-        return (other - self).rename(self.name)
+        return (other ** self).rename(self.name)
 
     rpow.__doc__ = _flex_doc_SERIES.format(
         desc='Reverse Exponential power',
@@ -513,7 +515,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         series_examples=_floordiv_example_SERIES)
 
     def rfloordiv(self, other):
-        return (other - self).rename(self.name)
+        return (other // self).rename(self.name)
 
     rfloordiv.__doc__ = _flex_doc_SERIES.format(
         desc='Reverse Integer division',
