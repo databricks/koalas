@@ -7,7 +7,6 @@ import pandas as pd
 import numpy as np
 
 from databricks import koalas
-from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.plot import TopNPlot
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
@@ -21,12 +20,12 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
         super(DataFramePlotTest, cls).setUpClass()
-        set_option('plotting.max_rows', 2000)
+        koalas.set_option('plotting.max_rows', 2000)
 
     @classmethod
     def tearDownClass(cls):
         super(DataFramePlotTest, cls).tearDownClass()
-        reset_option('plotting.max_rows')
+        koalas.reset_option('plotting.max_rows')
 
     @property
     def pdf1(self):
