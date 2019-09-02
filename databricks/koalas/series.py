@@ -204,11 +204,11 @@ d     NaN
 Name: a, dtype: float64
 
 >>> df.a.rpow(df.b)
-a    4.0
-b    NaN
-c   16.0
-d    NaN
-Name: a, dtype: float64
+a     4.0
+b     NaN
+c    16.0
+d     NaN
+Name: b, dtype: float64
 """
 
 _mod_example_SERIES = """
