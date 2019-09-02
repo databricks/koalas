@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas
+from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.plot import KoalasHistPlotSummary, KoalasBoxPlotSummary
@@ -32,6 +33,16 @@ matplotlib.use('agg')
 
 
 class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
+
+    @classmethod
+    def setUpClass(cls):
+        super(SeriesPlotTest, cls).setUpClass()
+        set_option('plotting.max_rows', 1000)
+
+    @classmethod
+    def tearDownClass(cls):
+        super(SeriesPlotTest, cls).tearDownClass()
+        reset_option('plotting.max_rows')
 
     @property
     def pdf1(self):
