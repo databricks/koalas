@@ -385,6 +385,9 @@ class IndexOpsMixin(object):
 
         >>> ser.rename("a").to_frame().set_index("a").index.astype('int64')
         Int64Index([1, 2], dtype='int64', name='a')
+
+        >>> ser.astype('int63')
+        ValueError: Type int63 not understood
         """
         from databricks.koalas.typedef import as_spark_type
         spark_type = as_spark_type(dtype)
@@ -560,6 +563,9 @@ class IndexOpsMixin(object):
         >>> df = ks.Series([True, False, None]).rename("a").to_frame()
         >>> df.set_index("a").index.all()
         False
+
+        >>> df.all(axis=1)
+        ValueError: axis should be either 0 or "index" currently.
         """
 
         if axis not in [0, 'index']:
@@ -623,6 +629,9 @@ class IndexOpsMixin(object):
         >>> df = ks.Series([True, False, None]).rename("a").to_frame()
         >>> df.set_index("a").index.any()
         True
+
+        >>> df.any(axis=1)
+        ValueError: axis should be either 0 or "index" currently.
         """
 
         if axis not in [0, 'index']:
