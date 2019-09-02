@@ -204,9 +204,9 @@ d     NaN
 Name: a, dtype: float64
 
 >>> df.a.rpow(df.b)
-a    0.0
+a    4.0
 b    NaN
-c   -2.0
+c   16.0
 d    NaN
 Name: a, dtype: float64
 """
@@ -260,9 +260,9 @@ d    NaN
 Name: a, dtype: float64
 
 >>> df.a.rfloordiv(df.b)
-a    0.0
+a    1.0
 b    NaN
-c   -2.0
+c    0.0
 d    NaN
 Name: a, dtype: float64
 """
