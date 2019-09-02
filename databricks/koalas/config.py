@@ -130,7 +130,7 @@ def reset_option(key: str) -> None:
     default_session().conf.unset(_key_format(key))
 
 
-def _check_option(key: str, value: Union[str, _NoValueType, float] = _NoValue) -> None:
+def _check_option(key: str, value: Union[str, _NoValueType] = _NoValue) -> None:
     if key not in _registered_options:
         raise OptionError(
             "No such option: '{}'. Available options are [{}]".format(
