@@ -1627,6 +1627,28 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return len(self._internal.data_columns) == 0 or self._sdf.rdd.isEmpty()
 
+    @property
+    def style(self):
+        """
+        Property returning a Styler object containing methods for
+        building a styled HTML representation fo the DataFrame.
+
+        .. note:: currently it collects top 1000 rows and return its
+            pandas `pandas.io.formats.style.Styler` instance.
+
+        Examples
+        --------
+        >>> ks.range(1001).style  # doctest: +ELLIPSIS
+        <pandas.io.formats.style.Styler object at ...>
+        """
+        # TODO: Add a configuration to control the limit
+        max_results = 1000
+        pdf = self.head(max_results + 1).to_pandas()
+        if len(pdf) > max_results:
+            warnings.warn(
+                "'style' property will only use top %s rows." % max_results, UserWarning)
+        return pdf.head(max_results).style
+
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns.
 
