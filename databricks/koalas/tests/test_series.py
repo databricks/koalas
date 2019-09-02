@@ -621,3 +621,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                              repr(pser.shift(periods=2, fill_value=0)))
         with self.assertRaisesRegex(ValueError, 'periods should be an int; however'):
             kser.shift(periods=1.5)
+
+    def test_astype(self):
+        pser = pd.Series([10, 20, 15, 30, 45], name='x')
+        kser = koalas.Series(pser)
+        with self.assertRaisesRegex(ValueError, 'Type int63 not understood'):
+            kser.astype('int63')
