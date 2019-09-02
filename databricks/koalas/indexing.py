@@ -434,6 +434,9 @@ class LocIndexer(object):
         elif all(isinstance(key, Series) for key in cols_sel):
             columns = [_make_col(key) for key in cols_sel]
             column_index = None
+        elif all(isinstance(key, spark.Column) for key in cols_sel):
+            columns = cols_sel
+            column_index = None
         elif (any(isinstance(key, str) for key in cols_sel)
               and any(isinstance(key, tuple) for key in cols_sel)):
             raise TypeError('Expected tuple, got str')

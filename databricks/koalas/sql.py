@@ -122,6 +122,14 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     0  1  3
     1  2  4
     2  2  5
+
+    Also, it is possible to query using Series.
+
+    >>> myser = ks.Series({'a': [1.0, 2.0, 3.0], 'b': [15.0, 30.0, 45.0]})
+    >>> ks.sql("SELECT * from {myser}")
+                        0
+    0     [1.0, 2.0, 3.0]
+    1  [15.0, 30.0, 45.0]
     """
     if globals is None:
         globals = _get_ipython_scope()
