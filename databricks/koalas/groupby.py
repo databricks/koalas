@@ -1516,7 +1516,7 @@ class GroupBy(object):
             kdf = DataFrame(pdf)
             return_schema = kdf._sdf.schema
             if len(pdf) <= limit:
-                return pdf
+                return kdf
 
             sdf = self._spark_group_map_apply(
                 pandas_transform, return_schema, retain_index=True)
