@@ -20,6 +20,7 @@ Infrastructure of configuration for Koalas.
 import json
 from typing import Dict, Union, Any
 
+import numpy as np
 from pyspark._globals import _NoValue, _NoValueType
 
 from databricks.koalas.utils import default_session
@@ -55,6 +56,10 @@ _registered_options = {
     "compute.default_index_type": "sequence",
 }  # type: Dict[str, Any]
 
+# dict to store the allowed type for options which default is set to None.
+_registered_options_default_none = {
+    'plotting.sample_ratio': (float, int)
+}
 
 _key_format = 'koalas.{}'.format
 
@@ -134,6 +139,11 @@ def _check_option(key: str, value: Union[str, _NoValueType] = _NoValue) -> None:
 
     if value is None:
         return  # None is allowed for all types.
-    if value is not _NoValue and not isinstance(value, type(_registered_options[key])):
+
+    # assign allowed option type given it is in _registered_options_default_none or not
+    option_type = type(_registered_options[key])
+    if key in _registered_options_default_none:
+        option_type = _registered_options_default_none[key]
+    if value is not _NoValue and not isinstance(value, option_type):
         raise TypeError("The configuration value for '%s' was %s; however, %s is expected." % (
-            key, type(value), type(_registered_options[key])))
+            key, type(value), option_type))

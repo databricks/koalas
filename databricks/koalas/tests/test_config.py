@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import numpy as np
 
 from databricks import koalas as ks
 from databricks.koalas import config
@@ -26,6 +27,8 @@ class ConfigTest(ReusedSQLTestCase):
         config._registered_options['test.config.list'] = []
         config._registered_options['test.config.float'] = 1.2
         config._registered_options['test.config.int'] = 1
+        config._registered_options['test.config.none'] = None
+        config._registered_options_default_none['test.config.none'] = int
 
     def tearDown(self):
         ks.reset_option('test.config')
@@ -33,6 +36,8 @@ class ConfigTest(ReusedSQLTestCase):
         del config._registered_options['test.config.list']
         del config._registered_options['test.config.float']
         del config._registered_options['test.config.int']
+        del config._registered_options['test.config.none']
+        del config._registered_options_default_none['test.config.none']
 
     def test_get_set_reset_option(self):
         self.assertEqual(ks.get_option('test.config'), 'default')
@@ -56,6 +61,9 @@ class ConfigTest(ReusedSQLTestCase):
 
         ks.set_option('test.config.int', 123)
         self.assertEqual(ks.get_option('test.config.int'), 123)
+
+        ks.set_option('test.config.none', 5)
+        self.assertEqual(ks.get_option('test.config.none'), 5)
 
     def test_different_types(self):
         with self.assertRaisesRegex(TypeError, "The configuration value for 'test.config'"):
