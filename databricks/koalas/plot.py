@@ -95,7 +95,7 @@ class SampledPlot:
 
         # check if fraction is larger than 1, and ceil it to 1 if so
         if fraction > 1:
-            fraction = 1
+            fraction = 1.0
         return fraction
 
     def get_sampled(self, data):
@@ -103,11 +103,11 @@ class SampledPlot:
         self.fraction = self._get_fraction(data)
 
         if isinstance(data, DataFrame):
-            sampled = data._sdf.sample(fraction=float(self.fraction))
+            sampled = data._sdf.sample(fraction=self.fraction)
             return DataFrame(data._internal.copy(sdf=sampled)).to_pandas()
         elif isinstance(data, Series):
             scol = data._scol
-            sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
+            sampled = data._kdf._sdf.sample(fraction=self.fraction)
             return DataFrame(data._kdf._internal.copy(sdf=sampled, scol=scol)).to_pandas()
         else:
             ValueError("Only DataFrame and Series are supported for plotting.")
