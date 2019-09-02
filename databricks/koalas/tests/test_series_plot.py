@@ -93,7 +93,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
         _, ax1 = plt.subplots(1, 1)
         ax1 = pdf['id'][:1000].plot.bar(colormap='Paired')
-        ax1.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
+        ax1.text(1, 1, 'showing top 1000 elements only', size=6, ha='right', va='bottom',
                  transform=ax1.transAxes)
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['id'].plot.bar(colormap='Paired')
@@ -151,7 +151,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
         _, ax1 = plt.subplots(1, 1)
         ax1 = pdf['id'][:1000].plot.barh(colormap='Paired')
-        ax1.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
+        ax1.text(1, 1, 'showing top 1000 elements only', size=6, ha='right', va='bottom',
                  transform=ax1.transAxes)
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['id'].plot.barh(colormap='Paired')
