@@ -27,6 +27,7 @@ from pyspark.ml.feature import Bucketizer
 from pyspark.sql import functions as F
 
 from databricks.koalas.missing import _unsupported_function
+from databricks.koalas.config import get_option
 
 
 def _gca(rc=None):
@@ -51,30 +52,32 @@ else:
 
 
 class TopNPlot:
-    max_rows = 1000
 
     def get_top_n(self, data):
         from databricks.koalas import DataFrame, Series
+        max_rows = get_option("plotting.max_rows")
         # Simply use the first 1k elements and make it into a pandas dataframe
         # For categorical variables, it is likely called from df.x.value_counts().plot.xxx().
         if isinstance(data, Series):
-            data = data.head(TopNPlot.max_rows + 1).to_pandas().to_frame()
+            data = data.head(max_rows + 1).to_pandas().to_frame()
         elif isinstance(data, DataFrame):
-            data = data.head(TopNPlot.max_rows + 1).to_pandas()
+            data = data.head(max_rows + 1).to_pandas()
         else:
             ValueError("Only DataFrame and Series are supported for plotting.")
 
         self.partial = False
-        if len(data) > TopNPlot.max_rows:
+        if len(data) > max_rows:
             self.partial = True
-            data = data.iloc[:TopNPlot.max_rows]
+            data = data.iloc[:max_rows]
         return data
 
     def set_result_text(self, ax):
+        max_rows = get_option("plotting.max_rows")
         assert hasattr(self, "partial")
 
         if self.partial:
-            ax.text(1, 1, 'showing top 1,000 elements only', size=6, ha='right', va='bottom',
+            ax.text(1, 1, 'showing top {} elements only'.format(max_rows),
+                    size=6, ha='right', va='bottom',
                     transform=ax.transAxes)
 
 
@@ -470,7 +473,6 @@ class KoalasHistPlot(HistPlot):
 
 
 class KoalasPiePlot(PiePlot, TopNPlot):
-    max_rows = 1000
 
     def __init__(self, data, **kwargs):
         super(KoalasPiePlot, self).__init__(self.get_top_n(data), **kwargs)
@@ -499,7 +501,6 @@ class KoalasLinePlot(LinePlot, SampledPlot):
 
 
 class KoalasBarhPlot(BarhPlot, TopNPlot):
-    max_rows = 1000
 
     def __init__(self, data, **kwargs):
         super(KoalasBarhPlot, self).__init__(self.get_top_n(data), **kwargs)
