@@ -57,7 +57,7 @@ _registered_options = {
 
 # dict to store the allowed type for options which default is set to None.
 _registered_options_default_none = {
-    'plotting.sample_ratio': (float, int)
+    'plotting.sample_ratio': float
 }
 
 _key_format = 'koalas.{}'.format
