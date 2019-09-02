@@ -218,7 +218,6 @@ Datetime Properties
    Series.dt.hour
    Series.dt.minute
    Series.dt.second
-   Series.dt.millisecond
    Series.dt.microsecond
    Series.dt.week
    Series.dt.weekofyear
