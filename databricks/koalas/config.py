@@ -20,7 +20,6 @@ Infrastructure of configuration for Koalas.
 import json
 from typing import Dict, Union, Any
 
-import numpy as np
 from pyspark._globals import _NoValue, _NoValueType
 
 from databricks.koalas.utils import default_session
