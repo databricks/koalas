@@ -593,7 +593,7 @@ class DataFrame(_Frame, Generic[T]):
         reverse='rpow')
 
     def rpow(self, other):
-        return other - self
+        return other ** self
 
     rpow.__doc__ = _flex_doc_FRAME.format(
         desc='Exponential power',
@@ -611,7 +611,7 @@ class DataFrame(_Frame, Generic[T]):
         reverse='rfloordiv')
 
     def rfloordiv(self, other):
-        return other - self
+        return other // self
 
     rfloordiv.__doc__ = _flex_doc_FRAME.format(
         desc='Integer division',
