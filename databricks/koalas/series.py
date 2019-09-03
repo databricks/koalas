@@ -204,10 +204,10 @@ d     NaN
 Name: a, dtype: float64
 
 >>> df.a.rpow(df.b)
-a    0.0
-b    NaN
-c   -2.0
-d    NaN
+a     4.0
+b     NaN
+c    16.0
+d     NaN
 Name: a, dtype: float64
 """
 
@@ -260,9 +260,9 @@ d    NaN
 Name: a, dtype: float64
 
 >>> df.a.rfloordiv(df.b)
-a    0.0
+a    1.0
 b    NaN
-c   -2.0
+c    0.0
 d    NaN
 Name: a, dtype: float64
 """
@@ -493,7 +493,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         series_examples=_pow_example_SERIES)
 
     def rpow(self, other):
-        return (other - self).rename(self.name)
+        return (other ** self).rename(self.name)
 
     rpow.__doc__ = _flex_doc_SERIES.format(
         desc='Reverse Exponential power',
@@ -513,7 +513,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         series_examples=_floordiv_example_SERIES)
 
     def rfloordiv(self, other):
-        return (other - self).rename(self.name)
+        return (other // self).rename(self.name)
 
     rfloordiv.__doc__ = _flex_doc_SERIES.format(
         desc='Reverse Integer division',
