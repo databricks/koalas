@@ -44,6 +44,10 @@ _registered_options = {
     # data points will be used for plotting, and this number will be seen on the right up corner.
     "plotting.max_rows": 1000,
 
+    # `plotting.sample_ratio` sets the proportion of data that will be plotted for SampledPlot like
+    # plts. The default is None, will will basically take roughly 1000 data points.
+    "plotting.sample_ratio": None,
+
     # 'compute.max_rows sets the limit of the current DataFrame. Set `None` to unlimit
     # the input length. When the limit is set, it is executed by the shortcut by collecting
     # the data into driver side, and then using pandas API. If the limit is unset,
@@ -139,6 +143,12 @@ def _check_option(key: str, value: Union[str, _NoValueType] = _NoValue) -> None:
 
     if value is None:
         return  # None is allowed for all types.
+
+    # this might need to be changed in the future, if default is None, then the current key type
+    # check will raise an error, I could open a new PR to fix this.
+    if value is not _NoValue and key == "plotting.sample_ratio":
+        return
+
     if value is not _NoValue and not isinstance(value, type(_registered_options[key])):
         raise TypeError("The configuration value for '%s' was %s; however, %s is expected." % (
             key, type(value), type(_registered_options[key])))

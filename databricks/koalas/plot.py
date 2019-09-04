@@ -82,19 +82,32 @@ class TopNPlot:
 
 
 class SampledPlot:
+
+    @staticmethod
+    def _get_fraction(data):
+        sample_ratio = get_option("plotting.sample_ratio")
+
+        # if sample_ratio is default None, make sure the records are roughly 1000.
+        if sample_ratio is None:
+            fraction = 1 / (len(data) / 1000)
+        else:
+            fraction = sample_ratio
+
+        # check if fraction is larger than 1, and ceil it to 1 if so
+        if fraction > 1:
+            fraction = 1.0
+        return fraction
+
     def get_sampled(self, data):
         from databricks.koalas import DataFrame, Series
-
-        self.fraction = 1 / (len(data) / 1000)  # make sure the records are roughly 1000.
-        if self.fraction > 1:
-            self.fraction = 1
+        self.fraction = self._get_fraction(data)
 
         if isinstance(data, DataFrame):
-            sampled = data._sdf.sample(fraction=float(self.fraction))
+            sampled = data._sdf.sample(fraction=self.fraction)
             return DataFrame(data._internal.copy(sdf=sampled)).to_pandas()
         elif isinstance(data, Series):
             scol = data._scol
-            sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
+            sampled = data._kdf._sdf.sample(fraction=self.fraction)
             return DataFrame(data._kdf._internal.copy(sdf=sampled, scol=scol)).to_pandas()
         else:
             ValueError("Only DataFrame and Series are supported for plotting.")
