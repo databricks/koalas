@@ -35,6 +35,11 @@ _registered_options = {
     # just a truncated repr.
     "display.max_rows": 1000,  # TODO: None should support unlimited.
 
+    # 'compute.shortcut_limit' sets the limit for a shortcut.
+    # It computes specified number of rows and use its schema.
+    # When the dataframe length is larger than this limit, Koalas uses PySpark to compute.
+    "compute.shortcut_limit": 1000,  # TODO: None should support unlimited.
+
     # `plotting.max_rows` sets the visual limit on TopN plots. If it is set to 1000, the first 1000
     # data points will be used for plotting, and this number will be seen on the right up corner.
     "plotting.max_rows": 1000,
