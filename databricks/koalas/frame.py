@@ -96,7 +96,7 @@ triangle        3      180
 rectangle       4      360
 
 Add a scalar with operator version which return the same
-results.
+results. Also reverse version.
 
 >>> df + 1
            angles  degrees
@@ -110,7 +110,19 @@ circle          1      361
 triangle        4      181
 rectangle       5      361
 
+>>> df.radd(1)
+           angles  degrees
+circle          1      361
+triangle        4      181
+rectangle       5      361
+
 Divide by constant with reverse version.
+
+>>> df / 10
+           angles  degrees
+circle        0.0     36.0
+triangle      0.3     18.0
+rectangle     0.4     36.0
 
 >>> df.div(10)
            angles  degrees
@@ -124,7 +136,7 @@ circle          NaN  0.027778
 triangle   3.333333  0.055556
 rectangle  2.500000  0.027778
 
-Subtract by constant.
+Subtract by constant with reverse version.
 
 >>> df - 1
            angles  degrees
@@ -138,7 +150,13 @@ circle         -1      359
 triangle        2      179
 rectangle       3      359
 
-Multiply by constant.
+>>> df.rsub(1)
+           angles  degrees
+circle          1     -359
+triangle       -2     -179
+rectangle      -3     -359
+
+Multiply by constant with reverse version.
 
 >>> df * 1
            angles  degrees
@@ -152,25 +170,33 @@ circle          0      360
 triangle        3      180
 rectangle       4      360
 
-Divide by constant.
-
->>> df / 1
+>>> df.rmul(1)
            angles  degrees
-circle        0.0    360.0
-triangle      3.0    180.0
-rectangle     4.0    360.0
+circle          0      360
+triangle        3      180
+rectangle       4      360
 
->>> df.div(1)
-           angles  degrees
-circle        0.0    360.0
-triangle      3.0    180.0
-rectangle     4.0    360.0
+Floor Divide by constant with reverse version.
 
->>> df // 2
+>>> df // 10
            angles  degrees
-circle          0      180
-triangle        1       90
-rectangle       2      180
+circle          0       36
+triangle        0       18
+rectangle       0       36
+
+>>> df.floordiv(10)
+           angles  degrees
+circle          0       36
+triangle        0       18
+rectangle       0       36
+
+>>> df.rfloordiv(10)
+           angles  degrees
+circle        NaN        0
+triangle      3.0        0
+rectangle     2.0        0
+
+Mod by constant with reverse version.
 
 >>> df % 2
            angles  degrees
@@ -178,11 +204,37 @@ circle          0        0
 triangle        1        0
 rectangle       0        0
 
+>>> df.mod(2)
+           angles  degrees
+circle          0        0
+triangle        1        0
+rectangle       0        0
+
+>>> df.rmod(2)
+           angles  degrees
+circle        NaN        2
+triangle      2.0        2
+rectangle     2.0        2
+
+Power by constant with reverse version.
+
+>>> df ** 2
+           angles   degrees
+circle        0.0  129600.0
+triangle      9.0   32400.0
+rectangle    16.0  129600.0
+
 >>> df.pow(2)
            angles   degrees
 circle        0.0  129600.0
 triangle      9.0   32400.0
 rectangle    16.0  129600.0
+
+>>> df.rpow(2)
+           angles        degrees
+circle        1.0  2.348543e+108
+triangle      8.0   1.532496e+54
+rectangle    16.0  2.348543e+108
 """
 
 T = TypeVar('T')
@@ -593,7 +645,7 @@ class DataFrame(_Frame, Generic[T]):
         reverse='rpow')
 
     def rpow(self, other):
-        return other - self
+        return other ** self
 
     rpow.__doc__ = _flex_doc_FRAME.format(
         desc='Exponential power',
@@ -611,7 +663,7 @@ class DataFrame(_Frame, Generic[T]):
         reverse='rfloordiv')
 
     def rfloordiv(self, other):
-        return other - self
+        return other // self
 
     rfloordiv.__doc__ = _flex_doc_FRAME.format(
         desc='Integer division',
