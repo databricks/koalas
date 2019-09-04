@@ -6601,6 +6601,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
+        if max_display_count is None:
+            return repr(self._to_internal_pandas())
+
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
         repr_string = repr(pdf.iloc[:max_display_count])
@@ -6616,6 +6619,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def _repr_html_(self):
         max_display_count = get_option("display.max_rows")
+        if max_display_count is None:
+            return self._to_internal_pandas()._repr_html_()
+
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
         repr_html = pdf[:max_display_count]._repr_html_()

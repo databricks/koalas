@@ -17,6 +17,7 @@ matplotlib.use('agg')
 
 
 class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
+    sample_ratio_default = None
 
     @classmethod
     def setUpClass(cls):
@@ -233,7 +234,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
             data = SampledPlot().get_sampled(kdf)
             self.assertEqual(round(len(data) / 2500, 1), 0.5)
         finally:
-            reset_option('plotting.sample_ratio')
+            set_option('plotting.sample_ratio', DataFramePlotTest.sample_ratio_default)
 
     def test_sampled_plot_with_max_rows(self):
         # 'plotting.max_rows' is 2000

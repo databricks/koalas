@@ -37,6 +37,13 @@ class ReprTests(ReusedSQLTestCase):
         kdf = ks.range(ReprTests.max_display_count + 1)
         self.assertTrue("Showing only the first" in repr(kdf))
 
+        set_option("display.max_rows", None)
+        try:
+            kdf = ks.range(ReprTests.max_display_count + 1)
+            self.assert_eq(repr(kdf), repr(kdf.to_pandas()))
+        finally:
+            set_option("display.max_rows", ReprTests.max_display_count)
+
     def test_repr_series(self):
         kser = ks.range(ReprTests.max_display_count).id
         self.assertTrue("Showing only the first" not in repr(kser))
@@ -44,6 +51,13 @@ class ReprTests(ReusedSQLTestCase):
 
         kser = ks.range(ReprTests.max_display_count + 1).id
         self.assertTrue("Showing only the first" in repr(kser))
+
+        set_option("display.max_rows", None)
+        try:
+            kser = ks.range(ReprTests.max_display_count + 1).id
+            self.assert_eq(repr(kser), repr(kser.to_pandas()))
+        finally:
+            set_option("display.max_rows", ReprTests.max_display_count)
 
     def test_repr_indexes(self):
         kdf = ks.range(ReprTests.max_display_count)
@@ -55,6 +69,14 @@ class ReprTests(ReusedSQLTestCase):
         kidx = kdf.index
         self.assertTrue("Showing only the first" in repr(kidx))
 
+        set_option("display.max_rows", None)
+        try:
+            kdf = ks.range(ReprTests.max_display_count + 1)
+            kidx = kdf.index
+            self.assert_eq(repr(kidx), repr(kidx.to_pandas()))
+        finally:
+            set_option("display.max_rows", ReprTests.max_display_count)
+
     def test_html_repr(self):
         kdf = ks.range(ReprTests.max_display_count)
         self.assertTrue("Showing only the first" not in kdf._repr_html_())
@@ -62,3 +84,10 @@ class ReprTests(ReusedSQLTestCase):
 
         kdf = ks.range(ReprTests.max_display_count + 1)
         self.assertTrue("Showing only the first" in kdf._repr_html_())
+
+        set_option("display.max_rows", None)
+        try:
+            kdf = ks.range(ReprTests.max_display_count + 1)
+            self.assertEqual(kdf._repr_html_(), kdf.to_pandas()._repr_html_())
+        finally:
+            set_option("display.max_rows", ReprTests.max_display_count)

@@ -3027,6 +3027,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
+        if max_display_count is None:
+            return repr(self._to_internal_pandas())
+
         pser = self.head(max_display_count + 1)._to_internal_pandas()
         pser_length = len(pser)
         repr_string = repr(pser.iloc[:max_display_count])
