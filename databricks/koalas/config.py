@@ -106,21 +106,23 @@ class Option:
 
 # Available options.
 _options = [
-    # TODO: None should support unlimited.
     Option(
         key='display.max_rows',
         doc=(
             "This sets the maximum number of rows koalas should output when printing out "
-            "various output. For example, this value determines whether the repr() for a "
-            "dataframe prints out fully or just a truncated repr."),
+            "various output. For example, this value determines the number of rows to be "
+            "shown at the repr() in a dataframe. Set `None` to unlimit the input length. "
+            "Default is 1000."),
         default=1000,
-        types=int,
-        check_func=(lambda v: v >= 0, "'display.max_rows' should be greater than or equal to 0.")),
+        types=(int, type(None)),
+        check_func=(
+            lambda v: v is None or v >= 0,
+            "'display.max_rows' should be greater than or equal to 0.")),
 
     Option(
         key='compute.max_rows',
         doc=(
-            "'compute.max_rows sets the limit of the current DataFrame. Set `None` to unlimit "
+            "'compute.max_rows' sets the limit of the current DataFrame. Set `None` to unlimit "
             "the input length. When the limit is set, it is executed by the shortcut by "
             "collecting the data into driver side, and then using pandas API. If the limit is "
             "unset, the operation is executed by PySpark. Default is 1000."),
@@ -130,7 +132,6 @@ _options = [
             lambda v: v is None or v >= 0,
             "'compute.max_rows' should be greater than or equal to 0.")),
 
-    # TODO: None should support unlimited.
     Option(
         key='compute.shortcut_limit',
         doc=(
