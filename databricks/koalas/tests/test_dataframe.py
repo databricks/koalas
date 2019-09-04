@@ -1201,6 +1201,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             columns=['score', 'kids', 'age'])
         kdf2 = ks.from_pandas(pdf2)
 
+        self.assertEqual(
+            repr(pdf1.transpose().sort_index()),
+            repr(kdf1.transpose().sort_index()))
+
+        self.assert_eq(
+            repr(pdf2.transpose().sort_index()),
+            repr(kdf2.transpose().sort_index()))
+
         set_option("compute.max_rows", None)
         try:
             self.assertEqual(
@@ -1210,22 +1218,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(
                 repr(pdf2.transpose().sort_index()),
                 repr(kdf2.transpose().sort_index()))
-        except:
+        finally:
             reset_option("compute.max_rows")
-
-        self.assertEqual(
-            repr(pdf1.transpose().sort_index()),
-            repr(kdf1.transpose().sort_index()))
-
-        self.assert_eq(
-            repr(pdf2.transpose().sort_index()),
-            repr(kdf2.transpose().sort_index()))
 
         pdf3 = pd.DataFrame({('cg1', 'a'): [1, 2, 3], ('cg1', 'b'): [4, 5, 6],
                              ('cg2', 'c'): [7, 8, 9], ('cg3', 'd'): [9, 9, 9]},
                             index=pd.MultiIndex.from_tuples([('rg1', 'x'), ('rg1', 'y'),
                                                              ('rg2', 'z')]))
         kdf3 = ks.from_pandas(pdf3)
+
+        self.assertEqual(
+            repr(pdf3.transpose().sort_index()),
+            repr(kdf3.transpose().sort_index()))
 
         set_option("compute.max_rows", None)
         try:
@@ -1234,10 +1238,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 repr(kdf3.transpose().sort_index()))
         finally:
             reset_option("compute.max_rows")
-
-        self.assertEqual(
-            repr(pdf3.transpose().sort_index()),
-            repr(kdf3.transpose().sort_index()))
 
     def _test_cummin(self, pdf, kdf):
         self.assert_eq(pdf.cummin(), kdf.cummin())
@@ -1571,12 +1571,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_transform(self):
-        # Data is intentionally big to test when schema inference is on.
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
                             'b': [1., 1., 2., 3., 5., 8.] * 300,
                             'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
         kdf = ks.DataFrame(pdf)
-        self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(),
-                       pdf.transform(lambda x: x + 1).sort_index())
+
+        set_option("compute.shortcut_limit", 1000)
+        try:
+            self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(),
+                           pdf.transform(lambda x: x + 1).sort_index())
+        finally:
+            reset_option("compute.shortcut_limit")
+
         with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
             kdf.transform(1)
