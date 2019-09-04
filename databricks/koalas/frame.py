@@ -43,7 +43,7 @@ from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, F
                                IntegerType, LongType, NumericType, ShortType, StructType)
 from pyspark.sql.utils import AnalysisException
 from pyspark.sql.window import Window
-from pyspark.sql.functions import pandas_udf
+from pyspark.sql.functions import pandas_udf, PandasUDFType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
@@ -1587,7 +1587,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Call ``func`` on self producing a Series with transformed values
         and that has the same length as its input.
 
-        .. note:: unlike pandas, it is required for ``func`` to specify return type hint.
+        .. note:: this API executes the function once to infer the type which is
+             potentially expensive, for instance, when the dataset is created after
+             aggregations or sorting.
+
+             To avoid this, specify return type in ``func``, for instance, as below:
+
+             >>> def square(x) -> ks.Series[np.int32]:
+             ...     return x ** 2
+
+             Koalas uses return type hint and does not try to infer the type.
 
         .. note:: the series within ``func`` is actually a pandas series, and
             the length of each series is not guaranteed.
@@ -1623,20 +1632,48 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  0  1
         1  1  4
         2  4  9
+
+        You can omit the type hint and let Koalas infer its type.
+
+        >>> df.transform(lambda x: x ** 2)
+           A  B
+        0  0  1
+        1  1  4
+        2  4  9
+
         """
         assert callable(func), "the first argument should be a callable function."
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
-        if return_sig is None:
-            raise ValueError("Given function must have return type hint; however, not found.")
+        should_infer_schema = return_sig is None
 
-        wrapped = ks.pandas_wraps(func)
-        applied = []
-        for column in self._internal.data_columns:
-            applied.append(wrapped(self[column]).rename(column))
+        if should_infer_schema:
+            # Here we execute with the first 1000 to get the return type.
+            # If the records were less than 1000, it uses pandas API directly for a shortcut.
+            limit = 1000
+            pdf = self.head(limit + 1)._to_internal_pandas()
+            transformed = pdf.transform(func)
+            kdf = DataFrame(transformed)
+            return_schema = kdf._sdf.schema
+            if len(pdf) <= limit:
+                return kdf
+
+            applied = []
+            for input_column, output_column in zip(
+                    self._internal.data_columns, kdf._internal.data_columns):
+                pandas_func = pandas_udf(
+                    func,
+                    returnType=return_schema[output_column].dataType,
+                    functionType=PandasUDFType.SCALAR)
+                applied.append(pandas_func(self[input_column]._scol).alias(output_column))
+        else:
+            wrapped = ks.pandas_wraps(func)
+            applied = []
+            for column in self._internal.data_columns:
+                applied.append(wrapped(self[column]).rename(column)._scol)
 
         sdf = self._sdf.select(
-            self._internal.index_scols + [c._scol for c in applied])
+            self._internal.index_scols + [c for c in applied])
         internal = self._internal.copy(sdf=sdf)
 
         return DataFrame(internal)

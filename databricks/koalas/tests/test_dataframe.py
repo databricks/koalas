@@ -1569,3 +1569,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             "arg is both the pipe target and a keyword argument",
             lambda: kdf.pipe((lambda x: x, 'arg'), arg='1')
         )
+
+    def test_transform(self):
+        # Data is intentionally big to test when schema inference is on.
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
+                            'b': [1., 1., 2., 3., 5., 8.] * 300,
+                            'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
+        kdf = ks.DataFrame(pdf)
+        self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(),
+                       pdf.transform(lambda x: x + 1).sort_index())
+        with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
+            kdf.transform(1)
