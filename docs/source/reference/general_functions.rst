@@ -5,6 +5,16 @@ General functions
 =================
 .. currentmodule:: databricks.koalas
 
+Working with options
+--------------------
+
+.. autosummary::
+   :toctree: api/
+
+    reset_option
+    get_option
+    set_option
+
 Data manipulations and SQL
 --------------------------
 .. autosummary::

@@ -416,62 +416,7 @@ class _InternalFrame(object):
         """
         This method attaches a default index to Spark DataFrame. Spark does not have the index
         notion so corresponding column should be generated.
-
-        There are three types of default index can be configured by `compute.default_index_type`
-
-        - sequence: It implements a sequence that increases one by one, by Window function without
-            specifying partition. Therefore, it ends up with whole partition in single node.
-            This index type should be avoided when the data is large. This is default.
-            See example below:
-
-            >>> ks.range(3).index  # doctest: +SKIP
-            Int64Index([0, 1, 2], dtype='int64')
-
-            This is conceptually equivalent to the Spark example as below:
-
-            >>> from pyspark.sql import functions as F, Window
-            >>> spark_df = ks.range(3).to_spark()
-            >>> sequential_index = F.row_number().over(
-            ...    Window.orderBy(F.monotonically_increasing_id().asc())) - 1
-            >>> spark_df.select(sequential_index).rdd.map(lambda r: r[0]).collect()
-            [0, 1, 2]
-
-        - distributed-sequence: It implements a sequence that increases one by one, by group-by and
-            group-map approach. It still generates the sequential index globally.
-            If the default index must be the sequence in a large dataset, this
-            index has to be used.
-            Note that if more data are added to the data source after creating this index,
-            then it does not guarantee the sequential index.
-            See example below:
-
-            >>> ks.range(3).index  # doctest: +SKIP
-            Int64Index([0, 1, 2], dtype='int64')
-
-            This is conceptually equivalent to the Spark example as below:
-
-            >>> spark_df = ks.range(3).to_spark()
-            >>> spark_df.rdd.zipWithIndex().map(lambda p: p[1]).collect()
-            [0, 1, 2]
-
-        - distributed: It implements a monotonically increasing sequence simply by using
-            Spark's `monotonically_increasing_id` function. If the index does not have to be
-            a sequence that increases one by one, this index should be used.
-            Performance-wise, this index almost does not have any penalty comparing to
-            other index types. Note that we cannot use this type of index for combining
-            two dataframes because it is not guaranteed to have the same indexes in two
-            dataframes. See example below:
-
-            >>> ks.range(3).index  # doctest: +SKIP
-            Int64Index([25769803776, 60129542144, 94489280512], dtype='int64')
-
-            This is conceptually equivalent to the Spark example as below:
-
-            >>> from pyspark.sql import functions as F
-            >>> spark_df = ks.range(3).to_spark()
-            >>> spark_df.select(F.monotonically_increasing_id()) \
-            ...     .rdd.map(lambda r: r[0]).collect()  # doctest: +SKIP
-            [25769803776, 60129542144, 94489280512]
-
+        There are several types of default index can be configured by `compute.default_index_type`.
         """
         default_index_type = get_option("compute.default_index_type")
         if default_index_type == "sequence":
