@@ -17,12 +17,12 @@ matplotlib.use('agg')
 
 
 class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
-    sample_ratio_default = 2000
+    sample_ratio_default = None
 
     @classmethod
     def setUpClass(cls):
         super(DataFramePlotTest, cls).setUpClass()
-        set_option('plotting.max_rows', DataFramePlotTest.sample_ratio_default)
+        set_option('plotting.max_rows', 2000)
         set_option('plotting.sample_ratio', None)
 
     @classmethod
