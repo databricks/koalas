@@ -156,6 +156,10 @@ class _MissingPandasLikeSeries(object):
     real = unsupported_property(
         'real',
         reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
+    nbytes = unsupported_property(
+        'nbytes',
+        reason="Since nbytes trigger whole computation to get the size, which is pretty "
+               "critical when you handle large dataset, we don't support this for now")
 
     # Functions we won't support.
     memory_usage = common.memory_usage(unsupported_function)
