@@ -76,3 +76,12 @@ HTML
 
    read_html
    DataFrame.to_html
+
+SQL
+---
+.. autosummary::
+   :toctree: api/
+
+   read_sql_table
+   read_sql_query
+   read_sql
