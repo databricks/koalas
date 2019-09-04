@@ -1650,7 +1650,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
-            limit = get_option("compute.shortcut_limit")
+            limit = 1000
             pdf = self.head(limit + 1)._to_internal_pandas()
             transformed = pdf.transform(func)
             kdf = DataFrame(transformed)

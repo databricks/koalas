@@ -225,19 +225,12 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         data = TopNPlot().get_top_n(kdf)
         self.assertEqual(len(data), 2000)
 
-    def test_sampled_plot_with_ratio(self):
+    def test_sampled_plot(self):
         set_option('plotting.sample_ratio', 0.5)
-        try:
-            pdf = pd.DataFrame(np.random.rand(2500, 4), columns=['a', 'b', 'c', 'd'])
-            kdf = koalas.from_pandas(pdf)
-            data = SampledPlot().get_sampled(kdf)
-            self.assertEqual(round(len(data) / 2500, 1), 0.5)
-        finally:
-            reset_option('plotting.sample_ratio')
-
-    def test_sampled_plot_with_max_rows(self):
-        # 'plotting.max_rows' is 2000
-        pdf = pd.DataFrame(np.random.rand(2000, 4), columns=['a', 'b', 'c', 'd'])
+        pdf = pd.DataFrame(np.random.rand(2500, 4), columns=['a', 'b', 'c', 'd'])
         kdf = koalas.from_pandas(pdf)
+
+        # this might be a potential bug in sample function in koalas, each time, with same fraction
+        # different length is obtained by running get_sampled().
         data = SampledPlot().get_sampled(kdf)
-        self.assertEqual(round(len(data) / 2000, 1), 1)
+        self.assertEqual(round(len(data) / 2500, 1), 0.5)

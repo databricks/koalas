@@ -15,10 +15,10 @@
 #
 
 """
-Infrastructure of options for Koalas.
+Infrastructure of configuration for Koalas.
 """
 import json
-from typing import Union, Any, Tuple, Callable, List
+from typing import Dict, Union, Any
 
 from pyspark._globals import _NoValue, _NoValueType
 
@@ -28,166 +28,42 @@ from databricks.koalas.utils import default_session
 __all__ = ['get_option', 'set_option', 'reset_option']
 
 
-class Option:
-    """
-    Option class that defines an option with related properties.
+# dict to store registered options and their default values (key -> default).
+_registered_options = {
+    # This sets the maximum number of rows koalas should output when printing out various output.
+    # For example, this value determines whether the repr() for a dataframe prints out fully or
+    # just a truncated repr.
+    "display.max_rows": 1000,  # TODO: None should support unlimited.
 
-    This class holds all information relevant to the one option. Also,
-    Its instance can validate if the given value is acceptable or not.
+    # 'compute.shortcut_limit' sets the limit for a shortcut.
+    # It computes specified number of rows and use its schema.
+    # When the dataframe length is larger than this limit, Koalas uses PySpark to compute.
+    "compute.shortcut_limit": 1000,  # TODO: None should support unlimited.
 
-    It is currently for internal usage only.
+    # `plotting.max_rows` sets the visual limit on TopN plots. If it is set to 1000, the first 1000
+    # data points will be used for plotting, and this number will be seen on the right up corner.
+    "plotting.max_rows": 1000,
 
-    Parameters
-    ----------
-    key: str, keyword-only argument
-        the option name to use.
-    doc: str, keyword-only argument
-        the documentation for the current option.
-    default: Any, keyword-only argument
-        default value for this option.
-    types: Union[Tuple[type, ...], type], keyword-only argument
-        default is str. It defines the expected types for this option. It is
-        used with `isinstance` to validate the given value to this option.
-    check_func: Tuple[Callable[[Any], bool], str], keyword-only argument
-        default is a function that always returns `True` with a empty string.
-        It defines:
-          - a function to check the given value to this option
-          - the error message to show when this check is failed
-        When new value is set to this option, this function is called to check
-        if the given value is valid.
+    # `plotting.sample_ratio` sets the proportion of data that will be plotted for SampledPlot like
+    # plts. The default is None, will will basically take roughly 1000 data points.
+    "plotting.sample_ratio": None,
 
-    Examples
-    --------
-    >>> option = Option(
-    ...     key='option.name',
-    ...     doc="this is a test option",
-    ...     default="default",
-    ...     types=(float, int),
-    ...     check_func=(lambda v: v > 0, "should be a positive float"))
+    # 'compute.max_rows sets the limit of the current DataFrame. Set `None` to unlimit
+    # the input length. When the limit is set, it is executed by the shortcut by collecting
+    # the data into driver side, and then using pandas API. If the limit is unset,
+    # the operation is executed by PySpark. Default is 1000.
+    "compute.max_rows": 1000,  # TODO: None should support unlimited.
 
-    >>> option.validate('abc')  # doctest: +NORMALIZE_WHITESPACE
-    Traceback (most recent call last):
-      ...
-    ValueError: The value for option 'option.name' was <class 'str'>;
-    however, expected types are [(<class 'float'>, <class 'int'>)].
+    # This determines whether or not to operate between two different dataframs.
+    # For example, 'combine_frames' function internally performs a join operation which can be
+    # expensive in general.
+    # So, if `compute.ops_on_diff_frames` variable is not True, that method throws an exception.
+    "compute.ops_on_diff_frames": False,
 
-    >>> option.validate(-1.1)
-    Traceback (most recent call last):
-      ...
-    ValueError: should be a positive float
+    # This sets the default index type: sequence, distributed and distributed-sequence.
+    "compute.default_index_type": "sequence",
+}  # type: Dict[str, Any]
 
-    >>> option.validate(1.1)
-    """
-
-    def __init__(
-            self,
-            *,
-            key: str,
-            doc: str,
-            default: Any,
-            types: Union[Tuple[type, ...], type] = str,
-            check_func: Tuple[Callable[[Any], bool], str] = (lambda v: True, "")):
-        self.key = key
-        self.doc = doc
-        self.default = default
-        self.types = types
-        self.check_func = check_func
-
-    def validate(self, v: Any) -> None:
-        """
-        Validate the given value and throw an exception with related information such as key.
-        """
-        if not isinstance(v, self.types):
-            raise ValueError("The value for option '%s' was %s; however, expected types are "
-                             "[%s]." % (self.key, type(v), str(self.types)))
-        if not self.check_func[0](v):
-            raise ValueError(self.check_func[1])
-
-
-# Available options.
-_options = [
-    # TODO: None should support unlimited.
-    Option(
-        key='display.max_rows',
-        doc=(
-            "This sets the maximum number of rows koalas should output when printing out "
-            "various output. For example, this value determines whether the repr() for a "
-            "dataframe prints out fully or just a truncated repr."),
-        default=1000,
-        types=int,
-        check_func=(lambda v: v >= 0, "'display.max_rows' should be greater than or equal to 0.")),
-
-    Option(
-        key='compute.max_rows',
-        doc=(
-            "'compute.max_rows sets the limit of the current DataFrame. Set `None` to unlimit "
-            "the input length. When the limit is set, it is executed by the shortcut by "
-            "collecting the data into driver side, and then using pandas API. If the limit is "
-            "unset, the operation is executed by PySpark. Default is 1000."),
-        default=1000,
-        types=(int, type(None)),
-        check_func=(
-            lambda v: v is None or v >= 0,
-            "'compute.max_rows' should be greater than or equal to 0.")),
-
-    # TODO: None should support unlimited.
-    Option(
-        key='compute.shortcut_limit',
-        doc=(
-            "'compute.shortcut_limit' sets the limit for a shortcut."
-            "It computes specified number of rows and use its schema. When the dataframe "
-            "length is larger than this limit, Koalas uses PySpark to compute."),
-        default=1000,
-        types=int,
-        check_func=(
-            lambda v: v >= 0, "'compute.shortcut_limit' should be greater than or equal to 0.")),
-
-    Option(
-        key='compute.ops_on_diff_frames',
-        doc=(
-            "This determines whether or not to operate between two different dataframes. "
-            "For example, 'combine_frames' function internally performs a join operation which "
-            "can be expensive in general. So, if `compute.ops_on_diff_frames` variable is not "
-            "True, that method throws an exception."),
-        default=False,
-        types=bool),
-
-    Option(
-        key='compute.default_index_type',
-        doc=(
-            "This sets the default index type: sequence, distributed and distributed-sequence."),
-        default='sequence',
-        types=str,
-        check_func=(
-            lambda v: v in ('sequence', 'distributed', 'distributed-sequence'),
-            "Index type should be one of 'sequence', 'distributed', 'distributed-sequence'.")),
-
-    Option(
-        key='plotting.max_rows',
-        doc=(
-            "'plotting.max_rows' sets the visual limit on top-n-based plots such as `plot.bar` "
-            "and `plot.pie`. If it is set to 1000, the first 1000 data points will be used "
-            "for plotting. Default is 1000."),
-        default=1000,
-        types=int,
-        check_func=(
-            lambda v: v is v >= 0,
-            "'plotting.max_rows' should be greater than or equal to 0.")),
-
-    Option(
-        key='plotting.sample_ratio',
-        doc=(
-            "'plotting.sample_ratio' sets the proportion of data that will be plotted for sample-"
-            "based plots such as `plot.line` and `plot.area`. "
-            "This option defaults to 'plotting.max_rows' option."),
-        default=None,
-        types=(float, type(None)),
-        check_func=(
-            lambda v: v is None or 1 >= v >= 0,
-            "'plotting.sample_ratio' should be 1 >= value >= 0.")),
-]  # type: List[Option]
-
-_options_dict = dict(zip((option.key for option in _options), _options))
 
 _key_format = 'koalas.{}'.format
 
@@ -196,7 +72,7 @@ class OptionError(AttributeError, KeyError):
     pass
 
 
-def get_option(key: str, default: Union[Any, _NoValueType] = _NoValue) -> Any:
+def get_option(key: str, default: Union[str, _NoValueType] = _NoValue) -> Any:
     """
     Retrieves the value of the specified option.
 
@@ -215,11 +91,9 @@ def get_option(key: str, default: Union[Any, _NoValueType] = _NoValue) -> Any:
     ------
     OptionError : if no such option exists and the default is not provided
     """
-    _check_option(key)
+    _check_option(key, default)
     if default is _NoValue:
-        default = _options_dict[key].default
-    _options_dict[key].validate(default)
-
+        default = _registered_options[key]
     return json.loads(default_session().conf.get(_key_format(key), default=json.dumps(default)))
 
 
@@ -238,9 +112,7 @@ def set_option(key: str, value: Any) -> None:
     -------
     None
     """
-    _check_option(key)
-    _options_dict[key].validate(value)
-
+    _check_option(key, value)
     default_session().conf.set(_key_format(key), json.dumps(value))
 
 
@@ -263,8 +135,20 @@ def reset_option(key: str) -> None:
     default_session().conf.unset(_key_format(key))
 
 
-def _check_option(key: str) -> None:
-    if key not in _options_dict:
+def _check_option(key: str, value: Union[str, _NoValueType] = _NoValue) -> None:
+    if key not in _registered_options:
         raise OptionError(
             "No such option: '{}'. Available options are [{}]".format(
-                key, ", ".join(list(_options_dict.keys()))))
+                key, ", ".join(list(_registered_options.keys()))))
+
+    if value is None:
+        return  # None is allowed for all types.
+
+    # this might need to be changed in the future, if default is None, then the current key type
+    # check will raise an error, I could open a new PR to fix this.
+    if value is not _NoValue and key == "plotting.sample_ratio":
+        return
+
+    if value is not _NoValue and not isinstance(value, type(_registered_options[key])):
+        raise TypeError("The configuration value for '%s' was %s; however, %s is expected." % (
+            key, type(value), type(_registered_options[key])))
