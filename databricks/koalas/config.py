@@ -141,7 +141,7 @@ _options = [
     Option(
         key='compute.shortcut_limit',
         doc=(
-            "'compute.shortcut_limit' sets the limit for a shortcut."
+            "'compute.shortcut_limit' sets the limit for a shortcut. "
             "It computes specified number of rows and use its schema. When the dataframe "
             "length is larger than this limit, Koalas uses PySpark to compute."),
         default=1000,
@@ -212,18 +212,18 @@ def show_options():
     import textwrap
 
     header = ["Option", "Default", "Description"]
-    row_format = "{:<33} {:<11} {:<54}"
+    row_format = "{:<31} {:<14} {:<53}"
 
-    print(row_format.format("=" * 33, "=" * 11, "=" * 54))
+    print(row_format.format("=" * 31, "=" * 14, "=" * 53))
     print(row_format.format(*header))
-    print(row_format.format("=" * 33, "=" * 11, "=" * 54))
+    print(row_format.format("=" * 31, "=" * 14, "=" * 53))
 
     for option in _options:
-        doc = textwrap.fill(option.doc, 54)
-        formatted = "".join([line + "\n" + (" " * 46) for line in doc.split("\n")]).rstrip()
-        print(row_format.format(option.key, str(option.default), formatted))
+        doc = textwrap.fill(option.doc, 53)
+        formatted = "".join([line + "\n" + (" " * 47) for line in doc.split("\n")]).rstrip()
+        print(row_format.format(option.key, repr(option.default), formatted))
 
-    print(row_format.format("=" * 33, "=" * 11, "=" * 54))
+    print(row_format.format("=" * 31, "=" * 14, "=" * 53))
 
 
 def get_option(key: str, default: Union[Any, _NoValueType] = _NoValue) -> Any:
