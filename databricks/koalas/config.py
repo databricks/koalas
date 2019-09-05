@@ -105,6 +105,12 @@ class Option:
 
 
 # Available options.
+#
+# NOTE: if you are fixing or adding an option here, make sure you execute `show_options()` and
+#     copy & paste the results into show_options 'docs/source/user_guide/options.rst' as well.
+#     See the examples below:
+#     >>> from databricks.koalas.config import show_options
+#     >>> show_options()
 _options = [
     Option(
         key='display.max_rows',
@@ -135,7 +141,7 @@ _options = [
     Option(
         key='compute.shortcut_limit',
         doc=(
-            "'compute.shortcut_limit' sets the limit for a shortcut."
+            "'compute.shortcut_limit' sets the limit for a shortcut. "
             "It computes specified number of rows and use its schema. When the dataframe "
             "length is larger than this limit, Koalas uses PySpark to compute."),
         default=1000,
@@ -195,6 +201,29 @@ _key_format = 'koalas.{}'.format
 
 class OptionError(AttributeError, KeyError):
     pass
+
+
+def show_options():
+    """
+    Make a pretty table that can be copied and pasted into public documentation.
+    This is currently for an internal purpose.
+    """
+
+    import textwrap
+
+    header = ["Option", "Default", "Description"]
+    row_format = "{:<31} {:<14} {:<53}"
+
+    print(row_format.format("=" * 31, "=" * 14, "=" * 53))
+    print(row_format.format(*header))
+    print(row_format.format("=" * 31, "=" * 14, "=" * 53))
+
+    for option in _options:
+        doc = textwrap.fill(option.doc, 53)
+        formatted = "".join([line + "\n" + (" " * 47) for line in doc.split("\n")]).rstrip()
+        print(row_format.format(option.key, repr(option.default), formatted))
+
+    print(row_format.format("=" * 31, "=" * 14, "=" * 53))
 
 
 def get_option(key: str, default: Union[Any, _NoValueType] = _NoValue) -> Any:
