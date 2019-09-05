@@ -20,12 +20,14 @@ A base class to be monkey-patched to DataFrame/Column to behave similar to panda
 import warnings
 from collections import Counter
 from collections.abc import Iterable
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
+from pyspark.sql.readwriter import OptionUtils
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -456,21 +458,24 @@ class _Frame(object):
         """
         return self.to_pandas().values
 
-    def to_csv(self, path_or_buf=None, sep=',', na_rep='', columns=None, header=True,
-               index=True, encoding=None, quotechar='"', date_format=None, escapechar=None):
+    def to_csv(self, path=None, sep=',', na_rep='', columns=None, header=True,
+               quotechar='"', date_format=None, escapechar=None, num_files=None,
+               **options):
         r"""
         Write object to a comma-separated values (csv) file.
 
-        .. note:: Spark writes files to HDFS by default.
-        If you want to save the file locally, you need to use path like below
-        `'files:/' + local paths`  like 'files:/work/data.csv'. Otherwise,
-        you will write the file to the HDFS path where the spark program starts.
+        .. note:: Koalas `to_csv` writes files to a path or URI. Unlike pandas', Koalas
+            respects HDFS's property such as 'fs.default.name'.
+
+        .. note:: Koalas writes CSV files into the directory, `path`, and writes
+            multiple `part-...` files in the directory when `path` is specified.
+            This behaviour was inherited from Apache Spark. The number of files can
+            be controlled by `num_files`.
 
         Parameters
         ----------
-        path_or_buf : str or file handle, default None
-            File path or object, if None is provided the result is returned as
-            a string.
+        path : str, default None
+            File path. If None is provided the result is returned as a string.
         sep : str, default ','
             String of length 1. Field delimiter for the output file.
         na_rep : str, default ''
@@ -480,11 +485,6 @@ class _Frame(object):
         header : bool or list of str, default True
             Write out the column names. If a list of strings is given it is
             assumed to be aliases for the column names.
-        index : bool, default True
-            Write row names (index).
-        encoding : str, optional
-            A string representing the encoding to use in the output file,
-            defaults to 'utf-8'.
         quotechar : str, default '\"'
             String of length 1. Character used to quote fields.
         date_format : str, default None
@@ -492,6 +492,13 @@ class _Frame(object):
         escapechar : str, default None
             String of length 1. Character used to escape `sep` and `quotechar`
             when appropriate.
+        num_files : the number of files to be written in `path` directory when
+            this is a path.
+        options: keyword arguments for additional options specific to PySpark.
+            This kwargs are specific to PySpark's CSV options to pass. Check
+            the options in PySpark's API documentation for spark.write.csv(...).
+            It has higher priority and overwrites all other options.
+            This parameter only works when `path` is specified.
 
         See Also
         --------
@@ -500,40 +507,93 @@ class _Frame(object):
         DataFrame.to_table
         DataFrame.to_parquet
         DataFrame.to_spark_io
+
         Examples
         --------
         >>> df = ks.DataFrame(dict(
         ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
         ...    country=['KR', 'US', 'JP'],
         ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
-        >>> df
-                         date country  code
-        0 2012-01-31 12:00:00      KR     1
-        1 2012-02-29 12:00:00      US     2
-        2 2012-03-31 12:00:00      JP     3
-        >>> df.to_csv(path=r'%s/to_csv/foo.csv' % path)
+        >>> df.sort_values(by="date")  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+                           date country  code
+        ... 2012-01-31 12:00:00      KR     1
+        ... 2012-02-29 12:00:00      US     2
+        ... 2012-03-31 12:00:00      JP     3
+
+        >>> print(df.to_csv())  # doctest: +NORMALIZE_WHITESPACE
+        date,country,code
+        2012-01-31 12:00:00,KR,1
+        2012-02-29 12:00:00,US,2
+        2012-03-31 12:00:00,JP,3
+
+        >>> df.to_csv(path=r'%s/to_csv/foo.csv' % path, num_files=1)
+        >>> ks.read_csv(
+        ...    path=r'%s/to_csv/foo.csv' % path
+        ... ).sort_values(by="date")  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+                           date country  code
+        ... 2012-01-31 12:00:00      KR     1
+        ... 2012-02-29 12:00:00      US     2
+        ... 2012-03-31 12:00:00      JP     3
+
+        In case of Series,
+
+        >>> print(df.date.to_csv())  # doctest: +NORMALIZE_WHITESPACE
+        date
+        2012-01-31 12:00:00
+        2012-02-29 12:00:00
+        2012-03-31 12:00:00
+
+        >>> df.date.to_csv(path=r'%s/to_csv/foo.csv' % path, num_files=1)
+        >>> ks.read_csv(
+        ...     path=r'%s/to_csv/foo.csv' % path
+        ... ).sort_values(by="date")  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+                           date
+        ... 2012-01-31 12:00:00
+        ... 2012-02-29 12:00:00
+        ... 2012-03-31 12:00:00
         """
+        if path is None:
+            # If path is none, just collect and use pandas's to_csv.
+            kdf_or_ser = self
+            if (LooseVersion("0.24") > LooseVersion(pd.__version__)) and \
+                    isinstance(self, ks.Series):
+                # 0.23 seems not having 'columns' parameter in Series' to_csv.
+                return kdf_or_ser.to_pandas().to_csv(
+                    None, sep=sep, na_rep=na_rep, header=header,
+                    date_format=date_format, index=False)
+            else:
+                return kdf_or_ser.to_pandas().to_csv(
+                    None, sep=sep, na_rep=na_rep, columns=columns,
+                    header=header, quotechar=quotechar,
+                    date_format=date_format, escapechar=escapechar, index=False)
+
         if columns is not None:
             data_columns = columns
         else:
             data_columns = self._internal.data_columns
 
-        if index:
-            index_columns = self._internal.index_columns
-        else:
-            index_columns = []
+        kdf = self
+        if isinstance(self, ks.Series):
+            kdf = self._kdf
 
         if isinstance(header, list):
-            sdf = self._sdf.select(index_columns +
-                                   [self._internal.scol_for(old_name).alias(new_name)
-                                    for (old_name, new_name) in zip(data_columns, header)])
+            sdf = kdf._sdf.select(
+                [self._internal.scol_for(old_name).alias(new_name)
+                 for (old_name, new_name) in zip(data_columns, header)])
             header = True
         else:
-            sdf = self._sdf.select(index_columns + data_columns)
+            sdf = kdf._sdf.select(data_columns)
 
-        sdf.write.csv(path=path_or_buf, sep=sep, nullValue=na_rep, header=header,
-                      encoding=encoding, quote=quotechar, dateFormat=date_format,
-                      charToEscapeQuoteEscaping=escapechar)
+        if num_files is not None:
+            sdf = sdf.repartition(num_files)
+
+        builder = sdf.write.mode("overwrite")
+        OptionUtils._set_opts(
+            builder,
+            path=path, sep=sep, nullValue=na_rep, header=header,
+            quote=quotechar, dateFormat=date_format,
+            charToEscapeQuoteEscaping=escapechar)
+        builder.options(**options).format("csv").save(path)
 
     def to_json(self, path_or_buf=None, orient=None, date_format=None,
                 double_precision=10, force_ascii=True, date_unit='ms',
