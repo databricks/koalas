@@ -249,12 +249,15 @@ def align_diff_series(func, this_series, *args, how="full"):
     cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
     combined = combine_frames(this_series.to_frame(), *cols, how=how)
 
-    that_columns = [combined[('that', arg.name)]._scol
+    that_columns = [combined[tuple(['that', *arg._internal.column_index[0]])]._scol
                     if isinstance(arg, IndexOpsMixin) else arg for arg in args]
 
-    scol = func(combined[('this', this_series.name)]._scol, *that_columns).alias(this_series.name)
+    scol = func(combined[tuple(['this', *this_series._internal.column_index[0]])]._scol,
+                *that_columns)
 
-    return Series(combined._internal.copy(scol=scol), anchor=combined)
+    return Series(combined._internal.copy(scol=scol,
+                                          column_index=this_series._internal.column_index),
+                  anchor=combined)
 
 
 def default_session(conf=None):
@@ -348,6 +351,6 @@ def column_index_level(column_index: List[Tuple[str]]) -> int:
     if len(column_index) == 0:
         return 0
     else:
-        levels = set(len(idx) for idx in column_index)
+        levels = set(0 if idx is None else len(idx) for idx in column_index)
         assert len(levels) == 1, levels
         return list(levels)[0]

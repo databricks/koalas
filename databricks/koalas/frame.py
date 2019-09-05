@@ -467,7 +467,11 @@ class DataFrame(_Frame, Generic[T]):
 
             sdf = self._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
-            internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+            internal = self._internal.copy(sdf=sdf,
+                                           data_columns=[c._internal.data_columns[0]
+                                                         for c in applied],
+                                           column_index=[c._internal.column_index[0]
+                                                         for c in applied])
             return DataFrame(internal)
 
     def __add__(self, other):
@@ -846,8 +850,9 @@ class DataFrame(_Frame, Generic[T]):
 
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
-
-        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        internal = self._internal.copy(sdf=sdf,
+                                       data_columns=[c._internal.data_columns[0] for c in applied],
+                                       column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
     def corr(self, method='pearson'):
@@ -2189,7 +2194,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
-        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        internal = self._internal.copy(sdf=sdf,
+                                       data_columns=[c._internal.data_columns[0] for c in applied],
+                                       column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
     # TODO: add axis parameter
@@ -2264,7 +2271,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             applied.append(self[column].diff(periods))
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
-        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        internal = self._internal.copy(sdf=sdf,
+                                       data_columns=[c._internal.data_columns[0] for c in applied],
+                                       column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
     def nunique(self, axis: int = 0, dropna: bool = True, approx: bool = False,
@@ -3283,7 +3292,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 applied.append(self[col].fillna(value=value, method=method, axis=axis,
                                                 inplace=False, limit=limit))
             sdf = self._sdf.select(self._internal.index_columns + [col._scol for col in applied])
-            internal = self._internal.copy(sdf=sdf, data_columns=[col.name for col in applied])
+            internal = self._internal.copy(sdf=sdf,
+                                           data_columns=[col._internal.data_columns[0]
+                                                         for col in applied],
+                                           column_index=[col._internal.column_index[0]
+                                                         for col in applied])
         if inplace:
             self._internal = internal
         else:
@@ -5736,9 +5749,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
-        # FIXME(ueshin): no need to specify `column_index`.
-        internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied],
-                                       column_index=self._internal.column_index)
+        internal = self._internal.copy(sdf=sdf,
+                                       data_columns=[c._internal.data_columns[0] for c in applied],
+                                       column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
     # TODO: implements 'keep' parameters
@@ -6396,7 +6409,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             applied.append(self[column].rank(method=method, ascending=ascending))
 
         sdf = self._sdf.select(self._internal.index_columns + [column._scol for column in applied])
-        internal = self._internal.copy(sdf=sdf, data_columns=[column.name for column in applied])
+        internal = self._internal.copy(sdf=sdf,
+                                       data_columns=[c._internal.data_columns[0] for c in applied],
+                                       column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
     def filter(self, items=None, like=None, regex=None, axis=None):
@@ -6545,8 +6560,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             try:
                 idxes = set(idx for idx, _ in indexes)
                 assert len(idxes) == 1
+                index = list(idxes)[0]
                 kdf_or_ser = \
-                    Series(self._internal.copy(scol=self._internal.scol_for(list(idxes)[0])),
+                    Series(self._internal.copy(scol=self._internal.scol_for(index),
+                                               column_index=[index]),
                            anchor=self)
             except AnalysisException:
                 raise KeyError(key)
@@ -6558,10 +6575,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if recursive:
             kdf_or_ser = kdf_or_ser._get_from_multiindex_column((str(key),))
-        if isinstance(kdf_or_ser, Series):
-            name = str(key) if len(key) > 1 else key[0]
-            if kdf_or_ser.name != name:
-                kdf_or_ser.name = name
         return kdf_or_ser
 
     def _pd_getitem(self, key):

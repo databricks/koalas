@@ -1242,7 +1242,7 @@ class _Frame(object):
         1    2.00
         2    3.33
         3    4.00
-        Name: abs(0), dtype: float64
+        Name: 0, dtype: float64
 
         Absolute numeric values in a DataFrame.
 
@@ -1259,7 +1259,7 @@ class _Frame(object):
         2  6  30   30
         3  7  40   50
         """
-        # TODO: The first example above should not have "Name: abs(0)".
+        # TODO: The first example above should not have "Name: 0".
         return _spark_col_apply(self, F.abs)
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation

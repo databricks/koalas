@@ -1693,9 +1693,9 @@ class DataFrameGroupBy(GroupBy):
         self._have_agg_columns = True
 
         if agg_columns is None:
-            groupkey_names = set(s.name for s in self._groupkeys)
-            agg_columns = [col for col in self._kdf._internal.data_columns
-                           if col not in groupkey_names]
+            agg_columns = [idx for idx in self._kdf._internal.column_index
+                           for key in self._groupkeys
+                           if not self._kdf[idx]._equals(key)]
             self._have_agg_columns = False
         self._agg_columns = [kdf[col] for col in agg_columns]
 
@@ -1730,7 +1730,9 @@ class DataFrameGroupBy(GroupBy):
             applied.append(column.groupby(self._groupkeys)._diff(*args, **kwargs))
 
         sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
-        internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        internal = kdf._internal.copy(sdf=sdf,
+                                      data_columns=[c._internal.data_columns[0] for c in applied],
+                                      column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
     def _rank(self, *args, **kwargs):
@@ -1744,7 +1746,9 @@ class DataFrameGroupBy(GroupBy):
                 applied.append(column.groupby(self._groupkeys)._rank(*args, **kwargs))
 
         sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
-        internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        internal = kdf._internal.copy(sdf=sdf,
+                                      data_columns=[c._internal.data_columns[0] for c in applied],
+                                      column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
     def _cum(self, func):
@@ -1769,7 +1773,9 @@ class DataFrameGroupBy(GroupBy):
 
         sdf = kdf._sdf.select(
             kdf._internal.index_scols + [c._scol for c in applied])
-        internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        internal = kdf._internal.copy(sdf=sdf,
+                                      data_columns=[c._internal.data_columns[0] for c in applied],
+                                      column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
     def _fillna(self, *args, **kwargs):
@@ -1782,7 +1788,9 @@ class DataFrameGroupBy(GroupBy):
                 applied.append(kdf[column].groupby(self._groupkeys)._fillna(*args, **kwargs))
 
         sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
-        internal = kdf._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
+        internal = kdf._internal.copy(sdf=sdf,
+                                      data_columns=[c._internal.data_columns[0] for c in applied],
+                                      column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
 

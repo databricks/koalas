@@ -384,15 +384,16 @@ class _InternalFrame(object):
         self._scol = scol  # type: Optional[spark.Column]
         if scol is not None:
             self._data_columns = sdf.select(scol).columns
-            column_index = None
-            column_index_names = None
         elif data_columns is None:
             index_columns = set(index_column for index_column, _ in self._index_map)
             self._data_columns = [column for column in sdf.columns if column not in index_columns]
         else:
             self._data_columns = data_columns
 
-        if column_index is None:
+        if scol is not None:
+            assert column_index is not None and len(column_index) == 1
+            self._column_index = column_index
+        elif column_index is None:
             self._column_index = [(col,) for col in self._data_columns]
         else:
             assert (len(column_index) == len(self._data_columns) and
@@ -569,10 +570,10 @@ class _InternalFrame(object):
         """
         index_columns = set(self.index_columns)
         data_columns = []
-        for column, idx in zip(self._data_columns, self.column_index):
+        for i, (column, idx) in enumerate(zip(self._data_columns, self.column_index)):
             if column not in index_columns:
                 scol = self.scol_for(idx)
-                name = str(idx) if len(idx) > 1 else idx[0]
+                name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
                 if column != name:
                     scol = scol.alias(name)
                 data_columns.append(scol)
@@ -583,10 +584,10 @@ class _InternalFrame(object):
         """ Return as Spark DataFrame. """
         index_columns = set(self.index_columns)
         data_columns = []
-        for column, idx in zip(self._data_columns, self.column_index):
+        for i, (column, idx) in enumerate(zip(self._data_columns, self.column_index)):
             if column not in index_columns:
                 scol = self.scol_for(idx)
-                name = str(idx) if len(idx) > 1 else idx[0]
+                name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
                 if column != name:
                     scol = scol.alias(name)
                 data_columns.append(scol)
@@ -608,12 +609,13 @@ class _InternalFrame(object):
                 drop = index_field not in self.data_columns
                 pdf = pdf.set_index(index_field, drop=drop, append=append)
                 append = True
-            pdf = pdf[[str(name) if len(name) > 1 else name[0] for name in self.column_index]]
+            pdf = pdf[[str(i) if name is None else str(name) if len(name) > 1 else name[0]
+                       for i, name in enumerate(self.column_index)]]
 
         if self.column_index_level > 1:
             pdf.columns = pd.MultiIndex.from_tuples(self._column_index)
         else:
-            pdf.columns = [idx[0] for idx in self._column_index]
+            pdf.columns = [None if idx is None else idx[0] for idx in self._column_index]
         if self._column_index_names is not None:
             pdf.columns.names = self._column_index_names
 
