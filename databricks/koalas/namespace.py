@@ -1579,11 +1579,14 @@ def notna(obj):
     2    NaN
     Name: 0, dtype: float64
 
-    >>> ser.notna()
+    >>> ks.notna(ser)
     0     True
     1     True
     2    False
     Name: 0, dtype: bool
+
+    >>> ks.notna(ser.index)
+    True
     """
     if isinstance(obj, (DataFrame, Series)):
         return obj.notna()
