@@ -117,6 +117,17 @@ It generates HTMLs under `docs/build/html` directory. Open `docs/build/html/inde
 ## Coding Conventions
 We follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) with one exception: lines can be up to 100 characters in length, not 79.
 
+Furthermore, Koalas uses [Black](https://github.com/psf/black) as the source code formatter, therefore, before committing the pull
+request, please use `black filename` to standardize your files. More detailed example can be followed on Black Github README file.
+
+There is one thing to mention here, due to the fact that Black only runs on Python3.6 or newer although it can 
+format code written in older Python versions. This dependency is not listed in `requirement-dev.txt` because Koalas
+builds Python3.5 on travis. Therefore, you need to install Black yourself.
+
+For users with Python3.6 or newer, you could simply use: `pip install black` to install black dependency.
+For users using Python3.5 or older versions, you could execute: `python3.6 -m pip install black`, and you might
+have to install Python3.6 or 3.7 first.
+
 ## Doctest Conventions
 
 When writing doctests, usually the doctests in pandas are converted into Koalas to make sure the same codes work in Koalas.
