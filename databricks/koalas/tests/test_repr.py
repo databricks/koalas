@@ -23,11 +23,13 @@ class ReprTests(ReusedSQLTestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(ReprTests, cls).setUpClass()
         set_option("display.max_rows", ReprTests.max_display_count)
 
     @classmethod
     def tearDownClass(cls):
         reset_option("display.max_rows")
+        super(ReprTests, cls).tearDownClass()
 
     def test_repr_dataframe(self):
         kdf = ks.range(ReprTests.max_display_count)
