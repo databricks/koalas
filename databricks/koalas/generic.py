@@ -1479,7 +1479,7 @@ def _spark_col_apply(kdf_or_ks, sfun):
     from databricks.koalas.series import Series
     if isinstance(kdf_or_ks, Series):
         ks = kdf_or_ks
-        return Series(ks._kdf._internal.copy(scol=sfun(kdf_or_ks._scol)), anchor=ks._kdf)
+        return ks._with_new_scol(sfun(ks._scol))
     assert isinstance(kdf_or_ks, DataFrame)
     kdf = kdf_or_ks
     sdf = kdf._sdf

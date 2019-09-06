@@ -426,7 +426,7 @@ class DataFrame(_Frame, Generic[T]):
         elif axis in ('columns', 1):
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
-            limit = 1000
+            limit = get_option("compute.shortcut_limit")
             pdf = self.head(limit + 1)._to_internal_pandas()
             pser = getattr(pdf, name)(axis=axis, numeric_only=numeric_only)
             if len(pdf) <= limit:
@@ -1650,7 +1650,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
-            limit = 1000
+            limit = get_option("compute.shortcut_limit")
             pdf = self.head(limit + 1)._to_internal_pandas()
             transformed = pdf.transform(func)
             kdf = DataFrame(transformed)
@@ -6601,6 +6601,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
+        if max_display_count is None:
+            return repr(self._to_internal_pandas())
+
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
         repr_string = repr(pdf.iloc[:max_display_count])
@@ -6616,6 +6619,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def _repr_html_(self):
         max_display_count = get_option("display.max_rows")
+        if max_display_count is None:
+            return self._to_internal_pandas()._repr_html_()
+
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
         repr_html = pdf[:max_display_count]._repr_html_()

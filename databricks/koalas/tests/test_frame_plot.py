@@ -8,7 +8,7 @@ import numpy as np
 
 from databricks import koalas
 from databricks.koalas.config import set_option, reset_option
-from databricks.koalas.plot import TopNPlot
+from databricks.koalas.plot import TopNPlot, SampledPlot
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
@@ -17,16 +17,19 @@ matplotlib.use('agg')
 
 
 class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
+    sample_ratio_default = None
 
     @classmethod
     def setUpClass(cls):
         super(DataFramePlotTest, cls).setUpClass()
         set_option('plotting.max_rows', 2000)
+        set_option('plotting.sample_ratio', None)
 
     @classmethod
     def tearDownClass(cls):
         super(DataFramePlotTest, cls).tearDownClass()
         reset_option('plotting.max_rows')
+        reset_option('plotting.sample_ratio')
 
     @property
     def pdf1(self):
@@ -222,3 +225,20 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
 
         data = TopNPlot().get_top_n(kdf)
         self.assertEqual(len(data), 2000)
+
+    def test_sampled_plot_with_ratio(self):
+        set_option('plotting.sample_ratio', 0.5)
+        try:
+            pdf = pd.DataFrame(np.random.rand(2500, 4), columns=['a', 'b', 'c', 'd'])
+            kdf = koalas.from_pandas(pdf)
+            data = SampledPlot().get_sampled(kdf)
+            self.assertEqual(round(len(data) / 2500, 1), 0.5)
+        finally:
+            set_option('plotting.sample_ratio', DataFramePlotTest.sample_ratio_default)
+
+    def test_sampled_plot_with_max_rows(self):
+        # 'plotting.max_rows' is 2000
+        pdf = pd.DataFrame(np.random.rand(2000, 4), columns=['a', 'b', 'c', 'd'])
+        kdf = koalas.from_pandas(pdf)
+        data = SampledPlot().get_sampled(kdf)
+        self.assertEqual(round(len(data) / 2000, 1), 1)

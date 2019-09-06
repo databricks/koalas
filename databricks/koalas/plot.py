@@ -84,17 +84,18 @@ class TopNPlot:
 class SampledPlot:
     def get_sampled(self, data):
         from databricks.koalas import DataFrame, Series
-
-        self.fraction = 1 / (len(data) / 1000)  # make sure the records are roughly 1000.
-        if self.fraction > 1:
-            self.fraction = 1
+        fraction = get_option("plotting.sample_ratio")
+        if fraction is None:
+            fraction = 1 / (len(data) / get_option("plotting.max_rows"))
+            fraction = min(1., fraction)
+        self.fraction = fraction
 
         if isinstance(data, DataFrame):
-            sampled = data._sdf.sample(fraction=float(self.fraction))
+            sampled = data._sdf.sample(fraction=self.fraction)
             return DataFrame(data._internal.copy(sdf=sampled)).to_pandas()
         elif isinstance(data, Series):
             scol = data._scol
-            sampled = data._kdf._sdf.sample(fraction=float(self.fraction))
+            sampled = data._kdf._sdf.sample(fraction=self.fraction)
             return DataFrame(data._kdf._internal.copy(sdf=sampled, scol=scol)).to_pandas()
         else:
             ValueError("Only DataFrame and Series are supported for plotting.")

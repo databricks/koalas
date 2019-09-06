@@ -336,7 +336,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         :param scol: the new Spark Column
         :return: the copied Series
         """
-        return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf)
+        return Series(self._internal.copy(scol=scol), anchor=self._kdf)
 
     @property
     def dtypes(self):
@@ -758,8 +758,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 current = current.otherwise(F.lit(tmp_val))
             else:
                 current = current.otherwise(F.lit(None).cast(self.spark_type))
-            return Series(self._kdf._internal.copy(scol=current),
-                          anchor=self._kdf).rename(self.name)
+            return self._with_new_scol(current).rename(self.name)
         else:
             return self.apply(arg)
 
@@ -798,7 +797,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
-        return Series(self._kdf._internal.copy(scol=self._scol.cast(spark_type)), anchor=self._kdf)
+        return self._with_new_scol(self._scol.cast(spark_type))
 
     def getField(self, name):
         if not isinstance(self.schema, StructType):
@@ -808,8 +807,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             if name not in fnames:
                 raise AttributeError(
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
-            return Series(self._kdf._internal.copy(scol=self._scol.getField(name)),
-                          anchor=self._kdf)
+            return self._with_new_scol(self._scol.getField(name))
 
     def alias(self, name):
         """An alias for :meth:`Series.rename`."""
@@ -883,7 +881,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             self._internal = self._internal.copy(scol=scol)
             return self
         else:
-            return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf)
+            return self._with_new_scol(scol)
 
     @property
     def index(self):
@@ -1343,7 +1341,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
                 .rowsBetween(begin, end)
             scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
-        kseries = Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
+        kseries = self._with_new_scol(scol).rename(column_name)
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf
@@ -2285,7 +2283,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2    3
         Name: 0, dtype: int64
         """
-        return Series(self._kdf._internal.copy(), anchor=self._kdf)
+        return Series(self._internal.copy(), anchor=self._kdf)
 
     T = property(transpose)
 
@@ -2397,7 +2395,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             raise ValueError("decimals must be an integer")
         column_name = self.name
         scol = F.round(self._scol, decimals)
-        return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
+        return self._with_new_scol(scol).rename(column_name)
 
     # TODO: add 'interpolation' parameter.
     def quantile(self, q=0.5, accuracy=10000):
@@ -2612,7 +2610,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 *[column_name] + list(part_cols)
             ).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
             scol = stat_func(F.row_number().over(window1)).over(window2)
-        kser = Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
+        kser = self._with_new_scol(scol).rename(column_name)
         return kser.astype(np.float64)
 
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
@@ -2694,7 +2692,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
             .rowsBetween(-periods, -periods)
         scol = self._scol - F.lag(self._scol, periods).over(window)
-        return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(self.name)
+        return self._with_new_scol(scol).rename(self.name)
 
     def idxmax(self, skipna=True):
         """
@@ -2956,7 +2954,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if func.__name__ == "cumprod":
             scol = F.exp(scol)
 
-        return Series(self._kdf._internal.copy(scol=scol), anchor=self._kdf).rename(column_name)
+        return self._with_new_scol(scol).rename(column_name)
 
     # ----------------------------------------------------------------------
     # Accessor Methods
@@ -3027,6 +3025,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
+        if max_display_count is None:
+            return repr(self._to_internal_pandas())
+
         pser = self.head(max_display_count + 1)._to_internal_pandas()
         pser_length = len(pser)
         repr_string = repr(pser.iloc[:max_display_count])
