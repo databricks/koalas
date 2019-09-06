@@ -32,7 +32,6 @@ class _MissingPandasLikeSeries(object):
     # Properties
     axes = unsupported_property('axes')
     iat = unsupported_property('iat')
-    nbytes = unsupported_property('nbytes')
 
     # Deprecated properties
     blocks = unsupported_property('blocks', deprecated=True)
