@@ -1,0 +1,14 @@
+repos:
+- repo: https://github.com/python/black
+  rev: stable
+  hooks:
+  - id: black
+    language_version: python3
+
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.3.0  # Use the ref you want to point at
+  hooks:
+  - id: end-of-file-fixer
+  - id: detect-private-key
+  - id: trailing-whitespace
+    args: [--markdown-linebreak-ext=md]

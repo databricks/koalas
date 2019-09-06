@@ -22,3 +22,6 @@ pytest-cov
 scikit-learn
 openpyxl
 xlrd
+
+# pre-commit
+black
