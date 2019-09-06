@@ -32,7 +32,6 @@ class _MissingPandasLikeSeries(object):
     # Properties
     axes = unsupported_property('axes')
     iat = unsupported_property('iat')
-    nbytes = unsupported_property('nbytes')
 
     # Deprecated properties
     blocks = unsupported_property('blocks', deprecated=True)
@@ -156,6 +155,11 @@ class _MissingPandasLikeSeries(object):
     real = unsupported_property(
         'real',
         reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
+    nbytes = unsupported_property(
+        'nbytes',
+        reason="'nbytes' requires to compute whole dataset. You can calculate manually it, "
+               "with its 'itemsize', by explicitly executing its count. Use Spark's web UI "
+               "to monitor disk and memory usage of your application in general.")
 
     # Functions we won't support.
     memory_usage = common.memory_usage(unsupported_function)
