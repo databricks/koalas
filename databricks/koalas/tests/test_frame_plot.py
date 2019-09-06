@@ -27,9 +27,9 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
 
     @classmethod
     def tearDownClass(cls):
-        super(DataFramePlotTest, cls).tearDownClass()
         reset_option('plotting.max_rows')
         reset_option('plotting.sample_ratio')
+        super(DataFramePlotTest, cls).tearDownClass()
 
     @property
     def pdf1(self):

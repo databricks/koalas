@@ -29,8 +29,8 @@ class OneByOneDefaultIndexTest(ReusedSQLTestCase, TestUtils):
 
     @classmethod
     def tearDownClass(cls):
-        super(OneByOneDefaultIndexTest, cls).tearDownClass()
         reset_option('compute.default_index_type')
+        super(OneByOneDefaultIndexTest, cls).tearDownClass()
 
     def test_default_index(self):
         sdf = self.spark.range(1000)
@@ -46,8 +46,8 @@ class DistributedOneByOneDefaultIndexTest(ReusedSQLTestCase, TestUtils):
 
     @classmethod
     def tearDownClass(cls):
-        super(DistributedOneByOneDefaultIndexTest, cls).tearDownClass()
         reset_option('compute.default_index_type')
+        super(DistributedOneByOneDefaultIndexTest, cls).tearDownClass()
 
     def test_default_index(self):
         sdf = self.spark.range(1000)
@@ -63,8 +63,8 @@ class DistributedDefaultIndexTest(ReusedSQLTestCase, TestUtils):
 
     @classmethod
     def tearDownClass(cls):
-        super(DistributedDefaultIndexTest, cls).tearDownClass()
         reset_option('compute.default_index_type')
+        super(DistributedDefaultIndexTest, cls).tearDownClass()
 
     def test_default_index(self):
         sdf = self.spark.range(1000)

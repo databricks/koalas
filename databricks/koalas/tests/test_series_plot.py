@@ -41,8 +41,8 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
     @classmethod
     def tearDownClass(cls):
-        super(SeriesPlotTest, cls).tearDownClass()
         reset_option('plotting.max_rows')
+        super(SeriesPlotTest, cls).tearDownClass()
 
     @property
     def pdf1(self):

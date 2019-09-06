@@ -29,8 +29,8 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
     @classmethod
     def tearDownClass(cls):
-        super(OpsOnDiffFramesEnabledTest, cls).tearDownClass()
         reset_option('compute.ops_on_diff_frames')
+        super(OpsOnDiffFramesEnabledTest, cls).tearDownClass()
 
     @property
     def pdf1(self):
@@ -391,8 +391,8 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
     @classmethod
     def tearDownClass(cls):
-        super(OpsOnDiffFramesDisabledTest, cls).tearDownClass()
         reset_option('compute.ops_on_diff_frames')
+        super(OpsOnDiffFramesDisabledTest, cls).tearDownClass()
 
     @property
     def pdf1(self):
