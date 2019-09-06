@@ -90,13 +90,11 @@ class SampledPlot:
             fraction = min(1., fraction)
         self.fraction = fraction
 
-        if isinstance(data, DataFrame):
+        if isinstance(data, (DataFrame, Series)):
+            if isinstance(data, Series):
+                data = data.to_frame()
             sampled = data._sdf.sample(fraction=self.fraction)
             return DataFrame(data._internal.copy(sdf=sampled)).to_pandas()
-        elif isinstance(data, Series):
-            scol = data._scol
-            sampled = data._kdf._sdf.sample(fraction=self.fraction)
-            return DataFrame(data._kdf._internal.copy(sdf=sampled, scol=scol)).to_pandas()
         else:
             ValueError("Only DataFrame and Series are supported for plotting.")
 
