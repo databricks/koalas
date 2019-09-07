@@ -442,6 +442,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby("b").filter(lambda x: x.b.mean() < 4).sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).filter(lambda x: any(x.a == 2)).sort_index(),
                        pdf.groupby(['a', 'b']).filter(lambda x: any(x.a == 2)).sort_index())
+        with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
+            kdf.groupby("b").filter(1)
 
     def test_idxmax(self):
         pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3],
