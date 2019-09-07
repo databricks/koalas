@@ -58,9 +58,7 @@ class TopNPlot:
         max_rows = get_option("plotting.max_rows")
         # Simply use the first 1k elements and make it into a pandas dataframe
         # For categorical variables, it is likely called from df.x.value_counts().plot.xxx().
-        if isinstance(data, Series):
-            data = data.head(max_rows + 1).to_pandas().to_frame()
-        elif isinstance(data, DataFrame):
+        if isinstance(data, (Series, DataFrame)):
             data = data.head(max_rows + 1).to_pandas()
         else:
             ValueError("Only DataFrame and Series are supported for plotting.")
