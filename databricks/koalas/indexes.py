@@ -61,12 +61,11 @@ class Index(IndexOpsMixin):
     def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None) -> None:
         assert len(kdf._internal._index_map) == 1
         if scol is None:
-            IndexOpsMixin.__init__(
-                self, kdf._internal.copy(scol=kdf._internal.index_scols[0]), kdf)
+            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=kdf._internal.index_scols[0]), kdf)
         else:
             IndexOpsMixin.__init__(self, kdf._internal.copy(scol=scol), kdf)
 
-    def _with_new_scol(self, scol: spark.Column) -> 'Index':
+    def _with_new_scol(self, scol: spark.Column) -> "Index":
         """
         Copy Koalas Index with the new Spark Column.
 
@@ -113,7 +112,10 @@ class Index(IndexOpsMixin):
         internal = self._kdf._internal.copy(
             sdf=sdf,
             index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
-            data_columns=[], column_index=[], column_index_names=None)
+            data_columns=[],
+            column_index=[],
+            column_index_names=None,
+        )
         return DataFrame(internal)._to_internal_pandas().index
 
     toPandas = to_pandas
@@ -140,11 +142,12 @@ class Index(IndexOpsMixin):
     @names.setter
     def names(self, names: List[str]) -> None:
         if not is_list_like(names):
-            raise ValueError('Names must be a list-like')
+            raise ValueError("Names must be a list-like")
         internal = self._kdf._internal
         if len(internal.index_map) != len(names):
-            raise ValueError('Length of new names must be {}, got {}'
-                             .format(len(internal.index_map), len(names)))
+            raise ValueError(
+                "Length of new names must be {}, got {}".format(len(internal.index_map), len(names))
+            )
         self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
 
     def rename(self, name, inplace=False):
@@ -226,8 +229,9 @@ class Index(IndexOpsMixin):
         """
         kdf = self._kdf
         scol = self._scol
-        return Series(kdf._internal.copy(scol=scol if name is None else scol.alias(name)),
-                      anchor=kdf)
+        return Series(
+            kdf._internal.copy(scol=scol if name is None else scol.alias(name)), anchor=kdf
+        )
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
@@ -243,39 +247,49 @@ class Index(IndexOpsMixin):
         sdf = self._kdf._sdf.select(self._scol)
 
         if max_display_count is None:
-            return repr(DataFrame(self._kdf._internal.copy(
-                sdf=sdf,
-                index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
-                data_columns=[], column_index=[], column_index_names=None)).index.to_pandas())
+            return repr(
+                DataFrame(
+                    self._kdf._internal.copy(
+                        sdf=sdf,
+                        index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
+                        data_columns=[],
+                        column_index=[],
+                        column_index_names=None,
+                    )
+                ).index.to_pandas()
+            )
 
         sdf = sdf.limit(max_display_count + 1)
         internal = self._kdf._internal.copy(
             sdf=sdf,
             index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
-            data_columns=[], column_index=[], column_index_names=None)
+            data_columns=[],
+            column_index=[],
+            column_index_names=None,
+        )
         pindex = DataFrame(internal).index.to_pandas()
 
         pindex_length = len(pindex)
         repr_string = repr(pindex[:max_display_count])
 
         if pindex_length > max_display_count:
-            footer = '\nShowing only the first {}'.format(max_display_count)
+            footer = "\nShowing only the first {}".format(max_display_count)
             return repr_string + footer
         return repr_string
 
 
 class MultiIndex(Index):
-
     def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None):
         assert len(kdf._internal._index_map) > 1
         self._kdf = kdf
         if scol is None:
-            IndexOpsMixin.__init__(self, kdf._internal.copy(
-                scol=F.struct(self._kdf._internal.index_scols)), kdf)
+            IndexOpsMixin.__init__(
+                self, kdf._internal.copy(scol=F.struct(self._kdf._internal.index_scols)), kdf
+            )
         else:
             IndexOpsMixin.__init__(self, kdf._internal.copy(scol=scol), kdf)
 
-    def _with_new_scol(self, scol: spark.Column) -> 'MultiIndex':
+    def _with_new_scol(self, scol: spark.Column) -> "MultiIndex":
         """
         Copy Koalas MultiIndex with the new Spark Column.
 
@@ -292,11 +306,11 @@ class MultiIndex(Index):
 
     @property
     def name(self) -> str:
-        raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
+        raise PandasNotImplementedError(class_name="pd.MultiIndex", property_name="name")
 
     @name.setter
     def name(self, name: str) -> None:
-        raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
+        raise PandasNotImplementedError(class_name="pd.MultiIndex", property_name="name")
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):

@@ -340,12 +340,15 @@ class _InternalFrame(object):
     4  8
     """
 
-    def __init__(self, sdf: spark.DataFrame,
-                 index_map: Optional[List[IndexMap]] = None,
-                 scol: Optional[spark.Column] = None,
-                 data_columns: Optional[List[str]] = None,
-                 column_index: Optional[List[Tuple[str]]] = None,
-                 column_index_names: Optional[List[str]] = None) -> None:
+    def __init__(
+        self,
+        sdf: spark.DataFrame,
+        index_map: Optional[List[IndexMap]] = None,
+        scol: Optional[spark.Column] = None,
+        data_columns: Optional[List[str]] = None,
+        column_index: Optional[List[Tuple[str]]] = None,
+        column_index_names: Optional[List[str]] = None,
+    ) -> None:
         """
         Create a new internal immutable DataFrame to manage Spark DataFrame, column fields and
         index fields and names.
@@ -365,17 +368,19 @@ class _InternalFrame(object):
         assert isinstance(sdf, spark.DataFrame)
         if index_map is None:
             # Here is when Koalas DataFrame is created directly from Spark DataFrame.
-            assert "__index_level_0__" not in sdf.schema.names, \
-                "Default index column should not appear in columns of the Spark DataFrame"
+            assert (
+                "__index_level_0__" not in sdf.schema.names
+            ), "Default index column should not appear in columns of the Spark DataFrame"
 
             # Create default index.
-            index_map = [('__index_level_0__', None)]
+            index_map = [("__index_level_0__", None)]
             sdf = _InternalFrame.attach_default_index(sdf)
 
         assert index_map is not None
-        assert all(isinstance(index_field, str)
-                   and (index_name is None or isinstance(index_name, str))
-                   for index_field, index_name in index_map)
+        assert all(
+            isinstance(index_field, str) and (index_name is None or isinstance(index_name, str))
+            for index_field, index_name in index_map
+        )
         assert scol is None or isinstance(scol, spark.Column)
         assert data_columns is None or all(isinstance(col, str) for col in data_columns)
 
@@ -395,13 +400,15 @@ class _InternalFrame(object):
         if column_index is None:
             self._column_index = [(col,) for col in self._data_columns]
         else:
-            assert (len(column_index) == len(self._data_columns) and
-                    all(isinstance(i, tuple) for i in column_index) and
-                    len(set(len(i) for i in column_index)) <= 1)
+            assert (
+                len(column_index) == len(self._data_columns)
+                and all(isinstance(i, tuple) for i in column_index)
+                and len(set(len(i) for i in column_index)) <= 1
+            )
             self._column_index = column_index
 
         if column_index_names is not None and not is_list_like(column_index_names):
-            raise ValueError('Column_index_names should be list-like or None for a MultiIndex')
+            raise ValueError("Column_index_names should be list-like or None for a MultiIndex")
 
         if isinstance(column_index_names, list):
             if all(name is None for name in column_index_names):
@@ -420,8 +427,9 @@ class _InternalFrame(object):
         """
         default_index_type = get_option("compute.default_index_type")
         if default_index_type == "sequence":
-            sequential_index = F.row_number().over(
-                Window.orderBy(F.monotonically_increasing_id().asc())) - 1
+            sequential_index = (
+                F.row_number().over(Window.orderBy(F.monotonically_increasing_id().asc())) - 1
+            )
             scols = [scol_for(sdf, column) for column in sdf.columns]
             return sdf.select(sequential_index.alias("__index_level_0__"), *scols)
         elif default_index_type == "distributed-sequence":
@@ -432,8 +440,10 @@ class _InternalFrame(object):
             #         3: 83,
             #         ...
             #     }
-            counts = map(lambda x: (x["key"], x["count"]),
-                         sdf.groupby(F.spark_partition_id().alias("key")).count().collect())
+            counts = map(
+                lambda x: (x["key"], x["count"]),
+                sdf.groupby(F.spark_partition_id().alias("key")).count().collect(),
+            )
 
             # 2. Calculates cumulative sum in an order of partition id.
             #     Note that it does not matter if partition id guarantees its order or not.
@@ -450,23 +460,26 @@ class _InternalFrame(object):
             def default_index(pdf):
                 current_partition_max = sums[pdf["__spark_partition_id"].iloc[0]]
                 offset = len(pdf)
-                pdf["__index_level_0__"] = list(range(
-                    current_partition_max - offset, current_partition_max))
+                pdf["__index_level_0__"] = list(
+                    range(current_partition_max - offset, current_partition_max)
+                )
                 return pdf.drop(columns=["__spark_partition_id"])
 
             return_schema = StructType(
-                [StructField("__index_level_0__", LongType())] + list(sdf.schema))
+                [StructField("__index_level_0__", LongType())] + list(sdf.schema)
+            )
             grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(default_index)
 
             sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
             return sdf.groupBy("__spark_partition_id").apply(grouped_map_func)
         elif default_index_type == "distributed":
             scols = [scol_for(sdf, column) for column in sdf.columns]
-            return sdf.select(
-                F.monotonically_increasing_id().alias("__index_level_0__"), *scols)
+            return sdf.select(F.monotonically_increasing_id().alias("__index_level_0__"), *scols)
         else:
-            raise ValueError("'compute.default_index_type' should be one of 'sequence',"
-                             " 'distributed-sequence' and 'distributed'")
+            raise ValueError(
+                "'compute.default_index_type' should be one of 'sequence',"
+                " 'distributed-sequence' and 'distributed'"
+            )
 
     @lazy_property
     def _column_index_map(self) -> Dict[Tuple[str], str]:
@@ -483,8 +496,10 @@ class _InternalFrame(object):
 
     def scol_for(self, column_name_or_index: Union[str, Tuple[str]]) -> spark.Column:
         """ Return Spark Column for the given column name or index. """
-        if self._scol is not None and (column_name_or_index == self._data_columns[0]
-                                       or column_name_or_index == self._column_index[0]):
+        if self._scol is not None and (
+            column_name_or_index == self._data_columns[0]
+            or column_name_or_index == self._column_index[0]
+        ):
             return self._scol
         else:
             return scol_for(self._sdf, self.column_name_for(column_name_or_index))
@@ -522,8 +537,9 @@ class _InternalFrame(object):
     def columns(self) -> List[str]:
         """ Return all the field names including index field names. """
         index_columns = set(self.index_columns)
-        return self.index_columns + [column for column in self._data_columns
-                                     if column not in index_columns]
+        return self.index_columns + [
+            column for column in self._data_columns if column not in index_columns
+        ]
 
     @lazy_property
     def scols(self) -> List[spark.Column]:
@@ -598,8 +614,12 @@ class _InternalFrame(object):
         sdf = self.spark_internal_df
         pdf = sdf.toPandas()
         if len(pdf) == 0 and len(sdf.schema) > 0:
-            pdf = pdf.astype({field.name: to_arrow_type(field.dataType).to_pandas_dtype()
-                              for field in sdf.schema})
+            pdf = pdf.astype(
+                {
+                    field.name: to_arrow_type(field.dataType).to_pandas_dtype()
+                    for field in sdf.schema
+                }
+            )
 
         index_columns = self.index_columns
         if len(index_columns) > 0:
@@ -622,12 +642,15 @@ class _InternalFrame(object):
             pdf.index.names = index_names
         return pdf
 
-    def copy(self, sdf: Union[spark.DataFrame, _NoValueType] = _NoValue,
-             index_map: Union[List[IndexMap], _NoValueType] = _NoValue,
-             scol: Union[spark.Column, _NoValueType] = _NoValue,
-             data_columns: Union[List[str], _NoValueType] = _NoValue,
-             column_index: Union[List[Tuple[str]], _NoValueType] = _NoValue,
-             column_index_names: Union[List[str], _NoValueType] = _NoValue,) -> '_InternalFrame':
+    def copy(
+        self,
+        sdf: Union[spark.DataFrame, _NoValueType] = _NoValue,
+        index_map: Union[List[IndexMap], _NoValueType] = _NoValue,
+        scol: Union[spark.Column, _NoValueType] = _NoValue,
+        data_columns: Union[List[str], _NoValueType] = _NoValue,
+        column_index: Union[List[Tuple[str]], _NoValueType] = _NoValue,
+        column_index_names: Union[List[str], _NoValueType] = _NoValue,
+    ) -> "_InternalFrame":
         """ Copy the immutable DataFrame.
 
         :param sdf: the new Spark DataFrame. If None, then the original one is used.
@@ -657,11 +680,17 @@ class _InternalFrame(object):
         #     column_index = self._column_index
         if column_index_names is _NoValue:
             column_index_names = self._column_index_names
-        return _InternalFrame(sdf, index_map=index_map, scol=scol, data_columns=data_columns,
-                              column_index=column_index, column_index_names=column_index_names)
+        return _InternalFrame(
+            sdf,
+            index_map=index_map,
+            scol=scol,
+            data_columns=data_columns,
+            column_index=column_index,
+            column_index_names=column_index_names,
+        )
 
     @staticmethod
-    def from_pandas(pdf: pd.DataFrame) -> '_InternalFrame':
+    def from_pandas(pdf: pd.DataFrame) -> "_InternalFrame":
         """ Create an immutable DataFrame from pandas DataFrame.
 
         :param pdf: :class:`pd.DataFrame`
@@ -680,27 +709,41 @@ class _InternalFrame(object):
         index_map = []  # type: List[IndexMap]
         if isinstance(index, pd.MultiIndex):
             if index.names is None:
-                index_map = [('__index_level_{}__'.format(i), None)
-                             for i in range(len(index.levels))]
+                index_map = [
+                    ("__index_level_{}__".format(i), None) for i in range(len(index.levels))
+                ]
             else:
-                index_map = [('__index_level_{}__'.format(i) if name is None else name, name)
-                             for i, name in enumerate(index.names)]
+                index_map = [
+                    ("__index_level_{}__".format(i) if name is None else name, name)
+                    for i, name in enumerate(index.names)
+                ]
         else:
-            index_map = [(index.name
-                          if index.name is not None else '__index_level_0__', index.name)]
+            index_map = [
+                (index.name if index.name is not None else "__index_level_0__", index.name)
+            ]
 
         index_columns = [index_column for index_column, _ in index_map]
 
         reset_index = pdf.reset_index()
         reset_index.columns = index_columns + data_columns
-        schema = StructType([StructField(name, infer_pd_series_spark_type(col),
-                                         nullable=bool(col.isnull().any()))
-                             for name, col in reset_index.iteritems()])
+        schema = StructType(
+            [
+                StructField(
+                    name, infer_pd_series_spark_type(col), nullable=bool(col.isnull().any())
+                )
+                for name, col in reset_index.iteritems()
+            ]
+        )
         for name, col in reset_index.iteritems():
             dt = col.dtype
             if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
                 continue
             reset_index[name] = col.replace({np.nan: None})
         sdf = default_session().createDataFrame(reset_index, schema=schema)
-        return _InternalFrame(sdf=sdf, index_map=index_map, data_columns=data_columns,
-                              column_index=column_index, column_index_names=column_index_names)
+        return _InternalFrame(
+            sdf=sdf,
+            index_map=index_map,
+            data_columns=data_columns,
+            column_index=column_index,
+            column_index_names=column_index_names,
+        )

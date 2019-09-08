@@ -31,16 +31,15 @@ if TYPE_CHECKING:
 
 class StringMethods(object):
     """String methods for Koalas Series"""
-    def __init__(self, series: 'ks.Series'):
+
+    def __init__(self, series: "ks.Series"):
         if not isinstance(series.spark_type, (StringType, BinaryType, ArrayType)):
-            raise ValueError(
-                "Cannot call StringMethods on type {}"
-                .format(series.spark_type))
+            raise ValueError("Cannot call StringMethods on type {}".format(series.spark_type))
         self._data = series
         self.name = self._data.name
 
     # Methods
-    def capitalize(self) -> 'ks.Series':
+    def capitalize(self) -> "ks.Series":
         """
         Convert Strings in the series to be capitalized.
 
@@ -61,13 +60,11 @@ class StringMethods(object):
         3              Swapcase
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.capitalize(),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.capitalize(), StringType()).alias(
+            self.name
+        )
 
-    def title(self) -> 'ks.Series':
+    def title(self) -> "ks.Series":
         """
         Convert Strings in the series to be titlecase.
 
@@ -88,13 +85,9 @@ class StringMethods(object):
         3              Swapcase
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.title(),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.title(), StringType()).alias(self.name)
 
-    def lower(self) -> 'ks.Series':
+    def lower(self) -> "ks.Series":
         """
         Convert strings in the Series/Index to all lowercase.
 
@@ -115,13 +108,9 @@ class StringMethods(object):
         3              swapcase
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.lower(),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.lower(), StringType()).alias(self.name)
 
-    def upper(self) -> 'ks.Series':
+    def upper(self) -> "ks.Series":
         """
         Convert strings in the Series/Index to all uppercase.
 
@@ -142,13 +131,9 @@ class StringMethods(object):
         3              SWAPCASE
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.upper(),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.upper(), StringType()).alias(self.name)
 
-    def swapcase(self) -> 'ks.Series':
+    def swapcase(self) -> "ks.Series":
         """
         Convert strings in the Series/Index to be swapcased.
 
@@ -169,13 +154,11 @@ class StringMethods(object):
         3              sWaPcAsE
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.swapcase(),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.swapcase(), StringType()).alias(
+            self.name
+        )
 
-    def startswith(self, pattern, na=None) -> 'ks.Series':
+    def startswith(self, pattern, na=None) -> "ks.Series":
         """
         Test if the start of each string element matches a pattern.
 
@@ -221,12 +204,10 @@ class StringMethods(object):
         Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.startswith(pattern, na),
-            BooleanType()
+            self, lambda x: x.str.startswith(pattern, na), BooleanType()
         ).alias(self.name)
 
-    def endswith(self, pattern, na=None) -> 'ks.Series':
+    def endswith(self, pattern, na=None) -> "ks.Series":
         """
         Test if the end of each string element matches a pattern.
 
@@ -272,12 +253,10 @@ class StringMethods(object):
         Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.endswith(pattern, na),
-            BooleanType()
+            self, lambda x: x.str.endswith(pattern, na), BooleanType()
         ).alias(self.name)
 
-    def strip(self, to_strip=None) -> 'ks.Series':
+    def strip(self, to_strip=None) -> "ks.Series":
         """
         Remove leading and trailing characters.
 
@@ -323,13 +302,11 @@ class StringMethods(object):
         2      None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.strip(to_strip),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.strip(to_strip), StringType()).alias(
+            self.name
+        )
 
-    def lstrip(self, to_strip=None) -> 'ks.Series':
+    def lstrip(self, to_strip=None) -> "ks.Series":
         """
         Remove leading characters.
 
@@ -363,13 +340,11 @@ class StringMethods(object):
         2       None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.lstrip(to_strip),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.lstrip(to_strip), StringType()).alias(
+            self.name
+        )
 
-    def rstrip(self, to_strip=None) -> 'ks.Series':
+    def rstrip(self, to_strip=None) -> "ks.Series":
         """
         Remove trailing characters.
 
@@ -403,13 +378,11 @@ class StringMethods(object):
         2      None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.rstrip(to_strip),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.rstrip(to_strip), StringType()).alias(
+            self.name
+        )
 
-    def get(self, i) -> 'ks.Series':
+    def get(self, i) -> "ks.Series":
         """
         Extract element from each string or string list/tuple in the Series
         at the specified position.
@@ -457,13 +430,9 @@ class StringMethods(object):
         1    None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.get(i),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.get(i), StringType()).alias(self.name)
 
-    def isalnum(self) -> 'ks.Series':
+    def isalnum(self) -> "ks.Series":
         """
         Check whether all characters in each string are alphanumeric.
 
@@ -493,13 +462,11 @@ class StringMethods(object):
         2    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.isalnum(),
-            BooleanType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.isalnum(), BooleanType()).alias(
+            self.name
+        )
 
-    def isalpha(self) -> 'ks.Series':
+    def isalpha(self) -> "ks.Series":
         """
         Check whether all characters in each string are alphabetic.
 
@@ -518,13 +485,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.isalpha(),
-            BooleanType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.isalpha(), BooleanType()).alias(
+            self.name
+        )
 
-    def isdigit(self) -> 'ks.Series':
+    def isdigit(self) -> "ks.Series":
         """
         Check whether all characters in each string are digits.
 
@@ -568,13 +533,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.isdigit(),
-            BooleanType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.isdigit(), BooleanType()).alias(
+            self.name
+        )
 
-    def isspace(self) -> 'ks.Series':
+    def isspace(self) -> "ks.Series":
         """
         Check whether all characters in each string are whitespaces.
 
@@ -591,13 +554,11 @@ class StringMethods(object):
         2    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.isspace(),
-            BooleanType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.isspace(), BooleanType()).alias(
+            self.name
+        )
 
-    def islower(self) -> 'ks.Series':
+    def islower(self) -> "ks.Series":
         """
         Check whether all characters in each string are lowercase.
 
@@ -615,13 +576,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.islower(),
-            BooleanType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.islower(), BooleanType()).alias(
+            self.name
+        )
 
-    def isupper(self) -> 'ks.Series':
+    def isupper(self) -> "ks.Series":
         """
         Check whether all characters in each string are uppercase.
 
@@ -639,13 +598,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.isupper(),
-            BooleanType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.isupper(), BooleanType()).alias(
+            self.name
+        )
 
-    def istitle(self) -> 'ks.Series':
+    def istitle(self) -> "ks.Series":
         """
         Check whether all characters in each string are titlecase.
 
@@ -669,13 +626,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.istitle(),
-            BooleanType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.istitle(), BooleanType()).alias(
+            self.name
+        )
 
-    def isnumeric(self) -> 'ks.Series':
+    def isnumeric(self) -> "ks.Series":
         """
         Check whether all characters in each string are numeric.
 
@@ -727,13 +682,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.isnumeric(),
-            BooleanType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.isnumeric(), BooleanType()).alias(
+            self.name
+        )
 
-    def isdecimal(self) -> 'ks.Series':
+    def isdecimal(self) -> "ks.Series":
         """
         Check whether all characters in each string are decimals.
 
@@ -777,19 +730,17 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.isdecimal(),
-            BooleanType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.isdecimal(), BooleanType()).alias(
+            self.name
+        )
 
-    def cat(self, others=None, sep=None, na_rep=None, join=None) -> 'ks.Series':
+    def cat(self, others=None, sep=None, na_rep=None, join=None) -> "ks.Series":
         """
         Not supported.
         """
         raise NotImplementedError()
 
-    def center(self, width, fillchar=' ') -> 'ks.Series':
+    def center(self, width, fillchar=" ") -> "ks.Series":
         """
         Filling left and right side of strings in the Series/Index with an
         additional character. Equivalent to :func:`str.center`.
@@ -820,12 +771,10 @@ class StringMethods(object):
         Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.center(width, fillchar),
-            StringType()
+            self, lambda x: x.str.center(width, fillchar), StringType()
         ).alias(self.name)
 
-    def contains(self, pat, case=True, flags=0, na=None, regex=True) -> 'ks.Series':
+    def contains(self, pat, case=True, flags=0, na=None, regex=True) -> "ks.Series":
         """
         Test if pattern or regex is contained within a string of a Series.
 
@@ -937,12 +886,10 @@ class StringMethods(object):
         Name: 0, dtype: bool
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.contains(pat, case, flags, na, regex),
-            BooleanType()
+            self, lambda x: x.str.contains(pat, case, flags, na, regex), BooleanType()
         ).alias(self.name)
 
-    def count(self, pat, flags=0) -> 'ks.Series':
+    def count(self, pat, flags=0) -> "ks.Series":
         """
         Count occurrences of pattern in each string of the Series.
 
@@ -986,37 +933,35 @@ class StringMethods(object):
         5    0
         Name: 0, dtype: int32
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.count(pat, flags),
-            IntegerType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.count(pat, flags), IntegerType()).alias(
+            self.name
+        )
 
-    def decode(self, encoding, errors='strict') -> 'ks.Series':
+    def decode(self, encoding, errors="strict") -> "ks.Series":
         """
         Not supported.
         """
         raise NotImplementedError()
 
-    def encode(self, encoding, errors='strict') -> 'ks.Series':
+    def encode(self, encoding, errors="strict") -> "ks.Series":
         """
         Not supported.
         """
         raise NotImplementedError()
 
-    def extract(self, pat, flags=0, expand=True) -> 'ks.Series':
+    def extract(self, pat, flags=0, expand=True) -> "ks.Series":
         """
         Not supported.
         """
         raise NotImplementedError()
 
-    def extractall(self, pat, flags=0) -> 'ks.Series':
+    def extractall(self, pat, flags=0) -> "ks.Series":
         """
         Not supported.
         """
         raise NotImplementedError()
 
-    def find(self, sub, start=0, end=None) -> 'ks.Series':
+    def find(self, sub, start=0, end=None) -> "ks.Series":
         """
         Return lowest indexes in each strings in the Series where the
         substring is fully contained between [start:end].
@@ -1066,12 +1011,10 @@ class StringMethods(object):
         Name: 0, dtype: int32
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.find(sub, start, end),
-            IntegerType()
+            self, lambda x: x.str.find(sub, start, end), IntegerType()
         ).alias(self.name)
 
-    def findall(self, pat, flags=0) -> 'ks.Series':
+    def findall(self, pat, flags=0) -> "ks.Series":
         """
         Find all occurrences of pattern or regular expression in the Series.
 
@@ -1150,12 +1093,10 @@ class StringMethods(object):
         Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.findall(pat, flags),
-            ArrayType(StringType(), containsNull=True)
+            self, lambda x: x.str.findall(pat, flags), ArrayType(StringType(), containsNull=True)
         ).alias(self.name)
 
-    def index(self, sub, start=0, end=None) -> 'ks.Series':
+    def index(self, sub, start=0, end=None) -> "ks.Series":
         """
         Return lowest indexes in each strings where the substring is fully
         contained between [start:end].
@@ -1193,12 +1134,10 @@ class StringMethods(object):
         >>> s.str.index('a', start=2) # doctest: +SKIP
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.index(sub, start, end),
-            LongType()
+            self, lambda x: x.str.index(sub, start, end), LongType()
         ).alias(self.name)
 
-    def join(self, sep) -> 'ks.Series':
+    def join(self, sep) -> "ks.Series":
         """
         Join lists contained as elements in the Series with passed delimiter.
 
@@ -1233,13 +1172,9 @@ class StringMethods(object):
         1                   None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.join(sep),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.join(sep), StringType()).alias(self.name)
 
-    def len(self) -> 'ks.Series':
+    def len(self) -> "ks.Series":
         """
         Computes the length of each element in the Series.
 
@@ -1268,13 +1203,9 @@ class StringMethods(object):
         1    0
         Name: 0, dtype: int64
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.len(),
-            LongType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.len(), LongType()).alias(self.name)
 
-    def ljust(self, width, fillchar=' ') -> 'ks.Series':
+    def ljust(self, width, fillchar=" ") -> "ks.Series":
         """
         Filling right side of strings in the Series with an additional
         character. Equivalent to :func:`str.ljust`.
@@ -1305,12 +1236,10 @@ class StringMethods(object):
         Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.ljust(width, fillchar),
-            StringType()
+            self, lambda x: x.str.ljust(width, fillchar), StringType()
         ).alias(self.name)
 
-    def match(self, pat, case=True, flags=0, na=np.NaN) -> 'ks.Series':
+    def match(self, pat, case=True, flags=0, na=np.NaN) -> "ks.Series":
         """
         Determine if each string matches a regular expression.
 
@@ -1371,12 +1300,10 @@ class StringMethods(object):
         Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.match(pat, case, flags, na),
-            BooleanType()
+            self, lambda x: x.str.match(pat, case, flags, na), BooleanType()
         ).alias(self.name)
 
-    def normalize(self, form) -> 'ks.Series':
+    def normalize(self, form) -> "ks.Series":
         """
         Return the Unicode normal form for the strings in the Series.
 
@@ -1393,13 +1320,11 @@ class StringMethods(object):
         Series of objects
             A Series of normalized strings.
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.normalize(form),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.normalize(form), StringType()).alias(
+            self.name
+        )
 
-    def pad(self, width, side='left', fillchar=' ') -> 'ks.Series':
+    def pad(self, width, side="left", fillchar=" ") -> "ks.Series":
         """
         Pad strings in the Series up to width.
 
@@ -1442,18 +1367,16 @@ class StringMethods(object):
         Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.pad(width, side, fillchar),
-            StringType()
+            self, lambda x: x.str.pad(width, side, fillchar), StringType()
         ).alias(self.name)
 
-    def partition(self, sep=' ', expand=True) -> 'ks.Series':
+    def partition(self, sep=" ", expand=True) -> "ks.Series":
         """
         Not supported.
         """
         raise NotImplementedError()
 
-    def repeat(self, repeats) -> 'ks.Series':
+    def repeat(self, repeats) -> "ks.Series":
         """
         Duplicate each string in the Series.
 
@@ -1490,12 +1413,10 @@ class StringMethods(object):
             raise ValueError("repeats expects an int parameter")
 
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.repeat(repeats=repeats),
-            StringType()
+            self, lambda x: x.str.repeat(repeats=repeats), StringType()
         ).alias(self.name)
 
-    def replace(self, pat, repl, n=-1, case=None, flags=0, regex=True) -> 'ks.Series':
+    def replace(self, pat, repl, n=-1, case=None, flags=0, regex=True) -> "ks.Series":
         """
         Replace occurrences of pattern/regex in the Series with some other
         string. Equivalent to :func:`str.replace` or :func:`re.sub`.
@@ -1585,13 +1506,11 @@ class StringMethods(object):
         """
         return _wrap_accessor_pandas(
             self,
-            lambda x: x.str.replace(
-                pat, repl, n=n, case=case, flags=flags, regex=regex
-            ),
-            StringType()
+            lambda x: x.str.replace(pat, repl, n=n, case=case, flags=flags, regex=regex),
+            StringType(),
         ).alias(self.name)
 
-    def rfind(self, sub, start=0, end=None) -> 'ks.Series':
+    def rfind(self, sub, start=0, end=None) -> "ks.Series":
         """
         Return highest indexes in each strings in the Series where the
         substring is fully contained between [start:end].
@@ -1641,12 +1560,10 @@ class StringMethods(object):
         Name: 0, dtype: int32
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.rfind(sub, start, end),
-            IntegerType()
+            self, lambda x: x.str.rfind(sub, start, end), IntegerType()
         ).alias(self.name)
 
-    def rindex(self, sub, start=0, end=None) -> 'ks.Series':
+    def rindex(self, sub, start=0, end=None) -> "ks.Series":
         """
         Return highest indexes in each strings where the substring is fully
         contained between [start:end].
@@ -1684,12 +1601,10 @@ class StringMethods(object):
         >>> s.str.rindex('a', start=2) # doctest: +SKIP
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.rindex(sub, start, end),
-            LongType()
+            self, lambda x: x.str.rindex(sub, start, end), LongType()
         ).alias(self.name)
 
-    def rjust(self, width, fillchar=' ') -> 'ks.Series':
+    def rjust(self, width, fillchar=" ") -> "ks.Series":
         """
         Filling left side of strings in the Series with an additional
         character. Equivalent to :func:`str.rjust`.
@@ -1725,18 +1640,16 @@ class StringMethods(object):
         Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.rjust(width, fillchar),
-            StringType()
+            self, lambda x: x.str.rjust(width, fillchar), StringType()
         ).alias(self.name)
 
-    def rpartition(self, sep=' ', expand=True) -> 'ks.Series':
+    def rpartition(self, sep=" ", expand=True) -> "ks.Series":
         """
         Not supported.
         """
         raise NotImplementedError()
 
-    def slice(self, start=None, stop=None, step=None) -> 'ks.Series':
+    def slice(self, start=None, stop=None, step=None) -> "ks.Series":
         """
         Slice substrings from each element in the Series.
 
@@ -1788,12 +1701,10 @@ class StringMethods(object):
         Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.slice(start, stop, step),
-            StringType()
+            self, lambda x: x.str.slice(start, stop, step), StringType()
         ).alias(self.name)
 
-    def slice_replace(self, start=None, stop=None, repl=None) -> 'ks.Series':
+    def slice_replace(self, start=None, stop=None, repl=None) -> "ks.Series":
         """
         Slice substrings from each element in the Series.
 
@@ -1862,12 +1773,10 @@ class StringMethods(object):
         Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.slice_replace(start, stop, repl),
-            StringType()
+            self, lambda x: x.str.slice_replace(start, stop, repl), StringType()
         ).alias(self.name)
 
-    def split(self, pat=None, n=-1, expand=False) -> 'ks.Series':
+    def split(self, pat=None, n=-1, expand=False) -> "ks.Series":
         """
         Split strings around given separator/delimiter.
 
@@ -1939,12 +1848,10 @@ class StringMethods(object):
             raise ValueError("expand=True is currently not supported.")
 
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.split(pat, n, expand),
-            ArrayType(StringType(), containsNull=True)
+            self, lambda x: x.str.split(pat, n, expand), ArrayType(StringType(), containsNull=True)
         ).alias(self.name)
 
-    def rsplit(self, pat=None, n=-1, expand=False) -> 'ks.Series':
+    def rsplit(self, pat=None, n=-1, expand=False) -> "ks.Series":
         """
         Split strings around given separator/delimiter.
 
@@ -2008,12 +1915,10 @@ class StringMethods(object):
             raise ValueError("expand=True is currently not supported.")
 
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.rsplit(pat, n, expand),
-            ArrayType(StringType(), containsNull=True)
+            self, lambda x: x.str.rsplit(pat, n, expand), ArrayType(StringType(), containsNull=True)
         ).alias(self.name)
 
-    def translate(self, table) -> 'ks.Series':
+    def translate(self, table) -> "ks.Series":
         """
         Map all characters in the string through the given mapping table.
         Equivalent to standard :func:`str.translate`.
@@ -2041,13 +1946,11 @@ class StringMethods(object):
         2    bYrd
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.translate(table),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.translate(table), StringType()).alias(
+            self.name
+        )
 
-    def wrap(self, width, **kwargs) -> 'ks.Series':
+    def wrap(self, width, **kwargs) -> "ks.Series":
         """
         Wrap long strings in the Series to be formatted in paragraphs with
         length less than a given width.
@@ -2093,12 +1996,10 @@ class StringMethods(object):
         Name: 0, dtype: object
         """
         return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.wrap(width, **kwargs),
-            StringType()
+            self, lambda x: x.str.wrap(width, **kwargs), StringType()
         ).alias(self.name)
 
-    def zfill(self, width) -> 'ks.Series':
+    def zfill(self, width) -> "ks.Series":
         """
         Pad strings in the Series by prepending ‘0’ characters.
 
@@ -2142,13 +2043,11 @@ class StringMethods(object):
         3    None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.zfill(width),
-            StringType()
-        ).alias(self.name)
+        return _wrap_accessor_pandas(self, lambda x: x.str.zfill(width), StringType()).alias(
+            self.name
+        )
 
-    def get_dummies(self, sep='|'):
+    def get_dummies(self, sep="|"):
         """
         Not supported.
         """

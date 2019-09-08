@@ -46,8 +46,9 @@ def combine_frames(this, *args, how="full"):
     from databricks.koalas.config import get_option
 
     if all(isinstance(arg, Series) for arg in args):
-        assert all(arg._kdf is args[0]._kdf for arg in args), \
-            "Currently only one different DataFrame (from given Series) is supported"
+        assert all(
+            arg._kdf is args[0]._kdf for arg in args
+        ), "Currently only one different DataFrame (from given Series) is supported"
         if this is args[0]._kdf:
             return  # We don't need to combine. All series is in this.
         that = args[0]._kdf[[ser.name for ser in args]]
@@ -57,8 +58,7 @@ def combine_frames(this, *args, how="full"):
             return  # We don't need to combine. `this` and `that` are same.
         that = args[0]
     else:
-        raise AssertionError("args should be single DataFrame or "
-                             "single/multiple Series")
+        raise AssertionError("args should be single DataFrame or " "single/multiple Series")
 
     if get_option("compute.ops_on_diff_frames"):
         this_index_map = this._internal.index_map
@@ -79,37 +79,52 @@ def combine_frames(this, *args, how="full"):
                     join_scol = this_scol == that_scol
                     join_scols.append(join_scol)
                     merged_index_scols.append(
-                        F.when(
-                            this_scol.isNotNull(), this_scol
-                        ).otherwise(that_scol).alias(this_column))
+                        F.when(this_scol.isNotNull(), this_scol)
+                        .otherwise(that_scol)
+                        .alias(this_column)
+                    )
                     break
             else:
                 raise ValueError("Index names must be exactly matched currently.")
 
         assert len(join_scols) > 0, "cannot join with no overlapping index names"
 
-        joined_df = this._sdf.alias("this").join(
-            that._sdf.alias("that"), on=join_scols, how=how)
+        joined_df = this._sdf.alias("this").join(that._sdf.alias("that"), on=join_scols, how=how)
 
         joined_df = joined_df.select(
-            merged_index_scols +
-            [this[idx]._scol.alias("__this_%s" % this._internal.column_name_for(idx))
-             for idx in this._internal.column_index] +
-            [that[idx]._scol.alias("__that_%s" % that._internal.column_name_for(idx))
-             for idx in that._internal.column_index])
+            merged_index_scols
+            + [
+                this[idx]._scol.alias("__this_%s" % this._internal.column_name_for(idx))
+                for idx in this._internal.column_index
+            ]
+            + [
+                that[idx]._scol.alias("__that_%s" % that._internal.column_name_for(idx))
+                for idx in that._internal.column_index
+            ]
+        )
 
         index_columns = set(this._internal.index_columns)
         new_data_columns = [c for c in joined_df.columns if c not in index_columns]
-        column_index = ([tuple(['this', *idx]) for idx in this._internal.column_index]
-                        + [tuple(['that', *idx]) for idx in that._internal.column_index])
-        column_index_names = (([None] + this._internal.column_index_names)
-                              if this._internal.column_index_names is not None else None)
+        column_index = [tuple(["this", *idx]) for idx in this._internal.column_index] + [
+            tuple(["that", *idx]) for idx in that._internal.column_index
+        ]
+        column_index_names = (
+            ([None] + this._internal.column_index_names)
+            if this._internal.column_index_names is not None
+            else None
+        )
         return DataFrame(
-            this._internal.copy(sdf=joined_df, data_columns=new_data_columns,
-                                column_index=column_index, column_index_names=column_index_names))
+            this._internal.copy(
+                sdf=joined_df,
+                data_columns=new_data_columns,
+                column_index=column_index,
+                column_index_names=column_index_names,
+            )
+        )
     else:
-        raise ValueError("Cannot combine column argument because "
-                         "it comes from a different dataframe")
+        raise ValueError(
+            "Cannot combine column argument because " "it comes from a different dataframe"
+        )
 
 
 def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
@@ -186,15 +201,16 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
 
     for combined_idx in combined_column_index:
         for common_idx in common_column_index:
-            if combined_idx == tuple(['this', *common_idx]):
+            if combined_idx == tuple(["this", *common_idx]):
                 this_columns_to_apply.append(combined_idx)
                 break
-            elif combined_idx == tuple(['that', *common_idx]):
+            elif combined_idx == tuple(["that", *common_idx]):
                 that_columns_to_apply.append(combined_idx)
                 break
         else:
-            if how == "left" and \
-                    combined_idx in [tuple(['that', *idx]) for idx in that_column_index]:
+            if how == "left" and combined_idx in [
+                tuple(["that", *idx]) for idx in that_column_index
+            ]:
                 # In this case, we will drop `that_columns` in `columns_to_keep` but passes
                 # it later to `func`. `func` should resolve it.
                 # Note that adding this into a separate list (`additional_that_columns`)
@@ -212,8 +228,9 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
     # Should extract columns to apply and do it in a batch in case
     # it adds new columns for example.
     if len(this_columns_to_apply) > 0 or len(that_columns_to_apply) > 0:
-        kser_set, column_index_applied = \
-            zip(*resolve_func(combined, this_columns_to_apply, that_columns_to_apply))
+        kser_set, column_index_applied = zip(
+            *resolve_func(combined, this_columns_to_apply, that_columns_to_apply)
+        )
         columns_applied = [c._scol for c in kser_set]
         column_index_applied = list(column_index_applied)
     else:
@@ -249,10 +266,12 @@ def align_diff_series(func, this_series, *args, how="full"):
     cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
     combined = combine_frames(this_series.to_frame(), *cols, how=how)
 
-    that_columns = [combined[('that', arg.name)]._scol
-                    if isinstance(arg, IndexOpsMixin) else arg for arg in args]
+    that_columns = [
+        combined[("that", arg.name)]._scol if isinstance(arg, IndexOpsMixin) else arg
+        for arg in args
+    ]
 
-    scol = func(combined[('this', this_series.name)]._scol, *that_columns).alias(this_series.name)
+    scol = func(combined[("this", this_series.name)]._scol, *that_columns).alias(this_series.name)
 
     return Series(combined._internal.copy(scol=scol), anchor=combined)
 
@@ -266,9 +285,12 @@ def default_session(conf=None):
     return builder.getOrCreate()
 
 
-def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],
-                                           koalas_func: Callable, pandas_func: Callable,
-                                           input_args: Dict):
+def validate_arguments_and_invoke_function(
+    pobj: Union[pd.DataFrame, pd.Series],
+    koalas_func: Callable,
+    pandas_func: Callable,
+    input_args: Dict,
+):
     """
     Invokes a pandas function.
 
@@ -296,12 +318,12 @@ def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],
     # Makes a copy since whatever passed in is likely created by locals(), and we can't delete
     # 'self' key from that.
     args = input_args.copy()
-    del args['self']
+    del args["self"]
 
-    if 'kwargs' in args:
+    if "kwargs" in args:
         # explode kwargs
-        kwargs = args['kwargs']
-        del args['kwargs']
+        kwargs = args["kwargs"]
+        del args["kwargs"]
         args = {**args, **kwargs}
 
     koalas_params = inspect.signature(koalas_func).parameters
@@ -313,10 +335,14 @@ def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],
                 del args[param.name]
             else:
                 raise TypeError(
-                    ("The pandas version [%s] available does not support parameter '%s' " +
-                     "for function '%s'.") % (pd.__version__, param.name, pandas_func.__name__))
+                    (
+                        "The pandas version [%s] available does not support parameter '%s' "
+                        + "for function '%s'."
+                    )
+                    % (pd.__version__, param.name, pandas_func.__name__)
+                )
 
-    args['self'] = pobj
+    args["self"] = pobj
     return pandas_func(**args)
 
 
@@ -326,7 +352,7 @@ def lazy_property(fn):
 
     Copied from https://stevenloria.com/lazy-properties/
     """
-    attr_name = '_lazy_' + fn.__name__
+    attr_name = "_lazy_" + fn.__name__
 
     @property
     @functools.wraps(fn)
@@ -340,7 +366,7 @@ def lazy_property(fn):
 
 def scol_for(sdf: spark.DataFrame, column_name: str) -> spark.Column:
     """ Return Spark Column for the given column name. """
-    return sdf['`{}`'.format(column_name)]
+    return sdf["`{}`".format(column_name)]
 
 
 def column_index_level(column_index: List[Tuple[str]]) -> int:

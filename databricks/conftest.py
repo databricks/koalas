@@ -44,33 +44,33 @@ else:
 
 @pytest.fixture(autouse=True)
 def add_ks(doctest_namespace):
-    doctest_namespace['ks'] = koalas
+    doctest_namespace["ks"] = koalas
 
 
 @pytest.fixture(autouse=True)
 def add_pd(doctest_namespace):
     if os.getenv("PANDAS_VERSION", None) is not None:
         assert pd.__version__ == os.getenv("PANDAS_VERSION")
-    doctest_namespace['pd'] = pd
+    doctest_namespace["pd"] = pd
 
 
 @pytest.fixture(autouse=True)
 def add_pa(doctest_namespace):
     if os.getenv("PYARROW_VERSION", None) is not None:
         assert pa.__version__ == os.getenv("PYARROW_VERSION")
-    doctest_namespace['pa'] = pa
+    doctest_namespace["pa"] = pa
 
 
 @pytest.fixture(autouse=True)
 def add_np(doctest_namespace):
-    doctest_namespace['np'] = numpy
+    doctest_namespace["np"] = numpy
 
 
 @pytest.fixture(autouse=True)
 def add_path(doctest_namespace):
     path = tempfile.mkdtemp()
     atexit.register(lambda: shutil.rmtree(path, ignore_errors=True))
-    doctest_namespace['path'] = path
+    doctest_namespace["path"] = path
 
 
 @pytest.fixture(autouse=True)
@@ -78,10 +78,10 @@ def add_db(doctest_namespace):
     db_name = str(uuid.uuid4()).replace("-", "")
     session.sql("CREATE DATABASE %s" % db_name)
     atexit.register(lambda: session.sql("DROP DATABASE IF EXISTS %s CASCADE" % db_name))
-    doctest_namespace['db'] = db_name
+    doctest_namespace["db"] = db_name
 
 
 @pytest.fixture(autouse=os.getenv("KOALAS_USAGE_LOGGER", None) is not None)
 def add_caplog(caplog):
-    with caplog.at_level(logging.INFO, logger='databricks.koalas.usage_logger'):
+    with caplog.at_level(logging.INFO, logger="databricks.koalas.usage_logger"):
         yield

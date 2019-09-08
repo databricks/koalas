@@ -32,29 +32,49 @@ from databricks.koalas.config import get_option
 
 def _gca(rc=None):
     import matplotlib.pyplot as plt
+
     with plt.rc_context(rc):
         return plt.gca()
 
 
 def _get_standard_kind(kind):
-    return {'density': 'kde'}.get(kind, kind)
+    return {"density": "kde"}.get(kind, kind)
 
 
-if LooseVersion(pd.__version__) < LooseVersion('0.25'):
-    from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot, PiePlot, \
-        AreaPlot, LinePlot, BarhPlot, ScatterPlot
+if LooseVersion(pd.__version__) < LooseVersion("0.25"):
+    from pandas.plotting._core import (
+        _all_kinds,
+        BarPlot,
+        BoxPlot,
+        HistPlot,
+        MPLPlot,
+        PiePlot,
+        AreaPlot,
+        LinePlot,
+        BarhPlot,
+        ScatterPlot,
+    )
 else:
     from pandas.plotting._core import PlotAccessor
-    from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot, AreaPlot, \
-        LinePlot, BarhPlot, ScatterPlot
+    from pandas.plotting._matplotlib import (
+        BarPlot,
+        BoxPlot,
+        HistPlot,
+        PiePlot,
+        AreaPlot,
+        LinePlot,
+        BarhPlot,
+        ScatterPlot,
+    )
     from pandas.plotting._matplotlib.core import MPLPlot
+
     _all_kinds = PlotAccessor._all_kinds
 
 
 class TopNPlot:
-
     def get_top_n(self, data):
         from databricks.koalas import DataFrame, Series
+
         max_rows = get_option("plotting.max_rows")
         # Simply use the first 1k elements and make it into a pandas dataframe
         # For categorical variables, it is likely called from df.x.value_counts().plot.xxx().
@@ -74,18 +94,25 @@ class TopNPlot:
         assert hasattr(self, "partial")
 
         if self.partial:
-            ax.text(1, 1, 'showing top {} elements only'.format(max_rows),
-                    size=6, ha='right', va='bottom',
-                    transform=ax.transAxes)
+            ax.text(
+                1,
+                1,
+                "showing top {} elements only".format(max_rows),
+                size=6,
+                ha="right",
+                va="bottom",
+                transform=ax.transAxes,
+            )
 
 
 class SampledPlot:
     def get_sampled(self, data):
         from databricks.koalas import DataFrame, Series
+
         fraction = get_option("plotting.sample_ratio")
         if fraction is None:
             fraction = 1 / (len(data) / get_option("plotting.max_rows"))
-            fraction = min(1., fraction)
+            fraction = min(1.0, fraction)
         self.fraction = fraction
 
         if isinstance(data, (DataFrame, Series)):
@@ -101,9 +128,14 @@ class SampledPlot:
 
         if self.fraction < 1:
             ax.text(
-                1, 1, 'showing the sampled result by fraction %s' % self.fraction,
-                size=6, ha='right', va='bottom',
-                transform=ax.transAxes)
+                1,
+                1,
+                "showing the sampled result by fraction %s" % self.fraction,
+                size=6,
+                ha="right",
+                va="bottom",
+                transform=ax.transAxes,
+            )
 
 
 class KoalasBarPlot(BarPlot, TopNPlot):
@@ -122,30 +154,35 @@ class KoalasBoxPlotSummary:
 
     def compute_stats(self, whis, precision):
         # Computes mean, median, Q1 and Q3 with approx_percentile and precision
-        pdf = (self.data._kdf._sdf
-               .agg(*[F.expr('approx_percentile({}, {}, {})'.format(self.colname, q,
-                                                                    1. / precision))
-                      .alias('{}_{}%'.format(self.colname, int(q * 100)))
-                      for q in [.25, .50, .75]],
-                    F.mean(self.colname).alias('{}_mean'.format(self.colname))).toPandas())
+        pdf = self.data._kdf._sdf.agg(
+            *[
+                F.expr(
+                    "approx_percentile({}, {}, {})".format(self.colname, q, 1.0 / precision)
+                ).alias("{}_{}%".format(self.colname, int(q * 100)))
+                for q in [0.25, 0.50, 0.75]
+            ],
+            F.mean(self.colname).alias("{}_mean".format(self.colname))
+        ).toPandas()
 
         # Computes IQR and Tukey's fences
-        iqr = '{}_iqr'.format(self.colname)
-        p75 = '{}_75%'.format(self.colname)
-        p25 = '{}_25%'.format(self.colname)
+        iqr = "{}_iqr".format(self.colname)
+        p75 = "{}_75%".format(self.colname)
+        p25 = "{}_25%".format(self.colname)
         pdf.loc[:, iqr] = pdf.loc[:, p75] - pdf.loc[:, p25]
-        pdf.loc[:, '{}_lfence'.format(self.colname)] = pdf.loc[:, p25] - whis * pdf.loc[:, iqr]
-        pdf.loc[:, '{}_ufence'.format(self.colname)] = pdf.loc[:, p75] + whis * pdf.loc[:, iqr]
+        pdf.loc[:, "{}_lfence".format(self.colname)] = pdf.loc[:, p25] - whis * pdf.loc[:, iqr]
+        pdf.loc[:, "{}_ufence".format(self.colname)] = pdf.loc[:, p75] + whis * pdf.loc[:, iqr]
 
-        qnames = ['25%', '50%', '75%', 'mean', 'lfence', 'ufence']
-        col_summ = pdf[['{}_{}'.format(self.colname, q) for q in qnames]]
+        qnames = ["25%", "50%", "75%", "mean", "lfence", "ufence"]
+        col_summ = pdf[["{}_{}".format(self.colname, q) for q in qnames]]
         col_summ.columns = qnames
-        lfence, ufence = col_summ['lfence'], col_summ['ufence']
+        lfence, ufence = col_summ["lfence"], col_summ["ufence"]
 
-        stats = {'mean': col_summ['mean'].values[0],
-                 'med': col_summ['50%'].values[0],
-                 'q1': col_summ['25%'].values[0],
-                 'q3': col_summ['75%'].values[0]}
+        stats = {
+            "mean": col_summ["mean"].values[0],
+            "med": col_summ["50%"].values[0],
+            "q1": col_summ["25%"].values[0],
+            "q3": col_summ["75%"].values[0],
+        }
 
         return stats, (lfence.values[0], ufence.values[0])
 
@@ -153,101 +190,149 @@ class KoalasBoxPlotSummary:
         # Builds expression to identify outliers
         expression = F.col(self.colname).between(lfence, ufence)
         # Creates a column to flag rows as outliers or not
-        return self.data._kdf._sdf.withColumn('__{}_outlier'.format(self.colname), ~expression)
+        return self.data._kdf._sdf.withColumn("__{}_outlier".format(self.colname), ~expression)
 
     def calc_whiskers(self, outliers):
         # Computes min and max values of non-outliers - the whiskers
-        minmax = (outliers
-                  .filter('not __{}_outlier'.format(self.colname))
-                  .agg(F.min(self.colname).alias('min'),
-                       F.max(self.colname).alias('max'))
-                  .toPandas())
-        return minmax.iloc[0][['min', 'max']].values
+        minmax = (
+            outliers.filter("not __{}_outlier".format(self.colname))
+            .agg(F.min(self.colname).alias("min"), F.max(self.colname).alias("max"))
+            .toPandas()
+        )
+        return minmax.iloc[0][["min", "max"]].values
 
     def get_fliers(self, outliers):
         # Filters only the outliers, should "showfliers" be True
-        fliers_df = outliers.filter('__{}_outlier'.format(self.colname))
+        fliers_df = outliers.filter("__{}_outlier".format(self.colname))
 
         # If shows fliers, takes the top 1k with highest absolute values
-        fliers = (fliers_df
-                  .select(F.abs(F.col('`{}`'.format(self.colname))).alias(self.colname))
-                  .orderBy(F.desc('`{}`'.format(self.colname)))
-                  .limit(1001)
-                  .toPandas()[self.colname].values)
+        fliers = (
+            fliers_df.select(F.abs(F.col("`{}`".format(self.colname))).alias(self.colname))
+            .orderBy(F.desc("`{}`".format(self.colname)))
+            .limit(1001)
+            .toPandas()[self.colname]
+            .values
+        )
 
         return fliers
 
 
 class KoalasBoxPlot(BoxPlot):
     @staticmethod
-    def rc_defaults(notch=None, vert=None, whis=None,
-                    patch_artist=None, bootstrap=None, meanline=None,
-                    showmeans=None, showcaps=None, showbox=None,
-                    showfliers=None, **kwargs):
+    def rc_defaults(
+        notch=None,
+        vert=None,
+        whis=None,
+        patch_artist=None,
+        bootstrap=None,
+        meanline=None,
+        showmeans=None,
+        showcaps=None,
+        showbox=None,
+        showfliers=None,
+        **kwargs
+    ):
         # Missing arguments default to rcParams.
         if whis is None:
-            whis = matplotlib.rcParams['boxplot.whiskers']
+            whis = matplotlib.rcParams["boxplot.whiskers"]
         if bootstrap is None:
-            bootstrap = matplotlib.rcParams['boxplot.bootstrap']
+            bootstrap = matplotlib.rcParams["boxplot.bootstrap"]
 
         if notch is None:
-            notch = matplotlib.rcParams['boxplot.notch']
+            notch = matplotlib.rcParams["boxplot.notch"]
         if vert is None:
-            vert = matplotlib.rcParams['boxplot.vertical']
+            vert = matplotlib.rcParams["boxplot.vertical"]
         if patch_artist is None:
-            patch_artist = matplotlib.rcParams['boxplot.patchartist']
+            patch_artist = matplotlib.rcParams["boxplot.patchartist"]
         if meanline is None:
-            meanline = matplotlib.rcParams['boxplot.meanline']
+            meanline = matplotlib.rcParams["boxplot.meanline"]
         if showmeans is None:
-            showmeans = matplotlib.rcParams['boxplot.showmeans']
+            showmeans = matplotlib.rcParams["boxplot.showmeans"]
         if showcaps is None:
-            showcaps = matplotlib.rcParams['boxplot.showcaps']
+            showcaps = matplotlib.rcParams["boxplot.showcaps"]
         if showbox is None:
-            showbox = matplotlib.rcParams['boxplot.showbox']
+            showbox = matplotlib.rcParams["boxplot.showbox"]
         if showfliers is None:
-            showfliers = matplotlib.rcParams['boxplot.showfliers']
+            showfliers = matplotlib.rcParams["boxplot.showfliers"]
 
-        return dict(whis=whis, bootstrap=bootstrap, notch=notch, vert=vert,
-                    patch_artist=patch_artist, meanline=meanline, showmeans=showmeans,
-                    showcaps=showcaps, showbox=showbox, showfliers=showfliers)
+        return dict(
+            whis=whis,
+            bootstrap=bootstrap,
+            notch=notch,
+            vert=vert,
+            patch_artist=patch_artist,
+            meanline=meanline,
+            showmeans=showmeans,
+            showcaps=showcaps,
+            showbox=showbox,
+            showfliers=showfliers,
+        )
 
-    def boxplot(self, ax, bxpstats, notch=None, sym=None, vert=None,
-                whis=None, positions=None, widths=None, patch_artist=None,
-                bootstrap=None, usermedians=None, conf_intervals=None,
-                meanline=None, showmeans=None, showcaps=None,
-                showbox=None, showfliers=None, boxprops=None,
-                labels=None, flierprops=None, medianprops=None,
-                meanprops=None, capprops=None, whiskerprops=None,
-                manage_xticks=True, autorange=False, zorder=None,
-                precision=None):
-
+    def boxplot(
+        self,
+        ax,
+        bxpstats,
+        notch=None,
+        sym=None,
+        vert=None,
+        whis=None,
+        positions=None,
+        widths=None,
+        patch_artist=None,
+        bootstrap=None,
+        usermedians=None,
+        conf_intervals=None,
+        meanline=None,
+        showmeans=None,
+        showcaps=None,
+        showbox=None,
+        showfliers=None,
+        boxprops=None,
+        labels=None,
+        flierprops=None,
+        medianprops=None,
+        meanprops=None,
+        capprops=None,
+        whiskerprops=None,
+        manage_xticks=True,
+        autorange=False,
+        zorder=None,
+        precision=None,
+    ):
         def _update_dict(dictionary, rc_name, properties):
             """ Loads properties in the dictionary from rc file if not already
             in the dictionary"""
-            rc_str = 'boxplot.{0}.{1}'
+            rc_str = "boxplot.{0}.{1}"
             if dictionary is None:
                 dictionary = dict()
             for prop_dict in properties:
-                dictionary.setdefault(prop_dict,
-                                      matplotlib.rcParams[rc_str.format(rc_name, prop_dict)])
+                dictionary.setdefault(
+                    prop_dict, matplotlib.rcParams[rc_str.format(rc_name, prop_dict)]
+                )
             return dictionary
 
         # Common property dictionnaries loading from rc
-        flier_props = ['color', 'marker', 'markerfacecolor', 'markeredgecolor',
-                       'markersize', 'linestyle', 'linewidth']
-        default_props = ['color', 'linewidth', 'linestyle']
+        flier_props = [
+            "color",
+            "marker",
+            "markerfacecolor",
+            "markeredgecolor",
+            "markersize",
+            "linestyle",
+            "linewidth",
+        ]
+        default_props = ["color", "linewidth", "linestyle"]
 
-        boxprops = _update_dict(boxprops, 'boxprops', default_props)
-        whiskerprops = _update_dict(whiskerprops, 'whiskerprops',
-                                    default_props)
-        capprops = _update_dict(capprops, 'capprops', default_props)
-        medianprops = _update_dict(medianprops, 'medianprops', default_props)
-        meanprops = _update_dict(meanprops, 'meanprops', default_props)
-        flierprops = _update_dict(flierprops, 'flierprops', flier_props)
+        boxprops = _update_dict(boxprops, "boxprops", default_props)
+        whiskerprops = _update_dict(whiskerprops, "whiskerprops", default_props)
+        capprops = _update_dict(capprops, "capprops", default_props)
+        medianprops = _update_dict(medianprops, "medianprops", default_props)
+        meanprops = _update_dict(meanprops, "meanprops", default_props)
+        flierprops = _update_dict(flierprops, "flierprops", flier_props)
 
         if patch_artist:
-            boxprops['linestyle'] = 'solid'
-            boxprops['edgecolor'] = boxprops.pop('color')
+            boxprops["linestyle"] = "solid"
+            boxprops["edgecolor"] = boxprops.pop("color")
 
         # if non-default sym value, put it into the flier dictionary
         # the logic for providing the default symbol ('b+') now lives
@@ -258,9 +343,9 @@ class KoalasBoxPlot(BoxPlot):
             # no-flier case, which should really be done with
             # 'showfliers=False' but none-the-less deal with it to keep back
             # compatibility
-            if sym == '':
+            if sym == "":
                 # blow away existing dict and make one for invisible markers
-                flierprops = dict(linestyle='none', marker='', color='none')
+                flierprops = dict(linestyle="none", marker="", color="none")
                 # turn the fliers off just to be safe
                 showfliers = False
             # now process the symbol string
@@ -270,60 +355,72 @@ class KoalasBoxPlot(BoxPlot):
                 _, marker, color = _process_plot_format(sym)
                 # if we have a marker, use it
                 if marker is not None:
-                    flierprops['marker'] = marker
+                    flierprops["marker"] = marker
                 # if we have a color, use it
                 if color is not None:
                     # assume that if color is passed in the user want
                     # filled symbol, if the users want more control use
                     # flierprops
-                    flierprops['color'] = color
-                    flierprops['markerfacecolor'] = color
-                    flierprops['markeredgecolor'] = color
+                    flierprops["color"] = color
+                    flierprops["markerfacecolor"] = color
+                    flierprops["markeredgecolor"] = color
 
         # replace medians if necessary:
         if usermedians is not None:
-            if (len(np.ravel(usermedians)) != len(bxpstats) or
-                    np.shape(usermedians)[0] != len(bxpstats)):
-                raise ValueError('usermedians length not compatible with x')
+            if len(np.ravel(usermedians)) != len(bxpstats) or np.shape(usermedians)[0] != len(
+                bxpstats
+            ):
+                raise ValueError("usermedians length not compatible with x")
             else:
                 # reassign medians as necessary
                 for stats, med in zip(bxpstats, usermedians):
                     if med is not None:
-                        stats['med'] = med
+                        stats["med"] = med
 
         if conf_intervals is not None:
             if np.shape(conf_intervals)[0] != len(bxpstats):
-                err_mess = 'conf_intervals length not compatible with x'
+                err_mess = "conf_intervals length not compatible with x"
                 raise ValueError(err_mess)
             else:
                 for stats, ci in zip(bxpstats, conf_intervals):
                     if ci is not None:
                         if len(ci) != 2:
-                            raise ValueError('each confidence interval must '
-                                             'have two values')
+                            raise ValueError("each confidence interval must " "have two values")
                         else:
                             if ci[0] is not None:
-                                stats['cilo'] = ci[0]
+                                stats["cilo"] = ci[0]
                             if ci[1] is not None:
-                                stats['cihi'] = ci[1]
+                                stats["cihi"] = ci[1]
 
-        artists = ax.bxp(bxpstats, positions=positions, widths=widths,
-                         vert=vert, patch_artist=patch_artist,
-                         shownotches=notch, showmeans=showmeans,
-                         showcaps=showcaps, showbox=showbox,
-                         boxprops=boxprops, flierprops=flierprops,
-                         medianprops=medianprops, meanprops=meanprops,
-                         meanline=meanline, showfliers=showfliers,
-                         capprops=capprops, whiskerprops=whiskerprops,
-                         manage_xticks=manage_xticks, zorder=zorder)
+        artists = ax.bxp(
+            bxpstats,
+            positions=positions,
+            widths=widths,
+            vert=vert,
+            patch_artist=patch_artist,
+            shownotches=notch,
+            showmeans=showmeans,
+            showcaps=showcaps,
+            showbox=showbox,
+            boxprops=boxprops,
+            flierprops=flierprops,
+            medianprops=medianprops,
+            meanprops=meanprops,
+            meanline=meanline,
+            showfliers=showfliers,
+            capprops=capprops,
+            whiskerprops=whiskerprops,
+            manage_xticks=manage_xticks,
+            zorder=zorder,
+        )
         return artists
 
-    def _plot(self, ax, bxpstats, column_num=None, return_type='axes', **kwds):
+    def _plot(self, ax, bxpstats, column_num=None, return_type="axes", **kwds):
         bp = self.boxplot(ax, bxpstats, **kwds)
 
-        if return_type == 'dict':
+        if return_type == "dict":
             return bp, bp
-        elif return_type == 'both':
+        elif return_type == "both":
             return self.BP(ax=ax, lines=bp), bp
         else:
             return ax, bp
@@ -336,12 +433,12 @@ class KoalasBoxPlot(BoxPlot):
         self.kwds.update(KoalasBoxPlot.rc_defaults(**self.kwds))
 
         # Gets some important kwds
-        showfliers = self.kwds.get('showfliers', False)
-        whis = self.kwds.get('whis', 1.5)
-        labels = self.kwds.get('labels', [colname])
+        showfliers = self.kwds.get("showfliers", False)
+        whis = self.kwds.get("whis", 1.5)
+        labels = self.kwds.get("labels", [colname])
 
         # This one is Koalas specific to control precision for approx_percentile
-        precision = self.kwds.get('precision', 0.01)
+        precision = self.kwds.get("precision", 0.01)
 
         # # Computes mean, median, Q1 and Q3 with approx_percentile and precision
         col_stats, col_fences = summary.compute_stats(whis, precision)
@@ -359,14 +456,16 @@ class KoalasBoxPlot(BoxPlot):
 
         # Builds bxpstats dict
         stats = []
-        item = {'mean': col_stats['mean'],
-                'med': col_stats['med'],
-                'q1': col_stats['q1'],
-                'q3': col_stats['q3'],
-                'whislo': whiskers[0],
-                'whishi': whiskers[1],
-                'fliers': fliers,
-                'label': labels[0]}
+        item = {
+            "mean": col_stats["mean"],
+            "med": col_stats["med"],
+            "q1": col_stats["q1"],
+            "q3": col_stats["q3"],
+            "whislo": whiskers[0],
+            "whishi": whiskers[1],
+            "fliers": fliers,
+            "label": labels[0],
+        }
         stats.append(item)
 
         self.data = {labels[0]: stats}
@@ -377,13 +476,19 @@ class KoalasBoxPlot(BoxPlot):
         kwds = self.kwds.copy()
 
         for stats in bxpstats:
-            if len(stats['fliers']) > 1000:
-                stats['fliers'] = stats['fliers'][:1000]
-                ax.text(1, 1, 'showing top 1,000 fliers only', size=6, ha='right', va='bottom',
-                        transform=ax.transAxes)
+            if len(stats["fliers"]) > 1000:
+                stats["fliers"] = stats["fliers"][:1000]
+                ax.text(
+                    1,
+                    1,
+                    "showing top 1,000 fliers only",
+                    size=6,
+                    ha="right",
+                    va="bottom",
+                    transform=ax.transAxes,
+                )
 
-        ret, bp = self._plot(ax, bxpstats, column_num=0,
-                             return_type=self.return_type, **kwds)
+        ret, bp = self._plot(ax, bxpstats, column_num=0, return_type=self.return_type, **kwds)
         self.maybe_color_bp(bp)
         self._return_obj = ret
 
@@ -400,37 +505,35 @@ class KoalasHistPlotSummary:
         self.colname = colname
 
     def get_bins(self, n_bins):
-        boundaries = (self.data._kdf._sdf
-                      .agg(F.min(self.colname),
-                           F.max(self.colname))
-                      .rdd
-                      .map(tuple)
-                      .collect()[0])
+        boundaries = (
+            self.data._kdf._sdf.agg(F.min(self.colname), F.max(self.colname))
+            .rdd.map(tuple)
+            .collect()[0]
+        )
         # divides the boundaries into bins
         return np.linspace(boundaries[0], boundaries[1], n_bins + 1)
 
     def calc_histogram(self, bins):
-        bucket_name = '__{}_bucket'.format(self.colname)
+        bucket_name = "__{}_bucket".format(self.colname)
         # creates a Bucketizer to get corresponding bin of each value
-        bucketizer = Bucketizer(splits=bins,
-                                inputCol=self.colname,
-                                outputCol=bucket_name,
-                                handleInvalid="skip")
+        bucketizer = Bucketizer(
+            splits=bins, inputCol=self.colname, outputCol=bucket_name, handleInvalid="skip"
+        )
         # after bucketing values, groups and counts them
-        result = (bucketizer
-                  .transform(self.data._kdf._sdf)
-                  .select(bucket_name)
-                  .groupby(bucket_name)
-                  .agg(F.count('*').alias('count'))
-                  .toPandas()
-                  .sort_values(by=bucket_name))
+        result = (
+            bucketizer.transform(self.data._kdf._sdf)
+            .select(bucket_name)
+            .groupby(bucket_name)
+            .agg(F.count("*").alias("count"))
+            .toPandas()
+            .sort_values(by=bucket_name)
+        )
 
         # generates a pandas DF with one row for each bin
         # we need this as some of the bins may be empty
-        indexes = pd.DataFrame({bucket_name: np.arange(0, len(bins) - 1),
-                                'bucket': bins[:-1]})
+        indexes = pd.DataFrame({bucket_name: np.arange(0, len(bins) - 1), "bucket": bins[:-1]})
         # merges the bins with counts on it and fills remaining ones with zeros
-        data = indexes.merge(result, how='left', on=[bucket_name]).fillna(0)[['count']]
+        data = indexes.merge(result, how="left", on=[bucket_name]).fillna(0)[["count"]]
         data.columns = [bucket_name]
 
         return data
@@ -447,14 +550,12 @@ class KoalasHistPlot(HistPlot):
             self.bottom = np.array(self.bottom)
 
     @classmethod
-    def _plot(cls, ax, y, style=None, bins=None, bottom=0, column_num=0,
-              stacking_id=None, **kwds):
+    def _plot(cls, ax, y, style=None, bins=None, bottom=0, column_num=0, stacking_id=None, **kwds):
         if column_num == 0:
             cls._initialize_stacker(ax, stacking_id, len(bins) - 1)
 
         base = np.zeros(len(bins) - 1)
-        bottom = bottom + \
-            cls._get_stacked_values(ax, stacking_id, base, kwds['label'])
+        bottom = bottom + cls._get_stacked_values(ax, stacking_id, base, kwds["label"])
 
         # Since the counts were computed already, we use them as weights and just generate
         # one entry for each bin
@@ -470,7 +571,6 @@ class KoalasHistPlot(HistPlot):
 
 
 class KoalasPiePlot(PiePlot, TopNPlot):
-
     def __init__(self, data, **kwargs):
         super(KoalasPiePlot, self).__init__(self.get_top_n(data), **kwargs)
 
@@ -498,7 +598,6 @@ class KoalasLinePlot(LinePlot, SampledPlot):
 
 
 class KoalasBarhPlot(BarhPlot, TopNPlot):
-
     def __init__(self, data, **kwargs):
         super(KoalasBarhPlot, self).__init__(self.get_top_n(data), **kwargs)
 
@@ -508,7 +607,6 @@ class KoalasBarhPlot(BarhPlot, TopNPlot):
 
 
 class KoalasScatterPlot(ScatterPlot, TopNPlot):
-
     def __init__(self, data, x, y, **kwargs):
         super().__init__(self.get_top_n(data), x, y, **kwargs)
 
@@ -527,17 +625,36 @@ _klasses = [
     KoalasBarhPlot,
     KoalasScatterPlot,
 ]
-_plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
+_plot_klass = {getattr(klass, "_kind"): klass for klass in _klasses}
 
 
-def plot_series(data, kind='line', ax=None,                    # Series unique
-                figsize=None, use_index=True, title=None, grid=None,
-                legend=False, style=None, logx=False, logy=False, loglog=False,
-                xticks=None, yticks=None, xlim=None, ylim=None,
-                rot=None, fontsize=None, colormap=None, table=False,
-                yerr=None, xerr=None,
-                label=None, secondary_y=False,                 # Series unique
-                **kwds):
+def plot_series(
+    data,
+    kind="line",
+    ax=None,  # Series unique
+    figsize=None,
+    use_index=True,
+    title=None,
+    grid=None,
+    legend=False,
+    style=None,
+    logx=False,
+    logy=False,
+    loglog=False,
+    xticks=None,
+    yticks=None,
+    xlim=None,
+    ylim=None,
+    rot=None,
+    fontsize=None,
+    colormap=None,
+    table=False,
+    yerr=None,
+    xerr=None,
+    label=None,
+    secondary_y=False,  # Series unique
+    **kwds
+):
     """
     Make plots of Series using matplotlib / pylab.
 
@@ -634,23 +751,42 @@ def plot_series(data, kind='line', ax=None,                    # Series unique
     # so it calls modified _plot below
 
     import matplotlib.pyplot as plt
+
     if ax is None and len(plt.get_fignums()) > 0:
         ax = _gca()
         ax = MPLPlot._get_ax_layer(ax)
-    return _plot(data, kind=kind, ax=ax,
-                 figsize=figsize, use_index=use_index, title=title,
-                 grid=grid, legend=legend,
-                 style=style, logx=logx, logy=logy, loglog=loglog,
-                 xticks=xticks, yticks=yticks, xlim=xlim, ylim=ylim,
-                 rot=rot, fontsize=fontsize, colormap=colormap, table=table,
-                 yerr=yerr, xerr=xerr,
-                 label=label, secondary_y=secondary_y,
-                 **kwds)
+    return _plot(
+        data,
+        kind=kind,
+        ax=ax,
+        figsize=figsize,
+        use_index=use_index,
+        title=title,
+        grid=grid,
+        legend=legend,
+        style=style,
+        logx=logx,
+        logy=logy,
+        loglog=loglog,
+        xticks=xticks,
+        yticks=yticks,
+        xlim=xlim,
+        ylim=ylim,
+        rot=rot,
+        fontsize=fontsize,
+        colormap=colormap,
+        table=table,
+        yerr=yerr,
+        xerr=xerr,
+        label=label,
+        secondary_y=secondary_y,
+        **kwds
+    )
 
 
-def _plot(data, x=None, y=None, subplots=False,
-          ax=None, kind='line', **kwds):
+def _plot(data, x=None, y=None, subplots=False, ax=None, kind="line", **kwds):
     from databricks.koalas import DataFrame
+
     # function copied from pandas.plotting._core
     # and adapted to handle Koalas DataFrame and Series
 
@@ -661,7 +797,7 @@ def _plot(data, x=None, y=None, subplots=False,
         raise ValueError("%r is not a valid plot kind" % kind)
 
     # scatter and hexbin are inherited from PlanePlot which require x and y
-    if kind in ('scatter', 'hexbin'):
+    if kind in ("scatter", "hexbin"):
         plot_obj = klass(data, x, y, subplots=subplots, ax=ax, kind=kind, **kwds)
     else:
 
@@ -691,22 +827,61 @@ class KoalasSeriesPlotMethods(PandasObject):
     def __init__(self, data):
         self.data = data
 
-    def __call__(self, kind='line', ax=None,
-                 figsize=None, use_index=True, title=None, grid=None,
-                 legend=False, style=None, logx=False, logy=False,
-                 loglog=False, xticks=None, yticks=None,
-                 xlim=None, ylim=None,
-                 rot=None, fontsize=None, colormap=None, table=False,
-                 yerr=None, xerr=None,
-                 label=None, secondary_y=False, **kwds):
-        return plot_series(self.data, kind=kind, ax=ax, figsize=figsize,
-                           use_index=use_index, title=title, grid=grid,
-                           legend=legend, style=style, logx=logx, logy=logy,
-                           loglog=loglog, xticks=xticks, yticks=yticks,
-                           xlim=xlim, ylim=ylim, rot=rot, fontsize=fontsize,
-                           colormap=colormap, table=table, yerr=yerr,
-                           xerr=xerr, label=label, secondary_y=secondary_y,
-                           **kwds)
+    def __call__(
+        self,
+        kind="line",
+        ax=None,
+        figsize=None,
+        use_index=True,
+        title=None,
+        grid=None,
+        legend=False,
+        style=None,
+        logx=False,
+        logy=False,
+        loglog=False,
+        xticks=None,
+        yticks=None,
+        xlim=None,
+        ylim=None,
+        rot=None,
+        fontsize=None,
+        colormap=None,
+        table=False,
+        yerr=None,
+        xerr=None,
+        label=None,
+        secondary_y=False,
+        **kwds
+    ):
+        return plot_series(
+            self.data,
+            kind=kind,
+            ax=ax,
+            figsize=figsize,
+            use_index=use_index,
+            title=title,
+            grid=grid,
+            legend=legend,
+            style=style,
+            logx=logx,
+            logy=logy,
+            loglog=loglog,
+            xticks=xticks,
+            yticks=yticks,
+            xlim=xlim,
+            ylim=ylim,
+            rot=rot,
+            fontsize=fontsize,
+            colormap=colormap,
+            table=table,
+            yerr=yerr,
+            xerr=xerr,
+            label=label,
+            secondary_y=secondary_y,
+            **kwds
+        )
+
     __call__.__doc__ = plot_series.__doc__
 
     def line(self, x=None, y=None, **kwargs):
@@ -754,7 +929,7 @@ class KoalasSeriesPlotMethods(PandasObject):
         -------
         axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
         """
-        return self(kind='bar', **kwds)
+        return self(kind="bar", **kwds)
 
     def barh(self, **kwds):
         """
@@ -788,7 +963,7 @@ class KoalasSeriesPlotMethods(PandasObject):
         >>> df = ks.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
         >>> plot = df.val.plot.barh()
         """
-        return self(kind='barh', **kwds)
+        return self(kind="barh", **kwds)
 
     def box(self, **kwds):
         """
@@ -821,7 +996,7 @@ class KoalasSeriesPlotMethods(PandasObject):
           * `bootstrap` argument is not supported
           * `autorange` argument is not supported
         """
-        return self(kind='box', **kwds)
+        return self(kind="box", **kwds)
 
     def hist(self, bins=10, **kwds):
         """
@@ -839,10 +1014,10 @@ class KoalasSeriesPlotMethods(PandasObject):
         -------
         axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
         """
-        return self(kind='hist', bins=bins, **kwds)
+        return self(kind="hist", bins=bins, **kwds)
 
     def kde(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='kde')()
+        return _unsupported_function(class_name="pd.Series", method_name="kde")()
 
     density = kde
 
@@ -881,7 +1056,7 @@ class KoalasSeriesPlotMethods(PandasObject):
         ...                        freq='M'))
         >>> plot = df.sales.plot.area()
         """
-        return self(kind='area', **kwds)
+        return self(kind="area", **kwds)
 
     def pie(self, **kwds):
         """
@@ -915,7 +1090,7 @@ class KoalasSeriesPlotMethods(PandasObject):
 
         >>> plot = df.mass.plot.pie(subplots=True, figsize=(6, 3))
         """
-        return self(kind='pie', **kwds)
+        return self(kind="pie", **kwds)
 
 
 class KoalasFramePlotMethods(PandasObject):
@@ -927,25 +1102,76 @@ class KoalasFramePlotMethods(PandasObject):
     with the ``kind`` argument:
     ``df.plot(kind='hist')`` is equivalent to ``df.plot.hist()``
     """
+
     def __init__(self, data):
         self.data = data
 
-    def __call__(self, x=None, y=None, kind='line', ax=None,
-                 subplots=None, sharex=None, sharey=False, layout=None,
-                 figsize=None, use_index=True, title=None, grid=None,
-                 legend=True, style=None, logx=False, logy=False,
-                 loglog=False, xticks=None, yticks=None, xlim=None,
-                 ylim=None, rot=None, fontsize=None, colormap=None,
-                 table=False, yerr=None, xerr=None, secondary_y=False,
-                 sort_columns=False, **kwds):
-        return plot_frame(self.data, x=x, y=y, kind=kind, ax=ax,
-                          subplots=subplots, sharex=sharex, sharey=sharey, layout=layout,
-                          figsize=figsize, use_index=use_index, title=title, grid=grid,
-                          legend=legend, style=style, logx=logx, logy=logy,
-                          loglog=loglog, xticks=xticks, yticks=yticks, xlim=xlim,
-                          ylim=ylim, rot=rot, fontsize=fontsize, colormap=colormap,
-                          table=table, yerr=yerr, xerr=xerr, secondary_y=secondary_y,
-                          sort_columns=sort_columns, **kwds)
+    def __call__(
+        self,
+        x=None,
+        y=None,
+        kind="line",
+        ax=None,
+        subplots=None,
+        sharex=None,
+        sharey=False,
+        layout=None,
+        figsize=None,
+        use_index=True,
+        title=None,
+        grid=None,
+        legend=True,
+        style=None,
+        logx=False,
+        logy=False,
+        loglog=False,
+        xticks=None,
+        yticks=None,
+        xlim=None,
+        ylim=None,
+        rot=None,
+        fontsize=None,
+        colormap=None,
+        table=False,
+        yerr=None,
+        xerr=None,
+        secondary_y=False,
+        sort_columns=False,
+        **kwds
+    ):
+        return plot_frame(
+            self.data,
+            x=x,
+            y=y,
+            kind=kind,
+            ax=ax,
+            subplots=subplots,
+            sharex=sharex,
+            sharey=sharey,
+            layout=layout,
+            figsize=figsize,
+            use_index=use_index,
+            title=title,
+            grid=grid,
+            legend=legend,
+            style=style,
+            logx=logx,
+            logy=logy,
+            loglog=loglog,
+            xticks=xticks,
+            yticks=yticks,
+            xlim=xlim,
+            ylim=ylim,
+            rot=rot,
+            fontsize=fontsize,
+            colormap=colormap,
+            table=table,
+            yerr=yerr,
+            xerr=xerr,
+            secondary_y=secondary_y,
+            sort_columns=sort_columns,
+            **kwds
+        )
 
     def line(self, x=None, y=None, **kwargs):
         """
@@ -969,10 +1195,10 @@ class KoalasFramePlotMethods(PandasObject):
         --------
         matplotlib.pyplot.plot : Plot y versus x as lines and/or markers.
         """
-        return self(kind='line', x=x, y=y, **kwargs)
+        return self(kind="line", x=x, y=y, **kwargs)
 
     def kde(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='kde')()
+        return _unsupported_function(class_name="pd.DataFrame", method_name="kde")()
 
     def pie(self, y=None, **kwds):
         """
@@ -999,13 +1225,9 @@ class KoalasFramePlotMethods(PandasObject):
         from databricks.koalas import DataFrame
 
         # Pandas will raise an error if y is None and subplots if not True
-        if (
-                isinstance(self.data, DataFrame)
-                and y is None
-                and not kwds.get("subplots", False)
-        ):
+        if isinstance(self.data, DataFrame) and y is None and not kwds.get("subplots", False):
             raise ValueError("pie requires either y column or 'subplots=True'")
-        return self(kind='pie', y=y, **kwds)
+        return self(kind="pie", y=y, **kwds)
 
     def area(self, x=None, y=None, stacked=True, **kwds):
         """
@@ -1032,7 +1254,7 @@ class KoalasFramePlotMethods(PandasObject):
         matplotlib.axes.Axes or numpy.ndarray
             Area plot, or array of area plots if subplots is True.
         """
-        return self(kind='area', x=x, y=y, stacked=stacked, **kwds)
+        return self(kind="area", x=x, y=y, stacked=stacked, **kwds)
 
     def bar(self, x=None, y=None, **kwds):
         """
@@ -1054,7 +1276,7 @@ class KoalasFramePlotMethods(PandasObject):
         -------
         axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
         """
-        return self(kind='bar', x=x, y=y, **kwds)
+        return self(kind="bar", x=x, y=y, **kwds)
 
     def barh(self, x=None, y=None, **kwargs):
         """
@@ -1082,19 +1304,19 @@ class KoalasFramePlotMethods(PandasObject):
         --------
         matplotlib.axes.Axes.bar : Plot a vertical bar plot using matplotlib.
         """
-        return self(kind='barh', x=x, y=y, **kwargs)
+        return self(kind="barh", x=x, y=y, **kwargs)
 
     def hexbin(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='hexbin')()
+        return _unsupported_function(class_name="pd.DataFrame", method_name="hexbin")()
 
     def density(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='density')()
+        return _unsupported_function(class_name="pd.DataFrame", method_name="density")()
 
     def box(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='box')()
+        return _unsupported_function(class_name="pd.DataFrame", method_name="box")()
 
     def hist(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='hist')()
+        return _unsupported_function(class_name="pd.DataFrame", method_name="hist")()
 
     def scatter(self, x, y, s=None, c=None, **kwds):
         """
@@ -1133,14 +1355,39 @@ class KoalasFramePlotMethods(PandasObject):
         return self(kind="scatter", x=x, y=y, s=s, c=c, **kwds)
 
 
-def plot_frame(data, x=None, y=None, kind='line', ax=None,
-               subplots=None, sharex=None, sharey=False, layout=None,
-               figsize=None, use_index=True, title=None, grid=None,
-               legend=True, style=None, logx=False, logy=False,
-               loglog=False, xticks=None, yticks=None, xlim=None,
-               ylim=None, rot=None, fontsize=None, colormap=None,
-               table=False, yerr=None, xerr=None, secondary_y=False,
-               sort_columns=False, **kwds):
+def plot_frame(
+    data,
+    x=None,
+    y=None,
+    kind="line",
+    ax=None,
+    subplots=None,
+    sharex=None,
+    sharey=False,
+    layout=None,
+    figsize=None,
+    use_index=True,
+    title=None,
+    grid=None,
+    legend=True,
+    style=None,
+    logx=False,
+    logy=False,
+    loglog=False,
+    xticks=None,
+    yticks=None,
+    xlim=None,
+    ylim=None,
+    rot=None,
+    fontsize=None,
+    colormap=None,
+    table=False,
+    yerr=None,
+    xerr=None,
+    secondary_y=False,
+    sort_columns=False,
+    **kwds
+):
     """
     Make plots of DataFrames using matplotlib / pylab.
 
@@ -1242,12 +1489,36 @@ def plot_frame(data, x=None, y=None, kind='line', ax=None,
       From 0 (left/bottom-end) to 1 (right/top-end). Default is 0.5 (center)
     """
 
-    return _plot(data, kind=kind, x=x, y=y, ax=ax,
-                 figsize=figsize, use_index=use_index, title=title,
-                 grid=grid, legend=legend, subplots=subplots,
-                 style=style, logx=logx, logy=logy, loglog=loglog,
-                 xticks=xticks, yticks=yticks, xlim=xlim, ylim=ylim,
-                 rot=rot, fontsize=fontsize, colormap=colormap, table=table,
-                 yerr=yerr, xerr=xerr, sharex=sharex, sharey=sharey,
-                 secondary_y=secondary_y, layout=layout, sort_columns=sort_columns,
-                 **kwds)
+    return _plot(
+        data,
+        kind=kind,
+        x=x,
+        y=y,
+        ax=ax,
+        figsize=figsize,
+        use_index=use_index,
+        title=title,
+        grid=grid,
+        legend=legend,
+        subplots=subplots,
+        style=style,
+        logx=logx,
+        logy=logy,
+        loglog=loglog,
+        xticks=xticks,
+        yticks=yticks,
+        xlim=xlim,
+        ylim=ylim,
+        rot=rot,
+        fontsize=fontsize,
+        colormap=colormap,
+        table=table,
+        yerr=yerr,
+        xerr=xerr,
+        sharex=sharex,
+        sharey=sharey,
+        secondary_y=secondary_y,
+        layout=layout,
+        sort_columns=sort_columns,
+        **kwds
+    )

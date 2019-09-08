@@ -26,8 +26,14 @@ import pandas as pd
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
-from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType, \
-    to_arrow_type
+from pyspark.sql.types import (
+    DoubleType,
+    FloatType,
+    LongType,
+    StringType,
+    TimestampType,
+    to_arrow_type,
+)
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.internal import _InternalFrame
@@ -46,6 +52,7 @@ def _column_op(f):
     :param self: Koalas Series
     :param args: arguments that the function `f` takes.
     """
+
     @wraps(f)
     def wrapper(self, *args):
         # It is possible for the function `f` takes other arguments than Spark Column.
@@ -77,10 +84,11 @@ def _numpy_column_op(f):
         for arg in args:
             # TODO: This is a quick hack to support NumPy type. We should revisit this.
             if isinstance(self.spark_type, LongType) and isinstance(arg, np.timedelta64):
-                new_args.append(float(arg / np.timedelta64(1, 's')))
+                new_args.append(float(arg / np.timedelta64(1, "s")))
             else:
                 new_args.append(arg)
         return _column_op(f)(self, *new_args)
+
     return wrapper
 
 
@@ -89,9 +97,7 @@ def _wrap_accessor_spark(accessor, fn, return_type=None):
     Wrap an accessor property or method, e.g., Series.dt.date with a spark function.
     """
     if return_type:
-        return _column_op(
-            lambda col: fn(col).cast(return_type)
-        )(accessor._data)
+        return _column_op(lambda col: fn(col).cast(return_type))(accessor._data)
     else:
         return _column_op(fn)(accessor._data)
 
@@ -119,6 +125,7 @@ class IndexOpsMixin(object):
     def _with_new_scol(self, scol: spark.Column) -> IndexOpsMixin
         Creates new object with the new column
     """
+
     def __init__(self, internal: _InternalFrame, kdf):
         self._internal = internal  # type: _InternalFrame
         self._kdf = kdf
@@ -139,7 +146,7 @@ class IndexOpsMixin(object):
             elif isinstance(other, str):
                 return _column_op(F.concat)(self, F.lit(other))
             else:
-                raise TypeError('string addition can only be applied to string series or literals.')
+                raise TypeError("string addition can only be applied to string series or literals.")
         else:
             return _column_op(spark.Column.__add__)(self, other)
 
@@ -148,8 +155,8 @@ class IndexOpsMixin(object):
         # behaviors. Pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
         if isinstance(other, IndexOpsMixin) and isinstance(self.spark_type, TimestampType):
             if not isinstance(other.spark_type, TimestampType):
-                raise TypeError('datetime subtraction can only be applied to datetime series.')
-            return self.astype('bigint') - other.astype('bigint')
+                raise TypeError("datetime subtraction can only be applied to datetime series.")
+            return self.astype("bigint") - other.astype("bigint")
         else:
             return _column_op(spark.Column.__sub__)(self, other)
 
@@ -172,11 +179,13 @@ class IndexOpsMixin(object):
 
     def __floordiv__(self, other):
         return self._with_new_scol(
-            F.floor(_numpy_column_op(spark.Column.__div__)(self, other)._scol))
+            F.floor(_numpy_column_op(spark.Column.__div__)(self, other)._scol)
+        )
 
     def __rfloordiv__(self, other):
         return self._with_new_scol(
-            F.floor(_numpy_column_op(spark.Column.__rdiv__)(self, other)._scol))
+            F.floor(_numpy_column_op(spark.Column.__rdiv__)(self, other)._scol)
+        )
 
     __rmod__ = _column_op(spark.Column.__rmod__)
     __pow__ = _column_op(spark.Column.__pow__)
@@ -220,7 +229,7 @@ class IndexOpsMixin(object):
         dtype('<M8[ns]')
         """
         if type(self.spark_type) == TimestampType:
-            return np.dtype('datetime64[ns]')
+            return np.dtype("datetime64[ns]")
         else:
             return np.dtype(to_arrow_type(self.spark_type).to_pandas_dtype())
 
@@ -387,6 +396,7 @@ class IndexOpsMixin(object):
         Int64Index([1, 2], dtype='int64', name='a')
         """
         from databricks.koalas.typedef import as_spark_type
+
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
@@ -437,9 +447,10 @@ class IndexOpsMixin(object):
         Index([True, False, True, False, True, False], dtype='object', name='a')
         """
         if not is_list_like(values):
-            raise TypeError("only list-like objects are allowed to be passed"
-                            " to isin(), you passed a [{values_type}]"
-                            .format(values_type=type(values).__name__))
+            raise TypeError(
+                "only list-like objects are allowed to be passed"
+                " to isin(), you passed a [{values_type}]".format(values_type=type(values).__name__)
+            )
 
         return self._with_new_scol(self._scol.isin(list(values))).rename(self.name)
 
@@ -562,7 +573,7 @@ class IndexOpsMixin(object):
         False
         """
 
-        if axis not in [0, 'index']:
+        if axis not in [0, "index"]:
             raise ValueError('axis should be either 0 or "index" currently.')
 
         sdf = self._kdf._sdf.select(self._scol)
@@ -572,7 +583,7 @@ class IndexOpsMixin(object):
         # any and every was added as of Spark 3.0
         # ret = sdf.select(F.expr("every(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
         # Here we use min as its alternative:
-        ret = sdf.select(F.min(F.coalesce(col.cast('boolean'), F.lit(True)))).collect()[0][0]
+        ret = sdf.select(F.min(F.coalesce(col.cast("boolean"), F.lit(True)))).collect()[0][0]
         if ret is None:
             return True
         else:
@@ -625,7 +636,7 @@ class IndexOpsMixin(object):
         True
         """
 
-        if axis not in [0, 'index']:
+        if axis not in [0, "index"]:
             raise ValueError('axis should be either 0 or "index" currently.')
 
         sdf = self._kdf._sdf.select(self._scol)
@@ -635,7 +646,7 @@ class IndexOpsMixin(object):
         # any and every was added as of Spark 3.0
         # ret = sdf.select(F.expr("any(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
         # Here we use max as its alternative:
-        ret = sdf.select(F.max(F.coalesce(col.cast('boolean'), F.lit(False)))).collect()[0][0]
+        ret = sdf.select(F.max(F.coalesce(col.cast("boolean"), F.lit(False)))).collect()[0][0]
         if ret is None:
             return False
         else:
@@ -693,11 +704,14 @@ class IndexOpsMixin(object):
 
     def _shift(self, periods, fill_value, part_cols=()):
         if not isinstance(periods, int):
-            raise ValueError('periods should be an int; however, got [%s]' % type(periods))
+            raise ValueError("periods should be an int; however, got [%s]" % type(periods))
 
         col = self._scol
-        window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
+        window = (
+            Window.partitionBy(*part_cols)
+            .orderBy(self._internal.index_scols)
             .rowsBetween(-periods, -periods)
+        )
         lag_col = F.lag(col, periods).over(window)
         col = F.when(lag_col.isNull() | F.isnan(lag_col), fill_value).otherwise(lag_col)
         return self._with_new_scol(col).rename(self.name)

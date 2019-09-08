@@ -28,10 +28,10 @@ if TYPE_CHECKING:
     import databricks.koalas as ks
 
 
-CORRELATION_OUTPUT_COLUMN = '_correlation_output'
+CORRELATION_OUTPUT_COLUMN = "_correlation_output"
 
 
-def corr(kdf: 'ks.DataFrame', method: str = 'pearson') -> pd.DataFrame:
+def corr(kdf: "ks.DataFrame", method: str = "pearson") -> pd.DataFrame:
     """
     The correlation matrix of all the numerical columns of this dataframe.
 
@@ -48,7 +48,7 @@ def corr(kdf: 'ks.DataFrame', method: str = 'pearson') -> pd.DataFrame:
     A  1.0 -1.0
     B -1.0  1.0
     """
-    assert method in ('pearson', 'spearman')
+    assert method in ("pearson", "spearman")
     ndf, fields = to_numeric_df(kdf)
     corr = Correlation.corr(ndf, CORRELATION_OUTPUT_COLUMN, method)
     pcorr = corr.toPandas()
@@ -59,7 +59,7 @@ def corr(kdf: 'ks.DataFrame', method: str = 'pearson') -> pd.DataFrame:
     return arr
 
 
-def to_numeric_df(kdf: 'ks.DataFrame') -> Tuple[pyspark.sql.DataFrame, List[str]]:
+def to_numeric_df(kdf: "ks.DataFrame") -> Tuple[pyspark.sql.DataFrame, List[str]]:
     """
     Takes a dataframe and turns it into a dataframe containing a single numerical
     vector of doubles. This dataframe has a single field called '_1'.
@@ -73,10 +73,13 @@ def to_numeric_df(kdf: 'ks.DataFrame') -> Tuple[pyspark.sql.DataFrame, List[str]
     (DataFrame[_correlation_output: vector], ['A', 'B'])
     """
     # TODO, it should be more robust.
-    accepted_types = {np.dtype(dt) for dt in [np.int8, np.int16, np.int32, np.int64,
-                                              np.float32, np.float64, np.bool_]}
-    numeric_fields = [fname for fname in kdf._internal.data_columns
-                      if kdf[fname].dtype in accepted_types]
+    accepted_types = {
+        np.dtype(dt)
+        for dt in [np.int8, np.int16, np.int32, np.int64, np.float32, np.float64, np.bool_]
+    }
+    numeric_fields = [
+        fname for fname in kdf._internal.data_columns if kdf[fname].dtype in accepted_types
+    ]
     numeric_df = kdf._sdf.select(*[kdf._internal.scol_for(fname) for fname in numeric_fields])
     va = VectorAssembler(inputCols=numeric_fields, outputCol=CORRELATION_OUTPUT_COLUMN)
     v = va.transform(numeric_df).select(CORRELATION_OUTPUT_COLUMN)

@@ -296,8 +296,9 @@ class _Frame(object):
         def cumprod(scol):
             @pandas_udf(returnType=self._kdf._internal.spark_type_for(self.name))
             def negative_check(s):
-                assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), \
+                assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), (
                     "values should be bigger than 0: %s" % s
+                )
                 return s
 
             return F.sum(F.log(negative_check(scol)))
@@ -342,7 +343,8 @@ class _Frame(object):
             "`get_dtype_counts` has been deprecated and will be "
             "removed in a future version. For DataFrames use "
             "`.dtypes.value_counts()",
-            FutureWarning)
+            FutureWarning,
+        )
         if not isinstance(self.dtypes, Iterable):
             dtypes = [self.dtypes]
         else:
@@ -436,8 +438,7 @@ class _Frame(object):
         if isinstance(func, tuple):
             func, target = func
             if target in kwargs:
-                raise ValueError('%s is both the pipe target and a keyword '
-                                 'argument' % target)
+                raise ValueError("%s is both the pipe target and a keyword " "argument" % target)
             kwargs[target] = self
             return func(*args, **kwargs)
         else:
@@ -456,12 +457,29 @@ class _Frame(object):
         """
         return self.to_pandas().values
 
-    def to_csv(self, path_or_buf=None, sep=",", na_rep='', float_format=None,
-               columns=None, header=True, index=True, index_label=None,
-               mode='w', encoding=None, compression='infer', quoting=None,
-               quotechar='"', line_terminator="\n", chunksize=None,
-               tupleize_cols=None, date_format=None, doublequote=True,
-               escapechar=None, decimal='.'):
+    def to_csv(
+        self,
+        path_or_buf=None,
+        sep=",",
+        na_rep="",
+        float_format=None,
+        columns=None,
+        header=True,
+        index=True,
+        index_label=None,
+        mode="w",
+        encoding=None,
+        compression="infer",
+        quoting=None,
+        quotechar='"',
+        line_terminator="\n",
+        chunksize=None,
+        tupleize_cols=None,
+        date_format=None,
+        doublequote=True,
+        escapechar=None,
+        decimal=".",
+    ):
         """
         Write object to a comma-separated values (csv) file.
 
@@ -563,16 +581,27 @@ class _Frame(object):
         elif isinstance(self, ks.Series):
             f = pd.Series.to_csv
         else:
-            raise TypeError('Constructor expects DataFrame or Series; however, '
-                            'got [%s]' % (self,))
+            raise TypeError(
+                "Constructor expects DataFrame or Series; however, " "got [%s]" % (self,)
+            )
 
         return validate_arguments_and_invoke_function(
-            kdf._to_internal_pandas(), self.to_csv, f, args)
+            kdf._to_internal_pandas(), self.to_csv, f, args
+        )
 
-    def to_json(self, path_or_buf=None, orient=None, date_format=None,
-                double_precision=10, force_ascii=True, date_unit='ms',
-                default_handler=None, lines=False, compression='infer',
-                index=True):
+    def to_json(
+        self,
+        path_or_buf=None,
+        orient=None,
+        date_format=None,
+        double_precision=10,
+        force_ascii=True,
+        date_unit="ms",
+        default_handler=None,
+        lines=False,
+        compression="infer",
+        index=True,
+    ):
         """
         Convert the object to a JSON string.
 
@@ -716,16 +745,33 @@ class _Frame(object):
         elif isinstance(self, ks.Series):
             f = pd.Series.to_json
         else:
-            raise TypeError('Constructor expects DataFrame or Series; however, '
-                            'got [%s]' % (self,))
+            raise TypeError(
+                "Constructor expects DataFrame or Series; however, " "got [%s]" % (self,)
+            )
 
         return validate_arguments_and_invoke_function(
-            kdf._to_internal_pandas(), self.to_json, f, args)
+            kdf._to_internal_pandas(), self.to_json, f, args
+        )
 
-    def to_excel(self, excel_writer, sheet_name="Sheet1", na_rep="", float_format=None,
-                 columns=None, header=True, index=True, index_label=None, startrow=0,
-                 startcol=0, engine=None, merge_cells=True, encoding=None, inf_rep="inf",
-                 verbose=True, freeze_panes=None):
+    def to_excel(
+        self,
+        excel_writer,
+        sheet_name="Sheet1",
+        na_rep="",
+        float_format=None,
+        columns=None,
+        header=True,
+        index=True,
+        index_label=None,
+        startrow=0,
+        startcol=0,
+        engine=None,
+        merge_cells=True,
+        encoding=None,
+        inf_rep="inf",
+        verbose=True,
+        freeze_panes=None,
+    ):
         """
         Write object to an Excel sheet.
 
@@ -832,10 +878,12 @@ class _Frame(object):
         elif isinstance(self, ks.Series):
             f = pd.Series.to_excel
         else:
-            raise TypeError('Constructor expects DataFrame or Series; however, '
-                            'got [%s]' % (self,))
+            raise TypeError(
+                "Constructor expects DataFrame or Series; however, " "got [%s]" % (self,)
+            )
         return validate_arguments_and_invoke_function(
-            kdf._to_internal_pandas(), self.to_excel, f, args)
+            kdf._to_internal_pandas(), self.to_excel, f, args
+        )
 
     def mean(self, axis=None, numeric_only=True):
         """
@@ -879,7 +927,8 @@ class _Frame(object):
         2.0
         """
         return self._reduce_for_stat_function(
-            F.mean, name="mean", numeric_only=numeric_only, axis=axis)
+            F.mean, name="mean", numeric_only=numeric_only, axis=axis
+        )
 
     def sum(self, axis=None, numeric_only=True):
         """
@@ -923,7 +972,8 @@ class _Frame(object):
         6.0
         """
         return self._reduce_for_stat_function(
-            F.sum, name="sum", numeric_only=numeric_only, axis=axis)
+            F.sum, name="sum", numeric_only=numeric_only, axis=axis
+        )
 
     def skew(self, axis=None, numeric_only=True):
         """
@@ -960,7 +1010,8 @@ class _Frame(object):
         0.0
         """
         return self._reduce_for_stat_function(
-            F.skewness, name="skew", numeric_only=numeric_only, axis=axis)
+            F.skewness, name="skew", numeric_only=numeric_only, axis=axis
+        )
 
     def kurtosis(self, axis=None, numeric_only=True):
         """
@@ -998,7 +1049,8 @@ class _Frame(object):
         -1.5
         """
         return self._reduce_for_stat_function(
-            F.kurtosis, name="kurtosis", numeric_only=numeric_only, axis=axis)
+            F.kurtosis, name="kurtosis", numeric_only=numeric_only, axis=axis
+        )
 
     kurt = kurtosis
 
@@ -1044,7 +1096,8 @@ class _Frame(object):
         1.0
         """
         return self._reduce_for_stat_function(
-            F.min, name="min", numeric_only=numeric_only, axis=axis)
+            F.min, name="min", numeric_only=numeric_only, axis=axis
+        )
 
     def max(self, axis=None, numeric_only=False):
         """
@@ -1088,7 +1141,8 @@ class _Frame(object):
         3.0
         """
         return self._reduce_for_stat_function(
-            F.max, name="max", numeric_only=numeric_only, axis=axis)
+            F.max, name="max", numeric_only=numeric_only, axis=axis
+        )
 
     def std(self, axis=None, numeric_only=True):
         """
@@ -1132,7 +1186,8 @@ class _Frame(object):
         1.0
         """
         return self._reduce_for_stat_function(
-            F.stddev, name="std", numeric_only=numeric_only, axis=axis)
+            F.stddev, name="std", numeric_only=numeric_only, axis=axis
+        )
 
     def var(self, axis=None, numeric_only=True):
         """
@@ -1176,7 +1231,8 @@ class _Frame(object):
         1.0
         """
         return self._reduce_for_stat_function(
-            F.variance, name="var", numeric_only=numeric_only, axis=axis)
+            F.variance, name="var", numeric_only=numeric_only, axis=axis
+        )
 
     @property
     def size(self) -> int:
@@ -1305,9 +1361,9 @@ class _Frame(object):
         elif isinstance(by, Iterable):
             by = list(by)
         else:
-            raise ValueError('Not a valid index: TODO')
+            raise ValueError("Not a valid index: TODO")
         if not len(by):
-            raise ValueError('No group keys passed!')
+            raise ValueError("No group keys passed!")
         if isinstance(df_or_s, DataFrame):
             df = df_or_s  # type: DataFrame
             col_by = [_resolve_col(df, col_or_s) for col_or_s in by]
@@ -1317,8 +1373,9 @@ class _Frame(object):
             anchor = df_or_s._kdf
             col_by = [_resolve_col(anchor, col_or_s) for col_or_s in by]
             return SeriesGroupBy(col, col_by, as_index=as_index)
-        raise TypeError('Constructor expects DataFrame or Series; however, '
-                        'got [%s]' % (df_or_s,))
+        raise TypeError(
+            "Constructor expects DataFrame or Series; however, " "got [%s]" % (df_or_s,)
+        )
 
     def bool(self):
         """
@@ -1359,8 +1416,7 @@ class _Frame(object):
         elif isinstance(self, ks.Series):
             df = self.to_dataframe()
         else:
-            raise TypeError('bool() expects DataFrame or Series; however, '
-                            'got [%s]' % (self,))
+            raise TypeError("bool() expects DataFrame or Series; however, " "got [%s]" % (self,))
         return df.head(2)._to_internal_pandas().bool()
 
     def median(self, accuracy=10000):
@@ -1415,8 +1471,9 @@ class _Frame(object):
         if isinstance(kdf_or_ks, Series):
             ks = kdf_or_ks
             return self._reduce_for_stat_function(
-                lambda _: F.expr(
-                    "approx_percentile(`%s`, 0.5, %s)" % (ks.name, accuracy)), name="median")
+                lambda _: F.expr("approx_percentile(`%s`, 0.5, %s)" % (ks.name, accuracy)),
+                name="median",
+            )
         assert isinstance(kdf_or_ks, DataFrame)
 
         # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
@@ -1462,8 +1519,9 @@ class _Frame(object):
 
 def _resolve_col(kdf, col_like):
     if isinstance(col_like, ks.Series):
-        assert kdf is col_like._kdf, \
-            "Cannot combine column argument because it comes from a different dataframe"
+        assert (
+            kdf is col_like._kdf
+        ), "Cannot combine column argument because it comes from a different dataframe"
         return col_like
     elif isinstance(col_like, str):
         return kdf[col_like]
@@ -1477,6 +1535,7 @@ def _spark_col_apply(kdf_or_ks, sfun):
     """
     from databricks.koalas.frame import DataFrame
     from databricks.koalas.series import Series
+
     if isinstance(kdf_or_ks, Series):
         ks = kdf_or_ks
         return ks._with_new_scol(sfun(ks._scol))
