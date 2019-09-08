@@ -22,7 +22,6 @@ import pandas as pd
 import pyspark
 
 import databricks.koalas as ks
-from databricks.koalas.generic import max_display_count
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils

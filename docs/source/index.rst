@@ -14,4 +14,6 @@ pandas is the de facto standard (single-node) DataFrame implementation in Python
     :maxdepth: 3
 
     quickstart
+    user_guide/index
     reference/index
+

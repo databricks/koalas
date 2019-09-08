@@ -19,6 +19,7 @@ from distutils.version import LooseVersion
 import pandas as pd
 
 from databricks import koalas
+from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
@@ -60,6 +61,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)['a'])
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)[['a']])
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)[['a', 'c']])
+        self.assertRaises(ValueError, lambda: kdf.groupby(0, as_index=False)[['a', 'c']])
+        self.assertRaises(ValueError, lambda: kdf.groupby([0], as_index=False)[['a', 'c']])
 
         self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.b, as_index=False))
 
@@ -355,23 +358,27 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby(['b'])['a'].apply(lambda x: x).sort_index(),
                        pdf.groupby(['b'])['a'].apply(lambda x: x).sort_index())
 
-        # Data is intentionally big to test when schema inference is on.
-        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
-                            'b': [1, 1, 2, 3, 5, 8] * 300,
-                            'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
-        self.assert_eq(kdf.groupby("b").apply(lambda x: x + 1).sort_index(),
-                       pdf.groupby("b").apply(lambda x: x + 1).sort_index())
-        self.assert_eq(kdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index(),
-                       pdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index())
-        self.assert_eq(kdf.groupby(['b'])['a'].apply(lambda x: x).sort_index(),
-                       pdf.groupby(['b'])['a'].apply(lambda x: x).sort_index())
-        with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
-            kdf.groupby("b").apply(1)
+        # Less than 'compute.shortcut_limit' will execute a shortcut
+        # by using collected pandas dataframe directly.
+        # now we set the 'compute.shortcut_limit' as 1000 explicitly
+        set_option('compute.shortcut_limit', 1000)
+        try:
+            pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
+                                'b': [1, 1, 2, 3, 5, 8] * 300,
+                                'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
+            kdf = koalas.DataFrame(pdf)
+            self.assert_eq(kdf.groupby("b").apply(lambda x: x + 1).sort_index(),
+                           pdf.groupby("b").apply(lambda x: x + 1).sort_index())
+            self.assert_eq(kdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index(),
+                           pdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index())
+            self.assert_eq(kdf.groupby(['b'])['a'].apply(lambda x: x).sort_index(),
+                           pdf.groupby(['b'])['a'].apply(lambda x: x).sort_index())
+            with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
+                kdf.groupby("b").apply(1)
+        finally:
+            reset_option('compute.shortcut_limit')
 
     def test_apply_with_new_dataframe(self):
-        # Less than 1000 records will execute a shortcut by using collected pandas dataframe
-        # directly.
         pdf = pd.DataFrame({
             "timestamp": [0.0, 0.5, 1.0, 0.0, 0.5],
             "car_id": ['A', 'A', 'A', 'B', 'B']
@@ -382,16 +389,20 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index(),
             pdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index())
 
-        # 1000+ records will only infer the schema.
-        pdf = pd.DataFrame({
-            "timestamp": [0.0, 0.5, 1.0, 0.0, 0.5],
-            "car_id": ['A', 'A', 'A', 'B', 'B']
-        })
-        kdf = koalas.DataFrame(pdf)
+        set_option('compute.shortcut_limit', 1000)
+        try:
+            # 1000+ records will only infer the schema.
+            pdf = pd.DataFrame({
+                "timestamp": [0.0, 0.5, 1.0, 0.0, 0.5] * 300,
+                "car_id": ['A', 'A', 'A', 'B', 'B'] * 300
+            })
+            kdf = koalas.DataFrame(pdf)
 
-        self.assert_eq(
-            kdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index(),
-            pdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index())
+            self.assert_eq(
+                kdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index(),
+                pdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index())
+        finally:
+            reset_option('compute.shortcut_limit')
 
     def test_transform(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
@@ -405,19 +416,22 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby(['b'])['a'].transform(lambda x: x).sort_index(),
                        pdf.groupby(['b'])['a'].transform(lambda x: x).sort_index())
 
-        # Data is intentionally big to test when schema inference is on.
-        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
-                            'b': [1, 1, 2, 3, 5, 8] * 300,
-                            'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
-        self.assert_eq(kdf.groupby("b").transform(lambda x: x + 1).sort_index(),
-                       pdf.groupby("b").transform(lambda x: x + 1).sort_index())
-        self.assert_eq(kdf.groupby(['a', 'b']).transform(lambda x: x * x).sort_index(),
-                       pdf.groupby(['a', 'b']).transform(lambda x: x * x).sort_index())
-        self.assert_eq(kdf.groupby(['b'])['a'].transform(lambda x: x).sort_index(),
-                       pdf.groupby(['b'])['a'].transform(lambda x: x).sort_index())
-        with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
-            kdf.groupby("b").transform(1)
+        set_option('compute.shortcut_limit', 1000)
+        try:
+            pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
+                                'b': [1, 1, 2, 3, 5, 8] * 300,
+                                'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
+            kdf = koalas.DataFrame(pdf)
+            self.assert_eq(kdf.groupby("b").transform(lambda x: x + 1).sort_index(),
+                           pdf.groupby("b").transform(lambda x: x + 1).sort_index())
+            self.assert_eq(kdf.groupby(['a', 'b']).transform(lambda x: x * x).sort_index(),
+                           pdf.groupby(['a', 'b']).transform(lambda x: x * x).sort_index())
+            self.assert_eq(kdf.groupby(['b'])['a'].transform(lambda x: x).sort_index(),
+                           pdf.groupby(['b'])['a'].transform(lambda x: x).sort_index())
+            with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
+                kdf.groupby("b").transform(1)
+        finally:
+            reset_option('compute.shortcut_limit')
 
     def test_filter(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
@@ -428,18 +442,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby("b").filter(lambda x: x.b.mean() < 4).sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).filter(lambda x: any(x.a == 2)).sort_index(),
                        pdf.groupby(['a', 'b']).filter(lambda x: any(x.a == 2)).sort_index())
-
-        # Data is intentionally big to test when schema inference is on.
-        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
-                            'b': [1, 1, 2, 3, 5, 8] * 300,
-                            'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
-        self.assert_eq(kdf.groupby("b").filter(lambda x: x.b.mean() < 4).sort_index(),
-                       pdf.groupby("b").filter(lambda x: x.b.mean() < 4).sort_index())
-        self.assert_eq(kdf.groupby(['a', 'b']).filter(lambda x: any(x.a == 2)).sort_index(),
-                       pdf.groupby(['a', 'b']).filter(lambda x: any(x.a == 2)).sort_index())
-        with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
-            kdf.groupby("b").filter(1)
 
     def test_idxmax(self):
         pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3],

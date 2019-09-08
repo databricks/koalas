@@ -57,6 +57,13 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertEqual(list(kdf['diff_seconds'].toPandas()), [35545499, 33644699, 31571099])
 
+        kdf = ks.from_pandas(pd.DataFrame({
+                                          'a': pd.date_range('2016-12-31', '2017-01-08', freq='D'),
+                                          'b': pd.Series(range(9))}))
+        expected_error_message = 'datetime subtraction can only be applied to datetime series.'
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kdf['a'] - kdf['b']
+
     @unittest.skip(
         "It fails in certain OSs presumably due to different "
         "timezone behaviours inherited from C library.")
@@ -114,6 +121,9 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_dayofweek(self):
         self.check_func(lambda x: x.dt.dayofweek)
+
+    def test_weekday(self):
+        self.check_func(lambda x: x.dt.weekday)
 
     def test_dayofyear(self):
         self.check_func(lambda x: x.dt.dayofyear)

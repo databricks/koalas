@@ -27,10 +27,10 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.config import get_option
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.generic import max_display_count
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
 
@@ -239,14 +239,25 @@ class Index(IndexOpsMixin):
         raise AttributeError("'Index' object has no attribute '{}'".format(item))
 
     def __repr__(self):
-        sdf = self._kdf._sdf.select(self._scol).limit(max_display_count + 1)
+        max_display_count = get_option("display.max_rows")
+        sdf = self._kdf._sdf.select(self._scol)
+
+        if max_display_count is None:
+            return repr(DataFrame(self._kdf._internal.copy(
+                sdf=sdf,
+                index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
+                data_columns=[], column_index=[], column_index_names=None)).index.to_pandas())
+
+        sdf = sdf.limit(max_display_count + 1)
         internal = self._kdf._internal.copy(
             sdf=sdf,
             index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
             data_columns=[], column_index=[], column_index_names=None)
         pindex = DataFrame(internal).index.to_pandas()
+
         pindex_length = len(pindex)
         repr_string = repr(pindex[:max_display_count])
+
         if pindex_length > max_display_count:
             footer = '\nShowing only the first {}'.format(max_display_count)
             return repr_string + footer

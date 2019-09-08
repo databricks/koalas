@@ -16,17 +16,33 @@
 
 from databricks import koalas as ks
 from databricks.koalas import config
+from databricks.koalas.config import Option
 from databricks.koalas.testing.utils import ReusedSQLTestCase
 
 
 class ConfigTest(ReusedSQLTestCase):
 
     def setUp(self):
-        config._registered_options['test.config'] = 'default'
+        config._options_dict['test.config'] = Option(key='test.config', doc="", default="default")
+
+        config._options_dict['test.config.list'] = Option(
+            key='test.config.list', doc="", default=[], types=list)
+        config._options_dict['test.config.float'] = Option(
+            key='test.config.float', doc="", default=1.2, types=float)
+
+        config._options_dict['test.config.int'] = Option(
+            key='test.config.int', doc="", default=1,
+            types=int, check_func=(lambda v: v > 0, "bigger then 0"))
+        config._options_dict['test.config.int.none'] = Option(
+            key='test.config.int', doc="", default=None, types=(int, type(None)))
 
     def tearDown(self):
         ks.reset_option('test.config')
-        del config._registered_options['test.config']
+        del config._options_dict['test.config']
+        del config._options_dict['test.config.list']
+        del config._options_dict['test.config.float']
+        del config._options_dict['test.config.int']
+        del config._options_dict['test.config.int.none']
 
     def test_get_set_reset_option(self):
         self.assertEqual(ks.get_option('test.config'), 'default')
@@ -37,12 +53,45 @@ class ConfigTest(ReusedSQLTestCase):
         ks.reset_option('test.config')
         self.assertEqual(ks.get_option('test.config'), 'default')
 
+    def test_get_set_reset_option_different_types(self):
+        ks.set_option('test.config.list', [1, 2, 3, 4])
+        self.assertEqual(ks.get_option('test.config.list'), [1, 2, 3, 4])
+
+        ks.set_option('test.config.float', 5.0)
+        self.assertEqual(ks.get_option('test.config.float'), 5.0)
+
+        ks.set_option('test.config.int', 123)
+        self.assertEqual(ks.get_option('test.config.int'), 123)
+
+        self.assertEqual(ks.get_option('test.config.int.none'), None)  # default None
+        ks.set_option('test.config.int.none', 123)
+        self.assertEqual(ks.get_option('test.config.int.none'), 123)
+        ks.set_option('test.config.int.none', None)
+        self.assertEqual(ks.get_option('test.config.int.none'), None)
+
+    def test_different_types(self):
+        with self.assertRaisesRegex(ValueError, "was <class 'int'>"):
+            ks.set_option('test.config.list', 1)
+
+        with self.assertRaisesRegex(ValueError, "however, expected types are"):
+            ks.set_option('test.config.float', 'abc')
+
+        with self.assertRaisesRegex(ValueError, "[<class 'int'>]"):
+            ks.set_option('test.config.int', 'abc')
+
+        with self.assertRaisesRegex(ValueError, "(<class 'int'>, <class 'NoneType'>)"):
+            ks.set_option('test.config.int.none', 'abc')
+
+    def test_check_func(self):
+        with self.assertRaisesRegex(ValueError, "bigger then 0"):
+            ks.set_option('test.config.int', -1)
+
     def test_unknown_option(self):
-        with self.assertRaisesRegex(config.OptionError, 'No such key'):
+        with self.assertRaisesRegex(config.OptionError, 'No such option'):
             ks.get_option('unknown')
 
-        with self.assertRaisesRegex(config.OptionError, "No such key"):
+        with self.assertRaisesRegex(config.OptionError, "Available options"):
             ks.set_option('unknown', 'value')
 
-        with self.assertRaisesRegex(config.OptionError, "No such key"):
-            ks.reset_option('unknows')
+        with self.assertRaisesRegex(config.OptionError, "test.config"):
+            ks.reset_option('unknown')

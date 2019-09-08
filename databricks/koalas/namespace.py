@@ -33,13 +33,15 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.series import Series, _col
 
 
 __all__ = ["from_pandas", "range", "read_csv", "read_delta", "read_table", "read_spark_io",
            "read_parquet", "read_clipboard", "read_excel", "read_html", "to_datetime",
-           "get_dummies", "concat", "melt", "isna", "isnull", "notna", "notnull"]
+           "get_dummies", "concat", "melt", "isna", "isnull", "notna", "notnull",
+           "read_sql_table", "read_sql_query", "read_sql"]
 
 
 def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'DataFrame']:
@@ -751,6 +753,179 @@ def read_html(io, match='.+', flavor=None, header=None, index_col=None,
     return [from_pandas(pdf) for pdf in pdfs]
 
 
+# TODO: add `coerce_float` and 'parse_dates' parameters
+def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, **options):
+    """
+    Read SQL database table into a DataFrame.
+
+    Given a table name and a JDBC URI, returns a DataFrame.
+
+    Parameters
+    ----------
+    table_name : str
+        Name of SQL table in database.
+    con : str
+        A JDBC URI could be provided as as str.
+
+        .. note:: The URI must be JDBC URI instead of Python's database URI.
+
+    schema : str, default None
+        Name of SQL schema in database to query (if database flavor
+        supports this). Uses default schema if None (default).
+    index_col : str or list of str, optional, default: None
+        Column(s) to set as index(MultiIndex).
+    columns : list, default None
+        List of column names to select from SQL table.
+    options : dict
+        All other options passed directly into Spark's JDBC data source.
+
+    Returns
+    -------
+    DataFrame
+        A SQL table is returned as two-dimensional data structure with labeled
+        axes.
+
+    See Also
+    --------
+    read_sql_query : Read SQL query into a DataFrame.
+    read_sql : Read SQL query or database table into a DataFrame.
+
+    Examples
+    --------
+    >>> ks.read_sql_table('table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
+    """
+    reader = default_session().read
+    reader.option('dbtable', table_name)
+    reader.option('url', con)
+    if schema is not None:
+        reader.schema(schema)
+    reader.options(**options)
+    sdf = reader.format("jdbc").load()
+    if index_col is not None:
+        if isinstance(index_col, str):
+            index_col = [index_col]
+        sdf_columns = set(sdf.columns)
+        for col in index_col:
+            if col not in sdf_columns:
+                raise KeyError(col)
+        index_map = [(col, col) for col in index_col]
+    else:
+        index_map = None
+    kdf = DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    if columns is not None:
+        if isinstance(columns, str):
+            columns = [columns]
+        kdf = kdf[columns]
+    return kdf
+
+
+# TODO: add `coerce_float`, `params`, and 'parse_dates' parameters
+def read_sql_query(sql, con, index_col=None, **options):
+    """Read SQL query into a DataFrame.
+
+    Returns a DataFrame corresponding to the result set of the query
+    string. Optionally provide an `index_col` parameter to use one of the
+    columns as the index, otherwise default index will be used.
+
+    .. note:: Some database might hit the issue of Spark: SPARK-27596
+
+    Parameters
+    ----------
+    sql : string SQL query
+        SQL query to be executed.
+    con : str
+        A JDBC URI could be provided as as str.
+
+        .. note:: The URI must be JDBC URI instead of Python's database URI.
+
+    index_col : string or list of strings, optional, default: None
+        Column(s) to set as index(MultiIndex).
+    options : dict
+        All other options passed directly into Spark's JDBC data source.
+
+    Returns
+    -------
+    DataFrame
+
+    See Also
+    --------
+    read_sql_table : Read SQL database table into a DataFrame.
+    read_sql
+
+    Examples
+    --------
+    >>> ks.read_sql_query('SELECT * FROM table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
+    """
+    reader = default_session().read
+    reader.option('query', sql)
+    reader.option('url', con)
+    reader.options(**options)
+    sdf = reader.format("jdbc").load()
+    if index_col is not None:
+        if isinstance(index_col, str):
+            index_col = [index_col]
+        sdf_columns = set(sdf.columns)
+        for col in index_col:
+            if col not in sdf_columns:
+                raise KeyError(col)
+        index_map = [(col, col) for col in index_col]
+    else:
+        index_map = None
+    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+
+
+# TODO: add `coerce_float`, `params`, and 'parse_dates' parameters
+def read_sql(sql, con, index_col=None, columns=None, **options):
+    """
+    Read SQL query or database table into a DataFrame.
+
+    This function is a convenience wrapper around ``read_sql_table`` and
+    ``read_sql_query`` (for backward compatibility). It will delegate
+    to the specific function depending on the provided input. A SQL query
+    will be routed to ``read_sql_query``, while a database table name will
+    be routed to ``read_sql_table``. Note that the delegated function might
+    have more specific notes about their functionality not listed here.
+
+    .. note:: Some database might hit the issue of Spark: SPARK-27596
+
+    Parameters
+    ----------
+    sql : string
+        SQL query to be executed or a table name.
+    con : str
+        A JDBC URI could be provided as as str.
+
+        .. note:: The URI must be JDBC URI instead of Python's database URI.
+
+    index_col : string or list of strings, optional, default: None
+        Column(s) to set as index(MultiIndex).
+    columns : list, default: None
+        List of column names to select from SQL table (only used when reading
+        a table).
+    options : dict
+        All other options passed directly into Spark's JDBC data source.
+
+    Returns
+    -------
+    DataFrame
+
+    See Also
+    --------
+    read_sql_table : Read SQL database table into a DataFrame.
+    read_sql_query : Read SQL query into a DataFrame.
+
+    Examples
+    --------
+    >>> ks.read_sql('table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
+    >>> ks.read_sql('SELECT * FROM table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
+    """
+    striped = sql.strip()
+    if ' ' not in striped:  # TODO: identify the table name or not more precisely.
+        return read_sql_table(sql, con, index_col=index_col, columns=columns, options=options)
+    else:
+        return read_sql_query(sql, con, index_col=index_col, options=options)
+
+
 def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
     """
     Convert argument to datetime.
@@ -1404,11 +1579,14 @@ def notna(obj):
     2    NaN
     Name: 0, dtype: float64
 
-    >>> ser.notna()
+    >>> ks.notna(ser)
     0     True
     1     True
     2    False
     Name: 0, dtype: bool
+
+    >>> ks.notna(ser.index)
+    True
     """
     if isinstance(obj, (DataFrame, Series)):
         return obj.notna()

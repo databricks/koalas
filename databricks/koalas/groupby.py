@@ -38,6 +38,7 @@ from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
 from databricks.koalas.series import Series, _col
+from databricks.koalas.config import get_option
 
 
 class GroupBy(object):
@@ -803,7 +804,7 @@ class GroupBy(object):
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
-            limit = 1000
+            limit = get_option("compute.shortcut_limit")
             pdf = self._kdf.head(limit + 1)._to_internal_pandas()
             pdf = pdf.groupby(input_groupnames).apply(func)
             kdf = DataFrame(pdf)
@@ -1509,13 +1510,13 @@ class GroupBy(object):
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
-            limit = 1000
+            limit = get_option("compute.shortcut_limit")
             pdf = self._kdf.head(limit + 1)._to_internal_pandas()
             pdf = pdf.groupby(input_groupnames).transform(func)
             kdf = DataFrame(pdf)
             return_schema = kdf._sdf.schema
             if len(pdf) <= limit:
-                return pdf
+                return kdf
 
             sdf = self._spark_group_map_apply(
                 pandas_transform, return_schema, retain_index=True)

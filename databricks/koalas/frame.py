@@ -43,17 +43,19 @@ from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, F
                                IntegerType, LongType, NumericType, ShortType, StructType)
 from pyspark.sql.utils import AnalysisException
 from pyspark.sql.window import Window
-from pyspark.sql.functions import pandas_udf
+from pyspark.sql.functions import pandas_udf, PandasUDFType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.config import get_option
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
-from databricks.koalas.generic import _Frame, max_display_count
+from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, scol_for
 from databricks.koalas.typedef import as_spark_type
 from databricks.koalas.plot import KoalasFramePlotMethods
+from databricks.koalas.config import get_option
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
@@ -94,7 +96,7 @@ triangle        3      180
 rectangle       4      360
 
 Add a scalar with operator version which return the same
-results.
+results. Also reverse version.
 
 >>> df + 1
            angles  degrees
@@ -108,7 +110,19 @@ circle          1      361
 triangle        4      181
 rectangle       5      361
 
+>>> df.radd(1)
+           angles  degrees
+circle          1      361
+triangle        4      181
+rectangle       5      361
+
 Divide by constant with reverse version.
+
+>>> df / 10
+           angles  degrees
+circle        0.0     36.0
+triangle      0.3     18.0
+rectangle     0.4     36.0
 
 >>> df.div(10)
            angles  degrees
@@ -122,7 +136,7 @@ circle          NaN  0.027778
 triangle   3.333333  0.055556
 rectangle  2.500000  0.027778
 
-Subtract by constant.
+Subtract by constant with reverse version.
 
 >>> df - 1
            angles  degrees
@@ -136,7 +150,13 @@ circle         -1      359
 triangle        2      179
 rectangle       3      359
 
-Multiply by constant.
+>>> df.rsub(1)
+           angles  degrees
+circle          1     -359
+triangle       -2     -179
+rectangle      -3     -359
+
+Multiply by constant with reverse version.
 
 >>> df * 1
            angles  degrees
@@ -150,25 +170,33 @@ circle          0      360
 triangle        3      180
 rectangle       4      360
 
-Divide by constant.
-
->>> df / 1
+>>> df.rmul(1)
            angles  degrees
-circle        0.0    360.0
-triangle      3.0    180.0
-rectangle     4.0    360.0
+circle          0      360
+triangle        3      180
+rectangle       4      360
 
->>> df.div(1)
-           angles  degrees
-circle        0.0    360.0
-triangle      3.0    180.0
-rectangle     4.0    360.0
+Floor Divide by constant with reverse version.
 
->>> df // 2
+>>> df // 10
            angles  degrees
-circle          0      180
-triangle        1       90
-rectangle       2      180
+circle          0       36
+triangle        0       18
+rectangle       0       36
+
+>>> df.floordiv(10)
+           angles  degrees
+circle          0       36
+triangle        0       18
+rectangle       0       36
+
+>>> df.rfloordiv(10)
+           angles  degrees
+circle        NaN        0
+triangle      3.0        0
+rectangle     2.0        0
+
+Mod by constant with reverse version.
 
 >>> df % 2
            angles  degrees
@@ -176,11 +204,37 @@ circle          0        0
 triangle        1        0
 rectangle       0        0
 
+>>> df.mod(2)
+           angles  degrees
+circle          0        0
+triangle        1        0
+rectangle       0        0
+
+>>> df.rmod(2)
+           angles  degrees
+circle        NaN        2
+triangle      2.0        2
+rectangle     2.0        2
+
+Power by constant with reverse version.
+
+>>> df ** 2
+           angles   degrees
+circle        0.0  129600.0
+triangle      9.0   32400.0
+rectangle    16.0  129600.0
+
 >>> df.pow(2)
            angles   degrees
 circle        0.0  129600.0
 triangle      9.0   32400.0
 rectangle    16.0  129600.0
+
+>>> df.rpow(2)
+           angles        degrees
+circle        1.0  2.348543e+108
+triangle      8.0   1.532496e+54
+rectangle    16.0  2.348543e+108
 """
 
 T = TypeVar('T')
@@ -372,7 +426,7 @@ class DataFrame(_Frame, Generic[T]):
         elif axis in ('columns', 1):
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
-            limit = 1000
+            limit = get_option("compute.shortcut_limit")
             pdf = self.head(limit + 1)._to_internal_pandas()
             pser = getattr(pdf, name)(axis=axis, numeric_only=numeric_only)
             if len(pdf) <= limit:
@@ -395,22 +449,21 @@ class DataFrame(_Frame, Generic[T]):
                 "%s with a sequence is currently not supported; "
                 "however, got %s." % (op, type(other)))
 
-        applied = []
         if isinstance(other, DataFrame) and self is not other:
+            if self._internal.column_index_level != other._internal.column_index_level:
+                raise ValueError('cannot join with no overlapping index names')
+
             # Different DataFrames
-            def apply_op(kdf, this_columns, that_columns):
-                for this_column, that_column in zip(this_columns, that_columns):
-                    yield getattr(kdf[this_column], op)(kdf[that_column])
+            def apply_op(kdf, this_column_index, that_column_index):
+                for this_idx, that_idx in zip(this_column_index, that_column_index):
+                    yield (getattr(kdf[this_idx], op)(kdf[that_idx]), this_idx)
 
             return align_diff_frames(apply_op, self, other, fillna=True, how="full")
-        elif isinstance(other, DataFrame) and self is not other:
-            # Same DataFrames
-            for column in self._internal.data_columns:
-                applied.append(getattr(self[column], op)(other[column]))
         else:
             # DataFrame and Series
-            for column in self._internal.data_columns:
-                applied.append(getattr(self[column], op)(other))
+            applied = []
+            for idx in self._internal.column_index:
+                applied.append(getattr(self[idx], op)(other))
 
             sdf = self._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
@@ -592,7 +645,7 @@ class DataFrame(_Frame, Generic[T]):
         reverse='rpow')
 
     def rpow(self, other):
-        return other - self
+        return other ** self
 
     rpow.__doc__ = _flex_doc_FRAME.format(
         desc='Exponential power',
@@ -610,7 +663,7 @@ class DataFrame(_Frame, Generic[T]):
         reverse='rfloordiv')
 
     def rfloordiv(self, other):
-        return other - self
+        return other // self
 
     rfloordiv.__doc__ = _flex_doc_FRAME.format(
         desc='Integer division',
@@ -1353,7 +1406,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     # TODO: enable doctests once we drop Spark 2.3.x (due to type coercion logic
     #  when creating arrays)
-    def transpose(self, limit: Optional[int] = 1000):
+    def transpose(self):
         """
         Transpose index and columns.
 
@@ -1364,23 +1417,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         .. note:: This method is based on an expensive operation due to the nature
             of big data. Internally it needs to generate each row for each value, and
             then group twice - it is a huge operation. To prevent misusage, this method
-            has the default limit of input length, 1000 and raises a ValueError.
+            has the 'compute.max_rows' default limit of input length, and raises a ValueError.
 
+                >>> from databricks.koalas.config import get_option, set_option
+                >>> set_option('compute.max_rows', 1000)
                 >>> ks.DataFrame({'a': range(1001)}).transpose()  # doctest: +NORMALIZE_WHITESPACE
                 Traceback (most recent call last):
                   ...
                 ValueError: Current DataFrame has more then the given limit 1000 rows.
-                Please use df.transpose(limit=<maximum number of rows>) to retrieve more than
-                1000 rows. Note that, before changing the given 'limit', this operation is
-                considerably expensive.
-
-        Parameters
-        ----------
-        limit : int, optional
-            This parameter sets the limit of the current DataFrame. Set `None` to unlimit
-            the input length. When the limit is set, it is executed by the shortcut by collecting
-            the data into driver side, and then using pandas API. If the limit is unset,
-            the operation is executed by PySpark. Default is 1000.
+                Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option'
+                to retrieve to retrieve more than 1000 rows. Note that, before changing the
+                'compute.max_rows', this operation is considerably expensive.
 
         Returns
         -------
@@ -1460,14 +1507,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1    float64
         dtype: object
         """
-        if limit is not None:
-            pdf = self.head(limit + 1)._to_internal_pandas()
-            if len(pdf) > limit:
+        max_compute_count = get_option("compute.max_rows")
+        if max_compute_count is not None:
+            pdf = self.head(max_compute_count + 1)._to_internal_pandas()
+            if len(pdf) > max_compute_count:
                 raise ValueError(
-                    "Current DataFrame has more then the given limit %s rows. Please use "
-                    "df.transpose(limit=<maximum number of rows>) to retrieve more than %s rows. "
-                    "Note that, before changing the given 'limit', this operation is considerably "
-                    "expensive." % (limit, limit))
+                    "Current DataFrame has more then the given limit {0} rows. "
+                    "Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option' "
+                    "to retrieve to retrieve more than {0} rows. Note that, before changing the "
+                    "'compute.max_rows', this operation is considerably expensive."
+                    .format(max_compute_count))
             return DataFrame(pdf.transpose())
 
         # Explode the data to be pairs.
@@ -1538,7 +1587,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Call ``func`` on self producing a Series with transformed values
         and that has the same length as its input.
 
-        .. note:: unlike pandas, it is required for ``func`` to specify return type hint.
+        .. note:: this API executes the function once to infer the type which is
+             potentially expensive, for instance, when the dataset is created after
+             aggregations or sorting.
+
+             To avoid this, specify return type in ``func``, for instance, as below:
+
+             >>> def square(x) -> ks.Series[np.int32]:
+             ...     return x ** 2
+
+             Koalas uses return type hint and does not try to infer the type.
 
         .. note:: the series within ``func`` is actually a pandas series, and
             the length of each series is not guaranteed.
@@ -1574,20 +1632,48 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  0  1
         1  1  4
         2  4  9
+
+        You can omit the type hint and let Koalas infer its type.
+
+        >>> df.transform(lambda x: x ** 2)
+           A  B
+        0  0  1
+        1  1  4
+        2  4  9
+
         """
         assert callable(func), "the first argument should be a callable function."
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
-        if return_sig is None:
-            raise ValueError("Given function must have return type hint; however, not found.")
+        should_infer_schema = return_sig is None
 
-        wrapped = ks.pandas_wraps(func)
-        applied = []
-        for column in self._internal.data_columns:
-            applied.append(wrapped(self[column]).rename(column))
+        if should_infer_schema:
+            # Here we execute with the first 1000 to get the return type.
+            # If the records were less than 1000, it uses pandas API directly for a shortcut.
+            limit = get_option("compute.shortcut_limit")
+            pdf = self.head(limit + 1)._to_internal_pandas()
+            transformed = pdf.transform(func)
+            kdf = DataFrame(transformed)
+            return_schema = kdf._sdf.schema
+            if len(pdf) <= limit:
+                return kdf
+
+            applied = []
+            for input_column, output_column in zip(
+                    self._internal.data_columns, kdf._internal.data_columns):
+                pandas_func = pandas_udf(
+                    func,
+                    returnType=return_schema[output_column].dataType,
+                    functionType=PandasUDFType.SCALAR)
+                applied.append(pandas_func(self[input_column]._scol).alias(output_column))
+        else:
+            wrapped = ks.pandas_wraps(func)
+            applied = []
+            for column in self._internal.data_columns:
+                applied.append(wrapped(self[column]).rename(column)._scol)
 
         sdf = self._sdf.select(
-            self._internal.index_scols + [c._scol for c in applied])
+            self._internal.index_scols + [c for c in applied])
         internal = self._internal.copy(sdf=sdf)
 
         return DataFrame(internal)
@@ -1625,6 +1711,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         True
         """
         return len(self._internal.data_columns) == 0 or self._sdf.rdd.isEmpty()
+
+    @property
+    def style(self):
+        """
+        Property returning a Styler object containing methods for
+        building a styled HTML representation fo the DataFrame.
+
+        .. note:: currently it collects top 1000 rows and return its
+            pandas `pandas.io.formats.style.Styler` instance.
+
+        Examples
+        --------
+        >>> ks.range(1001).style  # doctest: +ELLIPSIS
+        <pandas.io.formats.style.Styler object at ...>
+        """
+        max_results = get_option('compute.max_rows')
+        pdf = self.head(max_results + 1).to_pandas()
+        if len(pdf) > max_results:
+            warnings.warn(
+                "'style' property will only use top %s rows." % max_results, UserWarning)
+        return pdf.head(max_results).style
 
     def set_index(self, keys, drop=True, append=False, inplace=False):
         """Set the DataFrame index (row labels) using one or more existing columns.
@@ -6493,6 +6600,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._internal.pandas_df
 
     def __repr__(self):
+        max_display_count = get_option("display.max_rows")
+        if max_display_count is None:
+            return repr(self._to_internal_pandas())
+
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
         repr_string = repr(pdf.iloc[:max_display_count])
@@ -6507,6 +6618,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return repr_string
 
     def _repr_html_(self):
+        max_display_count = get_option("display.max_rows")
+        if max_display_count is None:
+            return self._to_internal_pandas()._repr_html_()
+
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
         repr_html = pdf[:max_display_count]._repr_html_()
@@ -6532,20 +6647,38 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if (isinstance(value, Series) and value._kdf is not self) or \
                 (isinstance(value, DataFrame) and value is not self):
             # Different Series or DataFrames
+            level = self._internal.column_index_level
             if isinstance(value, Series):
                 value = value.to_frame()
+                value.columns = pd.MultiIndex.from_tuples(
+                    [tuple(list(value._internal.column_index[0]) + ([''] * (level - 1)))])
+            else:
+                assert isinstance(value, DataFrame)
+                value_level = value._internal.column_index_level
+                if value_level > level:
+                    value.columns = pd.MultiIndex.from_tuples(
+                        [idx[level:] for idx in value._internal.column_index])
+                elif value_level < level:
+                    value.columns = pd.MultiIndex.from_tuples(
+                        [tuple(list(idx) + ([''] * (level - value_level)))
+                         for idx in value._internal.column_index])
 
-            if not isinstance(key, (tuple, list)):
+            if isinstance(key, str):
+                key = [(key,)]
+            elif isinstance(key, tuple):
                 key = [key]
+            else:
+                key = [k if isinstance(k, tuple) else (k,) for k in key]
 
-            def assign_columns(kdf, this_columns, that_columns):
-                assert len(key) == len(that_columns)
+            def assign_columns(kdf, this_column_index, that_column_index):
+                assert len(key) == len(that_column_index)
                 # Note that here intentionally uses `zip_longest` that combine
                 # that_columns.
-                for k, this_column, that_column in zip_longest(key, this_columns, that_columns):
-                    yield kdf[that_column].rename(k)
-                    if this_column != k and this_column is not None:
-                        yield kdf[this_column]
+                for k, this_idx, that_idx \
+                        in zip_longest(key, this_column_index, that_column_index):
+                    yield (kdf[that_idx], tuple(['that', *k]))
+                    if this_idx is not None and this_idx[1:] != k:
+                        yield (kdf[this_idx], this_idx)
 
             kdf = align_diff_frames(assign_columns, self, value, fillna=False, how="left")
         elif isinstance(key, (tuple, list)):

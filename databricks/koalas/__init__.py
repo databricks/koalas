@@ -39,10 +39,12 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index, MultiIndex
 from databricks.koalas.series import Series
 from databricks.koalas.typedef import pandas_wraps
+from databricks.koalas.config import get_option, set_option, reset_option
 
 __all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
            'get_dummies', 'DataFrame', 'Series', 'Index', 'MultiIndex', 'pandas_wraps',
-           'sql', 'range', 'concat', 'melt']
+           'sql', 'range', 'concat', 'melt', 'get_option', 'set_option', 'reset_option',
+           'read_sql_table', 'read_sql_query', 'read_sql']
 
 
 def _auto_patch():
