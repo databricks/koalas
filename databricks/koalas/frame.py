@@ -116,7 +116,7 @@ circle          1      361
 triangle        4      181
 rectangle       5      361
 
-Divide by constant with reverse version.
+Divide & True Divide by constant with reverse version.
 
 >>> df / 10
            angles  degrees
@@ -131,6 +131,18 @@ triangle      0.3     18.0
 rectangle     0.4     36.0
 
 >>> df.rdiv(10)
+             angles   degrees
+circle          NaN  0.027778
+triangle   3.333333  0.055556
+rectangle  2.500000  0.027778
+
+>>> df.truediv(10)
+           angles  degrees
+circle        0.0     36.0
+triangle      0.3     18.0
+rectangle     0.4     36.0
+
+>>> df.rtruediv(10)
              angles   degrees
 circle          NaN  0.027778
 triangle   3.333333  0.055556
