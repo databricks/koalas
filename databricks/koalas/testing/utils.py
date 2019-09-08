@@ -32,13 +32,12 @@ from databricks.koalas.series import Series
 
 
 class PySparkTestCase(unittest.TestCase):
-
     def setUp(self):
         self._old_sys_path = list(sys.path)
         if SparkContext._active_spark_context is not None:
             SparkContext._active_spark_context.stop()
         class_name = self.__class__.__name__
-        self.sc = SparkContext('local[4]', class_name)
+        self.sc = SparkContext("local[4]", class_name)
 
     def tearDown(self):
         self.sc.stop()
@@ -46,7 +45,6 @@ class PySparkTestCase(unittest.TestCase):
 
 
 class ReusedPySparkTestCase(unittest.TestCase):
-
     @classmethod
     def conf(cls):
         """
@@ -58,7 +56,7 @@ class ReusedPySparkTestCase(unittest.TestCase):
     def setUpClass(cls):
         if SparkContext._active_spark_context is not None:
             SparkContext._active_spark_context.stop()
-        cls.sc = SparkContext('local[4]', cls.__name__, conf=cls.conf())
+        cls.sc = SparkContext("local[4]", cls.__name__, conf=cls.conf())
 
     @classmethod
     def tearDownClass(cls):
@@ -154,13 +152,12 @@ class SQLTestUtils(object):
 
 
 class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
-
     @classmethod
     def setUpClass(cls):
         super(ReusedSQLTestCase, cls).setUpClass()
         cls.spark = SparkSession(cls.sc)
 
-        cls.spark.conf.set('spark.sql.execution.arrow.enabled', True)
+        cls.spark.conf.set("spark.sql.execution.arrow.enabled", True)
 
     @classmethod
     def tearDownClass(cls):
@@ -170,19 +167,25 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
 
     def assertPandasEqual(self, left, right):
         if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
-            msg = ("DataFrames are not equal: " +
-                   "\n\nLeft:\n%s\n%s" % (left, left.dtypes) +
-                   "\n\nRight:\n%s\n%s" % (right, right.dtypes))
+            msg = (
+                "DataFrames are not equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtypes)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtypes)
+            )
             self.assertTrue(left.equals(right), msg=msg)
         elif isinstance(left, pd.Series) and isinstance(right, pd.Series):
-            msg = ("Series are not equal: " +
-                   "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
-                   "\n\nRight:\n%s\n%s" % (right, right.dtype))
+            msg = (
+                "Series are not equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtype)
+            )
             self.assertTrue((left == right).all(), msg=msg)
         elif isinstance(left, pd.Index) and isinstance(right, pd.Index):
-            msg = ("Indices are not equal: " +
-                   "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
-                   "\n\nRight:\n%s\n%s" % (right, right.dtype))
+            msg = (
+                "Indices are not equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtype)
+            )
             self.assertTrue((left == right).all(), msg=msg)
         else:
             raise ValueError("Unexpected values: (%s, %s)" % (left, right))
@@ -196,9 +199,11 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
             dropping missing values (NaN, NaT, None)
         """
         if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
-            msg = ("DataFrames are not almost equal: " +
-                   "\n\nLeft:\n%s\n%s" % (left, left.dtypes) +
-                   "\n\nRight:\n%s\n%s" % (right, right.dtypes))
+            msg = (
+                "DataFrames are not almost equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtypes)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtypes)
+            )
             self.assertEqual(left.shape, right.shape, msg=msg)
             for lcol, rcol in zip(left.columns, right.columns):
                 self.assertEqual(str(lcol), str(rcol), msg=msg)
@@ -207,18 +212,22 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
                 for lval, rval in zip(left[lcol].dropna(), right[rcol].dropna()):
                     self.assertAlmostEqual(lval, rval, msg=msg)
         elif isinstance(left, pd.Series) and isinstance(left, pd.Series):
-            msg = ("Series are not almost equal: " +
-                   "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
-                   "\n\nRight:\n%s\n%s" % (right, right.dtype))
+            msg = (
+                "Series are not almost equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtype)
+            )
             self.assertEqual(len(left), len(right), msg=msg)
             for lnull, rnull in zip(left.isnull(), right.isnull()):
                 self.assertEqual(lnull, rnull, msg=msg)
             for lval, rval in zip(left.dropna(), right.dropna()):
                 self.assertAlmostEqual(lval, rval, msg=msg)
         elif isinstance(left, pd.Index) and isinstance(left, pd.Index):
-            msg = ("Indices are not almost equal: " +
-                   "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
-                   "\n\nRight:\n%s\n%s" % (right, right.dtype))
+            msg = (
+                "Indices are not almost equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtype)
+            )
             self.assertEqual(len(left), len(right), msg=msg)
             for lnull, rnull in zip(left.isnull(), right.isnull()):
                 self.assertEqual(lnull, rnull, msg=msg)
@@ -262,7 +271,6 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
 
 
 class TestUtils(object):
-
     @contextmanager
     def temp_dir(self):
         tmp = tempfile.mkdtemp()
@@ -278,7 +286,6 @@ class TestUtils(object):
 
 
 class ComparisonTestBase(ReusedSQLTestCase):
-
     @property
     def kdf(self):
         return koalas.from_pandas(self.pdf)
