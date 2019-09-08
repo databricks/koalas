@@ -21,26 +21,21 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
 class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
-
     def test_from_pandas(self):
-        pdf = pd.DataFrame({'year': [2015, 2016],
-                            'month': [2, 3],
-                            'day': [4, 5]})
+        pdf = pd.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
         kdf = ks.from_pandas(pdf)
         pidx = pdf.index
         kidx = kdf.index
 
-        expected_error_message = 'Unknown data type: {}'.format(type(kidx))
+        expected_error_message = "Unknown data type: {}".format(type(kidx))
         with self.assertRaisesRegex(ValueError, expected_error_message):
             ks.from_pandas(kidx)
-        expected_error_message = 'Unknown data type: {}'.format(type(pidx))
+        expected_error_message = "Unknown data type: {}".format(type(pidx))
         with self.assertRaisesRegex(ValueError, expected_error_message):
             ks.from_pandas(pidx)
 
     def test_to_datetime(self):
-        pdf = pd.DataFrame({'year': [2015, 2016],
-                            'month': [2, 3],
-                            'day': [4, 5]})
+        pdf = pd.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
         kdf = ks.from_pandas(pdf)
         dict_from_pdf = pdf.to_dict()
 
@@ -48,60 +43,65 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pd.to_datetime(dict_from_pdf), ks.to_datetime(dict_from_pdf))
 
     def test_concat(self):
-        pdf = pd.DataFrame({'A': [0, 2, 4], 'B': [1, 3, 5]})
+        pdf = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5]})
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(
-            ks.concat([kdf, kdf.reset_index()]),
-            pd.concat([pdf, pdf.reset_index()]))
+        self.assert_eq(ks.concat([kdf, kdf.reset_index()]), pd.concat([pdf, pdf.reset_index()]))
 
         self.assert_eq(
-            ks.concat([kdf, kdf[['A']]], ignore_index=True),
-            pd.concat([pdf, pdf[['A']]], ignore_index=True))
+            ks.concat([kdf, kdf[["A"]]], ignore_index=True),
+            pd.concat([pdf, pdf[["A"]]], ignore_index=True),
+        )
 
         self.assert_eq(
-            ks.concat([kdf, kdf[['A']]], join="inner"),
-            pd.concat([pdf, pdf[['A']]], join="inner"))
+            ks.concat([kdf, kdf[["A"]]], join="inner"), pd.concat([pdf, pdf[["A"]]], join="inner")
+        )
 
         self.assertRaisesRegex(TypeError, "first argument must be", lambda: ks.concat(kdf))
-        self.assertRaisesRegex(
-            TypeError, "cannot concatenate object", lambda: ks.concat([kdf, 1]))
+        self.assertRaisesRegex(TypeError, "cannot concatenate object", lambda: ks.concat([kdf, 1]))
 
-        kdf2 = kdf.set_index('B', append=True)
+        kdf2 = kdf.set_index("B", append=True)
         self.assertRaisesRegex(
-            ValueError, "Index type and names should be same", lambda: ks.concat([kdf, kdf2]))
+            ValueError, "Index type and names should be same", lambda: ks.concat([kdf, kdf2])
+        )
 
         self.assertRaisesRegex(ValueError, "No objects to concatenate", lambda: ks.concat([]))
 
-        self.assertRaisesRegex(
-            ValueError, "All objects passed", lambda: ks.concat([None, None]))
+        self.assertRaisesRegex(ValueError, "All objects passed", lambda: ks.concat([None, None]))
 
         self.assertRaisesRegex(
-            ValueError, 'axis should be either 0 or', lambda: ks.concat([kdf, kdf], axis=1))
+            ValueError, "axis should be either 0 or", lambda: ks.concat([kdf, kdf], axis=1)
+        )
 
         pdf3 = pdf.copy()
         kdf3 = kdf.copy()
 
-        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B')])
+        columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B")])
         pdf3.columns = columns
         kdf3.columns = columns
 
-        self.assert_eq(ks.concat([kdf3, kdf3.reset_index()]),
-                       pd.concat([pdf3, pdf3.reset_index()]))
+        self.assert_eq(ks.concat([kdf3, kdf3.reset_index()]), pd.concat([pdf3, pdf3.reset_index()]))
 
         self.assert_eq(
-            ks.concat([kdf3, kdf3[[('X', 'A')]]], ignore_index=True),
-            pd.concat([pdf3, pdf3[[('X', 'A')]]], ignore_index=True))
+            ks.concat([kdf3, kdf3[[("X", "A")]]], ignore_index=True),
+            pd.concat([pdf3, pdf3[[("X", "A")]]], ignore_index=True),
+        )
 
         self.assert_eq(
-            ks.concat([kdf3, kdf3[[('X', 'A')]]], join="inner"),
-            pd.concat([pdf3, pdf3[[('X', 'A')]]], join="inner"))
+            ks.concat([kdf3, kdf3[[("X", "A")]]], join="inner"),
+            pd.concat([pdf3, pdf3[[("X", "A")]]], join="inner"),
+        )
 
-        self.assertRaisesRegex(ValueError, "MultiIndex columns should have the same levels",
-                               lambda: ks.concat([kdf, kdf3]))
+        self.assertRaisesRegex(
+            ValueError,
+            "MultiIndex columns should have the same levels",
+            lambda: ks.concat([kdf, kdf3]),
+        )
 
-        pdf4 = pd.DataFrame({'A': [0, 2, 4], 'B': [1, 3, 5], 'C': [10, 20, 30]})
+        pdf4 = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5], "C": [10, 20, 30]})
         kdf4 = ks.from_pandas(pdf4)
         self.assertRaisesRegex(
-            ValueError, r'Only can inner \(intersect\) or outer \(union\) join the other axis.',
-            lambda: ks.concat([kdf, kdf4], join=''))
+            ValueError,
+            r"Only can inner \(intersect\) or outer \(union\) join the other axis.",
+            lambda: ks.concat([kdf, kdf4], join=""),
+        )

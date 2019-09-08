@@ -20,7 +20,8 @@ from collections import defaultdict
 import base64
 from io import BytesIO
 import matplotlib
-matplotlib.use('agg')
+
+matplotlib.use("agg")
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -34,10 +35,9 @@ from databricks.koalas.missing.series import _MissingPandasLikeSeries
 
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
-
     @property
     def ps(self):
-        return pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
+        return pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
 
     @property
     def ks(self):
@@ -52,31 +52,31 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
-        s = koalas.range(10)['id']
+        s = koalas.range(10)["id"]
         s.__repr__()
-        s.rename('a', inplace=True)
+        s.rename("a", inplace=True)
         self.assertEqual(s.__repr__(), s.rename("a").__repr__())
 
     def test_empty_series(self):
-        a = pd.Series([], dtype='i1')
-        b = pd.Series([], dtype='str')
+        a = pd.Series([], dtype="i1")
+        b = pd.Series([], dtype="str")
 
         self.assert_eq(koalas.from_pandas(a), a)
         self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
 
-        with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
+        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
             self.assert_eq(koalas.from_pandas(a), a)
             self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
 
     def test_all_null_series(self):
-        a = pd.Series([None, None, None], dtype='float64')
-        b = pd.Series([None, None, None], dtype='str')
+        a = pd.Series([None, None, None], dtype="float64")
+        b = pd.Series([None, None, None], dtype="str")
 
         self.assert_eq(koalas.from_pandas(a).dtype, a.dtype)
         self.assertTrue(koalas.from_pandas(a).toPandas().isnull().all())
         self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
 
-        with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
+        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
             self.assert_eq(koalas.from_pandas(a).dtype, a.dtype)
             self.assertTrue(koalas.from_pandas(a).toPandas().isnull().all())
             self.assertRaises(ValueError, lambda: koalas.from_pandas(b))
@@ -90,33 +90,33 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # TODO: self.assert_eq(ks.tail(3), ps.tail(3))
 
     def test_rename(self):
-        ps = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
+        ps = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
         ks = koalas.from_pandas(ps)
 
-        ps.name = 'renamed'
-        ks.name = 'renamed'
-        self.assertEqual(ks.name, 'renamed')
+        ps.name = "renamed"
+        ks.name = "renamed"
+        self.assertEqual(ks.name, "renamed")
         self.assert_eq(ks, ps)
 
         pidx = ps.index
         kidx = ks.index
-        pidx.name = 'renamed'
-        kidx.name = 'renamed'
-        self.assertEqual(kidx.name, 'renamed')
+        pidx.name = "renamed"
+        kidx.name = "renamed"
+        self.assertEqual(kidx.name, "renamed")
         self.assert_eq(kidx, pidx)
 
     def test_rename_method(self):
         # Series name
-        ps = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
+        ps = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
         ks = koalas.from_pandas(ps)
 
-        self.assert_eq(ks.rename('y'), ps.rename('y'))
-        self.assertEqual(ks.name, 'x')  # no mutation
+        self.assert_eq(ks.rename("y"), ps.rename("y"))
+        self.assertEqual(ks.name, "x")  # no mutation
         self.assert_eq(ks.rename(), ps.rename())
 
-        ks.rename('z', inplace=True)
-        ps.rename('z', inplace=True)
-        self.assertEqual(ks.name, 'z')
+        ks.rename("z", inplace=True)
+        ps.rename("z", inplace=True)
+        self.assertEqual(ks.name, "z")
         self.assert_eq(ks, ps)
 
         # Series index
@@ -140,31 +140,33 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_values_property(self):
         ks = self.ks
-        msg = ("Koalas does not support the 'values' property. If you want to collect your data " +
-               "as an NumPy array, use 'to_numpy()' instead.")
+        msg = (
+            "Koalas does not support the 'values' property. If you want to collect your data "
+            + "as an NumPy array, use 'to_numpy()' instead."
+        )
         with self.assertRaises(NotImplementedError, msg=msg):
             ks.values
 
     def test_to_numpy(self):
-        s = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
+        s = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
 
         ddf = koalas.from_pandas(s)
         np.testing.assert_equal(ddf.to_numpy(), s.values)
 
     def test_isin(self):
-        s = pd.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'], name='animal')
+        s = pd.Series(["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal")
 
         ds = koalas.from_pandas(s)
 
-        self.assert_eq(ds.isin(['cow', 'lama']), s.isin(['cow', 'lama']))
-        self.assert_eq(ds.isin({'cow'}), s.isin({'cow'}))
+        self.assert_eq(ds.isin(["cow", "lama"]), s.isin(["cow", "lama"]))
+        self.assert_eq(ds.isin({"cow"}), s.isin({"cow"}))
 
         msg = "only list-like objects are allowed to be passed to isin()"
         with self.assertRaisesRegex(TypeError, msg):
             ds.isin(1)
 
     def test_fillna(self):
-        ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
+        ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
         ks = koalas.from_pandas(ps)
 
         self.assert_eq(ks.fillna(0), ps.fillna(0))
@@ -174,7 +176,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks, ps)
 
     def test_dropna(self):
-        ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
+        ps = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
 
         ks = koalas.from_pandas(ps)
 
@@ -210,39 +212,46 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(res.name, exp.name)
         self.assertPandasAlmostEqual(res.toPandas(), exp)
 
-        self.assertPandasAlmostEqual(ks.value_counts(normalize=True).toPandas(),
-                                     ps.value_counts(normalize=True))
-        self.assertPandasAlmostEqual(ks.value_counts(ascending=True).toPandas(),
-                                     ps.value_counts(ascending=True))
-        self.assertPandasAlmostEqual(ks.value_counts(normalize=True, dropna=False).toPandas(),
-                                     ps.value_counts(normalize=True, dropna=False))
-        self.assertPandasAlmostEqual(ks.value_counts(ascending=True, dropna=False).toPandas(),
-                                     ps.value_counts(ascending=True, dropna=False))
+        self.assertPandasAlmostEqual(
+            ks.value_counts(normalize=True).toPandas(), ps.value_counts(normalize=True)
+        )
+        self.assertPandasAlmostEqual(
+            ks.value_counts(ascending=True).toPandas(), ps.value_counts(ascending=True)
+        )
+        self.assertPandasAlmostEqual(
+            ks.value_counts(normalize=True, dropna=False).toPandas(),
+            ps.value_counts(normalize=True, dropna=False),
+        )
+        self.assertPandasAlmostEqual(
+            ks.value_counts(ascending=True, dropna=False).toPandas(),
+            ps.value_counts(ascending=True, dropna=False),
+        )
 
-        with self.assertRaisesRegex(NotImplementedError,
-                                    "value_counts currently does not support bins"):
+        with self.assertRaisesRegex(
+            NotImplementedError, "value_counts currently does not support bins"
+        ):
             ks.value_counts(bins=3)
 
-        ps.name = 'index'
-        ks.name = 'index'
+        ps.name = "index"
+        ks.name = "index"
         self.assertPandasAlmostEqual(ks.value_counts().toPandas(), ps.value_counts())
 
     def test_nsmallest(self):
         sample_lst = [1, 2, 3, 4, np.nan, 6]
-        ps = pd.Series(sample_lst, name='x')
-        ks = koalas.Series(sample_lst, name='x')
+        ps = pd.Series(sample_lst, name="x")
+        ks = koalas.Series(sample_lst, name="x")
         self.assert_eq(ks.nsmallest(n=3), ps.nsmallest(n=3))
         self.assert_eq(ks.nsmallest(), ps.nsmallest())
 
     def test_nlargest(self):
         sample_lst = [1, 2, 3, 4, np.nan, 6]
-        ps = pd.Series(sample_lst, name='x')
-        ks = koalas.Series(sample_lst, name='x')
+        ps = pd.Series(sample_lst, name="x")
+        ks = koalas.Series(sample_lst, name="x")
         self.assert_eq(ks.nlargest(n=3), ps.nlargest(n=3))
         self.assert_eq(ks.nlargest(), ps.nlargest())
 
     def test_isnull(self):
-        ps = pd.Series([1, 2, 3, 4, np.nan, 6], name='x')
+        ps = pd.Series([1, 2, 3, 4, np.nan, 6], name="x")
         ks = koalas.from_pandas(ps)
 
         self.assert_eq(ks.notnull(), ps.notnull())
@@ -255,73 +264,78 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks.isnull(), ps.isnull())
 
     def test_all(self):
-        for ps in [pd.Series([True, True], name='x'),
-                   pd.Series([True, False], name='x'),
-                   pd.Series([0, 1], name='x'),
-                   pd.Series([1, 2, 3], name='x'),
-                   pd.Series([True, True, None], name='x'),
-                   pd.Series([True, False, None], name='x'),
-                   pd.Series([], name='x'),
-                   pd.Series([np.nan], name='x')]:
+        for ps in [
+            pd.Series([True, True], name="x"),
+            pd.Series([True, False], name="x"),
+            pd.Series([0, 1], name="x"),
+            pd.Series([1, 2, 3], name="x"),
+            pd.Series([True, True, None], name="x"),
+            pd.Series([True, False, None], name="x"),
+            pd.Series([], name="x"),
+            pd.Series([np.nan], name="x"),
+        ]:
             ks = koalas.from_pandas(ps)
             self.assert_eq(ks.all(), ps.all())
 
-        ps = pd.Series([1, 2, 3, 4], name='x')
+        ps = pd.Series([1, 2, 3, 4], name="x")
         ks = koalas.from_pandas(ps)
 
         self.assert_eq((ks % 2 == 0).all(), (ps % 2 == 0).all())
 
     def test_any(self):
-        for ps in [pd.Series([False, False], name='x'),
-                   pd.Series([True, False], name='x'),
-                   pd.Series([0, 1], name='x'),
-                   pd.Series([1, 2, 3], name='x'),
-                   pd.Series([True, True, None], name='x'),
-                   pd.Series([True, False, None], name='x'),
-                   pd.Series([], name='x'),
-                   pd.Series([np.nan], name='x')]:
+        for ps in [
+            pd.Series([False, False], name="x"),
+            pd.Series([True, False], name="x"),
+            pd.Series([0, 1], name="x"),
+            pd.Series([1, 2, 3], name="x"),
+            pd.Series([True, True, None], name="x"),
+            pd.Series([True, False, None], name="x"),
+            pd.Series([], name="x"),
+            pd.Series([np.nan], name="x"),
+        ]:
             ks = koalas.from_pandas(ps)
             self.assert_eq(ks.any(), ps.any())
 
-        ps = pd.Series([1, 2, 3, 4], name='x')
+        ps = pd.Series([1, 2, 3, 4], name="x")
         ks = koalas.from_pandas(ps)
 
         self.assert_eq((ks % 2 == 0).any(), (ps % 2 == 0).any())
 
     def test_sort_values(self):
-        ps = pd.Series([1, 2, 3, 4, 5, None, 7], name='0')
+        ps = pd.Series([1, 2, 3, 4, 5, None, 7], name="0")
         ks = koalas.from_pandas(ps)
         self.assert_eq(repr(ks.sort_values()), repr(ps.sort_values()))
-        self.assert_eq(repr(ks.sort_values(ascending=False)),
-                       repr(ps.sort_values(ascending=False)))
-        self.assert_eq(repr(ks.sort_values(na_position='first')),
-                       repr(ps.sort_values(na_position='first')))
-        self.assertRaises(ValueError, lambda: ks.sort_values(na_position='invalid'))
+        self.assert_eq(repr(ks.sort_values(ascending=False)), repr(ps.sort_values(ascending=False)))
+        self.assert_eq(
+            repr(ks.sort_values(na_position="first")), repr(ps.sort_values(na_position="first"))
+        )
+        self.assertRaises(ValueError, lambda: ks.sort_values(na_position="invalid"))
         self.assert_eq(ks.sort_values(inplace=True), ps.sort_values(inplace=True))
         self.assert_eq(repr(ks), repr(ps))
 
     def test_sort_index(self):
-        ps = pd.Series([2, 1, np.nan], index=['b', 'a', np.nan], name='0')
+        ps = pd.Series([2, 1, np.nan], index=["b", "a", np.nan], name="0")
         ks = koalas.from_pandas(ps)
 
         # Assert invalid parameters
         self.assertRaises(ValueError, lambda: ks.sort_index(axis=1))
-        self.assertRaises(ValueError, lambda: ks.sort_index(kind='mergesort'))
-        self.assertRaises(ValueError, lambda: ks.sort_index(na_position='invalid'))
+        self.assertRaises(ValueError, lambda: ks.sort_index(kind="mergesort"))
+        self.assertRaises(ValueError, lambda: ks.sort_index(na_position="invalid"))
 
         # Assert default behavior without parameters
         self.assert_eq(ks.sort_index(), ps.sort_index(), almost=True)
         # Assert sorting descending
         self.assert_eq(ks.sort_index(ascending=False), ps.sort_index(ascending=False), almost=True)
         # Assert sorting NA indices first
-        self.assert_eq(ks.sort_index(na_position='first'), ps.sort_index(na_position='first'),
-                       almost=True)
+        self.assert_eq(
+            ks.sort_index(na_position="first"), ps.sort_index(na_position="first"), almost=True
+        )
         # Assert sorting inplace
         self.assertEqual(ks.sort_index(inplace=True), ps.sort_index(inplace=True))
         self.assert_eq(ks, ps, almost=True)
 
         # Assert multi-indices
-        ps = pd.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0')
+        ps = pd.Series(range(4), index=[["b", "b", "a", "a"], [1, 0, 1, 0]], name="0")
         ks = koalas.from_pandas(ps)
         self.assert_eq(ks.sort_index(), ps.sort_index(), almost=True)
         self.assert_eq(ks.sort_index(level=[1, 0]), ps.sort_index(level=[1, 0]), almost=True)
@@ -329,45 +343,60 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks.reset_index().sort_index(), ps.reset_index().sort_index())
 
     def test_to_datetime(self):
-        ps = pd.Series(['3/11/2000', '3/12/2000', '3/13/2000'] * 100)
+        ps = pd.Series(["3/11/2000", "3/12/2000", "3/13/2000"] * 100)
         ks = koalas.from_pandas(ps)
 
-        self.assert_eq(pd.to_datetime(ps, infer_datetime_format=True),
-                       koalas.to_datetime(ks, infer_datetime_format=True))
+        self.assert_eq(
+            pd.to_datetime(ps, infer_datetime_format=True),
+            koalas.to_datetime(ks, infer_datetime_format=True),
+        )
 
     def test_missing(self):
         ks = self.ks
 
         missing_functions = inspect.getmembers(_MissingPandasLikeSeries, inspect.isfunction)
-        unsupported_functions = [name for (name, type_) in missing_functions
-                                 if type_.__name__ == 'unsupported_function']
+        unsupported_functions = [
+            name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
+        ]
         for name in unsupported_functions:
             with self.assertRaisesRegex(
-                    PandasNotImplementedError,
-                    "method.*Series.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
+                PandasNotImplementedError,
+                "method.*Series.*{}.*not implemented( yet\\.|\\. .+)".format(name),
+            ):
                 getattr(ks, name)()
 
-        deprecated_functions = [name for (name, type_) in missing_functions
-                                if type_.__name__ == 'deprecated_function']
+        deprecated_functions = [
+            name for (name, type_) in missing_functions if type_.__name__ == "deprecated_function"
+        ]
         for name in deprecated_functions:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "method.*Series.*{}.*is deprecated".format(name)):
+            with self.assertRaisesRegex(
+                PandasNotImplementedError, "method.*Series.*{}.*is deprecated".format(name)
+            ):
                 getattr(ks, name)()
 
-        missing_properties = inspect.getmembers(_MissingPandasLikeSeries,
-                                                lambda o: isinstance(o, property))
-        unsupported_properties = [name for (name, type_) in missing_properties
-                                  if type_.fget.__name__ == 'unsupported_property']
+        missing_properties = inspect.getmembers(
+            _MissingPandasLikeSeries, lambda o: isinstance(o, property)
+        )
+        unsupported_properties = [
+            name
+            for (name, type_) in missing_properties
+            if type_.fget.__name__ == "unsupported_property"
+        ]
         for name in unsupported_properties:
             with self.assertRaisesRegex(
-                    PandasNotImplementedError,
-                    "property.*Series.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
+                PandasNotImplementedError,
+                "property.*Series.*{}.*not implemented( yet\\.|\\. .+)".format(name),
+            ):
                 getattr(ks, name)
-        deprecated_properties = [name for (name, type_) in missing_properties
-                                 if type_.fget.__name__ == 'deprecated_property']
+        deprecated_properties = [
+            name
+            for (name, type_) in missing_properties
+            if type_.fget.__name__ == "deprecated_property"
+        ]
         for name in deprecated_properties:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "property.*Series.*{}.*is deprecated".format(name)):
+            with self.assertRaisesRegex(
+                PandasNotImplementedError, "property.*Series.*{}.*is deprecated".format(name)
+            ):
                 getattr(ks, name)
 
     def test_clip(self):
@@ -391,7 +420,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks.clip(1, 3), ps.clip(1, 3))
 
         # Assert behavior on string values
-        str_ks = koalas.Series(['a', 'b', 'c'])
+        str_ks = koalas.Series(["a", "b", "c"])
         self.assert_eq(str_ks.clip(1, 3), str_ks)
 
     def test_is_unique(self):
@@ -417,9 +446,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertEqual(self.ks.to_list(), self.ps.to_list())
 
     def test_append(self):
-        ps1 = pd.Series([1, 2, 3], name='0')
-        ps2 = pd.Series([4, 5, 6], name='0')
-        ps3 = pd.Series([4, 5, 6], index=[3, 4, 5], name='0')
+        ps1 = pd.Series([1, 2, 3], name="0")
+        ps2 = pd.Series([4, 5, 6], name="0")
+        ps3 = pd.Series([4, 5, 6], index=[3, 4, 5], name="0")
         ks1 = koalas.from_pandas(ps1)
         ks2 = koalas.from_pandas(ps2)
         ks3 = koalas.from_pandas(ps3)
@@ -434,38 +463,42 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             ks1.append(ks2, verify_integrity=True)
 
     def test_map(self):
-        pser = pd.Series(['cat', 'dog', None, 'rabbit'])
+        pser = pd.Series(["cat", "dog", None, "rabbit"])
         kser = koalas.from_pandas(pser)
         # Currently Koalas doesn't return NaN as Pandas does.
         self.assertEqual(
-            repr(kser.map({})),
-            repr(pser.map({}).replace({pd.np.nan: None}).rename(0)))
+            repr(kser.map({})), repr(pser.map({}).replace({pd.np.nan: None}).rename(0))
+        )
 
         d = defaultdict(lambda: "abc")
         self.assertTrue("abc" in repr(kser.map(d)))
-        self.assertEqual(
-            repr(kser.map(d)),
-            repr(pser.map(d).rename(0)))
+        self.assertEqual(repr(kser.map(d)), repr(pser.map(d).rename(0)))
 
     def test_add_prefix(self):
-        ps = pd.Series([1, 2, 3, 4], name='0')
+        ps = pd.Series([1, 2, 3, 4], name="0")
         ks = koalas.from_pandas(ps)
-        self.assert_eq(ps.add_prefix('item_'), ks.add_prefix('item_'))
+        self.assert_eq(ps.add_prefix("item_"), ks.add_prefix("item_"))
 
-        ps = pd.Series([1, 2, 3], name='0',
-                       index=pd.MultiIndex.from_tuples([('A', 'X'), ('A', 'Y'), ('B', 'X')]))
+        ps = pd.Series(
+            [1, 2, 3],
+            name="0",
+            index=pd.MultiIndex.from_tuples([("A", "X"), ("A", "Y"), ("B", "X")]),
+        )
         ks = koalas.from_pandas(ps)
-        self.assert_eq(ps.add_prefix('item_'), ks.add_prefix('item_'))
+        self.assert_eq(ps.add_prefix("item_"), ks.add_prefix("item_"))
 
     def test_add_suffix(self):
-        ps = pd.Series([1, 2, 3, 4], name='0')
+        ps = pd.Series([1, 2, 3, 4], name="0")
         ks = koalas.from_pandas(ps)
-        self.assert_eq(ps.add_suffix('_item'), ks.add_suffix('_item'))
+        self.assert_eq(ps.add_suffix("_item"), ks.add_suffix("_item"))
 
-        ps = pd.Series([1, 2, 3], name='0',
-                       index=pd.MultiIndex.from_tuples([('A', 'X'), ('A', 'Y'), ('B', 'X')]))
+        ps = pd.Series(
+            [1, 2, 3],
+            name="0",
+            index=pd.MultiIndex.from_tuples([("A", "X"), ("A", "Y"), ("B", "X")]),
+        )
         ks = koalas.from_pandas(ps)
-        self.assert_eq(ps.add_suffix('_item'), ks.add_suffix('_item'))
+        self.assert_eq(ps.add_suffix("_item"), ks.add_suffix("_item"))
 
     def test_pandas_wraps(self):
         # This test checks the return column name of `isna()`. Previously it returned the column
@@ -476,20 +509,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             return 2 * x
 
         df = koalas.DataFrame({"x": [1, None]})
-        self.assert_eq(
-            f(df["x"]).isna(),
-            pd.Series([False, True]).rename("f(x)"))
+        self.assert_eq(f(df["x"]).isna(), pd.Series([False, True]).rename("f(x)"))
 
     def test_hist(self):
-        pdf = pd.DataFrame({
-            'a': [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50],
-        }, index=[0, 1, 3, 5, 6, 8, 9, 9, 9, 10, 10])
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50]}, index=[0, 1, 3, 5, 6, 8, 9, 9, 9, 10, 10]
+        )
 
         kdf = koalas.from_pandas(pdf)
 
         def plot_to_base64(ax):
             bytes_data = BytesIO()
-            ax.figure.savefig(bytes_data, format='png')
+            ax.figure.savefig(bytes_data, format="png")
             bytes_data.seek(0)
             b64_data = base64.b64encode(bytes_data.read())
             plt.close(ax.figure)
@@ -497,9 +528,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         _, ax1 = plt.subplots(1, 1)
         # Using plot.hist() because pandas changes ticks props when called hist()
-        ax1 = pdf['a'].plot.hist()
+        ax1 = pdf["a"].plot.hist()
         _, ax2 = plt.subplots(1, 1)
-        ax2 = kdf['a'].hist()
+        ax2 = kdf["a"].hist()
         self.assert_eq(plot_to_base64(ax1), plot_to_base64(ax2))
 
     def test_cummin(self):
@@ -532,32 +563,31 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_median(self):
         with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
-            koalas.Series([24., 21., 25., 33., 26.]).median(accuracy="a")
+            koalas.Series([24.0, 21.0, 25.0, 33.0, 26.0]).median(accuracy="a")
 
     def test_rank(self):
-        pser = pd.Series([1, 2, 3, 1], name='x')
+        pser = pd.Series([1, 2, 3, 1], name="x")
         kser = koalas.from_pandas(pser)
-        self.assertEqual(repr(pser.rank()),
-                         repr(kser.rank().sort_index()))
-        self.assertEqual(repr(pser.rank()),
-                         repr(kser.rank().sort_index()))
-        self.assertEqual(repr(pser.rank(ascending=False)),
-                         repr(kser.rank(ascending=False).sort_index()))
-        self.assertEqual(repr(pser.rank(method='min')),
-                         repr(kser.rank(method='min').sort_index()))
-        self.assertEqual(repr(pser.rank(method='max')),
-                         repr(kser.rank(method='max').sort_index()))
-        self.assertEqual(repr(pser.rank(method='first')),
-                         repr(kser.rank(method='first').sort_index()))
-        self.assertEqual(repr(pser.rank(method='dense')),
-                         repr(kser.rank(method='dense').sort_index()))
+        self.assertEqual(repr(pser.rank()), repr(kser.rank().sort_index()))
+        self.assertEqual(repr(pser.rank()), repr(kser.rank().sort_index()))
+        self.assertEqual(
+            repr(pser.rank(ascending=False)), repr(kser.rank(ascending=False).sort_index())
+        )
+        self.assertEqual(repr(pser.rank(method="min")), repr(kser.rank(method="min").sort_index()))
+        self.assertEqual(repr(pser.rank(method="max")), repr(kser.rank(method="max").sort_index()))
+        self.assertEqual(
+            repr(pser.rank(method="first")), repr(kser.rank(method="first").sort_index())
+        )
+        self.assertEqual(
+            repr(pser.rank(method="dense")), repr(kser.rank(method="dense").sort_index())
+        )
 
         msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
         with self.assertRaisesRegex(ValueError, msg):
-            kser.rank(method='nothing')
+            kser.rank(method="nothing")
 
     def test_round(self):
-        pser = pd.Series([0.028208, 0.038683, 0.877076], name='x')
+        pser = pd.Series([0.028208, 0.038683, 0.877076], name="x")
         kser = koalas.from_pandas(pser)
         self.assertEqual(repr(pser.round(2)), repr(kser.round(2)))
         msg = "decimals must be an integer"
@@ -566,21 +596,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_quantile(self):
         with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
-            koalas.Series([24., 21., 25., 33., 26.]).quantile(accuracy="a")
+            koalas.Series([24.0, 21.0, 25.0, 33.0, 26.0]).quantile(accuracy="a")
         with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
-            koalas.Series([24., 21., 25., 33., 26.]).quantile(q="a")
+            koalas.Series([24.0, 21.0, 25.0, 33.0, 26.0]).quantile(q="a")
         with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
-            koalas.Series([24., 21., 25., 33., 26.]).quantile(q=["a"])
+            koalas.Series([24.0, 21.0, 25.0, 33.0, 26.0]).quantile(q=["a"])
 
     def test_idxmax(self):
-        pser = pd.Series(data=[1, 4, 5], index=['A', 'B', 'C'])
+        pser = pd.Series(data=[1, 4, 5], index=["A", "B", "C"])
         kser = koalas.Series(pser)
 
         self.assertEqual(kser.idxmax(), pser.idxmax())
         self.assertEqual(kser.idxmax(skipna=False), pser.idxmax(skipna=False))
 
-        index = pd.MultiIndex.from_arrays([
-            ['a', 'a', 'b', 'b'], ['c', 'd', 'e', 'f']], names=('first', 'second'))
+        index = pd.MultiIndex.from_arrays(
+            [["a", "a", "b", "b"], ["c", "d", "e", "f"]], names=("first", "second")
+        )
         pser = pd.Series(data=[1, 2, 4, 5], index=index)
         kser = koalas.Series(pser)
 
@@ -592,14 +623,15 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.idxmax()
 
     def test_idxmin(self):
-        pser = pd.Series(data=[1, 4, 5], index=['A', 'B', 'C'])
+        pser = pd.Series(data=[1, 4, 5], index=["A", "B", "C"])
         kser = koalas.Series(pser)
 
         self.assertEqual(kser.idxmin(), pser.idxmin())
         self.assertEqual(kser.idxmin(skipna=False), pser.idxmin(skipna=False))
 
-        index = pd.MultiIndex.from_arrays([
-            ['a', 'a', 'b', 'b'], ['c', 'd', 'e', 'f']], names=('first', 'second'))
+        index = pd.MultiIndex.from_arrays(
+            [["a", "a", "b", "b"], ["c", "d", "e", "f"]], names=("first", "second")
+        )
         pser = pd.Series(data=[1, 2, 4, 5], index=index)
         kser = koalas.Series(pser)
 
@@ -611,19 +643,19 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.idxmin()
 
     def test_shift(self):
-        pser = pd.Series([10, 20, 15, 30, 45], name='x')
+        pser = pd.Series([10, 20, 15, 30, 45], name="x")
         kser = koalas.Series(pser)
-        if LooseVersion(pd.__version__) < LooseVersion('0.24.2'):
-            self.assertEqual(repr(kser.shift(periods=2)),
-                             repr(pser.shift(periods=2)))
+        if LooseVersion(pd.__version__) < LooseVersion("0.24.2"):
+            self.assertEqual(repr(kser.shift(periods=2)), repr(pser.shift(periods=2)))
         else:
-            self.assertEqual(repr(kser.shift(periods=2, fill_value=0)),
-                             repr(pser.shift(periods=2, fill_value=0)))
-        with self.assertRaisesRegex(ValueError, 'periods should be an int; however'):
+            self.assertEqual(
+                repr(kser.shift(periods=2, fill_value=0)), repr(pser.shift(periods=2, fill_value=0))
+            )
+        with self.assertRaisesRegex(ValueError, "periods should be an int; however"):
             kser.shift(periods=1.5)
 
     def test_astype(self):
-        pser = pd.Series([10, 20, 15, 30, 45], name='x')
+        pser = pd.Series([10, 20, 15, 30, 45], name="x")
         kser = koalas.Series(pser)
-        with self.assertRaisesRegex(ValueError, 'Type int63 not understood'):
-            kser.astype('int63')
+        with self.assertRaisesRegex(ValueError, "Type int63 not understood"):
+            kser.astype("int63")

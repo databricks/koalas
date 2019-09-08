@@ -29,26 +29,25 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.plot import KoalasHistPlotSummary, KoalasBoxPlotSummary
 
 
-matplotlib.use('agg')
+matplotlib.use("agg")
 
 
 class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
-
     @classmethod
     def setUpClass(cls):
         super(SeriesPlotTest, cls).setUpClass()
-        set_option('plotting.max_rows', 1000)
+        set_option("plotting.max_rows", 1000)
 
     @classmethod
     def tearDownClass(cls):
-        reset_option('plotting.max_rows')
+        reset_option("plotting.max_rows")
         super(SeriesPlotTest, cls).tearDownClass()
 
     @property
     def pdf1(self):
-        return pd.DataFrame({
-            'a': [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50],
-        }, index=[0, 1, 3, 5, 6, 8, 9, 9, 9, 10, 10])
+        return pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50]}, index=[0, 1, 3, 5, 6, 8, 9, 9, 9, 10, 10]
+        )
 
     @property
     def kdf1(self):
@@ -65,7 +64,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
     @staticmethod
     def plot_to_base64(ax):
         bytes_data = BytesIO()
-        ax.figure.savefig(bytes_data, format='png')
+        ax.figure.savefig(bytes_data, format="png")
         bytes_data.seek(0)
         b64_data = base64.b64encode(bytes_data.read())
         plt.close(ax.figure)
@@ -78,12 +77,12 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot("bar", colormap='Paired')
-        ax2 = kdf['a'].plot("bar", colormap='Paired')
+        ax1 = pdf["a"].plot("bar", colormap="Paired")
+        ax2 = kdf["a"].plot("bar", colormap="Paired")
         self.compare_plots(ax1, ax2)
 
-        ax1 = pdf['a'].plot(kind='bar', colormap='Paired')
-        ax2 = kdf['a'].plot(kind='bar', colormap='Paired')
+        ax1 = pdf["a"].plot(kind="bar", colormap="Paired")
+        ax2 = kdf["a"].plot(kind="bar", colormap="Paired")
         self.compare_plots(ax1, ax2)
 
     def test_bar_plot_limited(self):
@@ -91,11 +90,18 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         kdf = self.kdf2
 
         _, ax1 = plt.subplots(1, 1)
-        ax1 = pdf['id'][:1000].plot.bar(colormap='Paired')
-        ax1.text(1, 1, 'showing top 1000 elements only', size=6, ha='right', va='bottom',
-                 transform=ax1.transAxes)
+        ax1 = pdf["id"][:1000].plot.bar(colormap="Paired")
+        ax1.text(
+            1,
+            1,
+            "showing top 1000 elements only",
+            size=6,
+            ha="right",
+            va="bottom",
+            transform=ax1.transAxes,
+        )
         _, ax2 = plt.subplots(1, 1)
-        ax2 = kdf['id'].plot.bar(colormap='Paired')
+        ax2 = kdf["id"].plot.bar(colormap="Paired")
 
         self.compare_plots(ax1, ax2)
 
@@ -103,12 +109,12 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot.pie(colormap='Paired')
-        ax2 = kdf['a'].plot.pie(colormap='Paired')
+        ax1 = pdf["a"].plot.pie(colormap="Paired")
+        ax2 = kdf["a"].plot.pie(colormap="Paired")
         self.compare_plots(ax1, ax2)
 
-        ax1 = pdf['a'].plot(kind='pie', colormap='Paired')
-        ax2 = kdf['a'].plot(kind='pie', colormap='Paired')
+        ax1 = pdf["a"].plot(kind="pie", colormap="Paired")
+        ax2 = kdf["a"].plot(kind="pie", colormap="Paired")
         self.compare_plots(ax1, ax2)
 
     def test_pie_plot_limited(self):
@@ -116,31 +122,38 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         kdf = self.kdf2
 
         _, ax1 = plt.subplots(1, 1)
-        ax1 = pdf['id'][:1000].plot.pie(colormap='Paired')
-        ax1.text(1, 1, 'showing top 1000 elements only', size=6, ha='right', va='bottom',
-                 transform=ax1.transAxes)
+        ax1 = pdf["id"][:1000].plot.pie(colormap="Paired")
+        ax1.text(
+            1,
+            1,
+            "showing top 1000 elements only",
+            size=6,
+            ha="right",
+            va="bottom",
+            transform=ax1.transAxes,
+        )
         _, ax2 = plt.subplots(1, 1)
-        ax2 = kdf['id'].plot.pie(colormap='Paired')
+        ax2 = kdf["id"].plot.pie(colormap="Paired")
         self.compare_plots(ax1, ax2)
 
     def test_line_plot(self):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot("line", colormap='Paired')
-        ax2 = kdf['a'].plot("line", colormap='Paired')
+        ax1 = pdf["a"].plot("line", colormap="Paired")
+        ax2 = kdf["a"].plot("line", colormap="Paired")
         self.compare_plots(ax1, ax2)
 
-        ax1 = pdf['a'].plot.line(colormap='Paired')
-        ax2 = kdf['a'].plot.line(colormap='Paired')
+        ax1 = pdf["a"].plot.line(colormap="Paired")
+        ax2 = kdf["a"].plot.line(colormap="Paired")
         self.compare_plots(ax1, ax2)
 
     def test_barh_plot(self):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot("barh", colormap='Paired')
-        ax2 = kdf['a'].plot("barh", colormap='Paired')
+        ax1 = pdf["a"].plot("barh", colormap="Paired")
+        ax2 = kdf["a"].plot("barh", colormap="Paired")
         self.compare_plots(ax1, ax2)
 
     def test_barh_plot_limited(self):
@@ -148,11 +161,18 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         kdf = self.kdf2
 
         _, ax1 = plt.subplots(1, 1)
-        ax1 = pdf['id'][:1000].plot.barh(colormap='Paired')
-        ax1.text(1, 1, 'showing top 1000 elements only', size=6, ha='right', va='bottom',
-                 transform=ax1.transAxes)
+        ax1 = pdf["id"][:1000].plot.barh(colormap="Paired")
+        ax1.text(
+            1,
+            1,
+            "showing top 1000 elements only",
+            size=6,
+            ha="right",
+            va="bottom",
+            transform=ax1.transAxes,
+        )
         _, ax2 = plt.subplots(1, 1)
-        ax2 = kdf['id'].plot.barh(colormap='Paired')
+        ax2 = kdf["id"].plot.barh(colormap="Paired")
 
         self.compare_plots(ax1, ax2)
 
@@ -161,54 +181,57 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         kdf = self.kdf1
 
         _, ax1 = plt.subplots(1, 1)
-        ax1 = pdf['a'].plot.hist()
+        ax1 = pdf["a"].plot.hist()
         _, ax2 = plt.subplots(1, 1)
-        ax2 = kdf['a'].plot.hist()
+        ax2 = kdf["a"].plot.hist()
         self.compare_plots(ax1, ax2)
 
-        ax1 = pdf['a'].plot.hist(bins=15)
-        ax2 = kdf['a'].plot.hist(bins=15)
+        ax1 = pdf["a"].plot.hist(bins=15)
+        ax2 = kdf["a"].plot.hist(bins=15)
         self.compare_plots(ax1, ax2)
 
-        ax1 = pdf['a'].plot(kind='hist', bins=15)
-        ax2 = kdf['a'].plot(kind='hist', bins=15)
+        ax1 = pdf["a"].plot(kind="hist", bins=15)
+        ax2 = kdf["a"].plot(kind="hist", bins=15)
         self.compare_plots(ax1, ax2)
 
-        ax1 = pdf['a'].plot.hist(bins=3, bottom=[2, 1, 3])
-        ax2 = kdf['a'].plot.hist(bins=3, bottom=[2, 1, 3])
+        ax1 = pdf["a"].plot.hist(bins=3, bottom=[2, 1, 3])
+        ax2 = kdf["a"].plot.hist(bins=3, bottom=[2, 1, 3])
         self.compare_plots(ax1, ax2)
 
     def test_hist_summary(self):
         kdf = self.kdf1
-        summary = KoalasHistPlotSummary(kdf['a'], 'a')
+        summary = KoalasHistPlotSummary(kdf["a"], "a")
 
         expected_bins = np.linspace(1, 50, 11)
         bins = summary.get_bins(10)
 
         expected_histogram = np.array([5, 4, 1, 0, 0, 0, 0, 0, 0, 1])
-        histogram = summary.calc_histogram(bins)['__a_bucket']
+        histogram = summary.calc_histogram(bins)["__a_bucket"]
         self.assert_eq(pd.Series(expected_bins), pd.Series(bins))
         self.assert_eq(pd.Series(expected_histogram), histogram)
 
     def test_area_plot(self):
-        pdf = pd.DataFrame({
-            'sales': [3, 2, 3, 9, 10, 6],
-            'signups': [5, 5, 6, 12, 14, 13],
-            'visits': [20, 42, 28, 62, 81, 50],
-        }, index=pd.date_range(start='2018/01/01', end='2018/07/01', freq='M'))
+        pdf = pd.DataFrame(
+            {
+                "sales": [3, 2, 3, 9, 10, 6],
+                "signups": [5, 5, 6, 12, 14, 13],
+                "visits": [20, 42, 28, 62, 81, 50],
+            },
+            index=pd.date_range(start="2018/01/01", end="2018/07/01", freq="M"),
+        )
         kdf = koalas.from_pandas(pdf)
 
-        ax1 = pdf['sales'].plot("area", colormap='Paired')
-        ax2 = kdf['sales'].plot("area", colormap='Paired')
+        ax1 = pdf["sales"].plot("area", colormap="Paired")
+        ax2 = kdf["sales"].plot("area", colormap="Paired")
         self.compare_plots(ax1, ax2)
 
-        ax1 = pdf['sales'].plot.area(colormap='Paired')
-        ax2 = kdf['sales'].plot.area(colormap='Paired')
+        ax1 = pdf["sales"].plot.area(colormap="Paired")
+        ax2 = kdf["sales"].plot.area(colormap="Paired")
         self.compare_plots(ax1, ax2)
 
         # just a sanity check for df.col type
-        ax1 = pdf.sales.plot("area", colormap='Paired')
-        ax2 = kdf.sales.plot("area", colormap='Paired')
+        ax1 = pdf.sales.plot("area", colormap="Paired")
+        ax2 = kdf.sales.plot("area", colormap="Paired")
         self.compare_plots(ax1, ax2)
 
     def boxplot_comparison(self, *args, **kwargs):
@@ -216,13 +239,15 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         kdf = self.kdf1
 
         _, ax1 = plt.subplots(1, 1)
-        ax1 = pdf['a'].plot.box(*args, **kwargs)
+        ax1 = pdf["a"].plot.box(*args, **kwargs)
         _, ax2 = plt.subplots(1, 1)
-        ax2 = kdf['a'].plot.box(*args, **kwargs)
+        ax2 = kdf["a"].plot.box(*args, **kwargs)
 
-        diffs = [np.array([0, .5, 0, .5, 0, -.5, 0, -.5, 0, .5]),
-                 np.array([0, .5, 0, 0]),
-                 np.array([0, -.5, 0, 0])]
+        diffs = [
+            np.array([0, 0.5, 0, 0.5, 0, -0.5, 0, -0.5, 0, 0.5]),
+            np.array([0, 0.5, 0, 0]),
+            np.array([0, -0.5, 0, 0]),
+        ]
 
         for i, (line1, line2) in enumerate(zip(ax1.get_lines(), ax2.get_lines())):
             expected = line1.get_xydata().ravel()
@@ -234,9 +259,9 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
     def test_box_plot(self):
         self.boxplot_comparison()
         self.boxplot_comparison(showfliers=True)
-        self.boxplot_comparison(sym='')
-        self.boxplot_comparison(sym='.', color='r')
-        self.boxplot_comparison(use_index=False, labels=['Test'])
+        self.boxplot_comparison(sym="")
+        self.boxplot_comparison(sym=".", color="r")
+        self.boxplot_comparison(use_index=False, labels=["Test"])
         self.boxplot_comparison(usermedians=[2.0])
         self.boxplot_comparison(conf_intervals=[(1.0, 3.0)])
 
@@ -250,26 +275,26 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         k = 1.5
 
-        summary = KoalasBoxPlotSummary(kdf['a'], 'a')
+        summary = KoalasBoxPlotSummary(kdf["a"], "a")
         stats, fences = summary.compute_stats(whis=k, precision=0.01)
         outliers = summary.outliers(*fences)
         whiskers = summary.calc_whiskers(outliers)
         fliers = summary.get_fliers(outliers)
 
-        expected_mean = pdf['a'].mean()
-        expected_median = pdf['a'].median()
-        expected_q1 = np.percentile(pdf['a'], 25)
-        expected_q3 = np.percentile(pdf['a'], 75)
-        iqr = (expected_q3 - expected_q1)
+        expected_mean = pdf["a"].mean()
+        expected_median = pdf["a"].median()
+        expected_q1 = np.percentile(pdf["a"], 25)
+        expected_q3 = np.percentile(pdf["a"], 75)
+        iqr = expected_q3 - expected_q1
         expected_fences = (expected_q1 - k * iqr, expected_q3 + k * iqr)
-        pdf['outlier'] = ~pdf['a'].between(fences[0], fences[1])
-        expected_whiskers = pdf.query('not outlier')['a'].min(), pdf.query('not outlier')['a'].max()
-        expected_fliers = pdf.query('outlier')['a'].values
+        pdf["outlier"] = ~pdf["a"].between(fences[0], fences[1])
+        expected_whiskers = pdf.query("not outlier")["a"].min(), pdf.query("not outlier")["a"].max()
+        expected_fliers = pdf.query("outlier")["a"].values
 
-        self.assert_eq(expected_mean, stats['mean'])
-        self.assert_eq(expected_median, stats['med'])
-        self.assert_eq(expected_q1, stats['q1'] + .5)
-        self.assert_eq(expected_q3, stats['q3'] - .5)
+        self.assert_eq(expected_mean, stats["mean"])
+        self.assert_eq(expected_median, stats["med"])
+        self.assert_eq(expected_q1, stats["q1"] + 0.5)
+        self.assert_eq(expected_q3, stats["q3"] - 0.5)
         self.assert_eq(expected_fences[0], fences[0] + 2.0)
         self.assert_eq(expected_fences[1], fences[1] - 2.0)
         self.assert_eq(expected_whiskers[0], whiskers[0])
@@ -277,10 +302,11 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(expected_fliers, fliers)
 
     def test_missing(self):
-        ks = self.kdf1['a']
+        ks = self.kdf1["a"]
 
-        unsupported_functions = ['kde']
+        unsupported_functions = ["kde"]
         for name in unsupported_functions:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "method.*Series.*{}.*not implemented".format(name)):
+            with self.assertRaisesRegex(
+                PandasNotImplementedError, "method.*Series.*{}.*not implemented".format(name)
+            ):
                 getattr(ks.plot, name)()

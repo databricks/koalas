@@ -22,40 +22,36 @@ from databricks.koalas.testing.utils import ComparisonTestBase, compare_both
 
 
 class EtlTest(ComparisonTestBase):
-
     @property
     def pdf(self):
         test_dir = os.path.dirname(os.path.realpath(__file__))
-        return pd.read_csv('%s/../../../data/sample_stocks.csv' % test_dir)
+        return pd.read_csv("%s/../../../data/sample_stocks.csv" % test_dir)
 
     @compare_both
     def test_etl(self, df):
-        df1 = df.loc[:, 'Symbol Date Open High Low Close'.split()]
+        df1 = df.loc[:, "Symbol Date Open High Low Close".split()]
         yield df1
 
         df2 = df1.sort_values(by=["Symbol", "Date"])
         yield df2
 
-        df3 = df2.groupby(by="Symbol").agg({
-            'Open': 'first',
-            'High': 'max',
-            'Low': 'min',
-            'Close': 'last'
-        })
+        df3 = df2.groupby(by="Symbol").agg(
+            {"Open": "first", "High": "max", "Low": "min", "Close": "last"}
+        )
         yield df3
 
         df4 = df2.copy()
 
-        df4.loc[:, 'signal_1'] = df4.Close - df4.Open
-        df4.loc[:, 'signal_2'] = df4.High - df4.Low
+        df4.loc[:, "signal_1"] = df4.Close - df4.Open
+        df4.loc[:, "signal_2"] = df4.High - df4.Low
 
         # df4.loc[:, 'signal_3'] = (df4.signal_2 - df4.signal_2.mean()) / df4.signal_2.std()
         yield df4
 
-        df5 = df4.loc[df4.signal_1 > 0, ['Symbol', 'Date']]
+        df5 = df4.loc[df4.signal_1 > 0, ["Symbol", "Date"]]
         yield df5
 
-        df6 = df4.loc[df4.signal_2 > 0, ['Symbol', 'Date']]
+        df6 = df4.loc[df4.signal_2 > 0, ["Symbol", "Date"]]
         yield df6
 
         # df7 = df4.loc[df4.signal_3 > 0, ['Symbol', 'Date']]
