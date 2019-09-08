@@ -34,7 +34,10 @@ from databricks.koalas.missing.groupby import (
     _MissingPandasLikeDataFrameGroupBy,
     _MissingPandasLikeSeriesGroupBy,
 )
-from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
+from databricks.koalas.missing.indexes import (
+    _MissingPandasLikeIndex,
+    _MissingPandasLikeMultiIndex,
+)
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.series import Series
 from databricks.koalas.strings import StringMethods
@@ -89,7 +92,9 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
             func = getattr(target_module, name)
             if not inspect.isfunction(func):
                 continue
-            setattr(target_module, name, _wrap_function(target_name, name, func, logger))
+            setattr(
+                target_module, name, _wrap_function(target_name, name, func, logger)
+            )
 
     special_functions = set(
         [
@@ -109,12 +114,22 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
         for name, func in inspect.getmembers(target_class, inspect.isfunction):
             if name.startswith("_") and name not in special_functions:
                 continue
-            setattr(target_class, name, _wrap_function(target_class.__name__, name, func, logger))
+            setattr(
+                target_class,
+                name,
+                _wrap_function(target_class.__name__, name, func, logger),
+            )
 
-        for name, prop in inspect.getmembers(target_class, lambda o: isinstance(o, property)):
+        for name, prop in inspect.getmembers(
+            target_class, lambda o: isinstance(o, property)
+        ):
             if name.startswith("_"):
                 continue
-            setattr(target_class, name, _wrap_property(target_class.__name__, name, prop, logger))
+            setattr(
+                target_class,
+                name,
+                _wrap_property(target_class.__name__, name, prop, logger),
+            )
 
     # Missings
     for original, missing in [
@@ -132,8 +147,14 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
                 _wrap_missing_function(original.__name__, name, func, original, logger),
             )
 
-        for name, prop in inspect.getmembers(missing, lambda o: isinstance(o, property)):
-            setattr(missing, name, _wrap_missing_property(original.__name__, name, prop, logger))
+        for name, prop in inspect.getmembers(
+            missing, lambda o: isinstance(o, property)
+        ):
+            setattr(
+                missing,
+                name,
+                _wrap_missing_property(original.__name__, name, prop, logger),
+            )
 
 
 _local = threading.local()
@@ -159,7 +180,11 @@ def _wrap_function(class_name, function_name, func, logger):
                 return res
             except Exception as ex:
                 logger.log_failure(
-                    class_name, function_name, ex, time.perf_counter() - start, signature
+                    class_name,
+                    function_name,
+                    ex,
+                    time.perf_counter() - start,
+                    signature,
                 )
                 raise
         finally:
@@ -179,16 +204,22 @@ def _wrap_property(class_name, property_name, prop, logger):
             start = time.perf_counter()
             try:
                 res = prop.fget(self)
-                logger.log_success(class_name, property_name, time.perf_counter() - start)
+                logger.log_success(
+                    class_name, property_name, time.perf_counter() - start
+                )
                 return res
             except Exception as ex:
-                logger.log_failure(class_name, property_name, ex, time.perf_counter() - start)
+                logger.log_failure(
+                    class_name, property_name, ex, time.perf_counter() - start
+                )
                 raise
         finally:
             _local.logging = False
 
     if prop.fset is not None:
-        wrapper = wrapper.setter(_wrap_function(class_name, prop.fset.__name__, prop.fset, logger))
+        wrapper = wrapper.setter(
+            _wrap_function(class_name, prop.fset.__name__, prop.fset, logger)
+        )
 
     return wrapper
 

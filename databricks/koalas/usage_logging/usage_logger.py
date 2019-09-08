@@ -53,7 +53,11 @@ class KoalasUsageLogger(object):
         self.logger = logging.getLogger("databricks.koalas.usage_logger")
 
     def log_success(
-        self, class_name: str, name: str, duration: float, signature: Optional[Signature] = None
+        self,
+        class_name: str,
+        name: str,
+        duration: float,
+        signature: Optional[Signature] = None,
     ) -> None:
         """
         Log the function or property call is successfully finished.
