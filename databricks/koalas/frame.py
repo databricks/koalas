@@ -6945,7 +6945,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 nrows = match.group("rows")
                 ncols = match.group("columns")
                 by = chr(215)
-                footer = "\n<p>Showing only the first {rows} rows {by} {cols} columns</p>\n</div>".format(
+                footer = "\n<p>Showing only the first {rows} rows" \
+                         " {by} {cols} columns</p>\n</div>".format(
                     rows=nrows, by=by, cols=ncols
                 )
                 return REPR_HTML_PATTERN.sub(footer, repr_html)

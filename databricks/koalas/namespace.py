@@ -1283,7 +1283,7 @@ def get_dummies(
                     raise KeyError(column_index)
                 if prefix is None:
                     prefix = [
-                        str(idx[len(key) :])
+                        str(idx[len(key):])
                         if len(idx) > len(key) + 1
                         else idx[len(key)]
                         if len(idx) == len(key) + 1
@@ -1324,7 +1324,8 @@ def get_dummies(
 
     if prefix is not None and len(column_index) != len(prefix):
         raise ValueError(
-            "Length of 'prefix' ({}) did not match the length of the columns being encoded ({}).".format(
+            "Length of 'prefix' ({}) did not match the length "
+            "of the columns being encoded ({}).".format(
                 len(prefix), len(column_index)
             )
         )
