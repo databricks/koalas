@@ -116,7 +116,7 @@ circle          1      361
 triangle        4      181
 rectangle       5      361
 
-Divide & True Divide by constant with reverse version.
+Divide and true divide by constant with reverse version.
 
 >>> df / 10
            angles  degrees
