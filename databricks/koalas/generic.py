@@ -570,7 +570,7 @@ class _Frame(object):
         return validate_arguments_and_invoke_function(
             kdf._to_internal_pandas(), self.to_csv, f, args)
 
-    def to_json(self, path=None, compression='uncompressed', num_files=None, **kwargs):
+    def to_json(self, path=None, compression='uncompressed', num_files=None, **options):
         """
         Convert the object to a JSON string.
 
@@ -593,12 +593,17 @@ class _Frame(object):
         path : string, optional
             File path. If not specified, the result is returned as
             a string.
-        date_format : str, default None
-            Format string for datetime objects.
         compression : {'gzip', 'bz2', 'xz', None}
             A string representing the compression to use in the output file,
             only used when the first argument is a filename. By default, the
             compression is inferred from the filename.
+        num_files : the number of files to be written in `path` directory when
+            this is a path.
+        options: keyword arguments for additional options specific to PySpark.
+            It is specific to PySpark's JSON options to pass. Check
+            the options in PySpark's API documentation for `spark.write.json(...)`.
+            It has a higher priority and overwrites all other options.
+            This parameter only works when `path` is specified.
 
         Examples
         --------
@@ -646,7 +651,7 @@ class _Frame(object):
 
         builder = sdf.write.mode("overwrite")
         OptionUtils._set_opts(builder, compression=compression)
-        builder.options(**kwargs).format("json").save(path)
+        builder.options(**options).format("json").save(path)
 
     def to_excel(self, excel_writer, sheet_name="Sheet1", na_rep="", float_format=None,
                  columns=None, header=True, index=True, index_label=None, startrow=0,
