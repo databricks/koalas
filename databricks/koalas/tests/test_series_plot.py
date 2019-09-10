@@ -24,7 +24,6 @@ import pandas as pd
 
 from databricks import koalas
 from databricks.koalas.config import set_option, reset_option
-from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.plot import KoalasHistPlotSummary, KoalasBoxPlotSummary
 
@@ -280,14 +279,6 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        pax = pdf['a'].plot('kde', colormap='Paired')
-        kax = kdf['a'].plot('kde', colormap='Paired')
-        self.compare_plots(pax, kax)
-
-        pax = pdf['a'].plot.kde(colormap='Paired')
-        kax = kdf['a'].plot.kde(colormap='Paired')
-        self.compare_plots(pax, kax)
-
         pax = pdf['a'].plot('kde', bw_method=0.3)
         kax = kdf['a'].plot('kde', bw_method=0.3)
         self.compare_plots(pax, kax)
@@ -296,12 +287,8 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         kax = kdf['a'].plot.kde(bw_method=0.3)
         self.compare_plots(pax, kax)
 
-        pax = pdf['a'].plot('kde', ind=[1, 2, 3, 4, 5])
-        kax = kdf['a'].plot('kde', ind=[1, 2, 3, 4, 5])
-        self.compare_plots(pax, kax)
-
-        pax = pdf['a'].plot.kde(ind=[1, 2, 3, 4, 5])
-        kax = kdf['a'].plot.kde(ind=[1, 2, 3, 4, 5])
+        pax = pdf['a'].plot('kde', ind=[1, 2, 3, 4, 5], bw_method=3.0)
+        kax = kdf['a'].plot('kde', ind=[1, 2, 3, 4, 5], bw_method=3.0)
         self.compare_plots(pax, kax)
 
     def test_empty_hist(self):

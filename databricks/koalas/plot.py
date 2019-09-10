@@ -24,6 +24,7 @@ from pandas.core.dtypes.inference import is_integer, is_list_like
 from pandas.io.formats.printing import pprint_thing
 from pandas.core.base import PandasObject
 from pyspark.ml.feature import Bucketizer
+from pyspark.mllib.stat import KernelDensity
 from pyspark.sql import functions as F
 
 from databricks.koalas.missing import _unsupported_function
@@ -536,15 +537,107 @@ class KoalasScatterPlot(ScatterPlot, TopNPlot):
         super(KoalasScatterPlot, self)._make_plot()
 
 
-class KoalasKdePlot(KdePlot, TopNPlot):
-    max_rows = 1000
+class KoalasKdePlot(KdePlot):
+    def _compute_plot_data(self):
+        from databricks.koalas.series import Series
 
-    def __init__(self, data, **kwargs):
-        super(KoalasKdePlot, self).__init__(self.get_top_n(data), **kwargs)
+        data = self.data
+        if isinstance(data, Series):
+            data = data.to_frame()
+
+        numeric_data = data.select_dtypes(include=['byte', 'decimal', 'integer', 'float',
+                                                   'long', 'double', np.datetime64])
+        try:
+            is_empty = numeric_data.empty
+        except AttributeError:
+            is_empty = not len(numeric_data)
+
+        # no empty frames or series allowed
+        if is_empty:
+            raise TypeError('Empty {0!r}: no numeric data to '
+                            'plot'.format(numeric_data.__class__.__name__))
+
+        self.data = numeric_data
 
     def _make_plot(self):
-        self.set_result_text(self._get_ax(0))
-        super(KoalasKdePlot, self)._make_plot()
+        # 'num_colors' requires ndim but Spark DataFrame does not seem knowing it.
+        colors = self._get_colors(num_colors=1)
+        stacking_id = self._get_stacking_id()
+
+        sdf = self.data._sdf
+
+        for i, data_column in enumerate(self.data._internal.data_columns):
+            # 'y' is a Spark DataFrame that selects one column.
+            y = sdf.select(data_column)
+            ax = self._get_ax(i)
+
+            kwds = self.kwds.copy()
+
+            label = pprint_thing(data_column)
+            kwds['label'] = data_column
+
+            style, kwds = self._apply_style_colors(colors, kwds, i, label)
+            if style is not None:
+                kwds['style'] = style
+
+            kwds = self._make_plot_keywords(kwds, y)
+            artists = self._plot(ax, y, column_num=i,
+                                 stacking_id=stacking_id, **kwds)
+            self._add_legend_handle(artists[0], label, index=i)
+
+    def _get_ind(self, y):
+        # 'y' is a Spark DataFrame that selects one column.
+        if self.ind is None:
+            min_val, max_val = y.select(
+                F.min(y.columns[0]), F.max(y.columns[0])).first()
+
+            sample_range = max_val - min_val
+            ind = np.linspace(
+                min_val - 0.5 * sample_range,
+                max_val + 0.5 * sample_range,
+                1000,
+            )
+        elif is_integer(self.ind):
+            min_val, max_val = y.select(
+                F.min(y.columns[0]), F.max(y.columns[0])).first()
+
+            sample_range = np.nanmax(y) - np.nanmin(y)
+            ind = np.linspace(
+                min_val - 0.5 * sample_range,
+                max_val + 0.5 * sample_range,
+                self.ind,
+            )
+        else:
+            ind = self.ind
+        return ind
+
+    @classmethod
+    def _plot(
+            cls,
+            ax,
+            y,
+            style=None,
+            bw_method=None,
+            ind=None,
+            column_num=None,
+            stacking_id=None,
+            **kwds):
+        # 'y' is a Spark DataFrame that selects one column.
+
+        # Using RDD is slow so we might have to change it to Dataset based implementation
+        # once Spark has that implementation.
+        sample = y.rdd.map(lambda x: float(x[0]))
+        kd = KernelDensity()
+        kd.setSample(sample)
+
+        assert isinstance(bw_method, (int, float)), "'bw_method' must be set as a scalar number."
+
+        if bw_method is not None:
+            # Match the bandwidth with Spark.
+            kd.setBandwidth(float(bw_method))
+        y = kd.estimate(list(map(float, ind)))
+        lines = MPLPlot._plot(ax, ind, y, style=style, **kwds)
+        return lines
 
 
 _klasses = [
@@ -878,19 +971,16 @@ class KoalasSeriesPlotMethods(PandasObject):
 
         Parameters
         ----------
-        bw_method : str, scalar or callable, optional
-            The method used to calculate the estimator bandwidth. This can be
-            'scott', 'silverman', a scalar constant or a callable.
-            If None (default), 'scott' is used.
-            See :class:`scipy.stats.gaussian_kde` for more information.
+        bw_method : scalar
+            The method used to calculate the estimator bandwidth.
+            See KernelDensity in PySpark for more information.
         ind : NumPy array or integer, optional
             Evaluation points for the estimated PDF. If None (default),
             1000 equally spaced points are used. If `ind` is a NumPy array, the
             KDE is evaluated at the points passed. If `ind` is an integer,
             `ind` number of equally spaced points are used.
         **kwargs : optional
-            Additional keyword arguments are documented in
-            :ref:`plot <api.series.plot>`
+            Keyword arguments to pass on to :meth:`Koalas.Series.plot`.
 
         Returns
         -------
