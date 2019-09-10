@@ -36,7 +36,7 @@ from databricks.koalas.typedef import infer_pd_series_spark_type
 from databricks.koalas.utils import column_index_level, default_session, lazy_property, scol_for
 
 
-IndexMap = Tuple[str, Optional[str]]
+IndexMap = Tuple[str, Optional[Tuple[str]]]
 
 
 class _InternalFrame(object):
@@ -374,8 +374,10 @@ class _InternalFrame(object):
 
         assert index_map is not None
         assert all(isinstance(index_field, str)
-                   and (index_name is None or isinstance(index_name, str))
-                   for index_field, index_name in index_map)
+                   and (index_name is None or (isinstance(index_name, tuple)
+                                               and all(isinstance(name, str)
+                                                       for name in index_name)))
+                   for index_field, index_name in index_map), index_map
         assert scol is None or isinstance(scol, spark.Column)
         assert data_columns is None or all(isinstance(col, str) for col in data_columns)
 
@@ -391,14 +393,16 @@ class _InternalFrame(object):
             self._data_columns = data_columns
 
         if scol is not None:
-            assert column_index is not None and len(column_index) == 1
+            assert column_index is not None and len(column_index) == 1, column_index
+            assert all(idx is None or (isinstance(idx, tuple) and len(idx) > 0)
+                       for idx in column_index), column_index
             self._column_index = column_index
         elif column_index is None:
             self._column_index = [(col,) for col in self._data_columns]
         else:
-            assert (len(column_index) == len(self._data_columns) and
-                    all(isinstance(i, tuple) for i in column_index) and
-                    len(set(len(i) for i in column_index)) <= 1)
+            assert len(column_index) == len(self._data_columns)
+            assert all(isinstance(i, tuple) for i in column_index)
+            assert len(set(len(i) for i in column_index)) <= 1
             self._column_index = column_index
 
         if column_index_names is not None and not is_list_like(column_index_names):
@@ -477,7 +481,7 @@ class _InternalFrame(object):
         """ Return the actual Spark column name for the given column name or index. """
         if column_name_or_index not in self._column_index_map:
             # TODO: assert column_name_or_index not in self.data_columns
-            assert isinstance(column_name_or_index, str)
+            assert isinstance(column_name_or_index, str), column_name_or_index
             return column_name_or_index
         else:
             return self._column_index_map[column_name_or_index]
@@ -538,7 +542,7 @@ class _InternalFrame(object):
         return self._index_map
 
     @lazy_property
-    def index_names(self) -> List[Optional[str]]:
+    def index_names(self) -> List[Optional[Tuple[str]]]:
         """ Return the managed index names. """
         return [index_name for _, index_name in self.index_map]
 
@@ -621,7 +625,8 @@ class _InternalFrame(object):
 
         index_names = self.index_names
         if len(index_names) > 0:
-            pdf.index.names = index_names
+            pdf.index.names = [name if name is None or len(name) > 1 else name[0]
+                               for name in index_names]
         return pdf
 
     def copy(self, sdf: Union[spark.DataFrame, _NoValueType] = _NoValue,
@@ -685,11 +690,13 @@ class _InternalFrame(object):
                 index_map = [('__index_level_{}__'.format(i), None)
                              for i in range(len(index.levels))]
             else:
-                index_map = [('__index_level_{}__'.format(i) if name is None else name, name)
+                index_map = [('__index_level_{}__'.format(i) if name is None else name,
+                              name if name is None or isinstance(name, tuple) else (name,))
                              for i, name in enumerate(index.names)]
         else:
-            index_map = [(index.name
-                          if index.name is not None else '__index_level_0__', index.name)]
+            name = index.name
+            index_map = [(name if name is not None else '__index_level_0__',
+                          name if name is None or isinstance(name, tuple) else (name,))]
 
         index_columns = [index_column for index_column, _ in index_map]
 

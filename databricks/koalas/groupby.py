@@ -141,7 +141,8 @@ class GroupBy(object):
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=data_columns,
                                   column_index=column_index if multi_aggs else None,
-                                  index_map=[('__index_level_{}__'.format(i), s.name)
+                                  index_map=[('__index_level_{}__'.format(i),
+                                              s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)])
         kdf = DataFrame(internal)
         if not self._as_index:
@@ -1675,7 +1676,8 @@ class GroupBy(object):
         sdf = sdf.sort(*groupkey_cols)
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=data_columns,
-                                  index_map=[('__index_level_{}__'.format(i), s.name)
+                                  index_map=[('__index_level_{}__'.format(i),
+                                              s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)])
         kdf = DataFrame(internal)
         if not self._as_index:
