@@ -343,9 +343,14 @@ class DataFrame(_Frame, Generic[T]):
             assert columns is None
             assert dtype is None
             assert not copy
+
             # When we know index columns
             if index_col is not None:
-                index_map = [(index_column, None) for index_column in index_col]
+                if isinstance(index_col, str):
+                    index_col = [index_col]
+                else:
+                    index_col = list(index_col)
+                index_map = [(col, col) for col in index_col]
                 super(DataFrame, self).__init__(_InternalFrame(data, index_map=index_map))
             else:
                 super(DataFrame, self).__init__(_InternalFrame(data))
