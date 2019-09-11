@@ -331,7 +331,7 @@ class DataFrame(_Frame, Generic[T]):
     3  8  7  9  1  0
     4  2  5  4  3  9
     """
-    def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
+    def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False, index_col=None):
         if isinstance(data, _InternalFrame):
             assert index is None
             assert columns is None
@@ -343,7 +343,12 @@ class DataFrame(_Frame, Generic[T]):
             assert columns is None
             assert dtype is None
             assert not copy
-            super(DataFrame, self).__init__(_InternalFrame(data))
+            # When we know index columns
+            if index_col is not None:
+                index_map = [(index_column, None) for index_column in index_col]
+                super(DataFrame, self).__init__(_InternalFrame(data, index_map=index_map))
+            else:
+                super(DataFrame, self).__init__(_InternalFrame(data))
         elif isinstance(data, ks.Series):
             assert index is None
             assert columns is None

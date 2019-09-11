@@ -287,7 +287,7 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
     return read_spark_io(path, format='delta', options=options)
 
 
-def read_table(name: str) -> DataFrame:
+def read_table(name: str, index_col: str = None) -> DataFrame:
     """
     Read a Spark table and return a DataFrame.
 
@@ -315,7 +315,10 @@ def read_table(name: str) -> DataFrame:
     0   0
     """
     sdf = default_session().read.table(name)
-    return DataFrame(sdf)
+    if index_col is None:
+        return DataFrame(sdf)
+    else:
+        return DataFrame(sdf, index_col=[index_col])
 
 
 def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,

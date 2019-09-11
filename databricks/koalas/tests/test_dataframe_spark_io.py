@@ -116,6 +116,13 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
                 actual.sort_values(by='f').to_spark().toPandas(),
                 expected.sort_values(by='f').to_spark().toPandas())
 
+            # When index columns are known
+            expected = expected.set_index('bhello')[['f', 'i32', 'i64']]
+            actual = ks.read_table('test_table', 'bhello')[['f', 'i32', 'i64']]
+            self.assert_eq(
+                actual.sort_values(by='f').to_spark().toPandas(),
+                expected.sort_values(by='f').to_spark().toPandas())
+
     def test_spark_io(self):
         with self.temp_dir() as tmp:
             pdf = self.test_pdf
