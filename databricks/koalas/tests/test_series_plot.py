@@ -24,7 +24,6 @@ import pandas as pd
 
 from databricks import koalas
 from databricks.koalas.config import set_option, reset_option
-from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.plot import KoalasHistPlotSummary, KoalasBoxPlotSummary
 
@@ -276,14 +275,21 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(expected_whiskers[1], whiskers[1])
         self.assert_eq(expected_fliers, fliers)
 
-    def test_missing(self):
-        ks = self.kdf1['a']
+    def test_kde_plot(self):
+        pdf = self.pdf1
+        kdf = self.kdf1
 
-        unsupported_functions = ['kde']
-        for name in unsupported_functions:
-            with self.assertRaisesRegex(PandasNotImplementedError,
-                                        "method.*Series.*{}.*not implemented".format(name)):
-                getattr(ks.plot, name)()
+        pax = pdf['a'].plot('kde', bw_method=0.3)
+        kax = kdf['a'].plot('kde', bw_method=0.3)
+        self.compare_plots(pax, kax)
+
+        pax = pdf['a'].plot.kde(bw_method=0.3)
+        kax = kdf['a'].plot.kde(bw_method=0.3)
+        self.compare_plots(pax, kax)
+
+        pax = pdf['a'].plot('kde', ind=[1, 2, 3, 4, 5], bw_method=3.0)
+        kax = kdf['a'].plot('kde', ind=[1, 2, 3, 4, 5], bw_method=3.0)
+        self.compare_plots(pax, kax)
 
     def test_empty_hist(self):
         pdf = self.pdf1.assign(categorical='A')
