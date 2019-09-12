@@ -2192,8 +2192,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
-    # TODO: axis should support 1 or 'columns' either
-    def diff(self, periods: int = 1, axis: int = 0):
+    # TODO: axis should support 1 or 'columns' either at this moment
+    def diff(self, periods: int = 1, axis: Union[int, str] = 0):
         """
         First discrete difference of element.
 
@@ -2272,7 +2272,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return DataFrame(internal)
 
     # TODO: axis should support 1 or 'columns' either
-    def nunique(self, axis: int = 0, dropna: bool = True, approx: bool = False,
+    def nunique(self, axis: Union[int, str] = 0, dropna: bool = True, approx: bool = False,
                 rsd: float = 0.05) -> pd.Series:
         """
         Return number of unique elements in the object.
