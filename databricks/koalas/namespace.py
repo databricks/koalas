@@ -327,7 +327,7 @@ def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> 
         for col in index_col:
             if col not in sdf_columns:
                 raise KeyError(col)
-        index_map = [(col, col) for col in index_col]
+        index_map = [(col, (col,)) for col in index_col]
 
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
@@ -1186,7 +1186,8 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
             prefix = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
 
         column_index_set = set(column_index)
-        remaining_columns = [kdf[idx] for idx in kdf._internal.column_index
+        remaining_columns = [kdf[idx].rename(str(idx) if len(idx) > 1 else idx[0])
+                             for idx in kdf._internal.column_index
                              if idx not in column_index_set]
 
     if any(not isinstance(kdf._internal.spark_type_for(idx), _get_dummies_acceptable_types)

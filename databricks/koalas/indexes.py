@@ -126,22 +126,22 @@ class Index(IndexOpsMixin):
         return self.to_series().spark_type
 
     @property
-    def name(self) -> Union[str, Tuple[str]]:
+    def name(self) -> Union[str, Tuple[str, ...]]:
         """Return name of the Index."""
         return self.names[0]
 
     @name.setter
-    def name(self, name: Union[str, Tuple[str]]) -> None:
+    def name(self, name: Union[str, Tuple[str, ...]]) -> None:
         self.names = [name]
 
     @property
-    def names(self) -> List[Union[str, Tuple[str]]]:
+    def names(self) -> List[Union[str, Tuple[str, ...]]]:
         """Return names of the Index."""
         return [name if name is None or len(name) > 1 else name[0]
                 for name in self._kdf._internal.index_names]
 
     @names.setter
-    def names(self, names: List[Union[str, Tuple[str]]]) -> None:
+    def names(self, names: List[Union[str, Tuple[str, ...]]]) -> None:
         if not is_list_like(names):
             raise ValueError('Names must be a list-like')
         internal = self._kdf._internal
@@ -151,7 +151,7 @@ class Index(IndexOpsMixin):
         names = [name if isinstance(name, tuple) else (name,) for name in names]
         self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
 
-    def rename(self, name: Union[str, Tuple[str]], inplace: bool = False):
+    def rename(self, name: Union[str, Tuple[str, ...]], inplace: bool = False):
         """
         Alter Index name.
         Able to set new names without level. Defaults to returning new index.
@@ -202,7 +202,7 @@ class Index(IndexOpsMixin):
         else:
             return Index(DataFrame(internal), self._scol)
 
-    def to_series(self, name: Union[str, Tuple[str]] = None) -> Series:
+    def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
         """
         Create a Series with both index and values equal to the index keys
         useful with map for returning an indexer based on an index.
@@ -227,7 +227,7 @@ class Index(IndexOpsMixin):
         b    b
         c    c
         d    d
-        Name: __index_level_0__, dtype: object
+        Name: 0, dtype: object
         """
         kdf = self._kdf
         scol = self._scol
@@ -281,7 +281,6 @@ class MultiIndex(Index):
         scol = F.struct(kdf._internal.index_scols)
         data_columns = kdf._sdf.select(scol).columns
         internal = kdf._internal.copy(scol=scol,
-                                      data_columns=data_columns,
                                       column_index=[(col, None) for col in data_columns],
                                       column_index_names=None)
         IndexOpsMixin.__init__(self, internal, kdf)

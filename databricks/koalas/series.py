@@ -828,7 +828,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return 1
 
     @property
-    def name(self) -> Union[str, Tuple[str]]:
+    def name(self) -> Union[str, Tuple[str, ...]]:
         """Return name of the Series."""
         name = self._internal.column_index[0]
         if name is not None and len(name) == 1:
@@ -837,12 +837,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             return name
 
     @name.setter
-    def name(self, name: Union[str, Tuple[str]]):
+    def name(self, name: Union[str, Tuple[str, ...]]):
         self.rename(name, inplace=True)
 
     # TODO: Functionality and documentation should be matched. Currently, changing index labels
     # taking dictionary and function to change index are not supported.
-    def rename(self, index: Union[str, Tuple[str]] = None, **kwargs):
+    def rename(self, index: Union[str, Tuple[str, ...]] = None, **kwargs):
         """
         Alter Series name.
 
@@ -1022,7 +1022,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return kdf
 
-    def to_frame(self, name: Union[str, Tuple[str]] = None) -> spark.DataFrame:
+    def to_frame(self, name: Union[str, Tuple[str, ...]] = None) -> spark.DataFrame:
         """
         Convert Series to DataFrame.
 
@@ -1058,11 +1058,18 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             renamed = self
         sdf = renamed._internal.spark_internal_df
+        column_index = None  # type: Optional[List[Tuple[str, ...]]]
+        if renamed._internal.column_index[0] is None:
+            column_index = [('0',)]
+            column_index_names = None
+        else:
+            column_index = renamed._internal.column_index
+            column_index_names = renamed._internal.column_index_names
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[sdf.schema[-1].name],
                                   index_map=renamed._internal.index_map,
-                                  column_index=renamed._internal.column_index,
-                                  column_index_names=renamed._internal.column_index_names)
+                                  column_index=column_index,
+                                  column_index_names=column_index_names)
         return DataFrame(internal)
 
     to_dataframe = to_frame

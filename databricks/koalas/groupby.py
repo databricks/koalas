@@ -21,7 +21,7 @@ A wrapper for GroupedData to behave similar to pandas GroupBy.
 import inspect
 from collections import Callable
 from functools import partial
-from typing import Any, List
+from typing import Any, List, Tuple, Union
 
 import numpy as np
 from pandas._libs.parsers import is_datetime64_dtype
@@ -1690,7 +1690,7 @@ class GroupBy(object):
 class DataFrameGroupBy(GroupBy):
 
     def __init__(self, kdf: DataFrame, by: List[Series], as_index: bool = True,
-                 agg_columns: List[str] = None):
+                 agg_columns: List[Union[str, Tuple[str, ...]]] = None):
         self._kdf = kdf
         self._groupkeys = by
         self._as_index = as_index

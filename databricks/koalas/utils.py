@@ -346,7 +346,7 @@ def scol_for(sdf: spark.DataFrame, column_name: str) -> spark.Column:
     return sdf['`{}`'.format(column_name)]
 
 
-def column_index_level(column_index: List[Tuple[str]]) -> int:
+def column_index_level(column_index: List[Tuple[str, ...]]) -> int:
     """ Return the level of the column index. """
     if len(column_index) == 0:
         return 0

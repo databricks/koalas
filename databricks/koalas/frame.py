@@ -4271,7 +4271,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             _Frame._count_expr, name="count", axis=axis, numeric_only=False)
 
     def drop(self, labels=None, axis=1,
-             columns: Union[str, Tuple[str], List[str], List[Tuple[str]]] = None):
+             columns: Union[str, Tuple[str, ...], List[str], List[Tuple[str, ...]]] = None):
         """
         Drop specified labels from columns.
 
@@ -4334,11 +4334,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise NotImplementedError("Drop currently only works for axis=1")
         elif columns is not None:
             if isinstance(columns, str):
-                columns = [(columns,)]
+                columns = [(columns,)]  # type: ignore
             elif isinstance(columns, tuple):
                 columns = [columns]
             else:
-                columns = [col if isinstance(col, tuple) else (col,) for col in columns]
+                columns = [col if isinstance(col, tuple) else (col,)  # type: ignore
+                           for col in columns]
             drop_column_index = set(idx for idx in self._internal.column_index
                                     for col in columns
                                     if idx[:len(col)] == col)
@@ -4822,6 +4823,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return len(self), len(self.columns)
 
+    # TODO: support multi-index columns
     def merge(self, right: 'DataFrame', how: str = 'inner',
               on: Optional[Union[str, List[str]]] = None,
               left_on: Optional[Union[str, List[str]]] = None,
@@ -4981,8 +4983,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'how' parameter has to be amongst the following values: ",
                              "['inner', 'left', 'right', 'outer']")
 
-        left_table = self._sdf.alias('left_table')
-        right_table = right._sdf.alias('right_table')
+        left_table = self._internal.spark_internal_df.alias('left_table')
+        right_table = right._internal.spark_internal_df.alias('right_table')
 
         left_key_columns = [scol_for(left_table, col) for col in left_keys]  # type: ignore
         right_key_columns = [scol_for(right_table, col) for col in right_keys]  # type: ignore
