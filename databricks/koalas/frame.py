@@ -2192,8 +2192,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
-    # TODO: add axis parameter
-    def diff(self, periods=1):
+    # TODO: axis should support 1 or 'columns' either at this moment
+    def diff(self, periods: int = 1, axis: Union[int, str] = 0):
         """
         First discrete difference of element.
 
@@ -2209,6 +2209,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ----------
         periods : int, default 1
             Periods to shift for calculating difference, accepts negative values.
+        axis : int, default 0 or 'index'
+            Can only be set to 0 at the moment.
 
         Returns
         -------
@@ -2259,6 +2261,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4 -1.0 -3.0 -11.0
         5  NaN  NaN   NaN
         """
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
         applied = []
         for column in self._internal.data_columns:
             applied.append(self[column].diff(periods))
@@ -2267,7 +2271,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
-    def nunique(self, axis: int = 0, dropna: bool = True, approx: bool = False,
+    # TODO: axis should support 1 or 'columns' either at this moment
+    def nunique(self, axis: Union[int, str] = 0, dropna: bool = True, approx: bool = False,
                 rsd: float = 0.05) -> pd.Series:
         """
         Return number of unique elements in the object.
@@ -2276,7 +2281,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        axis : int, default 0
+        axis : int, default 0 or 'index'
             Can only be set to 0 at the moment.
         dropna : bool, default True
             Don’t include NaN in the count.
@@ -2314,8 +2319,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         B    1
         Name: 0, dtype: int64
         """
-        if axis != 0:
-            raise ValueError("The 'nunique' method only works with axis=0 at the moment")
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
         res = self._sdf.select([self[column]._nunique(dropna, approx, rsd)
                                 for column in self.columns])
         return res.toPandas().T.iloc[:, 0]
