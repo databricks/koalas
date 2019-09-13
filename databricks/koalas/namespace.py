@@ -33,7 +33,7 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.series import Series, _col
 
@@ -318,7 +318,7 @@ def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> 
     0   0
     """
     sdf = default_session().read.table(name)
-    index_map = None
+    index_map = None  # type: Optional[List[IndexMap]]
 
     if index_col is not None:
         if isinstance(index_col, str):
