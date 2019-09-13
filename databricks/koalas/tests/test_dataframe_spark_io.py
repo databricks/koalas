@@ -70,6 +70,16 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             actual = ks.read_parquet(tmp)
             self.assertPandasEqual(expected, actual.toPandas())
 
+            # When index columns are known
+            pdf = self.test_pdf
+            expected = ks.DataFrame(pdf)
+
+            expected_idx = expected.set_index('bhello')[['f', 'i32', 'i64']]
+            actual_idx = ks.read_parquet(tmp, index_col='bhello')[['f', 'i32', 'i64']]
+            self.assert_eq(
+                actual_idx.sort_values(by='f').to_spark().toPandas(),
+                expected_idx.sort_values(by='f').to_spark().toPandas())
+
     def test_parquet_write(self):
         with self.temp_dir() as tmp:
             pdf = self.test_pdf
@@ -158,3 +168,14 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 actual.sort_values(by='f').to_spark().toPandas(),
                 expected.sort_values(by='f').to_spark().toPandas())
+
+            # When index columns are known
+            pdf = self.test_pdf
+            expected = ks.DataFrame(pdf)
+            col_order = ['f', 'i32', 'i64']
+
+            expected_idx = expected.set_index('bhello')[col_order]
+            actual_idx = ks.read_spark_io(tmp, format='json', index_col='bhello')[col_order]
+            self.assert_eq(
+                actual_idx.sort_values(by='f').to_spark().toPandas(),
+                expected_idx.sort_values(by='f').to_spark().toPandas())

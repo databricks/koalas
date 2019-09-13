@@ -124,7 +124,7 @@ def range(start: int,
 
 
 def read_csv(path, header='infer', names=None, usecols=None,
-             mangle_dupe_cols=True, parse_dates=False, comment=None):
+             mangle_dupe_cols=True, parse_dates=False, comment=None, index_col=None):
     """Read CSV (comma-separated) file into DataFrame.
 
     Parameters
@@ -159,6 +159,8 @@ def read_csv(path, header='infer', names=None, usecols=None,
         Currently only `False` is allowed.
     comment: str, optional
         Indicates the line should not be parsed.
+    index_col: str or list of str, optional, default: None
+        Index column of table in Spark.
 
     Returns
     -------
@@ -238,11 +240,23 @@ def read_csv(path, header='infer', names=None, usecols=None,
                 sdf = default_session().createDataFrame([], schema=StructType())
     else:
         sdf = default_session().createDataFrame([], schema=StructType())
-    return DataFrame(sdf)
+
+    index_map = None  # type: Optional[List[IndexMap]]
+
+    if index_col is not None:
+        if isinstance(index_col, str):
+            index_col = [index_col]
+        sdf_columns = set(sdf.columns)
+        for col in index_col:
+            if col not in sdf_columns:
+                raise KeyError(col)
+        index_map = [(col, col) for col in index_col]
+
+    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
 def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str] = None,
-               **options) -> DataFrame:
+               index_col: Optional[Union[str, List[str]]] = None, **options) -> DataFrame:
     """
     Read a Delta Lake table on some file system and return a DataFrame.
 
@@ -259,6 +273,8 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
         Specifies the table version (based on timestamp) to read from,
         using Delta's time travel feature. This must be a valid date or timestamp string in Spark,
         and sets Delta's 'timestampAsOf' option.
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
     options
         Additional options that can be passed onto Delta.
 
@@ -284,7 +300,7 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
         options['versionAsOf'] = version
     if timestamp is not None:
         options['timestampAsOf'] = timestamp
-    return read_spark_io(path, format='delta', options=options)
+    return read_spark_io(path, format='delta', index_col=index_col, options=options)
 
 
 def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> DataFrame:
@@ -333,7 +349,9 @@ def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> 
 
 
 def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
-                  schema: Union[str, 'StructType'] = None, **options) -> DataFrame:
+                  schema: Union[str, 'StructType'] = None,
+                  index_col: Optional[Union[str, List[str]]] = None,
+                  **options) -> DataFrame:
     """Load a DataFrame from a Spark data source.
 
     Parameters
@@ -352,6 +370,8 @@ def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
         Input schema. If none, Spark tries to infer the schema automatically.
         The schema can either be a Spark StructType, or a DDL-formatted string like
         `col0 INT, col1 DOUBLE`.
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
     options : dict
         All other options passed directly into Spark's data source.
 
@@ -371,10 +391,21 @@ def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
     0   0
     """
     sdf = default_session().read.load(path=path, format=format, schema=schema, options=options)
-    return DataFrame(sdf)
+    index_map = None  # type: Optional[List[IndexMap]]
+
+    if index_col is not None:
+        if isinstance(index_col, str):
+            index_col = [index_col]
+        sdf_columns = set(sdf.columns)
+        for col in index_col:
+            if col not in sdf_columns:
+                raise KeyError(col)
+        index_map = [(col, col) for col in index_col]
+
+    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
-def read_parquet(path, columns=None) -> DataFrame:
+def read_parquet(path, columns=None, index_col=None) -> DataFrame:
     """Load a parquet object from the file path, returning a DataFrame.
 
     Parameters
@@ -383,6 +414,8 @@ def read_parquet(path, columns=None) -> DataFrame:
         File path
     columns : list, default=None
         If not None, only these columns will be read from the file.
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
 
     Returns
     -------
@@ -415,7 +448,18 @@ def read_parquet(path, columns=None) -> DataFrame:
                 sdf = default_session().createDataFrame([], schema=StructType())
     else:
         sdf = default_session().createDataFrame([], schema=StructType())
-    return DataFrame(sdf)
+
+    if index_col is not None:
+        if isinstance(index_col, str):
+            index_col = [index_col]
+        sdf_columns = set(sdf.columns)
+        for col in index_col:
+            if col not in sdf_columns:
+                raise KeyError(col)
+        index_map = [(col, col) for col in index_col]
+    else:
+        index_map = None
+    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
 def read_clipboard(sep=r'\s+', **kwargs):
