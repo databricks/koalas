@@ -296,6 +296,9 @@ def read_table(name: str, index_col: Optional[List[str]] = None) -> DataFrame:
     name : string
         Table name in Spark.
 
+    index_col : string or list of strings
+        Index column of table in Spark
+
     Returns
     -------
     DataFrame
@@ -315,10 +318,20 @@ def read_table(name: str, index_col: Optional[List[str]] = None) -> DataFrame:
     0   0
     """
     sdf = default_session().read.table(name)
-    if index_col is None:
-        return DataFrame(sdf)
+
+    if index_col is not None:
+        if isinstance(index_col, str):
+            index_col = [index_col]
+        sdf_columns = set(sdf.columns)
+        for col in index_col:
+            if col not in sdf_columns:
+                raise KeyError(col)
+        index_map = [(col, col) for col in index_col]
     else:
-        return DataFrame(sdf, index_col=index_col)
+        index_map = None
+
+    kdf = DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    return kdf
 
 
 def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
