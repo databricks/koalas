@@ -2271,7 +2271,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.copy(sdf=sdf, data_columns=[c.name for c in applied])
         return DataFrame(internal)
 
-    # TODO: axis should support 1 or 'columns' either
+    # TODO: axis should support 1 or 'columns' either at this moment
     def nunique(self, axis: Union[int, str] = 0, dropna: bool = True, approx: bool = False,
                 rsd: float = 0.05) -> pd.Series:
         """
