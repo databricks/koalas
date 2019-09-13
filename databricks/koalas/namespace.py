@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union
+from typing import Optional, Union, List
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
@@ -33,7 +33,7 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.series import Series, _col
 
@@ -287,7 +287,7 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
     return read_spark_io(path, format='delta', options=options)
 
 
-def read_table(name: str) -> DataFrame:
+def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> DataFrame:
     """
     Read a Spark table and return a DataFrame.
 
@@ -295,6 +295,9 @@ def read_table(name: str) -> DataFrame:
     ----------
     name : string
         Table name in Spark.
+
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
 
     Returns
     -------
@@ -315,7 +318,18 @@ def read_table(name: str) -> DataFrame:
     0   0
     """
     sdf = default_session().read.table(name)
-    return DataFrame(sdf)
+    index_map = None  # type: Optional[List[IndexMap]]
+
+    if index_col is not None:
+        if isinstance(index_col, str):
+            index_col = [index_col]
+        sdf_columns = set(sdf.columns)
+        for col in index_col:
+            if col not in sdf_columns:
+                raise KeyError(col)
+        index_map = [(col, col) for col in index_col]
+
+    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
 def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,

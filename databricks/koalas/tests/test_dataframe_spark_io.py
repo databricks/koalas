@@ -116,6 +116,25 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
                 actual.sort_values(by='f').to_spark().toPandas(),
                 expected.sort_values(by='f').to_spark().toPandas())
 
+            # When index columns are known
+            expected_idx = expected.set_index('bhello')[['f', 'i32', 'i64']]
+            actual_idx = ks.read_table('test_table', 'bhello')[['f', 'i32', 'i64']]
+            self.assert_eq(
+                actual_idx.sort_values(by='f').to_spark().toPandas(),
+                expected_idx.sort_values(by='f').to_spark().toPandas())
+
+            expected_idx = expected.set_index(['bhello'])[['f', 'i32', 'i64']]
+            actual_idx = ks.read_table('test_table', ['bhello'])[['f', 'i32', 'i64']]
+            self.assert_eq(
+                actual_idx.sort_values(by='f').to_spark().toPandas(),
+                expected_idx.sort_values(by='f').to_spark().toPandas())
+
+            expected_idx = expected.set_index(['i32', 'bhello'])[['f', 'i64']]
+            actual_idx = ks.read_table('test_table', ['i32', 'bhello'])[['f', 'i64']]
+            self.assert_eq(
+                actual_idx.sort_values(by='f').to_spark().toPandas(),
+                expected_idx.sort_values(by='f').to_spark().toPandas())
+
     def test_spark_io(self):
         with self.temp_dir() as tmp:
             pdf = self.test_pdf
