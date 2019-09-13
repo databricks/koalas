@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union, List
+from typing import Optional, Union
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
@@ -287,7 +287,7 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
     return read_spark_io(path, format='delta', options=options)
 
 
-def read_table(name: str, index_col: Optional[List[str]] = None) -> DataFrame:
+def read_table(name: str, index_col: Optional[Union[str, [str]]] = None) -> DataFrame:
     """
     Read a Spark table and return a DataFrame.
 
@@ -296,8 +296,8 @@ def read_table(name: str, index_col: Optional[List[str]] = None) -> DataFrame:
     name : string
         Table name in Spark.
 
-    index_col : string or list of strings
-        Index column of table in Spark
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
 
     Returns
     -------
@@ -318,6 +318,7 @@ def read_table(name: str, index_col: Optional[List[str]] = None) -> DataFrame:
     0   0
     """
     sdf = default_session().read.table(name)
+    index_map = None
 
     if index_col is not None:
         if isinstance(index_col, str):
@@ -327,11 +328,8 @@ def read_table(name: str, index_col: Optional[List[str]] = None) -> DataFrame:
             if col not in sdf_columns:
                 raise KeyError(col)
         index_map = [(col, col) for col in index_col]
-    else:
-        index_map = None
 
-    kdf = DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
-    return kdf
+    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
 def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
