@@ -458,7 +458,7 @@ def read_parquet(path, columns=None, index_col=None) -> DataFrame:
                 raise KeyError(col)
         index_map = [(col, col) for col in index_col]
     else:
-        index_map = None
+        index_map = None  # type: Optional[List[IndexMap]]
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
