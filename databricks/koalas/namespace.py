@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union
+from typing import Optional, Union, List
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
@@ -287,7 +287,7 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
     return read_spark_io(path, format='delta', options=options)
 
 
-def read_table(name: str, index_col: Optional[Union[str, [str]]] = None) -> DataFrame:
+def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> DataFrame:
     """
     Read a Spark table and return a DataFrame.
 
