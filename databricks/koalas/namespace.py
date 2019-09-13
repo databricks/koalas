@@ -456,9 +456,9 @@ def read_parquet(path, columns=None, index_col=None) -> DataFrame:
         for col in index_col:
             if col not in sdf_columns:
                 raise KeyError(col)
-        index_map = [(col, col) for col in index_col]
+        index_map = [(col, col) for col in index_col]  # type: Optional[List[IndexMap]]
     else:
-        index_map = None  # type: Optional[List[IndexMap]]
+        index_map = None
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
