@@ -143,6 +143,8 @@ def read_csv(path, header='infer', names=None, index_col=None,
         explicitly pass `header=None`. Duplicates in this list will cause an error to be issued.
         If a string is given, it should be a DDL-formatted string in Spark SQL, which is
         preferred to avoid schema inference for better performance.
+    index_col: str or list of str, optional, default: None
+        Index column of table in Spark.
     usecols : list-like or callable, optional
         Return a subset of the columns. If list-like, all elements must either be
         positional (i.e. integer indices into the document columns) or strings that
@@ -159,8 +161,6 @@ def read_csv(path, header='infer', names=None, index_col=None,
         Currently only `False` is allowed.
     comment: str, optional
         Indicates the line should not be parsed.
-    index_col: str or list of str, optional, default: None
-        Index column of table in Spark.
 
     Returns
     -------
