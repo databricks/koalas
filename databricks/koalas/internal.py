@@ -652,17 +652,10 @@ class _InternalFrame(object):
             index_map = self._index_map
         if scol is _NoValue:
             scol = self._scol
-        # FIXME(ueshin): this if-clause should be removed.
-        if column_index is _NoValue:
-            if data_columns is not _NoValue:
-                column_index = None
-            else:
-                column_index = self._column_index
         if data_columns is _NoValue:
             data_columns = self._data_columns
-        # FIXME(ueshin): this if-clause should be used instead of the above.
-        # if column_index is _NoValue:
-        #     column_index = self._column_index
+        if column_index is _NoValue:
+            column_index = self._column_index
         if column_index_names is _NoValue:
             column_index_names = self._column_index_names
         return _InternalFrame(sdf, index_map=index_map, scol=scol, data_columns=data_columns,
