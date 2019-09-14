@@ -80,6 +80,16 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             # footer
             """ % self.csv_text)
 
+    @property
+    def tab_delimited_csv_text(self):
+        return normalize_text(
+            """
+            name\tamount
+            Alice\t100
+            Bob\t-200
+            Charlie\t300
+            """)
+
     @contextmanager
     def csv_file(self, csv):
         with self.temp_file() as tmp:
@@ -151,6 +161,12 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
                                    lambda: ks.read_csv(fn, comment=1))
             self.assertRaisesRegex(ValueError, 'Only length-1 comment characters supported',
                                    lambda: ks.read_csv(fn, comment=[1]))
+
+    def test_read_csv_with_sep(self):
+        with self.csv_file(self.tab_delimited_csv_text) as fn:
+            expected = pd.read_csv(fn, sep='\t')
+            actual = ks.read_csv(fn, sep='\t')
+            self.assertPandasAlmostEqual(expected, actual.toPandas())
 
     def test_read_csv_with_mangle_dupe_cols(self):
         self.assertRaisesRegex(ValueError, 'mangle_dupe_cols',
