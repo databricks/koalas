@@ -12,7 +12,7 @@ matrix:
       env:
         - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
         - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
-        - SPARK_VERSION=2.3.3
+        - SPARK_VERSION=2.3.4
         - PANDAS_VERSION=0.23.4
         - PYARROW_VERSION=0.10.0
     - python: "3.6"

@@ -24,6 +24,7 @@ from pandas.core.dtypes.inference import is_integer, is_list_like
 from pandas.io.formats.printing import pprint_thing
 from pandas.core.base import PandasObject
 from pyspark.ml.feature import Bucketizer
+from pyspark.mllib.stat import KernelDensity
 from pyspark.sql import functions as F
 
 from databricks.koalas.missing import _unsupported_function
@@ -42,11 +43,11 @@ def _get_standard_kind(kind):
 
 if LooseVersion(pd.__version__) < LooseVersion('0.25'):
     from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot, PiePlot, \
-        AreaPlot, LinePlot, BarhPlot, ScatterPlot
+        AreaPlot, LinePlot, BarhPlot, ScatterPlot, KdePlot
 else:
     from pandas.plotting._core import PlotAccessor
     from pandas.plotting._matplotlib import BarPlot, BoxPlot, HistPlot, PiePlot, AreaPlot, \
-        LinePlot, BarhPlot, ScatterPlot
+        LinePlot, BarhPlot, ScatterPlot, KdePlot
     from pandas.plotting._matplotlib.core import MPLPlot
     _all_kinds = PlotAccessor._all_kinds
 
@@ -407,6 +408,9 @@ class KoalasHistPlotSummary:
                       .map(tuple)
                       .collect()[0])
         # divides the boundaries into bins
+        if boundaries[0] == boundaries[1]:
+            boundaries = (boundaries[0] - 0.5, boundaries[1] + 0.5)
+
         return np.linspace(boundaries[0], boundaries[1], n_bins + 1)
 
     def calc_histogram(self, bins):
@@ -438,6 +442,22 @@ class KoalasHistPlotSummary:
 
 class KoalasHistPlot(HistPlot):
     def _args_adjust(self):
+        from databricks.koalas.series import Series
+
+        data = self.data
+        if isinstance(data, Series):
+            data = data.to_frame()
+
+        numeric_data = data.select_dtypes(include=['byte', 'decimal', 'integer', 'float',
+                                                   'long', 'double', np.datetime64])
+
+        is_empty = not len(numeric_data.columns)
+
+        # no empty frames or series allowed
+        if is_empty:
+            raise TypeError('Empty {0!r}: no numeric data to '
+                            'plot'.format(numeric_data.__class__.__name__))
+
         if is_integer(self.bins):
             summary = KoalasHistPlotSummary(self.data, self.data.name)
             # computes boundaries for the column
@@ -517,6 +537,109 @@ class KoalasScatterPlot(ScatterPlot, TopNPlot):
         super(KoalasScatterPlot, self)._make_plot()
 
 
+class KoalasKdePlot(KdePlot):
+    def _compute_plot_data(self):
+        from databricks.koalas.series import Series
+
+        data = self.data
+        if isinstance(data, Series):
+            data = data.to_frame()
+
+        numeric_data = data.select_dtypes(include=['byte', 'decimal', 'integer', 'float',
+                                                   'long', 'double', np.datetime64])
+        try:
+            is_empty = numeric_data.empty
+        except AttributeError:
+            is_empty = not len(numeric_data)
+
+        # no empty frames or series allowed
+        if is_empty:
+            raise TypeError('Empty {0!r}: no numeric data to '
+                            'plot'.format(numeric_data.__class__.__name__))
+
+        self.data = numeric_data
+
+    def _make_plot(self):
+        # 'num_colors' requires ndim but Spark DataFrame does not seem knowing it.
+        colors = self._get_colors(num_colors=1)
+        stacking_id = self._get_stacking_id()
+
+        sdf = self.data._sdf
+
+        for i, data_column in enumerate(self.data._internal.data_columns):
+            # 'y' is a Spark DataFrame that selects one column.
+            y = sdf.select(data_column)
+            ax = self._get_ax(i)
+
+            kwds = self.kwds.copy()
+
+            label = pprint_thing(data_column)
+            kwds['label'] = data_column
+
+            style, kwds = self._apply_style_colors(colors, kwds, i, label)
+            if style is not None:
+                kwds['style'] = style
+
+            kwds = self._make_plot_keywords(kwds, y)
+            artists = self._plot(ax, y, column_num=i,
+                                 stacking_id=stacking_id, **kwds)
+            self._add_legend_handle(artists[0], label, index=i)
+
+    def _get_ind(self, y):
+        # 'y' is a Spark DataFrame that selects one column.
+        if self.ind is None:
+            min_val, max_val = y.select(
+                F.min(y.columns[0]), F.max(y.columns[0])).first()
+
+            sample_range = max_val - min_val
+            ind = np.linspace(
+                min_val - 0.5 * sample_range,
+                max_val + 0.5 * sample_range,
+                1000,
+            )
+        elif is_integer(self.ind):
+            min_val, max_val = y.select(
+                F.min(y.columns[0]), F.max(y.columns[0])).first()
+
+            sample_range = np.nanmax(y) - np.nanmin(y)
+            ind = np.linspace(
+                min_val - 0.5 * sample_range,
+                max_val + 0.5 * sample_range,
+                self.ind,
+            )
+        else:
+            ind = self.ind
+        return ind
+
+    @classmethod
+    def _plot(
+            cls,
+            ax,
+            y,
+            style=None,
+            bw_method=None,
+            ind=None,
+            column_num=None,
+            stacking_id=None,
+            **kwds):
+        # 'y' is a Spark DataFrame that selects one column.
+
+        # Using RDD is slow so we might have to change it to Dataset based implementation
+        # once Spark has that implementation.
+        sample = y.rdd.map(lambda x: float(x[0]))
+        kd = KernelDensity()
+        kd.setSample(sample)
+
+        assert isinstance(bw_method, (int, float)), "'bw_method' must be set as a scalar number."
+
+        if bw_method is not None:
+            # Match the bandwidth with Spark.
+            kd.setBandwidth(float(bw_method))
+        y = kd.estimate(list(map(float, ind)))
+        lines = MPLPlot._plot(ax, ind, y, style=style, **kwds)
+        return lines
+
+
 _klasses = [
     KoalasHistPlot,
     KoalasBarPlot,
@@ -526,6 +649,7 @@ _klasses = [
     KoalasLinePlot,
     KoalasBarhPlot,
     KoalasScatterPlot,
+    KoalasKdePlot,
 ]
 _plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
 
@@ -841,8 +965,28 @@ class KoalasSeriesPlotMethods(PandasObject):
         """
         return self(kind='hist', bins=bins, **kwds)
 
-    def kde(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.Series', method_name='kde')()
+    def kde(self, bw_method=None, ind=None, **kwargs):
+        """
+        Generate Kernel Density Estimate plot using Gaussian kernels.
+
+        Parameters
+        ----------
+        bw_method : scalar
+            The method used to calculate the estimator bandwidth.
+            See KernelDensity in PySpark for more information.
+        ind : NumPy array or integer, optional
+            Evaluation points for the estimated PDF. If None (default),
+            1000 equally spaced points are used. If `ind` is a NumPy array, the
+            KDE is evaluated at the points passed. If `ind` is an integer,
+            `ind` number of equally spaced points are used.
+        **kwargs : optional
+            Keyword arguments to pass on to :meth:`Koalas.Series.plot`.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or numpy.ndarray of them
+        """
+        return self(kind="kde", bw_method=bw_method, ind=ind, **kwargs)
 
     density = kde
 
