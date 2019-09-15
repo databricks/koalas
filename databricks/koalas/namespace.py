@@ -124,8 +124,15 @@ def range(start: int,
     return DataFrame(sdf)
 
 
-def read_csv(path, sep=',', header='infer', names=None, usecols=None,
-             mangle_dupe_cols=True, parse_dates=False, comment=None):
+def read_csv(path,
+             sep=',',
+             header='infer',
+             names=None,
+             index_col: Optional[Union[str, List[str]]] = None,
+             usecols=None,
+             mangle_dupe_cols=True,
+             parse_dates=False,
+             comment=None):
     """Read CSV (comma-separated) file into DataFrame.
 
     Parameters
