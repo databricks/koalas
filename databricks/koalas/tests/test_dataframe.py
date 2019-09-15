@@ -400,6 +400,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.dropna(), pdf.dropna())
         self.assert_eq(kdf.dropna(how='all'), pdf.dropna(how='all'))
         self.assert_eq(kdf.dropna(subset=['x']), pdf.dropna(subset=['x']))
+        self.assert_eq(kdf.dropna(subset='x'), pdf.dropna(subset=['x']))
         self.assert_eq(kdf.dropna(subset=['y', 'z']), pdf.dropna(subset=['y', 'z']))
         self.assert_eq(kdf.dropna(subset=['y', 'z'], how='all'),
                        pdf.dropna(subset=['y', 'z'], how='all'))
@@ -419,6 +420,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.dropna(axis='column')
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.dropna(axis='foo')
+
+        self.assertRaises(KeyError, lambda: kdf.dropna(subset='1'))
+        with self.assertRaisesRegex(ValueError, "invalid how option: 1"):
+            kdf.dropna(how=1)
+        with self.assertRaisesRegex(TypeError, "must specify how or thresh"):
+            kdf.dropna(how=None)
 
     def test_dtype(self):
         pdf = pd.DataFrame({'a': list('abc'),
