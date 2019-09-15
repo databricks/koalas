@@ -124,14 +124,16 @@ def range(start: int,
     return DataFrame(sdf)
 
 
-def read_csv(path, header='infer', names=None, index_col=None,
-             usecols=None, mangle_dupe_cols=True, parse_dates=False, comment=None):
+def read_csv(path, sep=',', header='infer', names=None, usecols=None,
+             mangle_dupe_cols=True, parse_dates=False, comment=None):
     """Read CSV (comma-separated) file into DataFrame.
 
     Parameters
     ----------
     path : str
         The path string storing the CSV file to be read.
+    sep : str, default ‘,’
+        Delimeter to use. Must be a single character.
     header : int, list of int, default ‘infer’
         Whether to to use as the column names, and the start of the data.
         Default behavior is to infer the column names: if no names are passed
@@ -184,6 +186,7 @@ def read_csv(path, header='infer', names=None, index_col=None,
         usecols = list(usecols)
     if usecols is None or callable(usecols) or len(usecols) > 0:
         reader = default_session().read.option("inferSchema", "true")
+        reader.option("sep", sep)
 
         if header == 'infer':
             header = 0 if names is None else None
