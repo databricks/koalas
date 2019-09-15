@@ -26,6 +26,7 @@ import itertools
 import numpy as np
 import pandas as pd
 
+from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
     DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
@@ -241,7 +242,7 @@ def read_csv(path, header='infer', names=None, index_col=None,
     else:
         sdf = default_session().createDataFrame([], schema=StructType())
 
-    index_map = _get_index_map(sdf, index_col)  # type: Optional[List[IndexMap]]
+    index_map = _get_index_map(sdf, index_col)
 
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
@@ -325,7 +326,7 @@ def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> 
     0   0
     """
     sdf = default_session().read.table(name)
-    index_map = _get_index_map(sdf, index_col)  # type: Optional[List[IndexMap]]
+    index_map = _get_index_map(sdf, index_col)
 
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
@@ -373,7 +374,7 @@ def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
     0   0
     """
     sdf = default_session().read.load(path=path, format=format, schema=schema, options=options)
-    index_map = _get_index_map(sdf, index_col)  # type: Optional[List[IndexMap]]
+    index_map = _get_index_map(sdf, index_col)
 
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
@@ -422,7 +423,7 @@ def read_parquet(path, columns=None, index_col=None) -> DataFrame:
     else:
         sdf = default_session().createDataFrame([], schema=StructType())
 
-    index_map = _get_index_map(sdf, index_col)  # type: Optional[List[IndexMap]]
+    index_map = _get_index_map(sdf, index_col)
 
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
@@ -824,7 +825,7 @@ def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, *
         reader.schema(schema)
     reader.options(**options)
     sdf = reader.format("jdbc").load()
-    index_map = _get_index_map(sdf, index_col)  # type: Optional[List[IndexMap]]
+    index_map = _get_index_map(sdf, index_col)
     kdf = DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
     if columns is not None:
         if isinstance(columns, str):
@@ -875,7 +876,7 @@ def read_sql_query(sql, con, index_col=None, **options):
     reader.option('url', con)
     reader.options(**options)
     sdf = reader.format("jdbc").load()
-    index_map = _get_index_map(sdf, index_col)  # type: Optional[List[IndexMap]]
+    index_map = _get_index_map(sdf, index_col)
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
@@ -1626,10 +1627,9 @@ def _to_datetime2(arg_year, arg_month, arg_day,
         format=format,
         infer_datetime_format=infer_datetime_format)
 
-    index_map = None  # type: Optional[List[IndexMap]]
 
-
-def _get_index_map(sdf, index_col=None):
+def _get_index_map(sdf: spark.DataFrame,
+                   index_col: Optional[Union[str, List[str]]] = None):
     if index_col is not None:
         if isinstance(index_col, str):
             index_col = [index_col]
@@ -1637,7 +1637,7 @@ def _get_index_map(sdf, index_col=None):
         for col in index_col:
             if col not in sdf_columns:
                 raise KeyError(col)
-        index_map = [(col, col) for col in index_col]
+        index_map = [(col, col) for col in index_col]  # type: Optional[List[IndexMap]]
     else:
         index_map = None
 
