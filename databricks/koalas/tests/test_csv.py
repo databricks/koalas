@@ -141,6 +141,11 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             self.assertRaisesRegex(ValueError, expected_error_message,
                                    lambda: ks.read_csv(fn, usecols=[1, 'amount']))
 
+            # check with index_col
+            expected = pd.read_csv(fn).set_index('name')
+            actual = ks.read_csv(fn, index_col='name')
+            self.assertPandasAlmostEqual(expected, actual.toPandas())
+
     def test_read_with_spark_schema(self):
         with self.csv_file(self.csv_text_2) as fn:
             actual = ks.read_csv(fn, names="A string, B string, C long, D long, E long")
