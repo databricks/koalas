@@ -240,7 +240,7 @@ class _Frame(object):
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
 
-        .. note:: unliike pandas', Koalas' emulates cumulative product by ``exp(sum(log(...)))``
+        .. note:: unlike pandas', Koalas' emulates cumulative product by ``exp(sum(log(...)))``
             trick. Therefore, it only works for positive numbers.
 
         Parameters

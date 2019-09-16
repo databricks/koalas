@@ -370,7 +370,7 @@ class GroupBy(object):
             lambda col: F.max(F.coalesce(col.cast('boolean'), F.lit(False))),
             only_numeric=False)
 
-    # TODO: groupby multiply columuns should be implemented.
+    # TODO: groupby multiply columns should be implemented.
     def size(self):
         """
         Compute group sizes.
@@ -623,8 +623,8 @@ class GroupBy(object):
         def cumprod(scol):
             # Note that this function will always actually called via `SeriesGroupBy._cum`,
             # and `Series._cum`.
-            # In case of `DataFrameGroupBy`, it gose through `DataFrameGroupBy._cum`,
-            # `SeriesGroupBy.comprod`, `SeriesGroupBy._cum` and `Series._cum`
+            # In case of `DataFrameGroupBy`, it goes through `DataFrameGroupBy._cum`,
+            # `SeriesGroupBy.cumprod`, `SeriesGroupBy._cum` and `Series._cum`
             #
             # This is a bit hacky. Maybe we should fix it.
             @pandas_udf(returnType=self._ks._kdf._internal.spark_type_for(self._ks.name))
