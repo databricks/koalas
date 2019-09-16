@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-# Sets up enviornment from test. Should be sourced in other scripts.
+# Sets up environment from test. Should be sourced in other scripts.
 
 if [ -z "$SPARK_HOME" ]; then
     echo 'You need to set $SPARK_HOME to run these tests.' >&2
