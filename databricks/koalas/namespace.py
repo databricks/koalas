@@ -41,7 +41,7 @@ from databricks.koalas.series import Series, _col
 __all__ = ["from_pandas", "range", "read_csv", "read_delta", "read_table", "read_spark_io",
            "read_parquet", "read_clipboard", "read_excel", "read_html", "to_datetime",
            "get_dummies", "concat", "melt", "isna", "isnull", "notna", "notnull",
-           "read_sql_table", "read_sql_query", "read_sql"]
+           "read_sql_table", "read_sql_query", "read_sql", "read_json"]
 
 
 def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'DataFrame']:
@@ -242,6 +242,31 @@ def read_csv(path, sep=',', header='infer', names=None, usecols=None,
     else:
         sdf = default_session().createDataFrame([], schema=StructType())
     return DataFrame(sdf)
+
+
+def read_json(path: str, **options):
+    """
+    Convert a JSON string to pandas object.
+
+    Parameters
+    ----------
+    path : string
+        File path
+
+    Examples
+    --------
+    >>> df = ks.DataFrame([['a', 'b'], ['c', 'd']],
+    ...                   columns=['col 1', 'col 2'])
+
+    >>> df.to_json(path=r'%s/read_json/foo.json' % path, num_files=1)
+    >>> ks.read_json(
+    ...     path=r'%s/read_json/foo.json' % path
+    ... ).sort_values(by="col 1")
+      col 1 col 2
+    0     a     b
+    1     c     d
+    """
+    return read_spark_io(path, format='json', options=options)
 
 
 def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str] = None,
