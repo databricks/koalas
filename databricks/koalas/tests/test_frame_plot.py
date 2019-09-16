@@ -208,10 +208,32 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         ax2 = kdf.plot.scatter(x='a', y='b', c='c', s=50)
         self.compare_plots(ax1, ax2)
 
+    def test_hist_plot(self):
+        pdf = self.pdf1
+        kdf = self.kdf1
+
+        _, ax1 = plt.subplots(1, 1)
+        ax1 = pdf.plot.hist()
+        _, ax2 = plt.subplots(1, 1)
+        ax2 = kdf.plot.hist()
+        self.compare_plots(ax1, ax2)
+
+        ax1 = pdf.plot.hist(bins=15)
+        ax2 = kdf.plot.hist(bins=15)
+        self.compare_plots(ax1, ax2)
+
+        ax1 = pdf.plot(kind='hist', bins=15)
+        ax2 = kdf.plot(kind='hist', bins=15)
+        self.compare_plots(ax1, ax2)
+
+        ax1 = pdf.plot.hist(bins=3, bottom=[2, 1, 3])
+        ax2 = kdf.plot.hist(bins=3, bottom=[2, 1, 3])
+        self.compare_plots(ax1, ax2)
+
     def test_missing(self):
         ks = self.kdf1
 
-        unsupported_functions = ['box', 'density', 'hexbin', 'hist', 'kde']
+        unsupported_functions = ['box', 'density', 'hexbin', 'kde']
 
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,

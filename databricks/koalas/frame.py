@@ -116,7 +116,7 @@ circle          1      361
 triangle        4      181
 rectangle       5      361
 
-Divide by constant with reverse version.
+Divide and true divide by constant with reverse version.
 
 >>> df / 10
            angles  degrees
@@ -131,6 +131,18 @@ triangle      0.3     18.0
 rectangle     0.4     36.0
 
 >>> df.rdiv(10)
+             angles   degrees
+circle          NaN  0.027778
+triangle   3.333333  0.055556
+rectangle  2.500000  0.027778
+
+>>> df.truediv(10)
+           angles  degrees
+circle        0.0     36.0
+triangle      0.3     18.0
+rectangle     0.4     36.0
+
+>>> df.rtruediv(10)
              angles   degrees
 circle          NaN  0.027778
 triangle   3.333333  0.055556
@@ -527,6 +539,11 @@ class DataFrame(_Frame, Generic[T]):
 
     # create accessor for plot
     plot = CachedAccessor("plot", KoalasFramePlotMethods)
+
+    def hist(self, bins=10, **kwds):
+        return self.plot.hist(bins, **kwds)
+
+    hist.__doc__ = KoalasFramePlotMethods.hist.__doc__
 
     add.__doc__ = _flex_doc_FRAME.format(
         desc='Addition',
@@ -2202,8 +2219,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                        column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
-    # TODO: add axis parameter
-    def diff(self, periods=1):
+    # TODO: axis should support 1 or 'columns' either at this moment
+    def diff(self, periods: int = 1, axis: Union[int, str] = 0):
         """
         First discrete difference of element.
 
@@ -2219,6 +2236,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ----------
         periods : int, default 1
             Periods to shift for calculating difference, accepts negative values.
+        axis : int, default 0 or 'index'
+            Can only be set to 0 at the moment.
 
         Returns
         -------
@@ -2269,6 +2288,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4 -1.0 -3.0 -11.0
         5  NaN  NaN   NaN
         """
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
         applied = []
         for column in self._internal.data_columns:
             applied.append(self[column].diff(periods))
@@ -2279,7 +2300,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                        column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
-    def nunique(self, axis: int = 0, dropna: bool = True, approx: bool = False,
+    # TODO: axis should support 1 or 'columns' either at this moment
+    def nunique(self, axis: Union[int, str] = 0, dropna: bool = True, approx: bool = False,
                 rsd: float = 0.05) -> pd.Series:
         """
         Return number of unique elements in the object.
@@ -2288,7 +2310,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        axis : int, default 0
+        axis : int, default 0 or 'index'
             Can only be set to 0 at the moment.
         dropna : bool, default True
             Don’t include NaN in the count.
@@ -2326,8 +2348,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         B    1
         Name: 0, dtype: int64
         """
-        if axis != 0:
-            raise ValueError("The 'nunique' method only works with axis=0 at the moment")
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
         res = self._sdf.select([self[column]._nunique(dropna, approx, rsd)
                                 for column in self.columns])
         return res.toPandas().T.iloc[:, 0]
@@ -5350,7 +5372,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Return a random sample of items from an axis of object.
 
-        Please call this function using named argument by specifing the ``frac`` argument.
+        Please call this function using named argument by specifying the ``frac`` argument.
 
         You can use `random_state` for reproducibility. However, note that different from pandas,
         specifying a seed in Koalas/Spark does not guarantee the sampled rows will be fixed. The
@@ -5615,7 +5637,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         DataFrame.max: Maximum of the values in the object.
         DataFrame.min: Minimum of the values in the object.
         DataFrame.mean: Mean of the values.
-        DataFrame.std: Standard deviation of the obersvations.
+        DataFrame.std: Standard deviation of the observations.
 
         Notes
         -----

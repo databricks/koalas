@@ -61,7 +61,6 @@ class _MissingPandasLikeDataFrame(object):
     expanding = unsupported_function('expanding')
     first = unsupported_function('first')
     first_valid_index = unsupported_function('first_valid_index')
-    hist = unsupported_function('hist')
     idxmax = unsupported_function('idxmax')
     idxmin = unsupported_function('idxmin')
     infer_objects = unsupported_function('infer_objects')

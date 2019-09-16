@@ -233,7 +233,7 @@ class KoalasBoxPlot(BoxPlot):
                                       matplotlib.rcParams[rc_str.format(rc_name, prop_dict)])
             return dictionary
 
-        # Common property dictionnaries loading from rc
+        # Common property dictionaries loading from rc
         flier_props = ['color', 'marker', 'markerfacecolor', 'markeredgecolor',
                        'markersize', 'linestyle', 'linewidth']
         default_props = ['color', 'linewidth', 'linestyle']
@@ -395,53 +395,13 @@ class KoalasBoxPlot(BoxPlot):
         self._set_ticklabels(ax, labels)
 
 
-class KoalasHistPlotSummary:
-    def __init__(self, data, colname):
-        self.data = data
-        self.colname = colname
-
-    def get_bins(self, n_bins):
-        boundaries = (self.data._kdf._sdf
-                      .agg(F.min(self.colname),
-                           F.max(self.colname))
-                      .rdd
-                      .map(tuple)
-                      .collect()[0])
-        # divides the boundaries into bins
-        if boundaries[0] == boundaries[1]:
-            boundaries = (boundaries[0] - 0.5, boundaries[1] + 0.5)
-
-        return np.linspace(boundaries[0], boundaries[1], n_bins + 1)
-
-    def calc_histogram(self, bins):
-        bucket_name = '__{}_bucket'.format(self.colname)
-        # creates a Bucketizer to get corresponding bin of each value
-        bucketizer = Bucketizer(splits=bins,
-                                inputCol=self.colname,
-                                outputCol=bucket_name,
-                                handleInvalid="skip")
-        # after bucketing values, groups and counts them
-        result = (bucketizer
-                  .transform(self.data._kdf._sdf)
-                  .select(bucket_name)
-                  .groupby(bucket_name)
-                  .agg(F.count('*').alias('count'))
-                  .toPandas()
-                  .sort_values(by=bucket_name))
-
-        # generates a pandas DF with one row for each bin
-        # we need this as some of the bins may be empty
-        indexes = pd.DataFrame({bucket_name: np.arange(0, len(bins) - 1),
-                                'bucket': bins[:-1]})
-        # merges the bins with counts on it and fills remaining ones with zeros
-        data = indexes.merge(result, how='left', on=[bucket_name]).fillna(0)[['count']]
-        data.columns = [bucket_name]
-
-        return data
-
-
 class KoalasHistPlot(HistPlot):
     def _args_adjust(self):
+        if is_list_like(self.bottom):
+            self.bottom = np.array(self.bottom)
+
+    def _compute_plot_data(self):
+        # TODO: this logic is same with KdePlot. Might have to deduplicate it.
         from databricks.koalas.series import Series
 
         data = self.data
@@ -451,20 +411,48 @@ class KoalasHistPlot(HistPlot):
         numeric_data = data.select_dtypes(include=['byte', 'decimal', 'integer', 'float',
                                                    'long', 'double', np.datetime64])
 
-        is_empty = not len(numeric_data.columns)
-
         # no empty frames or series allowed
-        if is_empty:
+        if len(numeric_data.columns) == 0:
             raise TypeError('Empty {0!r}: no numeric data to '
                             'plot'.format(numeric_data.__class__.__name__))
 
         if is_integer(self.bins):
-            summary = KoalasHistPlotSummary(self.data, self.data.name)
             # computes boundaries for the column
-            self.bins = summary.get_bins(self.bins)
+            self.bins = self._get_bins(data.to_spark(), self.bins)
 
-        if is_list_like(self.bottom):
-            self.bottom = np.array(self.bottom)
+        self.data = numeric_data
+
+    def _make_plot(self):
+        # TODO: this logic is similar with KdePlot. Might have to deduplicate it.
+        # 'num_colors' requires ndim but Spark DataFrame does not seem knowing it.
+        colors = self._get_colors(num_colors=1)
+        stacking_id = self._get_stacking_id()
+
+        sdf = self.data.to_spark()
+
+        for i, data_column in enumerate(self.data._internal.data_columns):
+            # 'y' is a Spark DataFrame that selects one column.
+            y = sdf.select(data_column)
+            ax = self._get_ax(i)
+
+            kwds = self.kwds.copy()
+
+            label = pprint_thing(data_column)
+            kwds['label'] = label
+
+            style, kwds = self._apply_style_colors(colors, kwds, i, label)
+            if style is not None:
+                kwds['style'] = style
+
+            # 'y' is a Spark DataFrame that selects one column.
+            # here, we manually calculates the weights separately via Spark
+            # and assign it directly to histogram plot.
+            y = KoalasHistPlot._compute_hist(y, self.bins)  # now y is a pandas Series.
+
+            kwds = self._make_plot_keywords(kwds, y)
+            artists = self._plot(ax, y, column_num=i,
+                                 stacking_id=stacking_id, **kwds)
+            self._add_legend_handle(artists[0], label, index=i)
 
     @classmethod
     def _plot(cls, ax, y, style=None, bins=None, bottom=0, column_num=0,
@@ -483,10 +471,54 @@ class KoalasHistPlot(HistPlot):
         cls._update_stacker(ax, stacking_id, n)
         return patches
 
-    def _compute_plot_data(self):
-        summary = KoalasHistPlotSummary(self.data, self.data.name)
+    @staticmethod
+    def _get_bins(sdf, bins):
+        # 'data' is a Spark DataFrame that selects all columns.
+        if len(sdf.columns) > 1:
+            min_col = F.least(*map(F.min, sdf))
+            max_col = F.greatest(*map(F.max, sdf))
+        else:
+            min_col = F.min(sdf.columns[-1])
+            max_col = F.max(sdf.columns[-1])
+        boundaries = sdf.select(min_col, max_col).first()
+
+        # divides the boundaries into bins
+        if boundaries[0] == boundaries[1]:
+            boundaries = (boundaries[0] - 0.5, boundaries[1] + 0.5)
+
+        return np.linspace(boundaries[0], boundaries[1], bins + 1)
+
+    @staticmethod
+    def _compute_hist(sdf, bins):
+        # 'data' is a Spark DataFrame that selects one column.
+        assert isinstance(bins, (np.ndarray, np.generic))
+
+        colname = sdf.columns[-1]
+
+        bucket_name = '__{}_bucket'.format(colname)
+        # creates a Bucketizer to get corresponding bin of each value
+        bucketizer = Bucketizer(splits=bins,
+                                inputCol=colname,
+                                outputCol=bucket_name,
+                                handleInvalid="skip")
+        # after bucketing values, groups and counts them
+        result = (bucketizer
+                  .transform(sdf)
+                  .select(bucket_name)
+                  .groupby(bucket_name)
+                  .agg(F.count('*').alias('count'))
+                  .toPandas()
+                  .sort_values(by=bucket_name))
+
         # generates a pandas DF with one row for each bin
-        self.data = summary.calc_histogram(self.bins)
+        # we need this as some of the bins may be empty
+        indexes = pd.DataFrame({bucket_name: np.arange(0, len(bins) - 1),
+                                'bucket': bins[:-1]})
+        # merges the bins with counts on it and fills remaining ones with zeros
+        pdf = indexes.merge(result, how='left', on=[bucket_name]).fillna(0)[['count']]
+        pdf.columns = [bucket_name]
+
+        return pdf[bucket_name]
 
 
 class KoalasPiePlot(PiePlot, TopNPlot):
@@ -547,13 +579,9 @@ class KoalasKdePlot(KdePlot):
 
         numeric_data = data.select_dtypes(include=['byte', 'decimal', 'integer', 'float',
                                                    'long', 'double', np.datetime64])
-        try:
-            is_empty = numeric_data.empty
-        except AttributeError:
-            is_empty = not len(numeric_data)
 
         # no empty frames or series allowed
-        if is_empty:
+        if len(numeric_data.columns) == 0:
             raise TypeError('Empty {0!r}: no numeric data to '
                             'plot'.format(numeric_data.__class__.__name__))
 
@@ -564,7 +592,7 @@ class KoalasKdePlot(KdePlot):
         colors = self._get_colors(num_colors=1)
         stacking_id = self._get_stacking_id()
 
-        sdf = self.data._sdf
+        sdf = self.data.to_spark()
 
         for i, data_column in enumerate(self.data._internal.data_columns):
             # 'y' is a Spark DataFrame that selects one column.
@@ -589,7 +617,7 @@ class KoalasKdePlot(KdePlot):
         # 'y' is a Spark DataFrame that selects one column.
         if self.ind is None:
             min_val, max_val = y.select(
-                F.min(y.columns[0]), F.max(y.columns[0])).first()
+                F.min(y.columns[-1]), F.max(y.columns[-1])).first()
 
             sample_range = max_val - min_val
             ind = np.linspace(
@@ -599,7 +627,7 @@ class KoalasKdePlot(KdePlot):
             )
         elif is_integer(self.ind):
             min_val, max_val = y.select(
-                F.min(y.columns[0]), F.max(y.columns[0])).first()
+                F.min(y.columns[-1]), F.max(y.columns[-1])).first()
 
             sample_range = np.nanmax(y) - np.nanmin(y)
             ind = np.linspace(
@@ -613,15 +641,8 @@ class KoalasKdePlot(KdePlot):
 
     @classmethod
     def _plot(
-            cls,
-            ax,
-            y,
-            style=None,
-            bw_method=None,
-            ind=None,
-            column_num=None,
-            stacking_id=None,
-            **kwds):
+            cls, ax, y, style=None, bw_method=None, ind=None,
+            column_num=None, stacking_id=None, **kwds):
         # 'y' is a Spark DataFrame that selects one column.
 
         # Using RDD is slow so we might have to change it to Dataset based implementation
@@ -1228,17 +1249,44 @@ class KoalasFramePlotMethods(PandasObject):
         """
         return self(kind='barh', x=x, y=y, **kwargs)
 
-    def hexbin(self, bw_method=None, ind=None, **kwds):
+    def hexbin(self, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='hexbin')()
 
-    def density(self, bw_method=None, ind=None, **kwds):
+    def density(self, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='density')()
 
-    def box(self, bw_method=None, ind=None, **kwds):
+    def box(self, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='box')()
 
-    def hist(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='hist')()
+    def hist(self, bins=10, **kwds):
+        """
+        Make a histogram of the DataFrame's.
+        A `histogram`_ is a representation of the distribution of data.
+        This function calls :meth:`matplotlib.pyplot.hist`, on each series in
+        the DataFrame, resulting in one histogram per column.
+
+        .. _histogram: https://en.wikipedia.org/wiki/Histogram
+
+        Parameters
+        ----------
+        bins : integer or sequence, default 10
+            Number of histogram bins to be used. If an integer is given, bins + 1
+            bin edges are calculated and returned. If bins is a sequence, gives
+            bin edges, including left edge of first bin and right edge of last
+            bin. In this case, bins is returned unmodified.
+        **kwds
+            All other plotting keyword arguments to be passed to
+            :meth:`matplotlib.pyplot.hist`.
+
+        Returns
+        -------
+        matplotlib.AxesSubplot or numpy.ndarray of them
+
+        See Also
+        --------
+        matplotlib.pyplot.hist : Plot a histogram using matplotlib.
+        """
+        return self(kind='hist', bins=bins, **kwds)
 
     def scatter(self, x, y, s=None, c=None, **kwds):
         """

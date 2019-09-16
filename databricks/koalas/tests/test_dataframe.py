@@ -408,6 +408,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.dropna(), pdf.dropna())
         self.assert_eq(kdf.dropna(how='all'), pdf.dropna(how='all'))
         self.assert_eq(kdf.dropna(subset=['x']), pdf.dropna(subset=['x']))
+        self.assert_eq(kdf.dropna(subset='x'), pdf.dropna(subset=['x']))
         self.assert_eq(kdf.dropna(subset=['y', 'z']), pdf.dropna(subset=['y', 'z']))
         self.assert_eq(kdf.dropna(subset=['y', 'z'], how='all'),
                        pdf.dropna(subset=['y', 'z'], how='all'))
@@ -427,6 +428,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.dropna(axis='column')
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.dropna(axis='foo')
+
+        self.assertRaises(KeyError, lambda: kdf.dropna(subset='1'))
+        with self.assertRaisesRegex(ValueError, "invalid how option: 1"):
+            kdf.dropna(how=1)
+        with self.assertRaisesRegex(TypeError, "must specify how or thresh"):
+            kdf.dropna(how=None)
 
     def test_dtype(self):
         pdf = pd.DataFrame({'a': list('abc'),
@@ -522,6 +529,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pd.Series([103], index=['A'], name='0'))
         self.assert_eq(ks.DataFrame({'A': range(100)}).nunique(approx=True, rsd=0.01),
                        pd.Series([100], index=['A'], name='0'))
+
+        # Assert unsupported axis value yet
+        msg = 'axis should be either 0 or "index" currently.'
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.nunique(axis=1)
 
     def test_sort_values(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
@@ -1480,6 +1492,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "should be an int"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.diff(1.5)
+        msg = 'axis should be either 0 or "index" currently.'
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.diff(axis=1)
 
     def test_duplicated(self):
         pdf = pd.DataFrame({'a': [1, 1, 1, 3], 'b': [1, 1, 1, 4], 'c': [1, 1, 1, 5]})
