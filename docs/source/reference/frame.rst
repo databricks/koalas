@@ -233,9 +233,11 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    :toctree: api/
 
    DataFrame.plot
-   DataFrame.plot.line
    DataFrame.plot.area
    DataFrame.plot.barh
    DataFrame.plot.bar
+   DataFrame.plot.hist
+   DataFrame.plot.line
    DataFrame.plot.pie
    DataFrame.plot.scatter
+   DataFrame.hist
