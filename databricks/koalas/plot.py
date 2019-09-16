@@ -233,7 +233,7 @@ class KoalasBoxPlot(BoxPlot):
                                       matplotlib.rcParams[rc_str.format(rc_name, prop_dict)])
             return dictionary
 
-        # Common property dictionnaries loading from rc
+        # Common property dictionaries loading from rc
         flier_props = ['color', 'marker', 'markerfacecolor', 'markeredgecolor',
                        'markersize', 'linestyle', 'linewidth']
         default_props = ['color', 'linewidth', 'linestyle']

@@ -660,7 +660,7 @@ class StringMethods(object):
         The s.str.istitle method checks for whether all words are in title
         case (whether only the first letter of each word is capitalized).
         Words are assumed to be as any sequence of non-numeric characters
-        seperated by whitespace characters.
+        separated by whitespace characters.
 
         >>> s.str.istitle()
         0    False

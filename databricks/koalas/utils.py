@@ -164,7 +164,7 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
         - left: `resolve_func` should resolve columns including that columns.
             For instance, if 'this' has columns A, B, C and that has B, C, D, `this_columns` is
             B, C but `that_columns` are B, C, D.
-    :return: Alined DataFrame
+    :return: Aligned DataFrame
     """
     assert how == "full" or how == "left"
 

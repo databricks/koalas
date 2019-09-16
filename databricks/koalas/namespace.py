@@ -133,7 +133,7 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
     path : str
         The path string storing the CSV file to be read.
     sep : str, default ‘,’
-        Delimeter to use. Must be a single character.
+        Delimiter to use. Must be a single character.
     header : int, list of int, default ‘infer’
         Whether to to use as the column names, and the start of the data.
         Default behavior is to infer the column names: if no names are passed

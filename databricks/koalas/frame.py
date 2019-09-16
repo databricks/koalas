@@ -5350,7 +5350,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Return a random sample of items from an axis of object.
 
-        Please call this function using named argument by specifing the ``frac`` argument.
+        Please call this function using named argument by specifying the ``frac`` argument.
 
         You can use `random_state` for reproducibility. However, note that different from pandas,
         specifying a seed in Koalas/Spark does not guarantee the sampled rows will be fixed. The
@@ -5615,7 +5615,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         DataFrame.max: Maximum of the values in the object.
         DataFrame.min: Minimum of the values in the object.
         DataFrame.mean: Mean of the values.
-        DataFrame.std: Standard deviation of the obersvations.
+        DataFrame.std: Standard deviation of the observations.
 
         Notes
         -----
