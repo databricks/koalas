@@ -25,7 +25,7 @@ import pandas as pd
 from databricks import koalas
 from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
-from databricks.koalas.plot import KoalasBoxPlotSummary, KoalasHistPlot
+from databricks.koalas.plot import KoalasBoxPlot, KoalasHistPlot
 
 matplotlib.use('agg')
 
@@ -246,11 +246,10 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         k = 1.5
 
-        summary = KoalasBoxPlotSummary(kdf['a'], 'a')
-        stats, fences = summary.compute_stats(whis=k, precision=0.01)
-        outliers = summary.outliers(*fences)
-        whiskers = summary.calc_whiskers(outliers)
-        fliers = summary.get_fliers(outliers)
+        stats, fences = KoalasBoxPlot._compute_stats(kdf['a'], 'a', whis=k, precision=0.01)
+        outliers = KoalasBoxPlot._outliers(kdf['a'], 'a', *fences)
+        whiskers = KoalasBoxPlot._calc_whiskers('a', outliers)
+        fliers = KoalasBoxPlot._get_fliers('a', outliers)
 
         expected_mean = pdf['a'].mean()
         expected_median = pdf['a'].median()
