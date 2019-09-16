@@ -25,8 +25,7 @@ import pandas as pd
 from databricks import koalas
 from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
-from databricks.koalas.plot import KoalasHistPlotSummary, KoalasBoxPlotSummary
-
+from databricks.koalas.plot import KoalasBoxPlotSummary, KoalasHistPlot
 
 matplotlib.use('agg')
 
@@ -177,15 +176,13 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         ax2 = kdf['a'].plot.hist(bins=3, bottom=[2, 1, 3])
         self.compare_plots(ax1, ax2)
 
-    def test_hist_summary(self):
+    def test_compute_hist(self):
         kdf = self.kdf1
-        summary = KoalasHistPlotSummary(kdf['a'], 'a')
-
         expected_bins = np.linspace(1, 50, 11)
-        bins = summary.get_bins(10)
+        bins = KoalasHistPlot._get_bins(kdf[['a']].to_spark(), 10)
 
         expected_histogram = np.array([5, 4, 1, 0, 0, 0, 0, 0, 0, 1])
-        histogram = summary.calc_histogram(bins)['__a_bucket']
+        histogram = KoalasHistPlot._compute_hist(kdf[['a']].to_spark(), bins)
         self.assert_eq(pd.Series(expected_bins), pd.Series(bins))
         self.assert_eq(pd.Series(expected_histogram), histogram)
 

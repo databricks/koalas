@@ -536,6 +536,11 @@ class DataFrame(_Frame, Generic[T]):
     # create accessor for plot
     plot = CachedAccessor("plot", KoalasFramePlotMethods)
 
+    def hist(self, bins=10, **kwds):
+        return self.plot.hist(bins, **kwds)
+
+    hist.__doc__ = KoalasFramePlotMethods.hist.__doc__
+
     add.__doc__ = _flex_doc_FRAME.format(
         desc='Addition',
         op_name='+',
