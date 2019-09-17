@@ -45,3 +45,31 @@ to_list = lambda f: f(
 tolist = lambda f: f(
     'tolist',
     reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
+
+is_boolean = lambda f: f(
+    'is_boolean',
+    reason="If you want to know whether the type is boolean, use 'dtype' and check.")
+
+is_categorical = lambda f: f(
+    'is_categorical',
+    reason="If you want to know whether the type is categorical, use 'dtype' and check.")
+
+is_floating = lambda f: f(
+    'is_floating',
+    reason="If you want to know whether the type is float, use 'dtype' and check.")
+
+is_integer = lambda f: f(
+    'is_integer',
+    reason="If you want to know whether the type is integer, use 'dtype' and check.")
+
+is_interval = lambda f: f(
+    'is_interval',
+    reason="If you want to know whether the type is interval, use 'dtype' and check.")
+
+is_numeric = lambda f: f(
+    'is_numeric',
+    reason="If you want to know whether the type is numeric, use 'dtype' and check.")
+
+is_object = lambda f: f(
+    'is_object',
+    reason="If you want to know whether the type is object, use 'dtype' and check.")
