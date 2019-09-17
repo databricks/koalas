@@ -16,7 +16,7 @@
 
 from databricks import koalas as ks
 from databricks.koalas import config
-from databricks.koalas.config import Option
+from databricks.koalas.config import Option, DictWrapper
 from databricks.koalas.testing.utils import ReusedSQLTestCase
 
 
@@ -95,3 +95,23 @@ class ConfigTest(ReusedSQLTestCase):
 
         with self.assertRaisesRegex(config.OptionError, "test.config"):
             ks.reset_option('unknown')
+
+    def test_namespace_access(self):
+        try:
+            self.assertEqual(ks.options.compute.max_rows, ks.get_option("compute.max_rows"))
+            ks.options.compute.max_rows = 0
+            self.assertEqual(ks.options.compute.max_rows, 0)
+            self.assertTrue(isinstance(ks.options.compute, DictWrapper))
+
+            wrapper = ks.options.compute
+            self.assertEqual(wrapper.max_rows, ks.get_option("compute.max_rows"))
+            wrapper.max_rows = 1000
+            self.assertEqual(ks.options.compute.max_rows, 1000)
+
+            self.assertRaisesRegex(config.OptionError, "No such option", lambda: ks.options.compu)
+            self.assertRaisesRegex(
+                config.OptionError, "No such option", lambda: ks.options.compute.max)
+            self.assertRaisesRegex(
+                config.OptionError, "No such option", lambda: ks.options.max_rows1)
+        finally:
+            ks.reset_option("compute.max_rows")
