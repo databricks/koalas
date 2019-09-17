@@ -673,6 +673,7 @@ _klasses = [
 ]
 _plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
 
+
 def plot_series(data, kind='line', ax=None,                    # Series unique
                 figsize=None, use_index=True, title=None, grid=None,
                 legend=False, style=None, logx=False, logy=False, loglog=False,
