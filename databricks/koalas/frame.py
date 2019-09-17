@@ -541,6 +541,11 @@ class DataFrame(_Frame, Generic[T]):
 
     hist.__doc__ = KoalasFramePlotMethods.hist.__doc__
 
+    def kde(self, bw_method=None, ind=None, **kwds):
+        return self.plot.kde(bw_method, ind, **kwds)
+
+    kde.__doc__ = KoalasFramePlotMethods.kde.__doc__
+
     add.__doc__ = _flex_doc_FRAME.format(
         desc='Addition',
         op_name='+',

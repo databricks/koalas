@@ -602,7 +602,7 @@ class KoalasKdePlot(KdePlot):
             kwds = self.kwds.copy()
 
             label = pprint_thing(data_column)
-            kwds['label'] = data_column
+            kwds['label'] = label
 
             style, kwds = self._apply_style_colors(colors, kwds, i, label)
             if style is not None:
@@ -644,7 +644,6 @@ class KoalasKdePlot(KdePlot):
             cls, ax, y, style=None, bw_method=None, ind=None,
             column_num=None, stacking_id=None, **kwds):
         # 'y' is a Spark DataFrame that selects one column.
-
         # Using RDD is slow so we might have to change it to Dataset based implementation
         # once Spark has that implementation.
         sample = y.rdd.map(lambda x: float(x[0]))
@@ -673,7 +672,6 @@ _klasses = [
     KoalasKdePlot,
 ]
 _plot_klass = {getattr(klass, '_kind'): klass for klass in _klasses}
-
 
 def plot_series(data, kind='line', ax=None,                    # Series unique
                 figsize=None, use_index=True, title=None, grid=None,
@@ -809,7 +807,6 @@ def _plot(data, x=None, y=None, subplots=False,
     if kind in ('scatter', 'hexbin'):
         plot_obj = klass(data, x, y, subplots=subplots, ax=ax, kind=kind, **kwds)
     else:
-
         # check data type and do preprocess before applying plot
         if isinstance(data, DataFrame):
             if x is not None:
@@ -1136,8 +1133,30 @@ class KoalasFramePlotMethods(PandasObject):
         """
         return self(kind='line', x=x, y=y, **kwargs)
 
-    def kde(self, bw_method=None, ind=None, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='kde')()
+    def kde(self, bw_method=None, ind=None, **kwargs):
+        """
+        Generate Kernel Density Estimate plot using Gaussian kernels.
+
+        Parameters
+        ----------
+        bw_method : scalar
+            The method used to calculate the estimator bandwidth.
+            See KernelDensity in PySpark for more information.
+        ind : NumPy array or integer, optional
+            Evaluation points for the estimated PDF. If None (default),
+            1000 equally spaced points are used. If `ind` is a NumPy array, the
+            KDE is evaluated at the points passed. If `ind` is an integer,
+            `ind` number of equally spaced points are used.
+        **kwargs : optional
+            Keyword arguments to pass on to :meth:`Koalas.DataFrame.plot`.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or numpy.ndarray of them
+        """
+        return self(kind="kde", bw_method=bw_method, ind=ind, **kwargs)
+
+    density = kde
 
     def pie(self, y=None, **kwds):
         """
@@ -1251,9 +1270,6 @@ class KoalasFramePlotMethods(PandasObject):
 
     def hexbin(self, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='hexbin')()
-
-    def density(self, **kwds):
-        return _unsupported_function(class_name='pd.DataFrame', method_name='density')()
 
     def box(self, **kwds):
         return _unsupported_function(class_name='pd.DataFrame', method_name='box')()
