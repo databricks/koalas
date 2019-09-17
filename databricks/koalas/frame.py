@@ -399,9 +399,9 @@ class DataFrame(_Frame, Generic[T]):
         if axis in ('index', 0, None):
             exprs = []
             num_args = len(signature(sfun).parameters)
-            for col, idx in zip(self._internal.data_columns, self._internal.column_index):
-                col_sdf = self._internal.scol_for(col)
-                col_type = self._internal.spark_type_for(col)
+            for idx in self._internal.column_index:
+                col_sdf = self._internal.scol_for(idx)
+                col_type = self._internal.spark_type_for(idx)
 
                 is_numeric_or_boolean = isinstance(col_type, (NumericType, BooleanType))
                 min_or_max = sfun.__name__ in ('min', 'max')
@@ -862,8 +862,8 @@ class DataFrame(_Frame, Generic[T]):
         """
 
         applied = []
-        for column in self._internal.data_columns:
-            applied.append(self[column].apply(func))
+        for idx in self._internal.column_index:
+            applied.append(self[idx].apply(func))
 
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
@@ -1732,7 +1732,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> ks.DataFrame({}, index=list('abc')).empty
         True
         """
-        return len(self._internal.data_columns) == 0 or self._sdf.rdd.isEmpty()
+        return len(self._internal.column_index) == 0 or self._sdf.rdd.isEmpty()
 
     @property
     def style(self):
@@ -2209,8 +2209,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         """
         applied = []
-        for column in self._internal.data_columns:
-            applied.append(self[column].shift(periods, fill_value))
+        for idx in self._internal.column_index:
+            applied.append(self[idx].shift(periods, fill_value))
 
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
@@ -2291,8 +2291,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if axis not in [0, 'index']:
             raise ValueError('axis should be either 0 or "index" currently.')
         applied = []
-        for column in self._internal.data_columns:
-            applied.append(self[column].diff(periods))
+        for idx in self._internal.column_index:
+            applied.append(self[idx].diff(periods))
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf,
@@ -3313,8 +3313,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             internal = self._internal.copy(sdf=sdf)
         else:
             applied = []
-            for col in self._internal.data_columns:
-                applied.append(self[col].fillna(value=value, method=method, axis=axis,
+            for idx in self._internal.column_index:
+                applied.append(self[idx].fillna(value=value, method=method, axis=axis,
                                                 inplace=False, limit=limit))
             sdf = self._sdf.select(self._internal.index_columns + [col._scol for col in applied])
             internal = self._internal.copy(sdf=sdf,
@@ -4012,7 +4012,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def columns(self, columns):
         if isinstance(columns, pd.MultiIndex):
             column_index = columns.tolist()
-            old_names = self._internal.data_columns
+            old_names = self._internal.column_index
             if len(old_names) != len(column_index):
                 raise ValueError(
                     "Length mismatch: Expected axis has %d elements, new values have %d elements"
@@ -4021,7 +4021,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._internal = self._internal.copy(column_index=column_index,
                                                  column_index_names=column_index_names)
         else:
-            old_names = self._internal.data_columns
+            old_names = self._internal.column_index
             if len(old_names) != len(columns):
                 raise ValueError(
                     "Length mismatch: Expected axis has %d elements, new values have %d elements"
@@ -4213,18 +4213,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         columns = []
         column_index = []
-        for idx, col in zip(self._internal.column_index, self._internal.data_columns):
+        for idx in self._internal.column_index:
             if len(include) > 0:
                 should_include = (
                     infer_dtype_from_object(self[idx].dtype.name) in include_numpy_type or
-                    self._internal.spark_type_for(col) in include_spark_type)
+                    self._internal.spark_type_for(idx) in include_spark_type)
             else:
                 should_include = not (
                     infer_dtype_from_object(self[idx].dtype.name) in exclude_numpy_type or
-                    self._internal.spark_type_for(col) in exclude_spark_type)
+                    self._internal.spark_type_for(idx) in exclude_spark_type)
 
             if should_include:
-                columns.append(col)
+                columns.append(self._internal.column_name_for(idx))
                 column_index.append(idx)
 
         return DataFrame(self._internal.copy(
@@ -6062,13 +6062,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if len(col) != level:
                 raise ValueError("shape (1,{}) doesn't match the shape (1,{})"
                                  .format(len(col), level))
-        index_to_column = dict(zip(self._internal.column_index, self._internal.data_columns))
         scols, columns, idx = [], [], []
         null_columns = False
         for label in label_columns:
-            if index_to_column.get(label, None) is not None:
-                scols.append(self._internal.scol_for(index_to_column[label]))
-                columns.append(index_to_column[label])
+            if label in self._internal.column_index:
+                scols.append(self._internal.scol_for(label))
+                columns.append(self._internal.column_name_for(label))
             else:
                 scols.append(F.lit(np.nan).alias(str(label)))
                 columns.append(str(label))
@@ -6431,8 +6430,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  3.0  1.0
         """
         applied = []
-        for column in self._internal.data_columns:
-            applied.append(self[column].rank(method=method, ascending=ascending))
+        for idx in self._internal.column_index:
+            applied.append(self[idx].rank(method=method, ascending=ascending))
 
         sdf = self._sdf.select(self._internal.index_columns + [column._scol for column in applied])
         internal = self._internal.copy(sdf=sdf,
