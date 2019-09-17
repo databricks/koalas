@@ -26,7 +26,7 @@ import json
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
-from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar
+from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable
 
 import numpy as np
 import pandas as pd
@@ -916,7 +916,7 @@ class DataFrame(_Frame, Generic[T]):
         """
         return corr(self, method)
 
-    def iteritems(self):
+    def iteritems(self) -> Iterable:
         """
         Iterator over (column name, Series) pairs.
 
@@ -957,6 +957,10 @@ class DataFrame(_Frame, Generic[T]):
         """
         cols = list(self.columns)
         return list((col_name, self[col_name]) for col_name in cols)
+
+    def items(self):
+        """This is an alias of ``iteritems``."""
+        return self.iteritems()
 
     def to_clipboard(self, excel=True, sep=None, **kwargs):
         """
@@ -5507,13 +5511,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 if col_name not in self.columns:
                     raise KeyError('Only a column name can be used for the '
                                    'key in a dtype mappings argument.')
-            for col_name, col in self.iteritems():
+            for col_name, col in self.items():
                 if col_name in dtype:
                     results.append(col.astype(dtype=dtype[col_name]))
                 else:
                     results.append(col)
         else:
-            for col_name, col in self.iteritems():
+            for col_name, col in self.items():
                 results.append(col.astype(dtype=dtype))
         sdf = self._sdf.select(
             self._internal.index_scols + list(map(lambda ser: ser._scol, results)))
