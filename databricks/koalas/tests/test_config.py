@@ -113,5 +113,11 @@ class ConfigTest(ReusedSQLTestCase):
                 config.OptionError, "No such option", lambda: ks.options.compute.max)
             self.assertRaisesRegex(
                 config.OptionError, "No such option", lambda: ks.options.max_rows1)
+
+            with self.assertRaisesRegex(config.OptionError, "No such option"):
+                ks.options.compute.max = 0
         finally:
             ks.reset_option("compute.max_rows")
+
+    def test_dir_options(self):
+        self.assertTrue("compute.max_rows" in dir(ks.options))
