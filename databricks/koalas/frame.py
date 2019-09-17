@@ -3307,6 +3307,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 for v in value.values():
                     if not isinstance(v, (float, int, str, bool)):
                         raise TypeError("Unsupported type %s" % type(v))
+                value = {self._internal.column_name_for(key): value for key, value in value.items()}
             if limit is not None:
                 raise ValueError('limit parameter for value is not support now')
             sdf = sdf.fillna(value)
@@ -3316,7 +3317,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             for idx in self._internal.column_index:
                 applied.append(self[idx].fillna(value=value, method=method, axis=axis,
                                                 inplace=False, limit=limit))
-            sdf = self._sdf.select(self._internal.index_columns + [col._scol for col in applied])
+            sdf = self._sdf.select(self._internal.index_scols + [col._scol for col in applied])
             internal = self._internal.copy(sdf=sdf,
                                            data_columns=[col._internal.data_columns[0]
                                                          for col in applied],
