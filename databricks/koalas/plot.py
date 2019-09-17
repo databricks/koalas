@@ -31,16 +31,6 @@ from databricks.koalas.missing import _unsupported_function
 from databricks.koalas.config import get_option
 
 
-def _gca(rc=None):
-    import matplotlib.pyplot as plt
-    with plt.rc_context(rc):
-        return plt.gca()
-
-
-def _get_standard_kind(kind):
-    return {'density': 'kde'}.get(kind, kind)
-
-
 if LooseVersion(pd.__version__) < LooseVersion('0.25'):
     from pandas.plotting._core import _all_kinds, BarPlot, BoxPlot, HistPlot, MPLPlot, PiePlot, \
         AreaPlot, LinePlot, BarhPlot, ScatterPlot, KdePlot
@@ -53,7 +43,6 @@ else:
 
 
 class TopNPlot:
-
     def get_top_n(self, data):
         from databricks.koalas import DataFrame, Series
         max_rows = get_option("plotting.max_rows")
@@ -116,102 +105,7 @@ class KoalasBarPlot(BarPlot, TopNPlot):
         return ax.bar(x, y, w, bottom=start, log=log, **kwds)
 
 
-class KoalasBoxPlotSummary:
-    def __init__(self, data, colname):
-        self.data = data
-        self.colname = colname
-
-    def compute_stats(self, whis, precision):
-        # Computes mean, median, Q1 and Q3 with approx_percentile and precision
-        pdf = (self.data._kdf._sdf
-               .agg(*[F.expr('approx_percentile({}, {}, {})'.format(self.colname, q,
-                                                                    1. / precision))
-                      .alias('{}_{}%'.format(self.colname, int(q * 100)))
-                      for q in [.25, .50, .75]],
-                    F.mean(self.colname).alias('{}_mean'.format(self.colname))).toPandas())
-
-        # Computes IQR and Tukey's fences
-        iqr = '{}_iqr'.format(self.colname)
-        p75 = '{}_75%'.format(self.colname)
-        p25 = '{}_25%'.format(self.colname)
-        pdf.loc[:, iqr] = pdf.loc[:, p75] - pdf.loc[:, p25]
-        pdf.loc[:, '{}_lfence'.format(self.colname)] = pdf.loc[:, p25] - whis * pdf.loc[:, iqr]
-        pdf.loc[:, '{}_ufence'.format(self.colname)] = pdf.loc[:, p75] + whis * pdf.loc[:, iqr]
-
-        qnames = ['25%', '50%', '75%', 'mean', 'lfence', 'ufence']
-        col_summ = pdf[['{}_{}'.format(self.colname, q) for q in qnames]]
-        col_summ.columns = qnames
-        lfence, ufence = col_summ['lfence'], col_summ['ufence']
-
-        stats = {'mean': col_summ['mean'].values[0],
-                 'med': col_summ['50%'].values[0],
-                 'q1': col_summ['25%'].values[0],
-                 'q3': col_summ['75%'].values[0]}
-
-        return stats, (lfence.values[0], ufence.values[0])
-
-    def outliers(self, lfence, ufence):
-        # Builds expression to identify outliers
-        expression = F.col(self.colname).between(lfence, ufence)
-        # Creates a column to flag rows as outliers or not
-        return self.data._kdf._sdf.withColumn('__{}_outlier'.format(self.colname), ~expression)
-
-    def calc_whiskers(self, outliers):
-        # Computes min and max values of non-outliers - the whiskers
-        minmax = (outliers
-                  .filter('not __{}_outlier'.format(self.colname))
-                  .agg(F.min(self.colname).alias('min'),
-                       F.max(self.colname).alias('max'))
-                  .toPandas())
-        return minmax.iloc[0][['min', 'max']].values
-
-    def get_fliers(self, outliers):
-        # Filters only the outliers, should "showfliers" be True
-        fliers_df = outliers.filter('__{}_outlier'.format(self.colname))
-
-        # If shows fliers, takes the top 1k with highest absolute values
-        fliers = (fliers_df
-                  .select(F.abs(F.col('`{}`'.format(self.colname))).alias(self.colname))
-                  .orderBy(F.desc('`{}`'.format(self.colname)))
-                  .limit(1001)
-                  .toPandas()[self.colname].values)
-
-        return fliers
-
-
 class KoalasBoxPlot(BoxPlot):
-    @staticmethod
-    def rc_defaults(notch=None, vert=None, whis=None,
-                    patch_artist=None, bootstrap=None, meanline=None,
-                    showmeans=None, showcaps=None, showbox=None,
-                    showfliers=None, **kwargs):
-        # Missing arguments default to rcParams.
-        if whis is None:
-            whis = matplotlib.rcParams['boxplot.whiskers']
-        if bootstrap is None:
-            bootstrap = matplotlib.rcParams['boxplot.bootstrap']
-
-        if notch is None:
-            notch = matplotlib.rcParams['boxplot.notch']
-        if vert is None:
-            vert = matplotlib.rcParams['boxplot.vertical']
-        if patch_artist is None:
-            patch_artist = matplotlib.rcParams['boxplot.patchartist']
-        if meanline is None:
-            meanline = matplotlib.rcParams['boxplot.meanline']
-        if showmeans is None:
-            showmeans = matplotlib.rcParams['boxplot.showmeans']
-        if showcaps is None:
-            showcaps = matplotlib.rcParams['boxplot.showcaps']
-        if showbox is None:
-            showbox = matplotlib.rcParams['boxplot.showbox']
-        if showfliers is None:
-            showfliers = matplotlib.rcParams['boxplot.showfliers']
-
-        return dict(whis=whis, bootstrap=bootstrap, notch=notch, vert=vert,
-                    patch_artist=patch_artist, meanline=meanline, showmeans=showmeans,
-                    showcaps=showcaps, showbox=showbox, showfliers=showfliers)
-
     def boxplot(self, ax, bxpstats, notch=None, sym=None, vert=None,
                 whis=None, positions=None, widths=None, patch_artist=None,
                 bootstrap=None, usermedians=None, conf_intervals=None,
@@ -331,7 +225,7 @@ class KoalasBoxPlot(BoxPlot):
 
     def _compute_plot_data(self):
         colname = self.data.name
-        summary = KoalasBoxPlotSummary(self.data, colname)
+        data = self.data
 
         # Updates all props with the rc defaults from matplotlib
         self.kwds.update(KoalasBoxPlot.rc_defaults(**self.kwds))
@@ -345,16 +239,16 @@ class KoalasBoxPlot(BoxPlot):
         precision = self.kwds.get('precision', 0.01)
 
         # # Computes mean, median, Q1 and Q3 with approx_percentile and precision
-        col_stats, col_fences = summary.compute_stats(whis, precision)
+        col_stats, col_fences = KoalasBoxPlot._compute_stats(data, colname, whis, precision)
 
         # # Creates a column to flag rows as outliers or not
-        outliers = summary.outliers(*col_fences)
+        outliers = KoalasBoxPlot._outliers(data, colname, *col_fences)
 
         # # Computes min and max values of non-outliers - the whiskers
-        whiskers = summary.calc_whiskers(outliers)
+        whiskers = KoalasBoxPlot._calc_whiskers(colname, outliers)
 
         if showfliers:
-            fliers = summary.get_fliers(outliers)
+            fliers = KoalasBoxPlot._get_fliers(colname, outliers)
         else:
             fliers = []
 
@@ -393,6 +287,99 @@ class KoalasBoxPlot(BoxPlot):
         if not self.use_index:
             labels = [pprint_thing(key) for key in range(len(labels))]
         self._set_ticklabels(ax, labels)
+
+    @staticmethod
+    def rc_defaults(notch=None, vert=None, whis=None,
+                    patch_artist=None, bootstrap=None, meanline=None,
+                    showmeans=None, showcaps=None, showbox=None,
+                    showfliers=None, **kwargs):
+        # Missing arguments default to rcParams.
+        if whis is None:
+            whis = matplotlib.rcParams['boxplot.whiskers']
+        if bootstrap is None:
+            bootstrap = matplotlib.rcParams['boxplot.bootstrap']
+
+        if notch is None:
+            notch = matplotlib.rcParams['boxplot.notch']
+        if vert is None:
+            vert = matplotlib.rcParams['boxplot.vertical']
+        if patch_artist is None:
+            patch_artist = matplotlib.rcParams['boxplot.patchartist']
+        if meanline is None:
+            meanline = matplotlib.rcParams['boxplot.meanline']
+        if showmeans is None:
+            showmeans = matplotlib.rcParams['boxplot.showmeans']
+        if showcaps is None:
+            showcaps = matplotlib.rcParams['boxplot.showcaps']
+        if showbox is None:
+            showbox = matplotlib.rcParams['boxplot.showbox']
+        if showfliers is None:
+            showfliers = matplotlib.rcParams['boxplot.showfliers']
+
+        return dict(whis=whis, bootstrap=bootstrap, notch=notch, vert=vert,
+                    patch_artist=patch_artist, meanline=meanline, showmeans=showmeans,
+                    showcaps=showcaps, showbox=showbox, showfliers=showfliers)
+
+    @staticmethod
+    def _compute_stats(data, colname, whis, precision):
+        # Computes mean, median, Q1 and Q3 with approx_percentile and precision
+        pdf = (data._kdf._sdf
+               .agg(*[F.expr('approx_percentile({}, {}, {})'.format(colname, q,
+                                                                    1. / precision))
+                      .alias('{}_{}%'.format(colname, int(q * 100)))
+                      for q in [.25, .50, .75]],
+                    F.mean(colname).alias('{}_mean'.format(colname))).toPandas())
+
+        # Computes IQR and Tukey's fences
+        iqr = '{}_iqr'.format(colname)
+        p75 = '{}_75%'.format(colname)
+        p25 = '{}_25%'.format(colname)
+        pdf.loc[:, iqr] = pdf.loc[:, p75] - pdf.loc[:, p25]
+        pdf.loc[:, '{}_lfence'.format(colname)] = pdf.loc[:, p25] - whis * pdf.loc[:, iqr]
+        pdf.loc[:, '{}_ufence'.format(colname)] = pdf.loc[:, p75] + whis * pdf.loc[:, iqr]
+
+        qnames = ['25%', '50%', '75%', 'mean', 'lfence', 'ufence']
+        col_summ = pdf[['{}_{}'.format(colname, q) for q in qnames]]
+        col_summ.columns = qnames
+        lfence, ufence = col_summ['lfence'], col_summ['ufence']
+
+        stats = {'mean': col_summ['mean'].values[0],
+                 'med': col_summ['50%'].values[0],
+                 'q1': col_summ['25%'].values[0],
+                 'q3': col_summ['75%'].values[0]}
+
+        return stats, (lfence.values[0], ufence.values[0])
+
+    @staticmethod
+    def _outliers(data, colname, lfence, ufence):
+        # Builds expression to identify outliers
+        expression = F.col(colname).between(lfence, ufence)
+        # Creates a column to flag rows as outliers or not
+        return data._kdf._sdf.withColumn('__{}_outlier'.format(colname), ~expression)
+
+    @staticmethod
+    def _calc_whiskers(colname, outliers):
+        # Computes min and max values of non-outliers - the whiskers
+        minmax = (outliers
+                  .filter('not __{}_outlier'.format(colname))
+                  .agg(F.min(colname).alias('min'),
+                       F.max(colname).alias('max'))
+                  .toPandas())
+        return minmax.iloc[0][['min', 'max']].values
+
+    @staticmethod
+    def _get_fliers(colname, outliers):
+        # Filters only the outliers, should "showfliers" be True
+        fliers_df = outliers.filter('__{}_outlier'.format(colname))
+
+        # If shows fliers, takes the top 1k with highest absolute values
+        fliers = (fliers_df
+                  .select(F.abs(F.col('`{}`'.format(colname))).alias(colname))
+                  .orderBy(F.desc('`{}`'.format(colname)))
+                  .limit(1001)
+                  .toPandas()[colname].values)
+
+        return fliers
 
 
 class KoalasHistPlot(HistPlot):
@@ -779,7 +766,9 @@ def plot_series(data, kind='line', ax=None,                    # Series unique
 
     import matplotlib.pyplot as plt
     if ax is None and len(plt.get_fignums()) > 0:
-        ax = _gca()
+        ax = None
+        with plt.rc_context():
+            ax = plt.gca()
         ax = MPLPlot._get_ax_layer(ax)
     return _plot(data, kind=kind, ax=ax,
                  figsize=figsize, use_index=use_index, title=title,
@@ -792,13 +781,134 @@ def plot_series(data, kind='line', ax=None,                    # Series unique
                  **kwds)
 
 
+def plot_frame(data, x=None, y=None, kind='line', ax=None,
+               subplots=None, sharex=None, sharey=False, layout=None,
+               figsize=None, use_index=True, title=None, grid=None,
+               legend=True, style=None, logx=False, logy=False,
+               loglog=False, xticks=None, yticks=None, xlim=None,
+               ylim=None, rot=None, fontsize=None, colormap=None,
+               table=False, yerr=None, xerr=None, secondary_y=False,
+               sort_columns=False, **kwds):
+    """
+    Make plots of DataFrames using matplotlib / pylab.
+
+    Each plot kind has a corresponding method on the
+    ``DataFrame.plot`` accessor:
+    ``kdf.plot(kind='line')`` is equivalent to
+    ``kdf.plot.line()``.
+
+    Parameters
+    ----------
+    data : DataFrame
+
+    kind : str
+        - 'line' : line plot (default)
+        - 'bar' : vertical bar plot
+        - 'barh' : horizontal bar plot
+        - 'hist' : histogram
+        - 'box' : boxplot
+        - 'kde' : Kernel Density Estimation plot
+        - 'density' : same as 'kde'
+        - 'area' : area plot
+        - 'pie' : pie plot
+        - 'scatter' : scatter plot
+    ax : matplotlib axes object
+        If not passed, uses gca()
+    x : label or position, default None
+    y : label, position or list of label, positions, default None
+        Allows plotting of one column versus another.
+    figsize : a tuple (width, height) in inches
+    use_index : boolean, default True
+        Use index as ticks for x axis
+    title : string or list
+        Title to use for the plot. If a string is passed, print the string at
+        the top of the figure. If a list is passed and `subplots` is True,
+        print each item in the list above the corresponding subplot.
+    grid : boolean, default None (matlab style default)
+        Axis grid lines
+    legend : False/True/'reverse'
+        Place legend on axis subplots
+    style : list or dict
+        matplotlib line style per column
+    logx : boolean, default False
+        Use log scaling on x axis
+    logy : boolean, default False
+        Use log scaling on y axis
+    loglog : boolean, default False
+        Use log scaling on both x and y axes
+    xticks : sequence
+        Values to use for the xticks
+    yticks : sequence
+        Values to use for the yticks
+    xlim : 2-tuple/list
+    ylim : 2-tuple/list
+    sharex: bool or None, default is None
+        Whether to share x axis or not.
+    sharey: bool, default is False
+        Whether to share y axis or not.
+    rot : int, default None
+        Rotation for ticks (xticks for vertical, yticks for horizontal plots)
+    fontsize : int, default None
+        Font size for xticks and yticks
+    colormap : str or matplotlib colormap object, default None
+        Colormap to select colors from. If string, load colormap with that name
+        from matplotlib.
+    colorbar : boolean, optional
+        If True, plot colorbar (only relevant for 'scatter' and 'hexbin' plots)
+    position : float
+        Specify relative alignments for bar plot layout.
+        From 0 (left/bottom-end) to 1 (right/top-end). Default is 0.5 (center)
+    table : boolean, Series or DataFrame, default False
+        If True, draw a table using the data in the DataFrame and the data will
+        be transposed to meet matplotlib's default layout.
+        If a Series or DataFrame is passed, use passed data to draw a table.
+    yerr : DataFrame, Series, array-like, dict and str
+        See :ref:`Plotting with Error Bars <visualization.errorbars>` for
+        detail.
+    xerr : same types as yerr.
+    label : label argument to provide to plot
+    secondary_y : boolean or sequence of ints, default False
+        If True then y-axis will be on the right
+    mark_right : boolean, default True
+        When using a secondary_y axis, automatically mark the column
+        labels with "(right)" in the legend
+    sort_columns: bool, default is False
+        When True, will sort values on plots.
+    `**kwds` : keywords
+        Options to pass to matplotlib plotting method
+
+    Returns
+    -------
+    axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+
+    Notes
+    -----
+
+    - See matplotlib documentation online for more on this subject
+    - If `kind` = 'bar' or 'barh', you can specify relative alignments
+      for bar plot layout by `position` keyword.
+      From 0 (left/bottom-end) to 1 (right/top-end). Default is 0.5 (center)
+    """
+
+    return _plot(data, kind=kind, x=x, y=y, ax=ax,
+                 figsize=figsize, use_index=use_index, title=title,
+                 grid=grid, legend=legend, subplots=subplots,
+                 style=style, logx=logx, logy=logy, loglog=loglog,
+                 xticks=xticks, yticks=yticks, xlim=xlim, ylim=ylim,
+                 rot=rot, fontsize=fontsize, colormap=colormap, table=table,
+                 yerr=yerr, xerr=xerr, sharex=sharex, sharey=sharey,
+                 secondary_y=secondary_y, layout=layout, sort_columns=sort_columns,
+                 **kwds)
+
+
 def _plot(data, x=None, y=None, subplots=False,
           ax=None, kind='line', **kwds):
     from databricks.koalas import DataFrame
     # function copied from pandas.plotting._core
     # and adapted to handle Koalas DataFrame and Series
 
-    kind = _get_standard_kind(kind.lower().strip())
+    kind = kind.lower().strip()
+    kind = {'density': 'kde'}.get(kind, kind)
     if kind in _all_kinds:
         klass = _plot_klass[kind]
     else:
@@ -1340,123 +1450,3 @@ class KoalasFramePlotMethods(PandasObject):
             formats.
         """
         return self(kind="scatter", x=x, y=y, s=s, c=c, **kwds)
-
-
-def plot_frame(data, x=None, y=None, kind='line', ax=None,
-               subplots=None, sharex=None, sharey=False, layout=None,
-               figsize=None, use_index=True, title=None, grid=None,
-               legend=True, style=None, logx=False, logy=False,
-               loglog=False, xticks=None, yticks=None, xlim=None,
-               ylim=None, rot=None, fontsize=None, colormap=None,
-               table=False, yerr=None, xerr=None, secondary_y=False,
-               sort_columns=False, **kwds):
-    """
-    Make plots of DataFrames using matplotlib / pylab.
-
-    Each plot kind has a corresponding method on the
-    ``DataFrame.plot`` accessor:
-    ``kdf.plot(kind='line')`` is equivalent to
-    ``kdf.plot.line()``.
-
-    Parameters
-    ----------
-    data : DataFrame
-
-    kind : str
-        - 'line' : line plot (default)
-        - 'bar' : vertical bar plot
-        - 'barh' : horizontal bar plot
-        - 'hist' : histogram
-        - 'box' : boxplot
-        - 'kde' : Kernel Density Estimation plot
-        - 'density' : same as 'kde'
-        - 'area' : area plot
-        - 'pie' : pie plot
-        - 'scatter' : scatter plot
-    ax : matplotlib axes object
-        If not passed, uses gca()
-    x : label or position, default None
-    y : label, position or list of label, positions, default None
-        Allows plotting of one column versus another.
-    figsize : a tuple (width, height) in inches
-    use_index : boolean, default True
-        Use index as ticks for x axis
-    title : string or list
-        Title to use for the plot. If a string is passed, print the string at
-        the top of the figure. If a list is passed and `subplots` is True,
-        print each item in the list above the corresponding subplot.
-    grid : boolean, default None (matlab style default)
-        Axis grid lines
-    legend : False/True/'reverse'
-        Place legend on axis subplots
-    style : list or dict
-        matplotlib line style per column
-    logx : boolean, default False
-        Use log scaling on x axis
-    logy : boolean, default False
-        Use log scaling on y axis
-    loglog : boolean, default False
-        Use log scaling on both x and y axes
-    xticks : sequence
-        Values to use for the xticks
-    yticks : sequence
-        Values to use for the yticks
-    xlim : 2-tuple/list
-    ylim : 2-tuple/list
-    sharex: bool or None, default is None
-        Whether to share x axis or not.
-    sharey: bool, default is False
-        Whether to share y axis or not.
-    rot : int, default None
-        Rotation for ticks (xticks for vertical, yticks for horizontal plots)
-    fontsize : int, default None
-        Font size for xticks and yticks
-    colormap : str or matplotlib colormap object, default None
-        Colormap to select colors from. If string, load colormap with that name
-        from matplotlib.
-    colorbar : boolean, optional
-        If True, plot colorbar (only relevant for 'scatter' and 'hexbin' plots)
-    position : float
-        Specify relative alignments for bar plot layout.
-        From 0 (left/bottom-end) to 1 (right/top-end). Default is 0.5 (center)
-    table : boolean, Series or DataFrame, default False
-        If True, draw a table using the data in the DataFrame and the data will
-        be transposed to meet matplotlib's default layout.
-        If a Series or DataFrame is passed, use passed data to draw a table.
-    yerr : DataFrame, Series, array-like, dict and str
-        See :ref:`Plotting with Error Bars <visualization.errorbars>` for
-        detail.
-    xerr : same types as yerr.
-    label : label argument to provide to plot
-    secondary_y : boolean or sequence of ints, default False
-        If True then y-axis will be on the right
-    mark_right : boolean, default True
-        When using a secondary_y axis, automatically mark the column
-        labels with "(right)" in the legend
-    sort_columns: bool, default is False
-        When True, will sort values on plots.
-    `**kwds` : keywords
-        Options to pass to matplotlib plotting method
-
-    Returns
-    -------
-    axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
-
-    Notes
-    -----
-
-    - See matplotlib documentation online for more on this subject
-    - If `kind` = 'bar' or 'barh', you can specify relative alignments
-      for bar plot layout by `position` keyword.
-      From 0 (left/bottom-end) to 1 (right/top-end). Default is 0.5 (center)
-    """
-
-    return _plot(data, kind=kind, x=x, y=y, ax=ax,
-                 figsize=figsize, use_index=use_index, title=title,
-                 grid=grid, legend=legend, subplots=subplots,
-                 style=style, logx=logx, logy=logy, loglog=loglog,
-                 xticks=xticks, yticks=yticks, xlim=xlim, ylim=ylim,
-                 rot=rot, fontsize=fontsize, colormap=colormap, table=table,
-                 yerr=yerr, xerr=xerr, sharex=sharex, sharey=sharey,
-                 secondary_y=secondary_y, layout=layout, sort_columns=sort_columns,
-                 **kwds)

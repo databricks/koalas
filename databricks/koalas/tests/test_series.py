@@ -50,6 +50,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(ks + 1, self.ps + 1)
 
+    def test_series_tuple_name(self):
+        ps = self.ps
+        ps.name = ('x', 'a')
+
+        ks = koalas.from_pandas(ps)
+
+        self.assert_eq(ks, ps)
+        self.assert_eq(ks.name, ps.name)
+
+        ps.name = ('y', 'z')
+        ks.name = ('y', 'z')
+
+        self.assert_eq(ks, ps)
+        self.assert_eq(ks.name, ps.name)
+
     def test_repr_cache_invalidation(self):
         # If there is any cache, inplace operations should invalidate it.
         s = koalas.range(10)['id']
@@ -96,6 +111,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ps.name = 'renamed'
         ks.name = 'renamed'
         self.assertEqual(ks.name, 'renamed')
+        self.assert_eq(ks, ps)
+
+        ps.name = None
+        ks.name = None
+        self.assertEqual(ks.name, None)
         self.assert_eq(ks, ps)
 
         pidx = ps.index

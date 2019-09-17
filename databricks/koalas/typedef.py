@@ -225,7 +225,7 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
         return f(*args, **kwargs)
 
     # We detected some columns. They need to be wrapped in a UDF to spark.
-    kdf = _get_kdf(args, kwargs)
+    kser = _get_kser(args, kwargs)
 
     def clean_fun(*args2):
         assert len(args2) == len(all_indexes), \
@@ -246,27 +246,26 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
     for col in col_args:
         if col is not None:
             spark_col_args.append(col._scol)
-            name_tokens.append(col.name)
+            name_tokens.append(str(col.name))
     kw_name_tokens = []
     for (key, col) in col_kwargs:
         spark_col_args.append(col._scol)
         kw_name_tokens.append("{}={}".format(key, col.name))
     col = wrapped_udf(*spark_col_args)
-    series = Series(kdf._internal.copy(scol=col), anchor=kdf)  # type: 'ks.Series'
+    series = kser._with_new_scol(scol=col)  # type: 'ks.Series'
     all_name_tokens = name_tokens + sorted(kw_name_tokens)
     name = "{}({})".format(f.__name__, ", ".join(all_name_tokens))
-    series = series.astype(return_type).alias(name)
+    series = series.astype(return_type).rename(name)
     return series
 
 
-def _get_kdf(args, kwargs):
+def _get_kser(args, kwargs):
     from databricks.koalas.series import Series
     all_cols = ([arg for arg in args if isinstance(arg, Series)]
                 + [arg for arg in kwargs.values() if isinstance(arg, Series)])
     assert all_cols
     # TODO: check all the anchors
-    s = all_cols[0]
-    return s._kdf
+    return all_cols[0]
 
 
 def pandas_wraps(function=None, return_col=None, return_scalar=None):

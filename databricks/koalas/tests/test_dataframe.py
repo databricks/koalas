@@ -171,6 +171,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(IndexError, 'Index has only 2 levels, not 3'):
             kdf.reset_index(col_level=2)
 
+        pdf.index.names = [('x', 'class'), ('y', 'name')]
+        kdf.index.names = [('x', 'class'), ('y', 'name')]
+
+        self.assert_eq(kdf.reset_index(), pdf.reset_index())
+
+        with self.assertRaisesRegex(ValueError, 'Item must have length equal to number of levels.'):
+            kdf.reset_index(col_level=1)
+
     def test_multiindex_column_access(self):
         columns = pd.MultiIndex.from_tuples([('a', '', '', 'b'),
                                              ('c', '', 'd', ''),
@@ -303,8 +311,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(['a', 'b']))
         self.assert_eq(kdf[['b', 'a']].columns, pd.Index(['b', 'a']))
         self.assertEqual(kdf['a'].name, 'a')
-        self.assertEqual((kdf['a'] + 1).name, '(a + 1)')  # TODO: 'a'
-        self.assertEqual((kdf['a'] + kdf['b']).name, '(a + b)')  # TODO: None
+        self.assertEqual((kdf['a'] + 1).name, 'a')
+        self.assertEqual((kdf['a'] + kdf['b']).name, 'a')  # TODO: None
 
     def test_rename_columns(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7],

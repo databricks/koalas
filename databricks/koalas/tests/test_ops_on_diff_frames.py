@@ -143,6 +143,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf1.columns = columns
         pdf2.columns = columns
 
+        # Series
+        self.assert_eq(
+            (kdf1[('x', 'a')] - kdf2[('x', 'b')]).sort_index(),
+            (pdf1[('x', 'a')] - pdf2[('x', 'b')]).rename(('x', 'a')).sort_index(), almost=True)
+
+        # DataFrame
         self.assert_eq(
             (kdf1 + kdf2).sort_index(),
             (pdf1 + pdf2).sort_index(), almost=True)
@@ -184,6 +190,14 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kdf3.columns = columns
         pdf3.columns = columns
 
+        # Series
+        self.assert_eq(
+            (kdf1[('x', 'a')] - kdf2[('x', 'b')] - kdf3[('y', 'c')]).sort_index(),
+            (pdf1[('x', 'a')] - pdf2[('x', 'b')] - pdf3[('y', 'c')]).rename(('x', 'a'))
+            .sort_index(),
+            almost=True)
+
+        # DataFrame
         self.assert_eq(
             (kdf1 + kdf2 - kdf3).sort_index(),
             (pdf1 + pdf2 - pdf3).sort_index(), almost=True)
