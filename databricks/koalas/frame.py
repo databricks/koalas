@@ -1737,7 +1737,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  monkey        NaN
         """
         result = self[item]
-        del self._internal[item]
+        internal = self._get_dropped_internal_frame(item)
+        self._internal = internal
 
         return result
 
@@ -4396,23 +4397,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return self.drop(columns=labels)
             raise NotImplementedError("Drop currently only works for axis=1")
         elif columns is not None:
-            if isinstance(columns, str):
-                columns = [(columns,)]  # type: ignore
-            elif isinstance(columns, tuple):
-                columns = [columns]
-            else:
-                columns = [col if isinstance(col, tuple) else (col,)  # type: ignore
-                           for col in columns]
-            drop_column_index = set(idx for idx in self._internal.column_index
-                                    for col in columns
-                                    if idx[:len(col)] == col)
-            if len(drop_column_index) == 0:
-                raise KeyError(columns)
-            cols, idx = zip(*((column, idx)
-                              for column, idx
-                              in zip(self._internal.data_columns, self._internal.column_index)
-                              if idx not in drop_column_index))
-            internal = self._internal.copy(data_columns=list(cols), column_index=list(idx))
+            internal = self._get_dropped_internal_frame(columns)
             return DataFrame(internal)
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'columns'")
@@ -6813,6 +6798,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # The implementation is in its metaclass so this flag is needed to distinguish
         # Koalas DataFrame.
         is_dataframe = None
+
+    def _get_dropped_internal_frame(self, columns):
+        if isinstance(columns, str):
+            columns = [(columns,)]  # type: ignore
+        elif isinstance(columns, tuple):
+            columns = [columns]
+        else:
+            columns = [col if isinstance(col, tuple) else (col,)  # type: ignore
+                       for col in columns]
+        drop_column_index = set(idx for idx in self._internal.column_index
+                                for col in columns
+                                if idx[:len(col)] == col)
+        if len(drop_column_index) == 0:
+            raise KeyError(columns)
+        cols, idx = zip(*((column, idx)
+                          for column, idx
+                          in zip(self._internal.data_columns, self._internal.column_index)
+                          if idx not in drop_column_index))
+        internal = self._internal.copy(data_columns=list(cols), column_index=list(idx))
+
+        return internal
 
 
 def _reduce_spark_multi(sdf, aggs):

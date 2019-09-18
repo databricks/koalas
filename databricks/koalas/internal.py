@@ -416,13 +416,6 @@ class _InternalFrame(object):
         else:
             self._column_index_names = column_index_names
 
-    def __delitem__(self, key):
-        self._sdf = self._sdf.drop(key)
-        self._data_columns.remove(key)
-        for i, col in enumerate(self._column_index):
-            if col[0] == key:
-                self._column_index.pop(i)
-
     @staticmethod
     def attach_default_index(sdf):
         """
