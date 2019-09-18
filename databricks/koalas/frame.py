@@ -6641,12 +6641,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
-            return repr(self._to_internal_pandas())
+            return self._to_internal_pandas().to_string()
 
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
-        repr_string = repr(pdf.iloc[:max_display_count])
+        pdf = pdf.iloc[:max_display_count]
         if pdf_length > max_display_count:
+            repr_string = pdf.to_string(show_dimensions=True)
             match = REPR_PATTERN.search(repr_string)
             if match is not None:
                 nrows = match.group("rows")
@@ -6654,17 +6655,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 footer = ("\n\n[Showing only the first {nrows} rows x {ncols} columns]"
                           .format(nrows=nrows, ncols=ncols))
                 return REPR_PATTERN.sub(footer, repr_string)
-        return repr_string
+        return pdf.to_string()
 
     def _repr_html_(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
-            return self._to_internal_pandas()._repr_html_()
+            return self._to_internal_pandas().to_html(notebook=True)
 
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
-        repr_html = pdf[:max_display_count]._repr_html_()
+        pdf = pdf[:max_display_count]
         if pdf_length > max_display_count:
+            repr_html = pdf.to_html(show_dimensions=True, notebook=True)
             match = REPR_HTML_PATTERN.search(repr_html)
             if match is not None:
                 nrows = match.group("rows")
@@ -6675,7 +6677,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   by=by,
                                   cols=ncols))
                 return REPR_HTML_PATTERN.sub(footer, repr_html)
-        return repr_html
+        return pdf.to_html(notebook=True)
 
     def __getitem__(self, key):
         return self._pd_getitem(key)
