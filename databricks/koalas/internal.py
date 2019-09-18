@@ -131,6 +131,15 @@ class _InternalFrame(object):
     |                2|  3|  7| 11| 15| 19|
     |                3|  4|  8| 12| 16| 20|
     +-----------------+---+---+---+---+---+
+    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+    +---+---+---+---+---+
+    |  A|  B|  C|  D|  E|
+    +---+---+---+---+---+
+    |  1|  5|  9| 13| 17|
+    |  2|  6| 10| 14| 18|
+    |  3|  7| 11| 15| 19|
+    |  4|  8| 12| 16| 20|
+    +---+---+---+---+---+
     >>> internal.pandas_df
        A  B   C   D   E
     0  1  5   9  13  17
@@ -195,6 +204,30 @@ class _InternalFrame(object):
     2  6  10  14  18
     3  7  11  15  19
     4  8  12  16  20
+
+    The `spark_df` will drop the index columns:
+
+    >>> internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+    +---+---+---+---+
+    |  B|  C|  D|  E|
+    +---+---+---+---+
+    |  5|  9| 13| 17|
+    |  6| 10| 14| 18|
+    |  7| 11| 15| 19|
+    |  8| 12| 16| 20|
+    +---+---+---+---+
+
+    but if `drop=False`, the columns will still remain in `spark_df`:
+
+    >>> kdf.set_index("A", drop=False)._internal.spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+    +---+---+---+---+---+
+    |  A|  B|  C|  D|  E|
+    +---+---+---+---+---+
+    |  1|  5|  9| 13| 17|
+    |  2|  6| 10| 14| 18|
+    |  3|  7| 11| 15| 19|
+    |  4|  8| 12| 16| 20|
+    +---+---+---+---+---+
 
     In case that index becomes a multi index as below:
 
@@ -586,15 +619,13 @@ class _InternalFrame(object):
     @lazy_property
     def spark_df(self) -> spark.DataFrame:
         """ Return as Spark DataFrame. """
-        index_columns = set(self.index_columns)
         data_columns = []
         for i, (column, idx) in enumerate(zip(self._data_columns, self.column_index)):
-            if column not in index_columns:
-                scol = self.scol_for(idx)
-                name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
-                if column != name:
-                    scol = scol.alias(name)
-                data_columns.append(scol)
+            scol = self.scol_for(idx)
+            name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+            if column != name:
+                scol = scol.alias(name)
+            data_columns.append(scol)
         return self._sdf.select(data_columns)
 
     @lazy_property
