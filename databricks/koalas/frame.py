@@ -4348,14 +4348,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> columns = [('a', 'x'), ('a', 'y'), ('b', 'z'), ('b', 'w')]
         >>> pdf.columns = pd.MultiIndex.from_tuples(columns)
         >>> kdf = ks.DataFrame(pdf)
-        >>> kdf
-           a     b   
+        >>> kdf  # doctest: +NORMALIZE_WHITESPACE
+           a     b
            x  y  z  w
         0  1  3  5  7
         1  2  4  6  8
 
-        >>> kdf.drop('a')
-           b   
+        >>> kdf.drop('a')  # doctest: +NORMALIZE_WHITESPACE
+           b
            z  w
         0  5  7
         1  6  8
