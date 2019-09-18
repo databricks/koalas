@@ -1492,7 +1492,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.shift(3), kdf.shift(3).sort_index())
 
-        self.assert_eq(pdf.shift(periods=3, fill_value=0),
+        # Need the expected result since pandas 0.23 does not support `fill_value` argument.
+        pdf1 = pd.DataFrame({'Col1': [0, 0, 0, 10, 20],
+                             'Col2': [0, 0, 0, 13, 23],
+                             'Col3': [0, 0, 0, 17, 27]})
+        self.assert_eq(pdf1,
                        kdf.shift(periods=3, fill_value=0).sort_index())
         msg = "should be an int"
         with self.assertRaisesRegex(ValueError, msg):
