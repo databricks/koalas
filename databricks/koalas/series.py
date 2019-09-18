@@ -2608,7 +2608,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             asc_func = spark.functions.desc
 
         index_column = self._internal.index_columns[0]
-        column_name = self.name
+        column_name = self._internal.data_columns[0]
 
         if method == 'first':
             window = Window.orderBy(
@@ -2633,7 +2633,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 *[column_name] + list(part_cols)
             ).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
             scol = stat_func(F.row_number().over(window1)).over(window2)
-        kser = self._with_new_scol(scol).rename(column_name)
+        kser = self._with_new_scol(scol).rename(self.name)
         return kser.astype(np.float64)
 
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':

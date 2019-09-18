@@ -494,6 +494,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                     "Must specify a fillna 'value' or 'method' parameter."):
             kdf.fillna()
 
+        # multi-index columns
+        pdf = pd.DataFrame({('x', 'a'): [np.nan, 2, 3, 4, np.nan, 6],
+                            ('x', 'b'): [1, 2, np.nan, 4, np.nan, np.nan],
+                            ('y', 'c'): [1, 2, 3, 4, np.nan, np.nan]},
+                           index=[10, 20, 30, 40, 50, 60])
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.fillna(-1), pdf.fillna(-1))
+        self.assert_eq(kdf.fillna({('x', 'a'): -1, ('x', 'b'): -2, ('y', 'c'): -5}),
+                       pdf.fillna({('x', 'a'): -1, ('x', 'b'): -2, ('y', 'c'): -5}))
+        self.assert_eq(pdf.fillna(method='ffill'), kdf.fillna(method='ffill'))
+        self.assert_eq(pdf.fillna(method='ffill', limit=2), kdf.fillna(method='ffill', limit=2))
+        self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
+        self.assert_eq(pdf.fillna(method='bfill', limit=2), kdf.fillna(method='bfill', limit=2))
+
     def test_isnull(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
                            index=[10, 20, 30, 40, 50, 60])
@@ -1430,8 +1445,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.rank(),
                        kdf.rank().sort_index())
-        self.assert_eq(pdf.rank(),
-                       kdf.rank().sort_index())
         self.assert_eq(pdf.rank(ascending=False),
                        kdf.rank(ascending=False).sort_index())
         self.assert_eq(pdf.rank(method='min'),
@@ -1446,6 +1459,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.rank(method='nothing')
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'col1'), ('y', 'col2')])
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_eq(pdf.rank(),
+                       kdf.rank().sort_index())
 
     def test_round(self):
         pdf = pd.DataFrame({'A': [0.028208, 0.038683, 0.877076],
@@ -1472,14 +1492,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.shift(3), kdf.shift(3).sort_index())
 
-        pdf = pd.DataFrame({'Col1': [0, 0, 0, 10, 20],
-                            'Col2': [0, 0, 0, 13, 23],
-                            'Col3': [0, 0, 0, 17, 27]})
-        self.assert_eq(pdf,
+        # Need the expected result since pandas 0.23 does not support `fill_value` argument.
+        pdf1 = pd.DataFrame({'Col1': [0, 0, 0, 10, 20],
+                             'Col2': [0, 0, 0, 13, 23],
+                             'Col3': [0, 0, 0, 17, 27]})
+        self.assert_eq(pdf1,
                        kdf.shift(periods=3, fill_value=0).sort_index())
         msg = "should be an int"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.shift(1.5)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'Col1'), ('x', 'Col2'), ('y', 'Col3')])
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_eq(pdf.shift(3), kdf.shift(3).sort_index())
 
     def test_diff(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
@@ -1495,6 +1522,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = 'axis should be either 0 or "index" currently.'
         with self.assertRaisesRegex(ValueError, msg):
             kdf.diff(axis=1)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'Col1'), ('x', 'Col2'), ('y', 'Col3')])
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_eq(pdf.diff(),
+                       kdf.diff().sort_index())
 
     def test_duplicated(self):
         pdf = pd.DataFrame({'a': [1, 1, 1, 3], 'b': [1, 1, 1, 4], 'c': [1, 1, 1, 5]})
