@@ -872,6 +872,111 @@ class DataFrame(_Frame, Generic[T]):
                                        column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
+    # TODO: Series support is not implemented yet.
+    # TODO: not all arguments are implemented comparing to Pandas' for now.
+    def aggregate(self, func_or_funcs):
+        """Aggregate using one or more operations over the specified axis.
+
+        Parameters
+        ----------
+        func : dict or a list
+             a dict mapping from column name (string) to
+             aggregate functions (string or list of strings).
+             If a list is given, the aggregation is performed against
+             all columns.
+
+        Returns
+        -------
+        DataFrame
+
+            The return can be:
+
+            * DataFrame : when DataFrame.agg is called with several functions
+
+            Return a DataFrame.
+
+        Notes
+        -----
+        `agg` is an alias for `aggregate`. Use the alias.
+
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[1, 2, 3],
+        ...                    [4, 5, 6],
+        ...                    [7, 8, 9],
+        ...                    [np.nan, np.nan, np.nan]],
+        ...                   columns=['A', 'B', 'C'])
+
+        >>> df
+             A    B    C
+        0  1.0  2.0  3.0
+        1  4.0  5.0  6.0
+        2  7.0  8.0  9.0
+        3  NaN  NaN  NaN
+
+        Aggregate these functions over the rows.
+
+        >>> df.agg(['sum', 'min'])
+                A     B     C
+        min   1.0   2.0   3.0
+        sum  12.0  15.0  18.0
+
+        Different aggregations per column.
+
+        >>> df.agg({'A' : ['sum', 'min'], 'B' : ['min', 'max']})
+                A    B
+        max   NaN  8.0
+        min   1.0  2.0
+        sum  12.0  NaN
+        """
+        if isinstance(func_or_funcs, list):
+            func_or_funcs = dict([
+                (column, func_or_funcs) for column in self.columns])
+
+        if not isinstance(func_or_funcs, dict) or \
+                not all(isinstance(key, str) and
+                        (isinstance(value, str) or
+                         isinstance(value, list) and all(isinstance(v, str) for v in value))
+                        for key, value in func_or_funcs.items()):
+            raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
+                             "functions (string or list of strings).")
+
+        sdf = self._sdf
+        multi_aggs = any(isinstance(v, list) for v in func_or_funcs.values())
+        reordered = []
+        data_columns = []
+        column_index = []
+        for key, value in func_or_funcs.items():
+            for aggfunc in [value] if isinstance(value, str) else value:
+                data_col = "('{0}', '{1}')".format(key, aggfunc) if multi_aggs else key
+                data_columns.append(data_col)
+                column_index.append((key, aggfunc))
+                if aggfunc == "nunique":
+                    reordered.append(F.expr('count(DISTINCT `{0}`) as `{1}`'.format(key, data_col)))
+                else:
+                    reordered.append(F.expr('{1}(`{0}`) as `{2}`'.format(key, aggfunc, data_col)))
+        sdf = sdf.groupby().agg(*reordered)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=data_columns,
+                                  column_index=column_index if multi_aggs else None)
+
+        kdf = DataFrame(internal)
+        pdf = kdf.to_pandas().transpose().reset_index()
+        pdf = pdf.groupby(['level_1']).apply(
+            lambda gpdf: gpdf.drop('level_1', 1).set_index('level_0').transpose()
+        ).reset_index(level=1)
+        pdf = pdf.drop(columns='level_1')
+        pdf.columns.names = [None]
+        pdf.index.names = [None]
+        return DataFrame(pdf[func_or_funcs.keys()])
+
+    agg = aggregate
+
     def corr(self, method='pearson'):
         """
         Compute pairwise correlation of columns, excluding NA/null values.

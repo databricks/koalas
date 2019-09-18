@@ -41,8 +41,6 @@ class _MissingPandasLikeDataFrame(object):
     ix = unsupported_property('ix', deprecated=True)
 
     # Functions
-    agg = unsupported_function('agg')
-    aggregate = unsupported_function('aggregate')
     align = unsupported_function('align')
     apply = unsupported_function('apply')
     asfreq = unsupported_function('asfreq')
