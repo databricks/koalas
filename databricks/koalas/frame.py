@@ -4371,10 +4371,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                               for column, idx
                               in zip(self._internal.data_columns, self._internal.column_index)
                               if idx not in drop_column_index))
-            internal = self._internal.copy(data_columns=list(cols), column_index=list(idx))
-            # To drop internal Spark DataFrame's columns also
-            for col in columns:
-                internal._sdf = internal._sdf.drop(col[0])
+            # make column string list to drop internal spark dataframe fields
+            columns = [col[0] for col in columns]
+            internal = self._internal.copy(
+                sdf=self._sdf.drop(*columns),
+                data_columns=list(cols),
+                column_index=list(idx))
             return DataFrame(internal)
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'columns'")
