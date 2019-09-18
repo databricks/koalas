@@ -1737,7 +1737,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  monkey        NaN
         """
         result = self[item]
-        internal = self._get_dropped_internal_frame(item)
+        internal = self._drop_internal(item)
         self._internal = internal
 
         return result
@@ -4397,7 +4397,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return self.drop(columns=labels)
             raise NotImplementedError("Drop currently only works for axis=1")
         elif columns is not None:
-            internal = self._get_dropped_internal_frame(columns)
+            internal = self._drop_internal(columns)
             return DataFrame(internal)
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'columns'")
@@ -6799,7 +6799,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # Koalas DataFrame.
         is_dataframe = None
 
-    def _get_dropped_internal_frame(self, columns):
+    def _drop_internal(self, columns):
         if isinstance(columns, str):
             columns = [(columns,)]  # type: ignore
         elif isinstance(columns, tuple):
