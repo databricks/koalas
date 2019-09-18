@@ -250,7 +250,7 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
-def read_json(path: str, **options):
+def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **options):
     """
     Convert a JSON string to pandas object.
 
@@ -258,6 +258,8 @@ def read_json(path: str, **options):
     ----------
     path : string
         File path
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
 
     Examples
     --------
@@ -272,7 +274,7 @@ def read_json(path: str, **options):
     0     a     b
     1     c     d
     """
-    return read_spark_io(path, format='json', options=options)
+    return read_spark_io(path, format='json', index_col=index_col, options=options)
 
 
 def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str] = None,
