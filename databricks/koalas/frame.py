@@ -4371,10 +4371,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                               for column, idx
                               in zip(self._internal.data_columns, self._internal.column_index)
                               if idx not in drop_column_index))
-            # make column string list to drop internal spark dataframe fields
-            columns = [col[0] for col in columns]
             internal = self._internal.copy(
-                sdf=self._sdf.drop(*columns),
+                sdf=self._sdf.select(
+                    self._internal.index_scols + [self._internal.scol_for(col) for col in cols]),
                 data_columns=list(cols),
                 column_index=list(idx))
             return DataFrame(internal)
