@@ -22,7 +22,9 @@ from functools import partial
 from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
-from pandas.api.types import is_list_like
+from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
+    is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
+
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 
@@ -238,6 +240,83 @@ class Index(IndexOpsMixin):
                                          column_index=column_index,
                                          column_index_names=None),
                       anchor=kdf)
+
+    def is_boolean(self):
+        """
+        Return if the current index type is a boolean type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=[True]).index.is_boolean()
+        True
+        """
+        return is_bool_dtype(self.dtype)
+
+    def is_categorical(self):
+        """
+        Return if the current index type is a categorical type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=[1]).index.is_categorical()
+        False
+        """
+        return is_categorical_dtype(self.dtype)
+
+    def is_floating(self):
+        """
+        Return if the current index type is a floating type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=[1]).index.is_floating()
+        False
+        """
+        return is_float_dtype(self.dtype)
+
+    def is_integer(self):
+        """
+        Return if the current index type is a integer type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=[1]).index.is_integer()
+        True
+        """
+        return is_integer_dtype(self.dtype)
+
+    def is_interval(self):
+        """
+        Return if the current index type is an interval type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=[1]).index.is_interval()
+        False
+        """
+        return is_interval_dtype(self.dtype)
+
+    def is_numeric(self):
+        """
+        Return if the current index type is a numeric type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=[1]).index.is_numeric()
+        True
+        """
+        return is_numeric_dtype(self.dtype)
+
+    def is_object(self):
+        """
+        Return if the current index type is a object type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=["a"]).index.is_object()
+        True
+        """
+        return is_object_dtype(self.dtype)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
