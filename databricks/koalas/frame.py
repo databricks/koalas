@@ -958,7 +958,7 @@ class DataFrame(_Frame, Generic[T]):
         cols = list(self.columns)
         return list((col_name, self[col_name]) for col_name in cols)
 
-    def items(self):
+    def items(self) -> Iterable:
         """This is an alias of ``iteritems``."""
         return self.iteritems()
 
