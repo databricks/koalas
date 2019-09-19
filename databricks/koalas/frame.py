@@ -914,14 +914,14 @@ class DataFrame(_Frame, Generic[T]):
 
         Aggregate these functions over the rows.
 
-        >>> df.agg(['sum', 'min'])
+        >>> df.agg(['sum', 'min'])[['A', 'B', 'C']]
                 A     B     C
         min   1.0   2.0   3.0
         sum  12.0  15.0  18.0
 
         Different aggregations per column.
 
-        >>> df.agg({'A' : ['sum', 'min'], 'B' : ['min', 'max']})
+        >>> df.agg({'A' : ['sum', 'min'], 'B' : ['min', 'max']})[['A', 'B']]
                 A    B
         max   NaN  8.0
         min   1.0  2.0
