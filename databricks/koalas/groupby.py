@@ -120,15 +120,23 @@ class GroupBy(object):
             raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
                              "functions (string or list of strings).")
 
-        sdf = self._kdf._sdf
-        groupkeys = self._groupkeys
+        kdf = DataFrame(GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys))
+        if not self._as_index:
+            kdf = kdf.reset_index()
+        return kdf
+
+    agg = aggregate
+
+    @staticmethod
+    def _spark_groupby(kdf, func, groupkeys):
+        sdf = kdf._sdf
         groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
                          for i, s in enumerate(groupkeys)]
-        multi_aggs = any(isinstance(v, list) for v in func_or_funcs.values())
+        multi_aggs = any(isinstance(v, list) for v in func.values())
         reordered = []
         data_columns = []
         column_index = []
-        for key, value in func_or_funcs.items():
+        for key, value in func.items():
             for aggfunc in [value] if isinstance(value, str) else value:
                 data_col = "('{0}', '{1}')".format(key, aggfunc) if multi_aggs else key
                 data_columns.append(data_col)
@@ -138,18 +146,18 @@ class GroupBy(object):
                 else:
                     reordered.append(F.expr('{1}(`{0}`) as `{2}`'.format(key, aggfunc, data_col)))
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
-        internal = _InternalFrame(sdf=sdf,
+        if len(groupkeys) > 0:
+            index_map = [('__index_level_{}__'.format(i),
+                          s._internal.column_index[0])
+                         for i, s in enumerate(groupkeys)]
+            return _InternalFrame(sdf=sdf,
                                   data_columns=data_columns,
                                   column_index=column_index if multi_aggs else None,
-                                  index_map=[('__index_level_{}__'.format(i),
-                                              s._internal.column_index[0])
-                                             for i, s in enumerate(groupkeys)])
-        kdf = DataFrame(internal)
-        if not self._as_index:
-            kdf = kdf.reset_index()
-        return kdf
-
-    agg = aggregate
+                                  index_map=index_map)
+        else:
+            return _InternalFrame(sdf=sdf,
+                                  data_columns=data_columns,
+                                  column_index=column_index if multi_aggs else None)
 
     def count(self):
         """

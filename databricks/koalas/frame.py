@@ -26,7 +26,7 @@ import json
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
-from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable
+from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable, Dict
 
 import numpy as np
 import pandas as pd
@@ -46,7 +46,6 @@ from pyspark.sql.window import Window
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.config import get_option
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import _InternalFrame, IndexMap
@@ -874,7 +873,7 @@ class DataFrame(_Frame, Generic[T]):
 
     # TODO: Series support is not implemented yet.
     # TODO: not all arguments are implemented comparing to Pandas' for now.
-    def aggregate(self, func_or_funcs):
+    def aggregate(self, func: Union[List[str], Dict[str, List[str]]]):
         """Aggregate using one or more operations over the specified axis.
 
         Parameters
@@ -888,12 +887,6 @@ class DataFrame(_Frame, Generic[T]):
         Returns
         -------
         DataFrame
-
-            The return can be:
-
-            * DataFrame : when DataFrame.agg is called with several functions
-
-            Return a DataFrame.
 
         Notes
         -----
@@ -934,38 +927,39 @@ class DataFrame(_Frame, Generic[T]):
         min   1.0  2.0
         sum  12.0  NaN
         """
-        if isinstance(func_or_funcs, list):
-            func_or_funcs = dict([
-                (column, func_or_funcs) for column in self.columns])
+        from databricks.koalas.groupby import GroupBy
 
-        if not isinstance(func_or_funcs, dict) or \
+        if isinstance(func, list):
+            if all((isinstance(f, str) for f in func)):
+                func = dict([
+                    (column, func) for column in self.columns])
+            else:
+                raise ValueError("If the given function is a list, it "
+                                 "should only contains function names as strings.")
+
+        if not isinstance(func, dict) or \
                 not all(isinstance(key, str) and
                         (isinstance(value, str) or
                          isinstance(value, list) and all(isinstance(v, str) for v in value))
-                        for key, value in func_or_funcs.items()):
+                        for key, value in func.items()):
             raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
-                             "functions (string or list of strings).")
+                             "functions (list of strings).")
 
-        sdf = self._sdf
-        multi_aggs = any(isinstance(v, list) for v in func_or_funcs.values())
-        reordered = []
-        data_columns = []
-        column_index = []
-        for key, value in func_or_funcs.items():
-            for aggfunc in [value] if isinstance(value, str) else value:
-                data_col = "('{0}', '{1}')".format(key, aggfunc) if multi_aggs else key
-                data_columns.append(data_col)
-                column_index.append((key, aggfunc))
-                if aggfunc == "nunique":
-                    reordered.append(F.expr('count(DISTINCT `{0}`) as `{1}`'.format(key, data_col)))
-                else:
-                    reordered.append(F.expr('{1}(`{0}`) as `{2}`'.format(key, aggfunc, data_col)))
-        sdf = sdf.groupby().agg(*reordered)
-        internal = _InternalFrame(sdf=sdf,
-                                  data_columns=data_columns,
-                                  column_index=column_index if multi_aggs else None)
+        kdf = DataFrame(GroupBy._spark_groupby(self, func, ()))  # type: DataFrame
 
-        kdf = DataFrame(internal)
+        # The codes below basically converts:
+        #
+        #           A         B
+        #         sum  min  min  max
+        #     0  12.0  1.0  2.0  8.0
+        #
+        # to:
+        #             A    B
+        #     max   NaN  8.0
+        #     min   1.0  2.0
+        #     sum  12.0  NaN
+        #
+        # Aggregated output is usually pretty much small. So it is fine to directly use pandas API.
         pdf = kdf.to_pandas().transpose().reset_index()
         pdf = pdf.groupby(['level_1']).apply(
             lambda gpdf: gpdf.drop('level_1', 1).set_index('level_0').transpose()
@@ -973,7 +967,8 @@ class DataFrame(_Frame, Generic[T]):
         pdf = pdf.drop(columns='level_1')
         pdf.columns.names = [None]
         pdf.index.names = [None]
-        return DataFrame(pdf[func_or_funcs.keys()])
+
+        return DataFrame(pdf[list(func.keys())])
 
     agg = aggregate
 
