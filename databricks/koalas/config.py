@@ -18,14 +18,14 @@
 Infrastructure of options for Koalas.
 """
 import json
-from typing import Union, Any, Tuple, Callable, List
+from typing import Union, Any, Tuple, Callable, List, Dict
 
 from pyspark._globals import _NoValue, _NoValueType
 
 from databricks.koalas.utils import default_session
 
 
-__all__ = ['get_option', 'set_option', 'reset_option']
+__all__ = ['get_option', 'set_option', 'reset_option', 'options']
 
 
 class Option:
@@ -194,7 +194,7 @@ _options = [
             "'plotting.sample_ratio' should be 1 >= value >= 0.")),
 ]  # type: List[Option]
 
-_options_dict = dict(zip((option.key for option in _options), _options))
+_options_dict = dict(zip((option.key for option in _options), _options))  # type: Dict[str, Option]
 
 _key_format = 'koalas.{}'.format
 
@@ -298,3 +298,61 @@ def _check_option(key: str) -> None:
         raise OptionError(
             "No such option: '{}'. Available options are [{}]".format(
                 key, ", ".join(list(_options_dict.keys()))))
+
+
+class DictWrapper:
+    """ provide attribute-style access to a nested dict"""
+
+    def __init__(self, d, prefix=""):
+        object.__setattr__(self, "d", d)
+        object.__setattr__(self, "prefix", prefix)
+
+    def __setattr__(self, key, val):
+        prefix = object.__getattribute__(self, "prefix")
+        d = object.__getattribute__(self, "d")
+        if prefix:
+            prefix += "."
+        canonical_key = prefix + key
+
+        candidates = [
+            k for k in d.keys() if all(x in k.split(".") for x in canonical_key.split("."))]
+        if len(candidates) == 1 and candidates[0] == canonical_key:
+            return set_option(canonical_key, val)
+        else:
+            raise OptionError(
+                "No such option: '{}'. Available options are [{}]".format(
+                    key, ", ".join(list(_options_dict.keys()))))
+
+    def __getattr__(self, key):
+        prefix = object.__getattribute__(self, "prefix")
+        d = object.__getattribute__(self, "d")
+        if prefix:
+            prefix += "."
+        canonical_key = prefix + key
+
+        candidates = [
+            k for k in d.keys() if all(x in k.split(".") for x in canonical_key.split("."))]
+        if len(candidates) == 1 and candidates[0] == canonical_key:
+            return get_option(canonical_key)
+        elif len(candidates) == 0:
+            raise OptionError(
+                "No such option: '{}'. Available options are [{}]".format(
+                    key, ", ".join(list(_options_dict.keys()))))
+        else:
+            return DictWrapper(d, canonical_key)
+
+    def __dir__(self):
+        prefix = object.__getattribute__(self, "prefix")
+        d = object.__getattribute__(self, "d")
+
+        if prefix == "":
+            candidates = d.keys()
+            offset = 0
+        else:
+            candidates = [
+                k for k in d.keys() if all(x in k.split(".") for x in prefix.split("."))]
+            offset = len(prefix) + 1  # prefix (e.g. "compute.") to trim.
+        return [c[offset:] for c in candidates]
+
+
+options = DictWrapper(_options_dict)
