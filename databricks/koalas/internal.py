@@ -32,7 +32,7 @@ from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type, 
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
-from databricks.koalas.typedef import infer_pd_series_spark_type
+from databricks.koalas.typedef import infer_pd_series_spark_type, spark_type_to_pandas_dtype
 from databricks.koalas.utils import column_index_level, default_session, lazy_property, scol_for
 
 
@@ -634,7 +634,7 @@ class _InternalFrame(object):
         sdf = self.spark_internal_df
         pdf = sdf.toPandas()
         if len(pdf) == 0 and len(sdf.schema) > 0:
-            pdf = pdf.astype({field.name: to_arrow_type(field.dataType).to_pandas_dtype()
+            pdf = pdf.astype({field.name: spark_type_to_pandas_dtype(field.dataType)
                               for field in sdf.schema})
 
         index_columns = self.index_columns

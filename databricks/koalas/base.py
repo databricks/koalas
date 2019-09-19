@@ -26,12 +26,11 @@ import pandas as pd
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
-from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType, \
-    to_arrow_type
+from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.internal import _InternalFrame
-from databricks.koalas.typedef import pandas_wraps
+from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for
 
 
@@ -219,10 +218,7 @@ class IndexOpsMixin(object):
         >>> s.rename("a").to_frame().set_index("a").index.dtype
         dtype('<M8[ns]')
         """
-        if type(self.spark_type) == TimestampType:
-            return np.dtype('datetime64[ns]')
-        else:
-            return np.dtype(to_arrow_type(self.spark_type).to_pandas_dtype())
+        return spark_type_to_pandas_dtype(self.spark_type)
 
     @property
     def empty(self):
