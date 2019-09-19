@@ -26,7 +26,7 @@ import json
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
-from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable
+from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable, Dict
 
 import numpy as np
 import pandas as pd
@@ -46,7 +46,6 @@ from pyspark.sql.window import Window
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.config import get_option
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import _InternalFrame, IndexMap
@@ -871,6 +870,107 @@ class DataFrame(_Frame, Generic[T]):
                                        data_columns=[c._internal.data_columns[0] for c in applied],
                                        column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
+
+    # TODO: Series support is not implemented yet.
+    # TODO: not all arguments are implemented comparing to Pandas' for now.
+    def aggregate(self, func: Union[List[str], Dict[str, List[str]]]):
+        """Aggregate using one or more operations over the specified axis.
+
+        Parameters
+        ----------
+        func : dict or a list
+             a dict mapping from column name (string) to
+             aggregate functions (string or list of strings).
+             If a list is given, the aggregation is performed against
+             all columns.
+
+        Returns
+        -------
+        DataFrame
+
+        Notes
+        -----
+        `agg` is an alias for `aggregate`. Use the alias.
+
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[1, 2, 3],
+        ...                    [4, 5, 6],
+        ...                    [7, 8, 9],
+        ...                    [np.nan, np.nan, np.nan]],
+        ...                   columns=['A', 'B', 'C'])
+
+        >>> df
+             A    B    C
+        0  1.0  2.0  3.0
+        1  4.0  5.0  6.0
+        2  7.0  8.0  9.0
+        3  NaN  NaN  NaN
+
+        Aggregate these functions over the rows.
+
+        >>> df.agg(['sum', 'min'])[['A', 'B', 'C']]
+                A     B     C
+        min   1.0   2.0   3.0
+        sum  12.0  15.0  18.0
+
+        Different aggregations per column.
+
+        >>> df.agg({'A' : ['sum', 'min'], 'B' : ['min', 'max']})[['A', 'B']]
+                A    B
+        max   NaN  8.0
+        min   1.0  2.0
+        sum  12.0  NaN
+        """
+        from databricks.koalas.groupby import GroupBy
+
+        if isinstance(func, list):
+            if all((isinstance(f, str) for f in func)):
+                func = dict([
+                    (column, func) for column in self.columns])
+            else:
+                raise ValueError("If the given function is a list, it "
+                                 "should only contains function names as strings.")
+
+        if not isinstance(func, dict) or \
+                not all(isinstance(key, str) and
+                        (isinstance(value, str) or
+                         isinstance(value, list) and all(isinstance(v, str) for v in value))
+                        for key, value in func.items()):
+            raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
+                             "functions (list of strings).")
+
+        kdf = DataFrame(GroupBy._spark_groupby(self, func, ()))  # type: DataFrame
+
+        # The codes below basically converts:
+        #
+        #           A         B
+        #         sum  min  min  max
+        #     0  12.0  1.0  2.0  8.0
+        #
+        # to:
+        #             A    B
+        #     max   NaN  8.0
+        #     min   1.0  2.0
+        #     sum  12.0  NaN
+        #
+        # Aggregated output is usually pretty much small. So it is fine to directly use pandas API.
+        pdf = kdf.to_pandas().transpose().reset_index()
+        pdf = pdf.groupby(['level_1']).apply(
+            lambda gpdf: gpdf.drop('level_1', 1).set_index('level_0').transpose()
+        ).reset_index(level=1)
+        pdf = pdf.drop(columns='level_1')
+        pdf.columns.names = [None]
+        pdf.index.names = [None]
+
+        return DataFrame(pdf[list(func.keys())])
+
+    agg = aggregate
 
     def corr(self, method='pearson'):
         """

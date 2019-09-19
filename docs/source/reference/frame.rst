@@ -91,6 +91,8 @@ Function application, GroupBy & Window
 
    DataFrame.applymap
    DataFrame.pipe
+   DataFrame.agg
+   DataFrame.aggregate
    DataFrame.groupby
    DataFrame.transform
 
