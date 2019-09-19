@@ -2515,17 +2515,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         third   0.9  0.0  0.49
         """
         if isinstance(decimals, ks.Series):
-            decimals_list = [kv for kv in decimals._to_internal_pandas().items()]
+            decimals_list = [(k if isinstance(k, tuple) else (k,), v)
+                             for k, v in decimals._to_internal_pandas().items()]
         elif isinstance(decimals, dict):
-            decimals_list = [(k, v) for k, v in decimals.items()]
+            decimals_list = [(k if isinstance(k, tuple) else (k,), v)
+                             for k, v in decimals.items()]
         elif isinstance(decimals, int):
-            decimals_list = [(v, decimals) for v in self._internal.data_columns]
+            decimals_list = [(k, decimals) for k in self._internal.column_index]
         else:
             raise ValueError("decimals must be an integer, a dict-like or a Series")
 
         sdf = self._sdf
-        for decimal in decimals_list:
-            sdf = sdf.withColumn(decimal[0], F.round(scol_for(sdf, decimal[0]), decimal[1]))
+        for idx, decimal in decimals_list:
+            if idx in self._internal.column_index:
+                col = self._internal.column_name_for(idx)
+                sdf = sdf.withColumn(col, F.round(scol_for(sdf, col), decimal))
         return DataFrame(self._internal.copy(sdf=sdf))
 
     def duplicated(self, subset=None, keep='first'):

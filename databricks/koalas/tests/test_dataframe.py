@@ -1480,11 +1480,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        kdf.round(2))
         self.assert_eq(pdf.round({'A': 1, 'C': 2}),
                        kdf.round({'A': 1, 'C': 2}))
+        self.assert_eq(pdf.round({'A': 1, 'D': 2}),
+                       kdf.round({'A': 1, 'D': 2}))
         self.assert_eq(pdf.round(pser),
                        kdf.round(kser))
         msg = "decimals must be an integer, a dict-like or a Series"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.round(1.5)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
+        pdf.columns = columns
+        kdf.columns = columns
+        pser = pd.Series([1, 0, 2], index=columns)
+        kser = ks.Series([1, 0, 2], index=columns)
+        self.assert_eq(pdf.round(2),
+                       kdf.round(2))
+        self.assert_eq(pdf.round({('X', 'A'): 1, ('Y', 'C'): 2}),
+                       kdf.round({('X', 'A'): 1, ('Y', 'C'): 2}))
+        self.assert_eq(pdf.round({('X', 'A'): 1, 'Y': 2}),
+                       kdf.round({('X', 'A'): 1, 'Y': 2}))
+        self.assert_eq(pdf.round(pser),
+                       kdf.round(kser))
 
     def test_shift(self):
         pdf = pd.DataFrame({'Col1': [10, 20, 15, 30, 45],
