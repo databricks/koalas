@@ -116,8 +116,19 @@ class ConfigTest(ReusedSQLTestCase):
 
             with self.assertRaisesRegex(config.OptionError, "No such option"):
                 ks.options.compute.max = 0
+            with self.assertRaisesRegex(config.OptionError, "No such option"):
+                ks.options.compute = 0
+            with self.assertRaisesRegex(config.OptionError, "No such option"):
+                ks.options.com = 0
         finally:
             ks.reset_option("compute.max_rows")
 
     def test_dir_options(self):
-        self.assertTrue("compute.max_rows" in dir(ks.options))
+        self.assertTrue("compute.default_index_type" in dir(ks.options))
+        self.assertTrue("plotting.sample_ratio" in dir(ks.options))
+
+        self.assertTrue("default_index_type" in dir(ks.options.compute))
+        self.assertTrue("sample_ratio" not in dir(ks.options.compute))
+
+        self.assertTrue("default_index_type" not in dir(ks.options.plotting))
+        self.assertTrue("sample_ratio" in dir(ks.options.plotting))
