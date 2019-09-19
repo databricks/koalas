@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+from datetime import date, datetime
 import inspect
 
 import numpy as np
@@ -1642,3 +1643,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
             kdf.transform(1)
+
+    def test_empty_timestamp(self):
+        pdf = pd.DataFrame({'t': [datetime(2019, 1, 1, 0, 0, 0),
+                                  datetime(2019, 1, 2, 0, 0, 0),
+                                  datetime(2019, 1, 3, 0, 0, 0)]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf[kdf['t'] != kdf['t']], pdf[pdf['t'] != pdf['t']])
+        self.assert_eq(kdf[kdf['t'] != kdf['t']].dtypes, pdf[pdf['t'] != pdf['t']].dtypes)
