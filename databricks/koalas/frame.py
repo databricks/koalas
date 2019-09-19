@@ -880,7 +880,7 @@ class DataFrame(_Frame, Generic[T]):
         ----------
         func : dict or a list
              a dict mapping from column name (string) to
-             aggregate functions (string or list of strings).
+             aggregate functions (list of strings).
              If a list is given, the aggregation is performed against
              all columns.
 
