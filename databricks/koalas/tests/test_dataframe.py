@@ -1549,13 +1549,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(KeyError, "'d'"):
             kdf.duplicated(subset=['d'])
 
+        pdf.index.name = 'x'
+        kdf.index.name = 'x'
+        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='x')),
+                         repr(kdf.duplicated().sort_index()))
+
         # mutli-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
         pdf.columns = columns
         kdf.columns = columns
-        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='0')),
+        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='x')),
                          repr(kdf.duplicated().sort_index()))
-        self.assertEqual(repr(pd.Series(pdf.duplicated(subset=[('x', 'b')]), name='0')),
+        self.assertEqual(repr(pd.Series(pdf.duplicated(subset=[('x', 'b')]), name='x')),
                          repr(kdf.duplicated(subset=[('x', 'b')]).sort_index()))
 
     def test_ffill(self):

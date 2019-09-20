@@ -2601,28 +2601,30 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         group_cols = [self._internal.column_name_for(idx) for idx in subset]
 
         sdf = self._sdf
-        index = self._internal.index_columns[0]
+        index_column = self._internal.index_columns[0]
         if self._internal.index_names[0] is not None:
             name = self._internal.index_names[0]
         else:
-            name = '0'
+            name = ('0',)
 
         if keep == 'first' or keep == 'last':
             if keep == 'first':
                 ord_func = spark.functions.asc
             else:
                 ord_func = spark.functions.desc
-            window = Window.partitionBy(group_cols).orderBy(ord_func(index)).rowsBetween(
+            window = Window.partitionBy(group_cols).orderBy(ord_func(index_column)).rowsBetween(
                 Window.unboundedPreceding, Window.currentRow)
-            sdf = sdf.withColumn(name, F.row_number().over(window) > 1)
+            sdf = sdf.withColumn(str(name), F.row_number().over(window) > 1)
         elif not keep:
-            window = Window.partitionBy(group_cols).orderBy(F.col(index).desc())\
+            window = Window.partitionBy(group_cols).orderBy(scol_for(sdf, index_column).desc())\
                 .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
-            sdf = sdf.withColumn(name, F.count(F.col(index)).over(window) > 1)
+            sdf = sdf.withColumn(str(name), F.count(scol_for(sdf, index_column)).over(window) > 1)
         else:
             raise ValueError("'keep' only support 'first', 'last' and False")
-        return _col(DataFrame(_InternalFrame(sdf=sdf.select(index, name),
-                                             data_columns=[name],
+        return _col(DataFrame(_InternalFrame(sdf=sdf.select(scol_for(sdf, index_column),
+                                                            scol_for(sdf, str(name))),
+                                             data_columns=[str(name)],
+                                             column_index=[name],
                                              index_map=self._internal.index_map)))
 
     def to_koalas(self):
