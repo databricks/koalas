@@ -5704,8 +5704,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3      4      6
         """
         assert isinstance(prefix, str)
+        data_columns = [prefix + self._internal.column_name_for(idx)
+                        for idx in self._internal.column_index]
+        sdf = self._sdf.select(
+            self._internal.index_scols +
+            [self._internal.scol_for(idx).alias(name)
+             for idx, name in zip(self._internal.column_index, data_columns)])
         column_index = [tuple([prefix + i for i in idx]) for idx in self._internal.column_index]
-        internal = self._internal.copy(column_index=column_index)
+        internal = self._internal.copy(sdf=sdf,
+                                       data_columns=data_columns,
+                                       column_index=column_index)
         return DataFrame(internal)
 
     def add_suffix(self, suffix):
@@ -5749,8 +5757,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3      4      6
         """
         assert isinstance(suffix, str)
+        data_columns = [self._internal.column_name_for(idx) + suffix
+                        for idx in self._internal.column_index]
+        sdf = self._sdf.select(
+            self._internal.index_scols +
+            [self._internal.scol_for(idx).alias(name)
+             for idx, name in zip(self._internal.column_index, data_columns)])
         column_index = [tuple([i + suffix for i in idx]) for idx in self._internal.column_index]
-        internal = self._internal.copy(column_index=column_index)
+        internal = self._internal.copy(sdf=sdf,
+                                       data_columns=data_columns,
+                                       column_index=column_index)
         return DataFrame(internal)
 
     # TODO: include, and exclude should be implemented.
