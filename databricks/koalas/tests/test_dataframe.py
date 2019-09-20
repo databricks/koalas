@@ -264,25 +264,36 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf, pdf)
 
     def test_assign(self):
-        kdf = self.kdf.copy()
-        pdf = self.pdf.copy()
+        kdf = self.kdf
+        pdf = self.pdf
 
         kdf['w'] = 1.0
         pdf['w'] = 1.0
 
         self.assert_eq(kdf, pdf)
 
-        kdf['a'] = 'abc'
-        pdf['a'] = 'abc'
+        kdf = kdf.assign(a=kdf['a'] * 2)
+        pdf = pdf.assign(a=pdf['a'] * 2)
 
         self.assert_eq(kdf, pdf)
 
+        # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'w')])
         pdf.columns = columns
         kdf.columns = columns
 
-        pdf['Z'] = 'ZZ'
-        kdf['Z'] = 'ZZ'
+        kdf[('a', 'c')] = 'def'
+        pdf[('a', 'c')] = 'def'
+
+        self.assert_eq(kdf, pdf)
+
+        kdf = kdf.assign(Z='ZZ')
+        pdf = pdf.assign(Z='ZZ')
+
+        self.assert_eq(kdf, pdf)
+
+        kdf['x'] = 'ghi'
+        pdf['x'] = 'ghi'
 
         self.assert_eq(kdf, pdf)
 

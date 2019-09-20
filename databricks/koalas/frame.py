@@ -3035,6 +3035,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         feature is supported in pandas for Python 3.6 and later but not in
         Koalas. In Koalas, all items are computed first, and then assigned.
         """
+        return self._assign(kwargs)
+
+    def _assign(self, kwargs):
+        assert isinstance(kwargs, dict)
         from databricks.koalas.series import Series
         for k, v in kwargs.items():
             if not (isinstance(v, (Series, spark.Column)) or
@@ -3044,23 +3048,39 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if callable(v):
                 kwargs[k] = v(self)
 
-        pairs = list(kwargs.items())
-        sdf = self._sdf
-        for (name, c) in pairs:
-            if isinstance(c, Series):
-                sdf = sdf.withColumn(name, c._scol)
-            elif isinstance(c, Column):
-                sdf = sdf.withColumn(name, c)
-            else:
-                sdf = sdf.withColumn(name, F.lit(c))
+        pairs = {(k if isinstance(k, tuple) else (k,)):
+                     v._scol if isinstance(v, Series)
+                     else v if isinstance(v, spark.Column)
+                     else F.lit(v)
+                 for k, v in kwargs.items()}
 
-        data_columns = set(self._internal.data_columns)
-        adding_columns = [name for name, _ in pairs if name not in data_columns]
+        scols = []
+        for idx in self._internal.column_index:
+            for i in range(len(idx)):
+                if idx[:len(idx)-i] in pairs:
+                    name = self._internal.column_name_for(idx)
+                    scol = pairs[idx[:len(idx)-i]].alias(name)
+                    break
+            else:
+                scol = self._internal.scol_for(idx)
+            scols.append(scol)
+
+        adding_data_columns = []
+        adding_column_index = []
+        for idx, scol in pairs.items():
+            if idx not in set(i[:len(idx)] for i in self._internal.column_index):
+                name = str(idx) if len(idx) > 1 else idx[0]
+                scols.append(scol.alias(name))
+                adding_data_columns.append(name)
+                adding_column_index.append(idx)
+
+        sdf = self._sdf.select(self._internal.index_scols + scols)
         level = self._internal.column_index_level
-        adding_column_index = [tuple([col, *([''] * (level - 1))]) for col in adding_columns]
+        adding_column_index = [tuple(list(idx) + ([''] * (level - len(idx))))
+                               for idx in adding_column_index]
         internal = self._internal.copy(
             sdf=sdf,
-            data_columns=(self._internal.data_columns + adding_columns),
+            data_columns=(self._internal.data_columns + adding_data_columns),
             column_index=(self._internal.column_index + adding_column_index))
         return DataFrame(internal)
 
@@ -6865,14 +6885,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         yield (kdf[this_idx], this_idx)
 
             kdf = align_diff_frames(assign_columns, self, value, fillna=False, how="left")
-        elif isinstance(key, (tuple, list)):
+        elif isinstance(key, list):
             assert isinstance(value, DataFrame)
             # Same DataFrames.
             field_names = value.columns
-            kdf = self.assign(**{k: value[c] for k, c in zip(key, field_names)})
+            kdf = self._assign({k: value[c] for k, c in zip(key, field_names)})
         else:
             # Same Series.
-            kdf = self.assign(**{key: value})
+            kdf = self._assign({key: value})
 
         self._internal = kdf._internal
 
