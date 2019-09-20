@@ -3049,9 +3049,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 kwargs[k] = v(self)
 
         pairs = {(k if isinstance(k, tuple) else (k,)):
-                     v._scol if isinstance(v, Series)
-                     else v if isinstance(v, spark.Column)
-                     else F.lit(v)
+                 (v._scol if isinstance(v, Series)
+                  else v if isinstance(v, spark.Column)
+                  else F.lit(v))
                  for k, v in kwargs.items()}
 
         scols = []
