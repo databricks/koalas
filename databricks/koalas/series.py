@@ -1497,7 +1497,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
-        >>> ks.Series([2, 1, 3, 3], name='A').unique()
+        >>> kser = ks.Series([2, 1, 3, 3], name='A')
+        >>> kser.unique()
         0    1
         1    3
         2    2
@@ -1506,9 +1507,20 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> ks.Series([pd.Timestamp('2016-01-01') for _ in range(3)]).unique()
         0   2016-01-01
         Name: 0, dtype: datetime64[ns]
+
+        >>> kser.name = ('x', 'a')
+        >>> kser.unique()
+        0    1
+        1    3
+        2    2
+        Name: (x, a), dtype: int64
         """
-        sdf = self.to_dataframe()._sdf
-        return _col(DataFrame(sdf.select(self._scol).distinct()))
+        sdf = self._internal.sdf.select(self._scol).distinct()
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[self._internal.data_columns[0]],
+                                  column_index=[self._internal.column_index[0]],
+                                  column_index_names=self._internal.column_index_names)
+        return _col(DataFrame(internal))
 
     def nunique(self, dropna: bool = True, approx: bool = False, rsd: float = 0.05) -> int:
         """
