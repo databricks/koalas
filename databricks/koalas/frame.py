@@ -2587,12 +2587,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("Now we don't support multi-index Now.")
 
         if subset is None:
-            group_cols = self._internal.data_columns
+            subset = self._internal.column_index
         else:
-            group_cols = subset
-            diff = set(subset).difference(set(self._internal.data_columns))
+            if isinstance(subset, str):
+                subset = [(subset,)]
+            elif isinstance(subset, tuple):
+                subset = [subset]
+            else:
+                subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
+            diff = set(subset).difference(set(self._internal.column_index))
             if len(diff) > 0:
-                raise KeyError(', '.join(diff))
+                raise KeyError(', '.join([str(d) if len(d) > 1 else d[0] for d in diff]))
+        group_cols = [self._internal.column_name_for(idx) for idx in subset]
 
         sdf = self._sdf
         index = self._internal.index_columns[0]
@@ -2615,7 +2621,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.withColumn(name, F.count(F.col(index)).over(window) > 1)
         else:
             raise ValueError("'keep' only support 'first', 'last' and False")
-        return _col(DataFrame(_InternalFrame(sdf=sdf.select(index, name), data_columns=[name],
+        return _col(DataFrame(_InternalFrame(sdf=sdf.select(index, name),
+                                             data_columns=[name],
                                              index_map=self._internal.index_map)))
 
     def to_koalas(self):
