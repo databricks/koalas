@@ -1839,10 +1839,39 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  parrot       24.0
         2    lion       80.5
         3  monkey        NaN
+
+        Also support for MultiIndex
+
+        >>> df = ks.DataFrame([('falcon', 'bird', 389.0),
+        ...                    ('parrot', 'bird', 24.0),
+        ...                    ('lion', 'mammal', 80.5),
+        ...                    ('monkey','mammal', np.nan)],
+        ...                   columns=('name', 'class', 'max_speed'))
+        >>> columns = [('a', 'name'), ('a', 'class'), ('b', 'max_speed')]
+        >>> df.columns = pd.MultiIndex.from_tuples(columns)
+        >>> df
+                a                 b
+             name   class max_speed
+        0  falcon    bird     389.0
+        1  parrot    bird      24.0
+        2    lion  mammal      80.5
+        3  monkey  mammal       NaN
+        >>> df.pop('a')
+             name   class
+        0  falcon    bird
+        1  parrot    bird
+        2    lion  mammal
+        3  monkey  mammal
+        >>> df
+                  b
+          max_speed
+        0     389.0
+        1      24.0
+        2      80.5
+        3       NaN
         """
         result = self[item]
-        internal = self._drop_internal(item)
-        self._internal = internal
+        self._internal = self.drop(item)._internal
 
         return result
 
@@ -4491,6 +4520,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  1  7
         1  2  8
 
+        Also support for MultiIndex
+
         >>> df = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6], 'w': [7, 8]},
         ...                   columns=['x', 'y', 'z', 'w'])
         >>> columns = [('a', 'x'), ('a', 'y'), ('b', 'z'), ('b', 'w')]
@@ -6939,27 +6970,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # The implementation is in its metaclass so this flag is needed to distinguish
         # Koalas DataFrame.
         is_dataframe = None
-
-    def _drop_internal(self, columns):
-        if isinstance(columns, str):
-            columns = [(columns,)]  # type: ignore
-        elif isinstance(columns, tuple):
-            columns = [columns]
-        else:
-            columns = [col if isinstance(col, tuple) else (col,)  # type: ignore
-                       for col in columns]
-        drop_column_index = set(idx for idx in self._internal.column_index
-                                for col in columns
-                                if idx[:len(col)] == col)
-        if len(drop_column_index) == 0:
-            raise KeyError(columns)
-        cols, idx = zip(*((column, idx)
-                          for column, idx
-                          in zip(self._internal.data_columns, self._internal.column_index)
-                          if idx not in drop_column_index))
-        internal = self._internal.copy(data_columns=list(cols), column_index=list(idx))
-
-        return internal
 
 
 def _reduce_spark_multi(sdf, aggs):
