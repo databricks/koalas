@@ -52,6 +52,7 @@ Indexing, iteration
    DataFrame.head
    DataFrame.loc
    DataFrame.iloc
+   DataFrame.items
    DataFrame.iteritems
    DataFrame.get
 
@@ -90,6 +91,8 @@ Function application, GroupBy & Window
 
    DataFrame.applymap
    DataFrame.pipe
+   DataFrame.agg
+   DataFrame.aggregate
    DataFrame.groupby
    DataFrame.transform
 

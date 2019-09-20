@@ -145,6 +145,14 @@ def as_spark_type(tpe) -> types.DataType:
     return _known_types.get(tpe, None)
 
 
+def spark_type_to_pandas_dtype(spark_type):
+    """ Return the given Spark DataType to pandas dtype. """
+    if isinstance(spark_type, types.TimestampType):
+        return np.dtype('datetime64[ns]')
+    else:
+        return np.dtype(types.to_arrow_type(spark_type).to_pandas_dtype())
+
+
 def as_python_type(spark_tpe):
     return _py_conversions.get(spark_tpe, None)
 

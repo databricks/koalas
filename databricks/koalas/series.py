@@ -26,6 +26,7 @@ from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
 import numpy as np
 import pandas as pd
 from pandas.core.accessor import CachedAccessor
+from pandas.io.formats.printing import pprint_thing
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
@@ -2607,7 +2608,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             asc_func = spark.functions.desc
 
         index_column = self._internal.index_columns[0]
-        column_name = self.name
+        column_name = self._internal.data_columns[0]
 
         if method == 'first':
             window = Window.orderBy(
@@ -2632,7 +2633,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 *[column_name] + list(part_cols)
             ).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
             scol = stat_func(F.row_number().over(window1)).over(window2)
-        kser = self._with_new_scol(scol).rename(column_name)
+        kser = self._with_new_scol(scol).rename(self.name)
         return kser.astype(np.float64)
 
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
@@ -3046,20 +3047,22 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
-            return repr(self._to_internal_pandas())
+            return self._to_internal_pandas().to_string(name=self.name, dtype=self.dtype)
 
         pser = self.head(max_display_count + 1)._to_internal_pandas()
         pser_length = len(pser)
-        repr_string = repr(pser.iloc[:max_display_count])
+        pser = pser.iloc[:max_display_count]
         if pser_length > max_display_count:
+            repr_string = pser.to_string(length=True)
             rest, prev_footer = repr_string.rsplit("\n", 1)
             match = REPR_PATTERN.search(prev_footer)
             if match is not None:
                 length = match.group("length")
-                footer = ("\n{prev_footer}\nShowing only the first {length}"
-                          .format(length=length, prev_footer=prev_footer))
+                name = str(self.dtype.name)
+                footer = ("\nName: {name}, dtype: {dtype}\nShowing only the first {length}"
+                          .format(length=length, name=self.name, dtype=pprint_thing(name)))
                 return rest + footer
-        return repr_string
+        return pser.to_string(name=self.name, dtype=self.dtype)
 
     def __dir__(self):
         if not isinstance(self.schema, StructType):

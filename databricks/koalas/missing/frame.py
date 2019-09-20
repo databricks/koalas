@@ -41,8 +41,6 @@ class _MissingPandasLikeDataFrame(object):
     ix = unsupported_property('ix', deprecated=True)
 
     # Functions
-    agg = unsupported_function('agg')
-    aggregate = unsupported_function('aggregate')
     align = unsupported_function('align')
     apply = unsupported_function('apply')
     asfreq = unsupported_function('asfreq')
@@ -67,7 +65,6 @@ class _MissingPandasLikeDataFrame(object):
     info = unsupported_function('info')
     insert = unsupported_function('insert')
     interpolate = unsupported_function('interpolate')
-    items = unsupported_function('items')
     iterrows = unsupported_function('iterrows')
     itertuples = unsupported_function('itertuples')
     keys = unsupported_function('keys')
