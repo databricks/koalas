@@ -1629,20 +1629,31 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_transform(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
-                            'b': [1., 1., 2., 3., 5., 8.] * 300,
-                            'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 100,
+                            'b': [1., 1., 2., 3., 5., 8.] * 100,
+                            'c': [1, 4, 9, 16, 25, 36] * 100}, columns=['a', 'b', 'c'])
         kdf = ks.DataFrame(pdf)
 
-        set_option("compute.shortcut_limit", 1000)
-        try:
-            self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(),
-                           pdf.transform(lambda x: x + 1).sort_index())
-        finally:
-            reset_option("compute.shortcut_limit")
+        def _test(kdf, expected):
+            self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(), expected)
+
+            set_option("compute.shortcut_limit", 500)
+            try:
+                self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(), expected)
+            finally:
+                reset_option("compute.shortcut_limit")
+
+        _test(kdf, pdf.transform(lambda x: x + 1))
 
         with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
             kdf.transform(1)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        _test(kdf, pdf.transform(lambda x: x + 1))
 
     def test_empty_timestamp(self):
         pdf = pd.DataFrame({'t': [datetime(2019, 1, 1, 0, 0, 0),

@@ -39,11 +39,11 @@ from pandas.core.accessor import CachedAccessor
 from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
-                               IntegerType, LongType, NumericType, ShortType, StructType)
+                               IntegerType, LongType, NumericType, ShortType)
 from pyspark.sql.utils import AnalysisException
 from pyspark.sql.window import Window
-from pyspark.sql.functions import pandas_udf, PandasUDFType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
@@ -52,7 +52,7 @@ from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, scol_for
-from databricks.koalas.typedef import as_spark_type
+from databricks.koalas.typedef import as_spark_type, as_python_type
 from databricks.koalas.plot import KoalasFramePlotMethods
 from databricks.koalas.config import get_option
 
@@ -1767,6 +1767,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  1  4
         2  4  9
 
+        For multi-index columns:
+
+        >>> df.columns = [('X', 'A'), ('X', 'B')]
+        >>> df.transform(square)  # doctest: +NORMALIZE_WHITESPACE
+           X
+           A  B
+        0  0  1
+        1  1  4
+        2  4  9
+
+        >>> df.transform(lambda x: x ** 2)  # doctest: +NORMALIZE_WHITESPACE
+           X
+           A  B
+        0  0  1
+        1  1  4
+        2  4  9
         """
         assert callable(func), "the first argument should be a callable function."
         spec = inspect.getfullargspec(func)
@@ -1780,27 +1796,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             pdf = self.head(limit + 1)._to_internal_pandas()
             transformed = pdf.transform(func)
             kdf = DataFrame(transformed)
-            return_schema = kdf._sdf.schema
             if len(pdf) <= limit:
                 return kdf
 
             applied = []
-            for input_column, output_column in zip(
-                    self._internal.data_columns, kdf._internal.data_columns):
-                pandas_func = pandas_udf(
+            for input_idx, output_idx in zip(
+                    self._internal.column_index, kdf._internal.column_index):
+                wrapped = ks.pandas_wraps(
                     func,
-                    returnType=return_schema[output_column].dataType,
-                    functionType=PandasUDFType.SCALAR)
-                applied.append(pandas_func(self[input_column]._scol).alias(output_column))
+                    return_col=as_python_type(kdf[output_idx].spark_type))
+                applied.append(wrapped(self[input_idx]).rename(input_idx))
         else:
             wrapped = ks.pandas_wraps(func)
             applied = []
-            for column in self._internal.data_columns:
-                applied.append(wrapped(self[column]).rename(column)._scol)
+            for idx in self._internal.column_index:
+                applied.append(wrapped(self[idx]).rename(idx))
 
         sdf = self._sdf.select(
-            self._internal.index_scols + [c for c in applied])
-        internal = self._internal.copy(sdf=sdf)
+            self._internal.index_scols + [c._scol for c in applied])
+        internal = self._internal.copy(sdf=sdf,
+                                       data_columns=[c._internal.data_columns[0] for c in applied],
+                                       column_index=[c._internal.column_index[0] for c in applied])
 
         return DataFrame(internal)
 
