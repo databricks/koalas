@@ -4449,6 +4449,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  1  7
         1  2  8
 
+        >>> df = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6], 'w': [7, 8]},
+        ...                   columns=['x', 'y', 'z', 'w'])
+        >>> columns = [('a', 'x'), ('a', 'y'), ('b', 'z'), ('b', 'w')]
+        >>> df.columns = pd.MultiIndex.from_tuples(columns)
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
+           a     b
+           x  y  z  w
+        0  1  3  5  7
+        1  2  4  6  8
+        >>> df.drop('a')  # doctest: +NORMALIZE_WHITESPACE
+           b
+           z  w
+        0  5  7
+        1  6  8
+
         Notes
         -----
         Currently only axis = 1 is supported in this function,
@@ -4472,11 +4487,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                     if idx[:len(col)] == col)
             if len(drop_column_index) == 0:
                 raise KeyError(columns)
-            cols, idx = zip(*((column, idx)
+            cols, idxes = zip(*((column, idx)
                               for column, idx
                               in zip(self._internal.data_columns, self._internal.column_index)
                               if idx not in drop_column_index))
-            internal = self._internal.copy(data_columns=list(cols), column_index=list(idx))
+            internal = self._internal.copy(
+                sdf=self._sdf.select(
+                    self._internal.index_scols + [self._internal.scol_for(idx) for idx in idxes]),
+                data_columns=list(cols),
+                column_index=list(idxes))
             return DataFrame(internal)
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'columns'")
