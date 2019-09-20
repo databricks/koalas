@@ -43,7 +43,7 @@ from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, F
                                IntegerType, LongType, NumericType, ShortType, StructType)
 from pyspark.sql.utils import AnalysisException
 from pyspark.sql.window import Window
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import col, pandas_udf, PandasUDFType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
@@ -6514,6 +6514,100 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return self[output_columns]
         else:
             raise TypeError("Must pass either `items`, `like`, or `regex`")
+
+    def rename(self,
+               mapper,
+               index,
+               columns,
+               axis='index',
+               copy=True,
+               inplace=False,
+               level=None,
+               errors='ignore'):
+
+        if mapper:
+            if axis == 'index' or axis == 0:
+                is_index_mapper = True
+            elif axis == 'columns' or axis == 1:
+                is_index_mapper = False
+            else:
+                raise ValueError("argument axis should be either the axis name "
+                                 "(‘index’, ‘columns’) or number (0, 1)")
+        else:
+            if index:
+                mapper = index
+                is_index_mapper = True
+            else:
+                mapper = columns
+                is_index_mapper = False
+
+        if inplace is None:
+            do_copy = copy
+        else:
+            do_copy = not inplace
+
+        if isinstance(mapper, dict):
+            def mapper_fn(x):
+                if x in mapper:
+                    return mapper[x]
+                else:
+                    if errors == 'raise':
+                        raise KeyError('Index include value which is not in the map: ' + str(x))
+                    return x
+        else:
+            def mapper_fn(x):
+                return mapper(x)
+
+        if is_index_mapper:
+            if not do_copy:
+                raise RuntimeError("Koalas dataframe do not support in-place renaming index.")
+
+            index_columns = self._internal.index_columns
+            num_indices = len(index_columns)
+            if level:
+                if level < 0 or level >= num_indices:
+                    raise ValueError("level should be an integer between [0, num_indices)")
+
+            def gen_new_index_column(level):
+                index_col_name = index_columns[level]
+                return_type = self._sdf.schema.fields[level].dataType
+
+                index_mapper_udf = pandas_udf(lambda s: s.map(mapper_fn), returnType=return_type)
+                return index_mapper_udf(col(index_col_name))
+
+            sdf = self._sdf
+            if level is None:
+                for i in range(num_indices):
+                    sdf = sdf.withColumn(index_columns[i], gen_new_index_column(i))
+            else:
+                sdf = sdf.withColumn(index_columns[level], gen_new_index_column(level))
+
+            internal = self._internal.copy(sdf=sdf)
+            return DataFrame(internal)
+        else:
+            if level:
+                if level < 0 or level >= self._internal.column_index_level:
+                    raise ValueError("level should be an integer between [0, column_index_level)")
+
+            def gen_new_column_index_entry(column_index_entry):
+                if isinstance(column_index_entry, tuple):
+                    if level is None:
+                        return tuple(map(mapper_fn, column_index_entry))
+                    else:
+                        entry_list = list(column_index_entry)
+                        entry_list[level] = mapper_fn(entry_list[level])
+                        return tuple(entry_list)
+                else:
+                    return mapper_fn(column_index_entry)
+
+            new_column_index = list(map(gen_new_column_index_entry, self._internal.column_index))
+
+            if do_copy:
+                internal = self._internal.copy(column_index=new_column_index)
+                return DataFrame(internal)
+            else:
+                self._internal._column_index = new_column_index
+                return self
 
     def _get_from_multiindex_column(self, key):
         """ Select columns from multi-index columns.
