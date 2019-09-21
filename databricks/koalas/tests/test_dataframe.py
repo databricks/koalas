@@ -764,6 +764,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         check(lambda left, right: left.merge(right, left_on='lkey', right_on='rkey',
                                              suffixes=['_left', '_right']))
 
+        # multi-index columns
+        left_columns = pd.MultiIndex.from_tuples([('a', 'lkey'), ('a', 'value'), ('b', 'x')])
+        left_pdf.columns = left_columns
+        left_kdf.columns = left_columns
+
+        right_columns = pd.MultiIndex.from_tuples([('a', 'rkey'), ('a', 'value'), ('c', 'y')])
+        right_pdf.columns = right_columns
+        right_kdf.columns = right_columns
+
+        check(lambda left, right: left.merge(right))
+        check(lambda left, right: left.merge(right, on=[('a', 'value')]))
+        check(lambda left, right: (left.set_index(('a', 'lkey'))
+                                   .merge(right.set_index(('a', 'rkey')))))
+        check(lambda left, right: (left.set_index(('a', 'lkey'))
+                                   .merge(right.set_index(('a', 'rkey')),
+                                          left_index=True, right_index=True)))
+        # TODO: when both left_index=True and right_index=True with multi-index columns
+        # check(lambda left, right: left.merge(right,
+        #                                      left_on=[('a', 'lkey')], right_on=[('a', 'rkey')]))
+        # check(lambda left, right: (left.set_index(('a', 'lkey'))
+        #                            .merge(right, left_index=True, right_on=[('a', 'rkey')])))
+
     def test_merge_retains_indices(self):
         left_pdf = pd.DataFrame({'A': [0, 1]})
         right_pdf = pd.DataFrame({'B': [1, 2]}, index=[1, 2])
@@ -840,8 +862,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                     "['inner', 'left', 'right', 'full', 'outer']"):
             left.merge(right, left_index=True, right_index=True, how='foo')
 
-        with self.assertRaisesRegex(AnalysisException,
-                                    'Cannot resolve column name "`id`"'):
+        with self.assertRaisesRegex(KeyError, 'id'):
             left.merge(right, on='id')
 
     def test_append(self):
