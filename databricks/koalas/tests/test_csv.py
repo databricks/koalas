@@ -173,6 +173,16 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             actual = ks.read_csv(fn, sep='\t')
             self.assertPandasAlmostEqual(expected, actual.toPandas())
 
+    def test_read_csv_with_squeeze(self):
+        with self.csv_file(self.csv_text) as fn:
+            expected = pd.read_csv(fn, squeeze=True, usecols=['name'])
+            actual = ks.read_csv(fn, squeeze=True, usecols=['name'])
+            self.assertPandasAlmostEqual(expected, actual.toPandas())
+
+            expected = pd.read_csv(fn, squeeze=True, usecols=['name', 'amount'])
+            actual = ks.read_csv(fn, squeeze=True, usecols=['name', 'amount'])
+            self.assertPandasAlmostEqual(expected, actual.toPandas())
+
     def test_read_csv_with_mangle_dupe_cols(self):
         self.assertRaisesRegex(ValueError, 'mangle_dupe_cols',
                                lambda: ks.read_csv('path', mangle_dupe_cols=False))
