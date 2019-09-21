@@ -4214,7 +4214,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     "Length mismatch: Expected axis has %d elements, new values have %d elements"
                     % (len(old_names), len(column_index)))
             column_index_names = columns.names
-            self._internal = self._internal.copy(column_index=column_index,
+            data_columns = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
+            sdf = self._sdf.select(
+                self._internal.index_scols +
+                [self._internal.scol_for(idx).alias(name)
+                 for idx, name in zip(self._internal.column_index, data_columns)])
+            self._internal = self._internal.copy(sdf=sdf,
+                                                 data_columns=data_columns,
+                                                 column_index=column_index,
                                                  column_index_names=column_index_names)
         else:
             old_names = self._internal.column_index
@@ -4227,7 +4234,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 column_index_names = columns.names
             else:
                 column_index_names = None
-            self._internal = self._internal.copy(column_index=column_index,
+            data_columns = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
+            sdf = self._sdf.select(
+                self._internal.index_scols +
+                [self._internal.scol_for(idx).alias(name)
+                 for idx, name in zip(self._internal.column_index, data_columns)])
+            self._internal = self._internal.copy(sdf=sdf,
+                                                 data_columns=data_columns,
+                                                 column_index=column_index,
                                                  column_index_names=column_index_names)
 
     @property
