@@ -21,7 +21,7 @@ import re
 import inspect
 from collections import Iterable
 from functools import partial, wraps
-from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union, Dict
+from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 import pandas as pd
