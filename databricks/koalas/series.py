@@ -21,7 +21,7 @@ import re
 import inspect
 from collections import Iterable
 from functools import partial, wraps
-from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union, Dict
 
 import numpy as np
 import pandas as pd
@@ -2293,6 +2293,52 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         apply_each = wraps(func)(lambda s, *a, **k: s.apply(func, args=a, **k))
         wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
         return wrapped(self, *args, **kwds).rename(self.name)
+
+    def aggregate(self, func: Union[str, List[str]]):
+        """Aggregate using one or more operations over the specified axis.
+
+        Parameters
+        ----------
+        func : str or a list of str
+            function name(s) as string apply to series.
+
+        Returns
+        -------
+        DataFrame
+
+        Notes
+        -----
+        `agg` is an alias for `aggregate`. Use the alias.
+
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> s = ks.Series([[1, 2, 3, 4])
+        >>> s.agg('min')
+        1
+
+        >>> s.agg(['min', 'max'])
+        min    1
+        max    4
+        dtype: int64
+        """
+        if isinstance(func, list):
+            if all((isinstance(f, str) for f in func)):
+                rows = {f: eval("self.{}()".format(f), dict(self=self)) for f in func}
+                return Series(rows)
+            else:
+                raise ValueError("If the given function is a list, it "
+                                 "should only contains function names as strings.")
+        elif isinstance(func, str):
+            return eval("self.{}()".format(func))
+        else:
+            raise ValueError("func must be a string or list of strings")
+
+    agg = aggregate
 
     def transpose(self, *args, **kwargs):
         """
