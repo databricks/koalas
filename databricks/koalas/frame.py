@@ -5216,7 +5216,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if right_keys and not left_keys:
                 raise ValueError('Must pass left_on or left_index=True')
             if not left_keys and not right_keys:
-                common = list(self.columns.intersection(right.columns))
+                if isinstance(right, ks.Series):
+                    common = list(self.columns.intersection([right.name]))
+                else:
+                    common = list(self.columns.intersection(right.columns))
                 if len(common) == 0:
                     raise ValueError(
                         'No common columns to perform merge on. Merge options: '
