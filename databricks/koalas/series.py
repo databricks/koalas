@@ -2294,6 +2294,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
         return wrapped(self, *args, **kwds).rename(self.name)
 
+    # TODO: not all arguments are implemented comparing to Pandas' for now.
     def aggregate(self, func: Union[str, List[str]]):
         """Aggregate using one or more operations over the specified axis.
 
@@ -2304,7 +2305,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Returns
         -------
-        DataFrame
+        scalar, Series
+            The return can be:
+            - scalar : when Series.agg is called with single function
+            - Series : when Series.agg is called with several functions
 
         Notes
         -----
@@ -2312,8 +2316,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         See Also
         --------
-        databricks.koalas.Series.groupby
-        databricks.koalas.DataFrame.groupby
+        databricks.koalas.Series.apply
+        databricks.koalas.Series.transform
 
         Examples
         --------
