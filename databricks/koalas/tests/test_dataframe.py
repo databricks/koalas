@@ -719,11 +719,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                   'value': [4, 5, 6, 7, 8, 9],
                                   'y': list('efghij')},
                                  columns=['rkey', 'value', 'y'])
+        right_ps = pd.Series(list('defghi'), name='x', index=[5, 6, 7, 8, 9, 10])
 
         left_kdf = ks.from_pandas(left_pdf)
         right_kdf = ks.from_pandas(right_pdf)
+        right_ks = ks.from_pandas(right_ps)
 
-        def check(op):
+        def check(op, right_kdf=right_kdf, right_pdf=right_pdf):
             k_res = op(left_kdf, right_kdf)
             k_res = k_res.to_pandas()
             k_res = k_res.sort_values(by=list(k_res.columns))
@@ -763,6 +765,23 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # suffix
         check(lambda left, right: left.merge(right, left_on='lkey', right_on='rkey',
                                              suffixes=['_left', '_right']))
+
+        # Test Series on the right
+        check(lambda left, right: left.merge(right), right_ks, right_ps)
+        check(lambda left, right: left.merge(right, left_on='x', right_on='x'),
+              right_ks, right_ps)
+        check(lambda left, right: left.set_index('x').merge(right, left_index=True, right_on='x'),
+              right_ks, right_ps)
+
+        # Test join types with Series
+        for how in ['inner', 'left', 'right', 'outer']:
+            check(lambda left, right: left.merge(right, how=how), right_ks, right_ps)
+            check(lambda left, right: left.merge(right, left_on='x', right_on='x', how=how),
+                  right_ks, right_ps)
+
+        # suffix
+        check(lambda left, right: left.merge(right, suffixes=['_left', '_right'], how='outer',
+                                             left_index=True, right_index=True), right_ks, right_ps)
 
     def test_merge_retains_indices(self):
         left_pdf = pd.DataFrame({'A': [0, 1]})
