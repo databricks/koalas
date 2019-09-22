@@ -2321,14 +2321,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
-        >>> s = ks.Series([[1, 2, 3, 4])
+        >>> s = ks.Series([1, 2, 3, 4])
         >>> s.agg('min')
         1
 
         >>> s.agg(['min', 'max'])
         min    1
         max    4
-        dtype: int64
+        Name: 0, dtype: int64
         """
         if isinstance(func, list):
             if all((isinstance(f, str) for f in func)):
