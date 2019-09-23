@@ -370,14 +370,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_rename_dataframe(self):
         kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
-        result_kdf = kdf1.rename(columns={"A": "a", "B": "c"})
-        self.assert_eq(result_kdf.columns, pd.Index(['a', 'c']))
+        result_kdf = kdf1.rename(columns={"A": "a", "B": "b"})
+        self.assert_eq(result_kdf.columns, pd.Index(['a', 'b']))
 
         result_kdf = kdf1.rename(index={1: 10, 2: 20})
         self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
 
         result_kdf = kdf1.rename(str.lower, axis='columns')
-        self.assert_eq(result_kdf.columns, pd.Index(['a', 'c']))
+        self.assert_eq(result_kdf.columns, pd.Index(['a', 'b']))
 
         result_kdf = kdf1.rename(lambda x: x*10, axis='index')
         self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
