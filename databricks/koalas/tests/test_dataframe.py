@@ -351,6 +351,49 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns.names, ['lvl_1', 'lvl_2'])
         self.assert_eq(kdf, pdf)
 
+    def test_rename_dataframe(self):
+        kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
+        result_kdf = kdf1.rename(columns={"A": "a", "B": "c"})
+        self.assert_eq(result_kdf.columns, pd.Index(['a', 'c']))
+
+        result_kdf = kdf1.rename(index={1: 10, 2: 20})
+        self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
+
+        result_kdf = kdf1.rename(str.lower, axis='columns')
+        self.assert_eq(result_kdf.columns, pd.Index(['a', 'c']))
+
+        result_kdf = kdf1.rename(lambda x: x*10, axis='index')
+        self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
+
+        idx = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Y', 'D')])
+        kdf2 = ks.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8]], columns=idx)
+
+        result_kdf = kdf2.rename(columns=str.lower)
+        self.assert_eq(result_kdf.columns,
+                       pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd')]))
+
+        result_kdf = kdf2.rename(columns=str.lower, level=0)
+        self.assert_eq(result_kdf.columns,
+                       pd.MultiIndex.from_tuples([('x', 'A'), ('x', 'B'), ('y', 'C'), ('y', 'D')]))
+
+        result_kdf = kdf2.rename(columns=str.lower, level=1)
+        self.assert_eq(result_kdf.columns,
+                       pd.MultiIndex.from_tuples([('X', 'a'), ('X', 'b'), ('Y', 'c'), ('Y', 'd')]))
+
+        kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list('ab'))
+
+        result_kdf = kdf3.rename(index=str.lower)
+        self.assert_eq(result_kdf.index,
+                       pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd')]))
+
+        result_kdf = kdf3.rename(index=str.lower, level=0)
+        self.assert_eq(result_kdf.index,
+                       pd.MultiIndex.from_tuples([('x', 'A'), ('x', 'B'), ('y', 'C'), ('y', 'D')]))
+
+        result_kdf = kdf3.rename(index=str.lower, level=1)
+        self.assert_eq(result_kdf.index,
+                       pd.MultiIndex.from_tuples([('X', 'a'), ('X', 'b'), ('Y', 'c'), ('Y', 'd')]))
+
     def test_dot_in_column_name(self):
         self.assert_eq(
             ks.DataFrame(ks.range(1)._sdf.selectExpr("1 as `a.b`"))['a.b'],

@@ -6516,14 +6516,94 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise TypeError("Must pass either `items`, `like`, or `regex`")
 
     def rename(self,
-               mapper,
-               index,
-               columns,
+               mapper=None,
+               index=None,
+               columns=None,
                axis='index',
                copy=True,
                inplace=False,
                level=None,
                errors='ignore'):
+
+        """
+        Alter axes labels.
+        Function / dict values must be unique (1-to-1). Labels not contained in a dict / Series will be left as-is.
+        Extra labels listed don’t throw an error.
+
+        Parameters
+        ----------
+        mapper : dict-like or function
+            Dict-like or functions transformations to apply to that axis’ values.
+            Use either `mapper` and `axis` to specify the axis to target with `mapper`, or `index` and `columns`.
+        index : dict-like or function
+            Alternative to specifying axis ("mapper, axis=0" is equivalent to "index=mapper").
+        columns : dict-like or function
+            Alternative to specifying axis ("mapper, axis=1" is equivalent to "columns=mapper").
+        axis : int or str, default 'index'
+            Axis to target with mapper. Can be either the axis name ('index', 'columns') or number (0, 1).
+        copy : bool, default True
+            Also copy underlying data.
+        inplace : bool, default False
+            Whether to return a new DataFrame. If True then value of copy is ignored.
+        level : int or level name, default None
+            In case of a MultiIndex, only rename labels in the specified level.
+        errors : {'ignore', 'raise}, default 'ignore'
+            If 'raise', raise a `KeyError` when a dict-like `mapper`, `index`, or `columns` contains labels that are
+            not present in the Index being transformed. If 'ignore', existing keys will be renamed and extra keys will
+            be ignored.
+
+        Returns
+        -------
+        DataFrame with the renamed axis labels.
+
+        Raises:
+        -------
+        `KeyError`
+            If any of the labels is not found in the selected axis and "errors='raise'".
+
+        Examples
+        --------
+        >>> kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
+        >>> kdf1.rename(columns={"A": "a", "B": "c"})
+           a  c
+        0  1  4
+        1  2  5
+        2  3  6
+
+        >>> kdf1.rename(index={1: 10, 2: 20})
+            A  B
+        0   1  4
+        10  2  5
+        20  3  6
+
+        >>> kdf1.rename(str.lower, axis='columns')
+           a  b
+        0  1  4
+        1  2  5
+        2  3  6
+
+        >>> kdf1.rename(lambda x: x*10, axis='index')
+            A  B
+        0   1  4
+        10  2  5
+        20  3  6
+
+        >>> idx = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'),('Y', 'C'), ('Y', 'D')])
+        >>> kdf2 = ks.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8]], columns=idx)
+        >>> kdf2.rename(columns=str.lower, level=0)
+           x     y
+           A  B  C  D
+        0  1  2  3  4
+        1  5  6  7  8
+
+        >>> kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list('ab'))
+        kdf3.rename(index=str.lower)
+             a  b
+        x a  1  2
+          b  3  4
+        y c  5  6
+          d  7  8
+        """
 
         if mapper:
             if axis == 'index' or axis == 0:
@@ -6537,9 +6617,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if index:
                 mapper = index
                 is_index_mapper = True
-            else:
+            elif columns:
                 mapper = columns
                 is_index_mapper = False
+            else:
+                raise ValueError("rename should take either `index` or `columns` mapper.")
 
         if inplace is None:
             do_copy = copy
