@@ -871,7 +871,6 @@ class DataFrame(_Frame, Generic[T]):
                                        column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
-    # TODO: Series support is not implemented yet.
     # TODO: not all arguments are implemented comparing to Pandas' for now.
     def aggregate(self, func: Union[List[str], Dict[str, List[str]]]):
         """Aggregate using one or more operations over the specified axis.
