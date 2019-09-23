@@ -5433,6 +5433,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  K1  A1    B1
         3  K2  A2    B2
         """
+        if isinstance(right, ks.Series):
+            common = list(self.columns.intersection([right.name]))
+        else:
+            common = list(self.columns.intersection(right.columns))
+        if len(common) > 0 and not lsuffix and not rsuffix:
+            raise ValueError(
+                "columns overlap but no suffix specified: "
+                "{rename}".format(rename=common))
         if on:
             self = self.set_index(on)
             join_kdf = self.merge(right, left_index=True, right_index=True, how=how,
