@@ -1001,7 +1001,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                              'A': ['A0', 'A1', 'A2', 'A3']}, columns=['key', 'A'])
         kdf2 = ks.DataFrame({'key': ['K0', 'K1', 'K2'],
                              'B': ['B0', 'B1', 'B2']}, columns=['key', 'B'])
-        ks1 = ks.Series(['A1','A5'], index=[1,2], name='A')
+        ks1 = ks.Series(['A1', 'A5'], index=[1, 2], name='A')
         join_pdf = pdf1.join(pdf2, lsuffix='_left', rsuffix='_right')
         join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
 
