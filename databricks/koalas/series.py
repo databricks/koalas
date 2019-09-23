@@ -19,7 +19,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 """
 import re
 import inspect
-from collections import Iterable
+from collections import Iterable, OrderedDict
 from functools import partial, wraps
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
 
@@ -2332,7 +2332,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         if isinstance(func, list):
             if all((isinstance(f, str) for f in func)):
-                rows = {f: eval("self.{}()".format(f), dict(self=self)) for f in func}
+                rows = OrderedDict((f, eval("self.{}()".format(f), dict(self=self))) for f in func)
                 return Series(rows)
             else:
                 raise ValueError("If the given function is a list, it "
