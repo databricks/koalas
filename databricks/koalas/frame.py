@@ -2600,12 +2600,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise KeyError(', '.join([str(d) if len(d) > 1 else d[0] for d in diff]))
         group_cols = [self._internal.column_name_for(idx) for idx in subset]
 
-        sdf = self._sdf
         index_column = self._internal.index_columns[0]
         if self._internal.index_names[0] is not None:
             name = self._internal.index_names[0]
         else:
             name = ('0',)
+        column = str(name) if len(name) > 1 else name[0]
+
+        sdf = self._sdf
+        if column == index_column:
+            index_column = '__index_level_0__'
+            sdf = sdf.select([self._internal.index_scols[0].alias(index_column)]
+                             + self._internal.data_scols)
 
         if keep == 'first' or keep == 'last':
             if keep == 'first':
@@ -2614,18 +2620,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 ord_func = spark.functions.desc
             window = Window.partitionBy(group_cols).orderBy(ord_func(index_column)).rowsBetween(
                 Window.unboundedPreceding, Window.currentRow)
-            sdf = sdf.withColumn(str(name), F.row_number().over(window) > 1)
+            sdf = sdf.withColumn(column, F.row_number().over(window) > 1)
         elif not keep:
             window = Window.partitionBy(group_cols).orderBy(scol_for(sdf, index_column).desc())\
                 .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
-            sdf = sdf.withColumn(str(name), F.count(scol_for(sdf, index_column)).over(window) > 1)
+            sdf = sdf.withColumn(column, F.count(scol_for(sdf, index_column)).over(window) > 1)
         else:
             raise ValueError("'keep' only support 'first', 'last' and False")
         return _col(DataFrame(_InternalFrame(sdf=sdf.select(scol_for(sdf, index_column),
-                                                            scol_for(sdf, str(name))),
-                                             data_columns=[str(name)],
+                                                            scol_for(sdf, column)),
+                                             data_columns=[column],
                                              column_index=[name],
-                                             index_map=self._internal.index_map)))
+                                             index_map=[(index_column,
+                                                         self._internal.index_names[0])])))
 
     def to_koalas(self):
         """
