@@ -960,7 +960,7 @@ class DataFrame(_Frame, Generic[T]):
         #     sum  12.0  NaN
         #
         # Aggregated output is usually pretty much small. So it is fine to directly use pandas API.
-        pdf = kdf.to_pandas().stack(level=1)
+        pdf = kdf.to_pandas().stack()
         pdf.index = pdf.index.droplevel()
         pdf.columns.names = [None]
         pdf.index.names = [None]
