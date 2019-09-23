@@ -2326,19 +2326,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         1
 
         >>> s.agg(['min', 'max'])
-        min    1
         max    4
+        min    1
         Name: 0, dtype: int64
         """
         if isinstance(func, list):
-            if all((isinstance(f, str) for f in func)):
-                rows = OrderedDict((f, eval("self.{}()".format(f), dict(self=self))) for f in func)
-                return Series(rows)
-            else:
-                raise ValueError("If the given function is a list, it "
-                                 "should only contains function names as strings.")
+            return self.to_frame().agg(func)[self.name]
         elif isinstance(func, str):
-            return eval("self.{}()".format(func))
+            return getattr(self, func)()
         else:
             raise ValueError("func must be a string or list of strings")
 
