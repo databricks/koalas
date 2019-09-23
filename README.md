@@ -1,6 +1,4 @@
-<div align="center">
-  <img src="https://github.com/databricks/koalas/blob/master/Koalas-logo.png" width="200"><br>
-</div>
+<img src="https://github.com/databricks/koalas/blob/master/Koalas-logo-nolabel.png" width="160"><br>
 
 # Koalas: pandas API on Apache Spark <!-- omit in toc -->
 
