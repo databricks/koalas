@@ -19,7 +19,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 """
 import re
 import inspect
-from collections import Iterable, OrderedDict
+from collections import Iterable
 from functools import partial, wraps
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
 
