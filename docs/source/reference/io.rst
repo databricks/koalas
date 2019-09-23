@@ -69,6 +69,13 @@ Excel
    read_excel
    DataFrame.to_excel
 
+JSON
+----
+.. autosummary::
+   :toctree: api/
+
+   read_json
+
 HTML
 ----
 .. autosummary::

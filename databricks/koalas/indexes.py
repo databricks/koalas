@@ -19,10 +19,12 @@ Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 """
 
 from functools import partial
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
-from pandas.api.types import is_list_like
+from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
+    is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
+
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 
@@ -61,10 +63,12 @@ class Index(IndexOpsMixin):
     def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None) -> None:
         assert len(kdf._internal._index_map) == 1
         if scol is None:
-            IndexOpsMixin.__init__(
-                self, kdf._internal.copy(scol=kdf._internal.index_scols[0]), kdf)
-        else:
-            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=scol), kdf)
+            scol = kdf._internal.index_scols[0]
+        internal = kdf._internal.copy(scol=scol,
+                                      data_columns=kdf._internal.index_columns,
+                                      column_index=kdf._internal.index_names,
+                                      column_index_names=None)
+        IndexOpsMixin.__init__(self, internal, kdf)
 
     def _with_new_scol(self, scol: spark.Column) -> 'Index':
         """
@@ -124,30 +128,32 @@ class Index(IndexOpsMixin):
         return self.to_series().spark_type
 
     @property
-    def name(self) -> str:
+    def name(self) -> Union[str, Tuple[str, ...]]:
         """Return name of the Index."""
         return self.names[0]
 
     @name.setter
-    def name(self, name: str) -> None:
+    def name(self, name: Union[str, Tuple[str, ...]]) -> None:
         self.names = [name]
 
     @property
-    def names(self) -> List[str]:
+    def names(self) -> List[Union[str, Tuple[str, ...]]]:
         """Return names of the Index."""
-        return self._kdf._internal.index_names.copy()
+        return [name if name is None or len(name) > 1 else name[0]
+                for name in self._kdf._internal.index_names]
 
     @names.setter
-    def names(self, names: List[str]) -> None:
+    def names(self, names: List[Union[str, Tuple[str, ...]]]) -> None:
         if not is_list_like(names):
             raise ValueError('Names must be a list-like')
         internal = self._kdf._internal
         if len(internal.index_map) != len(names):
             raise ValueError('Length of new names must be {}, got {}'
                              .format(len(internal.index_map), len(names)))
+        names = [name if isinstance(name, tuple) else (name,) for name in names]
         self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
 
-    def rename(self, name, inplace=False):
+    def rename(self, name: Union[str, Tuple[str, ...]], inplace: bool = False):
         """
         Alter Index name.
         Able to set new names without level. Defaults to returning new index.
@@ -188,16 +194,17 @@ class Index(IndexOpsMixin):
         index_columns = self._kdf._internal.index_columns
         assert len(index_columns) == 1
 
-        sdf = self._kdf._sdf.select([self._scol] + self._kdf._internal.data_scols)
-        internal = self._kdf._internal.copy(sdf=sdf, index_map=[(sdf.schema[0].name, name)])
+        if isinstance(name, str):
+            name = (name,)
+        internal = self._kdf._internal.copy(index_map=[(index_columns[0], name)])
 
         if inplace:
             self._kdf._internal = internal
             return self
         else:
-            return DataFrame(internal).index
+            return Index(DataFrame(internal), self._scol)
 
-    def to_series(self, name: str = None) -> Series:
+    def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
         """
         Create a Series with both index and values equal to the index keys
         useful with map for returning an indexer based on an index.
@@ -222,12 +229,94 @@ class Index(IndexOpsMixin):
         b    b
         c    c
         d    d
-        Name: __index_level_0__, dtype: object
+        Name: 0, dtype: object
         """
         kdf = self._kdf
         scol = self._scol
-        return Series(kdf._internal.copy(scol=scol if name is None else scol.alias(name)),
+        if name is not None:
+            scol = scol.alias(str(name))
+        column_index = [None] if len(kdf._internal.index_map) > 1 else kdf._internal.index_names
+        return Series(kdf._internal.copy(scol=scol,
+                                         column_index=column_index,
+                                         column_index_names=None),
                       anchor=kdf)
+
+    def is_boolean(self):
+        """
+        Return if the current index type is a boolean type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=[True]).index.is_boolean()
+        True
+        """
+        return is_bool_dtype(self.dtype)
+
+    def is_categorical(self):
+        """
+        Return if the current index type is a categorical type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=[1]).index.is_categorical()
+        False
+        """
+        return is_categorical_dtype(self.dtype)
+
+    def is_floating(self):
+        """
+        Return if the current index type is a floating type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=[1]).index.is_floating()
+        False
+        """
+        return is_float_dtype(self.dtype)
+
+    def is_integer(self):
+        """
+        Return if the current index type is a integer type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=[1]).index.is_integer()
+        True
+        """
+        return is_integer_dtype(self.dtype)
+
+    def is_interval(self):
+        """
+        Return if the current index type is an interval type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=[1]).index.is_interval()
+        False
+        """
+        return is_interval_dtype(self.dtype)
+
+    def is_numeric(self):
+        """
+        Return if the current index type is a numeric type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=[1]).index.is_numeric()
+        True
+        """
+        return is_numeric_dtype(self.dtype)
+
+    def is_object(self):
+        """
+        Return if the current index type is a object type.
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': [1]}, index=["a"]).index.is_object()
+        True
+        """
+        return is_object_dtype(self.dtype)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
@@ -266,23 +355,14 @@ class Index(IndexOpsMixin):
 
 class MultiIndex(Index):
 
-    def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None):
+    def __init__(self, kdf: DataFrame):
         assert len(kdf._internal._index_map) > 1
-        self._kdf = kdf
-        if scol is None:
-            IndexOpsMixin.__init__(self, kdf._internal.copy(
-                scol=F.struct(self._kdf._internal.index_scols)), kdf)
-        else:
-            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=scol), kdf)
-
-    def _with_new_scol(self, scol: spark.Column) -> 'MultiIndex':
-        """
-        Copy Koalas MultiIndex with the new Spark Column.
-
-        :param scol: the new Spark Column
-        :return: the copied MultiIndex
-        """
-        return MultiIndex(self._kdf, scol)
+        scol = F.struct(kdf._internal.index_scols)
+        data_columns = kdf._sdf.select(scol).columns
+        internal = kdf._internal.copy(scol=scol,
+                                      column_index=[(col, None) for col in data_columns],
+                                      column_index_names=None)
+        IndexOpsMixin.__init__(self, internal, kdf)
 
     def any(self, *args, **kwargs):
         raise TypeError("cannot perform any with this index type: MultiIndex")

@@ -164,7 +164,7 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
         - left: `resolve_func` should resolve columns including that columns.
             For instance, if 'this' has columns A, B, C and that has B, C, D, `this_columns` is
             B, C but `that_columns` are B, C, D.
-    :return: Alined DataFrame
+    :return: Aligned DataFrame
     """
     assert how == "full" or how == "left"
 
@@ -249,12 +249,15 @@ def align_diff_series(func, this_series, *args, how="full"):
     cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
     combined = combine_frames(this_series.to_frame(), *cols, how=how)
 
-    that_columns = [combined[('that', arg.name)]._scol
+    that_columns = [combined[tuple(['that', *arg._internal.column_index[0]])]._scol
                     if isinstance(arg, IndexOpsMixin) else arg for arg in args]
 
-    scol = func(combined[('this', this_series.name)]._scol, *that_columns).alias(this_series.name)
+    scol = func(combined[tuple(['this', *this_series._internal.column_index[0]])]._scol,
+                *that_columns)
 
-    return Series(combined._internal.copy(scol=scol), anchor=combined)
+    return Series(combined._internal.copy(scol=scol,
+                                          column_index=this_series._internal.column_index),
+                  anchor=combined)
 
 
 def default_session(conf=None):
@@ -343,11 +346,11 @@ def scol_for(sdf: spark.DataFrame, column_name: str) -> spark.Column:
     return sdf['`{}`'.format(column_name)]
 
 
-def column_index_level(column_index: List[Tuple[str]]) -> int:
+def column_index_level(column_index: List[Tuple[str, ...]]) -> int:
     """ Return the level of the column index. """
     if len(column_index) == 0:
         return 0
     else:
-        levels = set(len(idx) for idx in column_index)
+        levels = set(0 if idx is None else len(idx) for idx in column_index)
         assert len(levels) == 1, levels
         return list(levels)[0]

@@ -186,7 +186,7 @@ def format_raise_errors(original_type, name, unavailable_arguments, signature):
     return raise_errors
 
 
-def make_misssing_function(original_type, name, signature):
+def make_missing_function(original_type, name, signature):
     """Make a missing functions stub.
 
     :return: the stub definition for the missing function
@@ -234,7 +234,7 @@ def _main():
 
         print('MISSING functions for {}'.format(original_type.__name__))
         for name, signature in missing:
-            # print(make_misssing_function(original_type, name, signature))
+            # print(make_missing_function(original_type, name, signature))
             print("""    {0} = unsupported_function('{0}')""".format(name))
 
         print()

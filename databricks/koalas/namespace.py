@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union
+from typing import Optional, Union, List
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
@@ -26,6 +26,7 @@ import itertools
 import numpy as np
 import pandas as pd
 
+from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
     DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
@@ -33,7 +34,7 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import default_session
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.series import Series, _col
 
@@ -41,7 +42,7 @@ from databricks.koalas.series import Series, _col
 __all__ = ["from_pandas", "range", "read_csv", "read_delta", "read_table", "read_spark_io",
            "read_parquet", "read_clipboard", "read_excel", "read_html", "to_datetime",
            "get_dummies", "concat", "melt", "isna", "isnull", "notna", "notnull",
-           "read_sql_table", "read_sql_query", "read_sql"]
+           "read_sql_table", "read_sql_query", "read_sql", "read_json"]
 
 
 def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'DataFrame']:
@@ -123,14 +124,17 @@ def range(start: int,
     return DataFrame(sdf)
 
 
-def read_csv(path, header='infer', names=None, usecols=None,
-             mangle_dupe_cols=True, parse_dates=False, comment=None):
+def read_csv(path, sep=',', header='infer', names=None, index_col=None,
+             usecols=None, squeeze=False, mangle_dupe_cols=True,
+             parse_dates=False, comment=None):
     """Read CSV (comma-separated) file into DataFrame.
 
     Parameters
     ----------
     path : str
         The path string storing the CSV file to be read.
+    sep : str, default ‘,’
+        Delimiter to use. Must be a single character.
     header : int, list of int, default ‘infer’
         Whether to to use as the column names, and the start of the data.
         Default behavior is to infer the column names: if no names are passed
@@ -143,6 +147,8 @@ def read_csv(path, header='infer', names=None, usecols=None,
         explicitly pass `header=None`. Duplicates in this list will cause an error to be issued.
         If a string is given, it should be a DDL-formatted string in Spark SQL, which is
         preferred to avoid schema inference for better performance.
+    index_col: str or list of str, optional, default: None
+        Index column of table in Spark.
     usecols : list-like or callable, optional
         Return a subset of the columns. If list-like, all elements must either be
         positional (i.e. integer indices into the document columns) or strings that
@@ -150,6 +156,8 @@ def read_csv(path, header='infer', names=None, usecols=None,
         from the document header row(s).
         If callable, the callable function will be evaluated against the column names,
         returning names where the callable function evaluates to `True`.
+    squeeze : bool, default False
+        If the parsed data only contains one column then return a Series.
     mangle_dupe_cols : bool, default True
         Duplicate columns will be specified as 'X0', 'X1', ... 'XN', rather
         than 'X' ... 'X'. Passing in False will cause data to be overwritten if
@@ -181,6 +189,7 @@ def read_csv(path, header='infer', names=None, usecols=None,
         usecols = list(usecols)
     if usecols is None or callable(usecols) or len(usecols) > 0:
         reader = default_session().read.option("inferSchema", "true")
+        reader.option("sep", sep)
 
         if header == 'infer':
             header = 0 if names is None else None
@@ -238,11 +247,44 @@ def read_csv(path, header='infer', names=None, usecols=None,
                 sdf = default_session().createDataFrame([], schema=StructType())
     else:
         sdf = default_session().createDataFrame([], schema=StructType())
-    return DataFrame(sdf)
+
+    index_map = _get_index_map(sdf, index_col)
+    kdf = DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+
+    if squeeze and len(kdf.columns) == 1:
+        return kdf[kdf.columns[0]]
+    return kdf
+
+
+def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **options):
+    """
+    Convert a JSON string to pandas object.
+
+    Parameters
+    ----------
+    path : string
+        File path
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
+
+    Examples
+    --------
+    >>> df = ks.DataFrame([['a', 'b'], ['c', 'd']],
+    ...                   columns=['col 1', 'col 2'])
+
+    >>> df.to_json(path=r'%s/read_json/foo.json' % path, num_files=1)
+    >>> ks.read_json(
+    ...     path=r'%s/read_json/foo.json' % path
+    ... ).sort_values(by="col 1")
+      col 1 col 2
+    0     a     b
+    1     c     d
+    """
+    return read_spark_io(path, format='json', index_col=index_col, options=options)
 
 
 def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str] = None,
-               **options) -> DataFrame:
+               index_col: Optional[Union[str, List[str]]] = None, **options) -> DataFrame:
     """
     Read a Delta Lake table on some file system and return a DataFrame.
 
@@ -259,6 +301,8 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
         Specifies the table version (based on timestamp) to read from,
         using Delta's time travel feature. This must be a valid date or timestamp string in Spark,
         and sets Delta's 'timestampAsOf' option.
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
     options
         Additional options that can be passed onto Delta.
 
@@ -284,10 +328,10 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
         options['versionAsOf'] = version
     if timestamp is not None:
         options['timestampAsOf'] = timestamp
-    return read_spark_io(path, format='delta', options=options)
+    return read_spark_io(path, format='delta', index_col=index_col, options=options)
 
 
-def read_table(name: str) -> DataFrame:
+def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> DataFrame:
     """
     Read a Spark table and return a DataFrame.
 
@@ -295,6 +339,9 @@ def read_table(name: str) -> DataFrame:
     ----------
     name : string
         Table name in Spark.
+
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
 
     Returns
     -------
@@ -315,11 +362,15 @@ def read_table(name: str) -> DataFrame:
     0   0
     """
     sdf = default_session().read.table(name)
-    return DataFrame(sdf)
+    index_map = _get_index_map(sdf, index_col)
+
+    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
 def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
-                  schema: Union[str, 'StructType'] = None, **options) -> DataFrame:
+                  schema: Union[str, 'StructType'] = None,
+                  index_col: Optional[Union[str, List[str]]] = None,
+                  **options) -> DataFrame:
     """Load a DataFrame from a Spark data source.
 
     Parameters
@@ -338,6 +389,8 @@ def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
         Input schema. If none, Spark tries to infer the schema automatically.
         The schema can either be a Spark StructType, or a DDL-formatted string like
         `col0 INT, col1 DOUBLE`.
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
     options : dict
         All other options passed directly into Spark's data source.
 
@@ -357,10 +410,12 @@ def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
     0   0
     """
     sdf = default_session().read.load(path=path, format=format, schema=schema, options=options)
-    return DataFrame(sdf)
+    index_map = _get_index_map(sdf, index_col)
+
+    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
-def read_parquet(path, columns=None) -> DataFrame:
+def read_parquet(path, columns=None, index_col=None) -> DataFrame:
     """Load a parquet object from the file path, returning a DataFrame.
 
     Parameters
@@ -369,6 +424,8 @@ def read_parquet(path, columns=None) -> DataFrame:
         File path
     columns : list, default=None
         If not None, only these columns will be read from the file.
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
 
     Returns
     -------
@@ -401,7 +458,10 @@ def read_parquet(path, columns=None) -> DataFrame:
                 sdf = default_session().createDataFrame([], schema=StructType())
     else:
         sdf = default_session().createDataFrame([], schema=StructType())
-    return DataFrame(sdf)
+
+    index_map = _get_index_map(sdf, index_col)
+
+    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
 def read_clipboard(sep=r'\s+', **kwargs):
@@ -801,16 +861,7 @@ def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, *
         reader.schema(schema)
     reader.options(**options)
     sdf = reader.format("jdbc").load()
-    if index_col is not None:
-        if isinstance(index_col, str):
-            index_col = [index_col]
-        sdf_columns = set(sdf.columns)
-        for col in index_col:
-            if col not in sdf_columns:
-                raise KeyError(col)
-        index_map = [(col, col) for col in index_col]
-    else:
-        index_map = None
+    index_map = _get_index_map(sdf, index_col)
     kdf = DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
     if columns is not None:
         if isinstance(columns, str):
@@ -861,16 +912,7 @@ def read_sql_query(sql, con, index_col=None, **options):
     reader.option('url', con)
     reader.options(**options)
     sdf = reader.format("jdbc").load()
-    if index_col is not None:
-        if isinstance(index_col, str):
-            index_col = [index_col]
-        sdf_columns = set(sdf.columns)
-        for col in index_col:
-            if col not in sdf_columns:
-                raise KeyError(col)
-        index_map = [(col, col) for col in index_col]
-    else:
-        index_map = None
+    index_map = _get_index_map(sdf, index_col)
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
@@ -1172,7 +1214,8 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
             prefix = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
 
         column_index_set = set(column_index)
-        remaining_columns = [kdf[idx] for idx in kdf._internal.column_index
+        remaining_columns = [kdf[idx].rename(str(idx) if len(idx) > 1 else idx[0])
+                             for idx in kdf._internal.column_index
                              if idx not in column_index_set]
 
     if any(not isinstance(kdf._internal.spark_type_for(idx), _get_dummies_acceptable_types)
@@ -1620,6 +1663,22 @@ def _to_datetime2(arg_year, arg_month, arg_day,
         errors=errors,
         format=format,
         infer_datetime_format=infer_datetime_format)
+
+
+def _get_index_map(sdf: spark.DataFrame,
+                   index_col: Optional[Union[str, List[str]]] = None):
+    if index_col is not None:
+        if isinstance(index_col, str):
+            index_col = [index_col]
+        sdf_columns = set(sdf.columns)
+        for col in index_col:
+            if col not in sdf_columns:
+                raise KeyError(col)
+        index_map = [(col, (col,)) for col in index_col]  # type: Optional[List[IndexMap]]
+    else:
+        index_map = None
+
+    return index_map
 
 
 _get_dummies_default_accept_types = (

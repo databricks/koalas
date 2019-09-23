@@ -433,7 +433,7 @@ class LocIndexer(object):
             column_index = None
         elif all(isinstance(key, Series) for key in cols_sel):
             columns = [_make_col(key) for key in cols_sel]
-            column_index = None
+            column_index = [key._internal.column_index[0] for key in cols_sel]
         elif all(isinstance(key, spark.Column) for key in cols_sel):
             columns = cols_sel
             column_index = None

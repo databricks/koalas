@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+import os
+import shutil
 import string
+import tempfile
 
 import numpy as np
 import pandas as pd
@@ -26,6 +28,12 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils, Tes
 
 class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
     """Test cases for "small data" conversion and I/O."""
+
+    def setUp(self):
+        self.tmp_dir = tempfile.mkdtemp(prefix=DataFrameConversionTest.__name__)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
     @property
     def pdf(self):
@@ -136,16 +144,19 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         pdf = self.pdf
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(kdf.to_json(), pdf.to_json())
-        self.assert_eq(kdf.to_json(orient='split'), pdf.to_json(orient='split'))
-        self.assert_eq(kdf.to_json(orient='records'), pdf.to_json(orient='records'))
-        self.assert_eq(kdf.to_json(orient='index'), pdf.to_json(orient='index'))
-        self.assert_eq(kdf.to_json(orient='values'), pdf.to_json(orient='values'))
-        self.assert_eq(kdf.to_json(orient='table'), pdf.to_json(orient='table'))
-        self.assert_eq(kdf.to_json(orient='records', lines=True),
-                       pdf.to_json(orient='records', lines=True))
-        self.assert_eq(kdf.to_json(orient='split', index=False),
-                       pdf.to_json(orient='split', index=False))
+        self.assert_eq(kdf.to_json(), pdf.to_json(orient='records'))
+
+    def test_to_json_with_path(self):
+        pdf = pd.DataFrame({'a': [1], 'b': ['a']})
+        kdf = ks.DataFrame(pdf)
+
+        kdf.to_json(self.tmp_dir, num_files=1)
+        expected = pdf.to_json(orient='records')
+
+        output_paths = [path for path in os.listdir(self.tmp_dir) if path.startswith("part-")]
+        assert len(output_paths) > 0
+        output_path = "%s/%s" % (self.tmp_dir, output_paths[0])
+        self.assertEqual("[%s]" % open(output_path).read().strip(), expected)
 
     def test_to_clipboard(self):
         pdf = self.pdf

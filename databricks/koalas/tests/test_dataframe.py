@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+from datetime import date, datetime
 import inspect
 
 import numpy as np
@@ -171,6 +172,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(IndexError, 'Index has only 2 levels, not 3'):
             kdf.reset_index(col_level=2)
 
+        pdf.index.names = [('x', 'class'), ('y', 'name')]
+        kdf.index.names = [('x', 'class'), ('y', 'name')]
+
+        self.assert_eq(kdf.reset_index(), pdf.reset_index())
+
+        with self.assertRaisesRegex(ValueError, 'Item must have length equal to number of levels.'):
+            kdf.reset_index(col_level=1)
+
     def test_multiindex_column_access(self):
         columns = pd.MultiIndex.from_tuples([('a', '', '', 'b'),
                                              ('c', '', 'd', ''),
@@ -303,8 +312,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(['a', 'b']))
         self.assert_eq(kdf[['b', 'a']].columns, pd.Index(['b', 'a']))
         self.assertEqual(kdf['a'].name, 'a')
-        self.assertEqual((kdf['a'] + 1).name, '(a + 1)')  # TODO: 'a'
-        self.assertEqual((kdf['a'] + kdf['b']).name, '(a + b)')  # TODO: None
+        self.assertEqual((kdf['a'] + 1).name, 'a')
+        self.assertEqual((kdf['a'] + kdf['b']).name, 'a')  # TODO: None
 
     def test_rename_columns(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7],
@@ -315,6 +324,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = ['x', 'y']
         self.assert_eq(kdf.columns, pd.Index(['x', 'y']))
         self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf._internal.data_columns, ['x', 'y'])
+        self.assert_eq(kdf._internal.spark_df.columns, ['x', 'y'])
 
         columns = pdf.columns
         columns.name = 'lvl_1'
@@ -339,17 +350,23 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.columns = ['x', 'y']
         self.assert_eq(kdf.columns, pd.Index(['x', 'y']))
         self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf._internal.data_columns, ['x', 'y'])
+        self.assert_eq(kdf._internal.spark_df.columns, ['x', 'y'])
 
         pdf.columns = columns
         kdf.columns = columns
         self.assert_eq(kdf.columns, columns)
         self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf._internal.data_columns, ["('A', '0')", "('B', 1)"])
+        self.assert_eq(kdf._internal.spark_df.columns, ["('A', '0')", "('B', 1)"])
 
         columns.names = ['lvl_1', 'lvl_2']
 
         kdf.columns = columns
         self.assert_eq(kdf.columns.names, ['lvl_1', 'lvl_2'])
         self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf._internal.data_columns, ["('A', '0')", "('B', 1)"])
+        self.assert_eq(kdf._internal.spark_df.columns, ["('A', '0')", "('B', 1)"])
 
     def test_rename_dataframe(self):
         kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
@@ -443,6 +460,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.dropna(), pdf.dropna())
         self.assert_eq(kdf.dropna(how='all'), pdf.dropna(how='all'))
         self.assert_eq(kdf.dropna(subset=['x']), pdf.dropna(subset=['x']))
+        self.assert_eq(kdf.dropna(subset='x'), pdf.dropna(subset=['x']))
         self.assert_eq(kdf.dropna(subset=['y', 'z']), pdf.dropna(subset=['y', 'z']))
         self.assert_eq(kdf.dropna(subset=['y', 'z'], how='all'),
                        pdf.dropna(subset=['y', 'z'], how='all'))
@@ -462,6 +480,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.dropna(axis='column')
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.dropna(axis='foo')
+
+        self.assertRaises(KeyError, lambda: kdf.dropna(subset='1'))
+        with self.assertRaisesRegex(ValueError, "invalid how option: 1"):
+            kdf.dropna(how=1)
+        with self.assertRaisesRegex(TypeError, "must specify how or thresh"):
+            kdf.dropna(how=None)
 
     def test_dtype(self):
         pdf = pd.DataFrame({'a': list('abc'),
@@ -522,6 +546,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                     "Must specify a fillna 'value' or 'method' parameter."):
             kdf.fillna()
 
+        # multi-index columns
+        pdf = pd.DataFrame({('x', 'a'): [np.nan, 2, 3, 4, np.nan, 6],
+                            ('x', 'b'): [1, 2, np.nan, 4, np.nan, np.nan],
+                            ('y', 'c'): [1, 2, 3, 4, np.nan, np.nan]},
+                           index=[10, 20, 30, 40, 50, 60])
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.fillna(-1), pdf.fillna(-1))
+        self.assert_eq(kdf.fillna({('x', 'a'): -1, ('x', 'b'): -2, ('y', 'c'): -5}),
+                       pdf.fillna({('x', 'a'): -1, ('x', 'b'): -2, ('y', 'c'): -5}))
+        self.assert_eq(pdf.fillna(method='ffill'), kdf.fillna(method='ffill'))
+        self.assert_eq(pdf.fillna(method='ffill', limit=2), kdf.fillna(method='ffill', limit=2))
+        self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
+        self.assert_eq(pdf.fillna(method='bfill', limit=2), kdf.fillna(method='bfill', limit=2))
+
     def test_isnull(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
                            index=[10, 20, 30, 40, 50, 60])
@@ -557,6 +596,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pd.Series([103], index=['A'], name='0'))
         self.assert_eq(ks.DataFrame({'A': range(100)}).nunique(approx=True, rsd=0.01),
                        pd.Series([100], index=['A'], name='0'))
+
+        # Assert unsupported axis value yet
+        msg = 'axis should be either 0 or "index" currently.'
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.nunique(axis=1)
 
     def test_sort_values(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
@@ -1000,6 +1044,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                              'A': ['A0', 'A1', 'A2', 'A3']}, columns=['key', 'A'])
         kdf2 = ks.DataFrame({'key': ['K0', 'K1', 'K2'],
                              'B': ['B0', 'B1', 'B2']}, columns=['key', 'B'])
+        ks1 = ks.Series(['A1', 'A5'], index=[1, 2], name='A')
         join_pdf = pdf1.join(pdf2, lsuffix='_left', rsuffix='_right')
         join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
 
@@ -1008,6 +1053,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(join_pdf, join_kdf)
 
+        # join with duplicated columns in Series and DataFrame
+        with self.assertRaisesRegex(ValueError,
+                                    "columns overlap but no suffix specified"):
+            kdf1.join(ks1, how='outer')
+            kdf1.join(kdf2, how='outer')
         # check `on` parameter
         join_pdf = pdf1.join(pdf2.set_index('key'), on='key', lsuffix='_left', rsuffix='_right')
         join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
@@ -1453,8 +1503,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.rank(),
                        kdf.rank().sort_index())
-        self.assert_eq(pdf.rank(),
-                       kdf.rank().sort_index())
         self.assert_eq(pdf.rank(ascending=False),
                        kdf.rank(ascending=False).sort_index())
         self.assert_eq(pdf.rank(method='min'),
@@ -1470,6 +1518,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, msg):
             kdf.rank(method='nothing')
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'col1'), ('y', 'col2')])
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_eq(pdf.rank(),
+                       kdf.rank().sort_index())
+
     def test_round(self):
         pdf = pd.DataFrame({'A': [0.028208, 0.038683, 0.877076],
                             'B': [0.992815, 0.645646, 0.149370],
@@ -1482,11 +1537,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        kdf.round(2))
         self.assert_eq(pdf.round({'A': 1, 'C': 2}),
                        kdf.round({'A': 1, 'C': 2}))
+        self.assert_eq(pdf.round({'A': 1, 'D': 2}),
+                       kdf.round({'A': 1, 'D': 2}))
         self.assert_eq(pdf.round(pser),
                        kdf.round(kser))
         msg = "decimals must be an integer, a dict-like or a Series"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.round(1.5)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
+        pdf.columns = columns
+        kdf.columns = columns
+        pser = pd.Series([1, 0, 2], index=columns)
+        kser = ks.Series([1, 0, 2], index=columns)
+        self.assert_eq(pdf.round(2),
+                       kdf.round(2))
+        self.assert_eq(pdf.round({('X', 'A'): 1, ('Y', 'C'): 2}),
+                       kdf.round({('X', 'A'): 1, ('Y', 'C'): 2}))
+        self.assert_eq(pdf.round({('X', 'A'): 1, 'Y': 2}),
+                       kdf.round({('X', 'A'): 1, 'Y': 2}))
+        self.assert_eq(pdf.round(pser),
+                       kdf.round(kser))
 
     def test_shift(self):
         pdf = pd.DataFrame({'Col1': [10, 20, 15, 30, 45],
@@ -1495,14 +1567,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.shift(3), kdf.shift(3).sort_index())
 
-        pdf = pd.DataFrame({'Col1': [0, 0, 0, 10, 20],
-                            'Col2': [0, 0, 0, 13, 23],
-                            'Col3': [0, 0, 0, 17, 27]})
-        self.assert_eq(pdf,
+        # Need the expected result since pandas 0.23 does not support `fill_value` argument.
+        pdf1 = pd.DataFrame({'Col1': [0, 0, 0, 10, 20],
+                             'Col2': [0, 0, 0, 13, 23],
+                             'Col3': [0, 0, 0, 17, 27]})
+        self.assert_eq(pdf1,
                        kdf.shift(periods=3, fill_value=0).sort_index())
         msg = "should be an int"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.shift(1.5)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'Col1'), ('x', 'Col2'), ('y', 'Col3')])
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_eq(pdf.shift(3), kdf.shift(3).sort_index())
 
     def test_diff(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
@@ -1515,6 +1594,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "should be an int"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.diff(1.5)
+        msg = 'axis should be either 0 or "index" currently.'
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.diff(axis=1)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'Col1'), ('x', 'Col2'), ('y', 'Col3')])
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_eq(pdf.diff(),
+                       kdf.diff().sort_index())
 
     def test_duplicated(self):
         pdf = pd.DataFrame({'a': [1, 1, 1, 3], 'b': [1, 1, 1, 4], 'c': [1, 1, 1, 5]})
@@ -1614,17 +1703,36 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_transform(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
-                            'b': [1., 1., 2., 3., 5., 8.] * 300,
-                            'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 100,
+                            'b': [1., 1., 2., 3., 5., 8.] * 100,
+                            'c': [1, 4, 9, 16, 25, 36] * 100}, columns=['a', 'b', 'c'])
         kdf = ks.DataFrame(pdf)
 
-        set_option("compute.shortcut_limit", 1000)
-        try:
-            self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(),
-                           pdf.transform(lambda x: x + 1).sort_index())
-        finally:
-            reset_option("compute.shortcut_limit")
+        def _test(kdf, expected):
+            self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(), expected)
+
+            set_option("compute.shortcut_limit", 500)
+            try:
+                self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(), expected)
+            finally:
+                reset_option("compute.shortcut_limit")
+
+        _test(kdf, pdf.transform(lambda x: x + 1))
 
         with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
             kdf.transform(1)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        _test(kdf, pdf.transform(lambda x: x + 1))
+
+    def test_empty_timestamp(self):
+        pdf = pd.DataFrame({'t': [datetime(2019, 1, 1, 0, 0, 0),
+                                  datetime(2019, 1, 2, 0, 0, 0),
+                                  datetime(2019, 1, 3, 0, 0, 0)]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf[kdf['t'] != kdf['t']], pdf[pdf['t'] != pdf['t']])
+        self.assert_eq(kdf[kdf['t'] != kdf['t']].dtypes, pdf[pdf['t'] != pdf['t']].dtypes)

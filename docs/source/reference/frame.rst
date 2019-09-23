@@ -52,6 +52,7 @@ Indexing, iteration
    DataFrame.head
    DataFrame.loc
    DataFrame.iloc
+   DataFrame.items
    DataFrame.iteritems
    DataFrame.get
 
@@ -90,6 +91,8 @@ Function application, GroupBy & Window
 
    DataFrame.applymap
    DataFrame.pipe
+   DataFrame.agg
+   DataFrame.aggregate
    DataFrame.groupby
    DataFrame.transform
 
@@ -233,9 +236,11 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    :toctree: api/
 
    DataFrame.plot
-   DataFrame.plot.line
    DataFrame.plot.area
    DataFrame.plot.barh
    DataFrame.plot.bar
+   DataFrame.plot.hist
+   DataFrame.plot.line
    DataFrame.plot.pie
    DataFrame.plot.scatter
+   DataFrame.hist
