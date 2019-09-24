@@ -959,11 +959,8 @@ class DataFrame(_Frame, Generic[T]):
         #     sum  12.0  NaN
         #
         # Aggregated output is usually pretty much small. So it is fine to directly use pandas API.
-        pdf = kdf.to_pandas().transpose().reset_index()
-        pdf = pdf.groupby(['level_1']).apply(
-            lambda gpdf: gpdf.drop('level_1', 1).set_index('level_0').transpose()
-        ).reset_index(level=1)
-        pdf = pdf.drop(columns='level_1')
+        pdf = kdf.to_pandas().stack()
+        pdf.index = pdf.index.droplevel()
         pdf.columns.names = [None]
         pdf.index.names = [None]
 
@@ -5219,7 +5216,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if right_keys and not left_keys:
                 raise ValueError('Must pass left_on or left_index=True')
             if not left_keys and not right_keys:
-                common = list(self.columns.intersection(right.columns))
+                if isinstance(right, ks.Series):
+                    common = list(self.columns.intersection([right.name]))
+                else:
+                    common = list(self.columns.intersection(right.columns))
                 if len(common) == 0:
                     raise ValueError(
                         'No common columns to perform merge on. Merge options: '
