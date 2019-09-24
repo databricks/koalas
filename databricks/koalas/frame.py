@@ -5093,34 +5093,33 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Parameters
         ----------
         right: Object to merge with.
-            DataFrame or named Series
         how: Type of merge to be performed.
             {'left', 'right', 'outer', 'inner'}, default 'inner'
 
-            left: use only keys from left frame, similar to a SQL left outer join;
-                preserve key order.
-            right: use only keys from right frame, similar to a SQL right outer join;
-                preserve key order.
-            outer: use union of keys from both frames, similar to a SQL full outer
-                join; sort keys lexicographically.
-            inner: use intersection of keys from both frames, similar to a SQL inner
-                join; preserve the order of the left keys.
-        on: Column or index level names to join on.
-            These must be found in both DataFrames. If on is None and not merging on
-            indexes then this defaults to the intersection of the
+            left: use only keys from left frame, similar to a SQL left outer join; preserve key
+                order.
+            right: use only keys from right frame, similar to a SQL right outer join; preserve key
+                order.
+            outer: use union of keys from both frames, similar to a SQL full outer join; sort keys
+                lexicographically.
+            inner: use intersection of keys from both frames, similar to a SQL inner join;
+                preserve the order of the left keys.
+        on: Column or index level names to join on. These must be found in both DataFrames. If on
+            is None and not merging on indexes then this defaults to the intersection of the
             columns in both DataFrames.
-        left_on: Column or index level names to join on in the left DataFrame.
-            Can also be an array or list of arrays of the length of the left DataFrame.
+        left_on: Column or index level names to join on in the left DataFrame. Can also
+            be an array or list of arrays of the length of the left DataFrame.
             These arrays are treated as if they are columns.
-        right_on: Column or index level names to join on in the right DataFrame.
-            Can also be an array or list of arrays of the length of the right DataFrame.
+        right_on: Column or index level names to join on in the right DataFrame. Can also
+            be an array or list of arrays of the length of the right DataFrame.
             These arrays are treated as if they are columns.
-        left_index: Use the index from the left DataFrame as the join key(s).
-            If it is a MultiIndex, the number of keys in the other DataFrame (either the
-            index or a number of columns) must match the number of levels.
-        right_index: Use the index from the right DataFrame as the join key.
-            Same caveats as left_index.
-        suffixes: Suffix to apply to overlapping column names in the left and right side, respectively.
+        left_index: Use the index from the left DataFrame as the join key(s). If it is a
+            MultiIndex, the number of keys in the other DataFrame (either the index or a number of
+            columns) must match the number of levels.
+        right_index: Use the index from the right DataFrame as the join key. Same caveats as
+            left_index.
+        suffixes: Suffix to apply to overlapping column names in the left and right side,
+            respectively.
 
         Returns
         -------
