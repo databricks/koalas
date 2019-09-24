@@ -871,7 +871,6 @@ class DataFrame(_Frame, Generic[T]):
                                        column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
-    # TODO: Series support is not implemented yet.
     # TODO: not all arguments are implemented comparing to Pandas' for now.
     def aggregate(self, func: Union[List[str], Dict[str, List[str]]]):
         """Aggregate using one or more operations over the specified axis.
@@ -960,11 +959,8 @@ class DataFrame(_Frame, Generic[T]):
         #     sum  12.0  NaN
         #
         # Aggregated output is usually pretty much small. So it is fine to directly use pandas API.
-        pdf = kdf.to_pandas().transpose().reset_index()
-        pdf = pdf.groupby(['level_1']).apply(
-            lambda gpdf: gpdf.drop('level_1', 1).set_index('level_0').transpose()
-        ).reset_index(level=1)
-        pdf = pdf.drop(columns='level_1')
+        pdf = kdf.to_pandas().stack()
+        pdf.index = pdf.index.droplevel()
         pdf.columns.names = [None]
         pdf.index.names = [None]
 
@@ -5436,6 +5432,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  K1  A1    B1
         3  K2  A2    B2
         """
+        if isinstance(right, ks.Series):
+            common = list(self.columns.intersection([right.name]))
+        else:
+            common = list(self.columns.intersection(right.columns))
+        if len(common) > 0 and not lsuffix and not rsuffix:
+            raise ValueError(
+                "columns overlap but no suffix specified: "
+                "{rename}".format(rename=common))
         if on:
             self = self.set_index(on)
             join_kdf = self.merge(right, left_index=True, right_index=True, how=how,
