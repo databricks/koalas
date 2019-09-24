@@ -19,7 +19,7 @@ A wrapper for GroupedData to behave similar to pandas GroupBy.
 """
 
 import inspect
-from collections import Callable
+from collections import Callable, OrderedDict
 from functools import partial
 from typing import Any, List, Tuple, Union
 
@@ -112,13 +112,24 @@ class GroupBy(object):
         2    3    4
 
         """
-        if not isinstance(func_or_funcs, dict) or \
-                not all(isinstance(key, str) and
-                        (isinstance(value, str) or
-                         isinstance(value, list) and all(isinstance(v, str) for v in value))
-                        for key, value in func_or_funcs.items()):
-            raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
-                             "functions (string or list of strings).")
+        if not isinstance(func_or_funcs, (str, list)):
+            if not isinstance(func_or_funcs, dict) or \
+                    not all(isinstance(key, str) and
+                            (isinstance(value, str) or
+                             isinstance(value, list) and all(isinstance(v, str) for v in value))
+                            for key, value in func_or_funcs.items()):
+                raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
+                                 "functions (string or list of strings).")
+
+        else:
+            func_dict = OrderedDict()
+            group_keyname = [key.name for key in self._groupkeys]
+            agg_cols = [key for key in self._kdf.columns if key not in group_keyname]
+
+            for col in agg_cols:
+                func_dict[col] = func_or_funcs
+
+            func_or_funcs = func_dict
 
         kdf = DataFrame(GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys))
         if not self._as_index:

@@ -116,6 +116,19 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(ValueError, expected_error_message):
             kdf.groupby('A', as_index=as_index).agg(0)
 
+    def test_aggregate_func_str_list(self):
+        # this is test for cases where only string or list is assigned
+        pdf = pd.DataFrame({'kind': ['cat', 'dog', 'cat', 'dog'],
+                            'height': [9.1, 6.0, 9.5, 34.0],
+                            'weight': [7.9, 7.5, 9.9, 198.0]}
+                           )
+        kdf = koalas.from_pandas(pdf)
+
+        agg_funcs = ['max', 'min', ['min', 'max']]
+        for aggfunc in agg_funcs:
+            self.assert_eq(kdf.groupby('kind').agg(aggfunc),
+                           pdf.groupby('kind').agg(aggfunc))
+
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
                             'B': [True, True, True, False, False, False, None, True, None, False]})
