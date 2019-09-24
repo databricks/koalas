@@ -773,8 +773,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             check(lambda left, right: left.merge(right), right_ks, right_ps)
             check(lambda left, right: left.merge(right, left_on='x', right_on='x'),
                   right_ks, right_ps)
-            check(lambda left, right: left.set_index('x').merge(right, left_index=True, right_on='x'),
-                  right_ks, right_ps)
+            check(lambda left, right: left.set_index('x').merge(right, left_index=True,
+                  right_on='x'), right_ks, right_ps)
 
             # Test join types with Series
             for how in ['inner', 'left', 'right', 'outer']:
@@ -784,7 +784,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
             # suffix with Series
             check(lambda left, right: left.merge(right, suffixes=['_left', '_right'], how='outer',
-                                                 left_index=True, right_index=True), right_ks, right_ps)
+                                                 left_index=True, right_index=True),
+                  right_ks, right_ps)
 
     def test_merge_retains_indices(self):
         left_pdf = pd.DataFrame({'A': [0, 1]})
