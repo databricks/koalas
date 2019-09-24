@@ -769,7 +769,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Test Series on the right
         # pd.DataFrame.merge with Series is implemented since version 0.24.0
-        if LooseVersion(pd.__version__) > LooseVersion("0.24.2"):
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
             check(lambda left, right: left.merge(right), right_ks, right_ps)
             check(lambda left, right: left.merge(right, left_on='x', right_on='x'),
                   right_ks, right_ps)
