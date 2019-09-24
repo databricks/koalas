@@ -16,6 +16,7 @@
 
 from datetime import date, datetime
 import inspect
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -719,11 +720,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                   'value': [4, 5, 6, 7, 8, 9],
                                   'y': list('efghij')},
                                  columns=['rkey', 'value', 'y'])
+        right_ps = pd.Series(list('defghi'), name='x', index=[5, 6, 7, 8, 9, 10])
 
         left_kdf = ks.from_pandas(left_pdf)
         right_kdf = ks.from_pandas(right_pdf)
+        right_ks = ks.from_pandas(right_ps)
 
-        def check(op):
+        def check(op, right_kdf=right_kdf, right_pdf=right_pdf):
             k_res = op(left_kdf, right_kdf)
             k_res = k_res.to_pandas()
             k_res = k_res.sort_values(by=list(k_res.columns))
@@ -763,6 +766,26 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # suffix
         check(lambda left, right: left.merge(right, left_on='lkey', right_on='rkey',
                                              suffixes=['_left', '_right']))
+
+        # Test Series on the right
+        # pd.DataFrame.merge with Series is implemented since version 0.24.0
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+            check(lambda left, right: left.merge(right), right_ks, right_ps)
+            check(lambda left, right: left.merge(right, left_on='x', right_on='x'),
+                  right_ks, right_ps)
+            check(lambda left, right: left.set_index('x').merge(right, left_index=True,
+                  right_on='x'), right_ks, right_ps)
+
+            # Test join types with Series
+            for how in ['inner', 'left', 'right', 'outer']:
+                check(lambda left, right: left.merge(right, how=how), right_ks, right_ps)
+                check(lambda left, right: left.merge(right, left_on='x', right_on='x', how=how),
+                      right_ks, right_ps)
+
+            # suffix with Series
+            check(lambda left, right: left.merge(right, suffixes=['_left', '_right'], how='outer',
+                                                 left_index=True, right_index=True),
+                  right_ks, right_ps)
 
     def test_merge_retains_indices(self):
         left_pdf = pd.DataFrame({'A': [0, 1]})
@@ -1010,11 +1033,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(join_pdf, join_kdf)
 
-        # join with duplicated columns in Series and DataFrame
+        # join with duplicated columns in Series
         with self.assertRaisesRegex(ValueError,
                                     "columns overlap but no suffix specified"):
             kdf1.join(ks1, how='outer')
+        # join with duplicated columns in DataFrame
+        with self.assertRaisesRegex(ValueError,
+                                    "columns overlap but no suffix specified"):
             kdf1.join(kdf2, how='outer')
+
         # check `on` parameter
         join_pdf = pdf1.join(pdf2.set_index('key'), on='key', lsuffix='_left', rsuffix='_right')
         join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
