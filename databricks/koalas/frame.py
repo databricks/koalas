@@ -6894,7 +6894,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  5  6  7  8
 
         >>> kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list('ab'))
-        kdf3.rename(index=str.lower) # doctest: +NORMALIZE_WHITESPACE
+        >>> kdf3.rename(index=str.lower) # doctest: +NORMALIZE_WHITESPACE
              a  b
         x a  1  2
           b  3  4
