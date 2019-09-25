@@ -6953,7 +6953,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             def mapper_fn(x):
                 return mapper(x)
         else:
-            raise ValueError("`mapper` or `index` or `columns` should be either dict-like or function type.")
+            raise ValueError("`mapper` or `index` or `columns` should be "
+                             "either dict-like or function type.")
 
         if is_index_mapper:
             # rename index labels, if `level` is None, rename all index columns, otherwise only
@@ -6978,7 +6979,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             def gen_new_index_column(level):
                 index_col_name = index_columns[level]
 
-                index_mapper_udf = pandas_udf(lambda s: s.map(mapper_fn), returnType=spark_return_type)
+                index_mapper_udf = pandas_udf(lambda s: s.map(mapper_fn),
+                                              returnType=spark_return_type)
                 return index_mapper_udf(col(index_col_name))
 
             sdf = self._sdf

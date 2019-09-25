@@ -410,21 +410,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pd.Index([{'__index_level_0__': 'x', '__index_level_1__': 'a'},
                                  {'__index_level_0__': 'x', '__index_level_1__': 'b'},
                                  {'__index_level_0__': 'y', '__index_level_1__': 'c'},
-                                 {'__index_level_0__': 'y', '__index_level_1__': 'd'}], dtype='object'))
+                                 {'__index_level_0__': 'y', '__index_level_1__': 'd'}],
+                                dtype='object'))
 
         result_kdf = kdf3.rename(index=str_lower, level=0)
         self.assert_eq(result_kdf.index,
                        pd.Index([{'__index_level_0__': 'x', '__index_level_1__': 'A'},
                                  {'__index_level_0__': 'x', '__index_level_1__': 'B'},
                                  {'__index_level_0__': 'y', '__index_level_1__': 'C'},
-                                 {'__index_level_0__': 'y', '__index_level_1__': 'D'}], dtype='object'))
+                                 {'__index_level_0__': 'y', '__index_level_1__': 'D'}],
+                                dtype='object'))
 
         result_kdf = kdf3.rename(index=str_lower, level=1)
         self.assert_eq(result_kdf.index,
                        pd.Index([{'__index_level_0__': 'X', '__index_level_1__': 'a'},
                                  {'__index_level_0__': 'X', '__index_level_1__': 'b'},
                                  {'__index_level_0__': 'Y', '__index_level_1__': 'c'},
-                                 {'__index_level_0__': 'Y', '__index_level_1__': 'd'}], dtype='object'))
+                                 {'__index_level_0__': 'Y', '__index_level_1__': 'd'}],
+                                dtype='object'))
 
     def test_dot_in_column_name(self):
         self.assert_eq(
