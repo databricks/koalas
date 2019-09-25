@@ -1452,8 +1452,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return _col(self.to_dataframe().clip(lower, upper))
 
-    def drop(self, labels=None, axis=0,
-             index: Union[str, Tuple[str, ...], List[str], List[Tuple[str, ...]]] = None):
+    def drop(self, labels=None, axis=0, index: Union[str, List[str]] = None):
         """
         Drop specified labels from columns.
 
