@@ -376,42 +376,55 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         result_kdf = kdf1.rename(index={1: 10, 2: 20})
         self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
 
-        result_kdf = kdf1.rename(str.lower, axis='columns')
+        def str_lower(s) -> str:
+            return str.lower(s)
+
+        result_kdf = kdf1.rename(str_lower, axis='columns')
         self.assert_eq(result_kdf.columns, pd.Index(['a', 'b']))
 
-        result_kdf = kdf1.rename(lambda x: x*10, axis='index')
+        def mul10(x) -> int:
+            return x * 10
+
+        result_kdf = kdf1.rename(mul10, axis='index')
         self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
 
         idx = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Y', 'D')])
         kdf2 = ks.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8]], columns=idx)
 
-        result_kdf = kdf2.rename(columns=str.lower)
+        result_kdf = kdf2.rename(columns=str_lower)
         self.assert_eq(result_kdf.columns,
                        pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd')]))
 
-        result_kdf = kdf2.rename(columns=str.lower, level=0)
+        result_kdf = kdf2.rename(columns=str_lower, level=0)
         self.assert_eq(result_kdf.columns,
                        pd.MultiIndex.from_tuples([('x', 'A'), ('x', 'B'), ('y', 'C'), ('y', 'D')]))
 
-        result_kdf = kdf2.rename(columns=str.lower, level=1)
+        result_kdf = kdf2.rename(columns=str_lower, level=1)
         self.assert_eq(result_kdf.columns,
                        pd.MultiIndex.from_tuples([('X', 'a'), ('X', 'b'), ('Y', 'c'), ('Y', 'd')]))
 
         kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list('ab'))
 
-        self.spark.conf.set('spark.sql.execution.arrow.enabled', False)
-        result_kdf = kdf3.rename(index=str.lower)
+        result_kdf = kdf3.rename(index=str_lower)
         self.assert_eq(result_kdf.index,
-                       pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd')]))
+                       pd.Index([{'__index_level_0__': 'x', '__index_level_1__': 'a'},
+                                 {'__index_level_0__': 'x', '__index_level_1__': 'b'},
+                                 {'__index_level_0__': 'y', '__index_level_1__': 'c'},
+                                 {'__index_level_0__': 'y', '__index_level_1__': 'd'}], dtype='object'))
 
-        result_kdf = kdf3.rename(index=str.lower, level=0)
+        result_kdf = kdf3.rename(index=str_lower, level=0)
         self.assert_eq(result_kdf.index,
-                       pd.MultiIndex.from_tuples([('x', 'A'), ('x', 'B'), ('y', 'C'), ('y', 'D')]))
+                       pd.Index([{'__index_level_0__': 'x', '__index_level_1__': 'A'},
+                                 {'__index_level_0__': 'x', '__index_level_1__': 'B'},
+                                 {'__index_level_0__': 'y', '__index_level_1__': 'C'},
+                                 {'__index_level_0__': 'y', '__index_level_1__': 'D'}], dtype='object'))
 
-        result_kdf = kdf3.rename(index=str.lower, level=1)
+        result_kdf = kdf3.rename(index=str_lower, level=1)
         self.assert_eq(result_kdf.index,
-                       pd.MultiIndex.from_tuples([('X', 'a'), ('X', 'b'), ('Y', 'c'), ('Y', 'd')]))
-        self.spark.conf.set('spark.sql.execution.arrow.enabled', True)
+                       pd.Index([{'__index_level_0__': 'X', '__index_level_1__': 'a'},
+                                 {'__index_level_0__': 'X', '__index_level_1__': 'b'},
+                                 {'__index_level_0__': 'Y', '__index_level_1__': 'c'},
+                                 {'__index_level_0__': 'Y', '__index_level_1__': 'd'}], dtype='object'))
 
     def test_dot_in_column_name(self):
         self.assert_eq(

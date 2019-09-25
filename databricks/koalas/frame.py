@@ -52,7 +52,7 @@ from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, scol_for
-from databricks.koalas.typedef import as_spark_type, as_python_type
+from databricks.koalas.typedef import _infer_return_type, as_spark_type, as_python_type
 from databricks.koalas.plot import KoalasFramePlotMethods
 from databricks.koalas.config import get_option
 
@@ -6929,16 +6929,31 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise RuntimeError("Koalas dataframe rename method do not support in-place operation.")
 
         if isinstance(mapper, dict):
+            if len(mapper) == 0:
+                if errors == 'raise':
+                    raise KeyError('Index include label which is not in the `mapper`.')
+                else:
+                    return DataFrame(self._internal)
+
+            type_set = set(map(lambda x: type(x), mapper.values()))
+            if len(type_set) > 1:
+                raise ValueError("Mapper dict should have the same value type.")
+            spark_return_type = as_spark_type(list(type_set)[0])
+
             def mapper_fn(x):
                 if x in mapper:
                     return mapper[x]
                 else:
                     if errors == 'raise':
-                        raise KeyError('Index include value which is not in the map: ' + str(x))
+                        raise KeyError('Index include value which is not in the `mapper`')
                     return x
-        else:
+        elif callable(mapper):
+            spark_return_type = _infer_return_type(mapper).tpe
+
             def mapper_fn(x):
                 return mapper(x)
+        else:
+            raise ValueError("`mapper` or `index` or `columns` should be either dict-like or function type.")
 
         if is_index_mapper:
             # rename index labels, if `level` is None, rename all index columns, otherwise only
@@ -6962,9 +6977,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             def gen_new_index_column(level):
                 index_col_name = index_columns[level]
-                return_type = self._sdf.schema.fields[level].dataType
 
-                index_mapper_udf = pandas_udf(lambda s: s.map(mapper_fn), returnType=return_type)
+                index_mapper_udf = pandas_udf(lambda s: s.map(mapper_fn), returnType=spark_return_type)
                 return index_mapper_udf(col(index_col_name))
 
             sdf = self._sdf
