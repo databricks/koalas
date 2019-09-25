@@ -1452,6 +1452,75 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return _col(self.to_dataframe().clip(lower, upper))
 
+    def drop(self, labels=None, axis=0,
+             index: Union[str, Tuple[str, ...], List[str], List[Tuple[str, ...]]] = None):
+        """
+        Drop specified labels from columns.
+
+        Remove columns by specifying label names and axis=1 or columns.
+        When specifying both labels and columns, only labels will be dropped.
+        Removing rows is yet to be implemented.
+
+        Parameters
+        ----------
+        labels : single label or list-like
+            Index labels to drop.
+        axis : {0 or 'index'}, default 0
+            Redundant for application on Series.
+        index : None
+            Redundant for application on Series, but index can be used instead of labels.
+
+        Returns
+        -------
+        Series
+            Series with specified index labels removed.
+
+        See Also
+        --------
+        Series.dropna
+
+        Examples
+        --------
+        >>> s = ks.Series(data=np.arange(3), index=['A', 'B', 'C'])
+        >>> s
+        A    0
+        B    1
+        C    2
+        Name: 0, dtype: int64
+
+        Drop single label A
+
+        >>> s.drop('A')
+        B    1
+        C    2
+        Name: 0, dtype: int64
+
+        Drop labels B and C
+
+        >>> s.drop(labels=['B', 'C'])
+        A    0
+        Name: 0, dtype: int64
+
+        Notes
+        -----
+        Currently only axis = 0 is supported in this function,
+        axis = 1 is yet to be implemented.
+        """
+        if labels is not None:
+            axis = DataFrame._validate_axis(axis)
+            if axis == 0:
+                return self.drop(index=labels)
+            raise NotImplementedError("Drop currently only works for axis=0")
+        elif index is not None:
+            if isinstance(index, str):
+                index = [index]
+
+            sdf = self._internal.sdf.where(~F.col('__index_level_0__').isin(index))
+            internal = self._internal.copy(sdf=sdf)
+            return Series(internal)
+        else:
+            raise ValueError("Need to specify at least one of 'labels' or 'index'")
+
     def head(self, n=5):
         """
         Return the first n rows.

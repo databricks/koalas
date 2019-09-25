@@ -658,3 +658,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                'should only contains function names as strings.')
         with self.assertRaisesRegex(ValueError, msg):
             kser.aggregate(['min', max])
+
+    def test_drop(self):
+        pser = pd.Series([10, 20, 15, 30, 45], name='x')
+        kser = koalas.Series(pser)
+        msg = 'Drop currently only works for axis=0'
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            kser.drop(0, axis=1)
+        msg = "Need to specify at least one of 'labels' or 'index'"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.drop()
