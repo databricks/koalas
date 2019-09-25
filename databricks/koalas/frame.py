@@ -6925,6 +6925,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             do_copy = not inplace
 
+        if not do_copy:
+            raise RuntimeError("Koalas dataframe rename method do not support in-place operation.")
+
         if isinstance(mapper, dict):
             def mapper_fn(x):
                 if x in mapper:
@@ -6938,8 +6941,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return mapper(x)
 
         if is_index_mapper:
-            if not do_copy:
-                raise RuntimeError("Koalas dataframe do not support in-place renaming index.")
+            # rename index labels, if `level` is None, rename all index columns, otherwise only
+            # rename the corresponding level index.
+            # implement this by transform the underlying spark dataframe,
+            # Example:
+            # suppose the kdf index column in underlying spark dataframe is "index_0", "index_1",
+            # if rename level 0 index labels, will do:
+            #   ``kdf._sdf.withColumn("index_0", mapper_fn_udf(col("index_0"))``
+            # if rename all index labels (`level` is None), then will do:
+            #   ```
+            #   kdf._sdf.withColumn("index_0", mapper_fn_udf(col("index_0"))
+            #           .withColumn("index_1", mapper_fn_udf(col("index_1"))
+            #   ```
 
             index_columns = self._internal.index_columns
             num_indices = len(index_columns)
@@ -6962,8 +6975,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.withColumn(index_columns[level], gen_new_index_column(level))
 
             internal = self._internal.copy(sdf=sdf)
-            return DataFrame(internal)
         else:
+            # rename column name.
+            # we only need to modify the `kdf._internal._column_index
+            # replace each column name by mapper dict or mapper function.
             if level:
                 if level < 0 or level >= self._internal.column_index_level:
                     raise ValueError("level should be an integer between [0, column_index_level)")
@@ -6971,8 +6986,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             def gen_new_column_index_entry(column_index_entry):
                 if isinstance(column_index_entry, tuple):
                     if level is None:
+                        # rename all level columns
                         return tuple(map(mapper_fn, column_index_entry))
                     else:
+                        # only rename specified level column
                         entry_list = list(column_index_entry)
                         entry_list[level] = mapper_fn(entry_list[level])
                         return tuple(entry_list)
@@ -6981,12 +6998,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             new_column_index = list(map(gen_new_column_index_entry, self._internal.column_index))
 
-            if do_copy:
-                internal = self._internal.copy(column_index=new_column_index)
-                return DataFrame(internal)
-            else:
-                self._internal._column_index = new_column_index
-                return self
+            internal = self._internal.copy(column_index=new_column_index)
+        return DataFrame(internal)
 
     def _get_from_multiindex_column(self, key):
         """ Select columns from multi-index columns.

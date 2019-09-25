@@ -399,6 +399,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list('ab'))
 
+        self.spark.conf.set('spark.sql.execution.arrow.enabled', False)
         result_kdf = kdf3.rename(index=str.lower)
         self.assert_eq(result_kdf.index,
                        pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd')]))
@@ -410,6 +411,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         result_kdf = kdf3.rename(index=str.lower, level=1)
         self.assert_eq(result_kdf.index,
                        pd.MultiIndex.from_tuples([('X', 'a'), ('X', 'b'), ('Y', 'c'), ('Y', 'd')]))
+        self.spark.conf.set('spark.sql.execution.arrow.enabled', True)
 
     def test_dot_in_column_name(self):
         self.assert_eq(
