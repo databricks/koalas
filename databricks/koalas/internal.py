@@ -513,8 +513,8 @@ class _InternalFrame(object):
     def column_name_for(self, column_name_or_index: Union[str, Tuple[str, ...]]) -> str:
         """ Return the actual Spark column name for the given column name or index. """
         if column_name_or_index not in self._column_index_map:
-            # TODO: assert column_name_or_index not in self.data_columns
-            assert isinstance(column_name_or_index, str), column_name_or_index
+            if not isinstance(column_name_or_index, str):
+                raise KeyError(column_name_or_index)
             return column_name_or_index
         else:
             return self._column_index_map[column_name_or_index]
