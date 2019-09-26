@@ -2674,36 +2674,52 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("Now we don't support multi-index Now.")
 
         if subset is None:
-            group_cols = self._internal.data_columns
+            subset = self._internal.column_index
         else:
-            group_cols = subset
-            diff = set(subset).difference(set(self._internal.data_columns))
+            if isinstance(subset, str):
+                subset = [(subset,)]
+            elif isinstance(subset, tuple):
+                subset = [subset]
+            else:
+                subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
+            diff = set(subset).difference(set(self._internal.column_index))
             if len(diff) > 0:
-                raise KeyError(', '.join(diff))
+                raise KeyError(', '.join([str(d) if len(d) > 1 else d[0] for d in diff]))
+        group_cols = [self._internal.column_name_for(idx) for idx in subset]
 
-        sdf = self._sdf
-        index = self._internal.index_columns[0]
+        index_column = self._internal.index_columns[0]
         if self._internal.index_names[0] is not None:
             name = self._internal.index_names[0]
         else:
-            name = '0'
+            name = ('0',)
+        column = str(name) if len(name) > 1 else name[0]
+
+        sdf = self._sdf
+        if column == index_column:
+            index_column = '__index_level_0__'
+            sdf = sdf.select([self._internal.index_scols[0].alias(index_column)]
+                             + self._internal.data_scols)
 
         if keep == 'first' or keep == 'last':
             if keep == 'first':
                 ord_func = spark.functions.asc
             else:
                 ord_func = spark.functions.desc
-            window = Window.partitionBy(group_cols).orderBy(ord_func(index)).rowsBetween(
+            window = Window.partitionBy(group_cols).orderBy(ord_func(index_column)).rowsBetween(
                 Window.unboundedPreceding, Window.currentRow)
-            sdf = sdf.withColumn(name, F.row_number().over(window) > 1)
+            sdf = sdf.withColumn(column, F.row_number().over(window) > 1)
         elif not keep:
-            window = Window.partitionBy(group_cols).orderBy(F.col(index).desc())\
+            window = Window.partitionBy(group_cols).orderBy(scol_for(sdf, index_column).desc())\
                 .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
-            sdf = sdf.withColumn(name, F.count(F.col(index)).over(window) > 1)
+            sdf = sdf.withColumn(column, F.count(scol_for(sdf, index_column)).over(window) > 1)
         else:
             raise ValueError("'keep' only support 'first', 'last' and False")
-        return _col(DataFrame(_InternalFrame(sdf=sdf.select(index, name), data_columns=[name],
-                                             index_map=self._internal.index_map)))
+        return _col(DataFrame(_InternalFrame(sdf=sdf.select(scol_for(sdf, index_column),
+                                                            scol_for(sdf, column)),
+                                             data_columns=[column],
+                                             column_index=[name],
+                                             index_map=[(index_column,
+                                                         self._internal.index_names[0])])))
 
     def to_koalas(self):
         """

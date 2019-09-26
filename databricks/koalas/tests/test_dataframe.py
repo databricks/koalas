@@ -1600,12 +1600,26 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                          repr(kdf.duplicated(keep='last').sort_index()))
         self.assertEqual(repr(pd.Series(pdf.duplicated(keep=False), name='0')),
                          repr(kdf.duplicated(keep=False).sort_index()))
-        self.assertEqual(repr(pd.Series(pdf.duplicated(subset=['a']), name='0')),
-                         repr(kdf.duplicated(subset=['a']).sort_index()))
+        self.assertEqual(repr(pd.Series(pdf.duplicated(subset=['b']), name='0')),
+                         repr(kdf.duplicated(subset=['b']).sort_index()))
         with self.assertRaisesRegex(ValueError, "'keep' only support 'first', 'last' and False"):
             kdf.duplicated(keep='false')
         with self.assertRaisesRegex(KeyError, "'d'"):
             kdf.duplicated(subset=['d'])
+
+        pdf.index.name = 'x'
+        kdf.index.name = 'x'
+        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='x')),
+                         repr(kdf.duplicated().sort_index()))
+
+        # mutli-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='x')),
+                         repr(kdf.duplicated().sort_index()))
+        self.assertEqual(repr(pd.Series(pdf.duplicated(subset=[('x', 'b')]), name='x')),
+                         repr(kdf.duplicated(subset=[('x', 'b')]).sort_index()))
 
     def test_ffill(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
