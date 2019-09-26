@@ -1,8 +1,5 @@
 .. Koalas' documentation master file
 
-.. image:: ../../Koalas-logo-nolabel.png
-    :width: 160px
-
 Koalas: pandas API on Apache Spark
 ============================================
 
