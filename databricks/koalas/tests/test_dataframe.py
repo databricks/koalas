@@ -388,6 +388,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         result_kdf = kdf1.rename(mul10, axis='index')
         self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
 
+        result_kdf = kdf1.rename(columns=str_lower, index={1: 10, 2: 20})
+        self.assert_eq(result_kdf.columns, pd.Index(['a', 'b']))
+        self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
+
         idx = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Y', 'D')])
         kdf2 = ks.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8]], columns=idx)
 

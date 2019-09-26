@@ -6815,7 +6815,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                index=None,
                columns=None,
                axis='index',
-               copy=True,
                inplace=False,
                level=None,
                errors='ignore'):
@@ -6838,8 +6837,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         axis : int or str, default 'index'
             Axis to target with mapper. Can be either the axis name ('index', 'columns') or
             number (0, 1).
-        copy : bool, default True
-            Also copy underlying data.
         inplace : bool, default False
             Whether to return a new DataFrame. If True then value of copy is ignored.
         level : int or level name, default None
@@ -6861,40 +6858,40 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Examples
         --------
         >>> kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
-        >>> kdf1.rename(columns={"A": "a", "B": "c"}) # doctest: +NORMALIZE_WHITESPACE
+        >>> kdf1.rename(columns={"A": "a", "B": "c"})  # doctest: +NORMALIZE_WHITESPACE
            a  c
         0  1  4
         1  2  5
         2  3  6
 
-        >>> kdf1.rename(index={1: 10, 2: 20}) # doctest: +NORMALIZE_WHITESPACE
+        >>> kdf1.rename(index={1: 10, 2: 20})  # doctest: +NORMALIZE_WHITESPACE
             A  B
         0   1  4
         10  2  5
         20  3  6
 
-        >>> kdf1.rename(str.lower, axis='columns') # doctest: +NORMALIZE_WHITESPACE
+        >>> kdf1.rename(str.lower, axis='columns')  # doctest: +NORMALIZE_WHITESPACE
            a  b
         0  1  4
         1  2  5
         2  3  6
 
-        >>> kdf1.rename(lambda x: x*10, axis='index') # doctest: +NORMALIZE_WHITESPACE
+        >>> kdf1.rename(lambda x: x*10, axis='index')  # doctest: +NORMALIZE_WHITESPACE
             A  B
         0   1  4
         10  2  5
         20  3  6
 
-        >>> idx = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'),('Y', 'C'), ('Y', 'D')])
+        >>> idx = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Y', 'D')])
         >>> kdf2 = ks.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8]], columns=idx)
-        >>> kdf2.rename(columns=str.lower, level=0) # doctest: +NORMALIZE_WHITESPACE
+        >>> kdf2.rename(columns=str.lower, level=0)  # doctest: +NORMALIZE_WHITESPACE
            x     y
            A  B  C  D
         0  1  2  3  4
         1  5  6  7  8
 
         >>> kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list('ab'))
-        >>> kdf3.rename(index=str.lower) # doctest: +NORMALIZE_WHITESPACE
+        >>> kdf3.rename(index=str.lower)  # doctest: +NORMALIZE_WHITESPACE
              a  b
         x a  1  2
           b  3  4
@@ -6902,61 +6899,63 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
           d  7  8
         """
 
+        def gen_mapper_fn(mapper):
+            if isinstance(mapper, dict):
+                if len(mapper) == 0:
+                    if errors == 'raise':
+                        raise KeyError('Index include label which is not in the `mapper`.')
+                    else:
+                        return DataFrame(self._internal)
+
+                type_set = set(map(lambda x: type(x), mapper.values()))
+                if len(type_set) > 1:
+                    raise ValueError("Mapper dict should have the same value type.")
+                spark_return_type = as_spark_type(list(type_set)[0])
+
+                def mapper_fn(x):
+                    if x in mapper:
+                        return mapper[x]
+                    else:
+                        if errors == 'raise':
+                            raise KeyError('Index include value which is not in the `mapper`')
+                        return x
+            elif callable(mapper):
+                spark_return_type = _infer_return_type(mapper).tpe
+
+                def mapper_fn(x):
+                    return mapper(x)
+            else:
+                raise ValueError("`mapper` or `index` or `columns` should be "
+                                 "either dict-like or function type.")
+            return mapper_fn, spark_return_type
+
+        index_mapper_fn = None
+        index_mapper_ret_stype = None
+        columns_mapper_fn = None
+        columns_mapper_ret_stype = None
+
         if mapper:
             if axis == 'index' or axis == 0:
-                is_index_mapper = True
+                index_mapper_fn, index_mapper_ret_stype = gen_mapper_fn(mapper)
             elif axis == 'columns' or axis == 1:
-                is_index_mapper = False
+                columns_mapper_fn, columns_mapper_ret_stype = gen_mapper_fn(mapper)
             else:
                 raise ValueError("argument axis should be either the axis name "
                                  "(‘index’, ‘columns’) or number (0, 1)")
         else:
             if index:
-                mapper = index
-                is_index_mapper = True
-            elif columns:
-                mapper = columns
-                is_index_mapper = False
-            else:
-                raise ValueError("rename should take either `index` or `columns` mapper.")
+                index_mapper_fn, index_mapper_ret_stype = gen_mapper_fn(index)
+            if columns:
+                columns_mapper_fn, _ = gen_mapper_fn(columns)
 
-        if inplace is None:
-            do_copy = copy
-        else:
-            do_copy = not inplace
+            if not index and not columns:
+                raise ValueError("Either `index` or `columns` should be provided.")
 
-        if not do_copy:
+        if inplace:
             raise RuntimeError("Koalas dataframe rename method do not support in-place operation.")
 
-        if isinstance(mapper, dict):
-            if len(mapper) == 0:
-                if errors == 'raise':
-                    raise KeyError('Index include label which is not in the `mapper`.')
-                else:
-                    return DataFrame(self._internal)
-
-            type_set = set(map(lambda x: type(x), mapper.values()))
-            if len(type_set) > 1:
-                raise ValueError("Mapper dict should have the same value type.")
-            spark_return_type = as_spark_type(list(type_set)[0])
-
-            def mapper_fn(x):
-                if x in mapper:
-                    return mapper[x]
-                else:
-                    if errors == 'raise':
-                        raise KeyError('Index include value which is not in the `mapper`')
-                    return x
-        elif callable(mapper):
-            spark_return_type = _infer_return_type(mapper).tpe
-
-            def mapper_fn(x):
-                return mapper(x)
-        else:
-            raise ValueError("`mapper` or `index` or `columns` should be "
-                             "either dict-like or function type.")
-
-        if is_index_mapper:
+        internal = self._internal
+        if index_mapper_fn:
             # rename index labels, if `level` is None, rename all index columns, otherwise only
             # rename the corresponding level index.
             # implement this by transform the underlying spark dataframe,
@@ -6970,7 +6969,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             #           .withColumn("index_1", mapper_fn_udf(col("index_1"))
             #   ```
 
-            index_columns = self._internal.index_columns
+            index_columns = internal.index_columns
             num_indices = len(index_columns)
             if level:
                 if level < 0 or level >= num_indices:
@@ -6979,42 +6978,51 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             def gen_new_index_column(level):
                 index_col_name = index_columns[level]
 
-                index_mapper_udf = pandas_udf(lambda s: s.map(mapper_fn),
-                                              returnType=spark_return_type)
-                return index_mapper_udf(col(index_col_name))
+                index_mapper_udf = pandas_udf(lambda s: s.map(index_mapper_fn),
+                                              returnType=index_mapper_ret_stype)
+                return index_mapper_udf(scol_for(internal.sdf, index_col_name))
 
-            sdf = self._sdf
+            sdf = internal.sdf
             if level is None:
                 for i in range(num_indices):
                     sdf = sdf.withColumn(index_columns[i], gen_new_index_column(i))
             else:
                 sdf = sdf.withColumn(index_columns[level], gen_new_index_column(level))
-
-            internal = self._internal.copy(sdf=sdf)
-        else:
+            internal = internal.copy(sdf=sdf)
+        if columns_mapper_fn:
             # rename column name.
-            # we only need to modify the `kdf._internal._column_index
-            # replace each column name by mapper dict or mapper function.
+            # Will modify the `_internal._column_index` and transform underlying spark dataframe
+            # to the same column name with `_internal._column_index`.
             if level:
-                if level < 0 or level >= self._internal.column_index_level:
+                if level < 0 or level >= internal.column_index_level:
                     raise ValueError("level should be an integer between [0, column_index_level)")
 
             def gen_new_column_index_entry(column_index_entry):
                 if isinstance(column_index_entry, tuple):
                     if level is None:
                         # rename all level columns
-                        return tuple(map(mapper_fn, column_index_entry))
+                        return tuple(map(columns_mapper_fn, column_index_entry))
                     else:
                         # only rename specified level column
                         entry_list = list(column_index_entry)
-                        entry_list[level] = mapper_fn(entry_list[level])
+                        entry_list[level] = columns_mapper_fn(entry_list[level])
                         return tuple(entry_list)
                 else:
-                    return mapper_fn(column_index_entry)
+                    return columns_mapper_fn(column_index_entry)
 
-            new_column_index = list(map(gen_new_column_index_entry, self._internal.column_index))
+            new_column_index = list(map(gen_new_column_index_entry, internal.column_index))
 
-            internal = self._internal.copy(column_index=new_column_index)
+            if internal.column_index_level == 1:
+                new_data_columns = [col[0] for col in new_column_index]
+            else:
+                new_data_columns = [str(col) for col in new_column_index]
+            new_data_scols = [scol_for(internal.sdf, old_col_name).alias(new_col_name)
+                              for old_col_name, new_col_name
+                              in zip(internal.data_columns, new_data_columns)]
+            sdf = internal.sdf.select(*(internal.index_scols + new_data_scols))
+            # Q: Should we set `column_index_names` for new internal dataframe ?
+            internal = internal.copy(sdf=sdf, column_index=new_column_index,
+                                     data_columns=new_data_columns)
         return DataFrame(internal)
 
     def _get_from_multiindex_column(self, key):
