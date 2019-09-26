@@ -11,6 +11,10 @@ by Andi Albrecht.
 #}
 {% extends "basic/layout.html" %}
 
+{%- block rootrellink %}
+<li class="nav-item nav-item-0"><img src="https://raw.githubusercontent.com/databricks/koalas/master/Koalas-logo-nolabel.png"><a href="{{ pathto(master_doc) }}">{{ shorttitle|e }}</a>{{ reldelim1 }}</li>
+{%- endblock %}
+
 {%- block content %}
 <div class="content-wrapper">
     <div class="content">

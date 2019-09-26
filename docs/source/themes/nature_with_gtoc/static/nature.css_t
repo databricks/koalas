@@ -368,3 +368,12 @@ div.seealso dd {
     margin-top: 0;
     margin-bottom: 0;
 }
+
+/**
+ * Logo
+ */
+
+li.nav-item-0 img {
+    height: 12px;
+    margin-right: 5px;
+}
