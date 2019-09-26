@@ -1244,6 +1244,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(ktable, ptable)
         self.assert_eq(ktable.index, ptable.index)
+        self.assert_eq(repr(ktable.index), repr(ptable.index))
 
     def test_pivot_errors(self):
         kdf = ks.range(10)
