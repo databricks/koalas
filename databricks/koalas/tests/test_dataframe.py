@@ -1224,6 +1224,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         #  fill_value=999))
 
     def test_pivot_table_and_index(self):
+        # https://github.com/databricks/koalas/issues/805
         pdf = pd.DataFrame({"A": ["foo", "foo", "foo", "foo", "foo",
                                   "bar", "bar", "bar", "bar"],
                             "B": ["one", "one", "one", "two", "two",
