@@ -39,7 +39,7 @@ from databricks.koalas.series import Series
 
 class Index(IndexOpsMixin):
     """
-    Koala Index that corresponds to Pandas Index logically. This might hold Spark Column
+    Koalas Index that corresponds to Pandas Index logically. This might hold Spark Column
     internally.
 
     :ivar _kdf: The parent dataframe
@@ -99,7 +99,7 @@ class Index(IndexOpsMixin):
 
     def to_pandas(self) -> pd.Index:
         """
-        Return a pandas Series.
+        Return a pandas Index.
 
         .. note:: This method should only be used if the resulting Pandas object is expected
                   to be small, as all the data is loaded into the driver's memory. If the input
@@ -354,6 +354,29 @@ class Index(IndexOpsMixin):
 
 
 class MultiIndex(Index):
+    """
+    Koalas MultiIndex that corresponds to Pandas MultiIndex logically. This might hold Spark Column
+    internally.
+
+    :ivar _kdf: The parent dataframe
+    :type _kdf: DataFrame
+    :ivar _scol: Spark Column instance
+    :type _scol: pyspark.Column
+
+    See Also
+    --------
+    Index : A single-level Index.
+
+    Examples
+    --------
+    >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[list('abc'), list('def')]).index
+    MultiIndex(levels=[['a', 'b', 'c'], ['d', 'e', 'f']],
+               codes=[[0, 1, 2], [0, 1, 2]])
+
+    >>> ks.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')]).index
+    MultiIndex(levels=[['a', 'b', 'c'], ['d', 'e', 'f']],
+               codes=[[0, 1, 2], [0, 1, 2]])
+    """
 
     def __init__(self, kdf: DataFrame):
         assert len(kdf._internal._index_map) > 1
@@ -378,6 +401,27 @@ class MultiIndex(Index):
     def name(self, name: str) -> None:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
 
+    def to_pandas(self) -> pd.MultiIndex:
+        """
+        Return a pandas MultiIndex.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory. If the input
+                  is large, set max_rows parameter.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'],
+        ...                   index=[list('abcd'), list('efgh')])
+        >>> df['dogs'].index.to_pandas()
+        MultiIndex(levels=[['a', 'b', 'c', 'd'], ['e', 'f', 'g', 'h']],
+                   codes=[[0, 1, 2, 3], [0, 1, 2, 3]])
+        """
+        return self._kdf[[]]._to_internal_pandas().index
+
+    toPandas = to_pandas
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):
             property_or_func = getattr(_MissingPandasLikeMultiIndex, item)
@@ -389,3 +433,18 @@ class MultiIndex(Index):
 
     def rename(self, name, inplace=False):
         raise NotImplementedError()
+
+    def __repr__(self):
+        max_display_count = get_option("display.max_rows")
+        if max_display_count is None:
+            return repr(self.to_pandas())
+
+        pindex = self._kdf.head(max_display_count + 1).index.to_pandas()
+
+        pindex_length = len(pindex)
+        repr_string = repr(pindex[:max_display_count])
+
+        if pindex_length > max_display_count:
+            footer = '\nShowing only the first {}'.format(max_display_count)
+            return repr_string + footer
+        return repr_string

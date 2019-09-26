@@ -1223,6 +1223,27 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         #  fill_value=999), pdf.pivot_table(index=['e', 'c'], columns="a", values="b",
         #  fill_value=999))
 
+    def test_pivot_table_and_index(self):
+        pdf = pd.DataFrame({"A": ["foo", "foo", "foo", "foo", "foo",
+                                  "bar", "bar", "bar", "bar"],
+                            "B": ["one", "one", "one", "two", "two",
+                                  "one", "one", "two", "two"],
+                            "C": ["small", "large", "large", "small",
+                                  "small", "large", "small", "small",
+                                  "large"],
+                            "D": [1, 2, 2, 3, 3, 4, 5, 6, 7],
+                            "E": [2, 4, 5, 5, 6, 6, 8, 9, 9]},
+                           columns=['A', 'B', 'C', 'D', 'E'])
+        kdf = ks.from_pandas(pdf)
+
+        ptable = pdf.pivot_table(values='D', index=['A', 'B'],
+                                 columns='C', aggfunc='sum', fill_value=0).sort_index()
+        ktable = kdf.pivot_table(values='D', index=['A', 'B'],
+                                 columns='C', aggfunc='sum', fill_value=0).sort_index()
+
+        self.assert_eq(ktable, ptable)
+        self.assert_eq(ktable.index, ptable.index)
+
     def test_pivot_errors(self):
         kdf = ks.range(10)
 
