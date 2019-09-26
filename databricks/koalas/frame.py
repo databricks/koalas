@@ -6870,7 +6870,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         10  2  5
         20  3  6
 
-        >>> kdf1.rename(str.lower, axis='columns')  # doctest: +NORMALIZE_WHITESPACE
+        >>> def str_lower(s) -> str:
+        ...     return str.lower(s)
+        >>> kdf1.rename(str_lower, axis='columns')  # doctest: +NORMALIZE_WHITESPACE
            a  b
         0  1  4
         1  2  5
@@ -6884,14 +6886,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> idx = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Y', 'D')])
         >>> kdf2 = ks.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8]], columns=idx)
-        >>> kdf2.rename(columns=str.lower, level=0)  # doctest: +NORMALIZE_WHITESPACE
+        >>> kdf2.rename(columns=str_lower, level=0)  # doctest: +NORMALIZE_WHITESPACE
            x     y
            A  B  C  D
         0  1  2  3  4
         1  5  6  7  8
 
         >>> kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list('ab'))
-        >>> kdf3.rename(index=str.lower)  # doctest: +NORMALIZE_WHITESPACE
+        >>> kdf3.rename(index=str_lower)  # doctest: +NORMALIZE_WHITESPACE
              a  b
         x a  1  2
           b  3  4
