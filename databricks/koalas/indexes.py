@@ -359,13 +359,17 @@ class MultiIndex(Index):
 
     Examples
     --------
-    >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[list('abc'), list('def')]).index
-    MultiIndex(levels=[['a', 'b', 'c'], ['d', 'e', 'f']],
-               codes=[[0, 1, 2], [0, 1, 2]])
+    >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[[1, 2, 3], [4, 5, 6]]).index  # doctest: +SKIP
+    MultiIndex([(1, 4),
+                (2, 5),
+                (3, 6)],
+               )
 
-    >>> ks.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')]).index
-    MultiIndex(levels=[['a', 'b', 'c'], ['d', 'e', 'f']],
-               codes=[[0, 1, 2], [0, 1, 2]])
+    >>> ks.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')]).index  # doctest: +SKIP
+    MultiIndex([('a', 'd'),
+                ('b', 'e'),
+                ('c', 'f')],
+               )
     """
 
     def __init__(self, kdf: DataFrame):
@@ -404,9 +408,12 @@ class MultiIndex(Index):
         >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
         ...                   columns=['dogs', 'cats'],
         ...                   index=[list('abcd'), list('efgh')])
-        >>> df['dogs'].index.to_pandas()
-        MultiIndex(levels=[['a', 'b', 'c', 'd'], ['e', 'f', 'g', 'h']],
-                   codes=[[0, 1, 2, 3], [0, 1, 2, 3]])
+        >>> df['dogs'].index.to_pandas()  # doctest: +SKIP
+        MultiIndex([('a', 'e'),
+                    ('b', 'f'),
+                    ('c', 'g'),
+                    ('d', 'h')],
+                   )
         """
         return self._kdf[[]]._to_internal_pandas().index
 
