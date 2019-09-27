@@ -335,21 +335,21 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         kdf.columns = columns
         _test_hist_plot(pdf, kdf)
 
-    def test_kde_plot(self):
-        pdf = self.pdf1
-        kdf = self.kdf1
+    # def test_kde_plot(self):
+    #     pdf = self.pdf1
+    #     kdf = self.kdf1
 
-        ax1 = pdf.plot.kde(bw_method=3)
-        ax2 = kdf.plot.kde(bw_method=3)
-        self.compare_plots(ax1, ax2)
+    #     ax1 = pdf.plot.kde(bw_method=3)
+    #     ax2 = kdf.plot.kde(bw_method=3)
+    #     self.compare_plots(ax1, ax2)
 
-        ax1 = pdf.plot(kind='kde', bw_method=3)
-        ax2 = kdf.plot(kind='kde', bw_method=3)
-        self.compare_plots(ax1, ax2)
+    #     ax1 = pdf.plot(kind='kde', bw_method=3)
+    #     ax2 = kdf.plot(kind='kde', bw_method=3)
+    #     self.compare_plots(ax1, ax2)
 
-        ax1 = pdf.plot.kde(bw_method=3, ind=[1, 2, 3])
-        ax2 = kdf.plot.kde(bw_method=3, ind=[1, 2, 3])
-        self.compare_plots(ax1, ax2)
+    #     ax1 = pdf.plot.kde(bw_method=3, ind=[1, 2, 3])
+    #     ax2 = kdf.plot.kde(bw_method=3, ind=[1, 2, 3])
+    #     self.compare_plots(ax1, ax2)
 
     def test_missing(self):
         ks = self.kdf1
