@@ -48,8 +48,6 @@ class _MissingPandasLikeSeries(object):
     flags = unsupported_property('flags', deprecated=True)
 
     # Functions
-    agg = unsupported_function('agg')
-    aggregate = unsupported_function('aggregate')
     align = unsupported_function('align')
     argsort = unsupported_function('argsort')
     asfreq = unsupported_function('asfreq')

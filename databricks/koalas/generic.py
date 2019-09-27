@@ -1255,11 +1255,13 @@ class _Frame(object):
 
         df_or_s = self
         if isinstance(by, str):
+            by = [(by,)]
+        elif isinstance(by, tuple):
             by = [by]
         elif isinstance(by, Series):
             by = [by]
         elif isinstance(by, Iterable):
-            by = list(by)
+            by = [key if isinstance(key, (tuple, Series)) else (key,) for key in by]
         else:
             raise ValueError('Not a valid index: TODO')
         if not len(by):
@@ -1421,7 +1423,7 @@ def _resolve_col(kdf, col_like):
         assert kdf is col_like._kdf, \
             "Cannot combine column argument because it comes from a different dataframe"
         return col_like
-    elif isinstance(col_like, str):
+    elif isinstance(col_like, tuple):
         return kdf[col_like]
     else:
         raise ValueError(col_like)

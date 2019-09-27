@@ -1203,8 +1203,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Return a pandas Series.
 
         .. note:: This method should only be used if the resulting Pandas object is expected
-                  to be small, as all the data is loaded into the driver's memory. If the input
-                  is large, set max_rows parameter.
+                  to be small, as all the data is loaded into the driver's memory.
 
         Examples
         --------
@@ -2293,6 +2292,51 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         apply_each = wraps(func)(lambda s, *a, **k: s.apply(func, args=a, **k))
         wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
         return wrapped(self, *args, **kwds).rename(self.name)
+
+    # TODO: not all arguments are implemented comparing to Pandas' for now.
+    def aggregate(self, func: Union[str, List[str]]):
+        """Aggregate using one or more operations over the specified axis.
+
+        Parameters
+        ----------
+        func : str or a list of str
+            function name(s) as string apply to series.
+
+        Returns
+        -------
+        scalar, Series
+            The return can be:
+            - scalar : when Series.agg is called with single function
+            - Series : when Series.agg is called with several functions
+
+        Notes
+        -----
+        `agg` is an alias for `aggregate`. Use the alias.
+
+        See Also
+        --------
+        databricks.koalas.Series.apply
+        databricks.koalas.Series.transform
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4])
+        >>> s.agg('min')
+        1
+
+        >>> s.agg(['min', 'max'])
+        max    4
+        min    1
+        Name: 0, dtype: int64
+        """
+        if isinstance(func, list):
+            return self.to_frame().agg(func)[self.name]
+        elif isinstance(func, str):
+            return getattr(self, func)()
+        else:
+            raise ValueError("func must be a string or list of strings")
+
+    agg = aggregate
 
     def transpose(self, *args, **kwargs):
         """
