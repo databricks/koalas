@@ -1170,98 +1170,6 @@ class GroupBy(object):
                                              for i, s in enumerate(groupkeys)])
         return DataFrame(internal)
 
-    # TODO: add keep parameter
-    def nsmallest(self, n=5):
-        """
-        Return the first n rows ordered by columns in ascending order in group.
-
-        Return the first n rows with the smallest values in columns, in ascending order.
-        The columns that are not specified are returned as well, but not used for ordering.
-
-        Parameters
-        ----------
-        n : int
-            Number of items to retrieve.
-
-        See Also
-        --------
-        Series.nsmallest
-        DataFrame.nsmallest
-        databricks.koalas.Series.nsmallest
-
-        Examples
-        --------
-        >>> df = ks.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
-        ...                    'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
-
-        >>> df.groupby(['a'])['b'].nsmallest(1).sort_index() # doctest: +NORMALIZE_WHITESPACE
-        a
-        1  0    1
-        2  3    2
-        3  6    3
-        Name: b, dtype: int64
-        """
-        if len(self._kdf._internal.index_names) > 1:
-            raise ValueError('idxmax do not support multi-index now')
-        groupkeys = self._groupkeys
-        sdf = self._kdf._sdf
-        name = self._agg_columns[0]._internal.data_columns[0]
-        window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name))
-        sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
-        internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[name],
-                                  index_map=([(s._internal.data_columns[0],
-                                               s._internal.column_index[0])
-                                              for s in self._groupkeys]
-                                             + self._kdf._internal.index_map))
-        return _col(DataFrame(internal))
-
-    # TODO: add keep parameter
-    def nlargest(self, n=5):
-        """
-        Return the first n rows ordered by columns in descending order in group.
-
-        Return the first n rows with the smallest values in columns, in descending order.
-        The columns that are not specified are returned as well, but not used for ordering.
-
-        Parameters
-        ----------
-        n : int
-            Number of items to retrieve.
-
-        See Also
-        --------
-        Series.nlargest
-        DataFrame.nlargest
-        databricks.koalas.Series.nlargest
-
-        Examples
-        --------
-        >>> df = ks.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
-        ...                    'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
-
-        >>> df.groupby(['a'])['b'].nlargest(1).sort_index() # doctest: +NORMALIZE_WHITESPACE
-        a
-        1  1    2
-        2  4    3
-        3  7    4
-        Name: b, dtype: int64
-        """
-        if len(self._kdf._internal.index_names) > 1:
-            raise ValueError('idxmax do not support multi-index now')
-        groupkeys = self._groupkeys
-        sdf = self._kdf._sdf
-        name = self._agg_columns[0]._internal.data_columns[0]
-        window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name).desc())
-        sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
-        internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[name],
-                                  index_map=([(s._internal.data_columns[0],
-                                               s._internal.column_index[0])
-                                              for s in self._groupkeys]
-                                             + self._kdf._internal.index_map))
-        return _col(DataFrame(internal))
-
     def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
         """Fill NA/NaN values in group.
 
@@ -1619,67 +1527,6 @@ class GroupBy(object):
                  F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0))
         return self._reduce_for_stat_function(stat_function, only_numeric=False)
 
-    # TODO: add bins, normalize parameter
-    def value_counts(self, sort=None, ascending=None, dropna=True):
-        """
-        Compute group sizes.
-
-        Parameters
-        ----------
-        sort : boolean, default None
-            Sort by frequencies.
-        ascending : boolean, default False
-            Sort in ascending order.
-        dropna : boolean, default True
-            Don't include counts of NaN.
-
-        See Also
-        --------
-        databricks.koalas.Series.groupby
-        databricks.koalas.DataFrame.groupby
-
-        Examples
-        --------
-        >>> df = ks.DataFrame({'A': [1, 2, 2, 3, 3, 3],
-        ...                    'B': [1, 1, 2, 3, 3, 3]},
-        ...                   columns=['A', 'B'])
-        >>> df
-           A  B
-        0  1  1
-        1  2  1
-        2  2  2
-        3  3  3
-        4  3  3
-        5  3  3
-
-        >>> df.groupby('A')['B'].value_counts().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        A  B
-        1  1    1
-        2  1    1
-           2    1
-        3  3    3
-        Name: B, dtype: int64
-        """
-        groupkeys = self._groupkeys + self._agg_columns
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
-                         for i, s in enumerate(groupkeys)]
-        sdf = self._kdf._sdf
-        agg_column = self._agg_columns[0]._internal.data_columns[0]
-        sdf = sdf.groupby(*groupkey_cols).count().withColumnRenamed('count', agg_column)
-
-        if sort:
-            if ascending:
-                sdf = sdf.orderBy(F.col(agg_column).asc())
-            else:
-                sdf = sdf.orderBy(F.col(agg_column).desc())
-
-        internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[agg_column],
-                                  index_map=[('__index_level_{}__'.format(i),
-                                              s._internal.column_index[0])
-                                             for i, s in enumerate(groupkeys)])
-        return _col(DataFrame(internal))
-
     def _reduce_for_stat_function(self, sfun, only_numeric):
         groupkeys = self._groupkeys
         groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
@@ -1878,11 +1725,11 @@ class SeriesGroupBy(GroupBy):
     def _reduce_for_stat_function(self, sfun, only_numeric):
         return _col(super(SeriesGroupBy, self)._reduce_for_stat_function(sfun, only_numeric))
 
-    def agg(self, func_or_funcs, *args, **kwargs):
-        raise NotImplementedError()
+    def agg(self, *args, **kwargs):
+        return _MissingPandasLikeSeriesGroupBy.agg(self, *args, **kwargs)
 
-    def aggregate(self, func_or_funcs, *args, **kwargs):
-        raise NotImplementedError()
+    def aggregate(self, *args, **kwargs):
+        return _MissingPandasLikeSeriesGroupBy.aggregate(self, *args, **kwargs)
 
     def apply(self, func):
         return _col(super(SeriesGroupBy, self).transform(func))
@@ -1894,8 +1741,8 @@ class SeriesGroupBy(GroupBy):
 
     transform.__doc__ = GroupBy.transform.__doc__
 
-    def filter(self, func):
-        raise NotImplementedError()
+    def filter(self, *args, **kwargs):
+        return _MissingPandasLikeSeriesGroupBy.filter(self, *args, **kwargs)
 
     def idxmin(self, skipna=True):
         return _col(super(SeriesGroupBy, self).idxmin(skipna))
@@ -1906,3 +1753,156 @@ class SeriesGroupBy(GroupBy):
         return _col(super(SeriesGroupBy, self).idxmax(skipna))
 
     idxmax.__doc__ = GroupBy.idxmax.__doc__
+
+    # TODO: add keep parameter
+    def nsmallest(self, n=5):
+        """
+        Return the first n rows ordered by columns in ascending order in group.
+
+        Return the first n rows with the smallest values in columns, in ascending order.
+        The columns that are not specified are returned as well, but not used for ordering.
+
+        Parameters
+        ----------
+        n : int
+            Number of items to retrieve.
+
+        See Also
+        --------
+        Series.nsmallest
+        DataFrame.nsmallest
+        databricks.koalas.Series.nsmallest
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+        ...                    'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
+
+        >>> df.groupby(['a'])['b'].nsmallest(1).sort_index() # doctest: +NORMALIZE_WHITESPACE
+        a
+        1  0    1
+        2  3    2
+        3  6    3
+        Name: b, dtype: int64
+        """
+        if len(self._kdf._internal.index_names) > 1:
+            raise ValueError('idxmax do not support multi-index now')
+        groupkeys = self._groupkeys
+        sdf = self._kdf._sdf
+        name = self._agg_columns[0]._internal.data_columns[0]
+        window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name))
+        sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[name],
+                                  index_map=([(s._internal.data_columns[0],
+                                               s._internal.column_index[0])
+                                              for s in self._groupkeys]
+                                             + self._kdf._internal.index_map))
+        return _col(DataFrame(internal))
+
+    # TODO: add keep parameter
+    def nlargest(self, n=5):
+        """
+        Return the first n rows ordered by columns in descending order in group.
+
+        Return the first n rows with the smallest values in columns, in descending order.
+        The columns that are not specified are returned as well, but not used for ordering.
+
+        Parameters
+        ----------
+        n : int
+            Number of items to retrieve.
+
+        See Also
+        --------
+        Series.nlargest
+        DataFrame.nlargest
+        databricks.koalas.Series.nlargest
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+        ...                    'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
+
+        >>> df.groupby(['a'])['b'].nlargest(1).sort_index() # doctest: +NORMALIZE_WHITESPACE
+        a
+        1  1    2
+        2  4    3
+        3  7    4
+        Name: b, dtype: int64
+        """
+        if len(self._kdf._internal.index_names) > 1:
+            raise ValueError('idxmax do not support multi-index now')
+        groupkeys = self._groupkeys
+        sdf = self._kdf._sdf
+        name = self._agg_columns[0]._internal.data_columns[0]
+        window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name).desc())
+        sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[name],
+                                  index_map=([(s._internal.data_columns[0],
+                                               s._internal.column_index[0])
+                                              for s in self._groupkeys]
+                                             + self._kdf._internal.index_map))
+        return _col(DataFrame(internal))
+
+    # TODO: add bins, normalize parameter
+    def value_counts(self, sort=None, ascending=None, dropna=True):
+        """
+        Compute group sizes.
+
+        Parameters
+        ----------
+        sort : boolean, default None
+            Sort by frequencies.
+        ascending : boolean, default False
+            Sort in ascending order.
+        dropna : boolean, default True
+            Don't include counts of NaN.
+
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [1, 2, 2, 3, 3, 3],
+        ...                    'B': [1, 1, 2, 3, 3, 3]},
+        ...                   columns=['A', 'B'])
+        >>> df
+           A  B
+        0  1  1
+        1  2  1
+        2  2  2
+        3  3  3
+        4  3  3
+        5  3  3
+
+        >>> df.groupby('A')['B'].value_counts().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        A  B
+        1  1    1
+        2  1    1
+           2    1
+        3  3    3
+        Name: B, dtype: int64
+        """
+        groupkeys = self._groupkeys + self._agg_columns
+        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+                         for i, s in enumerate(groupkeys)]
+        sdf = self._kdf._sdf
+        agg_column = self._agg_columns[0]._internal.data_columns[0]
+        sdf = sdf.groupby(*groupkey_cols).count().withColumnRenamed('count', agg_column)
+
+        if sort:
+            if ascending:
+                sdf = sdf.orderBy(F.col(agg_column).asc())
+            else:
+                sdf = sdf.orderBy(F.col(agg_column).desc())
+
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[agg_column],
+                                  index_map=[('__index_level_{}__'.format(i),
+                                              s._internal.column_index[0])
+                                             for i, s in enumerate(groupkeys)])
+        return _col(DataFrame(internal))
