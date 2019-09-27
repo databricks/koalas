@@ -1534,7 +1534,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Currently only axis = 0 is supported in this function,
         axis = 1 is yet to be implemented.
         """
-        from databricks.koalas.indexes import Index, MultiIndex
         if labels is not None:
             axis = DataFrame._validate_axis(axis)
             if axis == 0:
