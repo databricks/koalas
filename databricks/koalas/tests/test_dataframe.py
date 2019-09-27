@@ -15,10 +15,12 @@
 #
 
 from datetime import date, datetime
+from distutils.version import LooseVersion
 import inspect
 
 import numpy as np
 import pandas as pd
+import pyspark
 from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks
@@ -409,6 +411,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list('ab'))
 
+        # for spark 2.3, disable arrow optimization. Because koalas multi-index do not support
+        # arrow optimization in spark 2.3.
+
+        if LooseVersion(pyspark.__version__) <= LooseVersion("2.3"):
+            self.spark.conf.set('spark.sql.execution.arrow.enabled', False)
         result_kdf = kdf3.rename(index=str_lower)
         self.assert_eq(result_kdf.index,
                        pd.Index([{'__index_level_0__': 'x', '__index_level_1__': 'a'},
@@ -432,6 +439,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                  {'__index_level_0__': 'Y', '__index_level_1__': 'c'},
                                  {'__index_level_0__': 'Y', '__index_level_1__': 'd'}],
                                 dtype='object'))
+
+        if LooseVersion(pyspark.__version__) <= LooseVersion("2.3"):
+            self.spark.conf.set('spark.sql.execution.arrow.enabled', True)
 
     def test_dot_in_column_name(self):
         self.assert_eq(

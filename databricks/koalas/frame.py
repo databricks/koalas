@@ -1897,6 +1897,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Currently not supported when the DataFrame has no index.
 
+        ..Note:: In spark 2.3, this method only works when 'spark.sql.execution.arrow.enabled'
+                 disabled.
+
         See Also
         --------
         Index
@@ -6878,7 +6881,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  2  5
         2  3  6
 
-        >>> kdf1.rename(lambda x: x*10, axis='index')  # doctest: +NORMALIZE_WHITESPACE
+        >>> def mul10(x) -> int:
+        ...     return x * 10
+        >>> kdf1.rename(mul10, axis='index')  # doctest: +NORMALIZE_WHITESPACE
             A  B
         0   1  4
         10  2  5
