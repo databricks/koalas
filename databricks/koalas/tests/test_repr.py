@@ -19,7 +19,7 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase
 
 
 class ReprTests(ReusedSQLTestCase):
-    max_display_count = 123
+    max_display_count = 23
 
     @classmethod
     def setUpClass(cls):

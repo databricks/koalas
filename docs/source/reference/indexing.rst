@@ -23,6 +23,20 @@ Properties
    Index.names
    Index.empty
 
+Modifying and computations
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: api/
+
+   Index.is_boolean
+   Index.is_categorical
+   Index.is_floating
+   Index.is_integer
+   Index.is_interval
+   Index.is_numeric
+   Index.is_object
+
 Missing Values
 ~~~~~~~~~~~~~~
 .. autosummary::

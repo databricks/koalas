@@ -9,6 +9,17 @@ Koalas has an options system that lets you customize some aspects of its behavio
 display-related options being those the user is most likely to adjust.
 
 Options have a full "dotted-style", case-insensitive name (e.g. ``display.max_rows``).
+You can get/set options directly as attributes of the top-level ``options`` attribute:
+
+
+.. code-block:: python
+
+   >>> import databricks.koalas as ks
+   >>> ks.options.display.max_rows
+   1000
+   >>> ks.options.display.max_rows = 10
+   >>> ks.options.display.max_rows
+   10
 
 The API is composed of 3 relevant functions, available directly from the ``koalas``
 namespace:

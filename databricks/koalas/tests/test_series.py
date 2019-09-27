@@ -647,3 +647,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = koalas.Series(pser)
         with self.assertRaisesRegex(ValueError, 'Type int63 not understood'):
             kser.astype('int63')
+
+    def test_aggregate(self):
+        pser = pd.Series([10, 20, 15, 30, 45], name='x')
+        kser = koalas.Series(pser)
+        msg = 'func must be a string or list of strings'
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.aggregate({'x': ['min', 'max']})
+        msg = ('If the given function is a list, it '
+               'should only contains function names as strings.')
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.aggregate(['min', max])

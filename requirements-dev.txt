@@ -7,6 +7,9 @@ numpy>=1.14
 # MLflow
 mlflow>=1.0
 
+# Dependency Issues
+protobuf<3.9.0
+
 # Documentation build
 sphinx==2.0.1
 nbsphinx

@@ -125,7 +125,8 @@ def range(start: int,
 
 
 def read_csv(path, sep=',', header='infer', names=None, index_col=None,
-             usecols=None, mangle_dupe_cols=True, parse_dates=False, comment=None):
+             usecols=None, squeeze=False, mangle_dupe_cols=True,
+             parse_dates=False, comment=None):
     """Read CSV (comma-separated) file into DataFrame.
 
     Parameters
@@ -155,6 +156,8 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
         from the document header row(s).
         If callable, the callable function will be evaluated against the column names,
         returning names where the callable function evaluates to `True`.
+    squeeze : bool, default False
+        If the parsed data only contains one column then return a Series.
     mangle_dupe_cols : bool, default True
         Duplicate columns will be specified as 'X0', 'X1', ... 'XN', rather
         than 'X' ... 'X'. Passing in False will cause data to be overwritten if
@@ -246,11 +249,14 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
         sdf = default_session().createDataFrame([], schema=StructType())
 
     index_map = _get_index_map(sdf, index_col)
+    kdf = DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
-    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    if squeeze and len(kdf.columns) == 1:
+        return kdf[kdf.columns[0]]
+    return kdf
 
 
-def read_json(path: str, **options):
+def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **options):
     """
     Convert a JSON string to pandas object.
 
@@ -258,6 +264,8 @@ def read_json(path: str, **options):
     ----------
     path : string
         File path
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
 
     Examples
     --------
@@ -272,7 +280,7 @@ def read_json(path: str, **options):
     0     a     b
     1     c     d
     """
-    return read_spark_io(path, format='json', options=options)
+    return read_spark_io(path, format='json', index_col=index_col, options=options)
 
 
 def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str] = None,
