@@ -7049,6 +7049,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         fields = [f for f in self._sdf.schema.fieldNames() if ' ' not in f]
         return super(DataFrame, self).__dir__() + fields
 
+    def __iter__(self):
+        return _MissingPandasLikeDataFrame.__iter__(self)
+
     @classmethod
     def _validate_axis(cls, axis=0):
         if axis not in (0, 1, 'index', 'columns', None):

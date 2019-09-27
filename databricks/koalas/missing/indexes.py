@@ -124,6 +124,7 @@ class _MissingPandasLikeIndex(object):
     memory_usage = common.memory_usage(unsupported_function)
     to_list = common.to_list(unsupported_function)
     tolist = common.tolist(unsupported_function)
+    __iter__ = common.__iter__(unsupported_function)
 
 
 class _MissingPandasLikeMultiIndex(object):
@@ -234,6 +235,7 @@ class _MissingPandasLikeMultiIndex(object):
     # Functions we won't support.
     values = common.values(unsupported_property)
     array = common.array(unsupported_property)
+    __iter__ = common.__iter__(unsupported_function)
 
     # Properties we won't support.
     memory_usage = common.memory_usage(unsupported_function)
