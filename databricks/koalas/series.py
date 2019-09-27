@@ -1544,10 +1544,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             if isinstance(index, str):
                 index = [index]
 
-            if isinstance(self.index, MultiIndex):
-                if level is None:
-                    raise ValueError("Need to specify 'level' when MultiIndex")
-            else:
+            if level is None:
                 level = 0
 
             sdf = self._internal.sdf.where(
