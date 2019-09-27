@@ -1547,10 +1547,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             if isinstance(self.index, MultiIndex):
                 if level is None:
                     raise ValueError("Need to specify 'level' when MultiIndex")
-                sdf = self._internal.sdf.where(
-                    ~F.col('__index_level_{}__'.format(level)).isin(index))
-            elif isinstance(self.index, Index):
-                sdf = self._internal.sdf.where(~F.col('__index_level_0__').isin(index))
+            else:
+                level = 0
+
+            sdf = self._internal.sdf.where(
+                ~F.col('__index_level_{}__'.format(level)).isin(index))
 
             internal = self._internal.copy(sdf=sdf)
             return Series(internal)
