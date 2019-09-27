@@ -6949,14 +6949,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def _repr_html_(self):
         max_display_count = get_option("display.max_rows")
+        # pandas 0.25.1 has a regression about HTML representation so 'bold_rows'
+        # has to be set as False explicitly. See https://github.com/pandas-dev/pandas/issues/28204
+        bold_rows = not (LooseVersion("0.25.1") == LooseVersion(pd.__version__))
         if max_display_count is None:
-            return self._to_internal_pandas().to_html(notebook=True)
+            return self._to_internal_pandas().to_html(notebook=True, bold_rows=bold_rows)
 
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
         pdf = pdf[:max_display_count]
         if pdf_length > max_display_count:
-            repr_html = pdf.to_html(show_dimensions=True, notebook=True)
+            repr_html = pdf.to_html(show_dimensions=True, notebook=True, bold_rows=bold_rows)
             match = REPR_HTML_PATTERN.search(repr_html)
             if match is not None:
                 nrows = match.group("rows")
@@ -6967,7 +6970,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   by=by,
                                   cols=ncols))
                 return REPR_HTML_PATTERN.sub(footer, repr_html)
-        return pdf.to_html(notebook=True)
+        return pdf.to_html(notebook=True, bold_rows=bold_rows)
 
     def __getitem__(self, key):
         return self._pd_getitem(key)
