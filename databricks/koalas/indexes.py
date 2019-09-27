@@ -61,7 +61,6 @@ class Index(IndexOpsMixin):
     """
 
     def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None) -> None:
-        assert len(kdf._internal._index_map) == 1
         if scol is None:
             scol = kdf._internal.index_scols[0]
         internal = kdf._internal.copy(scol=scol,
@@ -413,6 +412,9 @@ class MultiIndex(Index):
                     ('d', 'h')],
                    )
         """
+        # TODO: We might need to handle internal state change.
+        # So far, we don't have any functions to change the internal state of MultiIndex except for
+        # series-like operations. In that case, it creates new Index object instead of MultiIndex.
         return self._kdf[[]]._to_internal_pandas().index
 
     toPandas = to_pandas
