@@ -1454,7 +1454,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def drop(self, labels=None, axis=0, index: Union[str, List[str]] = None, level=None):
         """
-        Drop specified labels from columns.
+        Drop specified labels from rows.
 
         Remove rows by specifying label names and axis=0 or index.
         When specifying both labels and index, only labels will be dropped.
