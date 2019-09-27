@@ -1203,8 +1203,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Return a pandas Series.
 
         .. note:: This method should only be used if the resulting Pandas object is expected
-                  to be small, as all the data is loaded into the driver's memory. If the input
-                  is large, set max_rows parameter.
+                  to be small, as all the data is loaded into the driver's memory.
 
         Examples
         --------
