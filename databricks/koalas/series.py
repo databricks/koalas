@@ -1452,7 +1452,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return _col(self.to_dataframe().clip(lower, upper))
 
-    def drop(self, labels=None, axis=0, index: Union[str, List[str]] = None):
+    def drop(self, labels=None, axis=0, index: Union[str, List[str]] = None, level=None):
         """
         Drop specified labels from columns.
 
@@ -1500,21 +1500,58 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         A    0
         Name: 0, dtype: int64
 
+        Also support for MultiIndex
+
+        >>> midx = pd.MultiIndex(levels=[['lama', 'cow', 'falcon'],
+        ...                              ['speed', 'weight', 'length']],
+        ...                      codes=[[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                             [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...               index=midx)
+        >>> s
+        lama    speed      45.0
+                weight    200.0
+                length      1.2
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.drop(labels='weight', level=1)
+        lama    speed      45.0
+                length      1.2
+        cow     speed      30.0
+                length      1.5
+        falcon  speed     320.0
+                length      0.3
+        Name: 0, dtype: float64
+
         Notes
         -----
         Currently only axis = 0 is supported in this function,
         axis = 1 is yet to be implemented.
         """
+        from databricks.koalas.indexes import Index, MultiIndex
         if labels is not None:
             axis = DataFrame._validate_axis(axis)
             if axis == 0:
-                return self.drop(index=labels)
+                return self.drop(index=labels, level=level)
             raise NotImplementedError("Drop currently only works for axis=0")
         elif index is not None:
             if isinstance(index, str):
                 index = [index]
 
-            sdf = self._internal.sdf.where(~F.col('__index_level_0__').isin(index))
+            if isinstance(self.index, MultiIndex):
+                if level is None:
+                    raise ValueError("Need to specify 'level' when MultiIndex")
+                sdf = self._internal.sdf.where(
+                    ~F.col('__index_level_{}__'.format(level)).isin(index))
+            elif isinstance(self.index, Index):
+                sdf = self._internal.sdf.where(~F.col('__index_level_0__').isin(index))
+
             internal = self._internal.copy(sdf=sdf)
             return Series(internal)
         else:

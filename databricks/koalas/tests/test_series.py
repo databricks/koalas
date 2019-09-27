@@ -668,3 +668,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "Need to specify at least one of 'labels' or 'index'"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop()
+
+        # MultiIndex test
+        midx = pd.MultiIndex(levels=[['lama', 'cow', 'falcon'],
+                                     ['speed', 'weight', 'length']],
+                             codes=[[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                                    [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = koalas.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+                             index=midx)
+        msg = "Need to specify 'level' when MultiIndex"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.drop('lama')
