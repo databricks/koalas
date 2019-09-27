@@ -7050,7 +7050,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return super(DataFrame, self).__dir__() + fields
 
     def __iter__(self):
-        return _MissingPandasLikeDataFrame.__iter__(self)
+        return iter(self.columns)
 
     @classmethod
     def _validate_axis(cls, axis=0):
