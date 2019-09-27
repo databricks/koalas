@@ -7063,7 +7063,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                               for old_col_name, new_col_name
                               in zip(internal.data_columns, new_data_columns)]
             sdf = internal.sdf.select(*(internal.index_scols + new_data_scols))
-            # Q: Should we set `column_index_names` for new internal dataframe ?
             internal = internal.copy(sdf=sdf, column_index=new_column_index,
                                      data_columns=new_data_columns)
         return DataFrame(internal)
