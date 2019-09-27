@@ -1456,9 +1456,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         Drop specified labels from columns.
 
-        Remove columns by specifying label names and axis=1 or columns.
-        When specifying both labels and columns, only labels will be dropped.
-        Removing rows is yet to be implemented.
+        Remove rows by specifying label names and axis=0 or index.
+        When specifying both labels and index, only labels will be dropped.
+        Removing columns is yet to be implemented.
 
         Parameters
         ----------
