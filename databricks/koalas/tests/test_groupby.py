@@ -130,8 +130,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                            pdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'],
                                                                     'C': 'sum'}))
 
-        expected_error_message = (r"aggs must be a dict mapping from column name \(string or tuple\) "
-                                  r"to aggregate functions \(string or list of strings\).")
+        expected_error_message = (r"aggs must be a dict mapping from column name \(string or "
+                                  r"tuple\) to aggregate functions \(string or list of strings\).")
         with self.assertRaisesRegex(ValueError, expected_error_message):
             kdf.groupby('A', as_index=as_index).agg(0)
 
@@ -556,8 +556,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
             self.assert_eq(kdf.groupby(("x", "b")).apply(lambda x: x + 1).sort_index(),
                            pdf.groupby(("x", "b")).apply(lambda x: x + 1).sort_index())
-            self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).apply(lambda x: x * x).sort_index(),
-                           pdf.groupby([('x', 'a'), ('x', 'b')]).apply(lambda x: x * x).sort_index())
+            self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')])
+                           .apply(lambda x: x * x).sort_index(),
+                           pdf.groupby([('x', 'a'), ('x', 'b')])
+                           .apply(lambda x: x * x).sort_index())
         finally:
             reset_option('compute.shortcut_limit')
 
