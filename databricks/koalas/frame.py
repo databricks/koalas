@@ -6975,7 +6975,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index_mapper_fn = None
         index_mapper_ret_stype = None
         columns_mapper_fn = None
-        columns_mapper_ret_stype = None
 
         if mapper:
             if axis == 'index' or axis == 0:
@@ -6993,9 +6992,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             if not index and not columns:
                 raise ValueError("Either `index` or `columns` should be provided.")
-
-        if inplace:
-            raise RuntimeError("Koalas dataframe rename method do not support in-place operation.")
 
         internal = self._internal
         if index_mapper_fn:
@@ -7065,7 +7061,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = internal.sdf.select(*(internal.index_scols + new_data_scols))
             internal = internal.copy(sdf=sdf, column_index=new_column_index,
                                      data_columns=new_data_columns)
-        return DataFrame(internal)
+        if inplace:
+            self._internal = internal
+            return self
+        else:
+            return DataFrame(internal)
 
     def _get_from_multiindex_column(self, key):
         """ Select columns from multi-index columns.
