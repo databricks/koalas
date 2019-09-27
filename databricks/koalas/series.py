@@ -1454,20 +1454,21 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def drop(self, labels=None, axis=0, index: Union[str, List[str]] = None, level=None):
         """
-        Drop specified labels from rows.
+        Return Series with specified index labels removed.
 
-        Remove rows by specifying label names and axis=0 or index.
-        When specifying both labels and index, only labels will be dropped.
-        Removing columns is yet to be implemented.
+        Remove elements of a Series based on specifying the index labels.
+        When using a multi-index, labels on different levels can be removed by specifying the level.
 
         Parameters
         ----------
         labels : single label or list-like
             Index labels to drop.
-        axis : {0 or 'index'}, default 0
+        axis : 0, default 0
             Redundant for application on Series.
         index : None
             Redundant for application on Series, but index can be used instead of labels.
+        level : int or level name, optional
+            For MultiIndex, level for which the labels will be removed.
 
         Returns
         -------
