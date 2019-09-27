@@ -335,6 +335,8 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         kdf.columns = columns
         _test_hist_plot(pdf, kdf)
 
+    # There seems an issue about plot comparison.
+    # plot image has to be closed for each plot but seems not. So, overlapped plot images are being compared.
     # def test_kde_plot(self):
     #     pdf = self.pdf1
     #     kdf = self.kdf1
