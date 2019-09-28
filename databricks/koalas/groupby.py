@@ -57,7 +57,7 @@ class GroupBy(object):
 
         Parameters
         ----------
-        func : dict
+        func : dict, str or list
              a dict mapping from column name (string) to
              aggregate functions (string or list of strings).
 
