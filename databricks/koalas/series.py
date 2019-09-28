@@ -1530,9 +1530,32 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         falcon  speed     320.0
                 length      0.3
         Name: 0, dtype: float64
+
+        >>> s.drop(('lama', 'weight'))
+        lama    speed      45.0
+                length      1.2
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.drop([('lama', 'speed'), ('falcon', 'weight')])
+        lama    weight    200.0
+                length      1.2
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                length      0.3
+        Name: 0, dtype: float64
         """
         index = labels
         if index is not None:
+            if not isinstance(index, (str, list, tuple)):
+                raise ValueError("'index' type should be one of str, list, tuple")
             if level is None:
                 level = 0
             if level >= len(self._internal.index_scols):
@@ -1555,8 +1578,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                                      "index names as strings")
             if isinstance(index, tuple):
                 df = self.to_frame().transpose().drop(index).transpose()
-            else:
-                raise ValueError("'index' type should be one of str, list, tuple")
 
             internal = self._internal.copy(sdf=df._internal.sdf, scol=df._internal.scol)
             return Series(internal)
