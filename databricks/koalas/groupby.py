@@ -115,7 +115,7 @@ class GroupBy(object):
         """
         if not isinstance(func_or_funcs, (str, list)):
             if not isinstance(func_or_funcs, dict) or \
-                    not all(isinstance(key, str) and
+                    not all(isinstance(key, (str, tuple)) and
                             (isinstance(value, str) or isinstance(value, list) and
                                 all(isinstance(v, str) for v in value))
                             for key, value in func_or_funcs.items()):
