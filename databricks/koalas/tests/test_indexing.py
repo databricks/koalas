@@ -66,13 +66,12 @@ class BasicIndexingTest(ComparisonTestBase):
         yield df2.reset_index(level='month', drop=True)
         yield df2.reset_index(level=['month', 'year'], drop=True)
 
-        if LooseVersion("0.20.0") <= LooseVersion(pd.__version__):
-            self.assertRaisesRegex(IndexError, 'Too many levels: Index has only 1 level, not 3',
-                                   lambda: df1.reset_index(level=2))
-            self.assertRaisesRegex(IndexError, 'Too many levels: Index has only 1 level, not 4',
-                                   lambda: df1.reset_index(level=[3, 2]))
-            self.assertRaisesRegex(KeyError, 'Level unknown must be same as name \\(month\\)',
-                                   lambda: df1.reset_index(level='unknown'))
+        self.assertRaisesRegex(IndexError, 'Too many levels: Index has only 1 level, not 3',
+                               lambda: df1.reset_index(level=2))
+        self.assertRaisesRegex(IndexError, 'Too many levels: Index has only 1 level, not 4',
+                               lambda: df1.reset_index(level=[3, 2]))
+        self.assertRaisesRegex(KeyError, 'unknown.*month',
+                               lambda: df1.reset_index(level='unknown'))
         self.assertRaisesRegex(KeyError, 'Level unknown not found',
                                lambda: df2.reset_index(level='unknown'))
 

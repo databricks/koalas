@@ -91,9 +91,12 @@ class _MissingPandasLikeSeriesGroupBy(object):
     take = unsupported_property('take', deprecated=True)
 
     # Functions
+    agg = unsupported_function('agg')
+    aggregate = unsupported_function('aggregate')
     cumcount = unsupported_function('cumcount')
     describe = unsupported_function('describe')
     expanding = unsupported_function('expanding')
+    filter = unsupported_function('filter')
     get_group = unsupported_function('get_group')
     head = unsupported_function('head')
     median = unsupported_function('median')

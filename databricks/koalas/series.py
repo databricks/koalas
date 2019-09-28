@@ -1203,8 +1203,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Return a pandas Series.
 
         .. note:: This method should only be used if the resulting Pandas object is expected
-                  to be small, as all the data is loaded into the driver's memory. If the input
-                  is large, set max_rows parameter.
+                  to be small, as all the data is loaded into the driver's memory.
 
         Examples
         --------
@@ -3077,7 +3076,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        return Series(self._scol.__getitem__(key), anchor=self._kdf, index=self._index_map)
+        return self._with_new_scol(self._scol.__getitem__(key))
 
     def __getattr__(self, item: str_type) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
@@ -3127,6 +3126,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             fields = [f for f in self.schema.fieldNames() if ' ' not in f]
         return super(Series, self).__dir__() + fields
+
+    def __iter__(self):
+        return _MissingPandasLikeSeries.__iter__(self)
 
     def _pandas_orig_repr(self):
         # TODO: figure out how to reuse the original one.

@@ -32,6 +32,7 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
     DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.utils import default_session
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import _InternalFrame, IndexMap
@@ -1370,7 +1371,8 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
     0      c       3
     1      d       4
     """
-    if not isinstance(objs, Iterable):  # TODO: support dict
+    if isinstance(objs, (DataFrame, IndexOpsMixin)) or \
+            not isinstance(objs, Iterable):  # TODO: support dict
         raise TypeError('first argument must be an iterable of koalas '
                         'objects, you passed an object of type '
                         '"{name}"'.format(name=type(objs).__name__))
