@@ -8,6 +8,8 @@ SOURCEDIR     = source
 BUILDDIR      = build
 
 export PYTHONPATH := $(realpath ..):$(PYTHONPATH)
+# Add a sitecustomize.py to generate release notes
+export PYTHONPATH := $(realpath .)/prehook:$(PYTHONPATH)
 
 # Put it first so that "make" without argument is like "make help".
 help:

@@ -14,6 +14,7 @@ protobuf<3.9.0
 sphinx==2.0.1
 nbsphinx
 numpydoc==0.8
+pypandoc
 
 # Linter
 mypy
