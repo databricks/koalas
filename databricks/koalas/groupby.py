@@ -112,6 +112,21 @@ class GroupBy(object):
         1    1    2
         2    3    4
 
+        >>> aggregated = df.groupby('A').agg('min')
+        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+            B      C
+          min    min
+        A
+        1   1  0.227
+        2   3 -0.562
+
+        >>> aggregated = df.groupby('A').agg(['min', 'max'])
+        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+            B           C
+          min  max    min    max
+        A
+        1   1    2  0.227  0.362
+        2   3    4 -0.562  1.267
         """
         if not isinstance(func_or_funcs, (str, list)):
             if not isinstance(func_or_funcs, dict) or \
