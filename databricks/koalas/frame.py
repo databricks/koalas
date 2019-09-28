@@ -455,7 +455,9 @@ class DataFrame(_Frame, Generic[T]):
 
     # Arithmetic Operators
     def _map_series_op(self, op, other):
-        if not isinstance(other, DataFrame) and is_sequence(other):
+        from databricks.koalas.base import IndexOpsMixin
+        if not isinstance(other, DataFrame) and (isinstance(other, IndexOpsMixin) or
+                                                 is_sequence(other)):
             raise ValueError(
                 "%s with a sequence is currently not supported; "
                 "however, got %s." % (op, type(other)))
@@ -7053,6 +7055,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def __dir__(self):
         fields = [f for f in self._sdf.schema.fieldNames() if ' ' not in f]
         return super(DataFrame, self).__dir__() + fields
+
+    def __iter__(self):
+        return iter(self.columns)
 
     @classmethod
     def _validate_axis(cls, axis=0):
