@@ -662,9 +662,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_drop(self):
         pser = pd.Series([10, 20, 15, 30, 45], name='x')
         kser = koalas.Series(pser)
-        msg = 'Drop currently only works for axis=0'
-        with self.assertRaisesRegex(NotImplementedError, msg):
-            kser.drop(0, axis=1)
         msg = "Need to specify at least one of 'labels' or 'index'"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop()
+
+        # For MultiIndex
+        midx = pd.MultiIndex(levels=[['lama', 'cow', 'falcon'],
+                                     ['speed', 'weight', 'length']],
+                             codes=[[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                                    [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = koalas.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+                             index=midx)
+        msg = "'level' should be less than the number of indexes"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.drop(labels='weight', level=2)
+        msg = ("If the given index is a list, it "
+               "should only contains names as strings, "
+               "or a list of tuples that contain "
+               "index names as strings")
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.drop(['lama', ['cow', 'falcon']])
+        msg = "'index' type should be one of str, list, tuple"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.drop({'lama': 'speed'})

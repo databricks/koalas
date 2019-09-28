@@ -1452,7 +1452,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return _col(self.to_dataframe().clip(lower, upper))
 
-    def drop(self, labels=None, axis=0, index: Union[str, List[str]] = None, level=None):
+    def drop(self,
+             labels=None,
+             index: Union[str, Tuple[str, ...], List[str], List[Tuple[str, ...]]] = None,
+             level=None):
         """
         Return Series with specified index labels removed.
 
@@ -1463,8 +1466,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         ----------
         labels : single label or list-like
             Index labels to drop.
-        axis : 0, default 0
-            Redundant for application on Series.
         index : None
             Redundant for application on Series, but index can be used instead of labels.
         level : int or level name, optional
@@ -1529,28 +1530,35 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         falcon  speed     320.0
                 length      0.3
         Name: 0, dtype: float64
-
-        Notes
-        -----
-        Currently only axis = 0 is supported in this function,
-        axis = 1 is yet to be implemented.
         """
-        if labels is not None:
-            axis = DataFrame._validate_axis(axis)
-            if axis == 0:
-                return self.drop(index=labels, level=level)
-            raise NotImplementedError("Drop currently only works for axis=0")
-        elif index is not None:
-            if isinstance(index, str):
-                index = [index]
-
+        index = labels
+        if index is not None:
             if level is None:
                 level = 0
+            if level >= len(self._internal.index_scols):
+                raise ValueError("'level' should be less than the number of indexes")
 
-            sdf = self._internal.sdf.where(
-                ~F.col('__index_level_{}__'.format(level)).isin(index))
+            if isinstance(index, str):
+                index = [index]
+            if isinstance(index, list):
+                if all((isinstance(idx, str) for idx in index)):
+                    sdf = self._internal.sdf.where(
+                        ~self._internal.index_scols[level].isin(index))
+                    return Series(self._internal.copy(sdf=sdf))
 
-            internal = self._internal.copy(sdf=sdf)
+                elif all((isinstance(idx, tuple) for idx in index)):
+                    df = self.to_frame().transpose().drop(index).transpose()
+                else:
+                    raise ValueError("If the given index is a list, it "
+                                     "should only contains names as strings, "
+                                     "or a list of tuples that contain "
+                                     "index names as strings")
+            if isinstance(index, tuple):
+                df = self.to_frame().transpose().drop(index).transpose()
+            else:
+                raise ValueError("'index' type should be one of str, list, tuple")
+
+            internal = self._internal.copy(sdf=df._internal.sdf, scol=df._internal.scol)
             return Series(internal)
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'index'")
