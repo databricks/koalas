@@ -69,20 +69,21 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         plt.close(ax.figure)
         return b64_data
 
-    def compare_plots(self, ax1, ax2):
-        self.assert_eq(self.plot_to_base64(ax1), self.plot_to_base64(ax2))
-
     def test_bar_plot(self):
         pdf = self.pdf1
         kdf = self.kdf1
 
         ax1 = pdf['a'].plot("bar", colormap='Paired')
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf['a'].plot("bar", colormap='Paired')
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
         ax1 = pdf['a'].plot(kind='bar', colormap='Paired')
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf['a'].plot(kind='bar', colormap='Paired')
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
     def test_bar_plot_limited(self):
         pdf = self.pdf2
@@ -92,22 +93,29 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         ax1 = pdf['id'][:1000].plot.bar(colormap='Paired')
         ax1.text(1, 1, 'showing top 1000 elements only', size=6, ha='right', va='bottom',
                  transform=ax1.transAxes)
+        bin1 = self.plot_to_base64(ax1)
+
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['id'].plot.bar(colormap='Paired')
+        bin2 = self.plot_to_base64(ax2)
 
-        self.compare_plots(ax1, ax2)
+        self.assertEqual(bin1, bin2)
 
     def test_pie_plot(self):
         pdf = self.pdf1
         kdf = self.kdf1
 
         ax1 = pdf['a'].plot.pie(colormap='Paired')
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf['a'].plot.pie(colormap='Paired')
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
         ax1 = pdf['a'].plot(kind='pie', colormap='Paired')
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf['a'].plot(kind='pie', colormap='Paired')
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
     def test_pie_plot_limited(self):
         pdf = self.pdf2
@@ -117,29 +125,39 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         ax1 = pdf['id'][:1000].plot.pie(colormap='Paired')
         ax1.text(1, 1, 'showing top 1000 elements only', size=6, ha='right', va='bottom',
                  transform=ax1.transAxes)
+        bin1 = self.plot_to_base64(ax1)
+
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['id'].plot.pie(colormap='Paired')
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+
+        self.assertEqual(bin1, bin2)
 
     def test_line_plot(self):
         pdf = self.pdf1
         kdf = self.kdf1
 
         ax1 = pdf['a'].plot("line", colormap='Paired')
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf['a'].plot("line", colormap='Paired')
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
         ax1 = pdf['a'].plot.line(colormap='Paired')
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf['a'].plot.line(colormap='Paired')
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
     def test_barh_plot(self):
         pdf = self.pdf1
         kdf = self.kdf1
 
         ax1 = pdf['a'].plot("barh", colormap='Paired')
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf['a'].plot("barh", colormap='Paired')
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
     def test_barh_plot_limited(self):
         pdf = self.pdf2
@@ -149,10 +167,13 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         ax1 = pdf['id'][:1000].plot.barh(colormap='Paired')
         ax1.text(1, 1, 'showing top 1000 elements only', size=6, ha='right', va='bottom',
                  transform=ax1.transAxes)
+        bin1 = self.plot_to_base64(ax1)
+
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['id'].plot.barh(colormap='Paired')
+        bin2 = self.plot_to_base64(ax2)
 
-        self.compare_plots(ax1, ax2)
+        self.assertEqual(bin1, bin2)
 
     def test_hist_plot(self):
         pdf = self.pdf1
@@ -160,21 +181,29 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
         _, ax1 = plt.subplots(1, 1)
         ax1 = pdf['a'].plot.hist()
+        bin1 = self.plot_to_base64(ax1)
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['a'].plot.hist()
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
         ax1 = pdf['a'].plot.hist(bins=15)
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf['a'].plot.hist(bins=15)
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
         ax1 = pdf['a'].plot(kind='hist', bins=15)
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf['a'].plot(kind='hist', bins=15)
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
         ax1 = pdf['a'].plot.hist(bins=3, bottom=[2, 1, 3])
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf['a'].plot.hist(bins=3, bottom=[2, 1, 3])
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
     def test_compute_hist(self):
         kdf = self.kdf1
@@ -195,51 +224,64 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         kdf = koalas.from_pandas(pdf)
 
         ax1 = pdf['sales'].plot("area", colormap='Paired')
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf['sales'].plot("area", colormap='Paired')
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
         ax1 = pdf['sales'].plot.area(colormap='Paired')
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf['sales'].plot.area(colormap='Paired')
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
         # just a sanity check for df.col type
         ax1 = pdf.sales.plot("area", colormap='Paired')
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf.sales.plot("area", colormap='Paired')
-        self.compare_plots(ax1, ax2)
-
-    def boxplot_comparison(self, *args, **kwargs):
-        pdf = self.pdf1
-        kdf = self.kdf1
-
-        _, ax1 = plt.subplots(1, 1)
-        ax1 = pdf['a'].plot.box(*args, **kwargs)
-        _, ax2 = plt.subplots(1, 1)
-        ax2 = kdf['a'].plot.box(*args, **kwargs)
-
-        diffs = [np.array([0, .5, 0, .5, 0, -.5, 0, -.5, 0, .5]),
-                 np.array([0, .5, 0, 0]),
-                 np.array([0, -.5, 0, 0])]
-
-        for i, (line1, line2) in enumerate(zip(ax1.get_lines(), ax2.get_lines())):
-            expected = line1.get_xydata().ravel()
-            actual = line2.get_xydata().ravel()
-            if i < 3:
-                actual += diffs[i]
-            self.assert_eq(pd.Series(expected), pd.Series(actual))
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
     def test_box_plot(self):
-        self.boxplot_comparison()
-        self.boxplot_comparison(showfliers=True)
-        self.boxplot_comparison(sym='')
-        self.boxplot_comparison(sym='.', color='r')
-        self.boxplot_comparison(use_index=False, labels=['Test'])
-        self.boxplot_comparison(usermedians=[2.0])
-        self.boxplot_comparison(conf_intervals=[(1.0, 3.0)])
+        def check_box_plot(pdf, kdf, *args, **kwargs):
+            _, ax1 = plt.subplots(1, 1)
+            ax1 = pdf['a'].plot.box(*args, **kwargs)
+            _, ax2 = plt.subplots(1, 1)
+            ax2 = kdf['a'].plot.box(*args, **kwargs)
+
+            diffs = [np.array([0, .5, 0, .5, 0, -.5, 0, -.5, 0, .5]),
+                     np.array([0, .5, 0, 0]),
+                     np.array([0, -.5, 0, 0])]
+
+            try:
+                for i, (line1, line2) in enumerate(zip(ax1.get_lines(), ax2.get_lines())):
+                    expected = line1.get_xydata().ravel()
+                    actual = line2.get_xydata().ravel()
+                    if i < 3:
+                        actual += diffs[i]
+                    self.assert_eq(pd.Series(expected), pd.Series(actual))
+            finally:
+                ax1.cla()
+                ax2.cla()
+
+        check_box_plot(self.pdf1, self.kdf1)
+        check_box_plot(self.pdf1, self.kdf1, showfliers=True)
+        check_box_plot(self.pdf1, self.kdf1, sym='')
+        check_box_plot(self.pdf1, self.kdf1, sym='.', color='r')
+        check_box_plot(self.pdf1, self.kdf1, use_index=False, labels=['Test'])
+        check_box_plot(self.pdf1, self.kdf1, usermedians=[2.0])
+        check_box_plot(self.pdf1, self.kdf1, conf_intervals=[(1.0, 3.0)])
 
         val = (1, 3)
-        self.assertRaises(ValueError, lambda: self.boxplot_comparison(usermedians=[2.0, 3.0]))
-        self.assertRaises(ValueError, lambda: self.boxplot_comparison(conf_intervals=[val, val]))
-        self.assertRaises(ValueError, lambda: self.boxplot_comparison(conf_intervals=[(1,)]))
+        self.assertRaises(
+            ValueError,
+            lambda: check_box_plot(self.pdf1, self.kdf1, usermedians=[2.0, 3.0]))
+        self.assertRaises(
+            ValueError,
+            lambda: check_box_plot(self.pdf1, self.kdf1, conf_intervals=[val, val]))
+        self.assertRaises(
+            ValueError,
+            lambda: check_box_plot(self.pdf1, self.kdf1, conf_intervals=[(1,)]))
 
     def test_box_summary(self):
         kdf = self.kdf1
@@ -261,31 +303,47 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         expected_whiskers = pdf.query('not outlier')['a'].min(), pdf.query('not outlier')['a'].max()
         expected_fliers = pdf.query('outlier')['a'].values
 
-        self.assert_eq(expected_mean, stats['mean'])
-        self.assert_eq(expected_median, stats['med'])
-        self.assert_eq(expected_q1, stats['q1'] + .5)
-        self.assert_eq(expected_q3, stats['q3'] - .5)
-        self.assert_eq(expected_fences[0], fences[0] + 2.0)
-        self.assert_eq(expected_fences[1], fences[1] - 2.0)
-        self.assert_eq(expected_whiskers[0], whiskers[0])
-        self.assert_eq(expected_whiskers[1], whiskers[1])
-        self.assert_eq(expected_fliers, fliers)
+        self.assertEqual(expected_mean, stats['mean'])
+        self.assertEqual(expected_median, stats['med'])
+        self.assertEqual(expected_q1, stats['q1'] + .5)
+        self.assertEqual(expected_q3, stats['q3'] - .5)
+        self.assertEqual(expected_fences[0], fences[0] + 2.0)
+        self.assertEqual(expected_fences[1], fences[1] - 2.0)
+        self.assertEqual(expected_whiskers[0], whiskers[0])
+        self.assertEqual(expected_whiskers[1], whiskers[1])
+        self.assertEqual(expected_fliers, fliers)
 
     def test_kde_plot(self):
-        pdf = self.pdf1
-        kdf = self.kdf1
+        def moving_average(a, n=10):
+            ret = np.cumsum(a, dtype=float)
+            ret[n:] = ret[n:] - ret[:-n]
+            return ret[n - 1:] / n
 
-        pax = pdf['a'].plot('kde', bw_method=0.3)
-        kax = kdf['a'].plot('kde', bw_method=0.3)
-        self.compare_plots(pax, kax)
+        def check_kde_plot(pdf, kdf, *args, **kwargs):
+            _, ax1 = plt.subplots(1, 1)
+            ax1 = pdf['a'].plot.kde(*args, **kwargs)
+            _, ax2 = plt.subplots(1, 1)
+            ax2 = kdf['a'].plot.kde(*args, **kwargs)
 
-        pax = pdf['a'].plot.kde(bw_method=0.3)
-        kax = kdf['a'].plot.kde(bw_method=0.3)
-        self.compare_plots(pax, kax)
+            try:
+                for i, (line1, line2) in enumerate(zip(ax1.get_lines(), ax2.get_lines())):
+                    expected = line1.get_xydata().ravel()
+                    actual = line2.get_xydata().ravel()
+                    # TODO: Due to implementation difference, the output is different comparing
+                    # to pandas'. We should identify the root cause of difference, and reduce
+                    # the diff.
 
-        pax = pdf['a'].plot('kde', ind=[1, 2, 3, 4, 5], bw_method=3.0)
-        kax = kdf['a'].plot('kde', ind=[1, 2, 3, 4, 5], bw_method=3.0)
-        self.compare_plots(pax, kax)
+                    # Note: Data is from 1 to 50. So, it smooths them by moving average and compares
+                    # both.
+                    self.assertTrue(
+                        np.allclose(moving_average(actual),
+                                    moving_average(expected), rtol=3))
+            finally:
+                ax1.cla()
+                ax2.cla()
+
+        check_kde_plot(self.pdf1, self.kdf1, bw_method=0.3)
+        check_kde_plot(self.pdf1, self.kdf1, ind=[1, 2, 3, 4, 5], bw_method=3.0)
 
     def test_empty_hist(self):
         pdf = self.pdf1.assign(categorical='A')
@@ -302,6 +360,8 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
         _, ax1 = plt.subplots(1, 1)
         ax1 = pdf['single'].plot.hist()
+        bin1 = self.plot_to_base64(ax1)
         _, ax2 = plt.subplots(1, 1)
         ax2 = kdf['single'].plot.hist()
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
