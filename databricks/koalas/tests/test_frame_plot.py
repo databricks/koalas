@@ -335,10 +335,29 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         kdf.columns = columns
         _test_hist_plot(pdf, kdf)
 
+    # There seems an issue about plot comparison.
+    # plot image has to be closed for each plot but seems not.
+    # So, overlapped plot images are being compared.
+    # def test_kde_plot(self):
+    #     pdf = self.pdf1
+    #     kdf = self.kdf1
+
+    #     ax1 = pdf.plot.kde(bw_method=3)
+    #     ax2 = kdf.plot.kde(bw_method=3)
+    #     self.compare_plots(ax1, ax2)
+
+    #     ax1 = pdf.plot(kind='kde', bw_method=3)
+    #     ax2 = kdf.plot(kind='kde', bw_method=3)
+    #     self.compare_plots(ax1, ax2)
+
+    #     ax1 = pdf.plot.kde(bw_method=3, ind=[1, 2, 3])
+    #     ax2 = kdf.plot.kde(bw_method=3, ind=[1, 2, 3])
+    #     self.compare_plots(ax1, ax2)
+
     def test_missing(self):
         ks = self.kdf1
 
-        unsupported_functions = ['box', 'density', 'hexbin', 'kde']
+        unsupported_functions = ['box', 'hexbin']
 
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,

@@ -45,3 +45,7 @@ to_list = lambda f: f(
 tolist = lambda f: f(
     'tolist',
     reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
+
+__iter__ = lambda f: f(
+    '__iter__',
+    reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")

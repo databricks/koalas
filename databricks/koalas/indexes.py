@@ -340,6 +340,9 @@ class Index(IndexOpsMixin):
             return repr_string + footer
         return repr_string
 
+    def __iter__(self):
+        return _MissingPandasLikeIndex.__iter__(self)
+
 
 class MultiIndex(Index):
     """
@@ -445,3 +448,6 @@ class MultiIndex(Index):
             footer = '\nShowing only the first {}'.format(max_display_count)
             return repr_string + footer
         return repr_string
+
+    def __iter__(self):
+        return _MissingPandasLikeMultiIndex.__iter__(self)
