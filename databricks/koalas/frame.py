@@ -1900,9 +1900,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Currently not supported when the DataFrame has no index.
 
-        ..Note:: In spark 2.3, this method only works when 'spark.sql.execution.arrow.enabled'
-                 disabled.
-
         See Also
         --------
         Index
