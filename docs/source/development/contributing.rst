@@ -144,42 +144,40 @@ Release Instructions
 
 Only project maintainers can do the following.
 
-Step 1. Make sure version is set correctly in `databricks/koalas/version.py`.
+1. Make sure version is set correctly in `databricks/koalas/version.py`.
 
-Step 2. Make sure the build is green.
+2. Make sure the build is green.
 
-Step 3. Create a new release on GitHub. Tag it as the same version as the setup.py.
-If the version is "0.1.0", tag the commit as "v0.1.0".
+3. Create a new release on GitHub. Tag it as the same version as the setup.py. If the version is "0.1.0", tag the commit as "v0.1.0".
 
-Step 4. Upload the package to PyPi:
+4. Upload the package to PyPi:
 
-.. code-block:: bash
+  .. code-block:: bash
 
-    rm -rf dist/koalas*
-    python setup.py sdist bdist_wheel
-    export package_version=$(python setup.py --version)
-    echo $package_version
+      rm -rf dist/koalas*
+      python setup.py sdist bdist_wheel
+      export package_version=$(python setup.py --version)
+      echo $package_version
 
-    python3 -m pip install --user --upgrade twine
+      python3 -m pip install --user --upgrade twine
 
-    # for test
-    python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl dist/koalas-$package_version.tar.gz
+      # for test
+      python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl dist/koalas-$package_version.tar.gz
 
-    # for release
-    python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl dist/koalas-$package_version.tar.gz
+      # for release
+      python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/koalas-$package_version-py3-none-any.whl dist/koalas-$package_version.tar.gz
 
-Step 5. Verify the uploaded package can be installed and executed.
-One unofficial tip is to run the doctests of Koalas within a Python interpreter after installing it.
+5. Verify the uploaded package can be installed and executed. One unofficial tip is to run the doctests of Koalas within a Python interpreter after installing it.
 
-.. code-block:: python
+  .. code-block:: python
 
-    import os
-    
-    from pytest import main
-    import databricks
-    
-    test_path = os.path.abspath(os.path.dirname(databricks.__file__))
-    main(['-k', '-to_delta -read_delta', '--verbose', '--showlocals', '--doctest-modules', test_path])
+      import os
+
+      from pytest import main
+      import databricks
+
+      test_path = os.path.abspath(os.path.dirname(databricks.__file__))
+      main(['-k', '-to_delta -read_delta', '--verbose', '--showlocals', '--doctest-modules', test_path])
 
 Note that this way might require additional settings, for instance, environment variables.
 
