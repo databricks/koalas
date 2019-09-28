@@ -997,7 +997,7 @@ def to_datetime(arg, errors='raise', format=None, unit=None, infer_datetime_form
         datetime strings, and if it can be inferred, switch to a faster
         method of parsing them. In some cases this can increase the parsing
         speed by ~5-10x.
-    origin : scalar, default is 'unix'
+    origin : scalar, default 'unix'
         Define the reference date. The numeric values would be parsed as number
         of units (defined by `unit`) since this reference date.
 
