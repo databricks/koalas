@@ -969,7 +969,8 @@ def read_sql(sql, con, index_col=None, columns=None, **options):
         return read_sql_query(sql, con, index_col=index_col, options=options)
 
 
-def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
+def to_datetime(arg, errors='raise', format=None, unit=None, infer_datetime_format=False,
+                origin='unix'):
     """
     Convert argument to datetime.
 
@@ -986,11 +987,26 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
     format : string, default None
         strftime to parse time, eg "%d/%m/%Y", note that "%f" will parse
         all the way up to nanoseconds.
+    unit : string, default None
+        unit of the arg (D,s,ms,us,ns) denote the unit, which is an
+        integer or float number. This will be based off the origin.
+        Example, with unit='ms' and origin='unix' (the default), this
+        would calculate the number of milliseconds to the unix epoch start.
     infer_datetime_format : boolean, default False
         If True and no `format` is given, attempt to infer the format of the
         datetime strings, and if it can be inferred, switch to a faster
         method of parsing them. In some cases this can increase the parsing
         speed by ~5-10x.
+    origin : scalar, default is 'unix'
+        Define the reference date. The numeric values would be parsed as number
+        of units (defined by `unit`) since this reference date.
+
+        - If 'unix' (or POSIX) time; origin is set to 1970-01-01.
+        - If 'julian', unit must be 'D', and origin is set to beginning of
+          Julian Calendar. Julian day number 0 is assigned to the day starting
+          at noon on January 1, 4713 BC.
+        - If Timestamp convertible, origin is set to Timestamp identified by
+          origin.
 
     Returns
     -------
@@ -1055,13 +1071,27 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
     ...    lambda: repr(ks.to_datetime(s, infer_datetime_format=False)),
     ...    number = 1)  # doctest: +SKIP
     0.8895321660000004
+
+    Using a unix epoch time
+
+    >>> ks.to_datetime(1490195805, unit='s')
+    Timestamp('2017-03-22 15:16:45')
+    >>> ks.to_datetime(1490195805433502912, unit='ns')
+    Timestamp('2017-03-22 15:16:45.433502912')
+
+    Using a non-unix epoch origin
+
+    >>> ks.to_datetime([1, 2, 3], unit='D', origin=pd.Timestamp('1960-01-01'))
+    DatetimeIndex(['1960-01-02', '1960-01-03', '1960-01-04'], dtype='datetime64[ns]', freq=None)
     """
     if isinstance(arg, Series):
         return _to_datetime1(
             arg,
             errors=errors,
             format=format,
-            infer_datetime_format=infer_datetime_format)
+            unit=unit,
+            infer_datetime_format=infer_datetime_format,
+            origin=origin)
     if isinstance(arg, DataFrame):
         return _to_datetime2(
             arg_year=arg['year'],
@@ -1069,7 +1099,9 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
             arg_day=arg['day'],
             errors=errors,
             format=format,
-            infer_datetime_format=infer_datetime_format)
+            unit=unit,
+            infer_datetime_format=infer_datetime_format,
+            origin=origin)
     if isinstance(arg, dict):
         return _to_datetime2(
             arg_year=arg['year'],
@@ -1077,9 +1109,12 @@ def to_datetime(arg, errors='raise', format=None, infer_datetime_format=False):
             arg_day=arg['day'],
             errors=errors,
             format=format,
-            infer_datetime_format=infer_datetime_format)
+            unit=unit,
+            infer_datetime_format=infer_datetime_format,
+            origin=origin)
     return pd.to_datetime(
-        arg, errors=errors, format=format, infer_datetime_format=infer_datetime_format)
+        arg, errors=errors, format=format, unit=unit, infer_datetime_format=infer_datetime_format,
+        origin=origin)
 
 
 def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None, sparse=False,
@@ -1644,18 +1679,21 @@ notnull = notna
 
 # @pandas_wraps(return_col=np.datetime64)
 @pandas_wraps
-def _to_datetime1(arg, errors, format, infer_datetime_format) -> Series[np.datetime64]:
+def _to_datetime1(arg, errors, format, unit, infer_datetime_format,
+                  origin) -> Series[np.datetime64]:
     return pd.to_datetime(
         arg,
         errors=errors,
         format=format,
-        infer_datetime_format=infer_datetime_format)
+        unit=unit,
+        infer_datetime_format=infer_datetime_format,
+        origin=origin)
 
 
 # @pandas_wraps(return_col=np.datetime64)
 @pandas_wraps
 def _to_datetime2(arg_year, arg_month, arg_day,
-                  errors, format, infer_datetime_format) -> Series[np.datetime64]:
+                  errors, format, unit, infer_datetime_format, origin) -> Series[np.datetime64]:
     arg = dict(year=arg_year, month=arg_month, day=arg_day)
     for key in arg:
         if arg[key] is None:
@@ -1664,7 +1702,9 @@ def _to_datetime2(arg_year, arg_month, arg_day,
         arg,
         errors=errors,
         format=format,
-        infer_datetime_format=infer_datetime_format)
+        unit=unit,
+        infer_datetime_format=infer_datetime_format,
+        origin=origin)
 
 
 def _get_index_map(sdf: spark.DataFrame,

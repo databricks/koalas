@@ -47,6 +47,14 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pd.to_datetime(pdf), ks.to_datetime(kdf))
         self.assert_eq(pd.to_datetime(dict_from_pdf), ks.to_datetime(dict_from_pdf))
 
+        self.assert_eq(pd.to_datetime(1490195805, unit='s'),
+                       ks.to_datetime(1490195805, unit='s'))
+        self.assert_eq(pd.to_datetime(1490195805433502912, unit='ns'),
+                       ks.to_datetime(1490195805433502912, unit='ns'))
+
+        self.assert_eq(pd.to_datetime([1, 2, 3], unit='D', origin=pd.Timestamp('1960-01-01')),
+                       ks.to_datetime([1, 2, 3], unit='D', origin=pd.Timestamp('1960-01-01')))
+
     def test_concat(self):
         pdf = pd.DataFrame({'A': [0, 2, 4], 'B': [1, 3, 5]})
         kdf = ks.from_pandas(pdf)
