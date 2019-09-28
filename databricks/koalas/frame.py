@@ -39,7 +39,7 @@ from pandas.core.accessor import CachedAccessor
 from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.functions import col, pandas_udf
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType)
 from pyspark.sql.utils import AnalysisException
@@ -6884,7 +6884,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Axis to target with mapper. Can be either the axis name ('index', 'columns') or
             number (0, 1).
         inplace : bool, default False
-            Whether to return a new DataFrame. If True then value of copy is ignored.
+            Whether to return a new DataFrame.
         level : int or level name, default None
             In case of a MultiIndex, only rename labels in the specified level.
         errors : {'ignore', 'raise}, default 'ignore'

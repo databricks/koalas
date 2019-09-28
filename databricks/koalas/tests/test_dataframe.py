@@ -20,7 +20,6 @@ import inspect
 
 import numpy as np
 import pandas as pd
-import pyspark
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
@@ -387,6 +386,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         result_kdf = kdf1.rename(index={1: 10, 2: 20})
         self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
+        self.assertTrue(kdf1 is not result_kdf,
+                        "expect return new dataframe when inplace argument is False")
+
+        result_kdf = kdf1.rename(index={1: 10, 2: 20}, inplace=True)
+        self.assertTrue(kdf1 is result_kdf,
+                        "expect return the same dataframe when inplace argument is False")
 
         def str_lower(s) -> str:
             return str.lower(s)
@@ -424,8 +429,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # for spark 2.3, disable arrow optimization. Because koalas multi-index do not support
         # arrow optimization in spark 2.3.
 
-        if LooseVersion(pyspark.__version__) <= LooseVersion("2.3"):
-            self.spark.conf.set('spark.sql.execution.arrow.enabled', False)
         result_kdf = kdf3.rename(index=str_lower)
         self.assert_eq(result_kdf.index,
                        pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd')]))
@@ -437,9 +440,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         result_kdf = kdf3.rename(index=str_lower, level=1)
         self.assert_eq(result_kdf.index,
                        pd.MultiIndex.from_tuples([('X', 'a'), ('X', 'b'), ('Y', 'c'), ('Y', 'd')]))
-
-        if LooseVersion(pyspark.__version__) <= LooseVersion("2.3"):
-            self.spark.conf.set('spark.sql.execution.arrow.enabled', True)
 
     def test_dot_in_column_name(self):
         self.assert_eq(
