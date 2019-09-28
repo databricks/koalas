@@ -115,7 +115,6 @@ class GroupBy(object):
         >>> aggregated = df.groupby('A').agg('min')
         >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
              B      C
-           min    min
         A
         1    1  0.227
         2    3 -0.562
@@ -134,7 +133,7 @@ class GroupBy(object):
                             (isinstance(value, str) or isinstance(value, list) and
                                 all(isinstance(v, str) for v in value))
                             for key, value in func_or_funcs.items()):
-                raise ValueError("aggs must be a dict mapping from column name (string) "
+                raise ValueError("aggs must be a dict mapping from column name (string or tuple) "
                                  "to aggregate functions (string or list of strings).")
 
         else:
