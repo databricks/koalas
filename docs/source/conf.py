@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath('.'))
 
 
 def gendoc():
-    """Load and generate reStructuredText files for release notes."""
+    """Get releases from Github and generate reStructuredText files for release notes."""
     dev_dir = "%s/../../dev" % os.path.dirname(os.path.abspath(__file__))
     spec = importlib.util.spec_from_file_location("gendoc", "%s/gendoc.py" % dev_dir)
     gendoc = importlib.util.module_from_spec(spec)

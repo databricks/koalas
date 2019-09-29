@@ -64,7 +64,7 @@ def get_json(url):
     except HTTPError as e:
         if "X-RateLimit-Remaining" in e.headers and e.headers["X-RateLimit-Remaining"] == '0':
             print("Exceeded the GitHub API rate limit; see the instructions in " +
-                  "dev/merge_spark_pr.py to configure an OAuth token for making authenticated " +
+                  "dev/gendoc.py to configure an OAuth token for making authenticated " +
                   "GitHub requests.", sys.stderr)
         else:
             print("Unable to fetch URL, exiting: %s" % url, sys.stderr)
@@ -88,7 +88,7 @@ def list_releases_to_document(cur_version):
 def gen_release_notes(path):
     """
     Generate reStructuredText files for "Release Notes". It generates 'index.rst' file and
-    each rst file for each version's release note.under 'whatsnew' directory.
+    each rst file for each version's release note under 'whatsnew' directory.
     The contents are from Github release notes.
     """
     whatsnew_dir = "%s/whatsnew" % path
