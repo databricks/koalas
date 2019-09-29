@@ -389,8 +389,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertTrue(kdf1 is not result_kdf,
                         "expect return new dataframe when inplace argument is False")
 
-        result_kdf = kdf1.rename(index={1: 10, 2: 20}, inplace=True)
-        self.assertTrue(kdf1 is result_kdf,
+        result_kdf2 = result_kdf.rename(index={1: 10, 2: 20}, inplace=True)
+        self.assertTrue(result_kdf2 is result_kdf,
                         "expect return the same dataframe when inplace argument is False")
 
         def str_lower(s) -> str:
