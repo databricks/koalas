@@ -3531,8 +3531,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 axis = 0
             if not (axis == 0 or axis == "index"):
                 raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
-            if (value is None) and (method is None):
-                raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
             if not isinstance(value, (float, int, str, bool, dict, pd.Series)):
                 raise TypeError("Unsupported type %s" % type(value))
             if isinstance(value, pd.Series):
@@ -3547,6 +3545,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.fillna(value)
             internal = self._internal.copy(sdf=sdf)
         else:
+            if method is None:
+                raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
+
             applied = []
             for idx in self._internal.column_index:
                 applied.append(self[idx].fillna(value=value, method=method, axis=axis,
