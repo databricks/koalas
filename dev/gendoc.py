@@ -16,13 +16,13 @@
 #
 
 """
-Site specific configuration hook (see https://docs.python.org/3/library/site.html).
-This file is executed when documentation is tried to generate release notes by
-adding this file into PYTHONPATH.
+Contains useful utils to generate reStructuredText files for Sphinx.
 """
 
 import shutil
+import subprocess
 import sys
+import tempfile
 from distutils.version import LooseVersion
 from urllib.error import HTTPError
 from urllib.request import urlopen, Request
@@ -32,7 +32,7 @@ import re
 import platform
 
 import pypandoc
-from pypandoc.pandoc_download import download_pandoc, _get_pandoc_urls
+from pypandoc import pandoc_download
 
 import databricks.koalas as ks
 
@@ -56,7 +56,11 @@ def get_json(url):
         request = Request(url)
         if GITHUB_OAUTH_KEY:
             request.add_header('Authorization', 'token %s' % GITHUB_OAUTH_KEY)
-        return json.load(urlopen(request))
+
+        response = urlopen(request).read()
+        if isinstance(response, bytes):
+            response = response.decode('utf-8')
+        return json.loads(response)
     except HTTPError as e:
         if "X-RateLimit-Remaining" in e.headers and e.headers["X-RateLimit-Remaining"] == '0':
             print("Exceeded the GitHub API rate limit; see the instructions in " +
@@ -81,8 +85,13 @@ def list_releases_to_document(cur_version):
     return sorted(filtered, reverse=True, key=lambda release: LooseVersion(release[1]))
 
 
-def generate_release_notes():
-    whatsnew_dir = "%s/../source/whatsnew" % os.path.dirname(os.path.abspath(__file__))
+def gen_release_notes(path):
+    """
+    Generate reStructuredText files for "Release Notes". It generates 'index.rst' file and
+    each rst file for each version's release note.under 'whatsnew' directory.
+    The contents are from Github release notes.
+    """
+    whatsnew_dir = "%s/whatsnew" % path
     shutil.rmtree(whatsnew_dir, ignore_errors=True)
     os.mkdir(whatsnew_dir)
 
@@ -131,8 +140,45 @@ def generate_release_notes():
                 release_file.write("\n")
 
 
-def download_pandoc_if_needed():
-    pandoc_urls, _ = _get_pandoc_urls("latest")
+def download_pandoc_if_needed(path):
+    """
+    Download pandoc that is used by pypandoc.
+    """
+
+    # This is to patch https://github.com/bebraw/pypandoc/pull/154.
+    # We can remove when pypandoc is upgraded.
+    def _handle_linux(filename, targetfolder):
+
+        print("* Unpacking %s to tempfolder..." % (filename))
+
+        tempfolder = tempfile.mkdtemp()
+        cur_wd = os.getcwd()
+        filename = os.path.abspath(filename)
+        try:
+            os.chdir(tempfolder)
+            cmd = ["ar", "x", filename]
+            # if only 3.5 is supported, should be `run(..., check=True)`
+            subprocess.check_call(cmd)
+            files = os.listdir(".")
+            archive_name = next(x for x in files if x.startswith('data.tar'))
+            cmd = ["tar", "xf", archive_name]
+            subprocess.check_call(cmd)
+            # pandoc and pandoc-citeproc are in ./usr/bin subfolder
+            for exe in ["pandoc", "pandoc-citeproc"]:
+                src = os.path.join(tempfolder, "usr", "bin", exe)
+                dst = os.path.join(targetfolder, exe)
+                print("* Copying %s to %s ..." % (exe, targetfolder))
+                shutil.copyfile(src, dst)
+                pandoc_download._make_executable(dst)
+            src = os.path.join(tempfolder, "usr", "share", "doc", "pandoc", "copyright")
+            dst = os.path.join(targetfolder, "copyright.pandoc")
+            print("* Copying copyright to %s ..." % (targetfolder))
+            shutil.copyfile(src, dst)
+        finally:
+            os.chdir(cur_wd)
+            shutil.rmtree(tempfolder)
+
+    pandoc_urls, _ = pandoc_download._get_pandoc_urls("latest")
     pf = sys.platform
     if pf.startswith("linux"):
         pf = "linux"
@@ -143,9 +189,7 @@ def download_pandoc_if_needed():
         raise RuntimeError("Can't handle your platform (only Linux, Mac OS X, Windows).")
 
     filename = pandoc_urls[pf].split("/")[-1]
+    os.environ["PATH"] = "%s:%s" % (path, os.environ["PATH"])
     if not os.path.isfile(filename):
-        download_pandoc()
-
-
-download_pandoc_if_needed()
-generate_release_notes()
+        pandoc_download._handle_linux = _handle_linux
+        pandoc_download.download_pandoc(targetfolder=path)

@@ -10,7 +10,7 @@ pandas is the de facto standard (single-node) DataFrame implementation in Python
 * Be immediately productive with Spark, with no learning curve, if you are already familiar with pandas.
 * Have a single codebase that works both with pandas (tests, smaller datasets) and with Spark (distributed datasets).
 
-.. whatsnew/index is automatically generated via prehook/sitecustomize.py
+.. whatsnew/index is automatically generated (see conf.py for Sphinx and dev/gendoc.py).
 
 .. toctree::
     :maxdepth: 3
