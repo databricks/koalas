@@ -828,11 +828,16 @@ class DataFrame(_Frame, Generic[T]):
         This method applies a function that accepts and returns a scalar
         to every element of a DataFrame.
 
-        .. note:: unlike pandas, it is required for `func` to specify return type hint.
-            See https://docs.python.org/3/library/typing.html. For instance, as below:
+        .. note:: this API executes the function once to infer the type which is
+             potentially expensive, for instance, when the dataset is created after
+             aggregations or sorting.
 
-            >>> def function() -> int:
-            ...     return 1
+             To avoid this, specify return type in ``func``, for instance, as below:
+
+             >>> def square(x) -> np.int32:
+             ...     return x ** 2
+
+             Koalas uses return type hint and does not try to infer the type.
 
         Parameters
         ----------
@@ -865,10 +870,19 @@ class DataFrame(_Frame, Generic[T]):
                    0          1
         0   1.000000   4.494400
         1  11.262736  20.857489
+
+        You can omit the type hint and let Koalas infer its type.
+
+        >>> df.applymap(lambda x: x ** 2)
+                   0          1
+        0   1.000000   4.494400
+        1  11.262736  20.857489
         """
 
         applied = []
         for idx in self._internal.column_index:
+            # TODO: We can implement shortcut theoretically since it creates new DataFrame
+            #  anyway and we don't have to worry about operations on different DataFrames.
             applied.append(self[idx].apply(func))
 
         sdf = self._sdf.select(
