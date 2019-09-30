@@ -999,7 +999,7 @@ class KoalasSeriesPlotMethods(PandasObject):
 
         .. plot::
             :context: close-figs
-        
+
             >>> import matplotlib.pyplot as plt
             >>> plt.close('all')
             >>> s = ks.Series([1, 3, 2])
