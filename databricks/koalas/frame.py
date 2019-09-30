@@ -5379,7 +5379,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   column_index=column_index)
         return DataFrame(internal)
 
-    def join(self, right: 'DataFrame', on: Optional[Union[str, List[str]]] = None,
+    def join(self, right: 'DataFrame',
+             on: Optional[Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]]] = None,
              how: str = 'left', lsuffix: str = '', rsuffix: str = '') -> 'DataFrame':
         """
         Join columns of another DataFrame.
@@ -5633,13 +5634,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(other, ks.Series):
             other = DataFrame(other)
 
-        update_columns = list(set(self._internal.data_columns)
-                              .intersection(set(other._internal.data_columns)))
+        update_columns = list(set(self._internal.column_index)
+                              .intersection(set(other._internal.column_index)))
         update_sdf = self.join(other[update_columns], rsuffix='_new')._sdf
 
-        for column_name in update_columns:
+        for column_index in update_columns:
+            column_name = self._internal.column_name_for(column_index)
             old_col = scol_for(update_sdf, column_name)
-            new_col = scol_for(update_sdf, column_name + '_new')
+            new_col = scol_for(update_sdf, other._internal.column_name_for(column_index) + '_new')
             if overwrite:
                 update_sdf = update_sdf.withColumn(column_name, F.when(new_col.isNull(), old_col)
                                                    .otherwise(new_col))
