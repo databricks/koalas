@@ -631,6 +631,7 @@ class KoalasKdePlot(KdePlot):
             cls, ax, y, style=None, bw_method=None, ind=None,
             column_num=None, stacking_id=None, **kwds):
         # 'y' is a Spark DataFrame that selects one column.
+
         # Using RDD is slow so we might have to change it to Dataset based implementation
         # once Spark has that implementation.
         sample = y.rdd.map(lambda x: float(x[0]))
@@ -918,6 +919,7 @@ def _plot(data, x=None, y=None, subplots=False,
     if kind in ('scatter', 'hexbin'):
         plot_obj = klass(data, x, y, subplots=subplots, ax=ax, kind=kind, **kwds)
     else:
+
         # check data type and do preprocess before applying plot
         if isinstance(data, DataFrame):
             if x is not None:
@@ -1058,13 +1060,8 @@ class KoalasSeriesPlotMethods(PandasObject):
 
         Examples
         --------
-        Basic plot.
-
-        .. plot::
-            :context: close-figs
-
-            >>> s = ks.Series([1, 3, 2])
-            >>> ax = s.plot.barh()
+        >>> df = ks.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
+        >>> plot = df.val.plot.barh()
         """
         return self(kind='barh', **kwds)
 
