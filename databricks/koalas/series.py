@@ -1504,9 +1504,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Also support for MultiIndex
 
-        >>> midx = pd.MultiIndex(levels=[['lama', 'cow', 'falcon'],
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
         ...                              ['speed', 'weight', 'length']],
-        ...                      codes=[[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
         ...                             [0, 1, 2, 0, 1, 2, 0, 1, 2]])
         >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
         ...               index=midx)

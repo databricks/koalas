@@ -667,10 +667,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.drop()
 
         # For MultiIndex
-        midx = pd.MultiIndex(levels=[['lama', 'cow', 'falcon'],
-                                     ['speed', 'weight', 'length']],
-                             codes=[[0, 0, 0, 1, 1, 1, 2, 2, 2],
-                                    [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
         kser = koalas.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
                              index=midx)
         msg = "'level' should be less than the number of indexes"
