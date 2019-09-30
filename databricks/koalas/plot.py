@@ -1332,13 +1332,13 @@ class KoalasFramePlotMethods(PandasObject):
             >>> lines = df.plot.line()
 
         .. plot::
-           :context: close-figs
+            :context: close-figs
 
-           An example with subplots, so an array of axes is returned.
+            An example with subplots, so an array of axes is returned.
 
-           >>> axes = df.plot.line(subplots=True)
-           >>> type(axes)
-           <class 'numpy.ndarray'>
+            >>> axes = df.plot.line(subplots=True)
+            >>> type(axes)
+            <class 'numpy.ndarray'>
 
         .. plot::
             :context: close-figs
