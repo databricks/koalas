@@ -999,9 +999,10 @@ class KoalasSeriesPlotMethods(PandasObject):
 
         .. plot::
             :context: close-figs
-
-            >>> s = ks.Series(range(5),
-            ...     index=pd.date_range('2018-01-01', periods=5, freq='H'))
+        
+            >>> import matplotlib.pyplot as plt
+            >>> plt.close('all')
+            >>> s = ks.Series([1, 3, 2])
             >>> ax = s.plot.line()
         """
         return self(kind="line", x=x, y=y, **kwargs)
