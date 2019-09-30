@@ -12,8 +12,24 @@
 
 import os
 import sys
+import importlib.util
+
 from databricks import koalas
 sys.path.insert(0, os.path.abspath('.'))
+
+
+def gendoc():
+    """Get releases from Github and generate reStructuredText files for release notes."""
+    dev_dir = "%s/../../dev" % os.path.dirname(os.path.abspath(__file__))
+    spec = importlib.util.spec_from_file_location("gendoc", "%s/gendoc.py" % dev_dir)
+    gendoc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gendoc)
+    gendoc.download_pandoc_if_needed(dev_dir)
+    source_dir = os.path.dirname(os.path.abspath(__file__))
+    gendoc.gen_release_notes(source_dir)
+
+
+gendoc()
 
 
 # -- Project information -----------------------------------------------------
