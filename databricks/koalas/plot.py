@@ -1001,7 +1001,7 @@ class KoalasSeriesPlotMethods(PandasObject):
             :context: close-figs
 
             >>> s = ks.Series([1, 3, 2])
-            >>> ax = s.plot.line()  # doctest: +SKIP
+            >>> ax = s.plot.line()
         """
         return self(kind="line", x=x, y=y, **kwargs)
 
@@ -1219,13 +1219,13 @@ class KoalasSeriesPlotMethods(PandasObject):
         .. plot::
             :context: close-figs
 
-        >>> df = ks.DataFrame({
-        ...     'sales': [3, 2, 3, 9, 10, 6],
-        ...     'signups': [5, 5, 6, 12, 14, 13],
-        ...     'visits': [20, 42, 28, 62, 81, 50],
-        ... }, index=pd.date_range(start='2018/01/01', end='2018/07/01',
-        ...                        freq='M'))
-        >>> plot = df.sales.plot.area()
+            >>> df = ks.DataFrame({
+            ...     'sales': [3, 2, 3, 9, 10, 6],
+            ...     'signups': [5, 5, 6, 12, 14, 13],
+            ...     'visits': [20, 42, 28, 62, 81, 50],
+            ... }, index=pd.date_range(start='2018/01/01', end='2018/07/01',
+            ...                        freq='M'))
+            >>> plot = df.sales.plot.area()
         """
         return self(kind='area', **kwds)
 
@@ -1480,13 +1480,13 @@ class KoalasFramePlotMethods(PandasObject):
         .. plot::
             :context: close-figs
 
-        >>> df = ks.DataFrame({
-        ...     'sales': [3, 2, 3, 9, 10, 6],
-        ...     'signups': [5, 5, 6, 12, 14, 13],
-        ...     'visits': [20, 42, 28, 62, 81, 50],
-        ... }, index=pd.date_range(start='2018/01/01', end='2018/07/01',
-        ...                        freq='M'))
-        >>> plot = df.plot.area()
+            >>> df = ks.DataFrame({
+            ...     'sales': [3, 2, 3, 9, 10, 6],
+            ...     'signups': [5, 5, 6, 12, 14, 13],
+            ...     'visits': [20, 42, 28, 62, 81, 50],
+            ... }, index=pd.date_range(start='2018/01/01', end='2018/07/01',
+            ...                        freq='M'))
+            >>> plot = df.plot.area()
         """
         return self(kind='area', x=x, y=y, stacked=stacked, **kwds)
 
