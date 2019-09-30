@@ -10,8 +10,8 @@ pandas is the de facto standard (single-node) DataFrame implementation in Python
 
 This project is currently in beta and is rapidly evolving, with a weekly release cadence. We would love to have you try it and give us feedback, through our [mailing lists](https://groups.google.com/forum/#!forum/koalas-dev) or [GitHub issues](https://github.com/databricks/koalas/issues).
 
-Try the Koalas 10 minutes tutorial on a live notebook on Binder now [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/databricks/koalas/master?filepath=docs%2F10-minutes-to-Koalas.ipynb)
-. Preparing a notebook can take up to some minutes.
+Try the Koalas 10 minutes tutorial on a live notebook in Jupyter here [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/databricks/koalas/master?filepath=docs%2F10-minutes-to-Koalas.ipynb)
+. The initial launch can take up to several minutes.
 
 [![Build Status](https://travis-ci.com/databricks/koalas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/koalas)
 [![codecov](https://codecov.io/gh/databricks/koalas/branch/master/graph/badge.svg)](https://codecov.io/gh/databricks/koalas)
