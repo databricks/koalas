@@ -964,9 +964,9 @@ class KoalasSeriesPlotMethods(PandasObject):
 
     def line(self, x=None, y=None, **kwargs):
         """
-        Plot Series or DataFrame as lines.
+        Plot Series as lines.
 
-        This function is useful to plot lines using DataFrame's values
+        This function is useful to plot lines using Series's values
         as coordinates.
 
         Parameters
@@ -980,7 +980,7 @@ class KoalasSeriesPlotMethods(PandasObject):
             Either the location or the label of the columns to be used.
             By default, it will use the remaining DataFrame numeric columns.
         **kwds
-            Keyword arguments to pass on to :meth:`DataFrame.plot`.
+            Keyword arguments to pass on to :meth:`Series.plot`.
 
         Returns
         -------
@@ -990,6 +990,16 @@ class KoalasSeriesPlotMethods(PandasObject):
         See Also
         --------
         matplotlib.pyplot.plot : Plot y versus x as lines and/or markers.
+
+        Examples
+        --------
+        Basic plot.
+
+        .. plot::
+            :context: close-figs
+
+            >>> s = ks.Series([1, 3, 2])
+            >>> ax = s.plot.line()  # doctest: +SKIP
         """
         return self(kind="line", x=x, y=y, **kwargs)
 
@@ -1006,6 +1016,16 @@ class KoalasSeriesPlotMethods(PandasObject):
         Returns
         -------
         axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+
+        Examples
+        --------
+        Basic plot.
+
+        .. plot::
+            :context: close-figs
+
+            >>> s = ks.Series([1, 3, 2])
+            >>> ax = s.plot.bar()
         """
         return self(kind='bar', **kwds)
 
@@ -1038,8 +1058,13 @@ class KoalasSeriesPlotMethods(PandasObject):
 
         Examples
         --------
-        >>> df = ks.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
-        >>> plot = df.val.plot.barh()
+        Basic plot.
+
+        .. plot::
+            :context: close-figs
+
+            >>> s = ks.Series([1, 3, 2])
+            >>> ax = s.plot.barh()
         """
         return self(kind='barh', **kwds)
 
@@ -1073,6 +1098,18 @@ class KoalasSeriesPlotMethods(PandasObject):
 
           * `bootstrap` argument is not supported
           * `autorange` argument is not supported
+
+        Examples
+        --------
+        Draw a box plot from a DataFrame with four columns of randomly
+        generated data.
+
+        .. plot::
+            :context: close-figs
+
+            >>> data = np.random.randn(25, 4)
+            >>> df = ks.DataFrame(data, columns=list('ABCD'))
+            >>> ax = df['A'].plot.box()
         """
         return self(kind='box', **kwds)
 
@@ -1091,6 +1128,16 @@ class KoalasSeriesPlotMethods(PandasObject):
         Returns
         -------
         axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+
+        Examples
+        --------
+        Basic plot.
+
+        .. plot::
+            :context: close-figs
+
+            >>> s = ks.Series([1, 3, 2])
+            >>> ax = s.plot.hist()
         """
         return self(kind='hist', bins=bins, **kwds)
 
@@ -1114,6 +1161,31 @@ class KoalasSeriesPlotMethods(PandasObject):
         Returns
         -------
         matplotlib.axes.Axes or numpy.ndarray of them
+
+        Examples
+        --------
+        A scalar bandwidth should be specified. Using a small bandwidth value can
+        lead to over-fitting, while using a large bandwidth value may result
+        in under-fitting:
+
+        .. plot::
+            :context: close-figs
+
+            >>> s = ks.Series([1, 2, 2.5, 3, 3.5, 4, 5])
+            >>> ax = s.plot.kde(bw_method=0.3)
+
+        .. plot::
+            :context: close-figs
+
+            >>> ax = s.plot.kde(bw_method=3)
+
+        The `ind` parameter determines the evaluation points for the
+        plot of the estimated KDF:
+
+        .. plot::
+            :context: close-figs
+
+            >>> ax = s.plot.kde(ind=[1, 2, 3, 4, 5], bw_method=0.3)
         """
         return self(kind="kde", bw_method=bw_method, ind=ind, **kwargs)
 
@@ -1146,6 +1218,10 @@ class KoalasSeriesPlotMethods(PandasObject):
 
         Examples
         --------
+
+        .. plot::
+            :context: close-figs
+
         >>> df = ks.DataFrame({
         ...     'sales': [3, 2, 3, 9, 10, 6],
         ...     'signups': [5, 5, 6, 12, 14, 13],
@@ -1241,6 +1317,38 @@ class KoalasFramePlotMethods(PandasObject):
         See Also
         --------
         matplotlib.pyplot.plot : Plot y versus x as lines and/or markers.
+
+        Examples
+        --------
+
+        .. plot::
+            :context: close-figs
+
+            The following example shows the populations for some animals
+            over the years.
+
+            >>> df = ks.DataFrame({
+            ...    'pig': [20, 18, 489, 675, 1776],
+            ...    'horse': [4, 25, 281, 600, 1900]
+            ...    }, index=[1990, 1997, 2003, 2009, 2014])
+            >>> lines = df.plot.line()
+
+        .. plot::
+           :context: close-figs
+
+           An example with subplots, so an array of axes is returned.
+
+           >>> axes = df.plot.line(subplots=True)
+           >>> type(axes)
+           <class 'numpy.ndarray'>
+
+        .. plot::
+            :context: close-figs
+
+            The following example shows the relationship between both
+            populations.
+
+            >>> lines = df.plot.line(x='pig', y='horse')
         """
         return self(kind='line', x=x, y=y, **kwargs)
 
@@ -1264,6 +1372,29 @@ class KoalasFramePlotMethods(PandasObject):
         Returns
         -------
         matplotlib.axes.Axes or numpy.ndarray of them
+
+        Examples
+        --------
+        For DataFrame, it works in the same way as Series:
+
+        .. plot::
+            :context: close-figs
+
+            >>> df = ks.DataFrame({
+            ...     'x': [1, 2, 2.5, 3, 3.5, 4, 5],
+            ...     'y': [4, 4, 4.5, 5, 5.5, 6, 6],
+            ... })
+            >>> ax = df.plot.kde(bw_method=0.3)
+
+        .. plot::
+            :context: close-figs
+
+            >>> ax = df.plot.kde(bw_method=3)
+
+        .. plot::
+            :context: close-figs
+
+            >>> ax = df.plot.kde(ind=[1, 2, 3, 4, 5, 6], bw_method=0.3)
         """
         return self(kind="kde", bw_method=bw_method, ind=ind, **kwargs)
 
@@ -1290,6 +1421,25 @@ class KoalasFramePlotMethods(PandasObject):
         -------
         matplotlib.axes.Axes or np.ndarray of them
             A NumPy array is returned when `subplots` is True.
+
+        Examples
+        --------
+        In the example below we have a DataFrame with the information about
+        planet's mass and radius. We pass the the 'mass' column to the
+        pie function to get a pie plot.
+
+        .. plot::
+            :context: close-figs
+
+            >>> df = ks.DataFrame({'mass': [0.330, 4.87 , 5.97],
+            ...                    'radius': [2439.7, 6051.8, 6378.1]},
+            ...                   index=['Mercury', 'Venus', 'Earth'])
+            >>> plot = df.plot.pie(y='mass', figsize=(5, 5))
+
+        .. plot::
+            :context: close-figs
+
+            >>> plot = df.plot.pie(subplots=True, figsize=(6, 3))
         """
         from databricks.koalas import DataFrame
 
@@ -1326,6 +1476,20 @@ class KoalasFramePlotMethods(PandasObject):
         -------
         matplotlib.axes.Axes or numpy.ndarray
             Area plot, or array of area plots if subplots is True.
+
+        Examples
+        --------
+
+        .. plot::
+            :context: close-figs
+
+        >>> df = ks.DataFrame({
+        ...     'sales': [3, 2, 3, 9, 10, 6],
+        ...     'signups': [5, 5, 6, 12, 14, 13],
+        ...     'visits': [20, 42, 28, 62, 81, 50],
+        ... }, index=pd.date_range(start='2018/01/01', end='2018/07/01',
+        ...                        freq='M'))
+        >>> plot = df.plot.area()
         """
         return self(kind='area', x=x, y=y, stacked=stacked, **kwds)
 
@@ -1348,6 +1512,55 @@ class KoalasFramePlotMethods(PandasObject):
         Returns
         -------
         axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+
+        Examples
+        --------
+        Basic plot.
+
+        .. plot::
+            :context: close-figs
+
+            >>> df = ks.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
+            >>> ax = df.plot.bar(x='lab', y='val', rot=0)
+
+        Plot a whole dataframe to a bar plot. Each column is assigned a
+        distinct color, and each row is nested in a group along the
+        horizontal axis.
+
+        .. plot::
+            :context: close-figs
+
+            >>> speed = [0.1, 17.5, 40, 48, 52, 69, 88]
+            >>> lifespan = [2, 8, 70, 1.5, 25, 12, 28]
+            >>> index = ['snail', 'pig', 'elephant',
+            ...          'rabbit', 'giraffe', 'coyote', 'horse']
+            >>> df = ks.DataFrame({'speed': speed,
+            ...                    'lifespan': lifespan}, index=index)
+            >>> ax = df.plot.bar(rot=0)
+
+        Instead of nesting, the figure can be split by column with
+        ``subplots=True``. In this case, a :class:`numpy.ndarray` of
+        :class:`matplotlib.axes.Axes` are returned.
+
+        .. plot::
+            :context: close-figs
+
+            >>> axes = df.plot.bar(rot=0, subplots=True)
+            >>> axes[1].legend(loc=2)  # doctest: +SKIP
+
+        Plot a single column.
+
+        .. plot::
+            :context: close-figs
+
+            >>> ax = df.plot.bar(y='speed', rot=0)
+
+        Plot only selected categories for the DataFrame.
+
+        .. plot::
+            :context: close-figs
+
+            >>> ax = df.plot.bar(x='lifespan', rot=0)
         """
         return self(kind='bar', x=x, y=y, **kwds)
 
@@ -1376,6 +1589,55 @@ class KoalasFramePlotMethods(PandasObject):
         See Also
         --------
         matplotlib.axes.Axes.bar : Plot a vertical bar plot using matplotlib.
+
+        Examples
+        --------
+        Basic example
+
+        .. plot::
+            :context: close-figs
+
+            >>> df = ks.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
+            >>> ax = df.plot.barh(x='lab', y='val')
+
+        Plot a whole DataFrame to a horizontal bar plot
+
+        .. plot::
+            :context: close-figs
+
+            >>> speed = [0.1, 17.5, 40, 48, 52, 69, 88]
+            >>> lifespan = [2, 8, 70, 1.5, 25, 12, 28]
+            >>> index = ['snail', 'pig', 'elephant',
+            ...          'rabbit', 'giraffe', 'coyote', 'horse']
+            >>> df = ks.DataFrame({'speed': speed,
+            ...                    'lifespan': lifespan}, index=index)
+            >>> ax = df.plot.barh()
+
+        Plot a column of the DataFrame to a horizontal bar plot
+
+        .. plot::
+            :context: close-figs
+
+            >>> speed = [0.1, 17.5, 40, 48, 52, 69, 88]
+            >>> lifespan = [2, 8, 70, 1.5, 25, 12, 28]
+            >>> index = ['snail', 'pig', 'elephant',
+            ...          'rabbit', 'giraffe', 'coyote', 'horse']
+            >>> df = ks.DataFrame({'speed': speed,
+            ...                    'lifespan': lifespan}, index=index)
+            >>> ax = df.plot.barh(y='speed')
+
+        Plot DataFrame versus the desired column
+
+        .. plot::
+            :context: close-figs
+
+            >>> speed = [0.1, 17.5, 40, 48, 52, 69, 88]
+            >>> lifespan = [2, 8, 70, 1.5, 25, 12, 28]
+            >>> index = ['snail', 'pig', 'elephant',
+            ...          'rabbit', 'giraffe', 'coyote', 'horse']
+            >>> df = ks.DataFrame({'speed': speed,
+            ...                    'lifespan': lifespan}, index=index)
+            >>> ax = df.plot.barh(x='lifespan')
         """
         return self(kind='barh', x=x, y=y, **kwargs)
 
@@ -1412,6 +1674,23 @@ class KoalasFramePlotMethods(PandasObject):
         See Also
         --------
         matplotlib.pyplot.hist : Plot a histogram using matplotlib.
+
+        Examples
+        --------
+        When we draw a dice 6000 times, we expect to get each value around 1000
+        times. But when we draw two dices and sum the result, the distribution
+        is going to be quite different. A histogram illustrates those
+        distributions.
+
+        .. plot::
+            :context: close-figs
+
+            >>> df = pd.DataFrame(
+            ...     np.random.randint(1, 7, 6000),
+            ...     columns = ['one'])
+            >>> df['two'] = df['one'] + np.random.randint(1, 7, 6000)
+            >>> df = ks.from_pandas(df)
+            >>> ax = df.plot.hist(bins=12, alpha=0.5)
         """
         return self(kind='hist', bins=bins, **kwds)
 
@@ -1448,5 +1727,30 @@ class KoalasFramePlotMethods(PandasObject):
         --------
         matplotlib.pyplot.scatter : Scatter plot using multiple input data
             formats.
+
+        Examples
+        --------
+        Let's see how to draw a scatter plot using coordinates from the values
+        in a DataFrame's columns.
+
+        .. plot::
+            :context: close-figs
+
+            >>> df = ks.DataFrame([[5.1, 3.5, 0], [4.9, 3.0, 0], [7.0, 3.2, 1],
+            ...                    [6.4, 3.2, 1], [5.9, 3.0, 2]],
+            ...                   columns=['length', 'width', 'species'])
+            >>> ax1 = df.plot.scatter(x='length',
+            ...                       y='width',
+            ...                       c='DarkBlue')
+
+        And now with the color determined by a column as well.
+
+        .. plot::
+            :context: close-figs
+
+            >>> ax2 = df.plot.scatter(x='length',
+            ...                       y='width',
+            ...                       c='species',
+            ...                       colormap='viridis')
         """
         return self(kind="scatter", x=x, y=y, s=s, c=c, **kwds)
