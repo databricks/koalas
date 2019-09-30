@@ -39,7 +39,17 @@ extensions = [
     'sphinx.ext.viewcode',
     'numpydoc',  # handle NumPy documentation formatted docstrings. Needs to install
     'nbsphinx',  # Jupyter Notebook. Needs to install
+    "matplotlib.sphinxext.plot_directive",  # For visualize plot result
 ]
+
+# matplotlib plot directive
+plot_include_source = True
+plot_formats = [("png", 90)]
+plot_html_show_formats = False
+plot_html_show_source_link = False
+plot_pre_code = """import numpy as np
+import pandas as pd
+import databricks.koalas as ks"""
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
