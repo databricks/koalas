@@ -26,6 +26,7 @@ from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
 import numpy as np
 import pandas as pd
 from pandas.core.accessor import CachedAccessor
+from pandas.io.formats.printing import pprint_thing
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
@@ -1202,8 +1203,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Return a pandas Series.
 
         .. note:: This method should only be used if the resulting Pandas object is expected
-                  to be small, as all the data is loaded into the driver's memory. If the input
-                  is large, set max_rows parameter.
+                  to be small, as all the data is loaded into the driver's memory.
 
         Examples
         --------
@@ -1496,7 +1496,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
-        >>> ks.Series([2, 1, 3, 3], name='A').unique()
+        >>> kser = ks.Series([2, 1, 3, 3], name='A')
+        >>> kser.unique()
         0    1
         1    3
         2    2
@@ -1505,9 +1506,20 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> ks.Series([pd.Timestamp('2016-01-01') for _ in range(3)]).unique()
         0   2016-01-01
         Name: 0, dtype: datetime64[ns]
+
+        >>> kser.name = ('x', 'a')
+        >>> kser.unique()
+        0    1
+        1    3
+        2    2
+        Name: (x, a), dtype: int64
         """
-        sdf = self.to_dataframe()._sdf
-        return _col(DataFrame(sdf.select(self._scol).distinct()))
+        sdf = self._internal.sdf.select(self._scol).distinct()
+        internal = _InternalFrame(sdf=sdf,
+                                  data_columns=[self._internal.data_columns[0]],
+                                  column_index=[self._internal.column_index[0]],
+                                  column_index_names=self._internal.column_index_names)
+        return _col(DataFrame(internal))
 
     def nunique(self, dropna: bool = True, approx: bool = False, rsd: float = 0.05) -> int:
         """
@@ -2281,6 +2293,51 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
         return wrapped(self, *args, **kwds).rename(self.name)
 
+    # TODO: not all arguments are implemented comparing to Pandas' for now.
+    def aggregate(self, func: Union[str, List[str]]):
+        """Aggregate using one or more operations over the specified axis.
+
+        Parameters
+        ----------
+        func : str or a list of str
+            function name(s) as string apply to series.
+
+        Returns
+        -------
+        scalar, Series
+            The return can be:
+            - scalar : when Series.agg is called with single function
+            - Series : when Series.agg is called with several functions
+
+        Notes
+        -----
+        `agg` is an alias for `aggregate`. Use the alias.
+
+        See Also
+        --------
+        databricks.koalas.Series.apply
+        databricks.koalas.Series.transform
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4])
+        >>> s.agg('min')
+        1
+
+        >>> s.agg(['min', 'max'])
+        max    4
+        min    1
+        Name: 0, dtype: int64
+        """
+        if isinstance(func, list):
+            return self.to_frame().agg(func)[self.name]
+        elif isinstance(func, str):
+            return getattr(self, func)()
+        else:
+            raise ValueError("func must be a string or list of strings")
+
+    agg = aggregate
+
     def transpose(self, *args, **kwargs):
         """
         Return the transpose, which is by definition self.
@@ -2607,7 +2664,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             asc_func = spark.functions.desc
 
         index_column = self._internal.index_columns[0]
-        column_name = self.name
+        column_name = self._internal.data_columns[0]
 
         if method == 'first':
             window = Window.orderBy(
@@ -2632,7 +2689,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 *[column_name] + list(part_cols)
             ).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
             scol = stat_func(F.row_number().over(window1)).over(window2)
-        kser = self._with_new_scol(scol).rename(column_name)
+        kser = self._with_new_scol(scol).rename(self.name)
         return kser.astype(np.float64)
 
     def describe(self, percentiles: Optional[List[float]] = None) -> 'Series':
@@ -3019,7 +3076,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        return Series(self._scol.__getitem__(key), anchor=self._kdf, index=self._index_map)
+        return self._with_new_scol(self._scol.__getitem__(key))
 
     def __getattr__(self, item: str_type) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
@@ -3046,20 +3103,22 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
-            return repr(self._to_internal_pandas())
+            return self._to_internal_pandas().to_string(name=self.name, dtype=self.dtype)
 
         pser = self.head(max_display_count + 1)._to_internal_pandas()
         pser_length = len(pser)
-        repr_string = repr(pser.iloc[:max_display_count])
+        pser = pser.iloc[:max_display_count]
         if pser_length > max_display_count:
+            repr_string = pser.to_string(length=True)
             rest, prev_footer = repr_string.rsplit("\n", 1)
             match = REPR_PATTERN.search(prev_footer)
             if match is not None:
                 length = match.group("length")
-                footer = ("\n{prev_footer}\nShowing only the first {length}"
-                          .format(length=length, prev_footer=prev_footer))
+                name = str(self.dtype.name)
+                footer = ("\nName: {name}, dtype: {dtype}\nShowing only the first {length}"
+                          .format(length=length, name=self.name, dtype=pprint_thing(name)))
                 return rest + footer
-        return repr_string
+        return pser.to_string(name=self.name, dtype=self.dtype)
 
     def __dir__(self):
         if not isinstance(self.schema, StructType):
@@ -3067,6 +3126,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             fields = [f for f in self.schema.fieldNames() if ' ' not in f]
         return super(Series, self).__dir__() + fields
+
+    def __iter__(self):
+        return _MissingPandasLikeSeries.__iter__(self)
 
     def _pandas_orig_repr(self):
         # TODO: figure out how to reuse the original one.

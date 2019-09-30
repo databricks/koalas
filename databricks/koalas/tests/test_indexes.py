@@ -46,14 +46,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                                  index=pd.date_range('2011-01-01', freq='D', periods=10)),
                     pd.DataFrame(np.random.randn(10, 5),
                                  columns=list('abcde')).set_index(['a', 'b'])]:
-            if LooseVersion(pyspark.__version__) < LooseVersion('2.4'):
-                # PySpark < 2.4 does not support struct type with arrow enabled.
-                with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
-                    kdf = ks.from_pandas(pdf)
-                    self.assert_eq(kdf.index, pdf.index)
-            else:
-                kdf = ks.from_pandas(pdf)
-                self.assert_eq(kdf.index, pdf.index)
+            kdf = ks.from_pandas(pdf)
+            self.assert_eq(kdf.index, pdf.index)
 
     def test_index_getattr(self):
         kidx = self.kdf.index

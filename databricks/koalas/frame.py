@@ -26,7 +26,7 @@ import json
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
-from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar
+from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable, Dict
 
 import numpy as np
 import pandas as pd
@@ -39,21 +39,20 @@ from pandas.core.accessor import CachedAccessor
 from pandas.core.dtypes.inference import is_sequence
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
-                               IntegerType, LongType, NumericType, ShortType, StructType)
+                               IntegerType, LongType, NumericType, ShortType)
 from pyspark.sql.utils import AnalysisException
 from pyspark.sql.window import Window
-from pyspark.sql.functions import pandas_udf, PandasUDFType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.config import get_option
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, scol_for
-from databricks.koalas.typedef import as_spark_type
+from databricks.koalas.typedef import as_spark_type, as_python_type
 from databricks.koalas.plot import KoalasFramePlotMethods
 from databricks.koalas.config import get_option
 
@@ -399,9 +398,9 @@ class DataFrame(_Frame, Generic[T]):
         if axis in ('index', 0, None):
             exprs = []
             num_args = len(signature(sfun).parameters)
-            for col, idx in zip(self._internal.data_columns, self._internal.column_index):
-                col_sdf = self._internal.scol_for(col)
-                col_type = self._internal.spark_type_for(col)
+            for idx in self._internal.column_index:
+                col_sdf = self._internal.scol_for(idx)
+                col_type = self._internal.spark_type_for(idx)
 
                 is_numeric_or_boolean = isinstance(col_type, (NumericType, BooleanType))
                 min_or_max = sfun.__name__ in ('min', 'max')
@@ -456,7 +455,9 @@ class DataFrame(_Frame, Generic[T]):
 
     # Arithmetic Operators
     def _map_series_op(self, op, other):
-        if not isinstance(other, DataFrame) and is_sequence(other):
+        from databricks.koalas.base import IndexOpsMixin
+        if not isinstance(other, DataFrame) and (isinstance(other, IndexOpsMixin) or
+                                                 is_sequence(other)):
             raise ValueError(
                 "%s with a sequence is currently not supported; "
                 "however, got %s." % (op, type(other)))
@@ -867,8 +868,8 @@ class DataFrame(_Frame, Generic[T]):
         """
 
         applied = []
-        for column in self._internal.data_columns:
-            applied.append(self[column].apply(func))
+        for idx in self._internal.column_index:
+            applied.append(self[idx].apply(func))
 
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
@@ -876,6 +877,103 @@ class DataFrame(_Frame, Generic[T]):
                                        data_columns=[c._internal.data_columns[0] for c in applied],
                                        column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
+
+    # TODO: not all arguments are implemented comparing to Pandas' for now.
+    def aggregate(self, func: Union[List[str], Dict[str, List[str]]]):
+        """Aggregate using one or more operations over the specified axis.
+
+        Parameters
+        ----------
+        func : dict or a list
+             a dict mapping from column name (string) to
+             aggregate functions (list of strings).
+             If a list is given, the aggregation is performed against
+             all columns.
+
+        Returns
+        -------
+        DataFrame
+
+        Notes
+        -----
+        `agg` is an alias for `aggregate`. Use the alias.
+
+        See Also
+        --------
+        databricks.koalas.Series.groupby
+        databricks.koalas.DataFrame.groupby
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[1, 2, 3],
+        ...                    [4, 5, 6],
+        ...                    [7, 8, 9],
+        ...                    [np.nan, np.nan, np.nan]],
+        ...                   columns=['A', 'B', 'C'])
+
+        >>> df
+             A    B    C
+        0  1.0  2.0  3.0
+        1  4.0  5.0  6.0
+        2  7.0  8.0  9.0
+        3  NaN  NaN  NaN
+
+        Aggregate these functions over the rows.
+
+        >>> df.agg(['sum', 'min'])[['A', 'B', 'C']]
+                A     B     C
+        min   1.0   2.0   3.0
+        sum  12.0  15.0  18.0
+
+        Different aggregations per column.
+
+        >>> df.agg({'A' : ['sum', 'min'], 'B' : ['min', 'max']})[['A', 'B']]
+                A    B
+        max   NaN  8.0
+        min   1.0  2.0
+        sum  12.0  NaN
+        """
+        from databricks.koalas.groupby import GroupBy
+
+        if isinstance(func, list):
+            if all((isinstance(f, str) for f in func)):
+                func = dict([
+                    (column, func) for column in self.columns])
+            else:
+                raise ValueError("If the given function is a list, it "
+                                 "should only contains function names as strings.")
+
+        if not isinstance(func, dict) or \
+                not all(isinstance(key, str) and
+                        (isinstance(value, str) or
+                         isinstance(value, list) and all(isinstance(v, str) for v in value))
+                        for key, value in func.items()):
+            raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
+                             "functions (list of strings).")
+
+        kdf = DataFrame(GroupBy._spark_groupby(self, func, ()))  # type: DataFrame
+
+        # The codes below basically converts:
+        #
+        #           A         B
+        #         sum  min  min  max
+        #     0  12.0  1.0  2.0  8.0
+        #
+        # to:
+        #             A    B
+        #     max   NaN  8.0
+        #     min   1.0  2.0
+        #     sum  12.0  NaN
+        #
+        # Aggregated output is usually pretty much small. So it is fine to directly use pandas API.
+        pdf = kdf.to_pandas().stack()
+        pdf.index = pdf.index.droplevel()
+        pdf.columns.names = [None]
+        pdf.index.names = [None]
+
+        return DataFrame(pdf[list(func.keys())])
+
+    agg = aggregate
 
     def corr(self, method='pearson'):
         """
@@ -921,7 +1019,7 @@ class DataFrame(_Frame, Generic[T]):
         """
         return corr(self, method)
 
-    def iteritems(self):
+    def iteritems(self) -> Iterable:
         """
         Iterator over (column name, Series) pairs.
 
@@ -962,6 +1060,10 @@ class DataFrame(_Frame, Generic[T]):
         """
         cols = list(self.columns)
         return list((col_name, self[col_name]) for col_name in cols)
+
+    def items(self) -> Iterable:
+        """This is an alias of ``iteritems``."""
+        return self.iteritems()
 
     def to_clipboard(self, excel=True, sep=None, **kwargs):
         """
@@ -1668,6 +1770,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  1  4
         2  4  9
 
+        For multi-index columns:
+
+        >>> df.columns = [('X', 'A'), ('X', 'B')]
+        >>> df.transform(square)  # doctest: +NORMALIZE_WHITESPACE
+           X
+           A  B
+        0  0  1
+        1  1  4
+        2  4  9
+
+        >>> df.transform(lambda x: x ** 2)  # doctest: +NORMALIZE_WHITESPACE
+           X
+           A  B
+        0  0  1
+        1  1  4
+        2  4  9
         """
         assert callable(func), "the first argument should be a callable function."
         spec = inspect.getfullargspec(func)
@@ -1681,29 +1799,100 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             pdf = self.head(limit + 1)._to_internal_pandas()
             transformed = pdf.transform(func)
             kdf = DataFrame(transformed)
-            return_schema = kdf._sdf.schema
             if len(pdf) <= limit:
                 return kdf
 
             applied = []
-            for input_column, output_column in zip(
-                    self._internal.data_columns, kdf._internal.data_columns):
-                pandas_func = pandas_udf(
+            for input_idx, output_idx in zip(
+                    self._internal.column_index, kdf._internal.column_index):
+                wrapped = ks.pandas_wraps(
                     func,
-                    returnType=return_schema[output_column].dataType,
-                    functionType=PandasUDFType.SCALAR)
-                applied.append(pandas_func(self[input_column]._scol).alias(output_column))
+                    return_col=as_python_type(kdf[output_idx].spark_type))
+                applied.append(wrapped(self[input_idx]).rename(input_idx))
         else:
             wrapped = ks.pandas_wraps(func)
             applied = []
-            for column in self._internal.data_columns:
-                applied.append(wrapped(self[column]).rename(column)._scol)
+            for idx in self._internal.column_index:
+                applied.append(wrapped(self[idx]).rename(idx))
 
         sdf = self._sdf.select(
-            self._internal.index_scols + [c for c in applied])
-        internal = self._internal.copy(sdf=sdf)
+            self._internal.index_scols + [c._scol for c in applied])
+        internal = self._internal.copy(sdf=sdf,
+                                       data_columns=[c._internal.data_columns[0] for c in applied],
+                                       column_index=[c._internal.column_index[0] for c in applied])
 
         return DataFrame(internal)
+
+    def pop(self, item):
+        """
+        Return item and drop from frame. Raise KeyError if not found.
+        Parameters
+        ----------
+        item : str
+            Label of column to be popped.
+        Returns
+        -------
+        Series
+        Examples
+        --------
+        >>> df = ks.DataFrame([('falcon', 'bird', 389.0),
+        ...                    ('parrot', 'bird', 24.0),
+        ...                    ('lion', 'mammal', 80.5),
+        ...                    ('monkey','mammal', np.nan)],
+        ...                   columns=('name', 'class', 'max_speed'))
+        >>> df
+             name   class  max_speed
+        0  falcon    bird      389.0
+        1  parrot    bird       24.0
+        2    lion  mammal       80.5
+        3  monkey  mammal        NaN
+        >>> df.pop('class')
+        0      bird
+        1      bird
+        2    mammal
+        3    mammal
+        Name: class, dtype: object
+        >>> df
+             name  max_speed
+        0  falcon      389.0
+        1  parrot       24.0
+        2    lion       80.5
+        3  monkey        NaN
+
+        Also support for MultiIndex
+
+        >>> df = ks.DataFrame([('falcon', 'bird', 389.0),
+        ...                    ('parrot', 'bird', 24.0),
+        ...                    ('lion', 'mammal', 80.5),
+        ...                    ('monkey','mammal', np.nan)],
+        ...                   columns=('name', 'class', 'max_speed'))
+        >>> columns = [('a', 'name'), ('a', 'class'), ('b', 'max_speed')]
+        >>> df.columns = pd.MultiIndex.from_tuples(columns)
+        >>> df
+                a                 b
+             name   class max_speed
+        0  falcon    bird     389.0
+        1  parrot    bird      24.0
+        2    lion  mammal      80.5
+        3  monkey  mammal       NaN
+        >>> df.pop('a')
+             name   class
+        0  falcon    bird
+        1  parrot    bird
+        2    lion  mammal
+        3  monkey  mammal
+        >>> df
+                  b
+          max_speed
+        0     389.0
+        1      24.0
+        2      80.5
+        3       NaN
+        """
+        result = self[item]
+        self._internal = self.drop(item)._internal
+
+        return result
 
     @property
     def index(self):
@@ -1737,7 +1926,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> ks.DataFrame({}, index=list('abc')).empty
         True
         """
-        return len(self._internal.data_columns) == 0 or self._sdf.rdd.isEmpty()
+        return len(self._internal.column_index) == 0 or self._sdf.rdd.isEmpty()
 
     @property
     def style(self):
@@ -2214,8 +2403,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         """
         applied = []
-        for column in self._internal.data_columns:
-            applied.append(self[column].shift(periods, fill_value))
+        for idx in self._internal.column_index:
+            applied.append(self[idx].shift(periods, fill_value))
 
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
@@ -2296,8 +2485,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if axis not in [0, 'index']:
             raise ValueError('axis should be either 0 or "index" currently.')
         applied = []
-        for column in self._internal.data_columns:
-            applied.append(self[column].diff(periods))
+        for idx in self._internal.column_index:
+            applied.append(self[idx].diff(periods))
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf,
@@ -2416,17 +2605,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         third   0.9  0.0  0.49
         """
         if isinstance(decimals, ks.Series):
-            decimals_list = [kv for kv in decimals._to_internal_pandas().items()]
+            decimals_list = [(k if isinstance(k, tuple) else (k,), v)
+                             for k, v in decimals._to_internal_pandas().items()]
         elif isinstance(decimals, dict):
-            decimals_list = [(k, v) for k, v in decimals.items()]
+            decimals_list = [(k if isinstance(k, tuple) else (k,), v)
+                             for k, v in decimals.items()]
         elif isinstance(decimals, int):
-            decimals_list = [(v, decimals) for v in self._internal.data_columns]
+            decimals_list = [(k, decimals) for k in self._internal.column_index]
         else:
             raise ValueError("decimals must be an integer, a dict-like or a Series")
 
         sdf = self._sdf
-        for decimal in decimals_list:
-            sdf = sdf.withColumn(decimal[0], F.round(scol_for(sdf, decimal[0]), decimal[1]))
+        for idx, decimal in decimals_list:
+            if idx in self._internal.column_index:
+                col = self._internal.column_name_for(idx)
+                sdf = sdf.withColumn(col, F.round(scol_for(sdf, col), decimal))
         return DataFrame(self._internal.copy(sdf=sdf))
 
     def duplicated(self, subset=None, keep='first'):
@@ -2488,36 +2681,52 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("Now we don't support multi-index Now.")
 
         if subset is None:
-            group_cols = self._internal.data_columns
+            subset = self._internal.column_index
         else:
-            group_cols = subset
-            diff = set(subset).difference(set(self._internal.data_columns))
+            if isinstance(subset, str):
+                subset = [(subset,)]
+            elif isinstance(subset, tuple):
+                subset = [subset]
+            else:
+                subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
+            diff = set(subset).difference(set(self._internal.column_index))
             if len(diff) > 0:
-                raise KeyError(', '.join(diff))
+                raise KeyError(', '.join([str(d) if len(d) > 1 else d[0] for d in diff]))
+        group_cols = [self._internal.column_name_for(idx) for idx in subset]
 
-        sdf = self._sdf
-        index = self._internal.index_columns[0]
+        index_column = self._internal.index_columns[0]
         if self._internal.index_names[0] is not None:
             name = self._internal.index_names[0]
         else:
-            name = '0'
+            name = ('0',)
+        column = str(name) if len(name) > 1 else name[0]
+
+        sdf = self._sdf
+        if column == index_column:
+            index_column = '__index_level_0__'
+            sdf = sdf.select([self._internal.index_scols[0].alias(index_column)]
+                             + self._internal.data_scols)
 
         if keep == 'first' or keep == 'last':
             if keep == 'first':
                 ord_func = spark.functions.asc
             else:
                 ord_func = spark.functions.desc
-            window = Window.partitionBy(group_cols).orderBy(ord_func(index)).rowsBetween(
+            window = Window.partitionBy(group_cols).orderBy(ord_func(index_column)).rowsBetween(
                 Window.unboundedPreceding, Window.currentRow)
-            sdf = sdf.withColumn(name, F.row_number().over(window) > 1)
+            sdf = sdf.withColumn(column, F.row_number().over(window) > 1)
         elif not keep:
-            window = Window.partitionBy(group_cols).orderBy(F.col(index).desc())\
+            window = Window.partitionBy(group_cols).orderBy(scol_for(sdf, index_column).desc())\
                 .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
-            sdf = sdf.withColumn(name, F.count(F.col(index)).over(window) > 1)
+            sdf = sdf.withColumn(column, F.count(scol_for(sdf, index_column)).over(window) > 1)
         else:
             raise ValueError("'keep' only support 'first', 'last' and False")
-        return _col(DataFrame(_InternalFrame(sdf=sdf.select(index, name), data_columns=[name],
-                                             index_map=self._internal.index_map)))
+        return _col(DataFrame(_InternalFrame(sdf=sdf.select(scol_for(sdf, index_column),
+                                                            scol_for(sdf, column)),
+                                             data_columns=[column],
+                                             column_index=[name],
+                                             index_map=[(index_column,
+                                                         self._internal.index_names[0])])))
 
     def to_koalas(self):
         """
@@ -2916,6 +3125,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         feature is supported in pandas for Python 3.6 and later but not in
         Koalas. In Koalas, all items are computed first, and then assigned.
         """
+        return self._assign(kwargs)
+
+    def _assign(self, kwargs):
+        assert isinstance(kwargs, dict)
         from databricks.koalas.series import Series
         for k, v in kwargs.items():
             if not (isinstance(v, (Series, spark.Column)) or
@@ -2925,23 +3138,39 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if callable(v):
                 kwargs[k] = v(self)
 
-        pairs = list(kwargs.items())
-        sdf = self._sdf
-        for (name, c) in pairs:
-            if isinstance(c, Series):
-                sdf = sdf.withColumn(name, c._scol)
-            elif isinstance(c, Column):
-                sdf = sdf.withColumn(name, c)
-            else:
-                sdf = sdf.withColumn(name, F.lit(c))
+        pairs = {(k if isinstance(k, tuple) else (k,)):
+                 (v._scol if isinstance(v, Series)
+                  else v if isinstance(v, spark.Column)
+                  else F.lit(v))
+                 for k, v in kwargs.items()}
 
-        data_columns = set(self._internal.data_columns)
-        adding_columns = [name for name, _ in pairs if name not in data_columns]
+        scols = []
+        for idx in self._internal.column_index:
+            for i in range(len(idx)):
+                if idx[:len(idx)-i] in pairs:
+                    name = self._internal.column_name_for(idx)
+                    scol = pairs[idx[:len(idx)-i]].alias(name)
+                    break
+            else:
+                scol = self._internal.scol_for(idx)
+            scols.append(scol)
+
+        adding_data_columns = []
+        adding_column_index = []
+        for idx, scol in pairs.items():
+            if idx not in set(i[:len(idx)] for i in self._internal.column_index):
+                name = str(idx) if len(idx) > 1 else idx[0]
+                scols.append(scol.alias(name))
+                adding_data_columns.append(name)
+                adding_column_index.append(idx)
+
+        sdf = self._sdf.select(self._internal.index_scols + scols)
         level = self._internal.column_index_level
-        adding_column_index = [tuple([col, *([''] * (level - 1))]) for col in adding_columns]
+        adding_column_index = [tuple(list(idx) + ([''] * (level - len(idx))))
+                               for idx in adding_column_index]
         internal = self._internal.copy(
             sdf=sdf,
-            data_columns=(self._internal.data_columns + adding_columns),
+            data_columns=(self._internal.data_columns + adding_data_columns),
             column_index=(self._internal.column_index + adding_column_index))
         return DataFrame(internal)
 
@@ -3312,16 +3541,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 for v in value.values():
                     if not isinstance(v, (float, int, str, bool)):
                         raise TypeError("Unsupported type %s" % type(v))
+                value = {self._internal.column_name_for(key): value for key, value in value.items()}
             if limit is not None:
                 raise ValueError('limit parameter for value is not support now')
             sdf = sdf.fillna(value)
             internal = self._internal.copy(sdf=sdf)
         else:
             applied = []
-            for col in self._internal.data_columns:
-                applied.append(self[col].fillna(value=value, method=method, axis=axis,
+            for idx in self._internal.column_index:
+                applied.append(self[idx].fillna(value=value, method=method, axis=axis,
                                                 inplace=False, limit=limit))
-            sdf = self._sdf.select(self._internal.index_columns + [col._scol for col in applied])
+            sdf = self._sdf.select(self._internal.index_scols + [col._scol for col in applied])
             internal = self._internal.copy(sdf=sdf,
                                            data_columns=[col._internal.data_columns[0]
                                                          for col in applied],
@@ -4017,16 +4247,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def columns(self, columns):
         if isinstance(columns, pd.MultiIndex):
             column_index = columns.tolist()
-            old_names = self._internal.data_columns
+            old_names = self._internal.column_index
             if len(old_names) != len(column_index):
                 raise ValueError(
                     "Length mismatch: Expected axis has %d elements, new values have %d elements"
                     % (len(old_names), len(column_index)))
             column_index_names = columns.names
-            self._internal = self._internal.copy(column_index=column_index,
+            data_columns = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
+            sdf = self._sdf.select(
+                self._internal.index_scols +
+                [self._internal.scol_for(idx).alias(name)
+                 for idx, name in zip(self._internal.column_index, data_columns)])
+            self._internal = self._internal.copy(sdf=sdf,
+                                                 data_columns=data_columns,
+                                                 column_index=column_index,
                                                  column_index_names=column_index_names)
         else:
-            old_names = self._internal.data_columns
+            old_names = self._internal.column_index
             if len(old_names) != len(columns):
                 raise ValueError(
                     "Length mismatch: Expected axis has %d elements, new values have %d elements"
@@ -4036,7 +4273,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 column_index_names = columns.names
             else:
                 column_index_names = None
-            self._internal = self._internal.copy(column_index=column_index,
+            data_columns = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
+            sdf = self._sdf.select(
+                self._internal.index_scols +
+                [self._internal.scol_for(idx).alias(name)
+                 for idx, name in zip(self._internal.column_index, data_columns)])
+            self._internal = self._internal.copy(sdf=sdf,
+                                                 data_columns=data_columns,
+                                                 column_index=column_index,
                                                  column_index_names=column_index_names)
 
     @property
@@ -4218,18 +4462,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         columns = []
         column_index = []
-        for idx, col in zip(self._internal.column_index, self._internal.data_columns):
+        for idx in self._internal.column_index:
             if len(include) > 0:
                 should_include = (
                     infer_dtype_from_object(self[idx].dtype.name) in include_numpy_type or
-                    self._internal.spark_type_for(col) in include_spark_type)
+                    self._internal.spark_type_for(idx) in include_spark_type)
             else:
                 should_include = not (
                     infer_dtype_from_object(self[idx].dtype.name) in exclude_numpy_type or
-                    self._internal.spark_type_for(col) in exclude_spark_type)
+                    self._internal.spark_type_for(idx) in exclude_spark_type)
 
             if should_include:
-                columns.append(col)
+                columns.append(self._internal.column_name_for(idx))
                 column_index.append(idx)
 
         return DataFrame(self._internal.copy(
@@ -4349,6 +4593,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  1  7
         1  2  8
 
+        Also support for MultiIndex
+
+        >>> df = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6], 'w': [7, 8]},
+        ...                   columns=['x', 'y', 'z', 'w'])
+        >>> columns = [('a', 'x'), ('a', 'y'), ('b', 'z'), ('b', 'w')]
+        >>> df.columns = pd.MultiIndex.from_tuples(columns)
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
+           a     b
+           x  y  z  w
+        0  1  3  5  7
+        1  2  4  6  8
+        >>> df.drop('a')  # doctest: +NORMALIZE_WHITESPACE
+           b
+           z  w
+        0  5  7
+        1  6  8
+
         Notes
         -----
         Currently only axis = 1 is supported in this function,
@@ -4372,11 +4633,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                     if idx[:len(col)] == col)
             if len(drop_column_index) == 0:
                 raise KeyError(columns)
-            cols, idx = zip(*((column, idx)
+            cols, idxes = zip(*((column, idx)
                               for column, idx
                               in zip(self._internal.data_columns, self._internal.column_index)
                               if idx not in drop_column_index))
-            internal = self._internal.copy(data_columns=list(cols), column_index=list(idx))
+            internal = self._internal.copy(
+                sdf=self._sdf.select(
+                    self._internal.index_scols + [self._internal.scol_for(idx) for idx in idxes]),
+                data_columns=list(cols),
+                column_index=list(idxes))
             return DataFrame(internal)
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'columns'")
@@ -4852,9 +5117,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     # TODO: support multi-index columns
     def merge(self, right: 'DataFrame', how: str = 'inner',
-              on: Optional[Union[str, List[str]]] = None,
-              left_on: Optional[Union[str, List[str]]] = None,
-              right_on: Optional[Union[str, List[str]]] = None,
+              on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+              left_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+              right_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
               left_index: bool = False, right_index: bool = False,
               suffixes: Tuple[str, str] = ('_x', '_y')) -> 'DataFrame':
         """
@@ -4966,7 +5231,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         As described in #263, joining string columns currently returns None for missing values
             instead of NaN.
         """
-        _to_list = lambda o: o if o is None or is_list_like(o) else [o]
+        _to_list = lambda os: (os if os is None
+                               else [os] if isinstance(os, tuple)
+                               else [(os,)] if isinstance(os, str)
+                               else [o if isinstance(o, tuple) else (o,)  # type: ignore
+                                     for o in os])
+
+        if isinstance(right, ks.Series):
+            right = right.to_frame()
 
         if on:
             if left_on or right_on:
@@ -4995,8 +5267,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     raise ValueError(
                         'No common columns to perform merge on. Merge options: '
                         'left_on=None, right_on=None, left_index=False, right_index=False')
-                left_keys = common
-                right_keys = common
+                left_keys = _to_list(common)
+                right_keys = _to_list(common)
             if len(left_keys) != len(right_keys):  # type: ignore
                 raise ValueError('len(left_keys) must equal len(right_keys)')
 
@@ -5010,11 +5282,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'how' parameter has to be amongst the following values: ",
                              "['inner', 'left', 'right', 'outer']")
 
-        left_table = self._internal.spark_internal_df.alias('left_table')
-        right_table = right._internal.spark_internal_df.alias('right_table')
+        left_table = self._sdf.alias('left_table')
+        right_table = right._sdf.alias('right_table')
 
-        left_key_columns = [scol_for(left_table, col) for col in left_keys]  # type: ignore
-        right_key_columns = [scol_for(right_table, col) for col in right_keys]  # type: ignore
+        left_scol_for = lambda idx: scol_for(left_table, self._internal.column_name_for(idx))
+        right_scol_for = lambda idx: scol_for(right_table, right._internal.column_name_for(idx))
+
+        left_key_columns = [left_scol_for(idx) for idx in left_keys]  # type: ignore
+        right_key_columns = [right_scol_for(idx) for idx in right_keys]  # type: ignore
 
         join_condition = reduce(lambda x, y: x & y,
                                 [lkey == rkey for lkey, rkey
@@ -5027,20 +5302,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         right_suffix = suffixes[1]
 
         # Append suffixes to columns with the same name to avoid conflicts later
-        duplicate_columns = (set(self._internal.data_columns)
-                             & set(right._internal.data_columns))
-
-        left_index_columns = set(self._internal.index_columns)
-        right_index_columns = set(right._internal.index_columns)
+        duplicate_columns = (set(self._internal.column_index)
+                             & set(right._internal.column_index))
 
         exprs = []
-        for col in left_table.columns:
-            if col in left_index_columns:
-                continue
-            scol = scol_for(left_table, col)
-            if col in duplicate_columns:
-                if col in left_keys and col in right_keys:
-                    right_scol = scol_for(right_table, col)
+        data_columns = []
+        column_index = []
+        for idx in self._internal.column_index:
+            col = self._internal.column_name_for(idx)
+            scol = left_scol_for(idx)
+            if idx in duplicate_columns:
+                if idx in left_keys and idx in right_keys:  # type: ignore
+                    right_scol = right_scol_for(idx)
                     if how == 'right':
                         scol = right_scol
                     elif how == 'full':
@@ -5050,64 +5323,60 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 else:
                     col = col + left_suffix
                     scol = scol.alias(col)
+                    idx = tuple([idx[0] + left_suffix] + list(idx[1:]))
             exprs.append(scol)
-        for col in right_table.columns:
-            if col in right_index_columns:
-                continue
-            scol = scol_for(right_table, col)
-            if col in duplicate_columns:
-                if col in left_keys and col in right_keys:
+            data_columns.append(col)
+            column_index.append(idx)
+        for idx in right._internal.column_index:
+            col = right._internal.column_name_for(idx)
+            scol = right_scol_for(idx)
+            if idx in duplicate_columns:
+                if idx in left_keys and idx in right_keys:  # type: ignore
                     continue
                 else:
                     col = col + right_suffix
                     scol = scol.alias(col)
+                    idx = tuple([idx[0] + right_suffix] + list(idx[1:]))
             exprs.append(scol)
+            data_columns.append(col)
+            column_index.append(idx)
+
+        left_index_scols = self._internal.index_scols
+        right_index_scols = right._internal.index_scols
 
         # Retain indices if they are used for joining
         if left_index:
             if right_index:
-                exprs.extend(['left_table.`{}`'.format(col) for col in left_index_columns])
-                exprs.extend(['right_table.`{}`'.format(col) for col in right_index_columns])
-                index_map = self._internal.index_map + [idx for idx in right._internal.index_map
-                                                        if idx not in self._internal.index_map]
+                if how in ('inner', 'left'):
+                    exprs.extend(left_index_scols)
+                    index_map = self._internal.index_map
+                elif how == 'right':
+                    exprs.extend(right_index_scols)
+                    index_map = right._internal.index_map
+                else:
+                    index_map = []
+                    for (col, name), left_scol, right_scol in zip(self._internal.index_map,
+                                                                  left_index_scols,
+                                                                  right_index_scols):
+                        scol = F.when(left_scol.isNotNull(), left_scol).otherwise(right_scol)
+                        exprs.append(scol.alias(col))
+                        index_map.append((col, name))
             else:
-                exprs.extend(['right_table.`{}`'.format(col) for col in right_index_columns])
+                exprs.extend(right_index_scols)
                 index_map = right._internal.index_map
         elif right_index:
-            exprs.extend(['left_table.`{}`'.format(col) for col in left_index_columns])
+            exprs.extend(left_index_scols)
             index_map = self._internal.index_map
         else:
             index_map = []
 
         selected_columns = joined_table.select(*exprs)
 
-        # Merge left and right indices after the join by replacing missing values in the left index
-        # with values from the right index and dropping
-        if (how == 'right' or how == 'full') and right_index:
-            for left_index_col, right_index_col in zip(self._internal.index_columns,
-                                                       right._internal.index_columns):
-                selected_columns = selected_columns.withColumn(
-                    'left_table.' + left_index_col,
-                    F.when(F.col('left_table.`{}`'.format(left_index_col)).isNotNull(),
-                           F.col('left_table.`{}`'.format(left_index_col)))
-                    .otherwise(F.col('right_table.`{}`'.format(right_index_col)))
-                ).withColumnRenamed(
-                    'left_table.' + left_index_col, left_index_col
-                ).drop(F.col('left_table.`{}`'.format(left_index_col)))
-        if not (left_index and not right_index):
-            for right_index_col in right_index_columns:
-                if right_index_col in left_index_columns:
-                    selected_columns = \
-                        selected_columns.drop(F.col('right_table.`{}`'.format(right_index_col)))
-
-        if index_map:
-            data_columns = [c for c in selected_columns.columns
-                            if c not in [idx[0] for idx in index_map]]
-            internal = _InternalFrame(
-                sdf=selected_columns, data_columns=data_columns, index_map=index_map)
-            return DataFrame(internal)
-        else:
-            return DataFrame(selected_columns)
+        internal = _InternalFrame(sdf=selected_columns,
+                                  index_map=index_map if index_map else None,
+                                  data_columns=data_columns,
+                                  column_index=column_index)
+        return DataFrame(internal)
 
     def join(self, right: 'DataFrame', on: Optional[Union[str, List[str]]] = None,
              how: str = 'left', lsuffix: str = '', rsuffix: str = '') -> 'DataFrame':
@@ -5207,6 +5476,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  K1  A1    B1
         3  K2  A2    B2
         """
+        if isinstance(right, ks.Series):
+            common = list(self.columns.intersection([right.name]))
+        else:
+            common = list(self.columns.intersection(right.columns))
+        if len(common) > 0 and not lsuffix and not rsuffix:
+            raise ValueError(
+                "columns overlap but no suffix specified: "
+                "{rename}".format(rename=common))
         if on:
             self = self.set_index(on)
             join_kdf = self.merge(right, left_index=True, right_index=True, how=how,
@@ -5512,13 +5789,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 if col_name not in self.columns:
                     raise KeyError('Only a column name can be used for the '
                                    'key in a dtype mappings argument.')
-            for col_name, col in self.iteritems():
+            for col_name, col in self.items():
                 if col_name in dtype:
                     results.append(col.astype(dtype=dtype[col_name]))
                 else:
                     results.append(col)
         else:
-            for col_name, col in self.iteritems():
+            for col_name, col in self.items():
                 results.append(col.astype(dtype=dtype))
         sdf = self._sdf.select(
             self._internal.index_scols + list(map(lambda ser: ser._scol, results)))
@@ -5565,8 +5842,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3      4      6
         """
         assert isinstance(prefix, str)
+        data_columns = [prefix + self._internal.column_name_for(idx)
+                        for idx in self._internal.column_index]
+        sdf = self._sdf.select(
+            self._internal.index_scols +
+            [self._internal.scol_for(idx).alias(name)
+             for idx, name in zip(self._internal.column_index, data_columns)])
         column_index = [tuple([prefix + i for i in idx]) for idx in self._internal.column_index]
-        internal = self._internal.copy(column_index=column_index)
+        internal = self._internal.copy(sdf=sdf,
+                                       data_columns=data_columns,
+                                       column_index=column_index)
         return DataFrame(internal)
 
     def add_suffix(self, suffix):
@@ -5610,8 +5895,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3      4      6
         """
         assert isinstance(suffix, str)
+        data_columns = [self._internal.column_name_for(idx) + suffix
+                        for idx in self._internal.column_index]
+        sdf = self._sdf.select(
+            self._internal.index_scols +
+            [self._internal.scol_for(idx).alias(name)
+             for idx, name in zip(self._internal.column_index, data_columns)])
         column_index = [tuple([i + suffix for i in idx]) for idx in self._internal.column_index]
-        internal = self._internal.copy(column_index=column_index)
+        internal = self._internal.copy(sdf=sdf,
+                                       data_columns=data_columns,
+                                       column_index=column_index)
         return DataFrame(internal)
 
     # TODO: include, and exclude should be implemented.
@@ -6067,13 +6360,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if len(col) != level:
                 raise ValueError("shape (1,{}) doesn't match the shape (1,{})"
                                  .format(len(col), level))
-        index_to_column = dict(zip(self._internal.column_index, self._internal.data_columns))
         scols, columns, idx = [], [], []
         null_columns = False
         for label in label_columns:
-            if index_to_column.get(label, None) is not None:
-                scols.append(self._internal.scol_for(index_to_column[label]))
-                columns.append(index_to_column[label])
+            if label in self._internal.column_index:
+                scols.append(self._internal.scol_for(label))
+                columns.append(self._internal.column_name_for(label))
             else:
                 scols.append(F.lit(np.nan).alias(str(label)))
                 columns.append(str(label))
@@ -6436,8 +6728,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  3.0  1.0
         """
         applied = []
-        for column in self._internal.data_columns:
-            applied.append(self[column].rank(method=method, ascending=ascending))
+        for idx in self._internal.column_index:
+            applied.append(self[idx].rank(method=method, ascending=ascending))
 
         sdf = self._sdf.select(self._internal.index_columns + [column._scol for column in applied])
         internal = self._internal.copy(sdf=sdf,
@@ -6646,12 +6938,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
-            return repr(self._to_internal_pandas())
+            return self._to_internal_pandas().to_string()
 
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
-        repr_string = repr(pdf.iloc[:max_display_count])
+        pdf = pdf.iloc[:max_display_count]
         if pdf_length > max_display_count:
+            repr_string = pdf.to_string(show_dimensions=True)
             match = REPR_PATTERN.search(repr_string)
             if match is not None:
                 nrows = match.group("rows")
@@ -6659,17 +6952,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 footer = ("\n\n[Showing only the first {nrows} rows x {ncols} columns]"
                           .format(nrows=nrows, ncols=ncols))
                 return REPR_PATTERN.sub(footer, repr_string)
-        return repr_string
+        return pdf.to_string()
 
     def _repr_html_(self):
         max_display_count = get_option("display.max_rows")
+        # pandas 0.25.1 has a regression about HTML representation so 'bold_rows'
+        # has to be set as False explicitly. See https://github.com/pandas-dev/pandas/issues/28204
+        bold_rows = not (LooseVersion("0.25.1") == LooseVersion(pd.__version__))
         if max_display_count is None:
-            return self._to_internal_pandas()._repr_html_()
+            return self._to_internal_pandas().to_html(notebook=True, bold_rows=bold_rows)
 
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
-        repr_html = pdf[:max_display_count]._repr_html_()
+        pdf = pdf[:max_display_count]
         if pdf_length > max_display_count:
+            repr_html = pdf.to_html(show_dimensions=True, notebook=True, bold_rows=bold_rows)
             match = REPR_HTML_PATTERN.search(repr_html)
             if match is not None:
                 nrows = match.group("rows")
@@ -6680,7 +6977,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   by=by,
                                   cols=ncols))
                 return REPR_HTML_PATTERN.sub(footer, repr_html)
-        return repr_html
+        return pdf.to_html(notebook=True, bold_rows=bold_rows)
 
     def __getitem__(self, key):
         return self._pd_getitem(key)
@@ -6725,14 +7022,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         yield (kdf[this_idx], this_idx)
 
             kdf = align_diff_frames(assign_columns, self, value, fillna=False, how="left")
-        elif isinstance(key, (tuple, list)):
+        elif isinstance(key, list):
             assert isinstance(value, DataFrame)
             # Same DataFrames.
             field_names = value.columns
-            kdf = self.assign(**{k: value[c] for k, c in zip(key, field_names)})
+            kdf = self._assign({k: value[c] for k, c in zip(key, field_names)})
         else:
             # Same Series.
-            kdf = self.assign(**{key: value})
+            kdf = self._assign({key: value})
 
         self._internal = kdf._internal
 
@@ -6758,6 +7055,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def __dir__(self):
         fields = [f for f in self._sdf.schema.fieldNames() if ' ' not in f]
         return super(DataFrame, self).__dir__() + fields
+
+    def __iter__(self):
+        return iter(self.columns)
 
     @classmethod
     def _validate_axis(cls, axis=0):

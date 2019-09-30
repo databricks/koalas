@@ -76,15 +76,8 @@ class _MissingPandasLikeIndex(object):
     insert = unsupported_function('insert')
     intersection = unsupported_function('intersection')
     is_ = unsupported_function('is_')
-    is_boolean = unsupported_function('is_boolean')
-    is_categorical = unsupported_function('is_categorical')
-    is_floating = unsupported_function('is_floating')
-    is_integer = unsupported_function('is_integer')
-    is_interval = unsupported_function('is_interval')
     is_lexsorted_for_tuple = unsupported_function('is_lexsorted_for_tuple')
     is_mixed = unsupported_function('is_mixed')
-    is_numeric = unsupported_function('is_numeric')
-    is_object = unsupported_function('is_object')
     is_type_compatible = unsupported_function('is_type_compatible')
     join = unsupported_function('join')
     map = unsupported_function('map')
@@ -131,6 +124,7 @@ class _MissingPandasLikeIndex(object):
     memory_usage = common.memory_usage(unsupported_function)
     to_list = common.to_list(unsupported_function)
     tolist = common.tolist(unsupported_function)
+    __iter__ = common.__iter__(unsupported_function)
 
 
 class _MissingPandasLikeMultiIndex(object):
@@ -189,16 +183,9 @@ class _MissingPandasLikeMultiIndex(object):
     insert = unsupported_function('insert')
     intersection = unsupported_function('intersection')
     is_ = unsupported_function('is_')
-    is_boolean = unsupported_function('is_boolean')
-    is_categorical = unsupported_function('is_categorical')
-    is_floating = unsupported_function('is_floating')
-    is_integer = unsupported_function('is_integer')
-    is_interval = unsupported_function('is_interval')
     is_lexsorted = unsupported_function('is_lexsorted')
     is_lexsorted_for_tuple = unsupported_function('is_lexsorted_for_tuple')
     is_mixed = unsupported_function('is_mixed')
-    is_numeric = unsupported_function('is_numeric')
-    is_object = unsupported_function('is_object')
     is_type_compatible = unsupported_function('is_type_compatible')
     join = unsupported_function('join')
     map = unsupported_function('map')
@@ -248,6 +235,7 @@ class _MissingPandasLikeMultiIndex(object):
     # Functions we won't support.
     values = common.values(unsupported_property)
     array = common.array(unsupported_property)
+    __iter__ = common.__iter__(unsupported_function)
 
     # Properties we won't support.
     memory_usage = common.memory_usage(unsupported_function)

@@ -15,9 +15,15 @@ Function application
    :toctree: api/
 
    GroupBy.apply
-   GroupBy.agg
-   GroupBy.aggregate
    GroupBy.transform
+
+The following methods are available only for `DataFrameGroupBy` objects.
+
+.. autosummary::
+   :toctree: api/
+
+   DataFrameGroupBy.agg
+   DataFrameGroupBy.aggregate
 
 Computations / Descriptive Stats
 --------------------------------
@@ -27,13 +33,11 @@ Computations / Descriptive Stats
    GroupBy.all
    GroupBy.any
    GroupBy.count
-   GroupBy.value_counts
    GroupBy.cummax
    GroupBy.cummin
    GroupBy.cumprod
    GroupBy.cumsum
    GroupBy.first
-   GroupBy.filter
    GroupBy.last
    GroupBy.max
    GroupBy.mean
@@ -47,9 +51,23 @@ Computations / Descriptive Stats
    GroupBy.diff
    GroupBy.idxmax
    GroupBy.idxmin
-   GroupBy.nsmallest
-   GroupBy.nlargest
    GroupBy.fillna
    GroupBy.bfill
    GroupBy.ffill
    GroupBy.backfill
+
+The following methods are available only for `SeriesGroupBy` objects.
+
+.. autosummary::
+   :toctree: api/
+
+   SeriesGroupBy.nsmallest
+   SeriesGroupBy.nlargest
+   SeriesGroupBy.value_counts
+
+The following methods are available only for `DataFrameGroupBy` objects.
+
+.. autosummary::
+   :toctree: api/
+
+   DataFrameGroupBy.filter

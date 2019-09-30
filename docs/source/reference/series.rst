@@ -85,6 +85,8 @@ Function application, GroupBy & Window
    :toctree: api/
 
    Series.apply
+   Series.agg
+   Series.aggregate
    Series.map
    Series.groupby
    Series.pipe

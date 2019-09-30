@@ -48,8 +48,6 @@ class _MissingPandasLikeSeries(object):
     flags = unsupported_property('flags', deprecated=True)
 
     # Functions
-    agg = unsupported_function('agg')
-    aggregate = unsupported_function('aggregate')
     align = unsupported_function('align')
     argsort = unsupported_function('argsort')
     asfreq = unsupported_function('asfreq')
@@ -165,3 +163,4 @@ class _MissingPandasLikeSeries(object):
     memory_usage = common.memory_usage(unsupported_function)
     to_pickle = common.to_pickle(unsupported_function)
     to_xarray = common.to_xarray(unsupported_function)
+    __iter__ = common.__iter__(unsupported_function)
