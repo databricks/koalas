@@ -80,7 +80,6 @@ class _MissingPandasLikeDataFrame(object):
     quantile = unsupported_function('quantile')
     query = unsupported_function('query')
     reindex_like = unsupported_function('reindex_like')
-    rename = unsupported_function('rename')
     rename_axis = unsupported_function('rename_axis')
     reorder_levels = unsupported_function('reorder_levels')
     resample = unsupported_function('resample')

@@ -379,6 +379,68 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf._internal.data_columns, ["('A', '0')", "('B', 1)"])
         self.assert_eq(kdf._internal.spark_df.columns, ["('A', '0')", "('B', 1)"])
 
+    def test_rename_dataframe(self):
+        kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
+        result_kdf = kdf1.rename(columns={"A": "a", "B": "b"})
+        self.assert_eq(result_kdf.columns, pd.Index(['a', 'b']))
+
+        result_kdf = kdf1.rename(index={1: 10, 2: 20})
+        self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
+        self.assertTrue(kdf1 is not result_kdf,
+                        "expect return new dataframe when inplace argument is False")
+
+        result_kdf2 = result_kdf.rename(index={1: 10, 2: 20}, inplace=True)
+        self.assertTrue(result_kdf2 is result_kdf,
+                        "expect return the same dataframe when inplace argument is False")
+
+        def str_lower(s) -> str:
+            return str.lower(s)
+
+        result_kdf = kdf1.rename(str_lower, axis='columns')
+        self.assert_eq(result_kdf.columns, pd.Index(['a', 'b']))
+
+        def mul10(x) -> int:
+            return x * 10
+
+        result_kdf = kdf1.rename(mul10, axis='index')
+        self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
+
+        result_kdf = kdf1.rename(columns=str_lower, index={1: 10, 2: 20})
+        self.assert_eq(result_kdf.columns, pd.Index(['a', 'b']))
+        self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
+
+        idx = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Y', 'D')])
+        kdf2 = ks.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8]], columns=idx)
+
+        result_kdf = kdf2.rename(columns=str_lower)
+        self.assert_eq(result_kdf.columns,
+                       pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd')]))
+
+        result_kdf = kdf2.rename(columns=str_lower, level=0)
+        self.assert_eq(result_kdf.columns,
+                       pd.MultiIndex.from_tuples([('x', 'A'), ('x', 'B'), ('y', 'C'), ('y', 'D')]))
+
+        result_kdf = kdf2.rename(columns=str_lower, level=1)
+        self.assert_eq(result_kdf.columns,
+                       pd.MultiIndex.from_tuples([('X', 'a'), ('X', 'b'), ('Y', 'c'), ('Y', 'd')]))
+
+        kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list('ab'))
+
+        # for spark 2.3, disable arrow optimization. Because koalas multi-index do not support
+        # arrow optimization in spark 2.3.
+
+        result_kdf = kdf3.rename(index=str_lower)
+        self.assert_eq(result_kdf.index,
+                       pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd')]))
+
+        result_kdf = kdf3.rename(index=str_lower, level=0)
+        self.assert_eq(result_kdf.index,
+                       pd.MultiIndex.from_tuples([('x', 'A'), ('x', 'B'), ('y', 'C'), ('y', 'D')]))
+
+        result_kdf = kdf3.rename(index=str_lower, level=1)
+        self.assert_eq(result_kdf.index,
+                       pd.MultiIndex.from_tuples([('X', 'a'), ('X', 'b'), ('Y', 'c'), ('Y', 'd')]))
+
     def test_dot_in_column_name(self):
         self.assert_eq(
             ks.DataFrame(ks.range(1)._sdf.selectExpr("1 as `a.b`"))['a.b'],
