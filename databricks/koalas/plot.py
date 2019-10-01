@@ -17,8 +17,10 @@
 from distutils.version import LooseVersion
 
 import matplotlib
+import pytest
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from matplotlib.axes._base import _process_plot_format
 from pandas.core.dtypes.inference import is_integer, is_list_like
 from pandas.io.formats.printing import pprint_thing
@@ -1000,8 +1002,7 @@ class KoalasSeriesPlotMethods(PandasObject):
         .. plot::
             :context: close-figs
 
-            >>> s = ks.Series(range(5),
-            ...     index=pd.date_range('2018-01-01', periods=5, freq='H'))
+            >>> s = ks.Series([1 ,3 ,2])
             >>> ax = s.plot.line()
         """
         return self(kind="line", x=x, y=y, **kwargs)
@@ -1758,3 +1759,9 @@ class KoalasFramePlotMethods(PandasObject):
             ...                       colormap='viridis')
         """
         return self(kind="scatter", x=x, y=y, s=s, c=c, **kwds)
+
+
+@pytest.fixture(autouse=True)
+def close_figs():
+    yield
+    plt.close("all")
