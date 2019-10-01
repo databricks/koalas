@@ -1562,7 +1562,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 raise ValueError("'level' should be less than the number of indexes")
 
             if isinstance(index, str):
-                index = [(index,)]
+                index = [(index,)]  # type: ignore
             elif isinstance(index, tuple):
                 index = [index]
             else:
@@ -1572,7 +1572,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                                      "should only contains names as strings, "
                                      "or a list of tuples that contain "
                                      "index names as strings")
-                index = [rows if isinstance(rows, tuple) else (rows,)
+                index = [rows if isinstance(rows, tuple) else (rows,)  # type: ignore
                          for rows in index]
 
             def _gen_next_lvl(level):
