@@ -208,13 +208,21 @@ def download_pandoc_if_needed(path):
 
     filename = pandoc_urls[pf].split("/")[-1]
     os.environ["PATH"] = "%s:%s" % (path, os.environ["PATH"])
-    if not os.path.isfile(filename):
-        def download_pandoc():
-            try:
-                pandoc_download._handle_linux = _handle_linux
-                return pandoc_download.download_pandoc(targetfolder=path, version="latest")
-            finally:
-                if os.path.isfile(filename):
-                    os.remove(filename)
 
-        retry(download_pandoc)
+    # Seems like it always downloads to the current working directory, and then unpack to
+    # the given path. Let's download to the given path as well.
+    prev = os.getcwd()
+    os.chdir(path)
+    try:
+        if not os.path.isfile(filename):
+            def download_pandoc():
+                try:
+                    pandoc_download._handle_linux = _handle_linux
+                    return pandoc_download.download_pandoc(targetfolder=path, version="latest")
+                finally:
+                    if os.path.isfile(filename):
+                        os.remove(filename)
+
+            retry(download_pandoc)
+    finally:
+        os.chdir(prev)
