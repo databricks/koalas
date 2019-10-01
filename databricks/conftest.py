@@ -25,6 +25,7 @@ from distutils.version import LooseVersion
 
 import pandas as pd
 import pyarrow as pa
+import matplotlib.pyplot as plt
 from pyspark import __version__
 
 from databricks import koalas
@@ -85,3 +86,9 @@ def add_db(doctest_namespace):
 def add_caplog(caplog):
     with caplog.at_level(logging.INFO, logger='databricks.koalas.usage_logger'):
         yield
+
+
+@pytest.fixture(autouse=True)
+def close_figs():
+    yield
+    plt.close("all")

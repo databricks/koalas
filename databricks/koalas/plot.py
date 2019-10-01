@@ -17,10 +17,8 @@
 from distutils.version import LooseVersion
 
 import matplotlib
-import pytest
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from matplotlib.axes._base import _process_plot_format
 from pandas.core.dtypes.inference import is_integer, is_list_like
 from pandas.io.formats.printing import pprint_thing
@@ -1263,12 +1261,12 @@ class KoalasSeriesPlotMethods(PandasObject):
         .. plot::
             :context: close-figs
 
-        >>> df = ks.DataFrame({'mass': [0.330, 4.87, 5.97],
-        ...                    'radius': [2439.7, 6051.8, 6378.1]},
-        ...                   index=['Mercury', 'Venus', 'Earth'])
-        >>> plot = df.mass.plot.pie(figsize=(5, 5))
+            >>> df = ks.DataFrame({'mass': [0.330, 4.87, 5.97],
+            ...                    'radius': [2439.7, 6051.8, 6378.1]},
+            ...                   index=['Mercury', 'Venus', 'Earth'])
+            >>> plot = df.mass.plot.pie(figsize=(5, 5))
 
-        >>> plot = df.mass.plot.pie(subplots=True, figsize=(6, 3))
+            >>> plot = df.mass.plot.pie(subplots=True, figsize=(6, 3))
         """
         return self(kind='pie', **kwds)
 
@@ -1759,9 +1757,3 @@ class KoalasFramePlotMethods(PandasObject):
             ...                       colormap='viridis')
         """
         return self(kind="scatter", x=x, y=y, s=s, c=c, **kwds)
-
-
-@pytest.fixture(autouse=True)
-def close_figs():
-    yield
-    plt.close("all")
