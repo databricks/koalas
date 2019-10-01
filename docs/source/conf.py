@@ -39,7 +39,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'numpydoc',  # handle NumPy documentation formatted docstrings. Needs to install
     'nbsphinx',  # Jupyter Notebook. Needs to install
-    "matplotlib.sphinxext.plot_directive",  # For visualize plot result
+    'matplotlib.sphinxext.plot_directive',  # For visualize plot result
 ]
 
 # matplotlib plot directive

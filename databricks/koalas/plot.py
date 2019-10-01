@@ -1000,9 +1000,8 @@ class KoalasSeriesPlotMethods(PandasObject):
         .. plot::
             :context: close-figs
 
-            >>> import matplotlib.pyplot as plt
-            >>> plt.close('all')
-            >>> s = ks.Series([1, 3, 2])
+            >>> s = ks.Series(range(5),
+            ...     index=pd.date_range('2018-01-01', periods=5, freq='H'))
             >>> ax = s.plot.line()
         """
         return self(kind="line", x=x, y=y, **kwargs)
@@ -1062,8 +1061,11 @@ class KoalasSeriesPlotMethods(PandasObject):
 
         Examples
         --------
-        >>> df = ks.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
-        >>> plot = df.val.plot.barh()
+        .. plot::
+            :context: close-figs
+
+            >>> df = ks.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
+            >>> plot = df.val.plot.barh()
         """
         return self(kind='barh', **kwds)
 
@@ -1256,7 +1258,11 @@ class KoalasSeriesPlotMethods(PandasObject):
 
         Examples
         --------
-        >>> df = ks.DataFrame({'mass': [0.330, 4.87 , 5.97],
+
+        .. plot::
+            :context: close-figs
+
+        >>> df = ks.DataFrame({'mass': [0.330, 4.87, 5.97],
         ...                    'radius': [2439.7, 6051.8, 6378.1]},
         ...                   index=['Mercury', 'Venus', 'Earth'])
         >>> plot = df.mass.plot.pie(figsize=(5, 5))
@@ -1326,10 +1332,9 @@ class KoalasFramePlotMethods(PandasObject):
             The following example shows the populations for some animals
             over the years.
 
-            >>> df = ks.DataFrame({
-            ...    'pig': [20, 18, 489, 675, 1776],
-            ...    'horse': [4, 25, 281, 600, 1900]
-            ...    }, index=[1990, 1997, 2003, 2009, 2014])
+            >>> df = ks.DataFrame({'pig': [20, 18, 489, 675, 1776],
+            ...                    'horse': [4, 25, 281, 600, 1900]},
+            ...                   index=[1990, 1997, 2003, 2009, 2014])
             >>> lines = df.plot.line()
 
         .. plot::
@@ -1430,7 +1435,7 @@ class KoalasFramePlotMethods(PandasObject):
         .. plot::
             :context: close-figs
 
-            >>> df = ks.DataFrame({'mass': [0.330, 4.87 , 5.97],
+            >>> df = ks.DataFrame({'mass': [0.330, 4.87, 5.97],
             ...                    'radius': [2439.7, 6051.8, 6378.1]},
             ...                   index=['Mercury', 'Venus', 'Earth'])
             >>> plot = df.plot.pie(y='mass', figsize=(5, 5))
@@ -1519,7 +1524,7 @@ class KoalasFramePlotMethods(PandasObject):
         .. plot::
             :context: close-figs
 
-            >>> df = ks.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
+            >>> df = ks.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
             >>> ax = df.plot.bar(x='lab', y='val', rot=0)
 
         Plot a whole dataframe to a bar plot. Each column is assigned a
@@ -1596,7 +1601,7 @@ class KoalasFramePlotMethods(PandasObject):
         .. plot::
             :context: close-figs
 
-            >>> df = ks.DataFrame({'lab':['A', 'B', 'C'], 'val':[10, 30, 20]})
+            >>> df = ks.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
             >>> ax = df.plot.barh(x='lab', y='val')
 
         Plot a whole DataFrame to a horizontal bar plot
@@ -1686,7 +1691,7 @@ class KoalasFramePlotMethods(PandasObject):
 
             >>> df = pd.DataFrame(
             ...     np.random.randint(1, 7, 6000),
-            ...     columns = ['one'])
+            ...     columns=['one'])
             >>> df['two'] = df['one'] + np.random.randint(1, 7, 6000)
             >>> df = ks.from_pandas(df)
             >>> ax = df.plot.hist(bins=12, alpha=0.5)
