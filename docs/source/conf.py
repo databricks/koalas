@@ -12,10 +12,20 @@
 
 import os
 import sys
+import shutil
 import importlib.util
+import errno
 
 from databricks import koalas
 sys.path.insert(0, os.path.abspath('.'))
+
+# Remove previously generated rst files. Ignore errors just in case it stops generating whole docs.
+shutil.rmtree("%s/reference/api" % os.path.dirname(os.path.abspath(__file__)), ignore_errors=True)
+try:
+    os.mkdir("%s/reference/api" % os.path.dirname(os.path.abspath(__file__)))
+except OSError as e:
+    if e.errno != errno.EEXIST:
+        raise
 
 
 def gendoc():
