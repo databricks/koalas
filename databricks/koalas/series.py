@@ -20,7 +20,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 import re
 import inspect
 from collections import Iterable
-from functools import partial, wraps
+from functools import partial, wraps, reduce
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
 
 import numpy as np
@@ -1554,7 +1554,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         index = labels
         if index is not None:
-            if not isinstance(index, (str, list, tuple)):
+            if not isinstance(index, (str, tuple, list)):
                 raise ValueError("'index' type should be one of str, list, tuple")
             if level is None:
                 level = 0
@@ -1562,25 +1562,33 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 raise ValueError("'level' should be less than the number of indexes")
 
             if isinstance(index, str):
+                index = [(index,)]
+            elif isinstance(index, tuple):
                 index = [index]
-            if isinstance(index, list):
-                if all((isinstance(idx, str) for idx in index)):
-                    sdf = self._internal.sdf.where(
-                        ~self._internal.index_scols[level].isin(index))
-                    return Series(self._internal.copy(sdf=sdf))
-
-                elif all((isinstance(idx, tuple) for idx in index)):
-                    df = self.to_frame().transpose().drop(index).transpose()
-                else:
+            else:
+                if not (all((isinstance(rows, str) for rows in index)) or
+                        all((isinstance(rows, tuple) for rows in index))):
                     raise ValueError("If the given index is a list, it "
                                      "should only contains names as strings, "
                                      "or a list of tuples that contain "
                                      "index names as strings")
-            if isinstance(index, tuple):
-                df = self.to_frame().transpose().drop(index).transpose()
+                index = [rows if isinstance(rows, tuple) else (rows,)
+                         for rows in index]
 
-            internal = self._internal.copy(sdf=df._internal.sdf, scol=df._internal.scol)
-            return Series(internal)
+            def _gen_next_lvl(level):
+                while True:
+                    yield level
+                    level += 1
+
+            drop_indexes = []
+            for rows in index:
+                lvl = _gen_next_lvl(level)
+                drop_rows = [self._internal.index_scols[next(lvl)].isin(row)
+                             for row in rows]
+                drop_indexes.append(~reduce(lambda x, y: x & y, drop_rows))
+
+            sdf = self._internal.sdf.where(reduce(lambda x, y: x & y, drop_indexes))
+            return _col(DataFrame(self._internal.copy(sdf=sdf)))
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'index'")
 
