@@ -140,6 +140,24 @@ def gen_release_notes(path):
                 release_file.write("\n")
 
 
+def retry(f, num=3, args=(), **kwargs):
+    """
+    Retry the given function `f` with the given arguments `num` times
+    """
+
+    try:
+        return f(*args, **kwargs)
+    except Exception as exception:
+        for i in range(num):
+            try:
+                return f(*args, **kwargs)
+            except Exception as e:
+                exception = e
+                print("Retrying '%s' (%s/%s) ..." % (f.__name__, i + 1, num))
+        else:
+            raise exception
+
+
 def download_pandoc_if_needed(path):
     """
     Download pandoc that is used by pypandoc.
@@ -178,7 +196,7 @@ def download_pandoc_if_needed(path):
             os.chdir(cur_wd)
             shutil.rmtree(tempfolder)
 
-    pandoc_urls, _ = pandoc_download._get_pandoc_urls("latest")
+    pandoc_urls, _ = retry(pandoc_download._get_pandoc_urls, version="latest")
     pf = sys.platform
     if pf.startswith("linux"):
         pf = "linux"
@@ -191,5 +209,12 @@ def download_pandoc_if_needed(path):
     filename = pandoc_urls[pf].split("/")[-1]
     os.environ["PATH"] = "%s:%s" % (path, os.environ["PATH"])
     if not os.path.isfile(filename):
-        pandoc_download._handle_linux = _handle_linux
-        pandoc_download.download_pandoc(targetfolder=path)
+        def download_pandoc():
+            try:
+                pandoc_download._handle_linux = _handle_linux
+                return pandoc_download.download_pandoc(targetfolder=path, version="latest")
+            finally:
+                if os.path.isfile(filename):
+                    os.remove(filename)
+
+        retry(download_pandoc)
