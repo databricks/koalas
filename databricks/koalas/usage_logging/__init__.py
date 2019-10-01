@@ -40,6 +40,7 @@ from databricks.koalas.missing.window import _MissingPandasLikeExpanding, \
     _MissingPandasLikeRollingGroupby
 from databricks.koalas.series import Series
 from databricks.koalas.strings import StringMethods
+from databricks.koalas.window import Expanding, ExpandingGroupby, Rolling, RollingGroupby
 
 
 def attach(logger_module: Union[str, ModuleType]) -> None:
@@ -63,7 +64,8 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
 
     modules = [config, namespace]
     classes = [DataFrame, Series, Index, MultiIndex,
-               DataFrameGroupBy, SeriesGroupBy, DatetimeMethods, StringMethods]
+               DataFrameGroupBy, SeriesGroupBy, DatetimeMethods, StringMethods,
+               Expanding, ExpandingGroupby, Rolling, RollingGroupby]
 
     try:
         from databricks.koalas import mlflow
