@@ -4314,8 +4314,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         f    datetime64[ns]
         dtype: object
         """
-        return pd.Series([self[col].dtype for col in self._internal.data_columns],
-                         index=self._internal.data_columns)
+        return pd.Series([self[idx].dtype for idx in self._internal.column_index],
+                         index=pd.Index([idx if len(idx) > 1 else idx[0]
+                                         for idx in self._internal.column_index]))
 
     def select_dtypes(self, include=None, exclude=None):
         """
