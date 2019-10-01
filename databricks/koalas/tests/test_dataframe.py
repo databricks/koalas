@@ -1143,6 +1143,33 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
         self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
 
+        # multi-index columns
+        columns1 = pd.MultiIndex.from_tuples([('x', 'key'), ('Y', 'A')])
+        columns2 = pd.MultiIndex.from_tuples([('x', 'key'), ('Y', 'B')])
+        pdf1.columns = columns1
+        pdf2.columns = columns2
+        kdf1.columns = columns1
+        kdf2.columns = columns2
+
+        join_pdf = pdf1.join(pdf2, lsuffix='_left', rsuffix='_right')
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
+
+        join_kdf = kdf1.join(kdf2, lsuffix='_left', rsuffix='_right')
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
+
+        self.assert_eq(join_pdf, join_kdf)
+
+        # check `on` parameter
+        join_pdf = pdf1.join(pdf2.set_index(('x', 'key')), on=[('x', 'key')],
+                             lsuffix='_left', rsuffix='_right')
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
+
+        join_kdf = kdf1.join(kdf2.set_index(('x', 'key')), on=[('x', 'key')],
+                             lsuffix='_left', rsuffix='_right')
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
+
+        self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
+
     def test_replace(self):
         pdf = pd.DataFrame({"name": ['Ironman', 'Captain America', 'Thor', 'Hulk'],
                            "weapon": ['Mark-45', 'Shield', 'Mjolnir', 'Smash']})
@@ -1195,7 +1222,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_update(self):
         # check base function
-        def get_data():
+        def get_data(left_columns=None, right_columns=None):
             left_pdf = pd.DataFrame({'A': ['1', '2', '3', '4'],
                                      'B': ['100', '200', np.nan, np.nan]},
                                     columns=['A', 'B'])
@@ -1206,6 +1233,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                     columns=['A', 'B'])
             right_kdf = ks.DataFrame({'B': ['x', None, 'y', None],
                                       'C': ['100', '200', '300', '400']}, columns=['B', 'C'])
+            if left_columns is not None:
+                left_pdf.columns = left_columns
+                left_kdf.columns = left_columns
+            if right_columns is not None:
+                right_pdf.columns = right_columns
+                right_kdf.columns = right_columns
             return left_kdf, left_pdf, right_kdf, right_pdf
 
         left_kdf, left_pdf, right_kdf, right_pdf = get_data()
@@ -1220,6 +1253,32 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaises(NotImplementedError):
             left_kdf.update(right_kdf, join='right')
+
+        # multi-index columns
+        left_columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B')])
+        right_columns = pd.MultiIndex.from_tuples([('X', 'B'), ('Y', 'C')])
+
+        left_kdf, left_pdf, right_kdf, right_pdf = get_data(left_columns=left_columns,
+                                                            right_columns=right_columns)
+        left_pdf.update(right_pdf)
+        left_kdf.update(right_kdf)
+        self.assert_eq(left_pdf.sort_values(by=[('X', 'A'), ('X', 'B')]),
+                       left_kdf.sort_values(by=[('X', 'A'), ('X', 'B')]))
+
+        left_kdf, left_pdf, right_kdf, right_pdf = get_data(left_columns=left_columns,
+                                                            right_columns=right_columns)
+        left_pdf.update(right_pdf, overwrite=False)
+        left_kdf.update(right_kdf, overwrite=False)
+        self.assert_eq(left_pdf.sort_values(by=[('X', 'A'), ('X', 'B')]),
+                       left_kdf.sort_values(by=[('X', 'A'), ('X', 'B')]))
+
+        right_columns = pd.MultiIndex.from_tuples([('Y', 'B'), ('Y', 'C')])
+        left_kdf, left_pdf, right_kdf, right_pdf = get_data(left_columns=left_columns,
+                                                            right_columns=right_columns)
+        left_pdf.update(right_pdf)
+        left_kdf.update(right_kdf)
+        self.assert_eq(left_pdf.sort_values(by=[('X', 'A'), ('X', 'B')]),
+                       left_kdf.sort_values(by=[('X', 'A'), ('X', 'B')]))
 
     def test_pivot_table_dtypes(self):
         pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
