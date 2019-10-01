@@ -137,9 +137,7 @@ class GroupBy(object):
                                  "to aggregate functions (string or list of strings).")
 
         else:
-            group_keyname = [key.name for key in self._groupkeys]
-            agg_cols = [key for key in self._kdf.columns if key not in group_keyname]
-
+            agg_cols = [col.name for col in self._agg_columns]
             func_or_funcs = OrderedDict([(col, func_or_funcs) for col in agg_cols])
 
         kdf = DataFrame(GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys))
