@@ -6130,11 +6130,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  3  d
         """
         if subset is None:
-            subset = self._internal.data_columns
-        elif not isinstance(subset, list):
+            subset = self._internal.column_index
+        elif isinstance(subset, str):
+            subset = [(subset,)]
+        elif isinstance(subset, tuple):
             subset = [subset]
+        else:
+            subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
 
-        sdf = self._sdf.drop_duplicates(subset=subset)
+        sdf = self._sdf.drop_duplicates(subset=[self._internal.column_name_for(idx)
+                                                for idx in subset])
         internal = self._internal.copy(sdf=sdf)
         if inplace:
             self._internal = internal
