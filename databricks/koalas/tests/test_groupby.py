@@ -168,6 +168,21 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             sorted_agg_pdf = pdf.groupby('kind').agg(aggfunc).sort_index()
             self.assert_eq(sorted_agg_kdf, sorted_agg_pdf)
 
+        # test on multi index column case
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2],
+                            'B': [1, 2, 3, 4],
+                            'C': [0.362, 0.227, 1.267, -0.562]})
+        kdf = koalas.from_pandas(pdf)
+
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        for aggfunc in agg_funcs:
+            sorted_agg_kdf = kdf.groupby('kind').agg(aggfunc)
+            sorted_agg_pdf = pdf.groupby('kind').agg(aggfunc)
+            self.assert_eq(sorted_agg_kdf, sorted_agg_pdf)
+
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
                             'B': [True, True, True, False, False, False, None, True, None, False]})
