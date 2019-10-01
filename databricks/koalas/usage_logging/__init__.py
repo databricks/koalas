@@ -35,8 +35,9 @@ from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, \
     _MissingPandasLikeMultiIndex
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
-from databricks.koalas.missing.window import _MissingPandasLikeExpanding, _MissingPandasLikeRolling, \
-    _MissingPandasLikeExpandingGroupby, _MissingPandasLikeRollingGroupby
+from databricks.koalas.missing.window import _MissingPandasLikeExpanding, \
+    _MissingPandasLikeRolling, _MissingPandasLikeExpandingGroupby, \
+    _MissingPandasLikeRollingGroupby
 from databricks.koalas.series import Series
 from databricks.koalas.strings import StringMethods
 
