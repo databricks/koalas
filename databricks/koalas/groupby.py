@@ -40,6 +40,7 @@ from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy
 from databricks.koalas.series import Series, _col
 from databricks.koalas.config import get_option
 from databricks.koalas.utils import column_index_level, scol_for
+from databricks.koalas.window import RollingGroupby, ExpandingGroupby
 
 
 class GroupBy(object):
@@ -1526,6 +1527,12 @@ class GroupBy(object):
                 (F.countDistinct(col) +
                  F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0))
         return self._reduce_for_stat_function(stat_function, only_numeric=False)
+
+    def rolling(self, *args, **kwargs):
+        return RollingGroupby(self)
+
+    def expanding(self, *args, **kwargs):
+        return ExpandingGroupby(self)
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
         groupkeys = self._groupkeys

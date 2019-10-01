@@ -34,6 +34,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.indexing import AtIndexer, ILocIndexer, LocIndexer
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.window import Rolling, Expanding
 
 
 class _Frame(object):
@@ -1385,6 +1386,12 @@ class _Frame(object):
         sdf = sdf.select([median(col).alias(col) for col in kdf.columns])
         # This is expected to be small so it's fine to transpose.
         return DataFrame(sdf)._to_internal_pandas().transpose().iloc[:, 0]
+
+    def rolling(self, *args, **kwargs):
+        return Rolling(self)
+
+    def expanding(self, *args, **kwargs):
+        return Expanding(self)
 
     @property
     def at(self):

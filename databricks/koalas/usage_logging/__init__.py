@@ -35,6 +35,9 @@ from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, \
     _MissingPandasLikeMultiIndex
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
+from databricks.koalas.missing.window import _MissingPandasLikeExpanding, \
+    _MissingPandasLikeRolling, _MissingPandasLikeExpandingGroupby, \
+    _MissingPandasLikeRollingGroupby
 from databricks.koalas.series import Series
 from databricks.koalas.strings import StringMethods
 
@@ -103,7 +106,11 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
          (pd.Index, _MissingPandasLikeIndex),
          (pd.MultiIndex, _MissingPandasLikeMultiIndex),
          (pd.core.groupby.DataFrameGroupBy, _MissingPandasLikeDataFrameGroupBy),
-         (pd.core.groupby.SeriesGroupBy, _MissingPandasLikeSeriesGroupBy)]:
+         (pd.core.groupby.SeriesGroupBy, _MissingPandasLikeSeriesGroupBy),
+         (pd.core.window.Expanding, _MissingPandasLikeExpanding),
+         (pd.core.window.Rolling, _MissingPandasLikeRolling),
+         (pd.core.window.ExpandingGroupby, _MissingPandasLikeExpandingGroupby),
+         (pd.core.window.RollingGroupby, _MissingPandasLikeRollingGroupby)]:
         for name, func in inspect.getmembers(missing, inspect.isfunction):
             setattr(missing, name,
                     _wrap_missing_function(original.__name__, name, func, original, logger))

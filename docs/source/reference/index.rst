@@ -9,5 +9,6 @@ API Reference
     series
     frame
     indexing
+    window
     groupby
     ml
