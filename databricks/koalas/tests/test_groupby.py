@@ -179,8 +179,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf.columns = columns
 
         for aggfunc in agg_funcs:
-            sorted_agg_kdf = kdf.groupby('kind').agg(aggfunc).sort_index()
-            sorted_agg_pdf = pdf.groupby('kind').agg(aggfunc).sort_index()
+            sorted_agg_kdf = kdf.groupby(('X', 'A')).agg(aggfunc).sort_index()
+            sorted_agg_pdf = pdf.groupby(('X', 'A')).agg(aggfunc).sort_index()
             self.assert_eq(sorted_agg_kdf, sorted_agg_pdf)
 
     def test_all_any(self):
