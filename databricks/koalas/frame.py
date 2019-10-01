@@ -3785,27 +3785,40 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if len(value) != len(to_replace):
                 raise ValueError('Length of to_replace and value must be same')
 
-        sdf = self._sdf.select(self._internal.data_columns)
+        # TODO: Do we still need to support this argument?
+        if subset is None:
+            subset = self._internal.column_index
+        elif isinstance(subset, str):
+            subset = [(subset,)]
+        elif isinstance(subset, tuple):
+            subset = [subset]
+        else:
+            subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
+        subset = [self._internal.column_name_for(idx) for idx in subset]
+
+        sdf = self._sdf
         if isinstance(to_replace, dict) and value is None and \
                 (not any(isinstance(i, dict) for i in to_replace.values())):
             sdf = sdf.replace(to_replace, value, subset)
         elif isinstance(to_replace, dict):
-            for df_column, replacement in to_replace.items():
+            for name, replacement in to_replace.items():
+                if isinstance(name, str):
+                    name = (name,)
+                df_column = self._internal.column_name_for(name)
                 if isinstance(replacement, dict):
                     sdf = sdf.replace(replacement, subset=df_column)
                 else:
                     sdf = sdf.withColumn(df_column,
                                          F.when(scol_for(sdf, df_column) == replacement, value)
                                          .otherwise(scol_for(sdf, df_column)))
-
         else:
             sdf = sdf.replace(to_replace, value, subset)
 
-        kdf = DataFrame(sdf)
+        internal = self._internal.copy(sdf=sdf)
         if inplace:
-            self._internal = kdf._internal
+            self._internal = internal
         else:
-            return kdf
+            return DataFrame(internal)
 
     def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) \
             -> 'DataFrame':

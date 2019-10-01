@@ -1172,7 +1172,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_replace(self):
         pdf = pd.DataFrame({"name": ['Ironman', 'Captain America', 'Thor', 'Hulk'],
-                           "weapon": ['Mark-45', 'Shield', 'Mjolnir', 'Smash']})
+                            "weapon": ['Mark-45', 'Shield', 'Mjolnir', 'Smash']},
+                           index=[10, 20, 30, 40])
         kdf = ks.from_pandas(pdf)
 
         with self.assertRaisesRegex(NotImplementedError,
@@ -1201,24 +1202,44 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         pdf = pd.DataFrame({'A': [0, 1, 2, 3, 4],
                             'B': [5, 6, 7, 8, 9],
-                            'C': ['a', 'b', 'c', 'd', 'e']})
-
+                            'C': ['a', 'b', 'c', 'd', 'e']},
+                           index=[2, 3, 4, 5, 6])
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(repr(kdf.replace([0, 1, 2, 3], 4)),
-                       repr(pdf.replace([0, 1, 2, 3], 4)))
+        self.assert_eq(kdf.replace([0, 1, 2, 3, 5, 6], 4),
+                       pdf.replace([0, 1, 2, 3, 5, 6], 4))
 
-        self.assert_eq(repr(kdf.replace([0, 1, 2, 3], [4, 3, 2, 1])),
-                       repr(pdf.replace([0, 1, 2, 3], [4, 3, 2, 1])))
+        self.assert_eq(kdf.replace([0, 1, 2, 3, 5, 6], [6, 5, 4, 3, 2, 1]),
+                       pdf.replace([0, 1, 2, 3, 5, 6], [6, 5, 4, 3, 2, 1]))
 
-        self.assert_eq(repr(kdf.replace({0: 10, 1: 100})),
-                       repr(pdf.replace({0: 10, 1: 100})))
+        self.assert_eq(kdf.replace({0: 10, 1: 100, 7: 200}),
+                       pdf.replace({0: 10, 1: 100, 7: 200}))
 
-        self.assert_eq(repr(kdf.replace({'A': 0, 'B': 5}, 100)),
-                       repr(pdf.replace({'A': 0, 'B': 5}, 100)))
+        self.assert_eq(kdf.replace({'A': 0, 'B': 5}, 100),
+                       pdf.replace({'A': 0, 'B': 5}, 100))
 
-        self.assert_eq(repr(kdf.replace({'A': {0: 100, 4: 400}})),
-                       repr(pdf.replace({'A': {0: 100, 4: 400}})))
+        self.assert_eq(kdf.replace({'A': {0: 100, 4: 400}}),
+                       pdf.replace({'A': {0: 100, 4: 400}}))
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.replace([0, 1, 2, 3, 5, 6], 4),
+                       pdf.replace([0, 1, 2, 3, 5, 6], 4))
+
+        self.assert_eq(kdf.replace([0, 1, 2, 3, 5, 6], [6, 5, 4, 3, 2, 1]),
+                       pdf.replace([0, 1, 2, 3, 5, 6], [6, 5, 4, 3, 2, 1]))
+
+        self.assert_eq(kdf.replace({0: 10, 1: 100, 7: 200}),
+                       pdf.replace({0: 10, 1: 100, 7: 200}))
+
+        self.assert_eq(kdf.replace({('X', 'A'): 0, ('X', 'B'): 5}, 100),
+                       pdf.replace({('X', 'A'): 0, ('X', 'B'): 5}, 100))
+
+        self.assert_eq(kdf.replace({('X', 'A'): {0: 100, 4: 400}}),
+                       pdf.replace({('X', 'A'): {0: 100, 4: 400}}))
 
     def test_update(self):
         # check base function
