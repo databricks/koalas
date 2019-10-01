@@ -19,7 +19,7 @@ A wrapper for GroupedData to behave similar to pandas GroupBy.
 """
 
 import inspect
-from collections import Callable
+from collections import Callable, OrderedDict
 from functools import partial
 from typing import Any, List, Tuple, Union
 
@@ -58,7 +58,7 @@ class GroupBy(object):
 
         Parameters
         ----------
-        func : dict
+        func : dict, str or list
              a dict mapping from column name (string) to
              aggregate functions (string or list of strings).
 
@@ -113,14 +113,33 @@ class GroupBy(object):
         1    1    2
         2    3    4
 
+        >>> aggregated = df.groupby('A').agg('min')
+        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+             B      C
+        A
+        1    1  0.227
+        2    3 -0.562
+
+        >>> aggregated = df.groupby('A').agg(['min', 'max'])
+        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+             B           C
+           min  max    min    max
+        A
+        1    1    2  0.227  0.362
+        2    3    4 -0.562  1.267
         """
-        if not isinstance(func_or_funcs, dict) or \
-                not all(isinstance(key, (str, tuple)) and
-                        (isinstance(value, str) or
-                         isinstance(value, list) and all(isinstance(v, str) for v in value))
-                        for key, value in func_or_funcs.items()):
-            raise ValueError("aggs must be a dict mapping from column name (string or tuple) to "
-                             "aggregate functions (string or list of strings).")
+        if not isinstance(func_or_funcs, (str, list)):
+            if not isinstance(func_or_funcs, dict) or \
+                    not all(isinstance(key, (str, tuple)) and
+                            (isinstance(value, str) or isinstance(value, list) and
+                                all(isinstance(v, str) for v in value))
+                            for key, value in func_or_funcs.items()):
+                raise ValueError("aggs must be a dict mapping from column name (string or tuple) "
+                                 "to aggregate functions (string or list of strings).")
+
+        else:
+            agg_cols = [col.name for col in self._agg_columns]
+            func_or_funcs = OrderedDict([(col, func_or_funcs) for col in agg_cols])
 
         kdf = DataFrame(GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys))
         if not self._as_index:
