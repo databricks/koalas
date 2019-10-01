@@ -720,14 +720,14 @@ class _InternalFrame(object):
                              for i, name in enumerate(index.names)]
         else:
             name = index.name
-            index_map = [(name if name is not None else '__index_level_0__',
+            index_map = [(str(name) if name is not None else '__index_level_0__',
                           name if name is None or isinstance(name, tuple) else (name,))]
 
         index_columns = [index_column for index_column, _ in index_map]
 
         reset_index = pdf.reset_index()
         reset_index.columns = index_columns + data_columns
-        schema = StructType([StructField(name, infer_pd_series_spark_type(col),
+        schema = StructType([StructField(str(name), infer_pd_series_spark_type(col),
                                          nullable=bool(col.isnull().any()))
                              for name, col in reset_index.iteritems()])
         for name, col in reset_index.iteritems():

@@ -6838,9 +6838,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.filter(index_scols[0].contains(like))
                 return DataFrame(self._internal.copy(sdf=sdf))
             elif axis in ('columns', 1, None):
-                data_columns = self._internal.data_columns
-                output_columns = [c for c in data_columns if like in c]
-                return self[output_columns]
+                column_index = self._internal.column_index
+                output_idx = [idx for idx in column_index if any(like in i for i in idx)]
+                return self[output_idx]
         elif regex is not None:
             if axis in ('index', 0):
                 # TODO: support multi-index here
@@ -6849,10 +6849,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.filter(index_scols[0].rlike(regex))
                 return DataFrame(self._internal.copy(sdf=sdf))
             elif axis in ('columns', 1, None):
-                data_columns = self._internal.data_columns
+                column_index = self._internal.column_index
                 matcher = re.compile(regex)
-                output_columns = [c for c in data_columns if matcher.search(c) is not None]
-                return self[output_columns]
+                output_idx = [idx for idx in column_index
+                              if any(matcher.search(i) is not None for i in idx)]
+                return self[output_idx]
         else:
             raise TypeError("Must pass either `items`, `like`, or `regex`")
 
