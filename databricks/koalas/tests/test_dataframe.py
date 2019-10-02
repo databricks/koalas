@@ -1563,6 +1563,29 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self._test_cumprod(pdf, kdf)
 
+    def test_drop_duplicates(self):
+        pdf = pd.DataFrame({'a': [1, 2, 2, 2, 3], 'b': ['a', 'a', 'a', 'c', 'd']})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.drop_duplicates().sort_index(),
+                       kdf.drop_duplicates().sort_index())
+        self.assert_eq(pdf.drop_duplicates('a').sort_index(),
+                       kdf.drop_duplicates('a').sort_index())
+        self.assert_eq(pdf.drop_duplicates(['a', 'b']).sort_index(),
+                       kdf.drop_duplicates(['a', 'b']).sort_index())
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(pdf.drop_duplicates().sort_index(),
+                       kdf.drop_duplicates().sort_index())
+        self.assert_eq(pdf.drop_duplicates(('x', 'a')).sort_index(),
+                       kdf.drop_duplicates(('x', 'a')).sort_index())
+        self.assert_eq(pdf.drop_duplicates([('x', 'a'), ('y', 'b')]).sort_index(),
+                       kdf.drop_duplicates([('x', 'a'), ('y', 'b')]).sort_index())
+
     def test_reindex(self):
         index = ['A', 'B', 'C', 'D', 'E']
         pdf = pd.DataFrame({'numbers': [1., 2., 3., 4., 5.]}, index=index)
