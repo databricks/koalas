@@ -3409,24 +3409,26 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if axis == 0 or axis == 'index':
             if subset is not None:
                 if isinstance(subset, str):
-                    columns = [subset]
+                    idxes = [(subset,)]
+                elif isinstance(subset, tuple):
+                    idxes = [subset]
                 else:
-                    columns = list(subset)
-                invalids = [column for column in columns
-                            if column not in self._internal.data_columns]
+                    idxes = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
+                invalids = [idx for idx in idxes
+                            if idx not in self._internal.column_index]
                 if len(invalids) > 0:
                     raise KeyError(invalids)
             else:
-                columns = list(self.columns)
+                idxes = self._internal.column_index
 
             cnt = reduce(lambda x, y: x + y,
-                         [F.when(self[column].notna()._scol, 1).otherwise(0)
-                          for column in columns],
+                         [F.when(self[idx].notna()._scol, 1).otherwise(0)
+                          for idx in idxes],
                          F.lit(0))
             if thresh is not None:
                 pred = cnt >= F.lit(int(thresh))
             elif how == 'any':
-                pred = cnt == F.lit(len(columns))
+                pred = cnt == F.lit(len(idxes))
             elif how == 'all':
                 pred = cnt > F.lit(0)
             else:

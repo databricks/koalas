@@ -517,6 +517,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(TypeError, "must specify how or thresh"):
             kdf.dropna(how=None)
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.dropna(), pdf.dropna())
+        self.assert_eq(kdf.dropna(how='all'), pdf.dropna(how='all'))
+        self.assert_eq(kdf.dropna(subset=[('a', 'x')]), pdf.dropna(subset=[('a', 'x')]))
+        self.assert_eq(kdf.dropna(subset=('a', 'x')), pdf.dropna(subset=[('a', 'x')]))
+        self.assert_eq(kdf.dropna(subset=[('a', 'y'), ('b', 'z')]),
+                       pdf.dropna(subset=[('a', 'y'), ('b', 'z')]))
+        self.assert_eq(kdf.dropna(subset=[('a', 'y'), ('b', 'z')], how='all'),
+                       pdf.dropna(subset=[('a', 'y'), ('b', 'z')], how='all'))
+
+        self.assert_eq(kdf.dropna(thresh=2), pdf.dropna(thresh=2))
+        self.assert_eq(kdf.dropna(thresh=1, subset=[('a', 'y'), ('b', 'z')]),
+                       pdf.dropna(thresh=1, subset=[('a', 'y'), ('b', 'z')]))
+
     def test_dtype(self):
         pdf = pd.DataFrame({'a': list('abc'),
                             'b': list(range(1, 4)),
