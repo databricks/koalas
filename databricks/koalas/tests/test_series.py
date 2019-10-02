@@ -253,6 +253,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ks = koalas.Series(sample_lst, name='x')
         self.assert_eq(ks.nsmallest(n=3), ps.nsmallest(n=3))
         self.assert_eq(ks.nsmallest(), ps.nsmallest())
+        self.assert_eq((ks + 1).nsmallest(), (ps + 1).nsmallest())
 
     def test_nlargest(self):
         sample_lst = [1, 2, 3, 4, np.nan, 6]
@@ -260,6 +261,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ks = koalas.Series(sample_lst, name='x')
         self.assert_eq(ks.nlargest(n=3), ps.nlargest(n=3))
         self.assert_eq(ks.nlargest(), ps.nlargest())
+        self.assert_eq((ks + 1).nlargest(), (ps + 1).nlargest())
 
     def test_isnull(self):
         ps = pd.Series([1, 2, 3, 4, np.nan, 6], name='x')

@@ -2041,7 +2041,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2    3.0
         Name: 0, dtype: float64
         """
-        return _col(self._kdf.nsmallest(n=n, columns=self.name))
+        return _col(self.to_frame().nsmallest(n=n, columns=self.name))
 
     def nlargest(self, n: int = 5) -> 'Series':
         """
@@ -2103,7 +2103,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
 
         """
-        return _col(self._kdf.nlargest(n=n, columns=self.name))
+        return _col(self.to_frame().nlargest(n=n, columns=self.name))
 
     def count(self):
         """
