@@ -15,7 +15,7 @@ pandas is the de facto standard (single-node) DataFrame implementation in Python
 .. toctree::
     :maxdepth: 3
 
-    quickstart
+    getting_started/index
     user_guide/index
     reference/index
     whatsnew/index
