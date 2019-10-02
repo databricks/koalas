@@ -1863,10 +1863,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.filter(like='b', axis='index'), pdf.filter(like='b', axis='index'))
         self.assert_eq(kdf.filter(like='c', axis='columns'), pdf.filter(like='c', axis='columns'))
 
-        self.assert_eq(
-            kdf.filter(regex='b.*', axis='index'), pdf.filter(regex='b.*', axis='index'))
-        self.assert_eq(
-            kdf.filter(regex='b.*', axis='columns'), pdf.filter(regex='b.*', axis='columns'))
+        self.assert_eq(kdf.filter(regex='b.*', axis='index'),
+                       pdf.filter(regex='b.*', axis='index'))
+        self.assert_eq(kdf.filter(regex='b.*', axis='columns'),
+                       pdf.filter(regex='b.*', axis='columns'))
 
         pdf = pdf.set_index('ba', append=True)
         kdf = ks.from_pandas(pdf)
@@ -1891,6 +1891,33 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(TypeError, "mutually exclusive"):
             kdf.filter(regex='b.*', like="aaa")
+
+        # multi-index columns
+        pdf = pd.DataFrame({
+            ('x', 'aa'): ['aa', 'ab', 'bc', 'bd', 'ce'],
+            ('x', 'ba'): [1, 2, 3, 4, 5],
+            ('y', 'cb'): [1., 2., 3., 4., 5.],
+            ('z', 'db'): [1., np.nan, 3., np.nan, 5.],
+        })
+        pdf = pdf.set_index(('x', 'aa'))
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            kdf.filter(items=['ab', 'aa'], axis=0).sort_index(),
+            pdf.filter(items=['ab', 'aa'], axis=0).sort_index())
+        self.assert_eq(
+            kdf.filter(items=[('x', 'ba'), ('z', 'db')], axis=1).sort_index(),
+            pdf.filter(items=[('x', 'ba'), ('z', 'db')], axis=1).sort_index())
+
+        self.assert_eq(kdf.filter(like='b', axis='index'),
+                       pdf.filter(like='b', axis='index'))
+        self.assert_eq(kdf.filter(like='c', axis='columns'),
+                       pdf.filter(like='c', axis='columns'))
+
+        self.assert_eq(kdf.filter(regex='b.*', axis='index'),
+                       pdf.filter(regex='b.*', axis='index'))
+        self.assert_eq(kdf.filter(regex='b.*', axis='columns'),
+                       pdf.filter(regex='b.*', axis='columns'))
 
     def test_pipe(self):
         kdf = ks.DataFrame({'category': ['A', 'A', 'B'],
