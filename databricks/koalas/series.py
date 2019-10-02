@@ -20,7 +20,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 import re
 import inspect
 from collections import Iterable
-from functools import partial, wraps
+from functools import partial, wraps, reduce
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
 
 import numpy as np
@@ -1450,6 +1450,162 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         original Series, simply ignoring the incompatible types.
         """
         return _col(self.to_dataframe().clip(lower, upper))
+
+    def drop(self,
+             labels=None,
+             index: Union[str, Tuple[str, ...], List[str], List[Tuple[str, ...]]] = None,
+             level=None):
+        """
+        Return Series with specified index labels removed.
+
+        Remove elements of a Series based on specifying the index labels.
+        When using a multi-index, labels on different levels can be removed by specifying the level.
+
+        Parameters
+        ----------
+        labels : single label or list-like
+            Index labels to drop.
+        index : None
+            Redundant for application on Series, but index can be used instead of labels.
+        level : int or level name, optional
+            For MultiIndex, level for which the labels will be removed.
+
+        Returns
+        -------
+        Series
+            Series with specified index labels removed.
+
+        See Also
+        --------
+        Series.dropna
+
+        Examples
+        --------
+        >>> s = ks.Series(data=np.arange(3), index=['A', 'B', 'C'])
+        >>> s
+        A    0
+        B    1
+        C    2
+        Name: 0, dtype: int64
+
+        Drop single label A
+
+        >>> s.drop('A')
+        B    1
+        C    2
+        Name: 0, dtype: int64
+
+        Drop labels B and C
+
+        >>> s.drop(labels=['B', 'C'])
+        A    0
+        Name: 0, dtype: int64
+
+        With 'index' rather than 'labels' returns exactly same result.
+
+        >>> s.drop(index='A')
+        B    1
+        C    2
+        Name: 0, dtype: int64
+
+        >>> s.drop(index=['B', 'C'])
+        A    0
+        Name: 0, dtype: int64
+
+        Also support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...               index=midx)
+        >>> s
+        lama    speed      45.0
+                weight    200.0
+                length      1.2
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.drop(labels='weight', level=1)
+        lama    speed      45.0
+                length      1.2
+        cow     speed      30.0
+                length      1.5
+        falcon  speed     320.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.drop(('lama', 'weight'))
+        lama    speed      45.0
+                length      1.2
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.drop([('lama', 'speed'), ('falcon', 'weight')])
+        lama    weight    200.0
+                length      1.2
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                length      0.3
+        Name: 0, dtype: float64
+        """
+        level_param = level
+        if labels is not None:
+            if index is not None:
+                raise ValueError("Cannot specify both 'labels' and 'index'")
+            return self.drop(index=labels, level=level)
+        if index is not None:
+            if not isinstance(index, (str, tuple, list)):
+                raise ValueError("'index' type should be one of str, list, tuple")
+            if level is None:
+                level = 0
+            if level >= len(self._internal.index_scols):
+                raise ValueError("'level' should be less than the number of indexes")
+
+            if isinstance(index, str):
+                index = [(index,)]  # type: ignore
+            elif isinstance(index, tuple):
+                index = [index]
+            else:
+                if not (all((isinstance(idxes, str) for idxes in index)) or
+                        all((isinstance(idxes, tuple) for idxes in index))):
+                    raise ValueError("If the given index is a list, it "
+                                     "should only contains names as strings, "
+                                     "or a list of tuples that contain "
+                                     "index names as strings")
+                index = [idxes if isinstance(idxes, tuple) else (idxes,)  # type: ignore
+                         for idxes in index]
+
+            drop_index_scols = []
+            for idxes in index:
+                try:
+                    index_scols = [self._internal.index_scols[lvl] == idx
+                                   for lvl, idx in enumerate(idxes, level)]
+                except IndexError:
+                    if level_param is None:
+                        raise KeyError("Key length ({}) exceeds index depth ({})"
+                                       .format(len(self._internal.index_scols), len(idxes)))
+                    else:
+                        return self
+                drop_index_scols.append(reduce(lambda x, y: x & y, index_scols))
+
+            sdf = self._internal.sdf.where(~reduce(lambda x, y: x | y, drop_index_scols))
+            return _col(DataFrame(self._internal.copy(sdf=sdf)))
+        else:
+            raise ValueError("Need to specify at least one of 'labels' or 'index'")
 
     def head(self, n=5):
         """
