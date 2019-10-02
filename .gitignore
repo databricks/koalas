@@ -51,3 +51,8 @@ _build
 
 # Spark
 spark-warehouse/
+
+# Pypandoc
+pandoc*
+whatsnew
+

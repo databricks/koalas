@@ -1,0 +1,12 @@
+#!/bin/bash
+# Install PySpark manually because it does not exist in requirement file.
+# This file is used in Binder integration.
+pip install 'pyspark>=2.4'
+
+# Install Java and set its home.
+wget -c --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz
+tar xzvf jdk-8u131-linux-x64.tar.gz
+cd jdk1.8.0_131
+echo "export JAVA_HOME="`pwd` >> ~/.profile
+cd bin
+echo "export PATH="`pwd`":$PATH" >> ~/.profile

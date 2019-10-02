@@ -151,6 +151,38 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby(('X', 'A')).agg({('X', 'B'): ['min', 'max'],
                                                     ('Y', 'C'): 'sum'}))
 
+    def test_aggregate_func_str_list(self):
+        # this is test for cases where only string or list is assigned
+        pdf = pd.DataFrame({'kind': ['cat', 'dog', 'cat', 'dog'],
+                            'height': [9.1, 6.0, 9.5, 34.0],
+                            'weight': [7.9, 7.5, 9.9, 198.0]}
+                           )
+        kdf = koalas.from_pandas(pdf)
+
+        agg_funcs = ['max', 'min', ['min', 'max']]
+        for aggfunc in agg_funcs:
+
+            # Since in koalas groupby, the order of rows might be different
+            # so sort on index to ensure they have same output
+            sorted_agg_kdf = kdf.groupby('kind').agg(aggfunc).sort_index()
+            sorted_agg_pdf = pdf.groupby('kind').agg(aggfunc).sort_index()
+            self.assert_eq(sorted_agg_kdf, sorted_agg_pdf)
+
+        # test on multi index column case
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2],
+                            'B': [1, 2, 3, 4],
+                            'C': [0.362, 0.227, 1.267, -0.562]})
+        kdf = koalas.from_pandas(pdf)
+
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        for aggfunc in agg_funcs:
+            sorted_agg_kdf = kdf.groupby(('X', 'A')).agg(aggfunc).sort_index()
+            sorted_agg_pdf = pdf.groupby(('X', 'A')).agg(aggfunc).sort_index()
+            self.assert_eq(sorted_agg_kdf, sorted_agg_pdf)
+
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
                             'B': [True, True, True, False, False, False, None, True, None, False]})
