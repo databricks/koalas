@@ -1562,6 +1562,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 length      0.3
         Name: 0, dtype: float64
         """
+        level_param = level
         if labels is not None:
             if index is not None:
                 raise ValueError("Cannot specify both 'labels' and 'index'")
@@ -1594,7 +1595,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                     index_scols = [self._internal.index_scols[lvl] == idx
                                    for lvl, idx in enumerate(idxes, level)]
                 except IndexError:
-                    if level == 0:
+                    if level_param is None:
                         raise KeyError("Key length ({}) exceeds index depth ({})"
                                        .format(len(self._internal.index_scols), len(idxes)))
                     else:
