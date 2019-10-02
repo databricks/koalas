@@ -14,13 +14,12 @@
 # limitations under the License.
 #
 
-from datetime import date, datetime
-import inspect
+from datetime import datetime
 from distutils.version import LooseVersion
+import inspect
 
 import numpy as np
 import pandas as pd
-from pyspark.sql.utils import AnalysisException
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
@@ -265,25 +264,36 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf, pdf)
 
     def test_assign(self):
-        kdf = self.kdf.copy()
-        pdf = self.pdf.copy()
+        kdf = self.kdf
+        pdf = self.pdf
 
         kdf['w'] = 1.0
         pdf['w'] = 1.0
 
         self.assert_eq(kdf, pdf)
 
-        kdf['a'] = 'abc'
-        pdf['a'] = 'abc'
+        kdf = kdf.assign(a=kdf['a'] * 2)
+        pdf = pdf.assign(a=pdf['a'] * 2)
 
         self.assert_eq(kdf, pdf)
 
+        # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'w')])
         pdf.columns = columns
         kdf.columns = columns
 
-        pdf['Z'] = 'ZZ'
-        kdf['Z'] = 'ZZ'
+        kdf[('a', 'c')] = 'def'
+        pdf[('a', 'c')] = 'def'
+
+        self.assert_eq(kdf, pdf)
+
+        kdf = kdf.assign(Z='ZZ')
+        pdf = pdf.assign(Z='ZZ')
+
+        self.assert_eq(kdf, pdf)
+
+        kdf['x'] = 'ghi'
+        pdf['x'] = 'ghi'
 
         self.assert_eq(kdf, pdf)
 
@@ -368,6 +378,68 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_columns, ["('A', '0')", "('B', 1)"])
         self.assert_eq(kdf._internal.spark_df.columns, ["('A', '0')", "('B', 1)"])
+
+    def test_rename_dataframe(self):
+        kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
+        result_kdf = kdf1.rename(columns={"A": "a", "B": "b"})
+        self.assert_eq(result_kdf.columns, pd.Index(['a', 'b']))
+
+        result_kdf = kdf1.rename(index={1: 10, 2: 20})
+        self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
+        self.assertTrue(kdf1 is not result_kdf,
+                        "expect return new dataframe when inplace argument is False")
+
+        result_kdf2 = result_kdf.rename(index={1: 10, 2: 20}, inplace=True)
+        self.assertTrue(result_kdf2 is result_kdf,
+                        "expect return the same dataframe when inplace argument is False")
+
+        def str_lower(s) -> str:
+            return str.lower(s)
+
+        result_kdf = kdf1.rename(str_lower, axis='columns')
+        self.assert_eq(result_kdf.columns, pd.Index(['a', 'b']))
+
+        def mul10(x) -> int:
+            return x * 10
+
+        result_kdf = kdf1.rename(mul10, axis='index')
+        self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
+
+        result_kdf = kdf1.rename(columns=str_lower, index={1: 10, 2: 20})
+        self.assert_eq(result_kdf.columns, pd.Index(['a', 'b']))
+        self.assert_eq(result_kdf.index, pd.Index([0, 10, 20]))
+
+        idx = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Y', 'D')])
+        kdf2 = ks.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8]], columns=idx)
+
+        result_kdf = kdf2.rename(columns=str_lower)
+        self.assert_eq(result_kdf.columns,
+                       pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd')]))
+
+        result_kdf = kdf2.rename(columns=str_lower, level=0)
+        self.assert_eq(result_kdf.columns,
+                       pd.MultiIndex.from_tuples([('x', 'A'), ('x', 'B'), ('y', 'C'), ('y', 'D')]))
+
+        result_kdf = kdf2.rename(columns=str_lower, level=1)
+        self.assert_eq(result_kdf.columns,
+                       pd.MultiIndex.from_tuples([('X', 'a'), ('X', 'b'), ('Y', 'c'), ('Y', 'd')]))
+
+        kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list('ab'))
+
+        # for spark 2.3, disable arrow optimization. Because koalas multi-index do not support
+        # arrow optimization in spark 2.3.
+
+        result_kdf = kdf3.rename(index=str_lower)
+        self.assert_eq(result_kdf.index,
+                       pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd')]))
+
+        result_kdf = kdf3.rename(index=str_lower, level=0)
+        self.assert_eq(result_kdf.index,
+                       pd.MultiIndex.from_tuples([('x', 'A'), ('x', 'B'), ('y', 'C'), ('y', 'D')]))
+
+        result_kdf = kdf3.rename(index=str_lower, level=1)
+        self.assert_eq(result_kdf.index,
+                       pd.MultiIndex.from_tuples([('X', 'a'), ('X', 'b'), ('Y', 'c'), ('Y', 'd')]))
 
     def test_dot_in_column_name(self):
         self.assert_eq(
@@ -774,7 +846,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             check(lambda left, right: left.merge(right, left_on='x', right_on='x'),
                   right_ks, right_ps)
             check(lambda left, right: left.set_index('x').merge(right, left_index=True,
-                  right_on='x'), right_ks, right_ps)
+                                                                right_on='x'), right_ks, right_ps)
 
             # Test join types with Series
             for how in ['inner', 'left', 'right', 'outer']:
@@ -786,6 +858,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             check(lambda left, right: left.merge(right, suffixes=['_left', '_right'], how='outer',
                                                  left_index=True, right_index=True),
                   right_ks, right_ps)
+
+        # multi-index columns
+        left_columns = pd.MultiIndex.from_tuples([('a', 'lkey'), ('a', 'value'), ('b', 'x')])
+        left_pdf.columns = left_columns
+        left_kdf.columns = left_columns
+
+        right_columns = pd.MultiIndex.from_tuples([('a', 'rkey'), ('a', 'value'), ('c', 'y')])
+        right_pdf.columns = right_columns
+        right_kdf.columns = right_columns
+
+        check(lambda left, right: left.merge(right))
+        check(lambda left, right: left.merge(right, on=[('a', 'value')]))
+        check(lambda left, right: (left.set_index(('a', 'lkey'))
+                                   .merge(right.set_index(('a', 'rkey')))))
+        check(lambda left, right: (left.set_index(('a', 'lkey'))
+                                   .merge(right.set_index(('a', 'rkey')),
+                                          left_index=True, right_index=True)))
+        # TODO: when both left_index=True and right_index=True with multi-index columns
+        # check(lambda left, right: left.merge(right,
+        #                                      left_on=[('a', 'lkey')], right_on=[('a', 'rkey')]))
+        # check(lambda left, right: (left.set_index(('a', 'lkey'))
+        #                            .merge(right, left_index=True, right_on=[('a', 'rkey')])))
 
     def test_merge_retains_indices(self):
         left_pdf = pd.DataFrame({'A': [0, 1]})
@@ -863,8 +957,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                     "['inner', 'left', 'right', 'full', 'outer']"):
             left.merge(right, left_index=True, right_index=True, how='foo')
 
-        with self.assertRaisesRegex(AnalysisException,
-                                    'Cannot resolve column name "`id`"'):
+        with self.assertRaisesRegex(KeyError, 'id'):
             left.merge(right, on='id')
 
     def test_append(self):
@@ -1050,6 +1143,33 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
         self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
 
+        # multi-index columns
+        columns1 = pd.MultiIndex.from_tuples([('x', 'key'), ('Y', 'A')])
+        columns2 = pd.MultiIndex.from_tuples([('x', 'key'), ('Y', 'B')])
+        pdf1.columns = columns1
+        pdf2.columns = columns2
+        kdf1.columns = columns1
+        kdf2.columns = columns2
+
+        join_pdf = pdf1.join(pdf2, lsuffix='_left', rsuffix='_right')
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
+
+        join_kdf = kdf1.join(kdf2, lsuffix='_left', rsuffix='_right')
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
+
+        self.assert_eq(join_pdf, join_kdf)
+
+        # check `on` parameter
+        join_pdf = pdf1.join(pdf2.set_index(('x', 'key')), on=[('x', 'key')],
+                             lsuffix='_left', rsuffix='_right')
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
+
+        join_kdf = kdf1.join(kdf2.set_index(('x', 'key')), on=[('x', 'key')],
+                             lsuffix='_left', rsuffix='_right')
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
+
+        self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
+
     def test_replace(self):
         pdf = pd.DataFrame({"name": ['Ironman', 'Captain America', 'Thor', 'Hulk'],
                            "weapon": ['Mark-45', 'Shield', 'Mjolnir', 'Smash']})
@@ -1102,7 +1222,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_update(self):
         # check base function
-        def get_data():
+        def get_data(left_columns=None, right_columns=None):
             left_pdf = pd.DataFrame({'A': ['1', '2', '3', '4'],
                                      'B': ['100', '200', np.nan, np.nan]},
                                     columns=['A', 'B'])
@@ -1113,6 +1233,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                                     columns=['A', 'B'])
             right_kdf = ks.DataFrame({'B': ['x', None, 'y', None],
                                       'C': ['100', '200', '300', '400']}, columns=['B', 'C'])
+            if left_columns is not None:
+                left_pdf.columns = left_columns
+                left_kdf.columns = left_columns
+            if right_columns is not None:
+                right_pdf.columns = right_columns
+                right_kdf.columns = right_columns
             return left_kdf, left_pdf, right_kdf, right_pdf
 
         left_kdf, left_pdf, right_kdf, right_pdf = get_data()
@@ -1127,6 +1253,32 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaises(NotImplementedError):
             left_kdf.update(right_kdf, join='right')
+
+        # multi-index columns
+        left_columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B')])
+        right_columns = pd.MultiIndex.from_tuples([('X', 'B'), ('Y', 'C')])
+
+        left_kdf, left_pdf, right_kdf, right_pdf = get_data(left_columns=left_columns,
+                                                            right_columns=right_columns)
+        left_pdf.update(right_pdf)
+        left_kdf.update(right_kdf)
+        self.assert_eq(left_pdf.sort_values(by=[('X', 'A'), ('X', 'B')]),
+                       left_kdf.sort_values(by=[('X', 'A'), ('X', 'B')]))
+
+        left_kdf, left_pdf, right_kdf, right_pdf = get_data(left_columns=left_columns,
+                                                            right_columns=right_columns)
+        left_pdf.update(right_pdf, overwrite=False)
+        left_kdf.update(right_kdf, overwrite=False)
+        self.assert_eq(left_pdf.sort_values(by=[('X', 'A'), ('X', 'B')]),
+                       left_kdf.sort_values(by=[('X', 'A'), ('X', 'B')]))
+
+        right_columns = pd.MultiIndex.from_tuples([('Y', 'B'), ('Y', 'C')])
+        left_kdf, left_pdf, right_kdf, right_pdf = get_data(left_columns=left_columns,
+                                                            right_columns=right_columns)
+        left_pdf.update(right_pdf)
+        left_kdf.update(right_kdf)
+        self.assert_eq(left_pdf.sort_values(by=[('X', 'A'), ('X', 'B')]),
+                       left_kdf.sort_values(by=[('X', 'A'), ('X', 'B')]))
 
     def test_pivot_table_dtypes(self):
         pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
@@ -1191,6 +1343,29 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Todo: self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b",
         #  fill_value=999), pdf.pivot_table(index=['e', 'c'], columns="a", values="b",
         #  fill_value=999))
+
+    def test_pivot_table_and_index(self):
+        # https://github.com/databricks/koalas/issues/805
+        pdf = pd.DataFrame({"A": ["foo", "foo", "foo", "foo", "foo",
+                                  "bar", "bar", "bar", "bar"],
+                            "B": ["one", "one", "one", "two", "two",
+                                  "one", "one", "two", "two"],
+                            "C": ["small", "large", "large", "small",
+                                  "small", "large", "small", "small",
+                                  "large"],
+                            "D": [1, 2, 2, 3, 3, 4, 5, 6, 7],
+                            "E": [2, 4, 5, 5, 6, 6, 8, 9, 9]},
+                           columns=['A', 'B', 'C', 'D', 'E'])
+        kdf = ks.from_pandas(pdf)
+
+        ptable = pdf.pivot_table(values='D', index=['A', 'B'],
+                                 columns='C', aggfunc='sum', fill_value=0).sort_index()
+        ktable = kdf.pivot_table(values='D', index=['A', 'B'],
+                                 columns='C', aggfunc='sum', fill_value=0).sort_index()
+
+        self.assert_eq(ktable, ptable)
+        self.assert_eq(ktable.index, ptable.index)
+        self.assert_eq(repr(ktable.index), repr(ptable.index))
 
     def test_pivot_errors(self):
         kdf = ks.range(10)
@@ -1600,12 +1775,26 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                          repr(kdf.duplicated(keep='last').sort_index()))
         self.assertEqual(repr(pd.Series(pdf.duplicated(keep=False), name='0')),
                          repr(kdf.duplicated(keep=False).sort_index()))
-        self.assertEqual(repr(pd.Series(pdf.duplicated(subset=['a']), name='0')),
-                         repr(kdf.duplicated(subset=['a']).sort_index()))
+        self.assertEqual(repr(pd.Series(pdf.duplicated(subset=['b']), name='0')),
+                         repr(kdf.duplicated(subset=['b']).sort_index()))
         with self.assertRaisesRegex(ValueError, "'keep' only support 'first', 'last' and False"):
             kdf.duplicated(keep='false')
         with self.assertRaisesRegex(KeyError, "'d'"):
             kdf.duplicated(subset=['d'])
+
+        pdf.index.name = 'x'
+        kdf.index.name = 'x'
+        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='x')),
+                         repr(kdf.duplicated().sort_index()))
+
+        # mutli-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assertEqual(repr(pd.Series(pdf.duplicated(), name='x')),
+                         repr(kdf.duplicated().sort_index()))
+        self.assertEqual(repr(pd.Series(pdf.duplicated(subset=[('x', 'b')]), name='x')),
+                         repr(kdf.duplicated(subset=[('x', 'b')]).sort_index()))
 
     def test_ffill(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],

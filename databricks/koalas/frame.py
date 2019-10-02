@@ -52,7 +52,7 @@ from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, scol_for
-from databricks.koalas.typedef import as_spark_type, as_python_type
+from databricks.koalas.typedef import _infer_return_type, as_spark_type, as_python_type
 from databricks.koalas.plot import KoalasFramePlotMethods
 from databricks.koalas.config import get_option
 
@@ -455,7 +455,9 @@ class DataFrame(_Frame, Generic[T]):
 
     # Arithmetic Operators
     def _map_series_op(self, op, other):
-        if not isinstance(other, DataFrame) and is_sequence(other):
+        from databricks.koalas.base import IndexOpsMixin
+        if not isinstance(other, DataFrame) and (isinstance(other, IndexOpsMixin) or
+                                                 is_sequence(other)):
             raise ValueError(
                 "%s with a sequence is currently not supported; "
                 "however, got %s." % (op, type(other)))
@@ -543,6 +545,11 @@ class DataFrame(_Frame, Generic[T]):
         return self.plot.hist(bins, **kwds)
 
     hist.__doc__ = KoalasFramePlotMethods.hist.__doc__
+
+    def kde(self, bw_method=None, ind=None, **kwds):
+        return self.plot.kde(bw_method, ind, **kwds)
+
+    kde.__doc__ = KoalasFramePlotMethods.kde.__doc__
 
     add.__doc__ = _flex_doc_FRAME.format(
         desc='Addition',
@@ -2674,36 +2681,52 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("Now we don't support multi-index Now.")
 
         if subset is None:
-            group_cols = self._internal.data_columns
+            subset = self._internal.column_index
         else:
-            group_cols = subset
-            diff = set(subset).difference(set(self._internal.data_columns))
+            if isinstance(subset, str):
+                subset = [(subset,)]
+            elif isinstance(subset, tuple):
+                subset = [subset]
+            else:
+                subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
+            diff = set(subset).difference(set(self._internal.column_index))
             if len(diff) > 0:
-                raise KeyError(', '.join(diff))
+                raise KeyError(', '.join([str(d) if len(d) > 1 else d[0] for d in diff]))
+        group_cols = [self._internal.column_name_for(idx) for idx in subset]
 
-        sdf = self._sdf
-        index = self._internal.index_columns[0]
+        index_column = self._internal.index_columns[0]
         if self._internal.index_names[0] is not None:
             name = self._internal.index_names[0]
         else:
-            name = '0'
+            name = ('0',)
+        column = str(name) if len(name) > 1 else name[0]
+
+        sdf = self._sdf
+        if column == index_column:
+            index_column = '__index_level_0__'
+            sdf = sdf.select([self._internal.index_scols[0].alias(index_column)]
+                             + self._internal.data_scols)
 
         if keep == 'first' or keep == 'last':
             if keep == 'first':
                 ord_func = spark.functions.asc
             else:
                 ord_func = spark.functions.desc
-            window = Window.partitionBy(group_cols).orderBy(ord_func(index)).rowsBetween(
+            window = Window.partitionBy(group_cols).orderBy(ord_func(index_column)).rowsBetween(
                 Window.unboundedPreceding, Window.currentRow)
-            sdf = sdf.withColumn(name, F.row_number().over(window) > 1)
+            sdf = sdf.withColumn(column, F.row_number().over(window) > 1)
         elif not keep:
-            window = Window.partitionBy(group_cols).orderBy(F.col(index).desc())\
+            window = Window.partitionBy(group_cols).orderBy(scol_for(sdf, index_column).desc())\
                 .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
-            sdf = sdf.withColumn(name, F.count(F.col(index)).over(window) > 1)
+            sdf = sdf.withColumn(column, F.count(scol_for(sdf, index_column)).over(window) > 1)
         else:
             raise ValueError("'keep' only support 'first', 'last' and False")
-        return _col(DataFrame(_InternalFrame(sdf=sdf.select(index, name), data_columns=[name],
-                                             index_map=self._internal.index_map)))
+        return _col(DataFrame(_InternalFrame(sdf=sdf.select(scol_for(sdf, index_column),
+                                                            scol_for(sdf, column)),
+                                             data_columns=[column],
+                                             column_index=[name],
+                                             index_map=[(index_column,
+                                                         self._internal.index_names[0])])))
 
     def to_koalas(self):
         """
@@ -3102,6 +3125,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         feature is supported in pandas for Python 3.6 and later but not in
         Koalas. In Koalas, all items are computed first, and then assigned.
         """
+        return self._assign(kwargs)
+
+    def _assign(self, kwargs):
+        assert isinstance(kwargs, dict)
         from databricks.koalas.series import Series
         for k, v in kwargs.items():
             if not (isinstance(v, (Series, spark.Column)) or
@@ -3111,23 +3138,39 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if callable(v):
                 kwargs[k] = v(self)
 
-        pairs = list(kwargs.items())
-        sdf = self._sdf
-        for (name, c) in pairs:
-            if isinstance(c, Series):
-                sdf = sdf.withColumn(name, c._scol)
-            elif isinstance(c, Column):
-                sdf = sdf.withColumn(name, c)
-            else:
-                sdf = sdf.withColumn(name, F.lit(c))
+        pairs = {(k if isinstance(k, tuple) else (k,)):
+                 (v._scol if isinstance(v, Series)
+                  else v if isinstance(v, spark.Column)
+                  else F.lit(v))
+                 for k, v in kwargs.items()}
 
-        data_columns = set(self._internal.data_columns)
-        adding_columns = [name for name, _ in pairs if name not in data_columns]
+        scols = []
+        for idx in self._internal.column_index:
+            for i in range(len(idx)):
+                if idx[:len(idx)-i] in pairs:
+                    name = self._internal.column_name_for(idx)
+                    scol = pairs[idx[:len(idx)-i]].alias(name)
+                    break
+            else:
+                scol = self._internal.scol_for(idx)
+            scols.append(scol)
+
+        adding_data_columns = []
+        adding_column_index = []
+        for idx, scol in pairs.items():
+            if idx not in set(i[:len(idx)] for i in self._internal.column_index):
+                name = str(idx) if len(idx) > 1 else idx[0]
+                scols.append(scol.alias(name))
+                adding_data_columns.append(name)
+                adding_column_index.append(idx)
+
+        sdf = self._sdf.select(self._internal.index_scols + scols)
         level = self._internal.column_index_level
-        adding_column_index = [tuple([col, *([''] * (level - 1))]) for col in adding_columns]
+        adding_column_index = [tuple(list(idx) + ([''] * (level - len(idx))))
+                               for idx in adding_column_index]
         internal = self._internal.copy(
             sdf=sdf,
-            data_columns=(self._internal.data_columns + adding_columns),
+            data_columns=(self._internal.data_columns + adding_data_columns),
             column_index=(self._internal.column_index + adding_column_index))
         return DataFrame(internal)
 
@@ -3488,8 +3531,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 axis = 0
             if not (axis == 0 or axis == "index"):
                 raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
-            if (value is None) and (method is None):
-                raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
             if not isinstance(value, (float, int, str, bool, dict, pd.Series)):
                 raise TypeError("Unsupported type %s" % type(value))
             if isinstance(value, pd.Series):
@@ -3504,6 +3545,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.fillna(value)
             internal = self._internal.copy(sdf=sdf)
         else:
+            if method is None:
+                raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
+
             applied = []
             for idx in self._internal.column_index:
                 applied.append(self[idx].fillna(value=value, method=method, axis=axis,
@@ -5074,9 +5118,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     # TODO: support multi-index columns
     def merge(self, right: 'DataFrame', how: str = 'inner',
-              on: Optional[Union[str, List[str]]] = None,
-              left_on: Optional[Union[str, List[str]]] = None,
-              right_on: Optional[Union[str, List[str]]] = None,
+              on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+              left_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+              right_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
               left_index: bool = False, right_index: bool = False,
               suffixes: Tuple[str, str] = ('_x', '_y')) -> 'DataFrame':
         """
@@ -5188,7 +5232,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         As described in #263, joining string columns currently returns None for missing values
             instead of NaN.
         """
-        _to_list = lambda o: o if o is None or is_list_like(o) else [o]
+        _to_list = lambda os: (os if os is None
+                               else [os] if isinstance(os, tuple)
+                               else [(os,)] if isinstance(os, str)
+                               else [o if isinstance(o, tuple) else (o,)  # type: ignore
+                                     for o in os])
+
+        if isinstance(right, ks.Series):
+            right = right.to_frame()
 
         if on:
             if left_on or right_on:
@@ -5212,16 +5263,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if right_keys and not left_keys:
                 raise ValueError('Must pass left_on or left_index=True')
             if not left_keys and not right_keys:
-                if isinstance(right, ks.Series):
-                    common = list(self.columns.intersection([right.name]))
-                else:
-                    common = list(self.columns.intersection(right.columns))
+                common = list(self.columns.intersection(right.columns))
                 if len(common) == 0:
                     raise ValueError(
                         'No common columns to perform merge on. Merge options: '
                         'left_on=None, right_on=None, left_index=False, right_index=False')
-                left_keys = common
-                right_keys = common
+                left_keys = _to_list(common)
+                right_keys = _to_list(common)
             if len(left_keys) != len(right_keys):  # type: ignore
                 raise ValueError('len(left_keys) must equal len(right_keys)')
 
@@ -5235,11 +5283,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("The 'how' parameter has to be amongst the following values: ",
                              "['inner', 'left', 'right', 'outer']")
 
-        left_table = self._internal.spark_internal_df.alias('left_table')
-        right_table = right._internal.spark_internal_df.alias('right_table')
+        left_table = self._sdf.alias('left_table')
+        right_table = right._sdf.alias('right_table')
 
-        left_key_columns = [scol_for(left_table, col) for col in left_keys]  # type: ignore
-        right_key_columns = [scol_for(right_table, col) for col in right_keys]  # type: ignore
+        left_scol_for = lambda idx: scol_for(left_table, self._internal.column_name_for(idx))
+        right_scol_for = lambda idx: scol_for(right_table, right._internal.column_name_for(idx))
+
+        left_key_columns = [left_scol_for(idx) for idx in left_keys]  # type: ignore
+        right_key_columns = [right_scol_for(idx) for idx in right_keys]  # type: ignore
 
         join_condition = reduce(lambda x, y: x & y,
                                 [lkey == rkey for lkey, rkey
@@ -5252,20 +5303,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         right_suffix = suffixes[1]
 
         # Append suffixes to columns with the same name to avoid conflicts later
-        duplicate_columns = (set(self._internal.data_columns)
-                             & set(right._internal.data_columns))
-
-        left_index_columns = set(self._internal.index_columns)
-        right_index_columns = set(right._internal.index_columns)
+        duplicate_columns = (set(self._internal.column_index)
+                             & set(right._internal.column_index))
 
         exprs = []
-        for col in left_table.columns:
-            if col in left_index_columns:
-                continue
-            scol = scol_for(left_table, col)
-            if col in duplicate_columns:
-                if col in left_keys and col in right_keys:
-                    right_scol = scol_for(right_table, col)
+        data_columns = []
+        column_index = []
+        for idx in self._internal.column_index:
+            col = self._internal.column_name_for(idx)
+            scol = left_scol_for(idx)
+            if idx in duplicate_columns:
+                if idx in left_keys and idx in right_keys:  # type: ignore
+                    right_scol = right_scol_for(idx)
                     if how == 'right':
                         scol = right_scol
                     elif how == 'full':
@@ -5275,66 +5324,63 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 else:
                     col = col + left_suffix
                     scol = scol.alias(col)
+                    idx = tuple([idx[0] + left_suffix] + list(idx[1:]))
             exprs.append(scol)
-        for col in right_table.columns:
-            if col in right_index_columns:
-                continue
-            scol = scol_for(right_table, col)
-            if col in duplicate_columns:
-                if col in left_keys and col in right_keys:
+            data_columns.append(col)
+            column_index.append(idx)
+        for idx in right._internal.column_index:
+            col = right._internal.column_name_for(idx)
+            scol = right_scol_for(idx)
+            if idx in duplicate_columns:
+                if idx in left_keys and idx in right_keys:  # type: ignore
                     continue
                 else:
                     col = col + right_suffix
                     scol = scol.alias(col)
+                    idx = tuple([idx[0] + right_suffix] + list(idx[1:]))
             exprs.append(scol)
+            data_columns.append(col)
+            column_index.append(idx)
+
+        left_index_scols = self._internal.index_scols
+        right_index_scols = right._internal.index_scols
 
         # Retain indices if they are used for joining
         if left_index:
             if right_index:
-                exprs.extend(['left_table.`{}`'.format(col) for col in left_index_columns])
-                exprs.extend(['right_table.`{}`'.format(col) for col in right_index_columns])
-                index_map = self._internal.index_map + [idx for idx in right._internal.index_map
-                                                        if idx not in self._internal.index_map]
+                if how in ('inner', 'left'):
+                    exprs.extend(left_index_scols)
+                    index_map = self._internal.index_map
+                elif how == 'right':
+                    exprs.extend(right_index_scols)
+                    index_map = right._internal.index_map
+                else:
+                    index_map = []
+                    for (col, name), left_scol, right_scol in zip(self._internal.index_map,
+                                                                  left_index_scols,
+                                                                  right_index_scols):
+                        scol = F.when(left_scol.isNotNull(), left_scol).otherwise(right_scol)
+                        exprs.append(scol.alias(col))
+                        index_map.append((col, name))
             else:
-                exprs.extend(['right_table.`{}`'.format(col) for col in right_index_columns])
+                exprs.extend(right_index_scols)
                 index_map = right._internal.index_map
         elif right_index:
-            exprs.extend(['left_table.`{}`'.format(col) for col in left_index_columns])
+            exprs.extend(left_index_scols)
             index_map = self._internal.index_map
         else:
             index_map = []
 
         selected_columns = joined_table.select(*exprs)
 
-        # Merge left and right indices after the join by replacing missing values in the left index
-        # with values from the right index and dropping
-        if (how == 'right' or how == 'full') and right_index:
-            for left_index_col, right_index_col in zip(self._internal.index_columns,
-                                                       right._internal.index_columns):
-                selected_columns = selected_columns.withColumn(
-                    'left_table.' + left_index_col,
-                    F.when(F.col('left_table.`{}`'.format(left_index_col)).isNotNull(),
-                           F.col('left_table.`{}`'.format(left_index_col)))
-                    .otherwise(F.col('right_table.`{}`'.format(right_index_col)))
-                ).withColumnRenamed(
-                    'left_table.' + left_index_col, left_index_col
-                ).drop(F.col('left_table.`{}`'.format(left_index_col)))
-        if not (left_index and not right_index):
-            for right_index_col in right_index_columns:
-                if right_index_col in left_index_columns:
-                    selected_columns = \
-                        selected_columns.drop(F.col('right_table.`{}`'.format(right_index_col)))
+        internal = _InternalFrame(sdf=selected_columns,
+                                  index_map=index_map if index_map else None,
+                                  data_columns=data_columns,
+                                  column_index=column_index)
+        return DataFrame(internal)
 
-        if index_map:
-            data_columns = [c for c in selected_columns.columns
-                            if c not in [idx[0] for idx in index_map]]
-            internal = _InternalFrame(
-                sdf=selected_columns, data_columns=data_columns, index_map=index_map)
-            return DataFrame(internal)
-        else:
-            return DataFrame(selected_columns)
-
-    def join(self, right: 'DataFrame', on: Optional[Union[str, List[str]]] = None,
+    def join(self, right: 'DataFrame',
+             on: Optional[Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]]] = None,
              how: str = 'left', lsuffix: str = '', rsuffix: str = '') -> 'DataFrame':
         """
         Join columns of another DataFrame.
@@ -5588,13 +5634,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(other, ks.Series):
             other = DataFrame(other)
 
-        update_columns = list(set(self._internal.data_columns)
-                              .intersection(set(other._internal.data_columns)))
+        update_columns = list(set(self._internal.column_index)
+                              .intersection(set(other._internal.column_index)))
         update_sdf = self.join(other[update_columns], rsuffix='_new')._sdf
 
-        for column_name in update_columns:
+        for column_index in update_columns:
+            column_name = self._internal.column_name_for(column_index)
             old_col = scol_for(update_sdf, column_name)
-            new_col = scol_for(update_sdf, column_name + '_new')
+            new_col = scol_for(update_sdf, other._internal.column_name_for(column_index) + '_new')
             if overwrite:
                 update_sdf = update_sdf.withColumn(column_name, F.when(new_col.isNull(), old_col)
                                                    .otherwise(new_col))
@@ -6809,6 +6856,224 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             raise TypeError("Must pass either `items`, `like`, or `regex`")
 
+    def rename(self,
+               mapper=None,
+               index=None,
+               columns=None,
+               axis='index',
+               inplace=False,
+               level=None,
+               errors='ignore'):
+
+        """
+        Alter axes labels.
+        Function / dict values must be unique (1-to-1). Labels not contained in a dict / Series
+        will be left as-is. Extra labels listed don’t throw an error.
+
+        Parameters
+        ----------
+        mapper : dict-like or function
+            Dict-like or functions transformations to apply to that axis’ values.
+            Use either `mapper` and `axis` to specify the axis to target with `mapper`, or `index`
+            and `columns`.
+        index : dict-like or function
+            Alternative to specifying axis ("mapper, axis=0" is equivalent to "index=mapper").
+        columns : dict-like or function
+            Alternative to specifying axis ("mapper, axis=1" is equivalent to "columns=mapper").
+        axis : int or str, default 'index'
+            Axis to target with mapper. Can be either the axis name ('index', 'columns') or
+            number (0, 1).
+        inplace : bool, default False
+            Whether to return a new DataFrame.
+        level : int or level name, default None
+            In case of a MultiIndex, only rename labels in the specified level.
+        errors : {'ignore', 'raise}, default 'ignore'
+            If 'raise', raise a `KeyError` when a dict-like `mapper`, `index`, or `columns`
+            contains labels that are not present in the Index being transformed. If 'ignore',
+            existing keys will be renamed and extra keys will be ignored.
+
+        Returns
+        -------
+        DataFrame with the renamed axis labels.
+
+        Raises:
+        -------
+        `KeyError`
+            If any of the labels is not found in the selected axis and "errors='raise'".
+
+        Examples
+        --------
+        >>> kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
+        >>> kdf1.rename(columns={"A": "a", "B": "c"})  # doctest: +NORMALIZE_WHITESPACE
+           a  c
+        0  1  4
+        1  2  5
+        2  3  6
+
+        >>> kdf1.rename(index={1: 10, 2: 20})  # doctest: +NORMALIZE_WHITESPACE
+            A  B
+        0   1  4
+        10  2  5
+        20  3  6
+
+        >>> def str_lower(s) -> str:
+        ...     return str.lower(s)
+        >>> kdf1.rename(str_lower, axis='columns')  # doctest: +NORMALIZE_WHITESPACE
+           a  b
+        0  1  4
+        1  2  5
+        2  3  6
+
+        >>> def mul10(x) -> int:
+        ...     return x * 10
+        >>> kdf1.rename(mul10, axis='index')  # doctest: +NORMALIZE_WHITESPACE
+            A  B
+        0   1  4
+        10  2  5
+        20  3  6
+
+        >>> idx = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Y', 'D')])
+        >>> kdf2 = ks.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8]], columns=idx)
+        >>> kdf2.rename(columns=str_lower, level=0)  # doctest: +NORMALIZE_WHITESPACE
+           x     y
+           A  B  C  D
+        0  1  2  3  4
+        1  5  6  7  8
+
+        >>> kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list('ab'))
+        >>> kdf3.rename(index=str_lower)  # doctest: +NORMALIZE_WHITESPACE
+             a  b
+        x a  1  2
+          b  3  4
+        y c  5  6
+          d  7  8
+        """
+
+        def gen_mapper_fn(mapper):
+            if isinstance(mapper, dict):
+                if len(mapper) == 0:
+                    if errors == 'raise':
+                        raise KeyError('Index include label which is not in the `mapper`.')
+                    else:
+                        return DataFrame(self._internal)
+
+                type_set = set(map(lambda x: type(x), mapper.values()))
+                if len(type_set) > 1:
+                    raise ValueError("Mapper dict should have the same value type.")
+                spark_return_type = as_spark_type(list(type_set)[0])
+
+                def mapper_fn(x):
+                    if x in mapper:
+                        return mapper[x]
+                    else:
+                        if errors == 'raise':
+                            raise KeyError('Index include value which is not in the `mapper`')
+                        return x
+            elif callable(mapper):
+                spark_return_type = _infer_return_type(mapper).tpe
+
+                def mapper_fn(x):
+                    return mapper(x)
+            else:
+                raise ValueError("`mapper` or `index` or `columns` should be "
+                                 "either dict-like or function type.")
+            return mapper_fn, spark_return_type
+
+        index_mapper_fn = None
+        index_mapper_ret_stype = None
+        columns_mapper_fn = None
+
+        if mapper:
+            if axis == 'index' or axis == 0:
+                index_mapper_fn, index_mapper_ret_stype = gen_mapper_fn(mapper)
+            elif axis == 'columns' or axis == 1:
+                columns_mapper_fn, columns_mapper_ret_stype = gen_mapper_fn(mapper)
+            else:
+                raise ValueError("argument axis should be either the axis name "
+                                 "(‘index’, ‘columns’) or number (0, 1)")
+        else:
+            if index:
+                index_mapper_fn, index_mapper_ret_stype = gen_mapper_fn(index)
+            if columns:
+                columns_mapper_fn, _ = gen_mapper_fn(columns)
+
+            if not index and not columns:
+                raise ValueError("Either `index` or `columns` should be provided.")
+
+        internal = self._internal
+        if index_mapper_fn:
+            # rename index labels, if `level` is None, rename all index columns, otherwise only
+            # rename the corresponding level index.
+            # implement this by transform the underlying spark dataframe,
+            # Example:
+            # suppose the kdf index column in underlying spark dataframe is "index_0", "index_1",
+            # if rename level 0 index labels, will do:
+            #   ``kdf._sdf.withColumn("index_0", mapper_fn_udf(col("index_0"))``
+            # if rename all index labels (`level` is None), then will do:
+            #   ```
+            #   kdf._sdf.withColumn("index_0", mapper_fn_udf(col("index_0"))
+            #           .withColumn("index_1", mapper_fn_udf(col("index_1"))
+            #   ```
+
+            index_columns = internal.index_columns
+            num_indices = len(index_columns)
+            if level:
+                if level < 0 or level >= num_indices:
+                    raise ValueError("level should be an integer between [0, num_indices)")
+
+            def gen_new_index_column(level):
+                index_col_name = index_columns[level]
+
+                index_mapper_udf = pandas_udf(lambda s: s.map(index_mapper_fn),
+                                              returnType=index_mapper_ret_stype)
+                return index_mapper_udf(scol_for(internal.sdf, index_col_name))
+
+            sdf = internal.sdf
+            if level is None:
+                for i in range(num_indices):
+                    sdf = sdf.withColumn(index_columns[i], gen_new_index_column(i))
+            else:
+                sdf = sdf.withColumn(index_columns[level], gen_new_index_column(level))
+            internal = internal.copy(sdf=sdf)
+        if columns_mapper_fn:
+            # rename column name.
+            # Will modify the `_internal._column_index` and transform underlying spark dataframe
+            # to the same column name with `_internal._column_index`.
+            if level:
+                if level < 0 or level >= internal.column_index_level:
+                    raise ValueError("level should be an integer between [0, column_index_level)")
+
+            def gen_new_column_index_entry(column_index_entry):
+                if isinstance(column_index_entry, tuple):
+                    if level is None:
+                        # rename all level columns
+                        return tuple(map(columns_mapper_fn, column_index_entry))
+                    else:
+                        # only rename specified level column
+                        entry_list = list(column_index_entry)
+                        entry_list[level] = columns_mapper_fn(entry_list[level])
+                        return tuple(entry_list)
+                else:
+                    return columns_mapper_fn(column_index_entry)
+
+            new_column_index = list(map(gen_new_column_index_entry, internal.column_index))
+
+            if internal.column_index_level == 1:
+                new_data_columns = [col[0] for col in new_column_index]
+            else:
+                new_data_columns = [str(col) for col in new_column_index]
+            new_data_scols = [scol_for(internal.sdf, old_col_name).alias(new_col_name)
+                              for old_col_name, new_col_name
+                              in zip(internal.data_columns, new_data_columns)]
+            sdf = internal.sdf.select(*(internal.index_scols + new_data_scols))
+            internal = internal.copy(sdf=sdf, column_index=new_column_index,
+                                     data_columns=new_data_columns)
+        if inplace:
+            self._internal = internal
+            return self
+        else:
+            return DataFrame(internal)
+
     def _get_from_multiindex_column(self, key):
         """ Select columns from multi-index columns.
 
@@ -6912,14 +7177,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def _repr_html_(self):
         max_display_count = get_option("display.max_rows")
+        # pandas 0.25.1 has a regression about HTML representation so 'bold_rows'
+        # has to be set as False explicitly. See https://github.com/pandas-dev/pandas/issues/28204
+        bold_rows = not (LooseVersion("0.25.1") == LooseVersion(pd.__version__))
         if max_display_count is None:
-            return self._to_internal_pandas().to_html(notebook=True)
+            return self._to_internal_pandas().to_html(notebook=True, bold_rows=bold_rows)
 
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
         pdf = pdf[:max_display_count]
         if pdf_length > max_display_count:
-            repr_html = pdf.to_html(show_dimensions=True, notebook=True)
+            repr_html = pdf.to_html(show_dimensions=True, notebook=True, bold_rows=bold_rows)
             match = REPR_HTML_PATTERN.search(repr_html)
             if match is not None:
                 nrows = match.group("rows")
@@ -6930,7 +7198,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   by=by,
                                   cols=ncols))
                 return REPR_HTML_PATTERN.sub(footer, repr_html)
-        return pdf.to_html(notebook=True)
+        return pdf.to_html(notebook=True, bold_rows=bold_rows)
 
     def __getitem__(self, key):
         return self._pd_getitem(key)
@@ -6975,14 +7243,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         yield (kdf[this_idx], this_idx)
 
             kdf = align_diff_frames(assign_columns, self, value, fillna=False, how="left")
-        elif isinstance(key, (tuple, list)):
+        elif isinstance(key, list):
             assert isinstance(value, DataFrame)
             # Same DataFrames.
             field_names = value.columns
-            kdf = self.assign(**{k: value[c] for k, c in zip(key, field_names)})
+            kdf = self._assign({k: value[c] for k, c in zip(key, field_names)})
         else:
             # Same Series.
-            kdf = self.assign(**{key: value})
+            kdf = self._assign({key: value})
 
         self._internal = kdf._internal
 
@@ -7008,6 +7276,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def __dir__(self):
         fields = [f for f in self._sdf.schema.fieldNames() if ' ' not in f]
         return super(DataFrame, self).__dir__() + fields
+
+    def __iter__(self):
+        return iter(self.columns)
 
     @classmethod
     def _validate_axis(cls, axis=0):

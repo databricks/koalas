@@ -34,6 +34,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.indexing import AtIndexer, ILocIndexer, LocIndexer
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.window import Rolling, Expanding
 
 
 class _Frame(object):
@@ -1255,11 +1256,13 @@ class _Frame(object):
 
         df_or_s = self
         if isinstance(by, str):
+            by = [(by,)]
+        elif isinstance(by, tuple):
             by = [by]
         elif isinstance(by, Series):
             by = [by]
         elif isinstance(by, Iterable):
-            by = list(by)
+            by = [key if isinstance(key, (tuple, Series)) else (key,) for key in by]
         else:
             raise ValueError('Not a valid index: TODO')
         if not len(by):
@@ -1384,6 +1387,12 @@ class _Frame(object):
         # This is expected to be small so it's fine to transpose.
         return DataFrame(sdf)._to_internal_pandas().transpose().iloc[:, 0]
 
+    def rolling(self, *args, **kwargs):
+        return Rolling(self)
+
+    def expanding(self, *args, **kwargs):
+        return Expanding(self)
+
     @property
     def at(self):
         return AtIndexer(self)
@@ -1421,7 +1430,7 @@ def _resolve_col(kdf, col_like):
         assert kdf is col_like._kdf, \
             "Cannot combine column argument because it comes from a different dataframe"
         return col_like
-    elif isinstance(col_like, str):
+    elif isinstance(col_like, tuple):
         return kdf[col_like]
     else:
         raise ValueError(col_like)

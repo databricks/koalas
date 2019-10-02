@@ -62,9 +62,26 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)[['a']])
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)[['a', 'c']])
         self.assertRaises(ValueError, lambda: kdf.groupby(0, as_index=False)[['a', 'c']])
-        self.assertRaises(ValueError, lambda: kdf.groupby([0], as_index=False)[['a', 'c']])
+        self.assertRaises(KeyError, lambda: kdf.groupby([0], as_index=False)[['a', 'c']])
 
         self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.b, as_index=False))
+
+    def test_groupby_multiindex_columns(self):
+        pdf = pd.DataFrame({('x', 'a'): [1, 2, 6, 4, 4, 6, 4, 3, 7],
+                            ('x', 'b'): [4, 2, 7, 3, 3, 1, 1, 1, 2],
+                            ('y', 'c'): [4, 2, 7, 3, None, 1, 1, 1, 2],
+                            ('z', 'd'): list('abcdefght')},
+                           index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
+        kdf = koalas.from_pandas(pdf)
+
+        self.assert_eq(kdf.groupby(('x', 'a')).sum(),
+                       pdf.groupby(('x', 'a')).sum())
+        self.assert_eq(kdf.groupby(('x', 'a'), as_index=False).sum(),
+                       pdf.groupby(('x', 'a'), as_index=False).sum())
+        self.assert_eq(kdf.groupby(('x', 'a'))[[('y', 'c')]].sum(),
+                       pdf.groupby(('x', 'a'))[[('y', 'c')]].sum())
+        self.assert_eq(kdf[('x', 'a')].groupby(kdf[('x', 'b')]).sum(),
+                       pdf[('x', 'a')].groupby(pdf[('x', 'b')]).sum())
 
     def test_split_apply_combine_on_series(self):
         pdf = pd.DataFrame({'a': [1, 2, 6, 4, 4, 6, 4, 3, 7],
@@ -88,6 +105,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             for almost, func in funcs:
                 self.assert_eq(getattr(kdf.a.groupby(ddkey), func)(),
                                getattr(pdf.a.groupby(pdkey), func)(), almost=almost)
+                self.assert_eq(getattr((kdf.a + 1).groupby(ddkey), func)(),
+                               getattr((pdf.a + 1).groupby(pdkey), func)(), almost=almost)
 
         for i in [0, 4, 7]:
             for almost, func in funcs:
@@ -111,10 +130,58 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                            pdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'],
                                                                     'C': 'sum'}))
 
-        expected_error_message = (r"aggs must be a dict mapping from column name \(string\) "
-                                  r"to aggregate functions \(string or list of strings\).")
+        expected_error_message = (r"aggs must be a dict mapping from column name \(string or "
+                                  r"tuple\) to aggregate functions \(string or list of strings\).")
         with self.assertRaisesRegex(ValueError, expected_error_message):
             kdf.groupby('A', as_index=as_index).agg(0)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        for as_index in [True, False]:
+            self.assert_eq(kdf.groupby(('X', 'A'), as_index=as_index)
+                           .agg({('X', 'B'): 'min', ('Y', 'C'): 'sum'}),
+                           pdf.groupby(('X', 'A'), as_index=as_index)
+                           .agg({('X', 'B'): 'min', ('Y', 'C'): 'sum'}))
+
+        self.assert_eq(kdf.groupby(('X', 'A')).agg({('X', 'B'): ['min', 'max'],
+                                                    ('Y', 'C'): 'sum'}),
+                       pdf.groupby(('X', 'A')).agg({('X', 'B'): ['min', 'max'],
+                                                    ('Y', 'C'): 'sum'}))
+
+    def test_aggregate_func_str_list(self):
+        # this is test for cases where only string or list is assigned
+        pdf = pd.DataFrame({'kind': ['cat', 'dog', 'cat', 'dog'],
+                            'height': [9.1, 6.0, 9.5, 34.0],
+                            'weight': [7.9, 7.5, 9.9, 198.0]}
+                           )
+        kdf = koalas.from_pandas(pdf)
+
+        agg_funcs = ['max', 'min', ['min', 'max']]
+        for aggfunc in agg_funcs:
+
+            # Since in koalas groupby, the order of rows might be different
+            # so sort on index to ensure they have same output
+            sorted_agg_kdf = kdf.groupby('kind').agg(aggfunc).sort_index()
+            sorted_agg_pdf = pdf.groupby('kind').agg(aggfunc).sort_index()
+            self.assert_eq(sorted_agg_kdf, sorted_agg_pdf)
+
+        # test on multi index column case
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2],
+                            'B': [1, 2, 3, 4],
+                            'C': [0.362, 0.227, 1.267, -0.562]})
+        kdf = koalas.from_pandas(pdf)
+
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        for aggfunc in agg_funcs:
+            sorted_agg_kdf = kdf.groupby(('X', 'A')).agg(aggfunc).sort_index()
+            sorted_agg_pdf = pdf.groupby(('X', 'A')).agg(aggfunc).sort_index()
+            self.assert_eq(sorted_agg_kdf, sorted_agg_pdf)
 
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
@@ -134,6 +201,17 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kdf.B.groupby(kdf.A).all(), pdf.B.groupby(pdf.A).all())
         self.assert_eq(kdf.B.groupby(kdf.A).any(), pdf.B.groupby(pdf.A).any())
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('Y', 'B')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        for as_index in [True, False]:
+            self.assert_eq(kdf.groupby(('X', 'A'), as_index=as_index).all(),
+                           pdf.groupby(('X', 'A'), as_index=as_index).all())
+            self.assert_eq(kdf.groupby(('X', 'A'), as_index=as_index).any(),
+                           pdf.groupby(('X', 'A'), as_index=as_index).any())
 
     def test_raises(self):
         kdf = koalas.DataFrame({'a': [1, 2, 6, 4, 4, 6, 4, 3, 7],
@@ -166,6 +244,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kdf.groupby("a", as_index=as_index).agg({"b": "nunique"}),
                            pdf.groupby("a", as_index=as_index).agg({"b": "nunique"}))
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(("x", "a")).nunique(),
+                       pdf.groupby(("x", "a")).nunique())
+        self.assert_eq(kdf.groupby(("x", "a")).nunique(dropna=False),
+                       pdf.groupby(("x", "a")).nunique(dropna=False))
+
     def test_value_counts(self):
         pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
                             'B': [1, 1, 2, 3, 3, 3]}, columns=['A', 'B'])
@@ -192,6 +280,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby(['A', 'B']).size().sort_index(),
                        pdf.groupby(['A', 'B']).size().sort_index())
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('Y', 'B')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(("X", "A")).size().sort_index(),
+                       pdf.groupby(("X", "A")).size().sort_index())
+        self.assert_eq(kdf.groupby([('X', 'A'), ('Y', 'B')]).size().sort_index(),
+                       pdf.groupby([('X', 'A'), ('Y', 'B')]).size().sort_index())
+
     def test_diff(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
@@ -205,6 +303,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby(['b'])['a'].diff().sort_index(), almost=True)
         self.assert_eq(kdf.groupby(['b'])[['a', 'b']].diff().sort_index(),
                        pdf.groupby(['b'])[['a', 'b']].diff().sort_index(), almost=True)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(("x", "b")).diff().sort_index(),
+                       pdf.groupby(("x", "b")).diff().sort_index())
+        self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).diff().sort_index(),
+                       pdf.groupby([('x', 'a'), ('x', 'b')]).diff().sort_index())
 
     def test_rank(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
@@ -220,6 +328,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby(['b'])[['a', 'c']].rank().sort_index(),
                        pdf.groupby(['b'])[['a', 'c']].rank().sort_index(), almost=True)
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(("x", "b")).rank().sort_index(),
+                       pdf.groupby(("x", "b")).rank().sort_index())
+        self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).rank().sort_index(),
+                       pdf.groupby([('x', 'a'), ('x', 'b')]).rank().sort_index())
+
     def test_cummin(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
@@ -233,6 +351,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby(['b'])['a'].cummin().sort_index(), almost=True)
         self.assert_eq(kdf.groupby(['b'])[['a', 'c']].cummin().sort_index(),
                        pdf.groupby(['b'])[['a', 'c']].cummin().sort_index(), almost=True)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(("x", "b")).cummin().sort_index(),
+                       pdf.groupby(("x", "b")).cummin().sort_index())
+        self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).cummin().sort_index(),
+                       pdf.groupby([('x', 'a'), ('x', 'b')]).cummin().sort_index())
 
     def test_cummax(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
@@ -248,6 +376,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby(['b'])[['a', 'c']].cummax().sort_index(),
                        pdf.groupby(['b'])[['a', 'c']].cummax().sort_index(), almost=True)
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(("x", "b")).cummax().sort_index(),
+                       pdf.groupby(("x", "b")).cummax().sort_index())
+        self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).cummax().sort_index(),
+                       pdf.groupby([('x', 'a'), ('x', 'b')]).cummax().sort_index())
+
     def test_cumsum(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
@@ -262,6 +400,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby(['b'])[['a', 'c']].cumsum().sort_index(),
                        pdf.groupby(['b'])[['a', 'c']].cumsum().sort_index(), almost=True)
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(("x", "b")).cumsum().sort_index(),
+                       pdf.groupby(("x", "b")).cumsum().sort_index())
+        self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).cumsum().sort_index(),
+                       pdf.groupby([('x', 'a'), ('x', 'b')]).cumsum().sort_index())
+
     def test_cumprod(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
@@ -275,6 +423,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby(['b'])['a'].cumprod().sort_index(), almost=True)
         self.assert_eq(kdf.groupby(['b'])[['a', 'c']].cumprod().sort_index(),
                        pdf.groupby(['b'])[['a', 'c']].cumprod().sort_index(), almost=True)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(("x", "b")).cumprod().sort_index(),
+                       pdf.groupby(("x", "b")).cumprod().sort_index(), almost=True)
+        self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).cumprod().sort_index(),
+                       pdf.groupby([('x', 'a'), ('x', 'b')]).cumprod().sort_index(), almost=True)
 
     def test_nsmallest(self):
         pdf = pd.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
@@ -308,12 +466,25 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'C': [None, None, None, 1],
                             'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'], index=[0, 1, 2, 3])
         kdf = koalas.DataFrame(pdf)
+
         self.assert_eq(kdf.groupby("A").fillna(0),
                        pdf.groupby("A").fillna(0))
         self.assert_eq(kdf.groupby("A").fillna(method='bfill'),
                        pdf.groupby("A").fillna(method='bfill'))
         self.assert_eq(kdf.groupby("A").fillna(method='ffill'),
                        pdf.groupby("A").fillna(method='ffill'))
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Z', 'D')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(("X", "A")).fillna(0),
+                       pdf.groupby(("X", "A")).fillna(0))
+        self.assert_eq(kdf.groupby(("X", "A")).fillna(method='bfill'),
+                       pdf.groupby(("X", "A")).fillna(method='bfill'))
+        self.assert_eq(kdf.groupby(("X", "A")).fillna(method='ffill'),
+                       pdf.groupby(("X", "A")).fillna(method='ffill'))
 
     def test_ffill(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2],
@@ -331,6 +502,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(repr(kdf.groupby("A")['B'].ffill()),
                        repr(pdf.groupby("A")['B'].ffill()))
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Z', 'D')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        if LooseVersion(pd.__version__) <= LooseVersion("0.24.2"):
+            self.assert_eq(kdf.groupby(("X", "A")).ffill(),
+                           pdf.groupby(("X", "A")).ffill().drop(('X', 'A'), 1))
+        else:
+            self.assert_eq(kdf.groupby(("X", "A")).ffill(),
+                           pdf.groupby(("X", "A")).ffill())
+
     def test_bfill(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2],
                             'B': [2, 4, None, 3],
@@ -346,6 +529,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(repr(kdf.groupby("A")['B'].bfill()),
                        repr(pdf.groupby("A")['B'].bfill()))
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Z', 'D')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        if LooseVersion(pd.__version__) <= LooseVersion("0.24.2"):
+            self.assert_eq(kdf.groupby(("X", "A")).bfill(),
+                           pdf.groupby(("X", "A")).bfill().drop(('X', 'A'), 1))
+        else:
+            self.assert_eq(kdf.groupby(("X", "A")).bfill(),
+                           pdf.groupby(("X", "A")).bfill())
+
     def test_apply(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
@@ -357,6 +552,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index())
         self.assert_eq(kdf.groupby(['b'])['a'].apply(lambda x: x).sort_index(),
                        pdf.groupby(['b'])['a'].apply(lambda x: x).sort_index())
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(("x", "b")).apply(lambda x: x + 1).sort_index(),
+                       pdf.groupby(("x", "b")).apply(lambda x: x + 1).sort_index())
+        self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).apply(lambda x: x * x).sort_index(),
+                       pdf.groupby([('x', 'a'), ('x', 'b')]).apply(lambda x: x * x).sort_index())
 
         # Less than 'compute.shortcut_limit' will execute a shortcut
         # by using collected pandas dataframe directly.
@@ -375,6 +580,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                            pdf.groupby(['b'])['a'].apply(lambda x: x).sort_index())
             with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
                 kdf.groupby("b").apply(1)
+
+            # multi-index columns
+            columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+            pdf.columns = columns
+            kdf.columns = columns
+
+            self.assert_eq(kdf.groupby(("x", "b")).apply(lambda x: x + 1).sort_index(),
+                           pdf.groupby(("x", "b")).apply(lambda x: x + 1).sort_index())
+            self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')])
+                           .apply(lambda x: x * x).sort_index(),
+                           pdf.groupby([('x', 'a'), ('x', 'b')])
+                           .apply(lambda x: x * x).sort_index())
         finally:
             reset_option('compute.shortcut_limit')
 
@@ -416,6 +633,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby(['b'])['a'].transform(lambda x: x).sort_index(),
                        pdf.groupby(['b'])['a'].transform(lambda x: x).sort_index())
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(("x", "b")).transform(lambda x: x + 1).sort_index(),
+                       pdf.groupby(("x", "b")).transform(lambda x: x + 1).sort_index())
+        self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')])
+                       .transform(lambda x: x * x).sort_index(),
+                       pdf.groupby([('x', 'a'), ('x', 'b')])
+                       .transform(lambda x: x * x).sort_index())
+
         set_option('compute.shortcut_limit', 1000)
         try:
             pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
@@ -430,6 +659,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                            pdf.groupby(['b'])['a'].transform(lambda x: x).sort_index())
             with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
                 kdf.groupby("b").transform(1)
+
+            # multi-index columns
+            columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+            pdf.columns = columns
+            kdf.columns = columns
+
+            self.assert_eq(kdf.groupby(("x", "b")).transform(lambda x: x + 1).sort_index(),
+                           pdf.groupby(("x", "b")).transform(lambda x: x + 1).sort_index())
+            self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')])
+                           .transform(lambda x: x * x).sort_index(),
+                           pdf.groupby([('x', 'a'), ('x', 'b')])
+                           .transform(lambda x: x * x).sort_index())
         finally:
             reset_option('compute.shortcut_limit')
 
@@ -438,36 +679,76 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'b': [1, 1, 2, 3, 5, 8],
                             'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
         kdf = koalas.DataFrame(pdf)
+
         self.assert_eq(kdf.groupby("b").filter(lambda x: x.b.mean() < 4).sort_index(),
                        pdf.groupby("b").filter(lambda x: x.b.mean() < 4).sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).filter(lambda x: any(x.a == 2)).sort_index(),
                        pdf.groupby(['a', 'b']).filter(lambda x: any(x.a == 2)).sort_index())
+
         with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
             kdf.groupby("b").filter(1)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(("x", "b"))
+                       .filter(lambda x: x[('x', 'b')].mean() < 4).sort_index(),
+                       pdf.groupby(("x", "b"))
+                       .filter(lambda x: x[('x', 'b')].mean() < 4).sort_index())
+        self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')])
+                       .filter(lambda x: any(x[('x', 'a')] == 2)).sort_index(),
+                       pdf.groupby([('x', 'a'), ('x', 'b')])
+                       .filter(lambda x: any(x[('x', 'a')] == 2)).sort_index())
 
     def test_idxmax(self):
         pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3],
                             'b': [1, 2, 3, 4, 5],
                             'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
         kdf = koalas.DataFrame(pdf)
+
         self.assert_eq(pdf.groupby(['a']).idxmax(),
                        kdf.groupby(['a']).idxmax().sort_index())
         self.assert_eq(pdf.groupby(['a']).idxmax(skipna=False),
                        kdf.groupby(['a']).idxmax(skipna=False).sort_index())
+
         with self.assertRaisesRegex(ValueError, 'idxmax only support one-level index now'):
             kdf.set_index(['a', 'b']).groupby(['c']).idxmax()
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(pdf.groupby(('x', 'a')).idxmax(),
+                       kdf.groupby(('x', 'a')).idxmax().sort_index())
+        self.assert_eq(pdf.groupby(('x', 'a')).idxmax(skipna=False),
+                       kdf.groupby(('x', 'a')).idxmax(skipna=False).sort_index())
 
     def test_idxmin(self):
         pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3],
                             'b': [1, 2, 3, 4, 5],
                             'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
         kdf = koalas.DataFrame(pdf)
+
         self.assert_eq(pdf.groupby(['a']).idxmin(),
                        kdf.groupby(['a']).idxmin().sort_index())
         self.assert_eq(pdf.groupby(['a']).idxmin(skipna=False),
                        kdf.groupby(['a']).idxmin(skipna=False).sort_index())
+
         with self.assertRaisesRegex(ValueError, 'idxmin only support one-level index now'):
             kdf.set_index(['a', 'b']).groupby(['c']).idxmin()
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(pdf.groupby(('x', 'a')).idxmin(),
+                       kdf.groupby(('x', 'a')).idxmin().sort_index())
+        self.assert_eq(pdf.groupby(('x', 'a')).idxmin(skipna=False),
+                       kdf.groupby(('x', 'a')).idxmin(skipna=False).sort_index())
 
     def test_missing(self):
         kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})

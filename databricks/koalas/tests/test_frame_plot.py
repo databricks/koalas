@@ -51,47 +51,85 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         plt.close(ax.figure)
         return b64_data
 
-    def compare_plots(self, ax1, ax2):
-        self.assert_eq(self.plot_to_base64(ax1), self.plot_to_base64(ax2))
-
     def test_line_plot(self):
-        pdf = self.pdf1
-        kdf = self.kdf1
+        def check_line_plot(pdf, kdf):
+            ax1 = pdf.plot(kind="line", colormap='Paired')
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot(kind="line", colormap='Paired')
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
 
-        ax1 = pdf.plot(kind="line", colormap='Paired')
-        ax2 = kdf.plot(kind="line", colormap='Paired')
-        self.compare_plots(ax1, ax2)
+            ax3 = pdf.plot.line(colormap='Paired')
+            bin3 = self.plot_to_base64(ax3)
+            ax4 = kdf.plot.line(colormap='Paired')
+            bin4 = self.plot_to_base64(ax4)
+            self.assertEqual(bin3, bin4)
 
-        ax3 = pdf.plot.line(colormap='Paired')
-        ax4 = kdf.plot.line(colormap='Paired')
-        self.compare_plots(ax3, ax4)
+        pdf1 = self.pdf1
+        kdf1 = self.kdf1
+        check_line_plot(pdf1, kdf1)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
+        pdf1.columns = columns
+        kdf1.columns = columns
+        check_line_plot(pdf1, kdf1)
 
     def test_area_plot(self):
+        def check_area_plot(pdf, kdf):
+            ax1 = pdf.plot(kind="area", colormap='Paired')
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot(kind="area", colormap='Paired')
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
+
+            ax3 = pdf.plot.area(colormap='Paired')
+            bin3 = self.plot_to_base64(ax3)
+            ax4 = kdf.plot.area(colormap='Paired')
+            bin4 = self.plot_to_base64(ax4)
+            self.assertEqual(bin3, bin4)
+
         pdf = self.pdf1
         kdf = self.kdf1
+        check_area_plot(pdf, kdf)
 
-        ax1 = pdf.plot(kind="area", colormap='Paired')
-        ax2 = kdf.plot(kind="area", colormap='Paired')
-        self.compare_plots(ax1, ax2)
-
-        ax3 = pdf.plot.area(colormap='Paired')
-        ax4 = kdf.plot.area(colormap='Paired')
-        self.compare_plots(ax3, ax4)
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
+        pdf.columns = columns
+        kdf.columns = columns
+        check_area_plot(pdf, kdf)
 
     def test_area_plot_stacked_false(self):
-        # test if frame area plot is correct when stacked=False because default is True
+        def check_area_plot_stacked_false(pdf, kdf):
+            ax1 = pdf.plot.area(stacked=False)
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot.area(stacked=False)
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
+
+            # test if frame area plot is correct when stacked=False because default is True
         pdf = pd.DataFrame({
             'sales': [3, 2, 3, 9, 10, 6],
             'signups': [5, 5, 6, 12, 14, 13],
             'visits': [20, 42, 28, 62, 81, 50],
         }, index=pd.date_range(start='2018/01/01', end='2018/07/01', freq='M'))
         kdf = koalas.from_pandas(pdf)
+        check_area_plot_stacked_false(pdf, kdf)
 
-        ax1 = pdf.plot.area(stacked=False)
-        ax2 = kdf.plot.area(stacked=False)
-        self.compare_plots(ax1, ax2)
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'sales'), ('x', 'signups'), ('y', 'visits')])
+        pdf.columns = columns
+        kdf.columns = columns
+        check_area_plot_stacked_false(pdf, kdf)
 
     def test_area_plot_y(self):
+        def check_area_plot_y(pdf, kdf, y):
+            ax1 = pdf.plot.area(y=y)
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot.area(y=y)
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
+
         # test if frame area plot is correct when y is specified
         pdf = pd.DataFrame({
             'sales': [3, 2, 3, 9, 10, 6],
@@ -99,48 +137,87 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
             'visits': [20, 42, 28, 62, 81, 50],
         }, index=pd.date_range(start='2018/01/01', end='2018/07/01', freq='M'))
         kdf = koalas.from_pandas(pdf)
+        check_area_plot_y(pdf, kdf, y='sales')
 
-        ax1 = pdf.plot.area(y='sales')
-        ax2 = kdf.plot.area(y='sales')
-        self.compare_plots(ax1, ax2)
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'sales'), ('x', 'signups'), ('y', 'visits')])
+        pdf.columns = columns
+        kdf.columns = columns
+        check_area_plot_y(pdf, kdf, y=('x', 'sales'))
 
     def test_barh_plot_with_x_y(self):
+        def check_barh_plot_with_x_y(pdf, kdf, x, y):
+            ax1 = pdf.plot(kind="barh", x=x, y=y, colormap='Paired')
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot(kind="barh", x=x, y=y, colormap='Paired')
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
+
+            ax3 = pdf.plot.barh(x=x, y=y, colormap='Paired')
+            bin3 = self.plot_to_base64(ax3)
+            ax4 = kdf.plot.barh(x=x, y=y, colormap='Paired')
+            bin4 = self.plot_to_base64(ax4)
+            self.assertEqual(bin3, bin4)
+
         # this is testing plot with specified x and y
-        pdf = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
-        kdf = koalas.from_pandas(pdf)
+        pdf1 = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
+        kdf1 = koalas.from_pandas(pdf1)
+        check_barh_plot_with_x_y(pdf1, kdf1, x='lab', y='val')
 
-        ax1 = pdf.plot(kind="barh", x='lab', y='val', colormap='Paired')
-        ax2 = kdf.plot(kind="barh", x='lab', y='val', colormap='Paired')
-        self.compare_plots(ax1, ax2)
-
-        ax3 = pdf.plot.barh(x='lab', y='val', colormap='Paired')
-        ax4 = kdf.plot.barh(x='lab', y='val', colormap='Paired')
-        self.compare_plots(ax3, ax4)
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'lab'), ('y', 'val')])
+        pdf1.columns = columns
+        kdf1.columns = columns
+        check_barh_plot_with_x_y(pdf1, kdf1, x=('x', 'lab'), y=('y', 'val'))
 
     def test_barh_plot(self):
+        def check_barh_plot(pdf, kdf):
+            ax1 = pdf.plot(kind="barh", colormap='Paired')
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot(kind="barh", colormap='Paired')
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
+
+            ax3 = pdf.plot.barh(colormap='Paired')
+            bin3 = self.plot_to_base64(ax3)
+            ax4 = kdf.plot.barh(colormap='Paired')
+            bin4 = self.plot_to_base64(ax4)
+            self.assertEqual(bin3, bin4)
+
         # this is testing when x or y is not assigned
-        pdf = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
-        kdf = koalas.from_pandas(pdf)
+        pdf1 = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
+        kdf1 = koalas.from_pandas(pdf1)
+        check_barh_plot(pdf1, kdf1)
 
-        ax1 = pdf.plot(kind="barh", colormap='Paired')
-        ax2 = kdf.plot(kind="barh", colormap='Paired')
-        self.compare_plots(ax1, ax2)
-
-        ax3 = pdf.plot.barh(colormap='Paired')
-        ax4 = kdf.plot.barh(colormap='Paired')
-        self.compare_plots(ax3, ax4)
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'lab'), ('y', 'val')])
+        pdf1.columns = columns
+        kdf1.columns = columns
+        check_barh_plot(pdf1, kdf1)
 
     def test_bar_plot(self):
-        pdf = self.pdf1
-        kdf = self.kdf1
+        def check_bar_plot(pdf, kdf):
+            ax1 = pdf.plot(kind="bar", colormap='Paired')
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot(kind="bar", colormap='Paired')
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
 
-        ax1 = pdf.plot(kind='bar', colormap='Paired')
-        ax2 = kdf.plot(kind='bar', colormap='Paired')
-        self.compare_plots(ax1, ax2)
+            ax3 = pdf.plot.bar(colormap='Paired')
+            bin3 = self.plot_to_base64(ax3)
+            ax4 = kdf.plot.bar(colormap='Paired')
+            bin4 = self.plot_to_base64(ax4)
+            self.assertEqual(bin3, bin4)
 
-        ax3 = pdf.plot.bar(colormap='Paired')
-        ax4 = kdf.plot.bar(colormap='Paired')
-        self.compare_plots(ax3, ax4)
+        pdf1 = self.pdf1
+        kdf1 = self.kdf1
+        check_bar_plot(pdf1, kdf1)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'lab'), ('y', 'val')])
+        pdf1.columns = columns
+        kdf1.columns = columns
+        check_bar_plot(pdf1, kdf1)
 
     def test_bar_with_x_y(self):
         # this is testing plot with specified x and y
@@ -148,35 +225,78 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         kdf = koalas.from_pandas(pdf)
 
         ax1 = pdf.plot(kind="bar", x='lab', y='val', colormap='Paired')
+        bin1 = self.plot_to_base64(ax1)
         ax2 = kdf.plot(kind="bar", x='lab', y='val', colormap='Paired')
-        self.compare_plots(ax1, ax2)
+        bin2 = self.plot_to_base64(ax2)
+        self.assertEqual(bin1, bin2)
 
         ax3 = pdf.plot.bar(x='lab', y='val', colormap='Paired')
+        bin3 = self.plot_to_base64(ax3)
         ax4 = kdf.plot.bar(x='lab', y='val', colormap='Paired')
-        self.compare_plots(ax3, ax4)
+        bin4 = self.plot_to_base64(ax4)
+        self.assertEqual(bin3, bin4)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'lab'), ('y', 'val')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        ax5 = pdf.plot(kind="bar", x=('x', 'lab'), y=('y', 'val'), colormap='Paired')
+        bin5 = self.plot_to_base64(ax5)
+        ax6 = kdf.plot(kind="bar", x=('x', 'lab'), y=('y', 'val'), colormap='Paired')
+        bin6 = self.plot_to_base64(ax6)
+        self.assertEqual(bin5, bin6)
+
+        ax7 = pdf.plot.bar(x=('x', 'lab'), y=('y', 'val'), colormap='Paired')
+        bin7 = self.plot_to_base64(ax7)
+        ax8 = kdf.plot.bar(x=('x', 'lab'), y=('y', 'val'), colormap='Paired')
+        bin8 = self.plot_to_base64(ax8)
+        self.assertEqual(bin7, bin8)
 
     def test_pie_plot(self):
-        pdf = pd.DataFrame({'mass': [0.330, 4.87, 5.97], 'radius': [2439.7, 6051.8, 6378.1]},
-                           index=['Mercury', 'Venus', 'Earth'])
-        kdf = koalas.from_pandas(pdf)
+        def check_pie_plot(pdf, kdf, y):
+            ax1 = pdf.plot.pie(y=y, figsize=(5, 5), colormap='Paired')
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot.pie(y=y, figsize=(5, 5), colormap='Paired')
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
 
-        ax1 = pdf.plot.pie(y='mass', figsize=(5, 5), colormap='Paired')
-        ax2 = kdf.plot.pie(y='mass', figsize=(5, 5), colormap='Paired')
-        self.compare_plots(ax1, ax2)
+            ax1 = pdf.plot(kind="pie", y=y, figsize=(5, 5), colormap='Paired')
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot(kind="pie", y=y, figsize=(5, 5), colormap='Paired')
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
 
-        ax1 = pdf.plot(kind="pie", y='mass', figsize=(5, 5), colormap='Paired')
-        ax2 = kdf.plot(kind="pie", y='mass', figsize=(5, 5), colormap='Paired')
-        self.compare_plots(ax1, ax2)
+            ax11, ax12 = pdf.plot.pie(figsize=(5, 5), subplots=True, colormap='Paired')
+            bin11 = self.plot_to_base64(ax11)
+            bin12 = self.plot_to_base64(ax12)
+            self.assertEqual(bin11, bin12)
 
-        ax11, ax12 = pdf.plot.pie(figsize=(5, 5), subplots=True, colormap='Paired')
-        ax21, ax22 = kdf.plot.pie(figsize=(5, 5), subplots=True, colormap='Paired')
-        self.compare_plots(ax11, ax21)
-        self.compare_plots(ax12, ax22)
+            ax21, ax22 = kdf.plot.pie(figsize=(5, 5), subplots=True, colormap='Paired')
+            bin21 = self.plot_to_base64(ax21)
+            bin22 = self.plot_to_base64(ax22)
+            self.assertEqual(bin21, bin22)
 
-        ax11, ax12 = pdf.plot(kind="pie", figsize=(5, 5), subplots=True, colormap='Paired')
-        ax21, ax22 = kdf.plot(kind="pie", figsize=(5, 5), subplots=True, colormap='Paired')
-        self.compare_plots(ax11, ax21)
-        self.compare_plots(ax12, ax22)
+            ax11, ax12 = pdf.plot(kind="pie", figsize=(5, 5), subplots=True, colormap='Paired')
+            bin11 = self.plot_to_base64(ax11)
+            bin12 = self.plot_to_base64(ax12)
+            self.assertEqual(bin11, bin12)
+
+            ax21, ax22 = kdf.plot(kind="pie", figsize=(5, 5), subplots=True, colormap='Paired')
+            bin21 = self.plot_to_base64(ax21)
+            bin22 = self.plot_to_base64(ax22)
+            self.assertEqual(bin21, bin22)
+
+        pdf1 = pd.DataFrame({'mass': [0.330, 4.87, 5.97], 'radius': [2439.7, 6051.8, 6378.1]},
+                            index=['Mercury', 'Venus', 'Earth'])
+        kdf1 = koalas.from_pandas(pdf1)
+        check_pie_plot(pdf1, kdf1, y='mass')
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'mass'), ('y', 'radius')])
+        pdf1.columns = columns
+        kdf1.columns = columns
+        check_pie_plot(pdf1, kdf1, y=('x', 'mass'))
 
     def test_pie_plot_error_message(self):
         # this is to test if error is correctly raising when y is not specified
@@ -191,49 +311,120 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         self.assertTrue(error_message in str(context.exception))
 
     def test_scatter_plot(self):
+        def check_scatter_plot(pdf, kdf, x, y, c):
+            ax1 = pdf.plot.scatter(x=x, y=y)
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot.scatter(x=x, y=y)
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
+
+            ax1 = pdf.plot(kind='scatter', x=x, y=y)
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot(kind='scatter', x=x, y=y)
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
+
+            # check when keyword c is given as name of a column
+            ax1 = pdf.plot.scatter(x=x, y=y, c=c, s=50)
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot.scatter(x=x, y=y, c=c, s=50)
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
+
         # Use pandas scatter plot example
-        pdf = pd.DataFrame(np.random.rand(50, 4), columns=['a', 'b', 'c', 'd'])
-        kdf = koalas.from_pandas(pdf)
+        pdf1 = pd.DataFrame(np.random.rand(50, 4), columns=['a', 'b', 'c', 'd'])
+        kdf1 = koalas.from_pandas(pdf1)
+        check_scatter_plot(pdf1, kdf1, x='a', y='b', c='c')
 
-        ax1 = pdf.plot.scatter(x='a', y='b')
-        ax2 = kdf.plot.scatter(x='a', y='b')
-        self.compare_plots(ax1, ax2)
-
-        ax1 = pdf.plot(kind='scatter', x='a', y='b')
-        ax2 = kdf.plot(kind='scatter', x='a', y='b')
-        self.compare_plots(ax1, ax2)
-
-        # check when keyword c is given as name of a column
-        ax1 = pdf.plot.scatter(x='a', y='b', c='c', s=50)
-        ax2 = kdf.plot.scatter(x='a', y='b', c='c', s=50)
-        self.compare_plots(ax1, ax2)
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c'), ('z', 'd')])
+        pdf1.columns = columns
+        kdf1.columns = columns
+        check_scatter_plot(pdf1, kdf1, x=('x', 'a'), y=('x', 'b'), c=('y', 'c'))
 
     def test_hist_plot(self):
-        pdf = self.pdf1
-        kdf = self.kdf1
+        def check_hist_plot(pdf, kdf):
+            _, ax1 = plt.subplots(1, 1)
+            ax1 = pdf.plot.hist()
+            bin1 = self.plot_to_base64(ax1)
+            _, ax2 = plt.subplots(1, 1)
+            ax2 = kdf.plot.hist()
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
 
-        _, ax1 = plt.subplots(1, 1)
-        ax1 = pdf.plot.hist()
-        _, ax2 = plt.subplots(1, 1)
-        ax2 = kdf.plot.hist()
-        self.compare_plots(ax1, ax2)
+            ax1 = pdf.plot.hist(bins=15)
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot.hist(bins=15)
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
 
-        ax1 = pdf.plot.hist(bins=15)
-        ax2 = kdf.plot.hist(bins=15)
-        self.compare_plots(ax1, ax2)
+            ax1 = pdf.plot(kind='hist', bins=15)
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot(kind='hist', bins=15)
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
 
-        ax1 = pdf.plot(kind='hist', bins=15)
-        ax2 = kdf.plot(kind='hist', bins=15)
-        self.compare_plots(ax1, ax2)
+            ax1 = pdf.plot.hist(bins=3, bottom=[2, 1, 3])
+            bin1 = self.plot_to_base64(ax1)
+            ax2 = kdf.plot.hist(bins=3, bottom=[2, 1, 3])
+            bin2 = self.plot_to_base64(ax2)
+            self.assertEqual(bin1, bin2)
 
-        ax1 = pdf.plot.hist(bins=3, bottom=[2, 1, 3])
-        ax2 = kdf.plot.hist(bins=3, bottom=[2, 1, 3])
-        self.compare_plots(ax1, ax2)
+        pdf1 = self.pdf1
+        kdf1 = self.kdf1
+        check_hist_plot(pdf1, kdf1)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
+        pdf1.columns = columns
+        kdf1.columns = columns
+        check_hist_plot(pdf1, kdf1)
+
+    def test_kde_plot(self):
+        def moving_average(a, n=10):
+            ret = np.cumsum(a, dtype=float)
+            ret[n:] = ret[n:] - ret[:-n]
+            return ret[n - 1:] / n
+
+        def check_kde_plot(pdf, kdf, *args, **kwargs):
+            _, ax1 = plt.subplots(1, 1)
+            ax1 = pdf.plot.kde(*args, **kwargs)
+            _, ax2 = plt.subplots(1, 1)
+            ax2 = kdf.plot.kde(*args, **kwargs)
+
+            try:
+                for i, (line1, line2) in enumerate(zip(ax1.get_lines(), ax2.get_lines())):
+                    expected = line1.get_xydata().ravel()
+                    actual = line2.get_xydata().ravel()
+                    # TODO: Due to implementation difference, the output is different comparing
+                    # to pandas'. We should identify the root cause of difference, and reduce
+                    # the diff.
+
+                    # Note: Data is from 1 to 50. So, it smooths them by moving average and compares
+                    # both.
+                    self.assertTrue(
+                        np.allclose(moving_average(actual),
+                                    moving_average(expected), rtol=3.0))
+            finally:
+                ax1.cla()
+                ax2.cla()
+
+        pdf1 = self.pdf1
+        kdf1 = self.kdf1
+        check_kde_plot(pdf1, kdf1, bw_method=0.3)
+        check_kde_plot(pdf1, kdf1, ind=[1, 2, 3], bw_method=3.0)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
+        pdf1.columns = columns
+        pdf1.columns = columns
+        check_kde_plot(pdf1, kdf1, bw_method=0.3)
+        check_kde_plot(pdf1, kdf1, ind=[1, 2, 3], bw_method=3.0)
 
     def test_missing(self):
         ks = self.kdf1
 
-        unsupported_functions = ['box', 'density', 'hexbin', 'kde']
+        unsupported_functions = ['box', 'hexbin']
 
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
