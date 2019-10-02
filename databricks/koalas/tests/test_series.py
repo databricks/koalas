@@ -688,3 +688,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "Cannot specify both 'labels' and 'index'"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop('lama', index='cow')
+        msg = r"'Key length \(2\) exceeds index depth \(3\)'"
+        with self.assertRaisesRegex(KeyError, msg):
+            kser.drop(('lama', 'speed', 'x'))
+        self.assert_eq(kser.drop(('lama', 'speed', 'x'), level=1), kser)

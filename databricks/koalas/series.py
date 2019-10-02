@@ -1590,8 +1590,15 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
             drop_index_scols = []
             for idxes in index:
-                index_scols = [self._internal.index_scols[lvl] == idx
-                               for lvl, idx in enumerate(idxes, level)]
+                try:
+                    index_scols = [self._internal.index_scols[lvl] == idx
+                                   for lvl, idx in enumerate(idxes, level)]
+                except IndexError:
+                    if level == 0:
+                        raise KeyError("Key length ({}) exceeds index depth ({})"
+                                       .format(len(self._internal.index_scols), len(idxes)))
+                    else:
+                        return self
                 drop_index_scols.append(reduce(lambda x, y: x & y, index_scols))
 
             sdf = self._internal.sdf.where(~reduce(lambda x, y: x | y, drop_index_scols))
