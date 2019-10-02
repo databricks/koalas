@@ -685,3 +685,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "'index' type should be one of str, list, tuple"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop({'lama': 'speed'})
+        msg = "Cannot specify both 'labels' and 'index'"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.drop('lama', index='cow')

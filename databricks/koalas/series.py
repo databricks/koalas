@@ -1502,6 +1502,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         A    0
         Name: 0, dtype: int64
 
+        With 'index' rather than 'labels' returns exactly same result.
+
+        >>> s.drop(index='A')
+        B    1
+        C    2
+        Name: 0, dtype: int64
+
+        >>> s.drop(index=['B', 'C'])
+        A    0
+        Name: 0, dtype: int64
+
         Also support for MultiIndex
 
         >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
@@ -1552,7 +1563,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 length      0.3
         Name: 0, dtype: float64
         """
-        index = labels
+        if labels is not None:
+            if index is not None:
+                raise ValueError("Cannot specify both 'labels' and 'index'")
+            return self.drop(index=labels, level=level)
         if index is not None:
             if not isinstance(index, (str, tuple, list)):
                 raise ValueError("'index' type should be one of str, list, tuple")
@@ -1566,28 +1580,22 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             elif isinstance(index, tuple):
                 index = [index]
             else:
-                if not (all((isinstance(rows, str) for rows in index)) or
-                        all((isinstance(rows, tuple) for rows in index))):
+                if not (all((isinstance(idxes, str) for idxes in index)) or
+                        all((isinstance(idxes, tuple) for idxes in index))):
                     raise ValueError("If the given index is a list, it "
                                      "should only contains names as strings, "
                                      "or a list of tuples that contain "
                                      "index names as strings")
-                index = [rows if isinstance(rows, tuple) else (rows,)  # type: ignore
-                         for rows in index]
+                index = [idxes if isinstance(idxes, tuple) else (idxes,)  # type: ignore
+                         for idxes in index]
 
-            def _gen_next_lvl(level):
-                while True:
-                    yield level
-                    level += 1
+            drop_index_scols = []
+            for idxes in index:
+                index_scols = [self._internal.index_scols[lvl] == idx
+                               for lvl, idx in enumerate(idxes, level)]
+                drop_index_scols.append(reduce(lambda x, y: x & y, index_scols))
 
-            drop_indexes = []
-            for rows in index:
-                lvl = _gen_next_lvl(level)
-                drop_rows = [self._internal.index_scols[next(lvl)].isin(row)
-                             for row in rows]
-                drop_indexes.append(~reduce(lambda x, y: x & y, drop_rows))
-
-            sdf = self._internal.sdf.where(reduce(lambda x, y: x & y, drop_indexes))
+            sdf = self._internal.sdf.where(~reduce(lambda x, y: x | y, drop_index_scols))
             return _col(DataFrame(self._internal.copy(sdf=sdf)))
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'index'")
