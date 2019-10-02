@@ -1000,7 +1000,7 @@ class KoalasSeriesPlotMethods(PandasObject):
         .. plot::
             :context: close-figs
 
-            >>> s = ks.Series([1 ,3 ,2])
+            >>> s = ks.Series([1, 3, 2])
             >>> ax = s.plot.line()
         """
         return self(kind="line", x=x, y=y, **kwargs)
