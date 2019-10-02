@@ -528,6 +528,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf, pdf)
         self.assertTrue((kdf.dtypes == pdf.dtypes).all())
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples(zip(list('xxxyyz'), list('abcdef')))
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assertTrue((kdf.dtypes == pdf.dtypes).all())
+
     def test_fillna(self):
         pdf = pd.DataFrame({'x': [np.nan, 2, 3, 4, np.nan, 6],
                             'y': [1, 2, np.nan, 4, np.nan, np.nan],
