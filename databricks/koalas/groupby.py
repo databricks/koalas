@@ -799,7 +799,7 @@ class GroupBy(object):
 
         >>> def plus_min(x):
         ...    return x + x.min()
-        >>> g.apply(plus_min)  # doctest: +NORMALIZE_WHITESPACE
+        >>> g.apply(plus_min).sort_index()  # doctest: +NORMALIZE_WHITESPACE
             A  B   C
         0  aa  2   8
         1  aa  3  10
@@ -838,17 +838,16 @@ class GroupBy(object):
 
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
-            # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = get_option("compute.shortcut_limit")
-            pdf = self._kdf.head(limit + 1)._to_internal_pandas()
+            pdf = self._kdf.head(limit)._to_internal_pandas()
             pdf = pdf.groupby(input_groupnames).apply(func)
             kdf = DataFrame(pdf)
             return_schema = kdf._sdf.schema
-            if len(pdf) <= limit:
-                return kdf
 
         sdf = self._spark_group_map_apply(
-            func, return_schema, retain_index=should_infer_schema)
+            lambda pdf: pdf.groupby(input_groupnames).apply(func),
+            return_schema,
+            retain_index=should_infer_schema)
 
         if should_infer_schema:
             # If schema is inferred, we can restore indexes too.

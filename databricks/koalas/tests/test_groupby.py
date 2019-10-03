@@ -553,6 +553,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby(['b'])['a'].apply(lambda x: x).sort_index(),
                        pdf.groupby(['b'])['a'].apply(lambda x: x).sort_index())
 
+        with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
+            kdf.groupby("b").apply(1)
+
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
         pdf.columns = columns
@@ -562,38 +565,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby(("x", "b")).apply(lambda x: x + 1).sort_index())
         self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).apply(lambda x: x * x).sort_index(),
                        pdf.groupby([('x', 'a'), ('x', 'b')]).apply(lambda x: x * x).sort_index())
-
-        # Less than 'compute.shortcut_limit' will execute a shortcut
-        # by using collected pandas dataframe directly.
-        # now we set the 'compute.shortcut_limit' as 1000 explicitly
-        set_option('compute.shortcut_limit', 1000)
-        try:
-            pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
-                                'b': [1, 1, 2, 3, 5, 8] * 300,
-                                'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
-            kdf = koalas.DataFrame(pdf)
-            self.assert_eq(kdf.groupby("b").apply(lambda x: x + 1).sort_index(),
-                           pdf.groupby("b").apply(lambda x: x + 1).sort_index())
-            self.assert_eq(kdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index(),
-                           pdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index())
-            self.assert_eq(kdf.groupby(['b'])['a'].apply(lambda x: x).sort_index(),
-                           pdf.groupby(['b'])['a'].apply(lambda x: x).sort_index())
-            with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
-                kdf.groupby("b").apply(1)
-
-            # multi-index columns
-            columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
-            pdf.columns = columns
-            kdf.columns = columns
-
-            self.assert_eq(kdf.groupby(("x", "b")).apply(lambda x: x + 1).sort_index(),
-                           pdf.groupby(("x", "b")).apply(lambda x: x + 1).sort_index())
-            self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')])
-                           .apply(lambda x: x * x).sort_index(),
-                           pdf.groupby([('x', 'a'), ('x', 'b')])
-                           .apply(lambda x: x * x).sort_index())
-        finally:
-            reset_option('compute.shortcut_limit')
 
     def test_apply_with_new_dataframe(self):
         pdf = pd.DataFrame({
@@ -606,20 +577,28 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index(),
             pdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index())
 
-        set_option('compute.shortcut_limit', 1000)
-        try:
-            # 1000+ records will only infer the schema.
-            pdf = pd.DataFrame({
-                "timestamp": [0.0, 0.5, 1.0, 0.0, 0.5] * 300,
-                "car_id": ['A', 'A', 'A', 'B', 'B'] * 300
-            })
-            kdf = koalas.DataFrame(pdf)
+        self.assert_eq(
+            kdf.groupby('car_id')
+            .apply(lambda df: pd.DataFrame({'mean': [df['timestamp'].mean()]})).sort_index(),
+            pdf.groupby('car_id')
+            .apply(lambda df: pd.DataFrame({"mean": [df['timestamp'].mean()]})).sort_index())
 
-            self.assert_eq(
-                kdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index(),
-                pdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index())
-        finally:
-            reset_option('compute.shortcut_limit')
+        # dataframe with 1000+ records
+        pdf = pd.DataFrame({
+            "timestamp": [0.0, 0.5, 1.0, 0.0, 0.5] * 300,
+            "car_id": ['A', 'A', 'A', 'B', 'B'] * 300
+        })
+        kdf = koalas.DataFrame(pdf)
+
+        self.assert_eq(
+            kdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index(),
+            pdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index())
+
+        self.assert_eq(
+            kdf.groupby('car_id')
+            .apply(lambda df: pd.DataFrame({"mean": [df['timestamp'].mean()]})).sort_index(),
+            pdf.groupby('car_id')
+            .apply(lambda df: pd.DataFrame({"mean": [df['timestamp'].mean()]})).sort_index())
 
     def test_transform(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
