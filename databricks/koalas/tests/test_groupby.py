@@ -597,7 +597,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby('car_id')
             .apply(lambda df: pd.DataFrame({"mean": [df['timestamp'].mean()]})).sort_index(),
-            pdf.groupby('car_id') \
+            pdf.groupby('car_id')
             .apply(lambda df: pd.DataFrame({"mean": [df['timestamp'].mean()]})).sort_index())
 
     def test_transform(self):
