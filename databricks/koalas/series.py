@@ -3111,7 +3111,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     # TODO: add 'deep' parameter
     def copy(self) -> 'Series':
         """
-        Make a copy of this objext's indicies and data.
+        Make a copy of this object's indices and data.
 
         Returns
         -------
