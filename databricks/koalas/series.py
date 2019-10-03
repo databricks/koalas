@@ -3108,6 +3108,127 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return tuple(values)
 
+    def pop(self, item, level=None):
+        """
+        Return item and drop from sereis.
+
+        Parameters
+        ----------
+        item : str
+            Label of index to be popped.
+
+        Parameters
+        ----------
+        item : single label or list-like
+            Index labels to drop.
+        level : int or level name, optional
+            For MultiIndex, level for which the labels will be returned.
+
+        Returns
+        -------
+        Series
+        Return Series with specified index labels.
+
+        Return elements of a Series based on specifying the index labels.
+        When using a multi-index, labels on different levels can be returned
+        by specifying the level.
+
+        Examples
+        --------
+        >>> s = ks.Series(data=np.arange(3), index=['A', 'B', 'C'])
+        >>> s
+        A    0
+        B    1
+        C    2
+        Name: 0, dtype: int64
+
+        >>> s.pop('A')
+        A    0
+        Name: 0, dtype: int64
+
+        >>> s
+        B    1
+        C    2
+        Name: 0, dtype: int64
+
+        Also support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...               index=midx)
+        >>> s
+        lama    speed      45.0
+                weight    200.0
+                length      1.2
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.pop('lama')
+        lama  speed      45.0
+              weight    200.0
+              length      1.2
+        Name: 0, dtype: float64
+
+        >>> s
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        Also support for MultiIndex by specifying the level
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...               index=midx)
+        >>> s
+        lama    speed      45.0
+                weight    200.0
+                length      1.2
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.pop('speed', level=1)
+        lama    speed     45.0
+        cow     speed     30.0
+        falcon  speed    320.0
+        Name: 0, dtype: float64
+
+        >>> s
+        lama    weight    200.0
+                length      1.2
+        cow     weight    250.0
+                length      1.5
+        falcon  weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+        """
+        if level is None:
+            level = 0
+        scol = self._internal.index_scols[level] == item
+        sdf = self._internal.sdf.where(scol)
+        self._internal = self.drop(item, level=level)._internal
+
+        return _col(DataFrame(self._internal.copy(sdf=sdf)))
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns

@@ -84,7 +84,6 @@ class _MissingPandasLikeSeries(object):
     mask = unsupported_function('mask')
     mode = unsupported_function('mode')
     pct_change = unsupported_function('pct_change')
-    pop = unsupported_function('pop')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
     ravel = unsupported_function('ravel')
