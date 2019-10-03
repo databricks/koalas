@@ -1266,6 +1266,9 @@ class KoalasSeriesPlotMethods(PandasObject):
             ...                   index=['Mercury', 'Venus', 'Earth'])
             >>> plot = df.mass.plot.pie(figsize=(5, 5))
 
+        .. plot::
+            :context: close-figs
+
             >>> plot = df.mass.plot.pie(subplots=True, figsize=(6, 3))
         """
         return self(kind='pie', **kwds)
