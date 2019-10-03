@@ -3108,7 +3108,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return tuple(values)
 
-    # TODO: add 'deep' parameter
     def copy(self) -> 'Series':
         """
         Make a copy of this object's indices and data.
