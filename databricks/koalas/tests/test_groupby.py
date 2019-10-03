@@ -579,9 +579,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(
             kdf.groupby('car_id')
-                .apply(lambda df: pd.DataFrame({'mean': [df['timestamp'].mean()]})).sort_index(),
+            .apply(lambda df: pd.DataFrame({'mean': [df['timestamp'].mean()]})).sort_index(),
             pdf.groupby('car_id')
-                .apply(lambda df: pd.DataFrame({"mean": [df['timestamp'].mean()]})).sort_index())
+            .apply(lambda df: pd.DataFrame({"mean": [df['timestamp'].mean()]})).sort_index())
 
         # dataframe with 1000+ records
         pdf = pd.DataFrame({
@@ -595,10 +595,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index())
 
         self.assert_eq(
-            kdf.groupby('car_id') \
-               .apply(lambda df: pd.DataFrame({"mean": [df['timestamp'].mean()]})).sort_index(),
+            kdf.groupby('car_id')
+            .apply(lambda df: pd.DataFrame({"mean": [df['timestamp'].mean()]})).sort_index(),
             pdf.groupby('car_id') \
-               .apply(lambda df: pd.DataFrame({"mean": [df['timestamp'].mean()]})).sort_index())
+            .apply(lambda df: pd.DataFrame({"mean": [df['timestamp'].mean()]})).sort_index())
 
     def test_transform(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
