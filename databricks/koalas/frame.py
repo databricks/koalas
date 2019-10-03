@@ -7128,9 +7128,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 assert len(idxes) == 1
                 index = list(idxes)[0]
                 kdf_or_ser = \
-                    Series(self._internal.copy(scol=self._internal.scol_for(index),
-                                               column_index=[index]),
-                           anchor=self)
+                    Series(self._internal.copy(
+                        sdf=self._sdf.select(
+                            self._internal.index_scols +
+                            [self._internal.scol_for(index)]),
+                        scol=self._internal.scol_for(index),
+                        column_index=[index]),
+                        anchor=self)
             except AnalysisException:
                 raise KeyError(key)
         else:
