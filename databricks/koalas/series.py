@@ -3114,11 +3114,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Parameters
         ----------
-        item : str
-            Label of index to be popped.
-
-        Parameters
-        ----------
         item : single label or list-like
             Index labels to drop.
         level : int or level name, optional
