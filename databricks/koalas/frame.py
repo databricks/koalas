@@ -2728,7 +2728,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                              index_map=[(index_column,
                                                          self._internal.index_names[0])])))
 
-    def to_koalas(self):
+    def to_koalas(self, index_col=None):
         """
         Converts the existing DataFrame into a Koalas DataFrame.
 
@@ -2739,6 +2739,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         If a Koalas DataFrame is converted to a Spark DataFrame and then back
         to Koalas, it will lose the index information and the original index
         will be turned into a normal column.
+
+        Parameters
+        ----------
+        index_col: str or list of str, optional, default: None
+            Index column of table in Spark.
 
         See Also
         --------
@@ -2762,6 +2767,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0     1     3
         1     2     4
 
+        We can specify the index columns.
+
+        >>> kdf = spark_df.to_koalas(index_col='col1')
+        >>> kdf  # doctest: +NORMALIZE_WHITESPACE
+              col2
+        col1
+        1        3
+        2        4
+
         Calling to_koalas on a Koalas DataFrame simply returns itself.
 
         >>> df.to_koalas()
@@ -2772,7 +2786,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(self, DataFrame):
             return self
         else:
-            return DataFrame(self)
+            assert isinstance(self, spark.DataFrame), type(self)
+            from databricks.koalas.namespace import _get_index_map
+            index_map = _get_index_map(self, index_col)
+            internal = _InternalFrame(sdf=self, index_map=index_map)
+            return DataFrame(internal)
 
     def cache(self):
         """
