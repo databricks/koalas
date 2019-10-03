@@ -49,6 +49,7 @@ Indexing, iteration
    Series.at
    Series.loc
    Series.iloc
+   Series.pop
 
 Binary operator functions
 -------------------------
