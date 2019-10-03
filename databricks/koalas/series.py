@@ -3108,6 +3108,30 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return tuple(values)
 
+    # TODO: add 'deep' parameter
+    def copy(self) -> 'Series':
+        """
+        Make a copy of this objext's indicies and data.
+
+        Returns
+        -------
+        copy : Series
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2], index=["a", "b"])
+        >>> s
+        a    1
+        b    2
+        Name: 0, dtype: int64
+        >>> s_copy = s.copy()
+        >>> s_copy
+        a    1
+        b    2
+        Name: 0, dtype: int64
+        """
+        return _col(DataFrame(self._internal.copy()))
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns

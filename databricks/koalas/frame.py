@@ -3313,6 +3313,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return validate_arguments_and_invoke_function(
             kdf._to_internal_pandas(), self.to_records, pd.DataFrame.to_records, args)
 
+    # TODO: add 'deep' parameter
     def copy(self) -> 'DataFrame':
         """
         Make a copy of this object's indices and data.
@@ -3320,6 +3321,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Returns
         -------
         copy : DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6], 'w': [7, 8]},
+        ...                   columns=['x', 'y', 'z', 'w'])
+        >>> df
+           x  y  z  w
+        0  1  3  5  7
+        1  2  4  6  8
+        >>>
+        >>> df_copy = df.copy()
+        >>> df_copy
+           x  y  z  w
+        0  1  3  5  7
+        1  2  4  6  8
         """
         return DataFrame(self._internal.copy())
 
