@@ -1281,7 +1281,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return Series(internal, anchor=kdf)
 
-
     def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
         """Fill NA/NaN values.
 

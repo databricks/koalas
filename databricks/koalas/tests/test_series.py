@@ -698,7 +698,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_duplicates(self):
         # test on texts
         pser = pd.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],
-                      name='animal')
+                         name='animal')
         kser = koalas.Series(pser)
 
         self.assertEqual(pser.drop_duplicates().sort_values(),
