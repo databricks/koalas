@@ -6,7 +6,7 @@ channels:
   - bioconda
   - conda-forge
 dependencies:
-  - java-jdk<=8
+  - java-jdk=8
   - pip
   - pip:
     # In Read the Docs, seems installing 'requirements-dev.txt' seems ignored when Conda is used.
