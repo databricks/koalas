@@ -3227,7 +3227,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 length      0.3
         Name: 0, dtype: float64
         """
-        from databricks.koalas.indexes import Index, MultiIndex
+        from databricks.koalas.indexes import MultiIndex
         if isinstance(self.index, MultiIndex):
             sdf = self._internal.sdf \
                 .select(self._internal.index_scols[1:] + [self._internal.scol]) \
