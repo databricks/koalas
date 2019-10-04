@@ -4,6 +4,10 @@
 # when we support Spark 3.
 channels:
   - bioconda
+  - conda-forge
 dependencies:
   - java-jdk<=8
+  - pip:
+    # In Read the Docs, seems installing 'requirements-dev.txt' seems ignored when Conda is used.
+    - -r requirements-dev.txt
 
