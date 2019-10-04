@@ -62,7 +62,6 @@ class _MissingPandasLikeSeries(object):
     cov = unsupported_function('cov')
     divmod = unsupported_function('divmod')
     dot = unsupported_function('dot')
-    drop_duplicates = unsupported_function('drop_duplicates')
     droplevel = unsupported_function('droplevel')
     duplicated = unsupported_function('duplicated')
     ewm = unsupported_function('ewm')
