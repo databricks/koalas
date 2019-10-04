@@ -36,4 +36,6 @@ python:
       path: .
       extra_requirements:
         - spark
+conda:
+  environment: dev/readthedocs-environment.yml
 
