@@ -694,3 +694,19 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(KeyError, msg):
             kser.drop(('lama', 'speed', 'x'))
         self.assert_eq(kser.drop(('lama', 'speed', 'x'), level=1), kser)
+
+    def test_duplicates(self):
+        # test on texts
+        pser = pd.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],
+                      name='animal')
+        kser = koalas.Series(pser)
+
+        self.assertEqual(pser.drop_duplicates().sort_values(),
+                         kser.drop_duplicates().sort_values())
+
+        # test on numbers
+        pser = pd.Series([1, 1, 2, 4, 3])
+        kser = koalas.Series(pser)
+
+        self.assertEqual(pser.drop_duplicates().sort_values(),
+                         kser.drop_duplicates().sort_values())

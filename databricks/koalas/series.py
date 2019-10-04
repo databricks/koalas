@@ -1237,6 +1237,51 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     tolist = to_list
 
+    def drop_duplicates(self, inplace=False):
+        """
+        Return Series with duplicate values removed.
+
+        Parameters
+        ----------
+        inplace: bool, default False
+            If True, performs operation inpalce and returns None.
+
+        Returns
+        -------
+        Series
+            Series with deplicates dropped.
+
+        Examples
+        --------
+        Generate a Series with duplicated entries.
+        >>> s = ks.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],
+        ...               name='animal')
+        >>> s
+        0      lama
+        1       cow
+        2      lama
+        3    beetle
+        4      lama
+        5     hippo
+        Name: animal, dtype: object
+
+        >>> s.drop_duplicates()
+        1       cow
+        0      lama
+        5     hippo
+        3    beetle
+        Name: animal, dtype: object
+        """
+        kdf = self._kdf.drop_duplicates()
+        internal = kdf._internal.copy()
+
+        if inplace:
+            self._internal = kdf._internal
+            self._kdf = kdf
+        else:
+            return Series(internal, anchor=kdf)
+
+
     def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
         """Fill NA/NaN values.
 
