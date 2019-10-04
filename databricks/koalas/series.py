@@ -1272,7 +1272,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         3    beetle
         Name: animal, dtype: object
         """
-        kdf = self._kdf.drop_duplicates()
+        kdf = self.to_frame().drop_duplicates()
         internal = kdf._internal.copy()
 
         if inplace:
