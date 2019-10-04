@@ -113,7 +113,7 @@ We use Google Groups for mailing list: https://groups.google.com/forum/#!forum/k
 
 ## Development Guide
 
-See [CONTRIBUTING.md](https://github.com/databricks/koalas/blob/master/CONTRIBUTING.md).
+See [Contributing Guide](https://koalas.readthedocs.io/en/latest/development/contributing.html).
 
 
 ## Design Principles
@@ -232,7 +232,7 @@ scientists.
 
 ### How can I contribute to Koalas?
 
-See [CONTRIBUTING.md](https://github.com/databricks/koalas/blob/master/CONTRIBUTING.md).
+See [Contributing Guide](https://koalas.readthedocs.io/en/latest/development/contributing.html).
 
 ### Why a new project (instead of putting this in Apache Spark itself)?
 
