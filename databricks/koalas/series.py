@@ -28,6 +28,7 @@ import pandas as pd
 from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
 
+from databricks.koalas.typedef import as_python_type
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import BooleanType, StructType
@@ -2197,7 +2198,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2    3.0
         Name: 0, dtype: float64
         """
-        return _col(self._kdf.nsmallest(n=n, columns=self.name))
+        return _col(self.to_frame().nsmallest(n=n, columns=self.name))
 
     def nlargest(self, n: int = 5) -> 'Series':
         """
@@ -2259,7 +2260,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
 
         """
-        return _col(self._kdf.nlargest(n=n, columns=self.name))
+        return _col(self.to_frame().nlargest(n=n, columns=self.name))
 
     def count(self):
         """
@@ -2360,7 +2361,16 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Can be a Python function that only works on the Series.
 
-        .. note:: unlike pandas, it is required for `func` to specify return type hint.
+        .. note:: this API executes the function once to infer the type which is
+             potentially expensive, for instance, when the dataset is created after
+             aggregations or sorting.
+
+             To avoid this, specify return type in ``func``, for instance, as below:
+
+             >>> def square(x) -> np.int32:
+             ...     return x ** 2
+
+             Koalas uses return type hint and does not try to infer the type.
 
         Parameters
         ----------
@@ -2438,15 +2448,42 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         New York    3.044522
         Helsinki    2.484907
         Name: 0, dtype: float64
+
+
+        You can omit the type hint and let Koalas infer its type.
+
+        >>> s.apply(np.log)
+        London      2.995732
+        New York    3.044522
+        Helsinki    2.484907
+        Name: 0, dtype: float64
+
         """
         assert callable(func), "the first argument should be a callable function."
-        spec = inspect.getfullargspec(func)
-        return_sig = spec.annotations.get("return", None)
-        if return_sig is None:
-            raise ValueError("Given function must have return type hint; however, not found.")
+        try:
+            spec = inspect.getfullargspec(func)
+            return_sig = spec.annotations.get("return", None)
+            should_infer_schema = return_sig is None
+        except TypeError:
+            # Falls back to schema inference if it fails to get signature.
+            should_infer_schema = True
 
         apply_each = wraps(func)(lambda s, *a, **k: s.apply(func, args=a, **k))
-        wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
+
+        if should_infer_schema:
+            # TODO: In this case, it avoids the shortcut for now (but only infers schema)
+            #  because it returns a series from a different DataFrame and it has a different
+            #  anchor. We should fix this to allow the shortcut or only allow to infer
+            #  schema.
+            limit = get_option("compute.shortcut_limit")
+            pser = self.head(limit)._to_internal_pandas()
+            transformed = pser.apply(func, *args, **kwds)
+            kser = Series(transformed)
+
+            wrapped = ks.pandas_wraps(
+                return_col=as_python_type(kser.spark_type))(apply_each)
+        else:
+            wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
         return wrapped(self, *args, **kwds).rename(self.name)
 
     # TODO: not all arguments are implemented comparing to Pandas' for now.
@@ -2525,7 +2562,16 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Call ``func`` producing the same type as `self` with transformed values
         and that has the same axis length as input.
 
-        .. note:: unlike pandas, it is required for `func` to specify return type hint.
+        .. note:: this API executes the function once to infer the type which is
+             potentially expensive, for instance, when the dataset is created after
+             aggregations or sorting.
+
+             To avoid this, specify return type in ``func``, for instance, as below:
+
+             >>> def square(x) -> np.int32:
+             ...     return x ** 2
+
+             Koalas uses return type hint and does not try to infer the type.
 
         Parameters
         ----------
@@ -2573,11 +2619,18 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         1  1.000000  2.718282
         2  1.414214  7.389056
 
+        You can omit the type hint and let Koalas infer its type.
+
+        >>> s.transform([np.sqrt, np.exp])
+               sqrt       exp
+        0  0.000000  1.000000
+        1  1.000000  2.718282
+        2  1.414214  7.389056
         """
         if isinstance(func, list):
             applied = []
             for f in func:
-                applied.append(self.apply(f).rename(f.__name__))
+                applied.append(self.apply(f, args=args, **kwargs).rename(f.__name__))
 
             sdf = self._kdf._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
@@ -3186,6 +3239,29 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         self._internal = self.drop(item)._internal
 
         return _col(DataFrame(internal))
+
+    def copy(self) -> 'Series':
+        """
+        Make a copy of this object's indices and data.
+
+        Returns
+        -------
+        copy : Series
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2], index=["a", "b"])
+        >>> s
+        a    1
+        b    2
+        Name: 0, dtype: int64
+        >>> s_copy = s.copy()
+        >>> s_copy
+        a    1
+        b    2
+        Name: 0, dtype: int64
+        """
+        return _col(DataFrame(self._internal.copy()))
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.

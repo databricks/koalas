@@ -59,7 +59,6 @@ class _MissingPandasLikeSeries(object):
     bfill = unsupported_function('bfill')
     combine = unsupported_function('combine')
     combine_first = unsupported_function('combine_first')
-    copy = unsupported_function('copy')
     cov = unsupported_function('cov')
     divmod = unsupported_function('divmod')
     dot = unsupported_function('dot')

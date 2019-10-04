@@ -18,5 +18,6 @@ pandas is the de facto standard (single-node) DataFrame implementation in Python
     getting_started/index
     user_guide/index
     reference/index
+    development/index
     whatsnew/index
 

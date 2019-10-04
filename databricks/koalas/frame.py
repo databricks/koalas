@@ -828,11 +828,16 @@ class DataFrame(_Frame, Generic[T]):
         This method applies a function that accepts and returns a scalar
         to every element of a DataFrame.
 
-        .. note:: unlike pandas, it is required for `func` to specify return type hint.
-            See https://docs.python.org/3/library/typing.html. For instance, as below:
+        .. note:: this API executes the function once to infer the type which is
+             potentially expensive, for instance, when the dataset is created after
+             aggregations or sorting.
 
-            >>> def function() -> int:
-            ...     return 1
+             To avoid this, specify return type in ``func``, for instance, as below:
+
+             >>> def square(x) -> np.int32:
+             ...     return x ** 2
+
+             Koalas uses return type hint and does not try to infer the type.
 
         Parameters
         ----------
@@ -865,10 +870,19 @@ class DataFrame(_Frame, Generic[T]):
                    0          1
         0   1.000000   4.494400
         1  11.262736  20.857489
+
+        You can omit the type hint and let Koalas infer its type.
+
+        >>> df.applymap(lambda x: x ** 2)
+                   0          1
+        0   1.000000   4.494400
+        1  11.262736  20.857489
         """
 
         applied = []
         for idx in self._internal.column_index:
+            # TODO: We can implement shortcut theoretically since it creates new DataFrame
+            #  anyway and we don't have to worry about operations on different DataFrames.
             applied.append(self[idx].apply(func))
 
         sdf = self._sdf.select(
@@ -2728,7 +2742,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                              index_map=[(index_column,
                                                          self._internal.index_names[0])])))
 
-    def to_koalas(self):
+    def to_koalas(self, index_col=None):
         """
         Converts the existing DataFrame into a Koalas DataFrame.
 
@@ -2739,6 +2753,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         If a Koalas DataFrame is converted to a Spark DataFrame and then back
         to Koalas, it will lose the index information and the original index
         will be turned into a normal column.
+
+        Parameters
+        ----------
+        index_col: str or list of str, optional, default: None
+            Index column of table in Spark.
 
         See Also
         --------
@@ -2762,6 +2781,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0     1     3
         1     2     4
 
+        We can specify the index columns.
+
+        >>> kdf = spark_df.to_koalas(index_col='col1')
+        >>> kdf  # doctest: +NORMALIZE_WHITESPACE
+              col2
+        col1
+        1        3
+        2        4
+
         Calling to_koalas on a Koalas DataFrame simply returns itself.
 
         >>> df.to_koalas()
@@ -2772,7 +2800,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(self, DataFrame):
             return self
         else:
-            return DataFrame(self)
+            assert isinstance(self, spark.DataFrame), type(self)
+            from databricks.koalas.namespace import _get_index_map
+            index_map = _get_index_map(self, index_col)
+            internal = _InternalFrame(sdf=self, index_map=index_map)
+            return DataFrame(internal)
 
     def cache(self):
         """
@@ -3320,6 +3352,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Returns
         -------
         copy : DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'x': [1, 2], 'y': [3, 4], 'z': [5, 6], 'w': [7, 8]},
+        ...                   columns=['x', 'y', 'z', 'w'])
+        >>> df
+           x  y  z  w
+        0  1  3  5  7
+        1  2  4  6  8
+        >>> df_copy = df.copy()
+        >>> df_copy
+           x  y  z  w
+        0  1  3  5  7
+        1  2  4  6  8
         """
         return DataFrame(self._internal.copy())
 
