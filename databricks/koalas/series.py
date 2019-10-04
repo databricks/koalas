@@ -1239,7 +1239,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def drop_duplicates(self, inplace=False):
         """
-        Return Series with duplicate values removed.
+        Return koalas Series with duplicate values removed.
 
         Parameters
         ----------
