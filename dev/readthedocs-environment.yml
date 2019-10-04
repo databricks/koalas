@@ -5,5 +5,5 @@
 channels:
   - bioconda
 dependencies:
-  - java-jdka<=8
+  - java-jdk<=8
 
