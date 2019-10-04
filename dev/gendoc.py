@@ -79,7 +79,8 @@ def list_releases_to_document(cur_version):
     tag_url = "https://api.github.com/repos/databricks/koalas/releases"
     cur_version = "v" + cur_version
     releases = [(
-        release['name'], release['tag_name'], release['body']) for release in get_json(tag_url)]
+        release['name'], release['tag_name'], release['body']
+    ) for release in retry(get_json, url=tag_url)]
     filtered = filter(
         lambda release: LooseVersion(release[1]) <= LooseVersion(cur_version), releases)
     return sorted(filtered, reverse=True, key=lambda release: LooseVersion(release[1]))
