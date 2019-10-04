@@ -1940,14 +1940,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         DataFrame.iloc : Purely integer-location based indexing
             for selection by position.
 
-        Notes
-        -----
-        `xs` can not be used to set values.
-        MultiIndex Slicers is a generic way to get/set values on
-        any level or levels.
-        It is a superset of `xs` functionality, see
-        :ref:`MultiIndex Slicers <advanced.mi_slicers>`.
-
         Examples
         --------
         >>> d = {'num_legs': [4, 4, 2, 2],
