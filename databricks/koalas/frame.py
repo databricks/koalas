@@ -1908,6 +1908,113 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return result
 
+    # TODO: add axis parameter can work when '1' or 'columns'
+    def xs(self, key, axis=0, level=None):
+        """
+        Return cross-section from the DataFrame.
+
+        This method takes a `key` argument to select data at a particular
+        level of a MultiIndex.
+
+        Parameters
+        ----------
+        key : label or tuple of label
+            Label contained in the index, or partially in a MultiIndex.
+        axis : 0 or 'index', default 0
+            Axis to retrieve cross-section on.
+            currently only support 0 or 'index'
+        level : object, defaults to first n levels (n=1 or len(key))
+            In case of a key partially contained in a MultiIndex, indicate
+            which levels are used. Levels can be referred by label or position.
+
+        Returns
+        -------
+        DataFrame
+            Cross-section from the original DataFrame
+            corresponding to the selected index levels.
+
+        See Also
+        --------
+        DataFrame.loc : Access a group of rows and columns
+            by label(s) or a boolean array.
+        DataFrame.iloc : Purely integer-location based indexing
+            for selection by position.
+
+        Notes
+        -----
+        `xs` can not be used to set values.
+        MultiIndex Slicers is a generic way to get/set values on
+        any level or levels.
+        It is a superset of `xs` functionality, see
+        :ref:`MultiIndex Slicers <advanced.mi_slicers>`.
+
+        Examples
+        --------
+        >>> d = {'num_legs': [4, 4, 2, 2],
+        ...      'num_wings': [0, 0, 2, 2],
+        ...      'class': ['mammal', 'mammal', 'mammal', 'bird'],
+        ...      'animal': ['cat', 'dog', 'bat', 'penguin'],
+        ...      'locomotion': ['walks', 'walks', 'flies', 'walks']}
+        >>> df = ks.DataFrame(data=d)
+        >>> df = df.set_index(['class', 'animal', 'locomotion'])
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
+                                   num_legs  num_wings
+        class  animal  locomotion
+        mammal cat     walks              4          0
+               dog     walks              4          0
+               bat     flies              2          2
+        bird   penguin walks              2          2
+
+        Get values at specified index
+
+        >>> df.xs('mammal')  # doctest: +NORMALIZE_WHITESPACE
+                           num_legs  num_wings
+        animal locomotion
+        cat    walks              4          0
+        dog    walks              4          0
+        bat    flies              2          2
+
+        Get values at several indexes
+
+        >>> df.xs(('mammal', 'dog'))  # doctest: +NORMALIZE_WHITESPACE
+                    num_legs  num_wings
+        locomotion
+        walks              4          0
+
+        Get values at specified index and level
+
+        >>> df.xs('cat', level=1)  # doctest: +NORMALIZE_WHITESPACE
+                           num_legs  num_wings
+        class  locomotion
+        mammal walks              4          0
+        """
+        if not isinstance(key, (str, tuple)):
+            raise ValueError("'key' should be string or tuple that contains strings")
+        if not all(isinstance(index, str) for index in key):
+            raise ValueError("'key' should have index names as only strings "
+                             "or a tuple that contain index names as only strings")
+
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
+        if level is None:
+            level = 0
+        if isinstance(key, str):
+            key = (key,)
+
+        scols = self._internal.scols[:level] + self._internal.scols[level+len(key):]
+        rows = [self._internal.scols[lvl] == index
+                for lvl, index in enumerate(key, level)]
+
+        sdf = self._sdf.select(scols) \
+                       .where(reduce(lambda x, y: x & y, rows))
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            index_map=self._internal.index_map[:level] +
+            self._internal.index_map[level+len(key):])
+
+        return DataFrame(internal)
+
     @property
     def index(self):
         """The index (row labels) Column of the DataFrame.
