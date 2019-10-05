@@ -66,7 +66,7 @@ class DatetimeMethods(object):
     def year(self) -> 'ks.Series':
         """
         The year of the datetime.
-        `"""
+        """
         return _wrap_accessor_spark(self, F.year, LongType()).alias(self.name)
 
     @property
