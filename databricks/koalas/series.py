@@ -3269,12 +3269,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         from databricks.koalas.indexes import MultiIndex
         if not isinstance(item, (str, tuple)):
             raise ValueError("'key' should be string or tuple that contains strings")
+        if isinstance(item, str):
+            item = (item,)
         if not all(isinstance(index, str) for index in item):
             raise ValueError("'key' should have index names as only strings "
                              "or a tuple that contain index names as only strings")
 
-        if isinstance(item, str):
-            item = (item,)
         if isinstance(self.index, MultiIndex):
             cols = self._internal.index_scols[len(item):] + [self._internal.scol]
             rows = [self._internal.scols[level] == index
