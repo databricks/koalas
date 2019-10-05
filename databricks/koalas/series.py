@@ -1272,14 +1272,13 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         3    beetle
         Name: animal, dtype: object
         """
-        kdf = self.to_frame().drop_duplicates()
-        internal = kdf._internal.copy()
+        kseries = _col(self.to_frame().drop_duplicates())
 
         if inplace:
-            self._internal = kdf._internal
-            self._kdf = kdf
+            self._internal = kseries._internal
+            self._kdf = kseries
         else:
-            return Series(internal, anchor=kdf)
+            return kseries
 
     def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
         """Fill NA/NaN values.
