@@ -3226,15 +3226,67 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 weight      1.0
                 length      0.3
         Name: 0, dtype: float64
+
+        Also support for MultiIndex with several indexs.
+
+        >>> midx = pd.MultiIndex(
+        ...  levels=[['a', 'b', 'c'],
+        ...          ['lama', 'cow', 'falcon'],
+        ...          ['speed', 'weight', 'length']],
+        ...  codes=[[0, 0, 0, 0, 0, 0, 1, 1, 1],
+        ...         [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...         [0, 1, 2, 0, 1, 2, 0, 1, 2]]
+        ...  )
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...              index=midx)
+        >>> s
+        a  lama    speed      45.0
+                   weight    200.0
+                   length      1.2
+           cow     speed      30.0
+                   weight    250.0
+                   length      1.5
+        b  falcon  speed     320.0
+                   weight      1.0
+                   length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.pop(('a', 'lama'))
+        speed      45.0
+        weight    200.0
+        length      1.2
+        Name: 0, dtype: float64
+
+        >>> s
+        a  cow     speed      30.0
+                   weight    250.0
+                   length      1.5
+        b  falcon  speed     320.0
+                   weight      1.0
+                   length      0.3
+        Name: 0, dtype: float64
         """
         from databricks.koalas.indexes import MultiIndex
+        if not isinstance(item, (str, tuple)):
+            raise ValueError("'key' should be string or tuple that contains strings")
+        if not all(isinstance(index, str) for index in item):
+            raise ValueError("'key' should have index names as only strings "
+                             "or a tuple that contain index names as only strings")
+
+        if isinstance(item, str):
+            item = (item,)
         if isinstance(self.index, MultiIndex):
+            cols = self._internal.index_scols[len(item):] + [self._internal.scol]
+            rows = [self._internal.scols[level] == index
+                    for level, index in enumerate(item)]
             sdf = self._internal.sdf \
-                .select(self._internal.index_scols[1:] + [self._internal.scol]) \
-                .where(self._internal.index_scols[0] == item)
-            internal = self._internal.copy(sdf=sdf, index_map=self._internal.index_map[1:])
+                .select(cols) \
+                .where(reduce(lambda x, y: x & y, rows))
+            internal = self._internal.copy(
+                sdf=sdf,
+                index_map=self._internal.index_map[len(item):])
         else:
-            sdf = self._internal.sdf.where(self._internal.index_scols[0] == item)
+            sdf = self._internal.sdf.where(self._internal.index_scols[0] == item[0])
             internal = self._internal.copy(sdf=sdf)
         self._internal = self.drop(item)._internal
 

@@ -694,3 +694,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(KeyError, msg):
             kser.drop(('lama', 'speed', 'x'))
         self.assert_eq(kser.drop(('lama', 'speed', 'x'), level=1), kser)
+
+    def test_pop(self):
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = koalas.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+                             index=midx)
+        msg = "'key' should be string or tuple that contains strings"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.pop(0)
+        msg = ("'key' should have index names as only strings "
+               "or a tuple that contain index names as only strings")
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.pop(('lama', 0))
