@@ -33,6 +33,7 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import BooleanType, StructType
 from pyspark.sql.window import Window
+from pyspark.sql.functions import monotonically_increasing_id
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
@@ -3183,6 +3184,91 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: int64
         """
         return _col(DataFrame(self._internal.copy()))
+
+    def mode(self, dropna=True) -> 'Series':
+        """
+        Return the mode(s) of the dataset.
+
+        Always returns Series even if only one value is returned.
+
+        Parameters
+        ----------
+        dropna : bool, default True
+            Don't consider counts of NaN/NaT.
+
+        Returns
+        -------
+        Series
+            Modes of the Series in sorted order.
+
+        Examples
+        --------
+        >>> s = ks.Series([0, 0, 1, 1, 1, np.nan, np.nan, np.nan])
+        >>> s
+        0    0.0
+        1    0.0
+        2    1.0
+        3    1.0
+        4    1.0
+        5    NaN
+        6    NaN
+        7    NaN
+        Name: 0, dtype: float64
+
+        >>> s.mode()
+        0    1.0
+        Name: 0, dtype: float64
+
+        If there are several same modes, all items are shown
+
+        >>> s = ks.Series([0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3,
+        ...                np.nan, np.nan, np.nan])
+        >>> s
+        0     0.0
+        1     0.0
+        2     1.0
+        3     1.0
+        4     1.0
+        5     2.0
+        6     2.0
+        7     2.0
+        8     3.0
+        9     3.0
+        10    3.0
+        11    NaN
+        12    NaN
+        13    NaN
+        Name: 0, dtype: float64
+
+        >>> s.mode()
+        0    1.0
+        1    2.0
+        2    3.0
+        Name: 0, dtype: float64
+
+        With 'dropna' set to 'False', we can also see NaN in the result
+
+        >>> s.mode(False)
+        0    NaN
+        1    1.0
+        2    2.0
+        3    3.0
+        Name: 0, dtype: float64
+        """
+        ser_count = self.value_counts(dropna=dropna)
+        sdf_count = ser_count._internal.sdf
+        most_value = sdf_count.head(1)[0][1]
+        sdf_most_value = (sdf_count.where("count == {}".format(most_value))
+                                   .sort('__index_level_0__')
+                                   .rdd.zipWithIndex().toDF())
+        sdf = (sdf_most_value.withColumn(self.name,
+                                         sdf_most_value['_1']
+                                             .getItem('__index_level_0__'))
+                             .select('_2', self.name))
+
+        internal = _InternalFrame(sdf=sdf,
+                                  index_map=[('_2', None)])
+        return _col(DataFrame(internal))
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
