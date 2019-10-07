@@ -31,7 +31,7 @@ from pandas.io.formats.printing import pprint_thing
 from databricks.koalas.typedef import as_python_type
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.types import BooleanType, StructType, IntegerType
+from pyspark.sql.types import BooleanType, StructType
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
