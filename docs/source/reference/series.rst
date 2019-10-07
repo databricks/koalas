@@ -175,6 +175,7 @@ Combining / joining / merging
    :toctree: api/
 
    Series.append
+   Series.replace
 
 Time series-related
 -------------------
