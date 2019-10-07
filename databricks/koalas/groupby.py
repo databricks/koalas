@@ -129,6 +129,11 @@ class GroupBy(object):
         1    1    2  0.227  0.362
         2    3    4 -0.562  1.267
         """
+        # I think current implementation of func and arguments in koalas for aggregate is different
+        # than pandas, later once arguments are added, this could be removed.
+        if func_or_funcs is None and kwargs is None:
+            raise ValueError("No aggregation argument or function specified.")
+
         relabeling = func_or_funcs is None and _is_multi_agg_with_relabel(**kwargs)
         if relabeling:
             func_or_funcs, columns, order = _normalize_keyword_aggregation(kwargs)
@@ -1941,6 +1946,7 @@ class SeriesGroupBy(GroupBy):
                                              for i, s in enumerate(groupkeys)])
         return _col(DataFrame(internal))
 
+
 def _is_multi_agg_with_relabel(**kwargs):
     """
     Check whether the kwargs pass to .agg look like multi-agg with relabling.
@@ -1968,9 +1974,10 @@ def _is_multi_agg_with_relabel(**kwargs):
         for v in kwargs.values()
     ) and kwargs
 
+
 def _normalize_keyword_aggregation(kwargs):
     """
-    Normalize user-provided "named aggregation" kwargs.
+    Normalize user-provided kwargs.
 
     Transforms from the new ``Dict[str, NamedAgg]`` style kwargs
     to the old OrderedDict[str, List[scalar]]].
@@ -1993,7 +2000,7 @@ def _normalize_keyword_aggregation(kwargs):
     >>> _normalize_keyword_aggregation({'output': ('input', 'sum')})
     (OrderedDict([('input', ['sum'])]), ('output',), [('input', 'sum')])
     """
-    # this is due to python version issue
+    # this is due to python version issue, not sure the impact on koalas
     PY36 = sys.version_info >= (3, 6)
     if not PY36:
         kwargs = OrderedDict(sorted(kwargs.items()))
