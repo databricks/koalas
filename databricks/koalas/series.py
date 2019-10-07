@@ -3184,6 +3184,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return _col(DataFrame(self._internal.copy()))
 
+    # TODO: 'regex', 'method' parameter
     def replace(self, to_replace=None, value=None, regex=False) -> 'Series':
         """
         Replace values given in to_replace with value.
