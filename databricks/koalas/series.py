@@ -1276,7 +1276,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         if inplace:
             self._internal = kseries._internal
-            self._kdf = kseries
+            self._kdf = kseries._kdf
         else:
             return kseries
 
