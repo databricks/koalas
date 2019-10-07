@@ -3275,18 +3275,28 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                              "or a tuple that contain index names as only strings")
 
         if isinstance(self.index, MultiIndex):
-            cols = self._internal.index_scols[len(item):] + [self._internal.scol]
+            cols = self._internal.index_scols[len(item):] + [self._internal.scol_for(self.name)]
             rows = [self._internal.scols[level] == index
                     for level, index in enumerate(item)]
             sdf = self._internal.sdf \
                 .select(cols) \
                 .where(reduce(lambda x, y: x & y, rows))
-            internal = self._internal.copy(
-                sdf=sdf,
-                index_map=self._internal.index_map[len(item):])
+
+            # if sdf has only a data column, return data only without frame
+            if len(self._index_map) == len(item):
+                if sdf.count() != 0:
+                    self._internal = self.drop(item)._internal
+                    return sdf.first()[self.name]
+                else:
+                    return self
+            else:
+                internal = self._internal.copy(
+                    sdf=sdf,
+                    index_map=self._index_map[len(item):])
         else:
             sdf = self._internal.sdf.where(self._internal.index_scols[0] == item[0])
             internal = self._internal.copy(sdf=sdf)
+
         self._internal = self.drop(item)._internal
 
         return _col(DataFrame(internal))
