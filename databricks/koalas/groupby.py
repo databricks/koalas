@@ -18,6 +18,7 @@
 A wrapper for GroupedData to behave similar to pandas GroupBy.
 """
 
+import sys
 import inspect
 from collections import Callable, OrderedDict
 from functools import partial
@@ -53,7 +54,7 @@ class GroupBy(object):
 
     # TODO: Series support is not implemented yet.
     # TODO: not all arguments are implemented comparing to Pandas' for now.
-    def aggregate(self, func_or_funcs, *args, **kwargs):
+    def aggregate(self, func_or_funcs=None, *args, **kwargs):
         """Aggregate using one or more operations over the specified axis.
 
         Parameters
@@ -128,6 +129,10 @@ class GroupBy(object):
         1    1    2  0.227  0.362
         2    3    4 -0.562  1.267
         """
+        relabeling = func_or_funcs is None and _is_multi_agg_with_relabel(**kwargs)
+        if relabeling:
+            func_or_funcs, columns, order = _normalize_keyword_aggregation(kwargs)
+
         if not isinstance(func_or_funcs, (str, list)):
             if not isinstance(func_or_funcs, dict) or \
                     not all(isinstance(key, (str, tuple)) and
@@ -144,6 +149,10 @@ class GroupBy(object):
         kdf = DataFrame(GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys))
         if not self._as_index:
             kdf = kdf.reset_index()
+
+        if relabeling:
+            kdf = kdf[order]
+            kdf.columns = columns
         return kdf
 
     agg = aggregate
@@ -1931,3 +1940,74 @@ class SeriesGroupBy(GroupBy):
                                               s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)])
         return _col(DataFrame(internal))
+
+def _is_multi_agg_with_relabel(**kwargs):
+    """
+    Check whether the kwargs pass to .agg look like multi-agg with relabling.
+
+    Parameters
+    ----------
+    **kwargs : dict
+
+    Returns
+    -------
+    bool
+
+    Examples
+    --------
+    >>> _is_multi_agg_with_relabel(a='max')
+    False
+    >>> _is_multi_agg_with_relabel(a_max=('a', 'max'),
+    ...                            a_min=('a', 'min'))
+    True
+    >>> _is_multi_agg_with_relabel()
+    False
+    """
+    return all(
+        isinstance(v, tuple) and len(v) == 2
+        for v in kwargs.values()
+    ) and kwargs
+
+def _normalize_keyword_aggregation(kwargs):
+    """
+    Normalize user-provided "named aggregation" kwargs.
+
+    Transforms from the new ``Dict[str, NamedAgg]`` style kwargs
+    to the old OrderedDict[str, List[scalar]]].
+
+    Parameters
+    ----------
+    kwargs : dict
+
+    Returns
+    -------
+    aggspec : dict
+        The transformed kwargs.
+    columns : List[str]
+        The user-provided keys.
+    order : List[Tuple[str, str]]
+        Pairs of the input and output column names.
+
+    Examples
+    --------
+    >>> _normalize_keyword_aggregation({'output': ('input', 'sum')})
+    (OrderedDict([('input', ['sum'])]), ('output',), [('input', 'sum')])
+    """
+    # this is due to python version issue
+    PY36 = sys.version_info >= (3, 6)
+    if not PY36:
+        kwargs = OrderedDict(sorted(kwargs.items()))
+
+    # TODO(Py35): When we drop python 3.5, change this to defaultdict(list)
+    aggspec = OrderedDict()
+    order = []
+    columns, pairs = list(zip(*kwargs.items()))
+
+    for name, (column, aggfunc) in zip(columns, pairs):
+        if column in aggspec:
+            aggspec[column].append(aggfunc)
+        else:
+            aggspec[column] = [aggfunc]
+
+        order.append((column, aggfunc))
+    return aggspec, columns, order

@@ -183,6 +183,23 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             sorted_agg_pdf = pdf.groupby(('X', 'A')).agg(aggfunc).sort_index()
             self.assert_eq(sorted_agg_kdf, sorted_agg_pdf)
 
+    def test_aggregate_relabel(self):
+        # this is to test named aggregation in groupby
+        pdf = pd.DataFrame({"group": ['a', 'a', 'b', 'b'],
+                            "A": [0, 1, 2, 3],
+                            "B": [5, 6, 7, 8]})
+        kdf = koalas.from_pandas(pdf)
+
+        # different agg column, same function
+        agg_pdf = pdf.groupby("group").agg(a_max=("A", "max"), b_max=("B", "max"))
+        agg_kdf = kdf.groupby("group").agg(a_max=("A", "max"), b_max=("B", "max"))
+        self.assert_eq(agg_pdf, agg_kdf)
+
+        # same agg column, different functions
+        agg_pdf = pdf.groupby("group").agg(b_max=("B", "max"), b_min=("B", "min"))
+        agg_kdf = kdf.groupby("group").agg(b_max=("B", "max"), b_min=("B", "min"))
+        self.assert_eq(agg_pdf, agg_kdf)
+
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
                             'B': [True, True, True, False, False, False, None, True, None, False]})
