@@ -1245,6 +1245,9 @@ class StringMethods(object):
 
         The element may be a sequence (such as a string, tuple or list).
 
+        .. note:: this API does not currently work properly with PyArrow 0.15
+          and PySpark 2.4 and below
+
         Returns
         -------
         Series of int
@@ -1263,7 +1266,7 @@ class StringMethods(object):
         Name: 0, dtype: int64
 
         >>> s2 = ks.Series([["a", "b", "c"], []])
-        >>> s2.str.len()
+        >>> s2.str.len()  # doctest: +SKIP
         0    3
         1    0
         Name: 0, dtype: int64
