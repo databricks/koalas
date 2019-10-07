@@ -734,6 +734,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
              'locomotion': ['walks', 'walks', 'flies', 'walks']}
         kdf = ks.DataFrame(data=d)
         kdf = kdf.set_index(['class', 'animal', 'locomotion'])
+        pdf = kdf.to_pandas()
+
+        self.assert_eq(kdf.xs(('mammal', 'dog', 'walks')), pdf.xs(('mammal', 'dog', 'walks')))
 
         msg = "'key' should be string or tuple that contains strings"
         with self.assertRaisesRegex(ValueError, msg):
