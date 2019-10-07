@@ -6,3 +6,4 @@ User Guide
     :maxdepth: 2
 
     options
+    pandas_pyspark
