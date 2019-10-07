@@ -745,6 +745,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = 'axis should be either 0 or "index" currently.'
         with self.assertRaisesRegex(ValueError, msg):
             kdf.xs('num_wings', axis=1)
+        msg = r"'Key length \(4\) exceeds index depth \(3\)'"
+        with self.assertRaisesRegex(KeyError, msg):
+            kdf.xs(('mammal', 'dog', 'walks', 'foo'))
 
     def test_missing(self):
         kdf = self.kdf

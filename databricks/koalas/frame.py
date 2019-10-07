@@ -1980,6 +1980,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         class  locomotion
         mammal walks              4          0
         """
+        from databricks.koalas.series import _col
         if not isinstance(key, (str, tuple)):
             raise ValueError("'key' should be string or tuple that contains strings")
         if not all(isinstance(index, str) for index in key):
@@ -1988,10 +1989,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if axis not in [0, 'index']:
             raise ValueError('axis should be either 0 or "index" currently.')
-        if level is None:
-            level = 0
         if isinstance(key, str):
             key = (key,)
+        if len(key) > len(self._internal.index_scols):
+            raise KeyError("Key length ({}) exceeds index depth ({})"
+                           .format(len(key), len(self._internal.index_scols)))
+        if level is None:
+            level = 0
 
         scols = self._internal.scols[:level] + self._internal.scols[level+len(key):]
         rows = [self._internal.scols[lvl] == index
@@ -2000,12 +2004,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf.select(scols) \
                        .where(reduce(lambda x, y: x & y, rows))
 
-        internal = self._internal.copy(
-            sdf=sdf,
-            index_map=self._internal.index_map[:level] +
-            self._internal.index_map[level+len(key):])
+        if len(key) == len(self._internal.index_scols):
+            result = _col(DataFrame(_InternalFrame(sdf=sdf)).T)
+            result.name = key
+        else:
+            internal = self._internal.copy(
+                sdf=sdf,
+                index_map=self._internal.index_map[:level] +
+                self._internal.index_map[level+len(key):])
+            result = DataFrame(internal)
 
-        return DataFrame(internal)
+        return result
 
     @property
     def index(self):
