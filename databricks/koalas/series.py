@@ -3192,19 +3192,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Parameters
         ----------
-        to_replace : str, regex, list, dict, Series, int, float, or None
+        to_replace : str, list, dict, Series, int, float, or None
             How to find the values that will be replaced.
-            - numeric, str or regex:
+            - numeric, str:
                 * numeric: numeric values equal to to_replace will be replaced with value
                 * str: string exactly matching to_replace will be replaced with value
-                * regex: regexs matching to_replace will be replaced with value
             - list of str or numeric:
-                * First, if to_replace and value are both lists, they must be the same length.
-                * Second, if regex=True then all of the strings in both lists will be interpreted
-                  as regexs otherwise they will match directly.
-                  This doesn’t matter much for value since there are only a few possible
-                  substitution regexes you can use.
-                * str, regex and numeric rules apply as above.
+                * if to_replace and value are both lists, they must be the same length.
+                * str and numeric rules apply as above.
             - dict:
                 * Dicts can be used to specify different replacement values for different
                   existing values.
@@ -3231,7 +3226,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
             See the examples section for examples of each of these.
 
-        value : scalar, dict, list, str, regex, default None
+        value : scalar, dict, list, str default None
             Value to replace any values matching to_replace with.
             For a DataFrame a dict of values can be used to specify which value to use
             for each column (columns not in the dict will not be filled).
