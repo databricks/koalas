@@ -1367,27 +1367,30 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf = ks.from_pandas(pdf)
 
-        # Checking if both DataFrames have the same results (Temporary)
-        np.testing.assert_equal(kdf.pivot_table(columns="a", values="b").to_numpy(),
-                                pdf.pivot_table(columns=["a"], values="b").values)
+        # Checking if both DataFrames have the same results
+        self.assert_eq(kdf.pivot_table(columns="a", values="b").sort_index(),
+                       pdf.pivot_table(columns=["a"], values="b").sort_index(),
+                       almost=True)
 
-        # Todo: self.assert_eq(kdf.pivot_table(columns="a", values="b"),
-        #  pdf.pivot_table(columns=["a"], values="b"))
-
-        # Todo: self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values="b"),
-        #  pdf.pivot_table(index=['c'], columns=["a"], values="b"))
+        self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values="b").sort_index(),
+                       pdf.pivot_table(index=['c'], columns=["a"], values="b").sort_index(),
+                       almost=True)
 
         self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
                                        aggfunc={'b': 'mean', 'e': 'sum'}).sort_index(),
-                       pdf.pivot_table(index=['c'], columns=["a"],
-                                       values=['b', 'e'], aggfunc={'b': 'mean', 'e': 'sum'}))
+                       pdf.pivot_table(index=['c'], columns=["a"], values=['b', 'e'],
+                                       aggfunc={'b': 'mean', 'e': 'sum'}).sort_index(),
+                       almost=True)
 
-        # Todo: self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b"),
-        #  pdf.pivot_table(index=['e', 'c'], columns="a", values="b"))
+        self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b").sort_index(),
+                       pdf.pivot_table(index=['e', 'c'], columns="a", values="b").sort_index(),
+                       almost=True)
 
-        # Todo: self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b",
-        #  fill_value=999), pdf.pivot_table(index=['e', 'c'], columns="a", values="b",
-        #  fill_value=999))
+        self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b",
+                                       fill_value=999).sort_index(),
+                       pdf.pivot_table(index=['e', 'c'], columns="a", values="b",
+                                       fill_value=999).sort_index(),
+                       almost=True)
 
     def test_pivot_table_and_index(self):
         # https://github.com/databricks/koalas/issues/805
