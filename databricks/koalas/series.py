@@ -3351,22 +3351,20 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             to_replace = {k: v for k, v in zip(to_replace, value)}
         if isinstance(to_replace, dict):
             is_start = True
-            for to_replace_, value in to_replace.items():
-                if is_start:
-                    current = F.when(self._scol == F.lit(to_replace_), value)
-                    is_start = False
-                else:
-                    current = current.when(self._scol == F.lit(to_replace_), value)
-            current = current.otherwise(self._scol)
-            sdf = self._internal.sdf.withColumn(self.name, current)
+            if len(to_replace) == 0:
+                current = self._scol
+            else:
+                for to_replace_, value in to_replace.items():
+                    if is_start:
+                        current = F.when(self._scol == F.lit(to_replace_), value)
+                        is_start = False
+                    else:
+                        current = current.when(self._scol == F.lit(to_replace_), value)
+                current = current.otherwise(self._scol)
         else:
-            sdf = self._internal.sdf.withColumn(
-                self.name,
-                F.when(self._scol.isin(to_replace), value).otherwise(self._scol))
+            current = F.when(self._scol.isin(to_replace), value).otherwise(self._scol)
 
-        internal = _InternalFrame(sdf=sdf, index_map=self._internal.index_map)
-
-        return _col(DataFrame(internal))
+        return self._with_new_scol(current)
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
