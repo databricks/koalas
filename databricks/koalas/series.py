@@ -3194,35 +3194,29 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         ----------
         to_replace : str, list, dict, Series, int, float, or None
             How to find the values that will be replaced.
-            - numeric, str:
-                * numeric: numeric values equal to to_replace will be replaced with value
-                * str: string exactly matching to_replace will be replaced with value
-            - list of str or numeric:
-                * if to_replace and value are both lists, they must be the same length.
-                * str and numeric rules apply as above.
-            - dict:
-                * Dicts can be used to specify different replacement values for different
+            * numeric, str:
+
+                - numeric: numeric values equal to to_replace will be replaced with value
+                - str: string exactly matching to_replace will be replaced with value
+
+            * list of str or numeric:
+
+                - if to_replace and value are both lists, they must be the same length.
+                - str and numeric rules apply as above.
+
+            * dict:
+
+                - Dicts can be used to specify different replacement values for different
                   existing values.
                   For example, {'a': 'b', 'y': 'z'} replaces the value ‘a’ with ‘b’ and ‘y’
                   with ‘z’. To use a dict in this way the value parameter should be None.
-                * For a DataFrame a dict can specify that different values should be replaced
+                - For a DataFrame a dict can specify that different values should be replaced
                   in different columns. For example, {'a': 1, 'b': 'z'} looks for the value 1
                   in column ‘a’ and the value ‘z’ in column ‘b’ and replaces these values with
                   whatever is specified in value.
                   The value parameter should not be None in this case.
                   You can treat this as a special case of passing two lists except that you are
                   specifying the column to search in.
-                * For a DataFrame nested dictionaries, e.g., {'a': {'b': np.nan}},
-                  are read as follows:
-                  look in column ‘a’ for the value ‘b’ and replace it with NaN.
-                  The value parameter should be None to use a nested dict in this way.
-                  You can nest regular expressions as well.
-                  Note that column names (the top-level dictionary keys in a nested dictionary)
-                  cannot be regular expressions.
-            - None:
-                * This means that the regex argument must be a string, compiled regular expression,
-                or list, dict, ndarray or Series of such elements.
-                If value is also None then this must be a nested dictionary or Series.
 
             See the examples section for examples of each of these.
 
