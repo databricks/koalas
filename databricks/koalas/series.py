@@ -3325,15 +3325,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         # if sdf has only a data column, return data only without frame
         if len(self._index_map) == len(item):
-            if sdf.count() != 0:
-                self._internal = self.drop(item)._internal
-                return sdf.first()[self.name]
-            else:
-                return self
-        else:
-            internal = self._internal.copy(
-                sdf=sdf,
-                index_map=self._index_map[len(item):])
+            self._internal = self.drop(item)._internal
+            return sdf.first()[self.name]
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            index_map=self._index_map[len(item):])
 
         self._internal = self.drop(item)._internal
 
