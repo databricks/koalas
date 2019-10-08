@@ -3337,11 +3337,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 length      0.3
         Name: 0, dtype: float64
         """
+        if to_replace is None:
+            return self
         if not isinstance(to_replace, (str, list, dict, int, float)):
             raise ValueError(
                 "'to_replace' should be one of str, list, dict, int, float")
-        if to_replace is None:
-            return self
         if regex:
             raise NotImplementedError("replace currently not support for regex")
         if isinstance(to_replace, list) and isinstance(value, list):
