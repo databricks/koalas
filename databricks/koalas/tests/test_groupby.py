@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import unittest
 import inspect
 from distutils.version import LooseVersion
 import pandas as pd
@@ -24,6 +25,7 @@ from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koalas.groupby import _is_multi_agg_with_relabel
 
 
 class GroupByTest(ReusedSQLTestCase, TestUtils):
@@ -183,16 +185,13 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             sorted_agg_pdf = pdf.groupby(('X', 'A')).agg(aggfunc).sort_index()
             self.assert_eq(sorted_agg_kdf, sorted_agg_pdf)
 
+    @unittest.skipIf(pd.__version__ < (0, 25), "not supported before pandas 0.25.0")
     def test_aggregate_relabel(self):
         # this is to test named aggregation in groupby
         pdf = pd.DataFrame({"group": ['a', 'a', 'b', 'b'],
                             "A": [0, 1, 2, 3],
                             "B": [5, 6, 7, 8]})
         kdf = koalas.from_pandas(pdf)
-
-        # this is only applied in version after 0.25.0
-        if pd.__version__ < "0.25.0":
-            return
 
         # different agg column, same function
         agg_pdf = pdf.groupby("group").agg(a_max=("A", "max"), b_max=("B", "max")).sort_index()
@@ -829,7 +828,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
     @staticmethod
     def test_is_multi_agg_with_relabel():
-        from databricks.koalas.groupby import _is_multi_agg_with_relabel
 
         assert _is_multi_agg_with_relabel(a='max') is False
         assert _is_multi_agg_with_relabel(a_min=('a', 'max'), a_max=('a', 'min')) is True

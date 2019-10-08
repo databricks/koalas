@@ -129,7 +129,7 @@ class GroupBy(object):
         1    1    2  0.227  0.362
         2    3    4 -0.562  1.267
 
-        To control the output names with different aggregations per column, koalas
+        To control the output names with different aggregations per column, Koalas
         also supports 'named aggregation' or nested renaming in .agg. And it can be
         used when applying multiple aggragation functions to specific columns.
 
