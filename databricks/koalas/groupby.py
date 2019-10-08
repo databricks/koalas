@@ -2030,7 +2030,7 @@ def _normalize_keyword_aggregation(kwargs):
     order = []
     columns, pairs = list(zip(*kwargs.items()))
 
-    for _, (column, aggfunc) in zip(columns, pairs):
+    for column, aggfunc in pairs:
         if column in aggspec:
             aggspec[column].append(aggfunc)
         else:
