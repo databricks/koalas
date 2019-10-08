@@ -283,12 +283,14 @@ class LocIndexer(object):
 
     **Setting values**
 
-    Setting value for all items matching the list of labels is not allowed
+    Setting value for all items matching the list of labels.
 
     >>> df.loc[['viper', 'sidewinder'], ['shield']] = 50
-    Traceback (most recent call last):
-     ...
-    databricks.koalas.exceptions.SparkPandasNotImplementedError: ...
+    >>> df
+                max_speed  shield
+    cobra               1       2
+    viper               4      50
+    sidewinder          7      50
 
     Setting value for an entire row is not allowed
 
@@ -303,8 +305,8 @@ class LocIndexer(object):
     >>> df
                 max_speed  shield
     cobra              30       2
-    viper              30       5
-    sidewinder         30       8
+    viper              30      50
+    sidewinder         30      50
 
     Set value with Series
 
@@ -312,8 +314,8 @@ class LocIndexer(object):
     >>> df
                 max_speed  shield
     cobra              30       4
-    viper              30      10
-    sidewinder         30      16
+    viper              30     100
+    sidewinder         30     100
 
     **Getting values on a DataFrame with an index that has integer labels**
 
@@ -491,23 +493,32 @@ class LocIndexer(object):
 
         rows_sel, cols_sel = key
 
-        if (not isinstance(rows_sel, slice)) or (rows_sel != slice(None)):
-            raise SparkPandasNotImplementedError(
-                description="""Can only assign value to the whole dataframe, the row index
-                has to be `slice(None)` or `:`""",
-                pandas_function=".loc[..., ...] = ...",
-                spark_target_function="withColumn, select")
+        if isinstance(cols_sel, list):
+            kdf = self._kdf
+            is_start = True
+            for col_sel in cols_sel:
+                if is_start:
+                    sdf = kdf._sdf.withColumn(
+                        col_sel,
+                        (F.when(F.col(kdf._internal.index_columns[0]).isin(rows_sel), value)
+                          .otherwise(F.col(col_sel))))
+                    is_start = False
+                else:
+                    sdf = sdf.withColumn(
+                        col_sel,
+                        (F.when(F.col(kdf._internal.index_columns[0]).isin(rows_sel), value)
+                          .otherwise(F.col(col_sel))))
 
-        if not isinstance(cols_sel, str):
-            raise ValueError("""only column names can be assigned""")
+            self._kdf._internal = self._kdf._internal.copy(sdf=sdf)
+
+        if isinstance(cols_sel, str):
+            self._kdf[cols_sel] = value
 
         if isinstance(value, DataFrame):
             if len(value.columns) == 1:
                 self._kdf[cols_sel] = _col(value)
             else:
                 raise ValueError("Only a dataframe with one column can be assigned")
-        else:
-            self._kdf[cols_sel] = value
 
 
 class ILocIndexer(object):
