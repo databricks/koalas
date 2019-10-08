@@ -1969,6 +1969,8 @@ def _is_multi_agg_with_relabel(**kwargs):
     >>> _is_multi_agg_with_relabel()
     False
     """
+    if not kwargs:
+        return False
     return all(
         isinstance(v, tuple) and len(v) == 2
         for v in kwargs.values()
