@@ -1,6 +1,19 @@
-<img src="https://github.com/databricks/koalas/blob/master/Koalas-logo-nolabel.png" width="160"><br>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/databricks/koalas/master/Koalas-logo.png" width="140"/>
+</p>
 
-# Koalas: pandas API on Apache Spark <!-- omit in toc -->
+<p align="center">
+  pandas API on Apache Spark
+  <br/>
+  <a href="https://koalas.readthedocs.io/en/latest/?badge=latest"><strong>Explore Koalas docs »</strong></a>
+  <br/>
+  <br/>
+  <a href="https://mybinder.org/v2/gh/databricks/koalas/master?filepath=docs%2Fsource%2Fgetting_started%2F10min.ipynb">Live notebook</a>
+  ·
+  <a href="https://github.com/databricks/koalas/issues">Issues</a>
+  ·
+  <a href="https://groups.google.com/forum/#!forum/koalas-dev">Mailing list</a>
+</p>
 
 The Koalas project makes data scientists more productive when interacting with big data, by implementing the pandas DataFrame API on top of Apache Spark.
 
@@ -8,16 +21,17 @@ pandas is the de facto standard (single-node) DataFrame implementation in Python
  - Be immediately productive with Spark, with no learning curve, if you are already familiar with pandas.
  - Have a single codebase that works both with pandas (tests, smaller datasets) and with Spark (distributed datasets).
 
-This project is currently in beta and is rapidly evolving, with a weekly release cadence. We would love to have you try it and give us feedback, through our [mailing lists](https://groups.google.com/forum/#!forum/koalas-dev) or [GitHub issues](https://github.com/databricks/koalas/issues).
+This project is currently in beta and is rapidly evolving, with a bi-weekly release cadence. We would love to have you try it and give us feedback, through our [mailing lists](https://groups.google.com/forum/#!forum/koalas-dev) or [GitHub issues](https://github.com/databricks/koalas/issues).
 
-Try the Koalas 10 minutes tutorial on a live notebook in Jupyter here [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/databricks/koalas/master?filepath=docs%2Fsource%2Fgetting_started%2F10min.ipynb)
-. The initial launch can take up to several minutes.
+Try the Koalas 10 minutes tutorial on a live Jupyter notebook [here](https://mybinder.org/v2/gh/databricks/koalas/master?filepath=docs%2Fsource%2Fgetting_started%2F10min.ipynb). The initial launch can take up to several minutes.
+
 
 [![Build Status](https://travis-ci.com/databricks/koalas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/koalas)
 [![codecov](https://codecov.io/gh/databricks/koalas/branch/master/graph/badge.svg)](https://codecov.io/gh/databricks/koalas)
 [![Documentation Status](https://readthedocs.org/projects/koalas/badge/?version=latest)](https://koalas.readthedocs.io/en/latest/?badge=latest)
 [![Latest Release](https://img.shields.io/pypi/v/koalas.svg)](https://pypi.org/project/koalas/)
 [![Conda Version](https://img.shields.io/conda/vn/conda-forge/koalas.svg)](https://anaconda.org/conda-forge/koalas)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/databricks/koalas/master?filepath=docs%2Fsource%2Fgetting_started%2F10min.ipynb)
 
 
 ## Table of Contents <!-- omit in toc -->

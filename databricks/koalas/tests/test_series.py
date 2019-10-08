@@ -713,3 +713,19 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                "or a tuple that contain index names as only strings")
         with self.assertRaisesRegex(ValueError, msg):
             kser.pop(('lama', 0))
+
+    def test_duplicates(self):
+        # test on texts
+        pser = pd.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],
+                         name='animal')
+        kser = koalas.Series(pser)
+
+        self.assert_eq(pser.drop_duplicates().sort_values(),
+                       kser.drop_duplicates().sort_values())
+
+        # test on numbers
+        pser = pd.Series([1, 1, 2, 4, 3])
+        kser = koalas.Series(pser)
+
+        self.assert_eq(pser.drop_duplicates().sort_values(),
+                       kser.drop_duplicates().sort_values())
