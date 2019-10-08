@@ -1972,7 +1972,7 @@ def _is_multi_agg_with_relabel(**kwargs):
     return all(
         isinstance(v, tuple) and len(v) == 2
         for v in kwargs.values()
-    ) and kwargs
+    )
 
 
 def _normalize_keyword_aggregation(kwargs):
