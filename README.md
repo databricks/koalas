@@ -70,64 +70,22 @@ Try the Koalas 10 minutes tutorial on a live Jupyter notebook [here](https://myb
 
 ## Get Started
 
-Koalas is available at the Python package index:
-```bash
-pip install koalas
-```
-
-or with the conda package manager:
-```bash
-conda install koalas -c conda-forge
-```
-
-If this fails to install the pyarrow dependency, you may want to try installing with Python 3.6.x, as `pip install arrow` does not work out of the box for 3.7 https://github.com/apache/arrow/issues/1125.
-
-If you don't have Spark environment, you should also install `pyspark` package by:
-```bash
-pip install 'pyspark>=2.4'
-```
-
-or
-```bash
-conda install 'pyspark>=2.4' -c conda-forge
-```
-
-or downloading the release.
-
-After installing the packages, you can import the package:
-```py
-import databricks.koalas as ks
-```
-
-Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
-```py
-import pandas as pd
-pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
-
-# Create a Koalas DataFrame from pandas DataFrame
-df = ks.from_pandas(pdf)
-
-# Rename the columns
-df.columns = ['x', 'y', 'z1']
-
-# Do some operations in place:
-df['x2'] = df.x * df.x
-```
+See [Quickstart](https://koalas.readthedocs.io/en/latest/getting_started/quickstart.html) in the published documentation.
 
 
 ## Documentation
 
-Project docs are published here: https://koalas.readthedocs.io
+Project docs are published [here](https://koalas.readthedocs.io).
 
 
 ## Mailing List
 
-We use Google Groups for mailing list: https://groups.google.com/forum/#!forum/koalas-dev
+We use Google Groups for mailing list [here](https://groups.google.com/forum/#!forum/koalas-dev).
 
 
 ## Development Guide
 
-See [Contributing Guide](https://koalas.readthedocs.io/en/latest/development/contributing.html).
+See [Contributing Guide](https://koalas.readthedocs.io/en/latest/development/contributing.html) in the published documentation.
 
 
 ## Design Principles
@@ -262,12 +220,4 @@ provides an opportunity for us to experiment with new design principles.
 
 ### How do I use this on Databricks?
 
-Koalas requires Databricks Runtime 5.x or above. For the regular Databricks Runtime, you can install Koalas using the Libraries tab on the cluster UI, or using dbutils in a notebook:
-
-```python
-dbutils.library.installPyPI("koalas")
-dbutils.library.restartPython()
-```
-
-In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and
-Databricks Runtime for Machine Learning.
+Click [this Databricks notebook](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/1177812384365889/914420683578197/4036358933921776/latest.html) and open it in your notebook. See [Quickstart](https://koalas.readthedocs.io/en/latest/getting_started/quickstart.html) for more details.
