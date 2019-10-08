@@ -190,14 +190,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             "B": [5, 6, 7, 8]})
         kdf = koalas.from_pandas(pdf)
 
+        # this is only applied in version after 0.25.0
+        if pd.__version__ < "0.25.0":
+            return
+
         # different agg column, same function
-        agg_pdf = pdf.groupby("group").agg(a_max=("A", "max"), b_max=("B", "max"))
-        agg_kdf = kdf.groupby("group").agg(a_max=("A", "max"), b_max=("B", "max"))
+        agg_pdf = pdf.groupby("group").agg(a_max=("A", "max"), b_max=("B", "max")).sort_index()
+        agg_kdf = kdf.groupby("group").agg(a_max=("A", "max"), b_max=("B", "max")).sort_index()
         self.assert_eq(agg_pdf, agg_kdf)
 
         # same agg column, different functions
-        agg_pdf = pdf.groupby("group").agg(b_max=("B", "max"), b_min=("B", "min"))
-        agg_kdf = kdf.groupby("group").agg(b_max=("B", "max"), b_min=("B", "min"))
+        agg_pdf = pdf.groupby("group").agg(b_max=("B", "max"), b_min=("B", "min")).sort_index()
+        agg_kdf = kdf.groupby("group").agg(b_max=("B", "max"), b_min=("B", "min")).sort_index()
         self.assert_eq(agg_pdf, agg_kdf)
 
     def test_all_any(self):
