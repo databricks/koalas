@@ -517,13 +517,22 @@ class IndexingTest(ReusedSQLTestCase):
         kdf.loc[['viper', 'sidewinder'], ['shield', 'max_speed']] = 10
         self.assert_eq(kdf, pdf)
 
-        pdf.loc[:, 'max_speed'] = pdf['max_speed'] + 1
-        kdf.loc[:, 'max_speed'] = kdf['max_speed'] + 1
-        self.assert_eq(kdf, pdf)
+        with self.assertRaisesRegex(SparkPandasNotImplementedError,
+                                    'Can only assign value to the whole dataframe, the row index'):
+            kdf.loc[['viper', 'sidewinder'], 'shield'] = 10
 
         with self.assertRaisesRegex(ValueError,
                                     'Only a dataframe with one column can be assigned'):
             kdf.loc[:, 'max_speed'] = kdf
+
+        pdf = pd.DataFrame([[1], [4], [7]],
+                           index=['cobra', 'viper', 'sidewinder'],
+                           columns=['max_speed'])
+        kdf = ks.from_pandas(pdf)
+
+        pdf.loc[:, 'max_speed'] = pdf
+        kdf.loc[:, 'max_speed'] = kdf
+        self.assert_eq(kdf, pdf)
 
     def test_iloc_raises(self):
         pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})
