@@ -702,6 +702,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                               [0, 1, 2, 0, 1, 2, 0, 1, 2]])
         kser = koalas.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
                              index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(kser.pop(('lama', 'speed')), pser.pop(('lama', 'speed')))
+
         msg = "'key' should be string or tuple that contains strings"
         with self.assertRaisesRegex(ValueError, msg):
             kser.pop(0)
