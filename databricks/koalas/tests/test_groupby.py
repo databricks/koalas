@@ -822,3 +822,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                                         "property.*GroupBy.*{}.*is deprecated"
                                         .format(name)):
                 getattr(kdf.a.groupby('a'), name)
+
+    @staticmethod
+    def test_is_multi_agg_with_relabel():
+        from databricks.koalas.groupby import _is_multi_agg_with_relabel
+
+        assert _is_multi_agg_with_relabel(a='max') is False
+        assert _is_multi_agg_with_relabel(a_min=('a', 'max'), a_max=('a', 'min')) is True
