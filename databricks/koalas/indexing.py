@@ -496,19 +496,12 @@ class LocIndexer(object):
         if (not isinstance(rows_sel, slice)) or (rows_sel != slice(None)):
             if isinstance(cols_sel, list):
                 kdf = self._kdf
-                is_start = True
+                sdf = kdf._sdf
                 for col_sel in cols_sel:
-                    if is_start:
-                        sdf = kdf._sdf.withColumn(
-                            col_sel,
-                            (F.when(F.col(kdf._internal.index_columns[0]).isin(rows_sel), value)
-                              .otherwise(F.col(col_sel))))
-                        is_start = False
-                    else:
-                        sdf = sdf.withColumn(
-                            col_sel,
-                            (F.when(F.col(kdf._internal.index_columns[0]).isin(rows_sel), value)
-                              .otherwise(F.col(col_sel))))
+                    sdf = sdf.withColumn(
+                        col_sel,
+                        (F.when(F.col(kdf._internal.index_columns[0]).isin(rows_sel), value)
+                            .otherwise(F.col(col_sel))))
                 self._kdf._internal = self._kdf._internal.copy(sdf=sdf)
             else:
                 raise SparkPandasNotImplementedError(
