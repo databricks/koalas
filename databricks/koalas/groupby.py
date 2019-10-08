@@ -59,7 +59,7 @@ class GroupBy(object):
 
         Parameters
         ----------
-        func : dict, str or list
+        func_or_funcs : dict, str or list
              a dict mapping from column name (string) to
              aggregate functions (string or list of strings).
 
@@ -128,6 +128,24 @@ class GroupBy(object):
         A
         1    1    2  0.227  0.362
         2    3    4 -0.562  1.267
+
+        To control the output names with different aggregations per column, koalas
+        also supports 'named aggregation' or nested renaming in .agg. And it can be
+        used when applying multiple aggragation functions to specific columns.
+
+        >>> aggregated = df.groupby('A').agg(b_max=('B', 'max'), b_min=('B', 'min'))
+        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+             b_max   b_min
+        A
+        1        2       1
+        2        4       3
+
+        >>> aggregated = df.groupby('A').agg(b_max=('B', 'max'), c_min=('C', 'min'))
+        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+             b_max   c_min
+        A
+        1        2   0.227
+        2        4  -0.562
         """
         # I think current implementation of func and arguments in koalas for aggregate is different
         # than pandas, later once arguments are added, this could be removed.
@@ -2012,7 +2030,7 @@ def _normalize_keyword_aggregation(kwargs):
     order = []
     columns, pairs = list(zip(*kwargs.items()))
 
-    for name, (column, aggfunc) in zip(columns, pairs):
+    for _, (column, aggfunc) in zip(columns, pairs):
         if column in aggspec:
             aggspec[column].append(aggfunc)
         else:
