@@ -507,6 +507,24 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kseries.iloc[:1], pseries.iloc[:1])
         self.assert_eq(kseries.iloc[:-1], pseries.iloc[:-1])
 
+    def test_setitem(self):
+        pdf = pd.DataFrame([[1, 2], [4, 5], [7, 8]],
+                           index=['cobra', 'viper', 'sidewinder'],
+                           columns=['max_speed', 'shield'])
+        kdf = ks.from_pandas(pdf)
+
+        pdf.loc[['viper', 'sidewinder'], ['shield', 'max_speed']] = 10
+        kdf.loc[['viper', 'sidewinder'], ['shield', 'max_speed']] = 10
+        self.assert_eq(kdf, pdf)
+
+        pdf.loc[:, 'max_speed'] = pdf['max_speed'] + 1
+        kdf.loc[:, 'max_speed'] = kdf['max_speed'] + 1
+        self.assert_eq(kdf, pdf)
+
+        with self.assertRaisesRegex(ValueError,
+                                    'Only a dataframe with one column can be assigned'):
+            kdf.loc[:, 'max_speed'] = kdf
+
     def test_iloc_raises(self):
         pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})
         kdf = ks.from_pandas(pdf)

@@ -493,32 +493,38 @@ class LocIndexer(object):
 
         rows_sel, cols_sel = key
 
-        if isinstance(cols_sel, list):
-            kdf = self._kdf
-            is_start = True
-            for col_sel in cols_sel:
-                if is_start:
-                    sdf = kdf._sdf.withColumn(
-                        col_sel,
-                        (F.when(F.col(kdf._internal.index_columns[0]).isin(rows_sel), value)
-                          .otherwise(F.col(col_sel))))
-                    is_start = False
-                else:
-                    sdf = sdf.withColumn(
-                        col_sel,
-                        (F.when(F.col(kdf._internal.index_columns[0]).isin(rows_sel), value)
-                          .otherwise(F.col(col_sel))))
+        if (not isinstance(rows_sel, slice)) or (rows_sel != slice(None)):
+            if isinstance(cols_sel, list):
+                kdf = self._kdf
+                is_start = True
+                for col_sel in cols_sel:
+                    if is_start:
+                        sdf = kdf._sdf.withColumn(
+                            col_sel,
+                            (F.when(F.col(kdf._internal.index_columns[0]).isin(rows_sel), value)
+                              .otherwise(F.col(col_sel))))
+                        is_start = False
+                    else:
+                        sdf = sdf.withColumn(
+                            col_sel,
+                            (F.when(F.col(kdf._internal.index_columns[0]).isin(rows_sel), value)
+                              .otherwise(F.col(col_sel))))
+                self._kdf._internal = self._kdf._internal.copy(sdf=sdf)
+            else:
+                raise SparkPandasNotImplementedError(
+                    description="""Can only assign value to the whole dataframe, the row index
+                    has to be `slice(None)` or `:`""",
+                    pandas_function=".loc[..., ...] = ...",
+                    spark_target_function="withColumn, select")
 
-            self._kdf._internal = self._kdf._internal.copy(sdf=sdf)
-
-        if isinstance(cols_sel, str):
-            self._kdf[cols_sel] = value
 
         if isinstance(value, DataFrame):
             if len(value.columns) == 1:
                 self._kdf[cols_sel] = _col(value)
             else:
                 raise ValueError("Only a dataframe with one column can be assigned")
+        elif not isinstance(cols_sel, list):
+            self._kdf[cols_sel] = value
 
 
 class ILocIndexer(object):
