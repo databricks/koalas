@@ -3070,8 +3070,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Parameters
         ----------
         index_col: str or list of str, optional, default: None
-            Column names to be used in Spark to represent Koalas' index. Index's name
-            in Koalas is ignored. By default, index is always lost.
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
 
         See Also
         --------
@@ -3104,7 +3104,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Keeping index column is useful when you want to call some Spark APIs and
         convert it back to Koalas DataFrame without creating a default index, which
-        affects performance.
+        can affect performance.
 
         >>> spark_df = df.to_spark(index_col="index")
         >>> spark_df = spark_df.filter("a == 2")
@@ -3146,6 +3146,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             data_columns = []
             data_columns_column_index = \
                 zip(self._internal._data_columns, self._internal.column_index)
+            # TODO: this code is similar with _InternalFrame.spark_df. Might have to deduplicate.
             for i, (column, idx) in enumerate(data_columns_column_index):
                 scol = self._internal.scol_for(idx)
                 name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
