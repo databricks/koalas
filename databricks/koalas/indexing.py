@@ -517,7 +517,6 @@ class LocIndexer(object):
                     pandas_function=".loc[..., ...] = ...",
                     spark_target_function="withColumn, select")
 
-
         if isinstance(value, DataFrame):
             if len(value.columns) == 1:
                 self._kdf[cols_sel] = _col(value)
