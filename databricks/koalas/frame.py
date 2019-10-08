@@ -2741,7 +2741,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                              index_map=[(index_column,
                                                          self._internal.index_names[0])])))
 
-    def to_koalas(self, index_col: Optional[Union[str, List]] = None):
+    def to_koalas(self, index_col: Optional[Union[str, List[str]]] = None):
         """
         Converts the existing DataFrame into a Koalas DataFrame.
 
@@ -3063,7 +3063,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self.to_spark().write.save(
             path=path, format=format, mode=mode, partitionBy=partition_cols, options=options)
 
-    def to_spark(self, index_col: Optional[Union[str, List]] = None):
+    def to_spark(self, index_col: Optional[Union[str, List[str]]] = None):
         """
         Return the current DataFrame as a Spark DataFrame.
 
@@ -3142,11 +3142,33 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if isinstance(index_col, str):
                 index_col = [index_col]
 
-            sdf = self._internal.spark_internal_df
+            data_column_names = []
+            data_columns = []
+            data_columns_column_index = \
+                zip(self._internal._data_columns, self._internal.column_index)
+            for i, (column, idx) in enumerate(data_columns_column_index):
+                scol = self._internal.scol_for(idx)
+                name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+                data_column_names.append(name)
+                if column != name:
+                    scol = scol.alias(name)
+                data_columns.append(scol)
+
             old_index_scols = self._internal.index_scols
+
+            if len(index_col) != len(old_index_scols):
+                raise ValueError(
+                    "length of index columns is %s; however, the length of the given "
+                    "'index_col' is %s." % (len(old_index_scols), len(index_col)))
+
+            if any(col in data_column_names for col in index_col):
+                raise ValueError(
+                    "'index_col' cannot be overlapped with other columns.")
+
+            sdf = self._internal.spark_internal_df
             new_index_scols = [
                 index_scol.alias(col) for index_scol, col in zip(old_index_scols, index_col)]
-            return sdf.select(new_index_scols + self._internal._data_column_names())
+            return sdf.select(new_index_scols + data_columns)
 
     def to_pandas(self):
         """

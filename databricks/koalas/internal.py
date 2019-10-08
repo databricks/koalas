@@ -403,7 +403,7 @@ class _InternalFrame(object):
         assert isinstance(sdf, spark.DataFrame)
         if index_map is None:
             # Here is when Koalas DataFrame is created directly from Spark DataFrame.
-            assert any(SPARK_INDEX_NAME_PATTERN.match(name) for name in sdf.schema.names), \
+            assert not any(SPARK_INDEX_NAME_PATTERN.match(name) for name in sdf.schema.names), \
                 "Index columns should not appear in columns of the Spark DataFrame. Avoid " \
                 "index colum names [%s]." % SPARK_INDEX_NAME_PATTERN
 
@@ -605,30 +605,34 @@ class _InternalFrame(object):
         """ Return names of the index levels. """
         return self._column_index_names
 
-    def _data_column_names(self):
-        index_columns = set(self.index_columns)
-        data_columns = []
-        for i, (column, idx) in enumerate(zip(self._data_columns, self.column_index)):
-            assert column not in index_columns
-            scol = self.scol_for(idx)
-            name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
-            if column != name:
-                scol = scol.alias(name)
-            data_columns.append(scol)
-        return data_columns
-
     @lazy_property
     def spark_internal_df(self) -> spark.DataFrame:
         """
         Return as Spark DataFrame. This contains index columns as well
         and should be only used for internal purposes.
         """
-        return self._sdf.select(self.index_scols + self._data_column_names())
+        index_columns = set(self.index_columns)
+        data_columns = []
+        for i, (column, idx) in enumerate(zip(self._data_columns, self.column_index)):
+            if column not in index_columns:
+                scol = self.scol_for(idx)
+                name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+                if column != name:
+                    scol = scol.alias(name)
+                data_columns.append(scol)
+        return self._sdf.select(self.index_scols + data_columns)
 
     @lazy_property
     def spark_df(self) -> spark.DataFrame:
         """ Return as Spark DataFrame. """
-        return self._sdf.select(self._data_column_names())
+        data_columns = []
+        for i, (column, idx) in enumerate(zip(self._data_columns, self.column_index)):
+            scol = self.scol_for(idx)
+            name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+            if column != name:
+                scol = scol.alias(name)
+            data_columns.append(scol)
+        return self._sdf.select(data_columns)
 
     @lazy_property
     def pandas_df(self):

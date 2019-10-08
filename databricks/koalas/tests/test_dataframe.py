@@ -2004,3 +2004,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf[kdf['t'] != kdf['t']], pdf[pdf['t'] != pdf['t']])
         self.assert_eq(kdf[kdf['t'] != kdf['t']].dtypes, pdf[pdf['t'] != pdf['t']].dtypes)
+
+    def test_to_spark(self):
+        kdf = ks.from_pandas(self.pdf)
+
+        with self.assertRaisesRegex(ValueError, "'index_col' cannot be overlapped"):
+            kdf.to_spark(index_col="a")
+
+        with self.assertRaisesRegex(ValueError, "length of index columns.*1.*3"):
+            kdf.to_spark(index_col=["x", "y", "z"])
