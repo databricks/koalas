@@ -39,7 +39,7 @@ from databricks.koalas.config import get_option
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame
-from databricks.koalas.internal import IndexMap, _InternalFrame
+from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
@@ -1789,7 +1789,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             sdf_dropna = self._kdf._sdf.filter(self.notna()._scol)
         else:
             sdf_dropna = self._kdf._sdf
-        index_name = '__index_level_0__'
+        index_name = SPARK_INDEX_NAME_FORMAT(0)
         sdf = sdf_dropna.groupby(self._scol.alias(index_name)).count()
         if sort:
             if ascending:
@@ -2754,7 +2754,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 "approx_percentile(`%s`, array(%s), %s)" % (self.name, args, accuracy))
             sdf = sdf.select(percentile_col.alias("percentiles"))
 
-            internal_index_column = "__index_level_0__"
+            internal_index_column = SPARK_INDEX_NAME_FORMAT(0)
             value_column = "value"
             cols = []
             for i, quantile in enumerate(quantiles):

@@ -34,7 +34,7 @@ from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import _infer_return_type
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
 from databricks.koalas.series import Series, _col
@@ -151,7 +151,7 @@ class GroupBy(object):
     @staticmethod
     def _spark_groupby(kdf, func, groupkeys):
         sdf = kdf._sdf
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+        groupkey_cols = [s._scol.alias(SPARK_INDEX_NAME_FORMAT(i))
                          for i, s in enumerate(groupkeys)]
         multi_aggs = any(isinstance(v, list) for v in func.values())
         reordered = []
@@ -171,7 +171,7 @@ class GroupBy(object):
                     reordered.append(F.expr('{1}(`{0}`) as `{2}`'.format(name, aggfunc, data_col)))
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
         if len(groupkeys) > 0:
-            index_map = [('__index_level_{}__'.format(i),
+            index_map = [(SPARK_INDEX_NAME_FORMAT(i),
                           s._internal.column_index[0])
                          for i, s in enumerate(groupkeys)]
         else:
@@ -441,7 +441,7 @@ class GroupBy(object):
         Name: count, dtype: int64
         """
         groupkeys = self._groupkeys
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+        groupkey_cols = [s._scol.alias(SPARK_INDEX_NAME_FORMAT(i))
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
         sdf = sdf.groupby(*groupkey_cols).count()
@@ -452,7 +452,7 @@ class GroupBy(object):
             name = 'count'
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[name],
-                                  index_map=[('__index_level_{}__'.format(i),
+                                  index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)])
         return _col(DataFrame(internal))
@@ -950,15 +950,15 @@ class GroupBy(object):
                 index_map = []
                 if isinstance(index, pd.MultiIndex):
                     if index.names is None:
-                        index_map = [('__index_level_{}__'.format(i), None)
+                        index_map = [(SPARK_INDEX_NAME_FORMAT(i), None)
                                      for i in range(len(index.levels))]
                     else:
                         index_map = [
-                            ('__index_level_{}__'.format(i) if name is None else name, name)
+                            (SPARK_INDEX_NAME_FORMAT(i) if name is None else name, name)
                             for i, name in enumerate(index.names)]
                 else:
                     index_map = [(index.name
-                                  if index.name is not None else '__index_level_0__', index.name)]
+                                  if index.name is not None else SPARK_INDEX_NAME_FORMAT(0), index.name)]
 
                 new_index_columns = [index_column for index_column, _ in index_map]
                 new_data_columns = [str(col) for col in columns]
@@ -1090,7 +1090,7 @@ class GroupBy(object):
         if len(self._kdf._internal.index_names) != 1:
             raise ValueError('idxmax only support one-level index now')
         groupkeys = self._groupkeys
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+        groupkey_cols = [s._scol.alias(SPARK_INDEX_NAME_FORMAT(i))
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
         index = self._kdf._internal.index_columns[0]
@@ -1114,7 +1114,7 @@ class GroupBy(object):
                                                 for ks in self._agg_columns],
                                   column_index=[ks._internal.column_index[0]
                                                 for ks in self._agg_columns],
-                                  index_map=[('__index_level_{}__'.format(i),
+                                  index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)])
         return DataFrame(internal)
@@ -1160,7 +1160,7 @@ class GroupBy(object):
         if len(self._kdf._internal.index_names) != 1:
             raise ValueError('idxmin only support one-level index now')
         groupkeys = self._groupkeys
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+        groupkey_cols = [s._scol.alias(SPARK_INDEX_NAME_FORMAT(i))
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
         index = self._kdf._internal.index_columns[0]
@@ -1184,7 +1184,7 @@ class GroupBy(object):
                                                 for ks in self._agg_columns],
                                   column_index=[ks._internal.column_index[0]
                                                 for ks in self._agg_columns],
-                                  index_map=[('__index_level_{}__'.format(i),
+                                  index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)])
         return DataFrame(internal)
@@ -1554,7 +1554,7 @@ class GroupBy(object):
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
         groupkeys = self._groupkeys
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+        groupkey_cols = [s._scol.alias(SPARK_INDEX_NAME_FORMAT(i))
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
 
@@ -1584,7 +1584,7 @@ class GroupBy(object):
         sdf = sdf.sort(*groupkey_cols)
 
         internal = _InternalFrame(sdf=sdf,
-                                  index_map=[('__index_level_{}__'.format(i),
+                                  index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)],
                                   data_columns=data_columns,
@@ -1913,7 +1913,7 @@ class SeriesGroupBy(GroupBy):
         Name: B, dtype: int64
         """
         groupkeys = self._groupkeys + self._agg_columns
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+        groupkey_cols = [s._scol.alias(SPARK_INDEX_NAME_FORMAT(i))
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
         agg_column = self._agg_columns[0]._internal.data_columns[0]
@@ -1927,7 +1927,7 @@ class SeriesGroupBy(GroupBy):
 
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[agg_column],
-                                  index_map=[('__index_level_{}__'.format(i),
+                                  index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)])
         return _col(DataFrame(internal))
