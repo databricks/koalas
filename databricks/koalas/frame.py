@@ -3128,7 +3128,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Likewise, can be converted to back to Koalas DataFrame.
 
-        >>> new_spark_df.to_koalas(index_col=["index_1", "index_2"])  # doctest: +NORMALIZE_WHITESPACE
+        >>> new_spark_df.to_koalas(
+        ...     index_col=["index_1", "index_2"])  # doctest: +NORMALIZE_WHITESPACE
                          b  c
         index_1 index_2
         0       1        4  7

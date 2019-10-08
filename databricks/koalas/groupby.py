@@ -957,8 +957,9 @@ class GroupBy(object):
                             (SPARK_INDEX_NAME_FORMAT(i) if name is None else name, name)
                             for i, name in enumerate(index.names)]
                 else:
-                    index_map = [(index.name
-                                  if index.name is not None else SPARK_INDEX_NAME_FORMAT(0), index.name)]
+                    index_map = [(
+                        index.name
+                        if index.name is not None else SPARK_INDEX_NAME_FORMAT(0), index.name)]
 
                 new_index_columns = [index_column for index_column, _ in index_map]
                 new_data_columns = [str(col) for col in columns]
