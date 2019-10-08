@@ -201,7 +201,11 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
                    "\n\nRight:\n%s\n%s" % (right, right.dtypes))
             self.assertEqual(left.shape, right.shape, msg=msg)
             for lcol, rcol in zip(left.columns, right.columns):
-                self.assertEqual(str(lcol), str(rcol), msg=msg)
+                if isinstance(lcol, tuple) and isinstance(rcol, tuple):
+                    for l, r in zip(lcol, rcol):
+                        self.assertEqual(str(l), str(r), msg=msg)
+                else:
+                    self.assertEqual(str(lcol), str(rcol), msg=msg)
                 for lnull, rnull in zip(left[lcol].isnull(), right[rcol].isnull()):
                     self.assertEqual(lnull, rnull, msg=msg)
                 for lval, rval in zip(left[lcol].dropna(), right[rcol].dropna()):
