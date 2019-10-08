@@ -185,7 +185,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             sorted_agg_pdf = pdf.groupby(('X', 'A')).agg(aggfunc).sort_index()
             self.assert_eq(sorted_agg_kdf, sorted_agg_pdf)
 
-    @unittest.skipIf(pd.__version__ < (0, 25), "not supported before pandas 0.25.0")
+    @unittest.skipIf(pd.__version__ < "0.25.0", "not supported before pandas 0.25.0")
     def test_aggregate_relabel(self):
         # this is to test named aggregation in groupby
         pdf = pd.DataFrame({"group": ['a', 'a', 'b', 'b'],
