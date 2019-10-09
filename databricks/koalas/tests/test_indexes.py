@@ -140,6 +140,19 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaises(PandasNotImplementedError):
             kidx.name = 'renamed'
 
+    def test_index_unique(self):
+        pidx = self.pdf.index
+        kidx = self.kdf.index
+
+        self.assert_eq(pidx.unique(), kidx.unique())
+        self.assert_eq(pidx.unique(level=0), kidx.unique(level=0))
+
+        with self.assertRaisesRegexp(IndexError, "*Too many levels*"):
+            kidx.unique(level=1)
+
+        with self.assertRaisesRegexp(KeyError, "Requested level (hi)*"):
+            kidx.unique(level='hi')
+
     def test_missing(self):
         kdf = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
 
