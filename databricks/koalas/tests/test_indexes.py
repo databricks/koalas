@@ -40,6 +40,18 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
     def kdf(self):
         return ks.from_pandas(self.pdf)
 
+    @property
+    def pdf_idx_str(self):
+        # to have test case where index are object
+        return pd.DataFrame({
+            'a': [1, 2, 3, 4, 5],
+            'b': [3, 4, 5, 6, 7]
+        }, index=['a', 'b', 'b', 'e', 'e'])
+
+    @property
+    def kdf_idx_str(self):
+        return ks.from_pandas(self.pdf_idx_str)
+
     def test_index(self):
         for pdf in [pd.DataFrame(np.random.randn(10, 5), index=list('abcdefghij')),
                     pd.DataFrame(np.random.randn(10, 5),
@@ -141,17 +153,20 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx.name = 'renamed'
 
     def test_index_unique(self):
-        pidx = self.pdf.index
-        kidx = self.kdf.index
+        # test on both index are int and object
+        for pdf, kdf in zip([self.pdf.index, self.pdf_idx_str.index],
+                            [self.kdf.index, self.kdf_idx_str.index]):
+            pidx = pdf.index
+            kidx = kdf.index
 
-        self.assert_eq(pidx.unique(), kidx.unique())
-        self.assert_eq(pidx.unique(level=0), kidx.unique(level=0))
+            self.assert_eq(pidx.unique(), kidx.unique())
+            self.assert_eq(pidx.unique(level=0), kidx.unique(level=0))
 
-        with self.assertRaisesRegexp(IndexError, "Too many levels*"):
-            kidx.unique(level=1)
+            with self.assertRaisesRegexp(IndexError, "Too many levels*"):
+                kidx.unique(level=1)
 
-        with self.assertRaisesRegexp(KeyError, "Requested level (hi)*"):
-            kidx.unique(level='hi')
+            with self.assertRaisesRegexp(KeyError, "Requested level (hi)*"):
+                kidx.unique(level='hi')
 
     def test_missing(self):
         kdf = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
