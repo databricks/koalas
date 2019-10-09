@@ -220,7 +220,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         agg_pdf = (
             pdf.groupby("group")
                .agg(b_max=pd.NamedAgg(column="B", aggfunc="max"),
-                    b_min=pd.NamedAgg(column="B", aggfunc="min")
+                    b_min=pd.NamedAgg(column="B", aggfunc="min"))
                .sort_index()
         )
         agg_kdf = (
