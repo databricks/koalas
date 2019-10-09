@@ -104,7 +104,6 @@ class _MissingPandasLikeIndex(object):
     to_numpy = unsupported_function('to_numpy')
     transpose = unsupported_function('transpose')
     union = unsupported_function('union')
-    unique = unsupported_function('unique')
     value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
     where = unsupported_function('where')
