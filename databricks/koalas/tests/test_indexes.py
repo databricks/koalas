@@ -147,7 +147,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pidx.unique(), kidx.unique())
         self.assert_eq(pidx.unique(level=0), kidx.unique(level=0))
 
-        with self.assertRaisesRegexp(IndexError, "*Too many levels*"):
+        with self.assertRaisesRegexp(IndexError, "Too many levels*"):
             kidx.unique(level=1)
 
         with self.assertRaisesRegexp(KeyError, "Requested level (hi)*"):
