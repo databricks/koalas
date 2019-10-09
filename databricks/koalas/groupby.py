@@ -20,7 +20,7 @@ A wrapper for GroupedData to behave similar to pandas GroupBy.
 
 import sys
 import inspect
-from collections import Callable, OrderedDict
+from collections import Callable, OrderedDict, namedtuple
 from functools import partial
 from typing import Any, List, Tuple, Union
 
@@ -42,6 +42,9 @@ from databricks.koalas.series import Series, _col
 from databricks.koalas.config import get_option
 from databricks.koalas.utils import column_index_level, scol_for
 from databricks.koalas.window import RollingGroupby, ExpandingGroupby
+
+# to keep it the same as pandas
+NamedAgg = namedtuple("NamedAgg", ["column", "aggfunc"])
 
 
 class GroupBy(object):
@@ -132,6 +135,13 @@ class GroupBy(object):
         To control the output names with different aggregations per column, Koalas
         also supports 'named aggregation' or nested renaming in .agg. And it can be
         used when applying multiple aggragation functions to specific columns.
+
+        >>> aggregated = df.groupby('A').agg(b_max=ks.NamedAgg(column='B', aggfunc='max'))
+        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+             b_max
+        A
+        1        2
+        2        4
 
         >>> aggregated = df.groupby('A').agg(b_max=('B', 'max'), b_min=('B', 'min'))
         >>> aggregated  # doctest: +NORMALIZE_WHITESPACE

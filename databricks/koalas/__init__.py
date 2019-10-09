@@ -40,6 +40,7 @@ from databricks.koalas.indexes import Index, MultiIndex
 from databricks.koalas.series import Series
 from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.config import get_option, set_option, reset_option, options
+from databricks.koalas.groupby import NamedAgg
 
 __all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
            'get_dummies', 'DataFrame', 'Series', 'Index', 'MultiIndex', 'pandas_wraps',
