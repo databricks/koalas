@@ -48,7 +48,7 @@ from pyspark.sql.window import Window
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame
-from databricks.koalas.internal import _InternalFrame, IndexMap
+from databricks.koalas.internal import _InternalFrame, IndexMap, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, scol_for
@@ -1689,10 +1689,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |{"a":["y3","z3"]}|                a|               x2|    2|
         # |{"a":["y3","z3"]}|                b|               x3|    1|
         # +-----------------+-----------------+-----------------+-----+
-        internal_index_column = "__index_level_{}__".format
         pairs = F.explode(F.array(*[
             F.struct(
-                [F.lit(col).alias(internal_index_column(i)) for i, col in enumerate(idx)] +
+                [F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i)) for i, col in enumerate(idx)] +
                 [self[idx]._scol.alias("value")]
             ) for idx in self._internal.column_index]))
 
@@ -1705,7 +1704,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # After that, executes pivot with key and its index column.
         # Note that index column should contain unique values since column names
         # should be unique.
-        internal_index_columns = [internal_index_column(i)
+        internal_index_columns = [SPARK_INDEX_NAME_FORMAT(i)
                                   for i in range(self._internal.column_index_level)]
         pivoted_df = exploded_df.groupBy(internal_index_columns).pivot('index')
 
@@ -2264,7 +2263,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # Now, new internal Spark columns are named as same as index name.
             new_index_map = [(column, name) for column, name in new_index_map]
 
-            index_map = [('__index_level_0__', None)]
+            index_map = [(SPARK_INDEX_NAME_FORMAT(0), None)]
             sdf = _InternalFrame.attach_default_index(sdf)
 
         if drop:
@@ -2717,7 +2716,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf
         if column == index_column:
-            index_column = '__index_level_0__'
+            index_column = SPARK_INDEX_NAME_FORMAT(0)
             sdf = sdf.select([self._internal.index_scols[0].alias(index_column)]
                              + self._internal.data_scols)
 
@@ -2742,7 +2741,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                              index_map=[(index_column,
                                                          self._internal.index_names[0])])))
 
-    def to_koalas(self, index_col=None):
+    def to_koalas(self, index_col: Optional[Union[str, List[str]]] = None):
         """
         Converts the existing DataFrame into a Koalas DataFrame.
 
@@ -3064,18 +3063,113 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self.to_spark().write.save(
             path=path, format=format, mode=mode, partitionBy=partition_cols, options=options)
 
-    def to_spark(self):
+    def to_spark(self, index_col: Optional[Union[str, List[str]]] = None):
         """
         Return the current DataFrame as a Spark DataFrame.
 
-        .. note:: Index information is lost. So, if the index columns are not present in
-            actual columns, they are lost.
+        Parameters
+        ----------
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
 
         See Also
         --------
         DataFrame.to_koalas
+
+        Examples
+        --------
+        By default, this method loses the index as below.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
+        >>> df.to_spark().show()  # doctest: +NORMALIZE_WHITESPACE
+        +---+---+---+
+        |  a|  b|  c|
+        +---+---+---+
+        |  1|  4|  7|
+        |  2|  5|  8|
+        |  3|  6|  9|
+        +---+---+---+
+
+        If `index_col` is set, it keeps the index column as specified.
+
+        >>> df.to_spark(index_col="index").show()  # doctest: +NORMALIZE_WHITESPACE
+        +-----+---+---+---+
+        |index|  a|  b|  c|
+        +-----+---+---+---+
+        |    0|  1|  4|  7|
+        |    1|  2|  5|  8|
+        |    2|  3|  6|  9|
+        +-----+---+---+---+
+
+        Keeping index column is useful when you want to call some Spark APIs and
+        convert it back to Koalas DataFrame without creating a default index, which
+        can affect performance.
+
+        >>> spark_df = df.to_spark(index_col="index")
+        >>> spark_df = spark_df.filter("a == 2")
+        >>> spark_df.to_koalas(index_col="index")  # doctest: +NORMALIZE_WHITESPACE
+               a  b  c
+        index
+        1      2  5  8
+
+        In case of multi-index, specify a list to `index_col`.
+
+        >>> new_df = df.set_index("a", append=True)
+        >>> new_spark_df = new_df.to_spark(index_col=["index_1", "index_2"])
+        >>> new_spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+        +-------+-------+---+---+
+        |index_1|index_2|  b|  c|
+        +-------+-------+---+---+
+        |      0|      1|  4|  7|
+        |      1|      2|  5|  8|
+        |      2|      3|  6|  9|
+        +-------+-------+---+---+
+
+        Likewise, can be converted to back to Koalas DataFrame.
+
+        >>> new_spark_df.to_koalas(
+        ...     index_col=["index_1", "index_2"])  # doctest: +NORMALIZE_WHITESPACE
+                         b  c
+        index_1 index_2
+        0       1        4  7
+        1       2        5  8
+        2       3        6  9
         """
-        return self._internal.spark_df
+        if index_col is None:
+            return self._internal.spark_df
+        else:
+            if isinstance(index_col, str):
+                index_col = [index_col]
+
+            data_column_names = []
+            data_columns = []
+            data_columns_column_index = \
+                zip(self._internal._data_columns, self._internal.column_index)
+            # TODO: this code is similar with _InternalFrame.spark_df. Might have to deduplicate.
+            for i, (column, idx) in enumerate(data_columns_column_index):
+                scol = self._internal.scol_for(idx)
+                name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+                data_column_names.append(name)
+                if column != name:
+                    scol = scol.alias(name)
+                data_columns.append(scol)
+
+            old_index_scols = self._internal.index_scols
+
+            if len(index_col) != len(old_index_scols):
+                raise ValueError(
+                    "length of index columns is %s; however, the length of the given "
+                    "'index_col' is %s." % (len(old_index_scols), len(index_col)))
+
+            if any(col in data_column_names for col in index_col):
+                raise ValueError(
+                    "'index_col' cannot be overlapped with other columns.")
+
+            sdf = self._internal.spark_internal_df
+            new_index_scols = [
+                index_scol.alias(col) for index_scol, col in zip(old_index_scols, index_col)]
+            return sdf.select(new_index_scols + data_columns)
 
     def to_pandas(self):
         """
@@ -6653,12 +6747,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # TODO: there is a similar logic to transpose in, for instance,
         #  DataFrame.any, Series.quantile. Maybe we should deduplicate it.
         sdf = self._sdf
-        internal_index_column = "__index_level_{}__".format
         value_column = "value"
         cols = []
         for idx, applied_col in zip(column_index, applied):
             cols.append(F.struct(
-                [F.lit(col).alias(internal_index_column(i)) for i, col in enumerate(idx)] +
+                [F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i)) for i, col in enumerate(idx)] +
                 [applied_col.alias(value_column)]))
 
         sdf = sdf.select(
@@ -6672,7 +6765,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.copy(
             sdf=sdf,
             data_columns=[value_column],
-            index_map=[(internal_index_column(i), index_column_name(i))
+            index_map=[(SPARK_INDEX_NAME_FORMAT(i), index_column_name(i))
                        for i in range(self._internal.column_index_level)],
             column_index=None,
             column_index_names=None)
@@ -6737,12 +6830,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # TODO: there is a similar logic to transpose in, for instance,
         #  DataFrame.all, Series.quantile. Maybe we should deduplicate it.
         sdf = self._sdf
-        internal_index_column = "__index_level_{}__".format
         value_column = "value"
         cols = []
         for idx, applied_col in zip(column_index, applied):
             cols.append(F.struct(
-                [F.lit(col).alias(internal_index_column(i)) for i, col in enumerate(idx)] +
+                [F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i)) for i, col in enumerate(idx)] +
                 [applied_col.alias(value_column)]))
 
         sdf = sdf.select(
@@ -6756,7 +6848,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.copy(
             sdf=sdf,
             data_columns=[value_column],
-            index_map=[(internal_index_column(i), index_column_name(i))
+            index_map=[(SPARK_INDEX_NAME_FORMAT(i), index_column_name(i))
                        for i in range(self._internal.column_index_level)],
             column_index=None,
             column_index_names=None)
