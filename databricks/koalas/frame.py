@@ -4300,10 +4300,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 index_values = values[-1]
             else:
                 index_values = values
-            index_column_name = '__index_level_{}__'.format
             index_map = []
             for i, index_value in enumerate(index_values):
-                colname = index_column_name(i)
+                colname = SPARK_INDEX_NAME_FORMAT(i)
                 sdf = sdf.withColumn(colname, F.lit(index_value))
                 index_map.append((colname, None))
             column_index_names = [str(columns) if len(columns) > 1 else columns[0]]
