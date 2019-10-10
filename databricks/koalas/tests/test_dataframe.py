@@ -726,6 +726,32 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.nsmallest(n=5, columns='a'), pdf.nsmallest(5, columns='a'))
         self.assert_eq(kdf.nsmallest(n=5, columns=['a', 'b']), pdf.nsmallest(5, columns=['a', 'b']))
 
+    def test_xs(self):
+        d = {'num_legs': [4, 4, 2, 2],
+             'num_wings': [0, 0, 2, 2],
+             'class': ['mammal', 'mammal', 'mammal', 'bird'],
+             'animal': ['cat', 'dog', 'bat', 'penguin'],
+             'locomotion': ['walks', 'walks', 'flies', 'walks']}
+        kdf = ks.DataFrame(data=d)
+        kdf = kdf.set_index(['class', 'animal', 'locomotion'])
+        pdf = kdf.to_pandas()
+
+        self.assert_eq(kdf.xs(('mammal', 'dog', 'walks')), pdf.xs(('mammal', 'dog', 'walks')))
+
+        msg = "'key' should be string or tuple that contains strings"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.xs(1)
+        msg = ("'key' should have index names as only strings "
+               "or a tuple that contain index names as only strings")
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.xs(('mammal', 1))
+        msg = 'axis should be either 0 or "index" currently.'
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.xs('num_wings', axis=1)
+        msg = r"'Key length \(4\) exceeds index depth \(3\)'"
+        with self.assertRaisesRegex(KeyError, msg):
+            kdf.xs(('mammal', 'dog', 'walks', 'foo'))
+
     def test_missing(self):
         kdf = self.kdf
 
