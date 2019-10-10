@@ -74,7 +74,7 @@ Installing with the official release channel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You can install PySpark by downloading a release in `the official release channel <https://spark.apache.org/downloads.html>`__.
-Once you download the release, under it first as below::
+Once you download the release, un-ter it first as below::
 
     tar xzvf spark-2.4.4-bin-hadoop2.7.tgz
 
