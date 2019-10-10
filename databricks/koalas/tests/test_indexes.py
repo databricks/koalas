@@ -141,12 +141,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx.name = 'renamed'
 
     def test_index_unique(self):
-
-        pidx = self.pdf.index
         kidx = self.kdf.index
 
-        self.assert_eq(pidx.unique(), kidx.unique())
-        self.assert_eq(pidx.unique(level=0), kidx.unique(level=0))
+        # here the output is different than pandas in terms of order
+        expected = pd.Int64Index([0, 6, 9, 5, 1, 3, 8], dtype='int64')
+
+        self.assert_eq(expected, kidx.unique())
+        self.assert_eq(expected, kidx.unique(level=0))
 
         with self.assertRaisesRegexp(IndexError, "Too many levels*"):
             kidx.unique(level=1)
