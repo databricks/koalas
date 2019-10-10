@@ -3258,15 +3258,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf_count = ser_count._internal.sdf
         most_value = sdf_count.head(1)[0][1]
         sdf_most_value = (sdf_count.where("count == {}".format(most_value))
-                                   .sort('__index_level_0__')
-                                   .rdd.zipWithIndex().toDF())
-        sdf = (sdf_most_value.withColumn(self.name,
-                                         sdf_most_value['_1']
-                                             .getItem('__index_level_0__'))
-                             .select('_2', self.name))
+                                   .sort('__index_level_0__'))
+        sdf = sdf_most_value.select(F.col('__index_level_0__').alias(self.name))
 
-        internal = _InternalFrame(sdf=sdf,
-                                  index_map=[('_2', None)])
+        internal = _InternalFrame(sdf=sdf)
         return _col(DataFrame(internal))
 
     def _cum(self, func, skipna, part_cols=()):
