@@ -4,9 +4,6 @@ Working with pandas and PySpark
 
 .. currentmodule:: databricks.koalas
 
-Overview
---------
-
 Users from pandas and/or PySpark face API compatibility issue sometimes when they
 work with Koalas. Since Koalas does not target 100% compatibility of both pandas and
 PySpark, users need to do some workaround to port their pandas and/or PySpark codes or
