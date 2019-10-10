@@ -3316,17 +3316,22 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             raise ValueError("'key' should have index names as only strings "
                              "or a tuple that contain index names as only strings")
 
-        cols = self._internal.index_scols[len(item):] + [self._internal.scol_for(self.name)]
+        cols = (self._internal.index_scols[len(item):] + 
+                [self._internal.scol_for(self._internal.column_index[0])])
         rows = [self._internal.scols[level] == index
                 for level, index in enumerate(item)]
         sdf = self._internal.sdf \
             .select(cols) \
             .where(reduce(lambda x, y: x & y, rows))
 
-        # if sdf has only a data column, return data only without frame
         if len(self._index_map) == len(item):
+            # if sdf has one column and one data, return data only without frame
+            if sdf.select(self.name).limit(2).count() == 1:
+                self._internal = self.drop(item)._internal
+                return sdf.first()[self.name]
             self._internal = self.drop(item)._internal
-            return sdf.first()[self.name]
+            internal = _InternalFrame(sdf)
+            return _col(DataFrame(internal))
 
         internal = self._internal.copy(
             sdf=sdf,
