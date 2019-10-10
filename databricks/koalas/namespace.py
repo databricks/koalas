@@ -126,8 +126,8 @@ def range(start: int,
 
 
 def read_csv(path, sep=',', header='infer', names=None, index_col=None,
-             usecols=None, squeeze=False, mangle_dupe_cols=True,
-             parse_dates=False, comment=None):
+             usecols=None, squeeze=False, mangle_dupe_cols=True, dtype=None,
+             parse_dates=False, quotechar=None, escapechar=None, comment=None, **options):
     """Read CSV (comma-separated) file into DataFrame.
 
     Parameters
@@ -164,10 +164,20 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
         than 'X' ... 'X'. Passing in False will cause data to be overwritten if
         there are duplicate names in the columns.
         Currently only `True` is allowed.
+    dtype : Type name or dict of column -> type, default None
+        Data type for data or columns. E.g. {‘a’: np.float64, ‘b’: np.int32} Use str or object
+        together with suitable na_values settings to preserve and not interpret dtype.
     parse_dates : boolean or list of ints or names or list of lists or dict, default `False`.
         Currently only `False` is allowed.
+    quotechar : str (length 1), optional
+        The character used to denote the start and end of a quoted item. Quoted items can include
+        the delimiter and it will be ignored.
+    escapechar : str (length 1), default None
+        One-character string used to escape delimiter
     comment: str, optional
         Indicates the line should not be parsed.
+    options : dict
+        All other options passed directly into Spark's data source.
 
     Returns
     -------
@@ -189,7 +199,9 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
     if usecols is not None and not callable(usecols):
         usecols = list(usecols)
     if usecols is None or callable(usecols) or len(usecols) > 0:
-        reader = default_session().read.option("inferSchema", "true")
+        reader = default_session().read
+        reader.options(**options)
+        reader.option("inferSchema", True)
         reader.option("sep", sep)
 
         if header == 'infer':
@@ -200,6 +212,11 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
             reader.option("header", False)
         else:
             raise ValueError("Unknown header argument {}".format(header))
+
+        if quotechar is not None:
+            reader.option("quote", quotechar)
+        if escapechar is not None:
+            reader.option("escape", escapechar)
 
         if comment is not None:
             if not isinstance(comment, str) or len(comment) != 1:
@@ -252,6 +269,14 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
     index_map = _get_index_map(sdf, index_col)
     kdf = DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
+    if dtype is not None:
+        if isinstance(dtype, dict):
+            for col, tpe in dtype.items():
+                kdf[col] = kdf[col].astype(tpe)
+        else:
+            for col in kdf.columns:
+                kdf[col] = kdf[col].astype(dtype)
+
     if squeeze and len(kdf.columns) == 1:
         return kdf[kdf.columns[0]]
     return kdf
@@ -267,6 +292,8 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
         File path
     index_col : str or list of str, optional, default: None
         Index column of table in Spark.
+    options : dict
+        All other options passed directly into Spark's data source.
 
     Examples
     --------
