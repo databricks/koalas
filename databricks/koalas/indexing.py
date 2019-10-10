@@ -308,14 +308,23 @@ class LocIndexer(object):
     viper              30      50
     sidewinder         30      50
 
+    Set value for an entire list of columns
+
+    >>> df.loc[:, ['max_speed', 'shield']] = 100
+    >>> df
+                max_speed  shield
+    cobra             100     100
+    viper             100     100
+    sidewinder        100     100
+
     Set value with Series
 
     >>> df.loc[:, 'shield'] = df['shield'] * 2
     >>> df
                 max_speed  shield
-    cobra              30       4
-    viper              30     100
-    sidewinder         30     100
+    cobra             100     200
+    viper             100     200
+    sidewinder        100     200
 
     **Getting values on a DataFrame with an index that has integer labels**
 
@@ -494,7 +503,9 @@ class LocIndexer(object):
         rows_sel, cols_sel = key
 
         if (not isinstance(rows_sel, slice)) or (rows_sel != slice(None)):
-            if isinstance(cols_sel, list):
+            if isinstance(rows_sel, list):
+                if isinstance(cols_sel, str):
+                    cols_sel = [cols_sel]
                 kdf = self._kdf
                 sdf = kdf._sdf
                 for col_sel in cols_sel:
@@ -510,13 +521,20 @@ class LocIndexer(object):
                     pandas_function=".loc[..., ...] = ...",
                     spark_target_function="withColumn, select")
 
+        if not isinstance(cols_sel, (str, list)):
+            raise ValueError("""only column names or list of column names can be assigned""")
+
         if isinstance(value, DataFrame):
             if len(value.columns) == 1:
                 self._kdf[cols_sel] = _col(value)
             else:
                 raise ValueError("Only a dataframe with one column can be assigned")
-        elif not isinstance(cols_sel, list):
-            self._kdf[cols_sel] = value
+        else:
+            if isinstance(cols_sel, str):
+                cols_sel = [cols_sel]
+            if (not isinstance(rows_sel, list)) and (isinstance(cols_sel, list)):
+                for col_sel in cols_sel:
+                    self._kdf[col_sel] = value
 
 
 class ILocIndexer(object):

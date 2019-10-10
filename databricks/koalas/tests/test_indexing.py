@@ -517,9 +517,9 @@ class IndexingTest(ReusedSQLTestCase):
         kdf.loc[['viper', 'sidewinder'], ['shield', 'max_speed']] = 10
         self.assert_eq(kdf, pdf)
 
-        with self.assertRaisesRegex(SparkPandasNotImplementedError,
-                                    'Can only assign value to the whole dataframe, the row index'):
-            kdf.loc[['viper', 'sidewinder'], 'shield'] = 10
+        pdf.loc[['viper', 'sidewinder'], 'shield'] = 50
+        kdf.loc[['viper', 'sidewinder'], 'shield'] = 50
+        self.assert_eq(kdf, pdf)
 
         with self.assertRaisesRegex(ValueError,
                                     'Only a dataframe with one column can be assigned'):
