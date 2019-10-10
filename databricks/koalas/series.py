@@ -3316,7 +3316,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             raise ValueError("'key' should have index names as only strings "
                              "or a tuple that contain index names as only strings")
 
-        cols = (self._internal.index_scols[len(item):] + 
+        cols = (self._internal.index_scols[len(item):] +
                 [self._internal.scol_for(self._internal.column_index[0])])
         rows = [self._internal.scols[level] == index
                 for level, index in enumerate(item)]
