@@ -105,7 +105,14 @@ to use as an index when possible.
 
 .. code-block:: python
 
-   >>> sdf.selectExpr("id as index", "id").to_koalas(index_col="index")
+   >>> # Create a Koalas DataFrame with an explicit index.
+   ... kdf = ks.DataFrame({'id': range(10)}, index=range(10))
+   >>> # Keep the explcit index.
+   ... sdf = kdf.to_spark(index_col='index')
+   >>> # Call Spark APIs
+   ... sdf = sdf.filter("id > 5")
+   >>> # Uses the explicit index to avoid to create default index.
+   ... sdf.to_koalas(index_col='index')
           id
    index
    6       6
