@@ -12,3 +12,9 @@ API Reference
     window
     groupby
     ml
+
+Computations / Descriptive Stats
+--------------------------------
+.. autosummary::
+   :toctree: api/
+   Index.unique
