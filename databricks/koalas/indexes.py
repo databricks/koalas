@@ -467,7 +467,7 @@ class MultiIndex(Index):
     toPandas = to_pandas
 
     def unique(self, level=None):
-        raise NotImplementedError("unique function for MutliIndex is not implemented yet.")
+        raise PandasNotImplementedError(class_name='MultiIndex', method_name='unique')
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):
