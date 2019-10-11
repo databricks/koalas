@@ -45,7 +45,7 @@ from databricks.koalas.groupby import NamedAgg
 __all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
            'get_dummies', 'DataFrame', 'Series', 'Index', 'MultiIndex', 'pandas_wraps',
            'sql', 'range', 'concat', 'melt', 'get_option', 'set_option', 'reset_option',
-           'read_sql_table', 'read_sql_query', 'read_sql', 'options']
+           'read_sql_table', 'read_sql_query', 'read_sql', 'options', 'NamedAgg']
 
 
 def _auto_patch():
