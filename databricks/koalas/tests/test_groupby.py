@@ -211,7 +211,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         )
         agg_kdf = (
             kdf.groupby("group")
-               .agg(b_max=koalas.NamedAgg(column="B", aggfunc="max"))
+               .agg(b_max=ks.NamedAgg(column="B", aggfunc="max"))
                .sort_index()
         )
         self.assert_eq(agg_kdf, agg_pdf)
@@ -225,8 +225,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         )
         agg_kdf = (
             kdf.groupby("group")
-               .agg(b_max=koalas.NamedAgg(column="B", aggfunc="max"),
-                    b_min=koalas.NamedAgg(column="B", aggfunc="min"))
+               .agg(b_max=ks.NamedAgg(column="B", aggfunc="max"),
+                    b_min=ks.NamedAgg(column="B", aggfunc="min"))
                .sort_index()
         )
         self.assert_eq(agg_kdf, agg_pdf)
