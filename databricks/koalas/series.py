@@ -3276,7 +3276,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         ...                       ['speed', 'weight', 'length']],
         ...                      [[0, 0, 0, 0, 0, 0, 1, 1, 1],
         ...                       [0, 0, 0, 1, 1, 1, 2, 2, 2],
-        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]]
+        ...                       [0, 1, 2, 0, 1, 2, 0, 0, 2]]
         ...  )
         >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
         ...              index=midx)
@@ -3288,7 +3288,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                    weight    250.0
                    length      1.5
         b  falcon  speed     320.0
-                   weight      1.0
+                   speed       1.0
                    length      0.3
         Name: 0, dtype: float64
 
@@ -3303,8 +3303,13 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                    weight    250.0
                    length      1.5
         b  falcon  speed     320.0
-                   weight      1.0
+                   speed       1.0
                    length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.pop(('b', 'falcon', 'speed'))
+        (b, falcon, speed)    320.0
+        (b, falcon, speed)      1.0
         Name: 0, dtype: float64
         """
         from databricks.koalas.indexes import MultiIndex
@@ -3330,7 +3335,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 self._internal = self.drop(item)._internal
                 return sdf.first()[self.name]
             self._internal = self.drop(item)._internal
-            internal = _InternalFrame(sdf)
+            item_string = ('(' + ', '.join(item) + ')')
+            sdf = sdf.withColumn('__index_level_0__', F.lit(str(item_string)))
+            internal = _InternalFrame(sdf=sdf, index_map=[('__index_level_0__', None)])
             return _col(DataFrame(internal))
 
         internal = self._internal.copy(
