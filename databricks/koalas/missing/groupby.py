@@ -62,7 +62,6 @@ class _MissingPandasLikeDataFrameGroupBy(object):
     prod = unsupported_function('prod')
     resample = unsupported_function('resample')
     sem = unsupported_function('sem')
-    shift = unsupported_function('shift')
     tail = unsupported_function('tail')
 
 
@@ -105,5 +104,4 @@ class _MissingPandasLikeSeriesGroupBy(object):
     prod = unsupported_function('prod')
     resample = unsupported_function('resample')
     sem = unsupported_function('sem')
-    shift = unsupported_function('shift')
     tail = unsupported_function('tail')

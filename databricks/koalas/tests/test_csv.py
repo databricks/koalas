@@ -90,6 +90,26 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             Charlie\t300
             """)
 
+    @property
+    def q_quoted_csv_text(self):
+        return normalize_text(
+            """
+            QnameQ,QamountQ
+            QA,liceQ,Q100Q
+            QB,obQ,Q-200Q
+            QC,harlieQ,Q300Q
+            """)
+
+    @property
+    def e_escapeted_csv_text(self):
+        return normalize_text(
+            """
+            name,amount
+            "AE"lice",100
+            "BE"ob",-200
+            "CE"harlie",300
+            """)
+
     @contextmanager
     def csv_file(self, csv):
         with self.temp_file() as tmp:
@@ -190,6 +210,23 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
     def test_read_csv_with_parse_dates(self):
         self.assertRaisesRegex(ValueError, 'parse_dates',
                                lambda: ks.read_csv('path', parse_dates=True))
+
+    def test_read_csv_with_dtype(self):
+        with self.csv_file(self.csv_text) as fn:
+            self.assert_eq(ks.read_csv(fn), pd.read_csv(fn), almost=True)
+            self.assert_eq(ks.read_csv(fn, dtype=str), pd.read_csv(fn, dtype=str))
+            self.assert_eq(ks.read_csv(fn, dtype={'amount': 'int64'}),
+                           pd.read_csv(fn, dtype={'amount': 'int64'}))
+
+    def test_read_csv_with_quotechar(self):
+        with self.csv_file(self.q_quoted_csv_text) as fn:
+            self.assert_eq(ks.read_csv(fn, quotechar='Q'),
+                           pd.read_csv(fn, quotechar='Q'), almost=True)
+
+    def test_read_csv_with_escapechar(self):
+        with self.csv_file(self.e_escapeted_csv_text) as fn:
+            self.assert_eq(ks.read_csv(fn, escapechar='E'),
+                           pd.read_csv(fn, escapechar='E'), almost=True)
 
     def test_to_csv(self):
         pdf = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]}, index=[0, 1, 3])

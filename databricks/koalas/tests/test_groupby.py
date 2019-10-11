@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import unittest
 import inspect
 from distutils.version import LooseVersion
 import pandas as pd
@@ -24,6 +25,7 @@ from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koalas.groupby import _is_multi_agg_with_relabel
 
 
 class GroupByTest(ReusedSQLTestCase, TestUtils):
@@ -182,6 +184,24 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             sorted_agg_kdf = kdf.groupby(('X', 'A')).agg(aggfunc).sort_index()
             sorted_agg_pdf = pdf.groupby(('X', 'A')).agg(aggfunc).sort_index()
             self.assert_eq(sorted_agg_kdf, sorted_agg_pdf)
+
+    @unittest.skipIf(pd.__version__ < "0.25.0", "not supported before pandas 0.25.0")
+    def test_aggregate_relabel(self):
+        # this is to test named aggregation in groupby
+        pdf = pd.DataFrame({"group": ['a', 'a', 'b', 'b'],
+                            "A": [0, 1, 2, 3],
+                            "B": [5, 6, 7, 8]})
+        kdf = koalas.from_pandas(pdf)
+
+        # different agg column, same function
+        agg_pdf = pdf.groupby("group").agg(a_max=("A", "max"), b_max=("B", "max")).sort_index()
+        agg_kdf = kdf.groupby("group").agg(a_max=("A", "max"), b_max=("B", "max")).sort_index()
+        self.assert_eq(agg_pdf, agg_kdf)
+
+        # same agg column, different functions
+        agg_pdf = pdf.groupby("group").agg(b_max=("B", "max"), b_min=("B", "min")).sort_index()
+        agg_kdf = kdf.groupby("group").agg(b_max=("B", "max"), b_min=("B", "min")).sort_index()
+        self.assert_eq(agg_pdf, agg_kdf)
 
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
@@ -541,6 +561,39 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kdf.groupby(("X", "A")).bfill(),
                            pdf.groupby(("X", "A")).bfill())
 
+    @unittest.skipIf(pd.__version__ < '0.24.0', "not supported before pandas 0.24.0")
+    def test_shift(self):
+        pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3, 3],
+                            'b': [1, 1, 2, 2, 3, 4],
+                            'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
+        kdf = koalas.DataFrame(pdf)
+
+        self.assert_eq(kdf.groupby('a').shift().sort_index(),
+                       pdf.groupby('a').shift().sort_index())
+        # TODO: seems like a pandas' bug when fill_value is not None?
+        # self.assert_eq(kdf.groupby(['a', 'b']).shift(periods=-1, fill_value=0).sort_index(),
+        #                pdf.groupby(['a', 'b']).shift(periods=-1, fill_value=0).sort_index())
+        self.assert_eq(kdf.groupby(['b'])['a'].shift().sort_index(),
+                       pdf.groupby(['b'])['a'].shift().sort_index(), almost=True)
+        self.assert_eq(kdf.groupby(['a', 'b'])['c'].shift().sort_index(),
+                       pdf.groupby(['a', 'b'])['c'].shift().sort_index(), almost=True)
+        self.assert_eq(kdf.groupby(['b'])[['a', 'c']].shift(periods=-1, fill_value=0).sort_index(),
+                       pdf.groupby(['b'])[['a', 'c']].shift(periods=-1, fill_value=0).sort_index(),
+                       almost=True)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.groupby(('x', 'a')).shift().sort_index(),
+                       pdf.groupby(('x', 'a')).shift().sort_index())
+        # TODO: seems like a pandas' bug when fill_value is not None?
+        # self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).shift(periods=-1,
+        #                                                            fill_value=0).sort_index(),
+        #                pdf.groupby([('x', 'a'), ('x', 'b')]).shift(periods=-1,
+        #                                                            fill_value=0).sort_index())
+
     def test_apply(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
@@ -805,3 +858,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                                         "property.*GroupBy.*{}.*is deprecated"
                                         .format(name)):
                 getattr(kdf.a.groupby('a'), name)
+
+    @staticmethod
+    def test_is_multi_agg_with_relabel():
+
+        assert _is_multi_agg_with_relabel(a='max') is False
+        assert _is_multi_agg_with_relabel(a_min=('a', 'max'), a_max=('a', 'min')) is True

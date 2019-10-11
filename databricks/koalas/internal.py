@@ -17,7 +17,7 @@
 """
 An internal immutable DataFrame with some metadata to manage indexes.
 """
-
+import re
 from typing import Dict, List, Optional, Tuple, Union
 from itertools import accumulate
 
@@ -35,6 +35,11 @@ from databricks.koalas.config import get_option
 from databricks.koalas.typedef import infer_pd_series_spark_type, spark_type_to_pandas_dtype
 from databricks.koalas.utils import column_index_level, default_session, lazy_property, scol_for
 
+
+# A function to turn given numbers to Spark columns that represent Koalas index.
+SPARK_INDEX_NAME_FORMAT = "__index_level_{}__".format
+# A pattern to check if the name of a Spark column is a Koalas index name or not.
+SPARK_INDEX_NAME_PATTERN = re.compile(r"__index_level_[0-9]+__")
 
 IndexMap = Tuple[str, Optional[Tuple[str, ...]]]
 
@@ -398,11 +403,12 @@ class _InternalFrame(object):
         assert isinstance(sdf, spark.DataFrame)
         if index_map is None:
             # Here is when Koalas DataFrame is created directly from Spark DataFrame.
-            assert "__index_level_0__" not in sdf.schema.names, \
-                "Default index column should not appear in columns of the Spark DataFrame"
+            assert not any(SPARK_INDEX_NAME_PATTERN.match(name) for name in sdf.schema.names), \
+                "Index columns should not appear in columns of the Spark DataFrame. Avoid " \
+                "index colum names [%s]." % SPARK_INDEX_NAME_PATTERN
 
             # Create default index.
-            index_map = [('__index_level_0__', None)]
+            index_map = [(SPARK_INDEX_NAME_FORMAT(0), None)]
             sdf = _InternalFrame.attach_default_index(sdf)
 
         assert index_map is not None
@@ -461,7 +467,7 @@ class _InternalFrame(object):
             sequential_index = F.row_number().over(
                 Window.orderBy(F.monotonically_increasing_id().asc())) - 1
             scols = [scol_for(sdf, column) for column in sdf.columns]
-            return sdf.select(sequential_index.alias("__index_level_0__"), *scols)
+            return sdf.select(sequential_index.alias(SPARK_INDEX_NAME_FORMAT(0)), *scols)
         elif default_index_type == "distributed-sequence":
             # 1. Calculates counts per each partition ID. `counts` here is, for instance,
             #     {
@@ -488,12 +494,12 @@ class _InternalFrame(object):
             def default_index(pdf):
                 current_partition_max = sums[pdf["__spark_partition_id"].iloc[0]]
                 offset = len(pdf)
-                pdf["__index_level_0__"] = list(range(
+                pdf[SPARK_INDEX_NAME_FORMAT(0)] = list(range(
                     current_partition_max - offset, current_partition_max))
                 return pdf.drop(columns=["__spark_partition_id"])
 
             return_schema = StructType(
-                [StructField("__index_level_0__", LongType())] + list(sdf.schema))
+                [StructField(SPARK_INDEX_NAME_FORMAT(0), LongType())] + list(sdf.schema))
             grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(default_index)
 
             sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
@@ -501,7 +507,7 @@ class _InternalFrame(object):
         elif default_index_type == "distributed":
             scols = [scol_for(sdf, column) for column in sdf.columns]
             return sdf.select(
-                F.monotonically_increasing_id().alias("__index_level_0__"), *scols)
+                F.monotonically_increasing_id().alias(SPARK_INDEX_NAME_FORMAT(0)), *scols)
         else:
             raise ValueError("'compute.default_index_type' should be one of 'sequence',"
                              " 'distributed-sequence' and 'distributed'")
@@ -712,15 +718,15 @@ class _InternalFrame(object):
         index_map = []  # type: List[IndexMap]
         if isinstance(index, pd.MultiIndex):
             if index.names is None:
-                index_map = [('__index_level_{}__'.format(i), None)
+                index_map = [(SPARK_INDEX_NAME_FORMAT(i), None)
                              for i in range(len(index.levels))]
             else:
-                index_map = [('__index_level_{}__'.format(i) if name is None else name,
+                index_map = [(SPARK_INDEX_NAME_FORMAT(i) if name is None else name,
                               name if name is None or isinstance(name, tuple) else (name,))
                              for i, name in enumerate(index.names)]
         else:
             name = index.name
-            index_map = [(str(name) if name is not None else '__index_level_0__',
+            index_map = [(str(name) if name is not None else SPARK_INDEX_NAME_FORMAT(0),
                           name if name is None or isinstance(name, tuple) else (name,))]
 
         index_columns = [index_column for index_column, _ in index_map]

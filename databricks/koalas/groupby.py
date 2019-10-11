@@ -18,6 +18,7 @@
 A wrapper for GroupedData to behave similar to pandas GroupBy.
 """
 
+import sys
 import inspect
 from collections import Callable, OrderedDict
 from functools import partial
@@ -34,7 +35,7 @@ from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import _infer_return_type
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
 from databricks.koalas.series import Series, _col
@@ -53,12 +54,12 @@ class GroupBy(object):
 
     # TODO: Series support is not implemented yet.
     # TODO: not all arguments are implemented comparing to Pandas' for now.
-    def aggregate(self, func_or_funcs, *args, **kwargs):
+    def aggregate(self, func_or_funcs=None, *args, **kwargs):
         """Aggregate using one or more operations over the specified axis.
 
         Parameters
         ----------
-        func : dict, str or list
+        func_or_funcs : dict, str or list
              a dict mapping from column name (string) to
              aggregate functions (string or list of strings).
 
@@ -127,7 +128,34 @@ class GroupBy(object):
         A
         1    1    2  0.227  0.362
         2    3    4 -0.562  1.267
+
+        To control the output names with different aggregations per column, Koalas
+        also supports 'named aggregation' or nested renaming in .agg. And it can be
+        used when applying multiple aggragation functions to specific columns.
+
+        >>> aggregated = df.groupby('A').agg(b_max=('B', 'max'), b_min=('B', 'min'))
+        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+             b_max   b_min
+        A
+        1        2       1
+        2        4       3
+
+        >>> aggregated = df.groupby('A').agg(b_max=('B', 'max'), c_min=('C', 'min'))
+        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+             b_max   c_min
+        A
+        1        2   0.227
+        2        4  -0.562
         """
+        # I think current implementation of func and arguments in koalas for aggregate is different
+        # than pandas, later once arguments are added, this could be removed.
+        if func_or_funcs is None and kwargs is None:
+            raise ValueError("No aggregation argument or function specified.")
+
+        relabeling = func_or_funcs is None and _is_multi_agg_with_relabel(**kwargs)
+        if relabeling:
+            func_or_funcs, columns, order = _normalize_keyword_aggregation(kwargs)
+
         if not isinstance(func_or_funcs, (str, list)):
             if not isinstance(func_or_funcs, dict) or \
                     not all(isinstance(key, (str, tuple)) and
@@ -144,6 +172,10 @@ class GroupBy(object):
         kdf = DataFrame(GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys))
         if not self._as_index:
             kdf = kdf.reset_index()
+
+        if relabeling:
+            kdf = kdf[order]
+            kdf.columns = columns
         return kdf
 
     agg = aggregate
@@ -151,7 +183,7 @@ class GroupBy(object):
     @staticmethod
     def _spark_groupby(kdf, func, groupkeys):
         sdf = kdf._sdf
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+        groupkey_cols = [s._scol.alias(SPARK_INDEX_NAME_FORMAT(i))
                          for i, s in enumerate(groupkeys)]
         multi_aggs = any(isinstance(v, list) for v in func.values())
         reordered = []
@@ -171,7 +203,7 @@ class GroupBy(object):
                     reordered.append(F.expr('{1}(`{0}`) as `{2}`'.format(name, aggfunc, data_col)))
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
         if len(groupkeys) > 0:
-            index_map = [('__index_level_{}__'.format(i),
+            index_map = [(SPARK_INDEX_NAME_FORMAT(i),
                           s._internal.column_index[0])
                          for i, s in enumerate(groupkeys)]
         else:
@@ -441,7 +473,7 @@ class GroupBy(object):
         Name: count, dtype: int64
         """
         groupkeys = self._groupkeys
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+        groupkey_cols = [s._scol.alias(SPARK_INDEX_NAME_FORMAT(i))
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
         sdf = sdf.groupby(*groupkey_cols).count()
@@ -452,7 +484,7 @@ class GroupBy(object):
             name = 'count'
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[name],
-                                  index_map=[('__index_level_{}__'.format(i),
+                                  index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)])
         return _col(DataFrame(internal))
@@ -950,15 +982,16 @@ class GroupBy(object):
                 index_map = []
                 if isinstance(index, pd.MultiIndex):
                     if index.names is None:
-                        index_map = [('__index_level_{}__'.format(i), None)
+                        index_map = [(SPARK_INDEX_NAME_FORMAT(i), None)
                                      for i in range(len(index.levels))]
                     else:
                         index_map = [
-                            ('__index_level_{}__'.format(i) if name is None else name, name)
+                            (SPARK_INDEX_NAME_FORMAT(i) if name is None else name, name)
                             for i, name in enumerate(index.names)]
                 else:
-                    index_map = [(index.name
-                                  if index.name is not None else '__index_level_0__', index.name)]
+                    index_map = [(
+                        index.name
+                        if index.name is not None else SPARK_INDEX_NAME_FORMAT(0), index.name)]
 
                 new_index_columns = [index_column for index_column, _ in index_map]
                 new_data_columns = [str(col) for col in columns]
@@ -1090,7 +1123,7 @@ class GroupBy(object):
         if len(self._kdf._internal.index_names) != 1:
             raise ValueError('idxmax only support one-level index now')
         groupkeys = self._groupkeys
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+        groupkey_cols = [s._scol.alias(SPARK_INDEX_NAME_FORMAT(i))
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
         index = self._kdf._internal.index_columns[0]
@@ -1114,7 +1147,7 @@ class GroupBy(object):
                                                 for ks in self._agg_columns],
                                   column_index=[ks._internal.column_index[0]
                                                 for ks in self._agg_columns],
-                                  index_map=[('__index_level_{}__'.format(i),
+                                  index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)])
         return DataFrame(internal)
@@ -1160,7 +1193,7 @@ class GroupBy(object):
         if len(self._kdf._internal.index_names) != 1:
             raise ValueError('idxmin only support one-level index now')
         groupkeys = self._groupkeys
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+        groupkey_cols = [s._scol.alias(SPARK_INDEX_NAME_FORMAT(i))
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
         index = self._kdf._internal.index_columns[0]
@@ -1184,7 +1217,7 @@ class GroupBy(object):
                                                 for ks in self._agg_columns],
                                   column_index=[ks._internal.column_index[0]
                                                 for ks in self._agg_columns],
-                                  index_map=[('__index_level_{}__'.format(i),
+                                  index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)])
         return DataFrame(internal)
@@ -1353,6 +1386,65 @@ class GroupBy(object):
         return self._fillna(method='ffill', limit=limit)
 
     pad = ffill
+
+    def shift(self, periods=1, fill_value=None):
+        """
+        Shift each group by periods observations.
+
+        Parameters
+        ----------
+        periods : integer, default 1
+            number of periods to shift
+        fill_value : optional
+
+        Returns
+        -------
+        Series or DataFrame
+            Object shifted within each group.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({
+        ...     'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+        ...     'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
+        >>> df
+           a  b
+        0  1  1
+        1  1  2
+        2  1  2
+        3  2  2
+        4  2  3
+        5  2  3
+        6  3  3
+        7  3  4
+        8  3  4
+
+        >>> df.groupby('a').shift().sort_index()  # doctest: +SKIP
+             b
+        0  NaN
+        1  1.0
+        2  2.0
+        3  NaN
+        4  2.0
+        5  3.0
+        6  NaN
+        7  3.0
+        8  4.0
+
+        >>> df.groupby('a').shift(periods=-1, fill_value=0).sort_index()  # doctest: +SKIP
+           b
+        0  2
+        1  2
+        2  0
+        3  3
+        4  3
+        5  0
+        6  4
+        7  4
+        8  0
+        """
+        return self._shift(periods, fill_value)
 
     def transform(self, func):
         """
@@ -1554,7 +1646,7 @@ class GroupBy(object):
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
         groupkeys = self._groupkeys
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+        groupkey_cols = [s._scol.alias(SPARK_INDEX_NAME_FORMAT(i))
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
 
@@ -1584,7 +1676,7 @@ class GroupBy(object):
         sdf = sdf.sort(*groupkey_cols)
 
         internal = _InternalFrame(sdf=sdf,
-                                  index_map=[('__index_level_{}__'.format(i),
+                                  index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)],
                                   data_columns=data_columns,
@@ -1703,6 +1795,19 @@ class DataFrameGroupBy(GroupBy):
                                       column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
+    def _shift(self, periods, fill_value):
+        applied = []
+        kdf = self._kdf
+
+        for column in self._agg_columns:
+            applied.append(column.groupby(self._groupkeys).shift(periods, fill_value))
+
+        sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
+        internal = kdf._internal.copy(sdf=sdf,
+                                      data_columns=[c._internal.data_columns[0] for c in applied],
+                                      column_index=[c._internal.column_index[0] for c in applied])
+        return DataFrame(internal)
+
 
 class SeriesGroupBy(GroupBy):
 
@@ -1738,6 +1843,10 @@ class SeriesGroupBy(GroupBy):
     def _fillna(self, *args, **kwargs):
         groupkey_scols = [s._scol for s in self._groupkeys]
         return Series._fillna(self._ks, *args, **kwargs, part_cols=groupkey_scols)
+
+    def _shift(self, periods, fill_value):
+        groupkey_scols = [s._scol for s in self._groupkeys]
+        return Series._shift(self._ks, periods, fill_value, part_cols=groupkey_scols)
 
     @property
     def _kdf(self) -> DataFrame:
@@ -1913,7 +2022,7 @@ class SeriesGroupBy(GroupBy):
         Name: B, dtype: int64
         """
         groupkeys = self._groupkeys + self._agg_columns
-        groupkey_cols = [s._scol.alias('__index_level_{}__'.format(i))
+        groupkey_cols = [s._scol.alias(SPARK_INDEX_NAME_FORMAT(i))
                          for i, s in enumerate(groupkeys)]
         sdf = self._kdf._sdf
         agg_column = self._agg_columns[0]._internal.data_columns[0]
@@ -1927,7 +2036,82 @@ class SeriesGroupBy(GroupBy):
 
         internal = _InternalFrame(sdf=sdf,
                                   data_columns=[agg_column],
-                                  index_map=[('__index_level_{}__'.format(i),
+                                  index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)])
         return _col(DataFrame(internal))
+
+
+def _is_multi_agg_with_relabel(**kwargs):
+    """
+    Check whether the kwargs pass to .agg look like multi-agg with relabling.
+
+    Parameters
+    ----------
+    **kwargs : dict
+
+    Returns
+    -------
+    bool
+
+    Examples
+    --------
+    >>> _is_multi_agg_with_relabel(a='max')
+    False
+    >>> _is_multi_agg_with_relabel(a_max=('a', 'max'),
+    ...                            a_min=('a', 'min'))
+    True
+    >>> _is_multi_agg_with_relabel()
+    False
+    """
+    if not kwargs:
+        return False
+    return all(
+        isinstance(v, tuple) and len(v) == 2
+        for v in kwargs.values()
+    )
+
+
+def _normalize_keyword_aggregation(kwargs):
+    """
+    Normalize user-provided kwargs.
+
+    Transforms from the new ``Dict[str, NamedAgg]`` style kwargs
+    to the old OrderedDict[str, List[scalar]]].
+
+    Parameters
+    ----------
+    kwargs : dict
+
+    Returns
+    -------
+    aggspec : dict
+        The transformed kwargs.
+    columns : List[str]
+        The user-provided keys.
+    order : List[Tuple[str, str]]
+        Pairs of the input and output column names.
+
+    Examples
+    --------
+    >>> _normalize_keyword_aggregation({'output': ('input', 'sum')})
+    (OrderedDict([('input', ['sum'])]), ('output',), [('input', 'sum')])
+    """
+    # this is due to python version issue, not sure the impact on koalas
+    PY36 = sys.version_info >= (3, 6)
+    if not PY36:
+        kwargs = OrderedDict(sorted(kwargs.items()))
+
+    # TODO(Py35): When we drop python 3.5, change this to defaultdict(list)
+    aggspec = OrderedDict()
+    order = []
+    columns, pairs = list(zip(*kwargs.items()))
+
+    for column, aggfunc in pairs:
+        if column in aggspec:
+            aggspec[column].append(aggfunc)
+        else:
+            aggspec[column] = [aggfunc]
+
+        order.append((column, aggfunc))
+    return aggspec, columns, order
