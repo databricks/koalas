@@ -6684,7 +6684,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return self._internal.copy(sdf=sdf, data_columns=columns, column_index=idx)
 
-    def melt(self, id_vars=None, value_vars=None, var_name='variable',
+    def melt(self, id_vars=None, value_vars=None, var_name=None,
              value_name='value'):
         """
         Unpivot a DataFrame from wide format to long format, optionally
@@ -6705,7 +6705,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Column(s) to unpivot. If not specified, uses all columns that
             are not set as `id_vars`.
         var_name : scalar, default 'variable'
-            Name to use for the 'variable' column.
+            Name to use for the 'variable' column. If None it uses `frame.columns.name` or
+            ‘variable’.
         value_name : scalar, default 'value'
             Name to use for the 'value' column.
 
@@ -6718,7 +6719,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         >>> df = ks.DataFrame({'A': {0: 'a', 1: 'b', 2: 'c'},
         ...                    'B': {0: 1, 1: 3, 2: 5},
-        ...                    'C': {0: 2, 1: 4, 2: 6}})
+        ...                    'C': {0: 2, 1: 4, 2: 6}},
+        ...                   columns=['A', 'B', 'C'])
         >>> df
            A  B  C
         0  a  1  2
@@ -6769,29 +6771,52 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if id_vars is None:
             id_vars = []
-        if not isinstance(id_vars, (list, tuple, np.ndarray)):
-            id_vars = list(id_vars)
+        elif isinstance(id_vars, str):
+            id_vars = [(id_vars,)]
+        elif isinstance(id_vars, tuple):
+            id_vars = [id_vars]
+        else:
+            id_vars = [idv if isinstance(idv, tuple) else (idv,) for idv in id_vars]
 
-        data_columns = self._internal.data_columns
+        column_index = self._internal.column_index
 
         if value_vars is None:
             value_vars = []
-        if not isinstance(value_vars, (list, tuple, np.ndarray)):
-            value_vars = list(value_vars)
+        elif isinstance(value_vars, str):
+            value_vars = [(value_vars,)]
+        elif isinstance(value_vars, tuple):
+            value_vars = [value_vars]
+        else:
+            value_vars = [valv if isinstance(valv, tuple) else (valv,) for valv in value_vars]
         if len(value_vars) == 0:
-            value_vars = data_columns
+            value_vars = column_index
 
-        data_columns = [data_column for data_column in data_columns if data_column not in id_vars]
+        column_index = [idx for idx in column_index if idx not in id_vars]
+
         sdf = self._sdf
+
+        if var_name is None:
+            if self._internal.column_index_names is not None:
+                var_name = self._internal.column_index_names
+            elif self._internal.column_index_level == 1:
+                var_name = ['variable']
+            else:
+                var_name = ['variable_{}'.format(i)
+                            for i in range(self._internal.column_index_level)]
+        elif isinstance(var_name, str):
+            var_name = [var_name]
 
         pairs = F.explode(F.array(*[
             F.struct(*(
-                [F.lit(column).alias(var_name)] +
-                [self._internal.scol_for(column).alias(value_name)])
-            ) for column in data_columns if column in value_vars]))
+                [F.lit(c).alias(name) for c, name in zip(idx, var_name)] +
+                [self._internal.scol_for(idx).alias(value_name)])
+            ) for idx in column_index if idx in value_vars]))
 
-        columns = (id_vars +
-                   [F.col("pairs.%s" % var_name), F.col("pairs.%s" % value_name)])
+        columns = ([self._internal.scol_for(idx).alias(str(idx) if len(idx) > 1 else idx[0])
+                    for idx in id_vars] +
+                   [F.col("pairs.%s" % name)
+                    for name in var_name[:self._internal.column_index_level]] +
+                   [F.col("pairs.%s" % value_name)])
         exploded_df = sdf.withColumn("pairs", pairs).select(columns)
 
         return DataFrame(exploded_df)
