@@ -203,6 +203,34 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         agg_kdf = kdf.groupby("group").agg(b_max=("B", "max"), b_min=("B", "min")).sort_index()
         self.assert_eq(agg_pdf, agg_kdf)
 
+        # test on NamedAgg
+        agg_pdf = (
+            pdf.groupby("group")
+               .agg(b_max=pd.NamedAgg(column="B", aggfunc="max"))
+               .sort_index()
+        )
+        agg_kdf = (
+            kdf.groupby("group")
+               .agg(b_max=koalas.NamedAgg(column="B", aggfunc="max"))
+               .sort_index()
+        )
+        self.assert_eq(agg_kdf, agg_pdf)
+
+        # test on NamedAgg multi columns aggregation
+        agg_pdf = (
+            pdf.groupby("group")
+               .agg(b_max=pd.NamedAgg(column="B", aggfunc="max"),
+                    b_min=pd.NamedAgg(column="B", aggfunc="min"))
+               .sort_index()
+        )
+        agg_kdf = (
+            kdf.groupby("group")
+               .agg(b_max=koalas.NamedAgg(column="B", aggfunc="max"),
+                    b_min=koalas.NamedAgg(column="B", aggfunc="min"))
+               .sort_index()
+        )
+        self.assert_eq(agg_kdf, agg_pdf)
+
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
                             'B': [True, True, True, False, False, False, None, True, None, False]})
