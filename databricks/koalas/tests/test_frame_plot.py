@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
 
-from databricks import koalas
+from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.plot import TopNPlot, SampledPlot
 from databricks.koalas.exceptions import PandasNotImplementedError
@@ -40,7 +40,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
 
     @property
     def kdf1(self):
-        return koalas.from_pandas(self.pdf1)
+        return ks.from_pandas(self.pdf1)
 
     @staticmethod
     def plot_to_base64(ax):
@@ -113,7 +113,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
             'signups': [5, 5, 6, 12, 14, 13],
             'visits': [20, 42, 28, 62, 81, 50],
         }, index=pd.date_range(start='2018/01/01', end='2018/07/01', freq='M'))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         check_area_plot_stacked_false(pdf, kdf)
 
         # multi-index columns
@@ -136,7 +136,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
             'signups': [5, 5, 6, 12, 14, 13],
             'visits': [20, 42, 28, 62, 81, 50],
         }, index=pd.date_range(start='2018/01/01', end='2018/07/01', freq='M'))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         check_area_plot_y(pdf, kdf, y='sales')
 
         # multi-index columns
@@ -161,7 +161,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
 
         # this is testing plot with specified x and y
         pdf1 = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
-        kdf1 = koalas.from_pandas(pdf1)
+        kdf1 = ks.from_pandas(pdf1)
         check_barh_plot_with_x_y(pdf1, kdf1, x='lab', y='val')
 
         # multi-index columns
@@ -186,7 +186,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
 
         # this is testing when x or y is not assigned
         pdf1 = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
-        kdf1 = koalas.from_pandas(pdf1)
+        kdf1 = ks.from_pandas(pdf1)
         check_barh_plot(pdf1, kdf1)
 
         # multi-index columns
@@ -222,7 +222,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
     def test_bar_with_x_y(self):
         # this is testing plot with specified x and y
         pdf = pd.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         ax1 = pdf.plot(kind="bar", x='lab', y='val', colormap='Paired')
         bin1 = self.plot_to_base64(ax1)
@@ -289,7 +289,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
 
         pdf1 = pd.DataFrame({'mass': [0.330, 4.87, 5.97], 'radius': [2439.7, 6051.8, 6378.1]},
                             index=['Mercury', 'Venus', 'Earth'])
-        kdf1 = koalas.from_pandas(pdf1)
+        kdf1 = ks.from_pandas(pdf1)
         check_pie_plot(pdf1, kdf1, y='mass')
 
         # multi-index columns
@@ -303,7 +303,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         # and subplots is not set to True
         pdf = pd.DataFrame({'mass': [0.330, 4.87, 5.97], 'radius': [2439.7, 6051.8, 6378.1]},
                            index=['Mercury', 'Venus', 'Earth'])
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         with self.assertRaises(ValueError) as context:
             kdf.plot.pie(figsize=(5, 5), colormap='Paired')
@@ -333,7 +333,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
 
         # Use pandas scatter plot example
         pdf1 = pd.DataFrame(np.random.rand(50, 4), columns=['a', 'b', 'c', 'd'])
-        kdf1 = koalas.from_pandas(pdf1)
+        kdf1 = ks.from_pandas(pdf1)
         check_scatter_plot(pdf1, kdf1, x='a', y='b', c='c')
 
         # multi-index columns
@@ -434,7 +434,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
     def test_topn_max_rows(self):
 
         pdf = pd.DataFrame(np.random.rand(2500, 4), columns=['a', 'b', 'c', 'd'])
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         data = TopNPlot().get_top_n(kdf)
         self.assertEqual(len(data), 2000)
@@ -443,7 +443,7 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         set_option('plotting.sample_ratio', 0.5)
         try:
             pdf = pd.DataFrame(np.random.rand(2500, 4), columns=['a', 'b', 'c', 'd'])
-            kdf = koalas.from_pandas(pdf)
+            kdf = ks.from_pandas(pdf)
             data = SampledPlot().get_sampled(kdf)
             self.assertEqual(round(len(data) / 2500, 1), 0.5)
         finally:
@@ -452,6 +452,6 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
     def test_sampled_plot_with_max_rows(self):
         # 'plotting.max_rows' is 2000
         pdf = pd.DataFrame(np.random.rand(2000, 4), columns=['a', 'b', 'c', 'd'])
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         data = SampledPlot().get_sampled(kdf)
         self.assertEqual(round(len(data) / 2000, 1), 1)
