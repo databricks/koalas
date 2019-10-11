@@ -48,7 +48,7 @@ from pyspark.sql.window import Window
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame
-from databricks.koalas.internal import _InternalFrame, IndexMap
+from databricks.koalas.internal import _InternalFrame, IndexMap, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, scol_for
@@ -1689,10 +1689,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |{"a":["y3","z3"]}|                a|               x2|    2|
         # |{"a":["y3","z3"]}|                b|               x3|    1|
         # +-----------------+-----------------+-----------------+-----+
-        internal_index_column = "__index_level_{}__".format
         pairs = F.explode(F.array(*[
             F.struct(
-                [F.lit(col).alias(internal_index_column(i)) for i, col in enumerate(idx)] +
+                [F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i)) for i, col in enumerate(idx)] +
                 [self[idx]._scol.alias("value")]
             ) for idx in self._internal.column_index]))
 
@@ -1705,7 +1704,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # After that, executes pivot with key and its index column.
         # Note that index column should contain unique values since column names
         # should be unique.
-        internal_index_columns = [internal_index_column(i)
+        internal_index_columns = [SPARK_INDEX_NAME_FORMAT(i)
                                   for i in range(self._internal.column_index_level)]
         pivoted_df = exploded_df.groupBy(internal_index_columns).pivot('index')
 
@@ -1905,6 +1904,114 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         result = self[item]
         self._internal = self.drop(item)._internal
+
+        return result
+
+    # TODO: add axis parameter can work when '1' or 'columns'
+    def xs(self, key, axis=0, level=None):
+        """
+        Return cross-section from the DataFrame.
+
+        This method takes a `key` argument to select data at a particular
+        level of a MultiIndex.
+
+        Parameters
+        ----------
+        key : label or tuple of label
+            Label contained in the index, or partially in a MultiIndex.
+        axis : 0 or 'index', default 0
+            Axis to retrieve cross-section on.
+            currently only support 0 or 'index'
+        level : object, defaults to first n levels (n=1 or len(key))
+            In case of a key partially contained in a MultiIndex, indicate
+            which levels are used. Levels can be referred by label or position.
+
+        Returns
+        -------
+        DataFrame
+            Cross-section from the original DataFrame
+            corresponding to the selected index levels.
+
+        See Also
+        --------
+        DataFrame.loc : Access a group of rows and columns
+            by label(s) or a boolean array.
+        DataFrame.iloc : Purely integer-location based indexing
+            for selection by position.
+
+        Examples
+        --------
+        >>> d = {'num_legs': [4, 4, 2, 2],
+        ...      'num_wings': [0, 0, 2, 2],
+        ...      'class': ['mammal', 'mammal', 'mammal', 'bird'],
+        ...      'animal': ['cat', 'dog', 'bat', 'penguin'],
+        ...      'locomotion': ['walks', 'walks', 'flies', 'walks']}
+        >>> df = ks.DataFrame(data=d)
+        >>> df = df.set_index(['class', 'animal', 'locomotion'])
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
+                                   num_legs  num_wings
+        class  animal  locomotion
+        mammal cat     walks              4          0
+               dog     walks              4          0
+               bat     flies              2          2
+        bird   penguin walks              2          2
+
+        Get values at specified index
+
+        >>> df.xs('mammal')  # doctest: +NORMALIZE_WHITESPACE
+                           num_legs  num_wings
+        animal locomotion
+        cat    walks              4          0
+        dog    walks              4          0
+        bat    flies              2          2
+
+        Get values at several indexes
+
+        >>> df.xs(('mammal', 'dog'))  # doctest: +NORMALIZE_WHITESPACE
+                    num_legs  num_wings
+        locomotion
+        walks              4          0
+
+        Get values at specified index and level
+
+        >>> df.xs('cat', level=1)  # doctest: +NORMALIZE_WHITESPACE
+                           num_legs  num_wings
+        class  locomotion
+        mammal walks              4          0
+        """
+        from databricks.koalas.series import _col
+        if not isinstance(key, (str, tuple)):
+            raise ValueError("'key' should be string or tuple that contains strings")
+        if not all(isinstance(index, str) for index in key):
+            raise ValueError("'key' should have index names as only strings "
+                             "or a tuple that contain index names as only strings")
+
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
+        if isinstance(key, str):
+            key = (key,)
+        if len(key) > len(self._internal.index_scols):
+            raise KeyError("Key length ({}) exceeds index depth ({})"
+                           .format(len(key), len(self._internal.index_scols)))
+        if level is None:
+            level = 0
+
+        scols = self._internal.scols[:level] + self._internal.scols[level+len(key):]
+        rows = [self._internal.scols[lvl] == index
+                for lvl, index in enumerate(key, level)]
+
+        sdf = self._sdf.select(scols) \
+                       .where(reduce(lambda x, y: x & y, rows))
+
+        if len(key) == len(self._internal.index_scols):
+            result = _col(DataFrame(_InternalFrame(sdf=sdf)).T)
+            result.name = key
+        else:
+            internal = self._internal.copy(
+                sdf=sdf,
+                index_map=self._internal.index_map[:level] +
+                self._internal.index_map[level+len(key):])
+            result = DataFrame(internal)
 
         return result
 
@@ -2248,7 +2355,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 index_column, index_name = info
                 new_index_map.append(
                     (index_column,
-                     index_name if index_name is not None else rename(index_name)))
+                     index_name if index_name is not None else rename(i)))
                 index_map.remove(info)
 
         new_data_scols = [
@@ -2264,7 +2371,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # Now, new internal Spark columns are named as same as index name.
             new_index_map = [(column, name) for column, name in new_index_map]
 
-            index_map = [('__index_level_0__', None)]
+            index_map = [(SPARK_INDEX_NAME_FORMAT(0), None)]
             sdf = _InternalFrame.attach_default_index(sdf)
 
         if drop:
@@ -2717,7 +2824,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf
         if column == index_column:
-            index_column = '__index_level_0__'
+            index_column = SPARK_INDEX_NAME_FORMAT(0)
             sdf = sdf.select([self._internal.index_scols[0].alias(index_column)]
                              + self._internal.data_scols)
 
@@ -2742,7 +2849,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                              index_map=[(index_column,
                                                          self._internal.index_names[0])])))
 
-    def to_koalas(self, index_col=None):
+    def to_koalas(self, index_col: Optional[Union[str, List[str]]] = None):
         """
         Converts the existing DataFrame into a Koalas DataFrame.
 
@@ -3064,18 +3171,113 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self.to_spark().write.save(
             path=path, format=format, mode=mode, partitionBy=partition_cols, options=options)
 
-    def to_spark(self):
+    def to_spark(self, index_col: Optional[Union[str, List[str]]] = None):
         """
         Return the current DataFrame as a Spark DataFrame.
 
-        .. note:: Index information is lost. So, if the index columns are not present in
-            actual columns, they are lost.
+        Parameters
+        ----------
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
 
         See Also
         --------
         DataFrame.to_koalas
+
+        Examples
+        --------
+        By default, this method loses the index as below.
+
+        >>> df = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
+        >>> df.to_spark().show()  # doctest: +NORMALIZE_WHITESPACE
+        +---+---+---+
+        |  a|  b|  c|
+        +---+---+---+
+        |  1|  4|  7|
+        |  2|  5|  8|
+        |  3|  6|  9|
+        +---+---+---+
+
+        If `index_col` is set, it keeps the index column as specified.
+
+        >>> df.to_spark(index_col="index").show()  # doctest: +NORMALIZE_WHITESPACE
+        +-----+---+---+---+
+        |index|  a|  b|  c|
+        +-----+---+---+---+
+        |    0|  1|  4|  7|
+        |    1|  2|  5|  8|
+        |    2|  3|  6|  9|
+        +-----+---+---+---+
+
+        Keeping index column is useful when you want to call some Spark APIs and
+        convert it back to Koalas DataFrame without creating a default index, which
+        can affect performance.
+
+        >>> spark_df = df.to_spark(index_col="index")
+        >>> spark_df = spark_df.filter("a == 2")
+        >>> spark_df.to_koalas(index_col="index")  # doctest: +NORMALIZE_WHITESPACE
+               a  b  c
+        index
+        1      2  5  8
+
+        In case of multi-index, specify a list to `index_col`.
+
+        >>> new_df = df.set_index("a", append=True)
+        >>> new_spark_df = new_df.to_spark(index_col=["index_1", "index_2"])
+        >>> new_spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
+        +-------+-------+---+---+
+        |index_1|index_2|  b|  c|
+        +-------+-------+---+---+
+        |      0|      1|  4|  7|
+        |      1|      2|  5|  8|
+        |      2|      3|  6|  9|
+        +-------+-------+---+---+
+
+        Likewise, can be converted to back to Koalas DataFrame.
+
+        >>> new_spark_df.to_koalas(
+        ...     index_col=["index_1", "index_2"])  # doctest: +NORMALIZE_WHITESPACE
+                         b  c
+        index_1 index_2
+        0       1        4  7
+        1       2        5  8
+        2       3        6  9
         """
-        return self._internal.spark_df
+        if index_col is None:
+            return self._internal.spark_df
+        else:
+            if isinstance(index_col, str):
+                index_col = [index_col]
+
+            data_column_names = []
+            data_columns = []
+            data_columns_column_index = \
+                zip(self._internal._data_columns, self._internal.column_index)
+            # TODO: this code is similar with _InternalFrame.spark_df. Might have to deduplicate.
+            for i, (column, idx) in enumerate(data_columns_column_index):
+                scol = self._internal.scol_for(idx)
+                name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+                data_column_names.append(name)
+                if column != name:
+                    scol = scol.alias(name)
+                data_columns.append(scol)
+
+            old_index_scols = self._internal.index_scols
+
+            if len(index_col) != len(old_index_scols):
+                raise ValueError(
+                    "length of index columns is %s; however, the length of the given "
+                    "'index_col' is %s." % (len(old_index_scols), len(index_col)))
+
+            if any(col in data_column_names for col in index_col):
+                raise ValueError(
+                    "'index_col' cannot be overlapped with other columns.")
+
+            sdf = self._internal.spark_internal_df
+            new_index_scols = [
+                index_scol.alias(col) for index_scol, col in zip(old_index_scols, index_col)]
+            return sdf.select(new_index_scols + data_columns)
 
     def to_pandas(self):
         """
@@ -3983,7 +4185,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._internal.copy(sdf=self._sdf.limit(n)))
 
-    # TODO: support multi-index columns
     def pivot_table(self, values=None, index=None, columns=None,
                     aggfunc='mean', fill_value=None):
         """
@@ -4065,9 +4266,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         We can also calculate multiple types of aggregations for any given
         value column.
 
-        >>> table = df.pivot_table(values = ['D'], index =['C'],
-        ...                        columns="A", aggfunc={'D':'mean'})
+        >>> table = df.pivot_table(values=['D'], index =['C'],
+        ...                        columns="A", aggfunc={'D': 'mean'})
         >>> table  # doctest: +NORMALIZE_WHITESPACE
+                 D
         A      bar       foo
         C
         small  5.5  2.333333
@@ -4083,17 +4285,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         C
         small  5.5  2.333333  17  13
         large  5.5  2.000000  15   9
-
         """
-        if not isinstance(columns, str):
-            raise ValueError("columns should be string.")
+        if not isinstance(columns, (str, tuple)):
+            raise ValueError("columns should be string or tuple.")
 
-        if not isinstance(values, str) and not isinstance(values, list):
+        if not isinstance(values, (str, tuple)) and not isinstance(values, list):
             raise ValueError('values should be string or list of one column.')
 
-        if not isinstance(aggfunc, str) and (not isinstance(aggfunc, dict) or not all(
-                isinstance(key, str) and isinstance(value, str) for key, value in aggfunc.items())):
-            raise ValueError("aggfunc must be a dict mapping from column name (string) "
+        if not isinstance(aggfunc, str) and \
+                (not isinstance(aggfunc, dict) or
+                 not all(isinstance(key, (str, tuple)) and isinstance(value, str)
+                         for key, value in aggfunc.items())):
+            raise ValueError("aggfunc must be a dict mapping from column name (string or tuple) "
                              "to aggregate functions (string).")
 
         if isinstance(aggfunc, dict) and index is None:
@@ -4102,34 +4305,46 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(values, list) and index is None:
             raise NotImplementedError("values can't be a list without index.")
 
-        if isinstance(values, list) and len(values) > 2:
-            raise NotImplementedError("values more than two is not supported yet!")
-
-        if columns not in self.columns.values:
+        if columns not in self.columns:
             raise ValueError("Wrong columns {}.".format(columns))
 
         if isinstance(values, list):
+            values = [col if isinstance(col, tuple) else (col,) for col in values]
             if not all(isinstance(self._internal.spark_type_for(col), NumericType)
                        for col in values):
                 raise TypeError('values should be a numeric type.')
-        elif not isinstance(self._internal.spark_type_for(values), NumericType):
-            raise TypeError('values should be a numeric type.')
+        else:
+            values = values if isinstance(values, tuple) else (values,)
+            if not isinstance(self._internal.spark_type_for(values), NumericType):
+                raise TypeError('values should be a numeric type.')
 
         if isinstance(aggfunc, str):
-            agg_cols = [F.expr('{1}(`{0}`) as `{0}`'.format(values, aggfunc))]
+            if isinstance(values, list):
+                agg_cols = [F.expr('{1}(`{0}`) as `{0}`'
+                                   .format(self._internal.column_name_for(value), aggfunc))
+                            for value in values]
+            else:
+                agg_cols = [F.expr('{1}(`{0}`) as `{0}`'
+                                   .format(self._internal.column_name_for(values), aggfunc))]
         elif isinstance(aggfunc, dict):
-            agg_cols = [F.expr('{1}(`{0}`) as `{0}`'.format(key, value))
+            aggfunc = {key if isinstance(key, tuple) else (key,): value
+                       for key, value in aggfunc.items()}
+            agg_cols = [F.expr('{1}(`{0}`) as `{0}`'
+                               .format(self._internal.column_name_for(key), value))
                         for key, value in aggfunc.items()]
-            agg_columns = [key for key, value in aggfunc.items()]
+            agg_columns = [key for key, _ in aggfunc.items()]
 
             if set(agg_columns) != set(values):
                 raise ValueError("Columns in aggfunc must be the same as values.")
 
         if index is None:
-            sdf = self._sdf.groupBy().pivot(pivot_col=columns).agg(*agg_cols)
+            sdf = self._sdf.groupBy() \
+                .pivot(pivot_col=self._internal.column_name_for(columns)).agg(*agg_cols)
 
         elif isinstance(index, list):
-            sdf = self._sdf.groupBy(index).pivot(pivot_col=columns).agg(*agg_cols)
+            index = [idx if isinstance(idx, tuple) else (idx,) for idx in index]
+            sdf = self._sdf.groupBy([self._internal.scol_for(idx) for idx in index]) \
+                .pivot(pivot_col=self._internal.column_name_for(columns)).agg(*agg_cols)
         else:
             raise ValueError("index should be a None or a list of columns.")
 
@@ -4138,9 +4353,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if index is not None:
             if isinstance(values, list):
-                data_columns = [column for column in sdf.columns if column not in index]
+                index_columns = [self._internal.column_name_for(idx) for idx in index]
+                data_columns = [column for column in sdf.columns if column not in index_columns]
 
-                if len(values) == 2:
+                if len(values) > 1:
                     # If we have two values, Spark will return column's name
                     # in this format: column_values, where column contains
                     # their values in the DataFrame and values is
@@ -4150,39 +4366,57 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
                     # We sort the columns of Spark DataFrame by values.
                     data_columns.sort(key=lambda x: x.split('_', 1)[1])
-                    sdf = sdf.select(index + data_columns)
+                    sdf = sdf.select(index_columns + data_columns)
 
-                    index_map = [(column, (column,)) for column in index]
-                    internal = _InternalFrame(sdf=sdf, data_columns=data_columns,
-                                              index_map=index_map)
+                    column_name_to_index = dict(zip(self._internal.data_columns,
+                                                    self._internal.column_index))
+                    column_index = [tuple(list(column_name_to_index[name.split('_')[1]])
+                                          + [name.split('_')[0]])
+                                    for name in data_columns]
+                    index_map = list(zip(index_columns, index))
+                    column_index_names = (([None] * column_index_level(values))
+                                          + [str(columns) if len(columns) > 1 else columns[0]])
+                    internal = _InternalFrame(sdf=sdf,
+                                              index_map=index_map,
+                                              data_columns=data_columns,
+                                              column_index=column_index,
+                                              column_index_names=column_index_names)
                     kdf = DataFrame(internal)
-
-                    # We build the MultiIndex from the list of columns returned by Spark.
-                    tuples = [(name.split('_')[1], self.dtypes[columns].type(name.split('_')[0]))
-                              for name in kdf._internal.data_columns]
-                    kdf.columns = pd.MultiIndex.from_tuples(tuples, names=[None, columns])
                 else:
-                    index_map = [(column, (column,)) for column in index]
-                    internal = _InternalFrame(sdf=sdf, data_columns=data_columns,
-                                              index_map=index_map, column_index_names=[columns])
+                    column_index = [tuple(list(values[0]) + [column]) for column in data_columns]
+                    index_map = list(zip(index_columns, index))
+                    column_index_names = (([None] * len(values[0]))
+                                          + [str(columns) if len(columns) > 1 else columns[0]])
+                    internal = _InternalFrame(sdf=sdf,
+                                              index_map=index_map,
+                                              data_columns=data_columns,
+                                              column_index=column_index,
+                                              column_index_names=column_index_names)
                     kdf = DataFrame(internal)
                 return kdf
             else:
-                data_columns = [column for column in sdf.columns if column not in index]
-                index_map = [(column, (column,)) for column in index]
-                internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map,
-                                          column_index_names=[columns])
+                index_columns = [self._internal.column_name_for(idx) for idx in index]
+                index_map = list(zip(index_columns, index))
+                data_columns = [column for column in sdf.columns if column not in index_columns]
+                column_index_names = [str(columns) if len(columns) > 1 else columns[0]]
+                internal = _InternalFrame(sdf=sdf,
+                                          index_map=index_map, data_columns=data_columns,
+                                          column_index_names=column_index_names)
                 return DataFrame(internal)
         else:
             if isinstance(values, list):
                 index_values = values[-1]
             else:
                 index_values = values
-            sdf = sdf.withColumn(columns, F.lit(index_values))
-            data_columns = [column for column in sdf.columns if column not in [columns]]
-            index_map = [(column, (column,)) for column in [columns]]
-            internal = _InternalFrame(sdf=sdf, data_columns=data_columns, index_map=index_map,
-                                      column_index_names=[columns])
+            index_map = []
+            for i, index_value in enumerate(index_values):
+                colname = SPARK_INDEX_NAME_FORMAT(i)
+                sdf = sdf.withColumn(colname, F.lit(index_value))
+                index_map.append((colname, None))
+            column_index_names = [str(columns) if len(columns) > 1 else columns[0]]
+            internal = _InternalFrame(sdf=sdf,
+                                      index_map=index_map,
+                                      column_index_names=column_index_names)
             return DataFrame(internal)
 
     def pivot(self, index=None, columns=None, values=None):
@@ -4238,8 +4472,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         one  1  2  3
         two  4  5  6
 
-        >>> df.pivot(columns='bar', values='baz').sort_index()
-        ... # doctest: +NORMALIZE_WHITESPACE
+        >>> df.pivot(columns='bar', values='baz').sort_index()  # doctest: +NORMALIZE_WHITESPACE
         bar  A    B    C
         0  1.0  NaN  NaN
         1  NaN  2.0  NaN
@@ -4278,11 +4511,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         should_use_existing_index = index is not None
         if should_use_existing_index:
+            df = self
             index = [index]
         else:
-            index = self._internal.index_columns
+            df = self.copy()
+            df['__DUMMY__'] = F.monotonically_increasing_id()
+            df.set_index('__DUMMY__', append=True, inplace=True)
+            df.reset_index(level=range(len(df._internal.index_map) - 1), inplace=True)
+            index = df._internal.column_index[:len(df._internal.index_map)]
 
-        df = self.pivot_table(
+        df = df.pivot_table(
             index=index, columns=columns, values=values, aggfunc='first')
 
         if should_use_existing_index:
@@ -5178,7 +5416,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return len(self), len(self.columns)
 
-    # TODO: support multi-index columns
     def merge(self, right: 'DataFrame', how: str = 'inner',
               on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
               left_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
@@ -6617,12 +6854,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # TODO: there is a similar logic to transpose in, for instance,
         #  DataFrame.any, Series.quantile. Maybe we should deduplicate it.
         sdf = self._sdf
-        internal_index_column = "__index_level_{}__".format
         value_column = "value"
         cols = []
         for idx, applied_col in zip(column_index, applied):
             cols.append(F.struct(
-                [F.lit(col).alias(internal_index_column(i)) for i, col in enumerate(idx)] +
+                [F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i)) for i, col in enumerate(idx)] +
                 [applied_col.alias(value_column)]))
 
         sdf = sdf.select(
@@ -6636,7 +6872,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.copy(
             sdf=sdf,
             data_columns=[value_column],
-            index_map=[(internal_index_column(i), index_column_name(i))
+            index_map=[(SPARK_INDEX_NAME_FORMAT(i), index_column_name(i))
                        for i in range(self._internal.column_index_level)],
             column_index=None,
             column_index_names=None)
@@ -6701,12 +6937,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # TODO: there is a similar logic to transpose in, for instance,
         #  DataFrame.all, Series.quantile. Maybe we should deduplicate it.
         sdf = self._sdf
-        internal_index_column = "__index_level_{}__".format
         value_column = "value"
         cols = []
         for idx, applied_col in zip(column_index, applied):
             cols.append(F.struct(
-                [F.lit(col).alias(internal_index_column(i)) for i, col in enumerate(idx)] +
+                [F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i)) for i, col in enumerate(idx)] +
                 [applied_col.alias(value_column)]))
 
         sdf = sdf.select(
@@ -6720,7 +6955,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.copy(
             sdf=sdf,
             data_columns=[value_column],
-            index_map=[(internal_index_column(i), index_column_name(i))
+            index_map=[(SPARK_INDEX_NAME_FORMAT(i), index_column_name(i))
                        for i in range(self._internal.column_index_level)],
             column_index=None,
             column_index_names=None)

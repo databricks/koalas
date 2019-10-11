@@ -694,3 +694,36 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(KeyError, msg):
             kser.drop(('lama', 'speed', 'x'))
         self.assert_eq(kser.drop(('lama', 'speed', 'x'), level=1), kser)
+
+    def test_replace(self):
+        pser = pd.Series([10, 20, 15, 30, 45], name='x')
+        kser = koalas.Series(pser)
+
+        self.assert_eq(kser.replace(), pser.replace())
+        self.assert_eq(kser.replace({}), pser.replace({}))
+
+        msg = "'to_replace' should be one of str, list, dict, int, float"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.replace(koalas.range(5))
+        msg = "Replacement lists must match in length. Expecting 3 got 2"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.replace([10, 20, 30], [1, 2])
+        msg = "replace currently not support for regex"
+        with self.assertRaisesRegex(NotImplementedError, msg):
+            kser.replace(r'^1.$', regex=True)
+
+    def test_duplicates(self):
+        # test on texts
+        pser = pd.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],
+                         name='animal')
+        kser = koalas.Series(pser)
+
+        self.assert_eq(pser.drop_duplicates().sort_values(),
+                       kser.drop_duplicates().sort_values())
+
+        # test on numbers
+        pser = pd.Series([1, 1, 2, 4, 3])
+        kser = koalas.Series(pser)
+
+        self.assert_eq(pser.drop_duplicates().sort_values(),
+                       kser.drop_duplicates().sort_values())

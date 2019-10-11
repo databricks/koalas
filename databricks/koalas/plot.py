@@ -746,7 +746,7 @@ def plot_series(data, kind='line', ax=None,                    # Series unique
     mark_right : boolean, default True
         When using a secondary_y axis, automatically mark the column
         labels with "(right)" in the legend
-    `**kwds` : keywords
+    **kwds : keywords
         Options to pass to matplotlib plotting method
 
     Returns
@@ -875,7 +875,7 @@ def plot_frame(data, x=None, y=None, kind='line', ax=None,
         labels with "(right)" in the legend
     sort_columns: bool, default is False
         When True, will sort values on plots.
-    `**kwds` : keywords
+    **kwds : keywords
         Options to pass to matplotlib plotting method
 
     Returns
@@ -1011,7 +1011,7 @@ class KoalasSeriesPlotMethods(PandasObject):
 
         Parameters
         ----------
-        `**kwds` : optional
+        **kwds : optional
             Additional keyword arguments are documented in
             :meth:`Koalas.Series.plot`.
 
@@ -1074,11 +1074,11 @@ class KoalasSeriesPlotMethods(PandasObject):
 
         Parameters
         ----------
-        `**kwds` : optional
+        **kwds : optional
             Additional keyword arguments are documented in
             :meth:`Koalas.Series.plot`.
 
-        `precision`: scalar, default = 0.01
+        precision: scalar, default = 0.01
             This argument is used by Koalas to compute approximate statistics
             for building a boxplot. Use *smaller* values to get more precise
             statistics.
@@ -1121,7 +1121,7 @@ class KoalasSeriesPlotMethods(PandasObject):
         ----------
         bins : integer, default 10
             Number of histogram bins to be used
-        `**kwds` : optional
+        **kwds : optional
             Additional keyword arguments are documented in
             :meth:`Koalas.Series.plot`.
 
@@ -1511,7 +1511,7 @@ class KoalasFramePlotMethods(PandasObject):
         y : label or position, optional
             Allows plotting of one column versus another.
             If not specified, all numerical columns are used.
-        `**kwds` : optional
+        **kwds : optional
             Additional keyword arguments are documented in
             :meth:`Koalas.DataFrame.plot`.
 
