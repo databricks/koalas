@@ -524,6 +524,14 @@ class IndexingTest(ReusedSQLTestCase):
         with self.assertRaisesRegex(ValueError,
                                     'Only a dataframe with one column can be assigned'):
             kdf.loc[:, 'max_speed'] = kdf
+        with self.assertRaisesRegex(ValueError,
+                                    'only column names or list of column names can be assigned'):
+            kdf.loc[['viper'], ('max_speed', 'shield')] = 10
+        msg = """Can only assign value to the whole dataframe, the row index
+        has to be `slice(None)` or `:`"""
+        msg = ("Can only assign value to the whole dataframe, the row index")
+        with self.assertRaisesRegex(SparkPandasNotImplementedError, msg):
+            kdf.loc['viper', 'max_speed'] = 10
 
         pdf = pd.DataFrame([[1], [4], [7]],
                            index=['cobra', 'viper', 'sidewinder'],

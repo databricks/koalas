@@ -507,13 +507,19 @@ class LocIndexer(object):
                 if isinstance(cols_sel, str):
                     cols_sel = [cols_sel]
                 kdf = self._kdf
-                sdf = kdf._sdf
                 for col_sel in cols_sel:
-                    sdf = sdf.withColumn(
-                        col_sel,
-                        (F.when(F.col(kdf._internal.index_columns[0]).isin(rows_sel), value)
-                            .otherwise(F.col(col_sel))))
-                self._kdf._internal = self._kdf._internal.copy(sdf=sdf)
+                    # Uses `kdf` to allow operations on different DataFrames.
+                    # TODO: avoid temp column name or declare `__` prefix is
+                    #  reserved for Koalas' internal columns.
+                    kdf["__indexing_temp_col__"] = value
+                    new_col = kdf["__indexing_temp_col__"]._scol
+                    kdf[col_sel] = Series(kdf[col_sel]._internal.copy(
+                        scol=F.when(
+                            kdf._internal.index_scols[0].isin(rows_sel), new_col
+                        ).otherwise(kdf[col_sel]._scol)), anchor=kdf)
+                    kdf = kdf.drop(labels=['__indexing_temp_col__'])
+
+                self._kdf._internal = kdf._internal.copy()
             else:
                 raise SparkPandasNotImplementedError(
                     description="""Can only assign value to the whole dataframe, the row index
