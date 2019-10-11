@@ -3,8 +3,6 @@ Options and settings
 ====================
 .. currentmodule:: databricks.koalas
 
-Overview
---------
 Koalas has an options system that lets you customize some aspects of its behaviour,
 display-related options being those the user is most likely to adjust.
 
