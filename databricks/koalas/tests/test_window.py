@@ -16,7 +16,7 @@
 
 import inspect
 
-from databricks import koalas
+from databricks import koalas as ks
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.window import _MissingPandasLikeExpanding, \
     _MissingPandasLikeRolling, _MissingPandasLikeExpandingGroupby, \
@@ -26,7 +26,7 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 class ExpandingRollingTests(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
-        kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
+        kdf = ks.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 
         # Expanding functions
         missing_functions = inspect.getmembers(_MissingPandasLikeExpanding,
@@ -138,7 +138,7 @@ class ExpandingRollingTests(ReusedSQLTestCase, TestUtils):
                 getattr(kdf.a.rolling(1), name)()  # Series
 
     def test_missing_groupby(self):
-        kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
+        kdf = ks.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 
         # Expanding functions
         missing_functions = inspect.getmembers(_MissingPandasLikeExpandingGroupby,

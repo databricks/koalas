@@ -19,7 +19,7 @@ import inspect
 from distutils.version import LooseVersion
 import pandas as pd
 
-from databricks import koalas
+from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
@@ -36,7 +36,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'c': [4, 2, 7, 3, None, 1, 1, 1, 2],
                             'd': list('abcdefght')},
                            index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         for as_index in [True, False]:
             self.assert_eq(kdf.groupby('a', as_index=as_index).sum(),
@@ -74,7 +74,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             ('y', 'c'): [4, 2, 7, 3, None, 1, 1, 1, 2],
                             ('z', 'd'): list('abcdefght')},
                            index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby(('x', 'a')).sum(),
                        pdf.groupby(('x', 'a')).sum())
@@ -91,7 +91,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'c': [4, 2, 7, 3, None, 1, 1, 1, 2],
                             'd': list('abcdefght')},
                            index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         funcs = [(False, ['sum', 'min', 'max', 'count', 'mean', 'first', 'last']),
                  (True, ['var', 'std'])]
@@ -121,7 +121,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2],
                             'B': [1, 2, 3, 4],
                             'C': [0.362, 0.227, 1.267, -0.562]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         for as_index in [True, False]:
             self.assert_eq(kdf.groupby('A', as_index=as_index).agg({'B': 'min', 'C': 'sum'}),
@@ -159,7 +159,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'height': [9.1, 6.0, 9.5, 34.0],
                             'weight': [7.9, 7.5, 9.9, 198.0]}
                            )
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         agg_funcs = ['max', 'min', ['min', 'max']]
         for aggfunc in agg_funcs:
@@ -174,7 +174,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2],
                             'B': [1, 2, 3, 4],
                             'C': [0.362, 0.227, 1.267, -0.562]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
         pdf.columns = columns
@@ -191,7 +191,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({"group": ['a', 'a', 'b', 'b'],
                             "A": [0, 1, 2, 3],
                             "B": [5, 6, 7, 8]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         # different agg column, same function
         agg_pdf = pdf.groupby("group").agg(a_max=("A", "max"), b_max=("B", "max")).sort_index()
@@ -206,7 +206,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
                             'B': [True, True, True, False, False, False, None, True, None, False]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         for as_index in [True, False]:
             self.assert_eq(kdf.groupby('A', as_index=as_index).all(),
@@ -234,9 +234,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                            pdf.groupby(('X', 'A'), as_index=as_index).any())
 
     def test_raises(self):
-        kdf = koalas.DataFrame({'a': [1, 2, 6, 4, 4, 6, 4, 3, 7],
-                                'b': [4, 2, 7, 3, 3, 1, 1, 1, 2]},
-                               index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
+        kdf = ks.DataFrame({'a': [1, 2, 6, 4, 4, 6, 4, 3, 7],
+                            'b': [4, 2, 7, 3, 3, 1, 1, 1, 2]},
+                           index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
         # test raises with incorrect key
         self.assertRaises(ValueError, lambda: kdf.groupby([]))
         self.assertRaises(KeyError, lambda: kdf.groupby('x'))
@@ -248,7 +248,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
     def test_nunique(self):
         pdf = pd.DataFrame({'a': [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
                             'b': [2, 2, 2, 3, 3, 4, 4, 5, 5, 5]})
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.groupby("a").agg({"b": "nunique"}),
                        pdf.groupby("a").agg({"b": "nunique"}))
         self.assert_eq(kdf.groupby("a").nunique(),
@@ -277,7 +277,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
     def test_value_counts(self):
         pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
                             'B': [1, 1, 2, 3, 3, 3]}, columns=['A', 'B'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(repr(kdf.groupby("A")['B'].value_counts().sort_index()),
                        repr(pdf.groupby("A")['B'].value_counts().sort_index()))
         self.assert_eq(repr(kdf.groupby("A")['B']
@@ -292,7 +292,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
     def test_size(self):
         pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],
                             'B': [1, 1, 2, 3, 3, 3]})
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.groupby("A").size().sort_index(),
                        pdf.groupby("A").size().sort_index())
         self.assert_eq(kdf.groupby("A")['B'].size().sort_index(),
@@ -314,7 +314,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
                             'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.groupby("b").diff().sort_index(),
                        pdf.groupby("b").diff().sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).diff().sort_index(),
@@ -338,7 +338,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
                             'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.groupby("b").rank().sort_index(),
                        pdf.groupby("b").rank().sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).rank().sort_index(),
@@ -362,7 +362,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
                             'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.groupby("b").cummin().sort_index(),
                        pdf.groupby("b").cummin().sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).cummin().sort_index(),
@@ -386,7 +386,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
                             'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.groupby("b").cummax().sort_index(),
                        pdf.groupby("b").cummax().sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).cummax().sort_index(),
@@ -410,7 +410,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
                             'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.groupby("b").cumsum().sort_index(),
                        pdf.groupby("b").cumsum().sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).cumsum().sort_index(),
@@ -434,7 +434,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
                             'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.groupby("b").cumprod().sort_index(),
                        pdf.groupby("b").cumprod().sort_index(), almost=True)
         self.assert_eq(kdf.groupby(['a', 'b']).cumprod().sort_index(),
@@ -459,7 +459,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'b': [1, 2, 2, 2, 3, 3, 3, 4, 4],
                             'c': [1, 2, 2, 2, 3, 3, 3, 4, 4],
                             'd': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b', 'c', 'd'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(repr(kdf.groupby(['a'])['b'].nsmallest(1).sort_values()),
                        repr(pdf.groupby(['a'])['b'].nsmallest(1).sort_values()))
         self.assert_eq(repr(kdf.groupby(['a'])['b'].nsmallest(2).sort_index()),
@@ -472,7 +472,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'b': [1, 2, 2, 2, 3, 3, 3, 4, 4],
                             'c': [1, 2, 2, 2, 3, 3, 3, 4, 4],
                             'd': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b', 'c', 'd'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(repr(kdf.groupby(['a'])['b'].nlargest(1).sort_values()),
                        repr(pdf.groupby(['a'])['b'].nlargest(1).sort_values()))
         self.assert_eq(repr(kdf.groupby(['a'])['b'].nlargest(2).sort_index()),
@@ -485,7 +485,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'B': [2, 4, None, 3],
                             'C': [None, None, None, 1],
                             'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'], index=[0, 1, 2, 3])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby("A").fillna(0),
                        pdf.groupby("A").fillna(0))
@@ -511,7 +511,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'B': [2, 4, None, 3],
                             'C': [None, None, None, 1],
                             'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'], index=[0, 1, 2, 3])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
 
         if LooseVersion(pd.__version__) <= LooseVersion("0.24.2"):
             self.assert_eq(kdf.groupby("A").ffill(),
@@ -539,7 +539,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'B': [2, 4, None, 3],
                             'C': [None, None, None, 1],
                             'D': [0, 1, 5, 4]}, columns=['A', 'B', 'C', 'D'], index=[0, 1, 2, 3])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         if LooseVersion(pd.__version__) <= LooseVersion("0.24.2"):
             self.assert_eq(kdf.groupby("A").bfill(),
                            pdf.groupby("A").bfill().drop('A', 1))
@@ -566,7 +566,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3, 3],
                             'b': [1, 1, 2, 2, 3, 4],
                             'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby('a').shift().sort_index(),
                        pdf.groupby('a').shift().sort_index())
@@ -598,7 +598,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
                             'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.groupby("b").apply(lambda x: x + 1).sort_index(),
                        pdf.groupby("b").apply(lambda x: x + 1).sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index(),
@@ -624,7 +624,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             "timestamp": [0.0, 0.5, 1.0, 0.0, 0.5],
             "car_id": ['A', 'A', 'A', 'B', 'B']
         })
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
             kdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index(),
@@ -641,7 +641,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             "timestamp": [0.0, 0.5, 1.0, 0.0, 0.5] * 300,
             "car_id": ['A', 'A', 'A', 'B', 'B'] * 300
         })
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
             kdf.groupby('car_id').apply(lambda _: pd.DataFrame({"column": [0.0]})).sort_index(),
@@ -657,7 +657,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
                             'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.groupby("b").transform(lambda x: x + 1).sort_index(),
                        pdf.groupby("b").transform(lambda x: x + 1).sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).transform(lambda x: x * x).sort_index(),
@@ -682,7 +682,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
                                 'b': [1, 1, 2, 3, 5, 8] * 300,
                                 'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
-            kdf = koalas.DataFrame(pdf)
+            kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf.groupby("b").transform(lambda x: x + 1).sort_index(),
                            pdf.groupby("b").transform(lambda x: x + 1).sort_index())
             self.assert_eq(kdf.groupby(['a', 'b']).transform(lambda x: x * x).sort_index(),
@@ -710,7 +710,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
                             'b': [1, 1, 2, 3, 5, 8],
                             'c': [1, 4, 9, 16, 25, 36]}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby("b").filter(lambda x: x.b.mean() < 4).sort_index(),
                        pdf.groupby("b").filter(lambda x: x.b.mean() < 4).sort_index())
@@ -738,7 +738,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3],
                             'b': [1, 2, 3, 4, 5],
                             'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(pdf.groupby(['a']).idxmax(),
                        kdf.groupby(['a']).idxmax().sort_index())
@@ -762,7 +762,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3],
                             'b': [1, 2, 3, 4, 5],
                             'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
-        kdf = koalas.DataFrame(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(pdf.groupby(['a']).idxmin(),
                        kdf.groupby(['a']).idxmin().sort_index())
@@ -783,7 +783,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        kdf.groupby(('x', 'a')).idxmin(skipna=False).sort_index())
 
     def test_missing(self):
-        kdf = koalas.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
+        kdf = ks.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 
         # DataFrameGroupBy functions
         missing_functions = inspect.getmembers(_MissingPandasLikeDataFrameGroupBy,
