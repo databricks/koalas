@@ -50,6 +50,7 @@ Indexing, iteration
    Series.at
    Series.loc
    Series.iloc
+   Series.xs
 
 Binary operator functions
 -------------------------
