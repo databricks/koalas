@@ -22,7 +22,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
-from databricks import koalas
+from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.plot import KoalasBoxPlot, KoalasHistPlot
@@ -50,11 +50,11 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
     @property
     def kdf1(self):
-        return koalas.from_pandas(self.pdf1)
+        return ks.from_pandas(self.pdf1)
 
     @property
     def kdf2(self):
-        return koalas.range(1002)
+        return ks.range(1002)
 
     @property
     def pdf2(self):
@@ -221,7 +221,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
             'signups': [5, 5, 6, 12, 14, 13],
             'visits': [20, 42, 28, 62, 81, 50],
         }, index=pd.date_range(start='2018/01/01', end='2018/07/01', freq='M'))
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         ax1 = pdf['sales'].plot("area", colormap='Paired')
         bin1 = self.plot_to_base64(ax1)
@@ -347,16 +347,16 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
     def test_empty_hist(self):
         pdf = self.pdf1.assign(categorical='A')
-        kdf = koalas.from_pandas(pdf)
-        ks = kdf['categorical']
+        kdf = ks.from_pandas(pdf)
+        kser = kdf['categorical']
 
         with self.assertRaisesRegex(TypeError,
                                     "Empty 'DataFrame': no numeric data to plot"):
-            ks.plot.hist()
+            kser.plot.hist()
 
     def test_single_value_hist(self):
         pdf = self.pdf1.assign(single=2)
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         _, ax1 = plt.subplots(1, 1)
         ax1 = pdf['single'].plot.hist()
