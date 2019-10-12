@@ -3312,7 +3312,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         (b, falcon, speed)      1.0
         Name: 0, dtype: float64
         """
-        from databricks.koalas.indexes import MultiIndex
         if not isinstance(item, (str, tuple)):
             raise ValueError("'key' should be string or tuple that contains strings")
         if isinstance(item, str):
