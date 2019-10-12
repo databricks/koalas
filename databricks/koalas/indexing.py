@@ -506,7 +506,7 @@ class LocIndexer(object):
             if isinstance(rows_sel, list):
                 if isinstance(cols_sel, str):
                     cols_sel = [cols_sel]
-                kdf = self._kdf
+                kdf = self._kdf.copy()
                 for col_sel in cols_sel:
                     # Uses `kdf` to allow operations on different DataFrames.
                     # TODO: avoid temp column name or declare `__` prefix is
