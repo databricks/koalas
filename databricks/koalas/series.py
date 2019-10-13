@@ -3497,8 +3497,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         if len(self._index_map) == len(key):
             # if sdf has one column and one data, return data only without frame
-            if sdf.select(self.name).limit(2).count() == 1:
-                return sdf.first()[self.name]
+            pdf = sdf.limit(2).toPandas()
+            length = len(pdf)
+            if length == 1:
+                return pdf[self.name].iloc[0]
 
         index_scols = [col for col in sdf.columns if col not in self._internal.data_columns]
         internal = self._internal.copy(
