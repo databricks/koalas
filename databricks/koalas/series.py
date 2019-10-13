@@ -3415,26 +3415,22 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Parameters
         ----------
-        cond : boolean Series/DataFrame, array-like, or callable
+        cond : boolean Series
             Where cond is True, keep the original value. Where False,
-            replace with corresponding value from other. If cond is callable,
-            it is computed on the Series and should return boolean Series or array.
-            The callable must not change input Series/DataFrame
-        other : scalar, Series/DataFrame, or callable
+            replace with corresponding value from other.
+        other : scalar, Series
             Entries where cond is False are replaced with corresponding value from other.
-            If other is callable, it is computed on the Series/DataFrame and should return
-            scalar or Series. The callable must not change input Series
-            (though pandas doesn’t check it).
 
         Returns
         -------
-        Same type as caller
+        Series
 
         Examples
         --------
 
-        >>> s = ks.Series(range(5))
-        >>> s.where(s > 0)
+        >>> s1 = ks.Series([0, 1, 2, 3, 4])
+        >>> s2 = ks.Series([100, 200, 300, 400, 500])
+        >>> s1.where(s1 > 0)
         0    NaN
         1    1.0
         2    2.0
@@ -3442,16 +3438,50 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         4    4.0
         Name: 0, dtype: float64
 
-        >>> s.where(s > 1, 10)
+        >>> s1.where(s1 > 1, 10)
         0    10
         1    10
         2     2
         3     3
         4     4
         Name: 0, dtype: int64
+
+        >>> s1.where(s1 > 1, s1 + 100)
+        0    100
+        1    101
+        2      2
+        3      3
+        4      4
+        Name: 0, dtype: int64
+
+        >>> s1.where(s1 > 1, s2)
+        0    100
+        1    200
+        2      2
+        3      3
+        4      4
+        Name: 0, dtype: int64
         """
-        current = F.when(cond._internal.data_scols[0], self._scol).otherwise(other)
-        return self._with_new_scol(current)
+        current = F.when(cond._internal.data_scols[0], self._scol)
+        if isinstance(other, Series):
+            self_sdf = self._internal.sdf
+            other_sdf = other._internal.sdf
+            if self_sdf == other_sdf:
+                current = current.otherwise(other._scol)
+                result = self._with_new_scol(current)
+            else:
+                temp_col = self.name + "_"
+                temp_idx = self._index_map[0][0]
+                other_temp = other_sdf.withColumn(temp_col, other_sdf[other.name])
+                new_sdf = self_sdf.join(other_temp, temp_idx).sort(temp_idx)
+                current = current.otherwise(other_temp[temp_col])
+                result = _col(DataFrame(_InternalFrame(sdf=new_sdf.select(current))))
+                result.name = self.name
+        else:
+            current = current.otherwise(other)
+            result = self._with_new_scol(current)
+
+        return result
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
