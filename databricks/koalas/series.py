@@ -3409,6 +3409,50 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol(current)
 
+    def where(self, cond, other=np.nan):
+        """
+        Replace values where the condition is False.
+
+        Parameters
+        ----------
+        cond : boolean Series/DataFrame, array-like, or callable
+            Where cond is True, keep the original value. Where False,
+            replace with corresponding value from other. If cond is callable,
+            it is computed on the Series and should return boolean Series or array.
+            The callable must not change input Series/DataFrame
+        other : scalar, Series/DataFrame, or callable
+            Entries where cond is False are replaced with corresponding value from other.
+            If other is callable, it is computed on the Series/DataFrame and should return
+            scalar or Series. The callable must not change input Series
+            (though pandas doesn’t check it).
+
+        Returns
+        -------
+        Same type as caller
+
+        Examples
+        --------
+
+        >>> s = ks.Series(range(5))
+        >>> s.where(s > 0)
+        0    NaN
+        1    1.0
+        2    2.0
+        3    3.0
+        4    4.0
+        Name: 0, dtype: float64
+
+        >>> s.where(s > 1, 10)
+        0    10
+        1    10
+        2     2
+        3     3
+        4     4
+        Name: 0, dtype: int64
+        """
+        current = F.when(cond._internal.data_scols[0], self._scol).otherwise(other)
+        return self._with_new_scol(current)
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns
