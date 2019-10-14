@@ -3482,16 +3482,20 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if not isinstance(other, Series):
             raise ValueError("'other' must be a Series")
 
-        index_scol_name = self._index_map[0][0]
-        combined = combine_frames(self._kdf, other._kdf, how='leftouter')
-        combined_sdf = combined._sdf.sort(index_scol_name)
-        cond = F.when(combined_sdf['__that_0'].isNotNull(), combined_sdf['__that_0']) \
-                .otherwise(combined_sdf['__this_0']) \
+        index_scol_names = [index_map[0] for index_map in self._index_map]
+        combined = combine_frames(self.to_frame(), other.to_frame(), how='leftouter')
+        combined_sdf = combined._sdf.sort(index_scol_names)
+        this_col = "__this_%s" % self.name
+        that_col = "__that_%s" % other.name
+        cond = F.when(combined_sdf[that_col].isNotNull(), combined_sdf[that_col]) \
+                .otherwise(combined_sdf[this_col]) \
                 .alias(self.name)
         internal = _InternalFrame(
-            sdf=combined_sdf.select(index_scol_name, cond),
+            sdf=combined_sdf.select(index_scol_names + [cond]),
             index_map=self._index_map)
-        self._internal = _col(ks.DataFrame(internal))._internal
+        self_updated = _col(ks.DataFrame(internal))
+        self._internal = self_updated._internal
+        self._kdf = self_updated._kdf
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
