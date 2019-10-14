@@ -3330,13 +3330,16 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         if len(self._index_map) == len(item):
             # if sdf has one column and one data, return data only without frame
-            if sdf.select(self.name).limit(2).count() == 1:
+            pdf = sdf.limit(2).toPandas()
+            length = len(pdf)
+            if length == 1:
                 self._internal = self.drop(item)._internal
-                return sdf.first()[self.name]
+                return pdf[self.name].iloc[0]
+
             self._internal = self.drop(item)._internal
             item_string = ('(' + ', '.join(item) + ')')
-            sdf = sdf.withColumn('__index_level_0__', F.lit(str(item_string)))
-            internal = _InternalFrame(sdf=sdf, index_map=[('__index_level_0__', None)])
+            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(str(item_string)))
+            internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
             return _col(DataFrame(internal))
 
         internal = self._internal.copy(
