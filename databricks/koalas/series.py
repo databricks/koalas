@@ -42,7 +42,7 @@ from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
-from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
+from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for, combine_frames
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
@@ -3419,6 +3419,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
         >>> s = ks.Series([1, 2, 3])
         >>> s.update(ks.Series([4, 5, 6]))
         >>> s
@@ -3443,6 +3445,27 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         2    6
         Name: 0, dtype: int64
 
+        >>> s = ks.Series([1, 2, 3], index=[10, 11, 12])
+        >>> s
+        10    1
+        11    2
+        12    3
+        Name: 0, dtype: int64
+
+        >>> s.update(ks.Series([4, 5, 6]))
+        >>> s
+        10    1
+        11    2
+        12    3
+        Name: 0, dtype: int64
+
+        >>> s.update(ks.Series([4, 5, 6], index=[11, 12, 13]))
+        >>> s
+        10    1
+        11    4
+        12    5
+        Name: 0, dtype: int64
+
         If ``other`` contains NaNs the corresponding values are not updated
         in the original Series.
 
@@ -3453,21 +3476,22 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         1    2.0
         2    6.0
         Name: 0, dtype: float64
+
+        >>> reset_option("compute.ops_on_diff_frames")
         """
         if not isinstance(other, Series):
             raise ValueError("'other' must be a Series")
 
-        self_sdf = self._internal.sdf
-        other_sdf = other._internal.sdf.limit(len(self))
-        temp_col = self.name + "_"
-        temp_idx = self._index_map[0][0]
-
-        other_temp = other_sdf.withColumn(temp_col, other_sdf[other.name])
-        new_sdf = self_sdf.join(other_temp, temp_idx, 'outer').sort(temp_idx)
-        cond = F.when(other_temp[temp_col].isNotNull(), other_temp[temp_col]) \
-                .otherwise(self._scol) \
+        index_scol_name = self._index_map[0][0]
+        combined = combine_frames(self._kdf, other._kdf, how='leftouter')
+        combined_sdf = combined._sdf.sort(index_scol_name)
+        cond = F.when(combined_sdf['__that_0'].isNotNull(), combined_sdf['__that_0']) \
+                .otherwise(combined_sdf['__this_0']) \
                 .alias(self.name)
-        self._internal = _col(ks.DataFrame(_InternalFrame(sdf=new_sdf.select(cond))))._internal
+        internal = _InternalFrame(
+            sdf=combined_sdf.select(index_scol_name, cond),
+            index_map=self._index_map)
+        self._internal = _col(ks.DataFrame(internal))._internal
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
