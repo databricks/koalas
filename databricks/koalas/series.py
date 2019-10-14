@@ -3409,6 +3409,66 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol(current)
 
+    def update(self, other):
+        """
+        Modify Series in place using non-NA values from passed Series. Aligns on index.
+
+        Parameters
+        ----------
+        other : Series
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3])
+        >>> s.update(ks.Series([4, 5, 6]))
+        >>> s
+        0    4
+        1    5
+        2    6
+        Name: 0, dtype: int64
+
+        >>> s = ks.Series(['a', 'b', 'c'])
+        >>> s.update(ks.Series(['d', 'e'], index=[0, 2]))
+        >>> s
+        0    d
+        1    b
+        2    e
+        Name: 0, dtype: object
+
+        >>> s = ks.Series([1, 2, 3])
+        >>> s.update(ks.Series([4, 5, 6, 7, 8]))
+        >>> s
+        0    4
+        1    5
+        2    6
+        Name: 0, dtype: int64
+
+        If ``other`` contains NaNs the corresponding values are not updated
+        in the original Series.
+
+        >>> s = ks.Series([1, 2, 3])
+        >>> s.update(ks.Series([4, np.nan, 6]))
+        >>> s
+        0    4.0
+        1    2.0
+        2    6.0
+        Name: 0, dtype: float64
+        """
+        if not isinstance(other, Series):
+            raise ValueError("'other' must be a Series")
+
+        self_sdf = self._internal.sdf
+        other_sdf = other._internal.sdf.limit(len(self))
+        temp_col = self.name + "_"
+        temp_idx = self._index_map[0][0]
+
+        other_temp = other_sdf.withColumn(temp_col, other_sdf[other.name])
+        new_sdf = self_sdf.join(other_temp, temp_idx, 'outer').sort(temp_idx)
+        cond = F.when(other_temp[temp_col].isNotNull(), other_temp[temp_col]) \
+                .otherwise(self._scol) \
+                .alias(self.name)
+        self._internal = _col(ks.DataFrame(_InternalFrame(sdf=new_sdf.select(cond))))._internal
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns

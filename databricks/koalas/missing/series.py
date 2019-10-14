@@ -111,7 +111,6 @@ class _MissingPandasLikeSeries(object):
     tz_convert = unsupported_function('tz_convert')
     tz_localize = unsupported_function('tz_localize')
     unstack = unsupported_function('unstack')
-    update = unsupported_function('update')
     view = unsupported_function('view')
     where = unsupported_function('where')
     xs = unsupported_function('xs')

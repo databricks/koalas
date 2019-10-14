@@ -728,3 +728,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser.drop_duplicates().sort_values(),
                        kser.drop_duplicates().sort_values())
+
+    def test_update(self):
+        pser = pd.Series([10, 20, 15, 30, 45], name='x')
+        kser = ks.Series(pser)
+
+        msg = "'other' must be a Series"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.update(10)
