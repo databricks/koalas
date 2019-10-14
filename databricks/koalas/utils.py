@@ -100,9 +100,13 @@ def combine_frames(this, *args, how="full"):
 
         index_columns = set(this._internal.index_columns)
         new_data_columns = [c for c in joined_df.columns if c not in index_columns]
-        column_index = ([tuple(['this', *idx]) for idx in this._internal.column_index]
-                        + [tuple(['that', *idx]) for idx in that._internal.column_index])
-        column_index_names = (([None] + this._internal.column_index_names)
+        level = max(this._internal.column_index_level, that._internal.column_index_level)
+        column_index = ([tuple(['this'] + ([''] * (level - len(idx))) + list(idx))
+                         for idx in this._internal.column_index]
+                        + [tuple(['that'] + ([''] * (level - len(idx))) + list(idx))
+                           for idx in that._internal.column_index])
+        column_index_names = ((([None] * (1 + level - len(this._internal.column_index_level)))
+                               + this._internal.column_index_names)
                               if this._internal.column_index_names is not None else None)
         return DataFrame(
             this._internal.copy(sdf=joined_df, data_columns=new_data_columns,
@@ -249,10 +253,10 @@ def align_diff_series(func, this_series, *args, how="full"):
     cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
     combined = combine_frames(this_series.to_frame(), *cols, how=how)
 
-    that_columns = [combined[tuple(['that', *arg._internal.column_index[0]])]._scol
+    that_columns = [combined['that'][arg._internal.column_index[0]]._scol
                     if isinstance(arg, IndexOpsMixin) else arg for arg in args]
 
-    scol = func(combined[tuple(['this', *this_series._internal.column_index[0]])]._scol,
+    scol = func(combined['this'][this_series._internal.column_index[0]]._scol,
                 *that_columns)
 
     return Series(combined._internal.copy(scol=scol,
