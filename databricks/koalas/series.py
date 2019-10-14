@@ -3455,15 +3455,15 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> s.update(ks.Series([4, 5, 6]))
         >>> s
         10    1
-        11    2
         12    3
+        11    2
         Name: 0, dtype: int64
 
         >>> s.update(ks.Series([4, 5, 6], index=[11, 12, 13]))
         >>> s
         10    1
-        11    4
         12    5
+        11    4
         Name: 0, dtype: int64
 
         If ``other`` contains NaNs the corresponding values are not updated
@@ -3484,7 +3484,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         index_scol_names = [index_map[0] for index_map in self._index_map]
         combined = combine_frames(self.to_frame(), other.to_frame(), how='leftouter')
-        combined_sdf = combined._sdf.sort(index_scol_names)
+        combined_sdf = combined._sdf
         this_col = "__this_%s" % self.name
         that_col = "__that_%s" % other.name
         cond = F.when(combined_sdf[that_col].isNotNull(), combined_sdf[that_col]) \
