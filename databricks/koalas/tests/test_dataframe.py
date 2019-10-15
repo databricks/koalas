@@ -1770,6 +1770,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.melt(id_vars=['A', 'B']).sort_values(['variable', 'value'])
                        .reset_index(drop=True),
                        pdf.melt(id_vars=['A', 'B']).sort_values(['variable', 'value']))
+        self.assert_eq(kdf.melt(id_vars=('A', 'B')).sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(id_vars=('A', 'B')).sort_values(['variable', 'value']))
         self.assert_eq(kdf.melt(id_vars=['A'], value_vars=['C']).sort_values(['variable', 'value'])
                        .reset_index(drop=True),
                        pdf.melt(id_vars=['A'], value_vars=['C']).sort_values(['variable', 'value']))
@@ -1810,6 +1813,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.melt().sort_values(['v0', 'v1', 'value'])
                        .reset_index(drop=True),
                        pdf.melt().sort_values(['v0', 'v1', 'value']))
+
+        self.assertRaises(ValueError, lambda: kdf.melt(id_vars=('X', 'A')))
 
     def test_all(self):
         pdf = pd.DataFrame({

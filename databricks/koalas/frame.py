@@ -6774,7 +6774,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         elif isinstance(id_vars, str):
             id_vars = [(id_vars,)]
         elif isinstance(id_vars, tuple):
-            id_vars = [id_vars]
+            if self._internal.column_index_level == 1:
+                id_vars = [idv if isinstance(idv, tuple) else (idv,) for idv in id_vars]
+            else:
+                raise ValueError('id_vars must be a list of tuples when columns are a MultiIndex')
         else:
             id_vars = [idv if isinstance(idv, tuple) else (idv,) for idv in id_vars]
 
