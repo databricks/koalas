@@ -28,7 +28,6 @@ from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
-from databricks.koalas.utils import column_index_level
 
 
 def _make_col(c):
