@@ -32,6 +32,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for
+from pyspark.sql.functions import monotonically_increasing_id
 
 
 def _column_op(f):
@@ -299,10 +300,27 @@ class IndexOpsMixin(object):
 
         >>> ser.rename("a").to_frame().set_index("a").index.is_monotonic
         True
+
+        >>> ser = ks.Series([5, 4, 3, 2, 1], index=[1, 2, 3, 4, 5])
+        >>> ser.is_monotonic
+        False
+
+        >>> ser.index.is_monotonic
+        True
         """
-        col = self._scol
-        window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
-        return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull()).all()
+        from databricks.koalas.indexes import Index
+        if isinstance(self, Index):
+            from databricks.koalas.frame import DataFrame
+            from databricks.koalas.series import _col
+            index_scol = self._scol
+            sdf = self._internal.sdf.withColumn('id', monotonically_increasing_id())
+            window = Window.orderBy(sdf['id']).rowsBetween(-1, -1)
+            internal = _InternalFrame(sdf.select(index_scol >= F.lag(index_scol, 1).over(window)))
+            return _col(DataFrame(internal)).all()
+        else:
+            col = self._scol
+            window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
+            return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull()).all()
 
     is_monotonic_increasing = is_monotonic
 
@@ -343,10 +361,27 @@ class IndexOpsMixin(object):
 
         >>> ser.rename("a").to_frame().set_index("a").index.is_monotonic_decreasing
         True
+
+        >>> ser = ks.Series([5, 4, 3, 2, 1], index=[1, 2, 3, 4, 5])
+        >>> ser.is_monotonic_decreasing
+        True
+
+        >>> ser.index.is_monotonic_decreasing
+        False
         """
-        col = self._scol
-        window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
-        return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull()).all()
+        from databricks.koalas.indexes import Index
+        if isinstance(self, Index):
+            from databricks.koalas.frame import DataFrame
+            from databricks.koalas.series import _col
+            index_scol = self._scol
+            sdf = self._internal.sdf.withColumn('id', monotonically_increasing_id())
+            window = Window.orderBy(sdf['id']).rowsBetween(-1, -1)
+            internal = _InternalFrame(sdf.select(index_scol <= F.lag(index_scol, 1).over(window)))
+            return _col(DataFrame(internal)).all()
+        else:
+            col = self._scol
+            window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
+            return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull()).all()
 
     def astype(self, dtype):
         """
