@@ -3324,7 +3324,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             .select(cols) \
             .where(reduce(lambda x, y: x & y, rows))
 
-        if len(self._index_map) == len(item):
+        if len(self._internal._index_map) == len(item):
             # if sdf has one column and one data, return data only without frame
             pdf = sdf.limit(2).toPandas()
             length = len(pdf)
@@ -3340,7 +3340,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         internal = self._internal.copy(
             sdf=sdf,
-            index_map=self._index_map[len(item):])
+            index_map=self._internal._index_map[len(item):])
 
         self._internal = self.drop(item)._internal
 
