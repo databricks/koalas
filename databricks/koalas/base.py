@@ -308,19 +308,15 @@ class IndexOpsMixin(object):
         >>> ser.index.is_monotonic
         True
         """
-        from databricks.koalas.indexes import Index
-        if isinstance(self, Index):
-            from databricks.koalas.frame import DataFrame
-            from databricks.koalas.series import _col
-            index_scol = self._scol
-            sdf = self._internal.sdf.withColumn('id', monotonically_increasing_id())
-            window = Window.orderBy(sdf['id']).rowsBetween(-1, -1)
-            internal = _InternalFrame(sdf.select(index_scol >= F.lag(index_scol, 1).over(window)))
-            return _col(DataFrame(internal)).all()
-        else:
-            col = self._scol
-            window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
-            return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull()).all()
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import _col
+        if self.hasnans:
+            return False
+        col = self._scol
+        sdf = self._internal.sdf.withColumn('id', monotonically_increasing_id())
+        window = Window.orderBy(sdf['id']).rowsBetween(-1, -1)
+        internal = _InternalFrame(sdf.select(col >= F.lag(col, 1).over(window)))
+        return _col(DataFrame(internal)).all()
 
     is_monotonic_increasing = is_monotonic
 
@@ -369,19 +365,15 @@ class IndexOpsMixin(object):
         >>> ser.index.is_monotonic_decreasing
         False
         """
-        from databricks.koalas.indexes import Index
-        if isinstance(self, Index):
-            from databricks.koalas.frame import DataFrame
-            from databricks.koalas.series import _col
-            index_scol = self._scol
-            sdf = self._internal.sdf.withColumn('id', monotonically_increasing_id())
-            window = Window.orderBy(sdf['id']).rowsBetween(-1, -1)
-            internal = _InternalFrame(sdf.select(index_scol <= F.lag(index_scol, 1).over(window)))
-            return _col(DataFrame(internal)).all()
-        else:
-            col = self._scol
-            window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
-            return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull()).all()
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import _col
+        if self.hasnans:
+            return False
+        col = self._scol
+        sdf = self._internal.sdf.withColumn('id', monotonically_increasing_id())
+        window = Window.orderBy(sdf['id']).rowsBetween(-1, -1)
+        internal = _InternalFrame(sdf.select(col <= F.lag(col, 1).over(window)))
+        return _col(DataFrame(internal)).all()
 
     def astype(self, dtype):
         """
