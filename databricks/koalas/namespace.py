@@ -1544,7 +1544,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
         return result_kdf
 
 
-def melt(frame, id_vars=None, value_vars=None, var_name='variable',
+def melt(frame, id_vars=None, value_vars=None, var_name=None,
          value_name='value'):
     return DataFrame.melt(frame, id_vars, value_vars, var_name, value_name)
 
