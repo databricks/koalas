@@ -728,3 +728,19 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser.drop_duplicates().sort_values(),
                        kser.drop_duplicates().sort_values())
+
+    def test_truncate(self):
+        pser = pd.Series([10, 20, 30, 40, 50, 60, 70], index=[1, 1, 2, 2, 3, 4, 5])
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser.truncate(), pser.truncate())
+
+        kser = ks.Series([10, 20, 30, 40, 50, 60, 70], index=[1, 2, 3, 4, 3, 2, 1])
+        msg = "truncate requires a sorted index"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.truncate()
+
+        kser = ks.Series([10, 20, 30, 40, 50, 60, 70], index=[1, 2, 3, 4, 5, 6, 7])
+        msg = "Truncate: 2 must be after 5"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.truncate(5, 2)

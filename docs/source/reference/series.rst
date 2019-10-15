@@ -148,6 +148,7 @@ Reindexing / Selection / Label manipulation
    Series.rename
    Series.reset_index
    Series.sample
+   Series.truncate
 
 Missing data handling
 ---------------------

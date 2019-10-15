@@ -106,7 +106,6 @@ class _MissingPandasLikeSeries(object):
     to_period = unsupported_function('to_period')
     to_sql = unsupported_function('to_sql')
     to_timestamp = unsupported_function('to_timestamp')
-    truncate = unsupported_function('truncate')
     tshift = unsupported_function('tshift')
     tz_convert = unsupported_function('tz_convert')
     tz_localize = unsupported_function('tz_localize')
