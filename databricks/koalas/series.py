@@ -3529,13 +3529,39 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        sdf = self._internal.sdf
-        sdf = sdf.where(self._internal.index_scols[0] == key)
-        pdf = sdf.limit(2).toPandas()
-        length = len(pdf)
-        if length == 1:
-            return pdf[self.name].iloc[0]
-        return _col(DataFrame(_InternalFrame(sdf, index_map=self._internal.index_map)))
+        if not isinstance(key, (str, tuple)):
+            raise ValueError("'key' should be string or tuple that contains strings")
+        if isinstance(key, str):
+            key = (key,)
+        if not all(isinstance(index, str) for index in key):
+            raise ValueError("'key' should have index names as only strings "
+                             "or a tuple that contain index names as only strings")
+
+        cols = (self._internal.index_scols[len(key):] +
+                [self._internal.scol_for(self._internal.column_index[0])])
+        rows = [self._internal.scols[level] == index
+                for level, index in enumerate(key)]
+        sdf = self._internal.sdf \
+            .select(cols) \
+            .where(reduce(lambda x, y: x & y, rows))
+
+        if len(self._internal._index_map) == len(key):
+            # if sdf has one column and one data, return data only without frame
+            pdf = sdf.limit(2).toPandas()
+            length = len(pdf)
+            if length == 1:
+                return pdf[self.name].iloc[0]
+
+            key_string = ('(' + ', '.join(key) + ')') if len(key) > 1 else key[0]
+            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(str(key_string)))
+            internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
+            return _col(DataFrame(internal))
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            index_map=self._internal._index_map[len(key):])
+
+        return _col(DataFrame(internal))
 
     def __getattr__(self, item: str_type) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):

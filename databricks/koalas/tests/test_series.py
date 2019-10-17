@@ -735,3 +735,17 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser['A'], pser['A'])
         self.assert_eq(kser['B'], pser['B'])
+
+        # for MultiIndex
+        midx = pd.MultiIndex([['a', 'b', 'c'],
+                              ['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 0, 0, 0, 1, 1, 1],
+                              [0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 0, 0, 0, 1, 2, 0, 1, 2]])
+        pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+                         name='0', index=midx)
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser['a'], pser['a'])
+        self.assert_eq(kser['a', 'lama'], pser['a', 'lama'])
