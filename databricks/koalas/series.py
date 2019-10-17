@@ -3223,6 +3223,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return _col(DataFrame(self._internal.copy()))
 
+    def keys(self):
+        """
+        Return alias for index.
+
+        Returns
+        -------
+        Index
+            Index of the Series.
+        """
+        return self.index
+
     # TODO: 'regex', 'method' parameter
     def replace(self, to_replace=None, value=None, regex=False) -> 'Series':
         """
