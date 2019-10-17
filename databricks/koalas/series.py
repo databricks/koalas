@@ -3230,6 +3230,22 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         C    2
         Name: 0, dtype: int64
 
+        >>> s = ks.Series(data=np.arange(3), index=['A', 'A', 'C'])
+        >>> s
+        A    0
+        A    1
+        C    2
+        Name: 0, dtype: int64
+
+        >>> s.pop('A')
+        A    0
+        A    1
+        Name: 0, dtype: int64
+
+        >>> s
+        C    2
+        Name: 0, dtype: int64
+
         Also support for MultiIndex
 
         >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
@@ -3333,7 +3349,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 return pdf[self.name].iloc[0]
 
             self._internal = self.drop(item)._internal
-            item_string = ('(' + ', '.join(item) + ')')
+            item_string = ('(' + ', '.join(item) + ')') if len(item) > 1 else item[0]
             sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(str(item_string)))
             internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
             return _col(DataFrame(internal))
