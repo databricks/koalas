@@ -3223,6 +3223,65 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return _col(DataFrame(self._internal.copy()))
 
+    def first_valid_index(self):
+        """
+        Retrieves the index of the first valid value.
+
+        Returns
+        -------
+        idx_first_valid : type of index
+
+        Examples
+        --------
+        >>> s = ks.Series([None, None, 3, 4, 5], index=[100, 200, 300, 400, 500])
+        >>> s
+        100    NaN
+        200    NaN
+        300    3.0
+        400    4.0
+        500    5.0
+        Name: 0, dtype: float64
+
+        >>> s.first_valid_index()
+        300
+
+        Support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([None, None, None, None, 250, 1.5, 320, 1, 0.3], index=midx)
+        >>> s
+        lama    speed       NaN
+                weight      NaN
+                length      NaN
+        cow     speed       NaN
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.first_valid_index()
+        ('cow', 'weight')
+        """
+        sdf = self._internal.sdf
+        data_scol = self._internal.data_scols[0]
+
+        first_valid_value = sdf.select(
+            F.first(data_scol, True).alias(str(self.name))).first()[str(self.name)]
+        sdf = sdf.select(self._internal.index_scols) \
+                 .where(data_scol == first_valid_value) \
+                 .first()
+        first_valid_idx = tuple(sdf[idx_col] for idx_col in self._internal.index_columns)
+
+        if len(first_valid_idx) < 2:
+            first_valid_idx = first_valid_idx[0]
+
+        return first_valid_idx
+
     # TODO: 'regex', 'method' parameter
     def replace(self, to_replace=None, value=None, regex=False) -> 'Series':
         """
