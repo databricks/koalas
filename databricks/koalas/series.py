@@ -3478,17 +3478,18 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if not isinstance(other, Series):
             raise ValueError("'other' must be a Series")
 
-        index_scol_names = [index_map[0] for index_map in self._index_map]
+        index_scol_names = [index_map[0] for index_map in self._internal.index_map]
         combined = combine_frames(self.to_frame(), other.to_frame(), how='leftouter')
         combined_sdf = combined._sdf
-        this_col = "__this_%s" % self.name
-        that_col = "__that_%s" % other.name
+        this_col = "__this_%s" % str(self.name)
+        that_col = "__that_%s" % str(other.name)
         cond = F.when(combined_sdf[that_col].isNotNull(), combined_sdf[that_col]) \
                 .otherwise(combined_sdf[this_col]) \
-                .alias(self.name)
+                .alias(str(self.name))
         internal = _InternalFrame(
             sdf=combined_sdf.select(index_scol_names + [cond]),
-            index_map=self._index_map)
+            index_map=self._internal.index_map,
+            column_index=self._internal.column_index)
         self_updated = _col(ks.DataFrame(internal))
         self._internal = self_updated._internal
         self._kdf = self_updated._kdf
