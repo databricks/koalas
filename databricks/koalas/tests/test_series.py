@@ -728,3 +728,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser.drop_duplicates().sort_values(),
                        kser.drop_duplicates().sort_values())
+
+    def test_getitem(self):
+        pser = pd.Series([10, 20, 15, 30, 45], ['A', 'A', 'B', 'C', 'D'])
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser['A'], pser['A'])
+        self.assert_eq(kser['B'], pser['B'])

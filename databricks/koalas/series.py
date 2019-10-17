@@ -3529,7 +3529,13 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        return self._with_new_scol(self._scol.__getitem__(key))
+        sdf = self._internal.sdf
+        sdf = sdf.where(self._internal.index_scols[0] == key)
+        pdf = sdf.limit(2).toPandas()
+        length = len(pdf)
+        if length == 1:
+            return pdf[self.name].iloc[0]
+        return _col(DataFrame(_InternalFrame(sdf, index_map=self._internal.index_map)))
 
     def __getattr__(self, item: str_type) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
