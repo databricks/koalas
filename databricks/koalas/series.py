@@ -327,10 +327,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             kdf = DataFrame(s)
             IndexOpsMixin.__init__(self, kdf._internal.copy(scol=kdf._internal.data_scols[0]), kdf)
 
-    @property
-    def _index_map(self) -> List[IndexMap]:
-        return self._internal.index_map
-
     def _with_new_scol(self, scol: spark.Column) -> 'Series':
         """
         Copy Koalas Series with the new Spark Column.
