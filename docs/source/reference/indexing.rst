@@ -78,7 +78,7 @@ MultiIndex Properties
    MultiIndex.names
 
 MultiIndex Missing Values
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: api/
 
