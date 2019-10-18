@@ -160,7 +160,6 @@ class _MissingPandasLikeMultiIndex(object):
     drop = unsupported_function('drop')
     drop_duplicates = unsupported_function('drop_duplicates')
     droplevel = unsupported_function('droplevel')
-    dropna = unsupported_function('dropna')
     duplicated = unsupported_function('duplicated')
     equal_levels = unsupported_function('equal_levels')
     equals = unsupported_function('equals')

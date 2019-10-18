@@ -446,6 +446,48 @@ class MultiIndex(Index):
 
     toPandas = to_pandas
 
+    def dropna(self):
+        """
+        Return MultiIndex without NA/NaN values
+
+        Examples
+        --------
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       [None, 'weight', 'length']],
+        ...                      [[0, 1, 1, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 1, 0, 1, 2, 1, 1, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, None],
+        ...               index=midx)
+        >>> s
+        lama    NaN        45.0
+        cow     weight    200.0
+                weight      1.2
+                NaN        30.0
+                weight    250.0
+                length      1.5
+        falcon  weight    320.0
+                weight      1.0
+                length      NaN
+        Name: 0, dtype: float64
+
+        >>> s.index.dropna()
+        MultiIndex([(   'cow', 'weight'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'length'),
+                    ('falcon', 'weight'),
+                    ('falcon', 'weight'),
+                    ('falcon', 'length')],
+                   )
+        """
+        kdf = self._kdf
+        sdf = self._kdf._internal.sdf
+        for index_scol in self._kdf._internal.index_scols:
+            sdf = sdf.where(index_scol.isNotNull())
+        kdf._internal = kdf._internal.copy(sdf=sdf)
+        return MultiIndex(kdf)
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):
             property_or_func = getattr(_MissingPandasLikeMultiIndex, item)

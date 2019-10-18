@@ -76,3 +76,10 @@ MultiIndex Properties
    :toctree: api/
 
    MultiIndex.names
+
+MultiIndex Missing Values
+~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.dropna
