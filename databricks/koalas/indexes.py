@@ -316,6 +316,30 @@ class Index(IndexOpsMixin):
         """
         return is_object_dtype(self.dtype)
 
+    def dropna(self):
+        """
+        Return Index without NA/NaN values
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+        ...                   index=['cobra', 'viper', None],
+        ...                   columns=['max_speed', 'shield'])
+        >>> df
+               max_speed  shield
+        cobra          1       2
+        viper          4       5
+        NaN            7       8
+
+        >>> df.index.dropna()
+        Index(['cobra', 'viper'], dtype='object')
+        """
+        kdf = self._kdf
+        sdf = self._kdf._internal.sdf
+        kdf._internal = kdf._internal.copy(sdf=sdf.where(self._scol.isNotNull()))
+        return Index(kdf)
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)
