@@ -140,6 +140,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaises(PandasNotImplementedError):
             kidx.name = 'renamed'
 
+    def test_multi_index_copy(self):
+        arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
+        idx = pd.MultiIndex.from_arrays(arrays, names=('number', 'color'))
+        pdf = pd.DataFrame(np.random.randn(4, 5), idx)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.index.copy(), pdf.index.copy())
+
     def test_missing(self):
         kdf = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
 
