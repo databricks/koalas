@@ -78,7 +78,7 @@ MultiIndex Properties
    MultiIndex.names
 
 MultiIndex Modifying and computations
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: api/
 
