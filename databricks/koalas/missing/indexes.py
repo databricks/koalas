@@ -154,7 +154,6 @@ class _MissingPandasLikeMultiIndex(object):
     argsort = unsupported_function('argsort')
     asof = unsupported_function('asof')
     asof_locs = unsupported_function('asof_locs')
-    copy = unsupported_function('copy')
     delete = unsupported_function('delete')
     difference = unsupported_function('difference')
     drop = unsupported_function('drop')

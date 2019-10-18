@@ -76,3 +76,10 @@ MultiIndex Properties
    :toctree: api/
 
    MultiIndex.names
+
+MultiIndex Modifying and computations
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.copy

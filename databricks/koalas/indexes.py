@@ -460,6 +460,62 @@ class MultiIndex(Index):
 
     toPandas = to_pandas
 
+    # TODO: add 'name' parameter after pd.MultiIndex.name is implemented
+    def copy(self):
+        """
+        Make a copy of this object. name sets those attributes on the new object.
+
+        Examples
+        --------
+        >>> midx = pd.MultiIndex([['a', 'b', 'c'],
+        ...                       ['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 0, 0, 0, 1, 1, 1],
+        ...                       [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 0, 0, 0, 1, 2, 0, 1, 2]]
+        ...  )
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...              index=midx)
+        >>> s
+        a  lama    speed      45.0
+                   speed     200.0
+                   speed       1.2
+           cow     speed      30.0
+                   weight    250.0
+                   length      1.5
+        b  falcon  speed     320.0
+                   weight      1.0
+                   length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.index
+        MultiIndex([('a',   'lama',  'speed'),
+                    ('a',   'lama',  'speed'),
+                    ('a',   'lama',  'speed'),
+                    ('a',    'cow',  'speed'),
+                    ('a',    'cow', 'weight'),
+                    ('a',    'cow', 'length'),
+                    ('b', 'falcon',  'speed'),
+                    ('b', 'falcon', 'weight'),
+                    ('b', 'falcon', 'length')],
+                   )
+
+        >>> s.index.copy()
+        MultiIndex([('a',   'lama',  'speed'),
+                    ('a',   'lama',  'speed'),
+                    ('a',   'lama',  'speed'),
+                    ('a',    'cow',  'speed'),
+                    ('a',    'cow', 'weight'),
+                    ('a',    'cow', 'length'),
+                    ('b', 'falcon',  'speed'),
+                    ('b', 'falcon', 'weight'),
+                    ('b', 'falcon', 'length')],
+                   )
+        """
+        internal = self._kdf._internal.copy()
+        result = MultiIndex(ks.DataFrame(internal))
+        return result
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):
             property_or_func = getattr(_MissingPandasLikeMultiIndex, item)
