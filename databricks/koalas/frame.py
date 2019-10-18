@@ -7405,6 +7405,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(internal)
 
+    def keys(self):
+        """
+        Return alias for columns.
+
+        Returns
+        -------
+        Index
+            Columns of the DataFrame.
+        """
+        return self.columns
+
     def _get_from_multiindex_column(self, key):
         """ Select columns from multi-index columns.
 
