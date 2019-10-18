@@ -29,6 +29,7 @@ Modifying and computations
 .. autosummary::
    :toctree: api/
 
+   Index.copy
    Index.is_boolean
    Index.is_categorical
    Index.is_floating
