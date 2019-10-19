@@ -32,6 +32,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for
+from databricks.koalas.internal import SPARK_INDEX_NAME_FORMAT
 from pyspark.sql.functions import monotonically_increasing_id
 
 
@@ -313,9 +314,12 @@ class IndexOpsMixin(object):
         if self.hasnans:
             return False
         col = self._scol
-        sdf = self._internal.sdf.withColumn('id', monotonically_increasing_id())
-        window = Window.orderBy(sdf['id']).rowsBetween(-1, -1)
-        internal = _InternalFrame(sdf.select(col >= F.lag(col, 1).over(window)))
+        idx_tmp = SPARK_INDEX_NAME_FORMAT('temp')
+        sdf = self._internal.sdf.withColumn(idx_tmp, monotonically_increasing_id())
+        window = Window.orderBy(sdf[idx_tmp]).rowsBetween(-1, -1)
+        internal = _InternalFrame(
+            sdf=sdf.select(sdf[idx_tmp], col >= F.lag(col, 1).over(window)),
+            index_map=[(idx_tmp, None)])
         return _col(DataFrame(internal)).all()
 
     is_monotonic_increasing = is_monotonic
@@ -370,9 +374,12 @@ class IndexOpsMixin(object):
         if self.hasnans:
             return False
         col = self._scol
-        sdf = self._internal.sdf.withColumn('id', monotonically_increasing_id())
-        window = Window.orderBy(sdf['id']).rowsBetween(-1, -1)
-        internal = _InternalFrame(sdf.select(col <= F.lag(col, 1).over(window)))
+        idx_tmp = SPARK_INDEX_NAME_FORMAT('temp')
+        sdf = self._internal.sdf.withColumn(idx_tmp, monotonically_increasing_id())
+        window = Window.orderBy(sdf[idx_tmp]).rowsBetween(-1, -1)
+        internal = _InternalFrame(
+            sdf=sdf.select(sdf[idx_tmp], col <= F.lag(col, 1).over(window)),
+            index_map=[(idx_tmp, None)])
         return _col(DataFrame(internal)).all()
 
     def astype(self, dtype):
