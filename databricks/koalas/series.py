@@ -3240,7 +3240,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
         >>> kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
 
-        >>> kser.keys()
+        >>> kser.keys()  # doctest: +SKIP
         MultiIndex([(  'lama',  'speed'),
                     (  'lama', 'weight'),
                     (  'lama', 'length'),
