@@ -3419,7 +3419,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> set_option("compute.ops_on_diff_frames", True)
         >>> s = ks.Series([1, 2, 3])
         >>> s.update(ks.Series([4, 5, 6]))
-        >>> s
+        >>> s.sort_index()
         0    4
         1    5
         2    6
@@ -3427,7 +3427,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> s = ks.Series(['a', 'b', 'c'])
         >>> s.update(ks.Series(['d', 'e'], index=[0, 2]))
-        >>> s
+        >>> s.sort_index()
         0    d
         1    b
         2    e
@@ -3435,7 +3435,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> s = ks.Series([1, 2, 3])
         >>> s.update(ks.Series([4, 5, 6, 7, 8]))
-        >>> s
+        >>> s.sort_index()
         0    4
         1    5
         2    6
@@ -3449,17 +3449,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: int64
 
         >>> s.update(ks.Series([4, 5, 6]))
-        >>> s
+        >>> s.sort_index()
         10    1
-        12    3
         11    2
+        12    3
         Name: 0, dtype: int64
 
         >>> s.update(ks.Series([4, 5, 6], index=[11, 12, 13]))
-        >>> s
+        >>> s.sort_index()
         10    1
-        12    5
         11    4
+        12    5
         Name: 0, dtype: int64
 
         If ``other`` contains NaNs the corresponding values are not updated
@@ -3467,7 +3467,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> s = ks.Series([1, 2, 3])
         >>> s.update(ks.Series([4, np.nan, 6]))
-        >>> s
+        >>> s.sort_index()
         0    4.0
         1    2.0
         2    6.0
@@ -3481,11 +3481,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         index_scol_names = [index_map[0] for index_map in self._internal.index_map]
         combined = combine_frames(self.to_frame(), other.to_frame(), how='leftouter')
         combined_sdf = combined._sdf
-        this_col = "__this_%s" % str(self.name)
-        that_col = "__that_%s" % str(other.name)
-        cond = F.when(combined_sdf[that_col].isNotNull(), combined_sdf[that_col]) \
+        this_col = "__this_%s" % str(
+            self._internal.column_name_for(self._internal.column_index[0]))
+        that_col = "__that_%s" % str(
+            self._internal.column_name_for(other._internal.column_index[0]))
+        cond = F.when(scol_for(combined_sdf, that_col).isNotNull(),
+                      scol_for(combined_sdf, that_col)) \
                 .otherwise(combined_sdf[this_col]) \
-                .alias(str(self.name))
+                .alias(str(self._internal.column_name_for(self._internal.column_index[0])))
         internal = _InternalFrame(
             sdf=combined_sdf.select(index_scol_names + [cond]),
             index_map=self._internal.index_map,
