@@ -3536,6 +3536,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if not all(isinstance(index, str) for index in key):
             raise ValueError("'key' should have index names as only strings "
                              "or a tuple that contain index names as only strings")
+        if len(self._internal._index_map) < len(key):
+            raise KeyError("Key length ({}) exceeds index depth ({})"
+                           .format(len(key), len(self._internal.index_map)))
 
         cols = (self._internal.index_scols[len(key):] +
                 [self._internal.scol_for(self._internal.column_index[0])])

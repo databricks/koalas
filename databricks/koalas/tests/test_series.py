@@ -749,3 +749,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser['a'], pser['a'])
         self.assert_eq(kser['a', 'lama'], pser['a', 'lama'])
+
+        msg = "'key' should be string or tuple that contains strings"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser[1]
+        msg = ("'key' should have index names as only strings "
+               "or a tuple that contain index names as only strings")
+        with self.assertRaisesRegex(ValueError, msg):
+            kser[('a', 1)]
+        msg = r"'Key length \(4\) exceeds index depth \(3\)'"
+        with self.assertRaisesRegex(KeyError, msg):
+            kser[('a', 'lama', 'speed', 'x')]
