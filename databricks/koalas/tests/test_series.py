@@ -714,6 +714,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                "or a tuple that contain index names as only strings")
         with self.assertRaisesRegex(ValueError, msg):
             kser.pop(('lama', 0))
+        msg = r"'Key length \(3\) exceeds index depth \(2\)'"
+        with self.assertRaisesRegex(KeyError, msg):
+            kser.pop(('lama', 'speed', 'x'))
 
     def test_replace(self):
         pser = pd.Series([10, 20, 15, 30, 45], name='x')
