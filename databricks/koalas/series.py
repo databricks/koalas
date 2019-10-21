@@ -3495,7 +3495,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             .select(cols) \
             .where(reduce(lambda x, y: x & y, rows))
 
-        if len(self._index_map) == len(key):
+        if len(self._internal._index_map) == len(key):
             # if sdf has one column and one data, return data only without frame
             pdf = sdf.limit(2).toPandas()
             length = len(pdf)
