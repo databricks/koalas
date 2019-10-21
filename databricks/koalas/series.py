@@ -3503,9 +3503,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 return pdf[self.name].iloc[0]
 
         index_scols = [col for col in sdf.columns if col not in self._internal.data_columns]
+        index_map_dict = {imap[0]: imap[1] for imap in self._internal.index_map}
         internal = self._internal.copy(
             sdf=sdf,
-            index_map=[(index_scol, None) for index_scol in index_scols])
+            index_map=[(index_scol, index_map_dict[index_scol]) for index_scol in index_scols])
 
         return _col(DataFrame(internal))
 
