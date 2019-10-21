@@ -3284,8 +3284,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> s.mode()
         0    1.0
-        1    2.0
-        2    3.0
+        1    3.0
+        2    2.0
         Name: 0, dtype: float64
 
         With 'dropna' set to 'False', we can also see NaN in the result
@@ -3293,19 +3293,22 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> s.mode(False)
         0    NaN
         1    1.0
-        2    2.0
-        3    3.0
+        2    3.0
+        3    2.0
         Name: 0, dtype: float64
         """
-        ser_count = self.value_counts(dropna=dropna)
+        ser_count = self.value_counts(dropna=dropna, sort=False)
         sdf_count = ser_count._internal.sdf
-        most_value = sdf_count.head(1)[0][1]
-        sdf_most_value = (sdf_count.where("count == {}".format(most_value))
-                                   .sort('__index_level_0__'))
-        sdf = sdf_most_value.select(F.col('__index_level_0__').alias(self.name))
-
+        most_value = ser_count.max()
+        sdf_most_value = sdf_count.where("count == {}".format(most_value))
+        sdf = sdf_most_value.select(
+            F.col(SPARK_INDEX_NAME_FORMAT(0)).alias('__temp__'))
         internal = _InternalFrame(sdf=sdf)
-        return _col(DataFrame(internal))
+
+        result = _col(DataFrame(internal))
+        result.name = self.name
+
+        return result
 
     # TODO: 'regex', 'method' parameter
     def replace(self, to_replace=None, value=None, regex=False) -> 'Series':
