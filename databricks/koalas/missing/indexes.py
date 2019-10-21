@@ -218,7 +218,6 @@ class _MissingPandasLikeMultiIndex(object):
     transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     union = unsupported_function('union')
-    unique = unsupported_function('unique')
     value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
     where = unsupported_function('where')
