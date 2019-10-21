@@ -148,6 +148,14 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             (kdf1[('x', 'a')] - kdf2[('x', 'b')]).sort_index(),
             (pdf1[('x', 'a')] - pdf2[('x', 'b')]).rename(('x', 'a')).sort_index(), almost=True)
 
+        self.assert_eq(
+            (kdf1[('x', 'a')] - kdf2['x']['b']).sort_index(),
+            (pdf1[('x', 'a')] - pdf2['x']['b']).rename(('x', 'a')).sort_index(), almost=True)
+
+        self.assert_eq(
+            (kdf1['x']['a'] - kdf2[('x', 'b')]).sort_index(),
+            (pdf1['x']['a'] - pdf2[('x', 'b')]).rename('a').sort_index(), almost=True)
+
         # DataFrame
         self.assert_eq(
             (kdf1 + kdf2).sort_index(),
