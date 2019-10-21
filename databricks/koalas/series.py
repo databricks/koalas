@@ -327,10 +327,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             kdf = DataFrame(s)
             IndexOpsMixin.__init__(self, kdf._internal.copy(scol=kdf._internal.data_scols[0]), kdf)
 
-    @property
-    def _index_map(self) -> List[IndexMap]:
-        return self._internal.index_map
-
     def _with_new_scol(self, scol: spark.Column) -> 'Series':
         """
         Copy Koalas Series with the new Spark Column.
@@ -3226,6 +3222,37 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: int64
         """
         return _col(DataFrame(self._internal.copy()))
+
+    def keys(self):
+        """
+        Return alias for index.
+
+        Returns
+        -------
+        Index
+            Index of the Series.
+
+        Examples
+        --------
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+
+        >>> kser.keys()  # doctest: +SKIP
+        MultiIndex([(  'lama',  'speed'),
+                    (  'lama', 'weight'),
+                    (  'lama', 'length'),
+                    (   'cow',  'speed'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'length'),
+                    ('falcon',  'speed'),
+                    ('falcon', 'weight'),
+                    ('falcon', 'length')],
+                   )
+        """
+        return self.index
 
     # TODO: 'regex', 'method' parameter
     def replace(self, to_replace=None, value=None, regex=False) -> 'Series':

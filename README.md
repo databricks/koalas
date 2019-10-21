@@ -62,58 +62,11 @@ Try the Koalas 10 minutes tutorial on a live Jupyter notebook [here](https://myb
 
 ## Dependencies
 
- - [cmake](https://cmake.org/) for building pyarrow
- - Spark 2.4. Some older versions of Spark may work too but they are not officially supported.
- - A recent version of pandas. It is officially developed against 0.23+ but some other versions may work too.
- - Python 3.5+.
-
+See [Dependencies](https://koalas.readthedocs.io/en/latest/getting_started/install.html#dependencies) in installation guide.
 
 ## Get Started
 
-Koalas is available at the Python package index:
-```bash
-pip install koalas
-```
-
-or with the conda package manager:
-```bash
-conda install koalas -c conda-forge
-```
-
-If this fails to install the pyarrow dependency, you may want to try installing with Python 3.6.x, as `pip install arrow` does not work out of the box for 3.7 https://github.com/apache/arrow/issues/1125.
-
-If you don't have Spark environment, you should also install `pyspark` package by:
-```bash
-pip install 'pyspark>=2.4'
-```
-
-or
-```bash
-conda install 'pyspark>=2.4' -c conda-forge
-```
-
-or downloading the release.
-
-After installing the packages, you can import the package:
-```py
-import databricks.koalas as ks
-```
-
-Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
-```py
-import pandas as pd
-pdf = pd.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']})
-
-# Create a Koalas DataFrame from pandas DataFrame
-df = ks.from_pandas(pdf)
-
-# Rename the columns
-df.columns = ['x', 'y', 'z1']
-
-# Do some operations in place:
-df['x2'] = df.x * df.x
-```
-
+See [Getting Started](https://koalas.readthedocs.io/en/latest/getting_started/index.html).
 
 ## Documentation
 
@@ -212,7 +165,7 @@ This project is currently in beta and is rapidly evolving.
 We plan to do weekly releases at this stage.
 You should expect the following differences:
 
- - some functions may be missing (see the [Contributions](#Contributions) section)
+ - some functions may be missing. Please create a GitHub issue if your favorite function is not yet supported. We also document all the functions that are not yet supported in the [missing directory](https://github.com/databricks/koalas/tree/master/databricks/koalas/missing).
 
  - some behavior may be different, in particular in the treatment of nulls: Pandas uses
    Not a Number (NaN) special constants to indicate missing values, while Spark has a

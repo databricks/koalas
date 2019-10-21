@@ -749,3 +749,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser.drop_duplicates().sort_values(),
                        kser.drop_duplicates().sort_values())
+
+    def test_keys(self):
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(kser.keys(), pser.keys())
