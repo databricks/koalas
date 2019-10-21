@@ -55,6 +55,7 @@ Computations / Descriptive Stats
    GroupBy.bfill
    GroupBy.ffill
    GroupBy.backfill
+   GroupBy.shift
 
 The following methods are available only for `SeriesGroupBy` objects.
 

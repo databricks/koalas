@@ -17,7 +17,7 @@
 import numpy as np
 import pandas as pd
 
-from databricks import koalas
+from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
@@ -45,14 +45,14 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
     def test_stat_functions(self):
         pdf = pd.DataFrame({'A': [1, 2, 3, 4],
                             'B': [1.0, 2.1, 3, 4]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         self._test_stat_functions(pdf, kdf)
 
     def test_stat_functions_multiindex_column(self):
         arrays = [np.array(['A', 'A', 'B', 'B']),
                   np.array(['one', 'two', 'one', 'two'])]
         pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         self._test_stat_functions(pdf, kdf)
 
     def test_abs(self):
@@ -60,7 +60,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                             'B': [1., -2, 3, -4, 5],
                             'C': [-6., -7, -8, -9, 10],
                             'D': ['a', 'b', 'c', 'd', 'e']})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.A.abs(), pdf.A.abs())
         self.assert_eq(kdf.B.abs(), pdf.B.abs())
         self.assert_eq(kdf[['B', 'C']].abs(), pdf[['B', 'C']].abs())
@@ -79,7 +79,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                                 'B': [1., -2, 3, -4, 5] * 300,
                                 'C': [-6., -7, -8, -9, 10] * 300,
                                 'D': [True, False, True, False, False] * 300})
-            kdf = koalas.from_pandas(pdf)
+            kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf.count(axis=1), pdf.count(axis=1))
             self.assert_eq(kdf.var(axis=1), pdf.var(axis=1))
             self.assert_eq(kdf.std(axis=1), pdf.std(axis=1))
@@ -98,7 +98,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             # DataFrame
             # we do not handle NaNs for now
             pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
-            kdf = koalas.from_pandas(pdf)
+            kdf = ks.from_pandas(pdf)
 
             res = kdf.corr()
             sol = pdf.corr()
@@ -127,13 +127,13 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                                 'g': np.array([True, False, True]),
                                 'h': np.array(list('abc'))},
                                index=pd.Index([1, 2, 3], name='myindex'))
-            kdf = koalas.from_pandas(pdf)
+            kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf.corr(), pdf.corr())
 
     def test_stats_on_boolean_dataframe(self):
         pdf = pd.DataFrame({'A': [True, False, True],
                             'B': [False, False, True]})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         pd.testing.assert_series_equal(kdf.min(), pdf.min())
         pd.testing.assert_series_equal(kdf.max(), pdf.max())
@@ -145,23 +145,23 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         pd.testing.assert_series_equal(kdf.std(), pdf.std())
 
     def test_stats_on_boolean_series(self):
-        ps = pd.Series([True, False, True])
-        ks = koalas.from_pandas(ps)
+        pser = pd.Series([True, False, True])
+        kser = ks.from_pandas(pser)
 
-        self.assertEqual(ks.min(), ps.min())
-        self.assertEqual(ks.max(), ps.max())
+        self.assertEqual(kser.min(), pser.min())
+        self.assertEqual(kser.max(), pser.max())
 
-        self.assertEqual(ks.sum(), ps.sum())
-        self.assertEqual(ks.mean(), ps.mean())
+        self.assertEqual(kser.sum(), pser.sum())
+        self.assertEqual(kser.mean(), pser.mean())
 
-        self.assertAlmostEqual(ks.var(), ps.var())
-        self.assertAlmostEqual(ks.std(), ps.std())
+        self.assertAlmostEqual(kser.var(), pser.var())
+        self.assertAlmostEqual(kser.std(), pser.std())
 
     def test_some_stats_functions_should_discard_non_numeric_columns_by_default(self):
         pdf = pd.DataFrame({'i': [0, 1, 2],
                             'b': [False, False, True],
                             's': ['x', 'y', 'z']})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         # min and max do not discard non-numeric columns by default
         self.assertEqual(len(kdf.min()), len(pdf.min()))
@@ -182,7 +182,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({'i': [0, 1, 2],
                             'b': [False, False, True],
                             's': ['x', 'y', 'z']})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         self.assertEqual(len(kdf.sum(numeric_only=True)), len(pdf.sum(numeric_only=True)))
         self.assertEqual(len(kdf.mean(numeric_only=True)), len(pdf.mean(numeric_only=True)))
@@ -197,7 +197,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({'i': [0, 1, 2],
                             'b': [False, False, True],
                             's': ['x', 'y', 'z']})
-        kdf = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
         # the lengths are the same, but the results are different.
         self.assertEqual(len(kdf.sum(numeric_only=False)), len(pdf.sum(numeric_only=False)))

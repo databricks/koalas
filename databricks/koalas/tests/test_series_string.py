@@ -20,52 +20,53 @@ import pandas.testing as mt
 import numpy as np
 import re
 
-from databricks import koalas
+from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
 class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
+
     @property
-    def pds1(self):
+    def pser(self):
         return pd.Series(['apples', 'Bananas', 'carrots', '1', '100', '',
                           '\nleading-whitespace', 'trailing-Whitespace    \t',
                           None, np.NaN])
 
     def check_func(self, func):
-        self.check_func_on_series(func, self.pds1)
+        self.check_func_on_series(func, self.pser)
 
-    def check_func_on_series(self, func, pds):
-        ks = koalas.from_pandas(pds)
+    def check_func_on_series(self, func, pser):
+        kser = ks.from_pandas(pser)
         mt.assert_series_equal(
-            func(ks).toPandas(),
-            func(pds),
+            func(kser).toPandas(),
+            func(pser),
             check_names=False
         )
 
     def test_string_add_str_num(self):
         pdf = pd.DataFrame(dict(col1=['a'], col2=[1]))
-        ds = koalas.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
         with self.assertRaises(TypeError):
-            ds['col1'] + ds['col2']
+            kdf['col1'] + kdf['col2']
 
     def test_string_add_assign(self):
         pdf = pd.DataFrame(dict(col1=['a', 'b', 'c'], col2=['1', '2', '3']))
-        ds = koalas.from_pandas(pdf)
-        ds['col1'] += ds['col2']
+        kdf = ks.from_pandas(pdf)
+        kdf['col1'] += kdf['col2']
         pdf['col1'] += pdf['col2']
-        self.assert_eq((ds['col1']).to_pandas(), pdf['col1'])
+        self.assert_eq(kdf['col1'], pdf['col1'])
 
     def test_string_add_str_str(self):
         pdf = pd.DataFrame(dict(col1=['a', 'b', 'c'], col2=['1', '2', '3']))
-        ds = koalas.from_pandas(pdf)
-        self.assert_eq((ds['col1'] + ds['col2']).to_pandas(), pdf['col1'] + pdf['col2'])
-        self.assert_eq((ds['col2'] + ds['col1']).to_pandas(), pdf['col2'] + pdf['col1'])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf['col1'] + kdf['col2'], pdf['col1'] + pdf['col2'])
+        self.assert_eq(kdf['col2'] + kdf['col1'], pdf['col2'] + pdf['col1'])
 
     def test_string_add_str_lit(self):
         pdf = pd.DataFrame(dict(col1=['a', 'b', 'c']))
-        ds = koalas.from_pandas(pdf)
-        self.assert_eq((ds['col1'] + '_lit').to_pandas(), pdf['col1'] + '_lit')
-        self.assert_eq(('_lit' + ds['col1']).to_pandas(), '_lit' + pdf['col1'])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf['col1'] + '_lit', pdf['col1'] + '_lit')
+        self.assert_eq('_lit' + kdf['col1'], '_lit' + pdf['col1'])
 
     def test_string_capitalize(self):
         self.check_func(lambda x:  x.str.capitalize())
@@ -139,9 +140,9 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         self.check_func(lambda x: x.str.isdecimal())
 
     def test_string_cat(self):
-        ks = koalas.from_pandas(self.pds1)
+        kser = ks.from_pandas(self.pser)
         with self.assertRaises(NotImplementedError):
-            ks.str.cat()
+            kser.str.cat()
 
     def test_string_center(self):
         self.check_func(lambda x: x.str.center(0))
@@ -159,24 +160,24 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         self.check_func(lambda x: x.str.count('WH', flags=re.IGNORECASE))
 
     def test_string_decode(self):
-        ks = koalas.from_pandas(self.pds1)
+        kser = ks.from_pandas(self.pser)
         with self.assertRaises(NotImplementedError):
-            ks.str.decode('utf-8')
+            kser.str.decode('utf-8')
 
     def test_string_encode(self):
-        ks = koalas.from_pandas(self.pds1)
+        kser = ks.from_pandas(self.pser)
         with self.assertRaises(NotImplementedError):
-            ks.str.encode('utf-8')
+            kser.str.encode('utf-8')
 
     def test_string_extract(self):
-        ks = koalas.from_pandas(self.pds1)
+        kser = ks.from_pandas(self.pser)
         with self.assertRaises(NotImplementedError):
-            ks.str.extract('pat')
+            kser.str.extract('pat')
 
     def test_string_extractall(self):
-        ks = koalas.from_pandas(self.pds1)
+        kser = ks.from_pandas(self.pser)
         with self.assertRaises(NotImplementedError):
-            ks.str.extractall('pat')
+            kser.str.extractall('pat')
 
     def test_string_find(self):
         self.check_func(lambda x: x.str.find('a'))
@@ -188,22 +189,22 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         self.check_func(lambda x: x.str.findall('wh.*', flags=re.IGNORECASE))
 
     def test_string_index(self):
-        pds = pd.Series(['tea', 'eat'])
-        self.check_func_on_series(lambda x: x.str.index('ea'), pds)
+        pser = pd.Series(['tea', 'eat'])
+        self.check_func_on_series(lambda x: x.str.index('ea'), pser)
         with self.assertRaises(Exception):
-            self.check_func_on_series(lambda x: x.str.index('ea', start=0, end=2), pds)
+            self.check_func_on_series(lambda x: x.str.index('ea', start=0, end=2), pser)
         with self.assertRaises(Exception):
             self.check_func(lambda x: x.str.index('not-found'))
 
     def test_string_join(self):
-        pds = pd.Series([['a', 'b', 'c'], ['xx', 'yy', 'zz']])
-        self.check_func_on_series(lambda x: x.str.join("-"), pds)
+        pser = pd.Series([['a', 'b', 'c'], ['xx', 'yy', 'zz']])
+        self.check_func_on_series(lambda x: x.str.join("-"), pser)
         self.check_func(lambda x: x.str.join("-"))
 
     def test_string_len(self):
         self.check_func(lambda x: x.str.len())
-        pds = pd.Series([['a', 'b', 'c'], ['xx'], []])
-        self.check_func_on_series(lambda x: x.str.len(), pds)
+        pser = pd.Series([['a', 'b', 'c'], ['xx'], []])
+        self.check_func_on_series(lambda x: x.str.len(), pser)
 
     def test_string_ljust(self):
         self.check_func(lambda x: x.str.ljust(0))
@@ -253,10 +254,10 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         self.check_func(lambda x: x.str.rfind('a', start=0, end=1))
 
     def test_string_rindex(self):
-        pds = pd.Series(['teatea', 'eateat'])
-        self.check_func_on_series(lambda x: x.str.rindex('ea'), pds)
+        pser = pd.Series(['teatea', 'eateat'])
+        self.check_func_on_series(lambda x: x.str.rindex('ea'), pser)
         with self.assertRaises(Exception):
-            self.check_func_on_series(lambda x: x.str.rindex('ea', start=0, end=2), pds)
+            self.check_func_on_series(lambda x: x.str.rindex('ea', start=0, end=2), pser)
         with self.assertRaises(Exception):
             self.check_func(lambda x: x.str.rindex('not-found'))
 
@@ -283,18 +284,18 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
     def test_string_split(self):
         self.check_func(lambda x: x.str.split())
         self.check_func(lambda x: x.str.split(r'p*'))
-        pds = pd.Series(['This is a sentence.', 'This-is-a-long-word.'])
-        self.check_func_on_series(lambda x: x.str.split(n=2), pds)
-        self.check_func_on_series(lambda x: x.str.split(pat='-', n=2), pds)
+        pser = pd.Series(['This is a sentence.', 'This-is-a-long-word.'])
+        self.check_func_on_series(lambda x: x.str.split(n=2), pser)
+        self.check_func_on_series(lambda x: x.str.split(pat='-', n=2), pser)
         with self.assertRaises(ValueError):
             self.check_func(lambda x: x.str.split(expand=True))
 
     def test_string_rsplit(self):
         self.check_func(lambda x: x.str.rsplit())
         self.check_func(lambda x: x.str.rsplit(r'p*'))
-        pds = pd.Series(['This is a sentence.', 'This-is-a-long-word.'])
-        self.check_func_on_series(lambda x: x.str.rsplit(n=2), pds)
-        self.check_func_on_series(lambda x: x.str.rsplit(pat='-', n=2), pds)
+        pser = pd.Series(['This is a sentence.', 'This-is-a-long-word.'])
+        self.check_func_on_series(lambda x: x.str.rsplit(n=2), pser)
+        self.check_func_on_series(lambda x: x.str.rsplit(pat='-', n=2), pser)
         with self.assertRaises(ValueError):
             self.check_func(lambda x: x.str.rsplit(expand=True))
 

@@ -20,7 +20,7 @@ A wrapper for GroupedData to behave similar to pandas GroupBy.
 
 import sys
 import inspect
-from collections import Callable, OrderedDict
+from collections import Callable, OrderedDict, namedtuple
 from functools import partial
 from typing import Any, List, Tuple, Union
 
@@ -42,6 +42,9 @@ from databricks.koalas.series import Series, _col
 from databricks.koalas.config import get_option
 from databricks.koalas.utils import column_index_level, scol_for
 from databricks.koalas.window import RollingGroupby, ExpandingGroupby
+
+# to keep it the same as pandas
+NamedAgg = namedtuple("NamedAgg", ["column", "aggfunc"])
 
 
 class GroupBy(object):
@@ -132,6 +135,13 @@ class GroupBy(object):
         To control the output names with different aggregations per column, Koalas
         also supports 'named aggregation' or nested renaming in .agg. And it can be
         used when applying multiple aggragation functions to specific columns.
+
+        >>> aggregated = df.groupby('A').agg(b_max=ks.NamedAgg(column='B', aggfunc='max'))
+        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+             b_max
+        A
+        1        2
+        2        4
 
         >>> aggregated = df.groupby('A').agg(b_max=('B', 'max'), b_min=('B', 'min'))
         >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
@@ -1387,6 +1397,65 @@ class GroupBy(object):
 
     pad = ffill
 
+    def shift(self, periods=1, fill_value=None):
+        """
+        Shift each group by periods observations.
+
+        Parameters
+        ----------
+        periods : integer, default 1
+            number of periods to shift
+        fill_value : optional
+
+        Returns
+        -------
+        Series or DataFrame
+            Object shifted within each group.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({
+        ...     'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+        ...     'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
+        >>> df
+           a  b
+        0  1  1
+        1  1  2
+        2  1  2
+        3  2  2
+        4  2  3
+        5  2  3
+        6  3  3
+        7  3  4
+        8  3  4
+
+        >>> df.groupby('a').shift().sort_index()  # doctest: +SKIP
+             b
+        0  NaN
+        1  1.0
+        2  2.0
+        3  NaN
+        4  2.0
+        5  3.0
+        6  NaN
+        7  3.0
+        8  4.0
+
+        >>> df.groupby('a').shift(periods=-1, fill_value=0).sort_index()  # doctest: +SKIP
+           b
+        0  2
+        1  2
+        2  0
+        3  3
+        4  3
+        5  0
+        6  4
+        7  4
+        8  0
+        """
+        return self._shift(periods, fill_value)
+
     def transform(self, func):
         """
         Apply function column-by-column to the GroupBy object.
@@ -1736,6 +1805,19 @@ class DataFrameGroupBy(GroupBy):
                                       column_index=[c._internal.column_index[0] for c in applied])
         return DataFrame(internal)
 
+    def _shift(self, periods, fill_value):
+        applied = []
+        kdf = self._kdf
+
+        for column in self._agg_columns:
+            applied.append(column.groupby(self._groupkeys).shift(periods, fill_value))
+
+        sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
+        internal = kdf._internal.copy(sdf=sdf,
+                                      data_columns=[c._internal.data_columns[0] for c in applied],
+                                      column_index=[c._internal.column_index[0] for c in applied])
+        return DataFrame(internal)
+
 
 class SeriesGroupBy(GroupBy):
 
@@ -1771,6 +1853,10 @@ class SeriesGroupBy(GroupBy):
     def _fillna(self, *args, **kwargs):
         groupkey_scols = [s._scol for s in self._groupkeys]
         return Series._fillna(self._ks, *args, **kwargs, part_cols=groupkey_scols)
+
+    def _shift(self, periods, fill_value):
+        groupkey_scols = [s._scol for s in self._groupkeys]
+        return Series._shift(self._ks, periods, fill_value, part_cols=groupkey_scols)
 
     @property
     def _kdf(self) -> DataFrame:

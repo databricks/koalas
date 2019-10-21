@@ -66,7 +66,6 @@ class _MissingPandasLikeDataFrame(object):
     interpolate = unsupported_function('interpolate')
     iterrows = unsupported_function('iterrows')
     itertuples = unsupported_function('itertuples')
-    keys = unsupported_function('keys')
     last = unsupported_function('last')
     last_valid_index = unsupported_function('last_valid_index')
     lookup = unsupported_function('lookup')
@@ -104,7 +103,6 @@ class _MissingPandasLikeDataFrame(object):
     tz_localize = unsupported_function('tz_localize')
     unstack = unsupported_function('unstack')
     where = unsupported_function('where')
-    xs = unsupported_function('xs')
 
     # Deprecated functions
     as_blocks = unsupported_function('as_blocks', deprecated=True)

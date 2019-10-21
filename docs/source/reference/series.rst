@@ -50,6 +50,7 @@ Indexing, iteration
    Series.at
    Series.loc
    Series.iloc
+   Series.keys
 
 Binary operator functions
 -------------------------
@@ -175,6 +176,7 @@ Combining / joining / merging
    :toctree: api/
 
    Series.append
+   Series.replace
 
 Time series-related
 -------------------

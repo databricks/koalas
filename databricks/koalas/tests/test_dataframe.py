@@ -726,6 +726,32 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.nsmallest(n=5, columns='a'), pdf.nsmallest(5, columns='a'))
         self.assert_eq(kdf.nsmallest(n=5, columns=['a', 'b']), pdf.nsmallest(5, columns=['a', 'b']))
 
+    def test_xs(self):
+        d = {'num_legs': [4, 4, 2, 2],
+             'num_wings': [0, 0, 2, 2],
+             'class': ['mammal', 'mammal', 'mammal', 'bird'],
+             'animal': ['cat', 'dog', 'bat', 'penguin'],
+             'locomotion': ['walks', 'walks', 'flies', 'walks']}
+        kdf = ks.DataFrame(data=d)
+        kdf = kdf.set_index(['class', 'animal', 'locomotion'])
+        pdf = kdf.to_pandas()
+
+        self.assert_eq(kdf.xs(('mammal', 'dog', 'walks')), pdf.xs(('mammal', 'dog', 'walks')))
+
+        msg = "'key' should be string or tuple that contains strings"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.xs(1)
+        msg = ("'key' should have index names as only strings "
+               "or a tuple that contain index names as only strings")
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.xs(('mammal', 1))
+        msg = 'axis should be either 0 or "index" currently.'
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.xs('num_wings', axis=1)
+        msg = r"'Key length \(4\) exceeds index depth \(3\)'"
+        with self.assertRaisesRegex(KeyError, msg):
+            kdf.xs(('mammal', 'dog', 'walks', 'foo'))
+
     def test_missing(self):
         kdf = self.kdf
 
@@ -1361,33 +1387,99 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_pivot_table(self):
         pdf = pd.DataFrame({'a': [4, 2, 3, 4, 8, 6],
                             'b': [1, 2, 2, 4, 2, 4],
-                            'e': [1, 2, 2, 4, 2, 4],
-                            'c': [1, 2, 9, 4, 7, 4]},
+                            'e': [10, 20, 20, 40, 20, 40],
+                            'c': [1, 2, 9, 4, 7, 4],
+                            'd': [-1, -2, -3, -4, -5, -6]},
                            index=[10, 20, 30, 40, 50, 60])
 
         kdf = ks.from_pandas(pdf)
 
-        # Checking if both DataFrames have the same results (Temporary)
-        np.testing.assert_equal(kdf.pivot_table(columns="a", values="b").to_numpy(),
-                                pdf.pivot_table(columns=["a"], values="b").values)
+        # Checking if both DataFrames have the same results
+        self.assert_eq(kdf.pivot_table(columns="a", values="b").sort_index(),
+                       pdf.pivot_table(columns="a", values="b").sort_index(),
+                       almost=True)
 
-        # Todo: self.assert_eq(kdf.pivot_table(columns="a", values="b"),
-        #  pdf.pivot_table(columns=["a"], values="b"))
+        self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values="b").sort_index(),
+                       pdf.pivot_table(index=['c'], columns="a", values="b").sort_index(),
+                       almost=True)
 
-        # Todo: self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values="b"),
-        #  pdf.pivot_table(index=['c'], columns=["a"], values="b"))
+        self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values="b",
+                                       aggfunc='sum').sort_index(),
+                       pdf.pivot_table(index=['c'], columns="a", values="b",
+                                       aggfunc='sum').sort_index(),
+                       almost=True)
+
+        self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values=["b"],
+                                       aggfunc='sum').sort_index(),
+                       pdf.pivot_table(index=['c'], columns="a", values=["b"],
+                                       aggfunc='sum').sort_index(),
+                       almost=True)
+
+        self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values=["b", "e"],
+                                       aggfunc='sum').sort_index(),
+                       pdf.pivot_table(index=['c'], columns="a", values=["b", "e"],
+                                       aggfunc='sum').sort_index(),
+                       almost=True)
+
+        self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values=["b", "e", "d"],
+                                       aggfunc='sum').sort_index(),
+                       pdf.pivot_table(index=['c'], columns="a", values=["b", "e", "d"],
+                                       aggfunc='sum').sort_index(),
+                       almost=True)
 
         self.assert_eq(kdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
                                        aggfunc={'b': 'mean', 'e': 'sum'}).sort_index(),
-                       pdf.pivot_table(index=['c'], columns=["a"],
-                                       values=['b', 'e'], aggfunc={'b': 'mean', 'e': 'sum'}))
+                       pdf.pivot_table(index=['c'], columns="a", values=['b', 'e'],
+                                       aggfunc={'b': 'mean', 'e': 'sum'}).sort_index(),
+                       almost=True)
 
-        # Todo: self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b"),
-        #  pdf.pivot_table(index=['e', 'c'], columns="a", values="b"))
+        self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b").sort_index(),
+                       pdf.pivot_table(index=['e', 'c'], columns="a", values="b").sort_index(),
+                       almost=True)
 
-        # Todo: self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b",
-        #  fill_value=999), pdf.pivot_table(index=['e', 'c'], columns="a", values="b",
-        #  fill_value=999))
+        self.assert_eq(kdf.pivot_table(index=['e', 'c'], columns="a", values="b",
+                                       fill_value=999).sort_index(),
+                       pdf.pivot_table(index=['e', 'c'], columns="a", values="b",
+                                       fill_value=999).sort_index(),
+                       almost=True)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'e'),
+                                             ('z', 'c'), ('w', 'd')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.pivot_table(columns=("x", "a"), values=("x", "b")).sort_index(),
+                       pdf.pivot_table(columns=[("x", "a")], values=[("x", "b")]).sort_index(),
+                       almost=True)
+
+        self.assert_eq(kdf.pivot_table(index=[('z', 'c')], columns=("x", "a"),
+                                       values=[("x", "b")]).sort_index(),
+                       pdf.pivot_table(index=[('z', 'c')], columns=[("x", "a")],
+                                       values=[("x", "b")]).sort_index(),
+                       almost=True)
+
+        self.assert_eq(kdf.pivot_table(index=[('z', 'c')], columns=("x", "a"),
+                                       values=[("x", "b"), ('y', 'e')]).sort_index(),
+                       pdf.pivot_table(index=[('z', 'c')], columns=[("x", "a")],
+                                       values=[("x", "b"), ('y', 'e')]).sort_index(),
+                       almost=True)
+
+        self.assert_eq(kdf.pivot_table(index=[('z', 'c')], columns=("x", "a"),
+                                       values=[("x", "b"), ('y', 'e'), ('w', 'd')]).sort_index(),
+                       pdf.pivot_table(index=[('z', 'c')], columns=[("x", "a")],
+                                       values=[("x", "b"), ('y', 'e'), ('w', 'd')]).sort_index(),
+                       almost=True)
+
+        self.assert_eq(kdf.pivot_table(index=[('z', 'c')], columns=("x", "a"),
+                                       values=[("x", "b"), ('y', 'e')],
+                                       aggfunc={("x", "b"): 'mean',
+                                                ('y', 'e'): 'sum'}).sort_index(),
+                       pdf.pivot_table(index=[('z', 'c')], columns=[("x", "a")],
+                                       values=[("x", "b"), ('y', 'e')],
+                                       aggfunc={("x", "b"): 'mean',
+                                                ('y', 'e'): 'sum'}).sort_index(),
+                       almost=True)
 
     def test_pivot_table_and_index(self):
         # https://github.com/databricks/koalas/issues/805
@@ -1455,11 +1547,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "values can't be a list without index."
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.pivot_table(columns="a", values=['b', 'e'])
-
-        msg = "values more than two is not supported yet!"
-        with self.assertRaisesRegex(NotImplementedError, msg):
-            kdf.pivot_table(index=['e'], columns="a", values=['b', 'e', 'c'],
-                            aggfunc={'b': 'mean', 'e': 'sum', 'c': 'sum'})
 
         msg = "Wrong columns A."
         with self.assertRaisesRegex(ValueError, msg):
@@ -1667,6 +1754,67 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=['X']))
         self.assertRaises(ValueError, lambda: kdf.reindex(columns=[('X',)]))
+
+    def test_melt(self):
+        pdf = pd.DataFrame({'A': [1, 3, 5],
+                            'B': [2, 4, 6],
+                            'C': [7, 8, 9]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.melt().sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt().sort_values(['variable', 'value']))
+        self.assert_eq(kdf.melt(id_vars='A').sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(id_vars='A').sort_values(['variable', 'value']))
+        self.assert_eq(kdf.melt(id_vars=['A', 'B']).sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(id_vars=['A', 'B']).sort_values(['variable', 'value']))
+        self.assert_eq(kdf.melt(id_vars=('A', 'B')).sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(id_vars=('A', 'B')).sort_values(['variable', 'value']))
+        self.assert_eq(kdf.melt(id_vars=['A'], value_vars=['C']).sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(id_vars=['A'], value_vars=['C']).sort_values(['variable', 'value']))
+        self.assert_eq(kdf.melt(id_vars=['A'], value_vars=['B'],
+                                var_name='myVarname', value_name='myValname')
+                       .sort_values(['myVarname', 'myValname']).reset_index(drop=True),
+                       pdf.melt(id_vars=['A'], value_vars=['B'],
+                                var_name='myVarname', value_name='myValname')
+                       .sort_values(['myVarname', 'myValname']))
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.melt().sort_values(['variable_0', 'variable_1', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt().sort_values(['variable_0', 'variable_1', 'value']))
+        self.assert_eq(kdf.melt(id_vars=[('X', 'A')])
+                       .sort_values(['variable_0', 'variable_1', 'value']).reset_index(drop=True),
+                       pdf.melt(id_vars=[('X', 'A')])
+                       .sort_values(['variable_0', 'variable_1', 'value']), almost=True)
+        self.assert_eq(kdf.melt(id_vars=[('X', 'A')], value_vars=[('Y', 'C')])
+                       .sort_values(['variable_0', 'variable_1', 'value']).reset_index(drop=True),
+                       pdf.melt(id_vars=[('X', 'A')], value_vars=[('Y', 'C')])
+                       .sort_values(['variable_0', 'variable_1', 'value']), almost=True)
+        self.assert_eq(kdf.melt(id_vars=[('X', 'A')], value_vars=[('X', 'B')],
+                                var_name=['myV1', 'myV2'], value_name='myValname')
+                       .sort_values(['myV1', 'myV2', 'myValname']).reset_index(drop=True),
+                       pdf.melt(id_vars=[('X', 'A')], value_vars=[('X', 'B')],
+                                var_name=['myV1', 'myV2'], value_name='myValname')
+                       .sort_values(['myV1', 'myV2', 'myValname']), almost=True)
+
+        columns.names = ['v0', 'v1']
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.melt().sort_values(['v0', 'v1', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt().sort_values(['v0', 'v1', 'value']))
+
+        self.assertRaises(ValueError, lambda: kdf.melt(id_vars=('X', 'A')))
 
     def test_all(self):
         pdf = pd.DataFrame({
@@ -2013,3 +2161,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "length of index columns.*1.*3"):
             kdf.to_spark(index_col=["x", "y", "z"])
+
+    def test_keys(self):
+        kdf = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+                           index=['cobra', 'viper', 'sidewinder'],
+                           columns=['max_speed', 'shield'])
+        pdf = kdf.to_pandas()
+
+        self.assert_eq(kdf.keys(), pdf.keys())
