@@ -40,7 +40,7 @@ matrix:
         - PYARROW_VERSION=0.13.0
 
 before_install:
- - ./dev/download_travis_dependencies.sh
+  - ./dev/download_travis_dependencies.sh
 
 # See this page: http://conda.pydata.org/docs/travis.html
 install:

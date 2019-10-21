@@ -316,6 +316,44 @@ class Index(IndexOpsMixin):
         """
         return is_object_dtype(self.dtype)
 
+    def copy(self, name=None):
+        """
+        Make a copy of this object. name sets those attributes on the new object.
+
+        Parameters
+        ----------
+        name : string, optional
+            to set name of index
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+        ...                   index=['cobra', 'viper', 'sidewinder'],
+        ...                   columns=['max_speed', 'shield'])
+        >>> df
+                    max_speed  shield
+        cobra               1       2
+        viper               4       5
+        sidewinder          7       8
+        >>> df.index
+        Index(['cobra', 'viper', 'sidewinder'], dtype='object')
+
+        Copy index
+
+        >>> df.index.copy()
+        Index(['cobra', 'viper', 'sidewinder'], dtype='object')
+
+        Copy index with name
+
+        >>> df.index.copy(name='snake')
+        Index(['cobra', 'viper', 'sidewinder'], dtype='object', name='snake')
+        """
+        internal = self._kdf._internal.copy()
+        result = Index(ks.DataFrame(internal), self._scol)
+        if name:
+            result.name = name
+        return result
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)
@@ -421,6 +459,15 @@ class MultiIndex(Index):
         return self._kdf[[]]._to_internal_pandas().index
 
     toPandas = to_pandas
+
+    # TODO: add 'name' parameter after pd.MultiIndex.name is implemented
+    def copy(self):
+        """
+        Make a copy of this object.
+        """
+        internal = self._kdf._internal.copy()
+        result = MultiIndex(ks.DataFrame(internal))
+        return result
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):

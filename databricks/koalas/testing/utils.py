@@ -25,7 +25,7 @@ import pandas as pd
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession, SQLContext
 
-from databricks import koalas
+from databricks import koalas as ks
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index
 from databricks.koalas.series import Series
@@ -285,7 +285,7 @@ class ComparisonTestBase(ReusedSQLTestCase):
 
     @property
     def kdf(self):
-        return koalas.from_pandas(self.pdf)
+        return ks.from_pandas(self.pdf)
 
     @property
     def pdf(self):
