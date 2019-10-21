@@ -309,17 +309,9 @@ class IndexOpsMixin(object):
         >>> ser.index.is_monotonic
         True
         """
-        from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import _col
         col = self._scol
-        idx_tmp = SPARK_INDEX_NAME_FORMAT('temp')
-        sdf = self._internal.sdf.withColumn(idx_tmp, monotonically_increasing_id())
-        window = Window.orderBy(sdf[idx_tmp]).rowsBetween(-1, -1)
-        sdf = sdf.select(
-            sdf[idx_tmp],
-            F.when((col >= F.lag(col, 1).over(window)) & col.isNotNull(), True)
-             .otherwise(False).alias('__temp__'))
-        return sdf.where(F.col('__temp__') == 'false').count() < 2
+        window = Window.orderBy(monotonically_increasing_id()).rowsBetween(-1, -1)
+        return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull()).all()
 
     is_monotonic_increasing = is_monotonic
 
@@ -368,17 +360,9 @@ class IndexOpsMixin(object):
         >>> ser.index.is_monotonic_decreasing
         False
         """
-        from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import _col
         col = self._scol
-        idx_tmp = SPARK_INDEX_NAME_FORMAT('temp')
-        sdf = self._internal.sdf.withColumn(idx_tmp, monotonically_increasing_id())
-        window = Window.orderBy(sdf[idx_tmp]).rowsBetween(-1, -1)
-        sdf = sdf.select(
-            sdf[idx_tmp],
-            F.when((col <= F.lag(col, 1).over(window)) & col.isNotNull(), True)
-             .otherwise(False).alias('__temp__'))
-        return sdf.where(F.col('__temp__') == 'false').count() < 2
+        window = Window.orderBy(monotonically_increasing_id()).rowsBetween(-1, -1)
+        return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull()).all()
 
     def astype(self, dtype):
         """
