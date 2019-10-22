@@ -726,14 +726,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser.xs(('a', 'lama', 'speed')), pser.xs(('a', 'lama', 'speed')))
 
-        msg = "'key' should be string or tuple that contains strings"
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.xs(['a', 'b'])
-        msg = ("'key' should have index names as only strings "
-               "or a tuple that contain index names as only strings")
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.xs(('a', ('lama', 'speed')))
-
     def test_duplicates(self):
         # test on texts
         pser = pd.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],

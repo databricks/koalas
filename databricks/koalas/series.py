@@ -3503,13 +3503,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
            length      1.2
         Name: 0, dtype: float64
         """
-        if not isinstance(key, (str, tuple)):
-            raise ValueError("'key' should be string or tuple that contains strings")
-        if isinstance(key, str):
+        if not isinstance(key, tuple):
             key = (key,)
-        if not all(isinstance(index, str) for index in key):
-            raise ValueError("'key' should have index names as only strings "
-                             "or a tuple that contain index names as only strings")
         if level is None:
             level = 0
 
@@ -3529,11 +3524,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             if length == 1:
                 return pdf[self.name].iloc[0]
 
-        index_scols = [col for col in sdf.columns if col not in self._internal.data_columns]
-        index_map_dict = {imap[0]: imap[1] for imap in self._internal.index_map}
+        index_cols = [col for col in sdf.columns if col not in self._internal.data_columns]
+        index_map_dict = dict(self._internal.index_map)
         internal = self._internal.copy(
             sdf=sdf,
-            index_map=[(index_scol, index_map_dict[index_scol]) for index_scol in index_scols])
+            index_map=[(index_col, index_map_dict[index_col]) for index_col in index_cols])
 
         return _col(DataFrame(internal))
 
