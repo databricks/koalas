@@ -316,6 +316,50 @@ class Index(IndexOpsMixin):
         """
         return is_object_dtype(self.dtype)
 
+    def unique(self, level=None):
+        """
+        Return unique values in the index.
+        Be aware the order of unique values might be different than pandas.Index.unique
+
+        :param level: int or str, optional, default is None
+        :return: Index without deuplicates
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 1, 3]).index.unique()
+        Int64Index([1, 3], dtype='int64')
+
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=['d', 'e', 'e']).index.unique()
+        Index(['e', 'd'], dtype='object')
+        """
+        if level is not None:
+            self._validate_index_level(level)
+        sdf = self._kdf._sdf.select(self._scol).distinct()
+        return Index(DataFrame(self._kdf._internal.copy(sdf=sdf)), scol=self._scol)
+
+    def _validate_index_level(self, level):
+        """
+        Validate index level.
+        For single-level Index getting level number is a no-op, but some
+        verification must be done like in MultiIndex.
+        """
+        if isinstance(level, int):
+            if level < 0 and level != -1:
+                raise IndexError(
+                    "Too many levels: Index has only 1 level,"
+                    " %d is not a valid level number" % (level,)
+                )
+            elif level > 0:
+                raise IndexError(
+                    "Too many levels:" " Index has only 1 level, not %d" % (level + 1)
+                )
+        elif level != self.name:
+            raise KeyError(
+                "Requested level ({}) does not match index name ({})".format(
+                    level, self.name
+                )
+            )
+
     def copy(self, name=None):
         """
         Make a copy of this object. name sets those attributes on the new object.
@@ -459,6 +503,9 @@ class MultiIndex(Index):
         return self._kdf[[]]._to_internal_pandas().index
 
     toPandas = to_pandas
+
+    def unique(self, level=None):
+        raise PandasNotImplementedError(class_name='MultiIndex', method_name='unique')
 
     # TODO: add 'name' parameter after pd.MultiIndex.name is implemented
     def copy(self):
