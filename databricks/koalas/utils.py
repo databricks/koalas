@@ -360,14 +360,25 @@ def column_index_level(column_index: List[Tuple[str, ...]]) -> int:
         return list(levels)[0]
 
 
-def tuple_like_strings(items):
+def name_like_string(name: Union[str, Tuple[str, ...]]) -> str:
     """
-    Return the tuple-like strings from items
+    Return the name-like strings from str or tuple of str
 
     Examples
     --------
-    >>> items = ('a', 'b', 'c')
-    >>> tuple_like_strings(items)
+    >>> name = 'abc'
+    >>> name_like_string(name)
+    'abc'
+
+    >>> name = ('abc',)
+    >>> name_like_string(name)
+    'abc'
+
+    >>> name = ('a', 'b', 'c')
+    >>> name_like_string(name)
     '(a, b, c)'
     """
-    return '(%s)' % ', '.join(items)
+    if isinstance(name, str):
+        return name
+    else:
+        return ('(%s)' % ', '.join(name)) if len(name) > 1 else name[0]

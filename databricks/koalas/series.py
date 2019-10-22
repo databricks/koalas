@@ -43,7 +43,7 @@ from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAM
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
-                                     tuple_like_strings)
+                                     name_like_string)
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
@@ -3582,8 +3582,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             if length == 1:
                 return pdf[self.name].iloc[0]
 
-            key_string = tuple_like_strings(key) if len(key) > 1 else key[0]
-            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(str(key_string)))
+            key_string = name_like_string(key)
+            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(key_string))
             internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
             return _col(DataFrame(internal))
 
