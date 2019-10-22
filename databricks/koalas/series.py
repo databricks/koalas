@@ -3298,7 +3298,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         most_value = ser_count.max()
         sdf_most_value = sdf_count.where("count == {}".format(most_value))
         sdf = sdf_most_value.select(
-            F.col(SPARK_INDEX_NAME_FORMAT(0)).alias('__temp__'))
+            F.col(SPARK_INDEX_NAME_FORMAT(0)).alias('0'))
         internal = _InternalFrame(sdf=sdf)
 
         result = _col(DataFrame(internal))
