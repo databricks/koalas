@@ -358,3 +358,16 @@ def column_index_level(column_index: List[Tuple[str, ...]]) -> int:
         levels = set(0 if idx is None else len(idx) for idx in column_index)
         assert len(levels) == 1, levels
         return list(levels)[0]
+
+
+def tuple_like_strings(items):
+    """
+    Return the tuple-like strings from items
+
+    Examples
+    --------
+    >>> items = ('a', 'b', 'c')
+    >>> tuple_like_strings(items)
+    '(a, b, c)'
+    """
+    return '(%s)' % ', '.join(items)
