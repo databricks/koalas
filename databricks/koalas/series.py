@@ -3268,16 +3268,13 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         ('cow', 'weight')
         """
         sdf = self._internal.sdf
-        data_scol = self._internal.data_scols[0]
+        data_scol = self._internal.scol
 
-        first_valid_value = sdf.select(
-            F.first(data_scol, True).alias(str(self.name))).first()[str(self.name)]
-        sdf = sdf.select(self._internal.index_scols) \
-                 .where(data_scol == first_valid_value) \
-                 .first()
-        first_valid_idx = tuple(sdf[idx_col] for idx_col in self._internal.index_columns)
+        first_valid_row = sdf.where(data_scol.isNotNull()).first()
+        first_valid_idx = tuple(first_valid_row[idx_col]
+                                for idx_col in self._internal.index_columns)
 
-        if len(first_valid_idx) < 2:
+        if len(first_valid_idx) == 1:
             first_valid_idx = first_valid_idx[0]
 
         return first_valid_idx
