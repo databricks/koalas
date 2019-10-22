@@ -316,6 +316,88 @@ class Index(IndexOpsMixin):
         """
         return is_object_dtype(self.dtype)
 
+    def unique(self, level=None):
+        """
+        Return unique values in the index.
+        Be aware the order of unique values might be different than pandas.Index.unique
+
+        :param level: int or str, optional, default is None
+        :return: Index without deuplicates
+
+        Examples
+        --------
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 1, 3]).index.unique()
+        Int64Index([1, 3], dtype='int64')
+
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=['d', 'e', 'e']).index.unique()
+        Index(['e', 'd'], dtype='object')
+        """
+        if level is not None:
+            self._validate_index_level(level)
+        sdf = self._kdf._sdf.select(self._scol).distinct()
+        return Index(DataFrame(self._kdf._internal.copy(sdf=sdf)), scol=self._scol)
+
+    def _validate_index_level(self, level):
+        """
+        Validate index level.
+        For single-level Index getting level number is a no-op, but some
+        verification must be done like in MultiIndex.
+        """
+        if isinstance(level, int):
+            if level < 0 and level != -1:
+                raise IndexError(
+                    "Too many levels: Index has only 1 level,"
+                    " %d is not a valid level number" % (level,)
+                )
+            elif level > 0:
+                raise IndexError(
+                    "Too many levels:" " Index has only 1 level, not %d" % (level + 1)
+                )
+        elif level != self.name:
+            raise KeyError(
+                "Requested level ({}) does not match index name ({})".format(
+                    level, self.name
+                )
+            )
+
+    def copy(self, name=None):
+        """
+        Make a copy of this object. name sets those attributes on the new object.
+
+        Parameters
+        ----------
+        name : string, optional
+            to set name of index
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+        ...                   index=['cobra', 'viper', 'sidewinder'],
+        ...                   columns=['max_speed', 'shield'])
+        >>> df
+                    max_speed  shield
+        cobra               1       2
+        viper               4       5
+        sidewinder          7       8
+        >>> df.index
+        Index(['cobra', 'viper', 'sidewinder'], dtype='object')
+
+        Copy index
+
+        >>> df.index.copy()
+        Index(['cobra', 'viper', 'sidewinder'], dtype='object')
+
+        Copy index with name
+
+        >>> df.index.copy(name='snake')
+        Index(['cobra', 'viper', 'sidewinder'], dtype='object', name='snake')
+        """
+        internal = self._kdf._internal.copy()
+        result = Index(ks.DataFrame(internal), self._scol)
+        if name:
+            result.name = name
+        return result
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)
@@ -421,6 +503,18 @@ class MultiIndex(Index):
         return self._kdf[[]]._to_internal_pandas().index
 
     toPandas = to_pandas
+
+    def unique(self, level=None):
+        raise PandasNotImplementedError(class_name='MultiIndex', method_name='unique')
+
+    # TODO: add 'name' parameter after pd.MultiIndex.name is implemented
+    def copy(self):
+        """
+        Make a copy of this object.
+        """
+        internal = self._kdf._internal.copy()
+        result = MultiIndex(ks.DataFrame(internal))
+        return result
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):

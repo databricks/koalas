@@ -74,7 +74,6 @@ class _MissingPandasLikeSeries(object):
     interpolate = unsupported_function('interpolate')
     items = unsupported_function('items')
     iteritems = unsupported_function('iteritems')
-    keys = unsupported_function('keys')
     last = unsupported_function('last')
     last_valid_index = unsupported_function('last_valid_index')
     mad = unsupported_function('mad')

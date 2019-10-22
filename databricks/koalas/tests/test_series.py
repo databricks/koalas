@@ -728,3 +728,38 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser.drop_duplicates().sort_values(),
                        kser.drop_duplicates().sort_values())
+
+    def test_getitem(self):
+        pser = pd.Series([10, 20, 15, 30, 45], ['A', 'A', 'B', 'C', 'D'])
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser['A'], pser['A'])
+        self.assert_eq(kser['B'], pser['B'])
+
+        # for MultiIndex
+        midx = pd.MultiIndex([['a', 'b', 'c'],
+                              ['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 0, 0, 0, 1, 1, 1],
+                              [0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 0, 0, 0, 1, 2, 0, 1, 2]])
+        pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+                         name='0', index=midx)
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser['a'], pser['a'])
+        self.assert_eq(kser['a', 'lama'], pser['a', 'lama'])
+
+        msg = r"'Key length \(4\) exceeds index depth \(3\)'"
+        with self.assertRaisesRegex(KeyError, msg):
+            kser[('a', 'lama', 'speed', 'x')]
+
+    def test_keys(self):
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(kser.keys(), pser.keys())

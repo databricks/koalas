@@ -42,7 +42,8 @@ from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
-from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
+from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
+                                     tuple_like_strings)
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
@@ -3279,6 +3280,33 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return first_valid_idx
 
+    def keys(self):
+        """
+        Return alias for index.
+
+        Returns
+        -------
+        Index
+            Index of the Series.
+
+        Examples
+        --------
+        >>> kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+
+        >>> kser.keys()  # doctest: +SKIP
+        MultiIndex([(  'lama',  'speed'),
+                    (  'lama', 'weight'),
+                    (  'lama', 'length'),
+                    (   'cow',  'speed'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'length'),
+                    ('falcon',  'speed'),
+                    ('falcon', 'weight'),
+                    ('falcon', 'length')],
+                   )
+        """
+        return self.index
+
     # TODO: 'regex', 'method' parameter
     def replace(self, to_replace=None, value=None, regex=False) -> 'Series':
         """
@@ -3585,7 +3613,37 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        return self._with_new_scol(self._scol.__getitem__(key))
+        if not isinstance(key, tuple):
+            key = (key,)
+        if len(self._internal._index_map) < len(key):
+            raise KeyError("Key length ({}) exceeds index depth ({})"
+                           .format(len(key), len(self._internal.index_map)))
+
+        cols = (self._internal.index_scols[len(key):] +
+                [self._internal.scol_for(self._internal.column_index[0])])
+        rows = [self._internal.scols[level] == index
+                for level, index in enumerate(key)]
+        sdf = self._internal.sdf \
+            .select(cols) \
+            .where(reduce(lambda x, y: x & y, rows))
+
+        if len(self._internal._index_map) == len(key):
+            # if sdf has one column and one data, return data only without frame
+            pdf = sdf.limit(2).toPandas()
+            length = len(pdf)
+            if length == 1:
+                return pdf[self.name].iloc[0]
+
+            key_string = tuple_like_strings(key) if len(key) > 1 else key[0]
+            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(str(key_string)))
+            internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
+            return _col(DataFrame(internal))
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            index_map=self._internal._index_map[len(key):])
+
+        return _col(DataFrame(internal))
 
     def __getattr__(self, item: str_type) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
