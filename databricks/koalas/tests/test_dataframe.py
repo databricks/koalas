@@ -2161,3 +2161,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "length of index columns.*1.*3"):
             kdf.to_spark(index_col=["x", "y", "z"])
+
+    def test_keys(self):
+        kdf = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+                           index=['cobra', 'viper', 'sidewinder'],
+                           columns=['max_speed', 'shield'])
+        pdf = kdf.to_pandas()
+
+        self.assert_eq(kdf.keys(), pdf.keys())

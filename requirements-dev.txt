@@ -1,13 +1,13 @@
-# Dependencies in Koalas
+# Dependencies in Koalas. When you update don't forget to update setup.py and install.rst in docs.
 pandas>=0.23.2
 pyarrow>=0.10,<0.15
 matplotlib>=3.0.0
 numpy>=1.14
 
-# MLflow
+# Optional dependencies in Koalas.
 mlflow>=1.0
 
-# Dependency Issues
+# Dependency issues
 protobuf<3.9.0
 
 # Documentation build
