@@ -736,6 +736,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser2 = ks.Series(pser2)
 
         self.assert_eq(kser1.truncate(), pser1.truncate())
+        self.assert_eq(kser1.truncate(before=2), pser1.truncate(before=2))
+        self.assert_eq(kser1.truncate(after=5), pser1.truncate(after=5))
         self.assert_eq(kser1.truncate(copy=False), pser1.truncate(copy=False))
         self.assert_eq(kser1.truncate(2, 5, copy=False), pser1.truncate(2, 5, copy=False))
         self.assert_eq(kser2.truncate(4, 6), pser2.truncate(4, 6))

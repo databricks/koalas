@@ -3300,9 +3300,15 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             return self.copy() if copy else self
 
         if before is None:
-            before = indexes[0] if indexes_increasing else indexes[-1]
+            sdf = indexes._internal.sdf
+            idx_col_name = self._internal.index_columns[0]
+            before = sdf.first()[idx_col_name] if indexes_increasing \
+                else sdf.orderBy(self._internal.scol_for(idx_col_name).desc()).first()[idx_col_name]
         if after is None:
-            after = indexes[-1] if indexes_increasing else indexes[0]
+            sdf = indexes._internal.sdf
+            idx_col_name = self._internal.index_columns[0]
+            after = sdf.first()[idx_col_name] if not indexes_increasing \
+                else sdf.orderBy(self._internal.scol_for(idx_col_name).desc()).first()[idx_col_name]
         if before > after:
             raise ValueError("Truncate: %s must be after %s" % (after, before))
         if indexes_increasing:
