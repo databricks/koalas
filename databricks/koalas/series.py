@@ -3229,6 +3229,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Truncates a sorted Series before and/or after some particular index value.
         Series should have sorted index.
 
+        .. note:: the current implementation of truncate uses is_monotonic_increasing internally
+            This leads to move all data into single partition in single machine and could cause
+            serious performance degradation. Avoid this method against very large dataset.
+
         Parameters
         ----------
         before : string, int
@@ -3288,7 +3292,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         e    50
         Name: 0, dtype: int64
         """
-        indexes = self.index.to_pandas()
+        indexes = self.index
         indexes_increasing = indexes.is_monotonic_increasing
         if not any([indexes_increasing, indexes.is_monotonic_decreasing]):
             raise ValueError("truncate requires a sorted index")
