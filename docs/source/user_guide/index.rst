@@ -7,3 +7,4 @@ User Guide
 
     options
     pandas_pyspark
+    faq
