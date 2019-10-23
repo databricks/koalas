@@ -3309,6 +3309,89 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return result.copy() if copy else result
 
+    def mode(self, dropna=True) -> 'Series':
+        """
+        Return the mode(s) of the dataset.
+
+        Always returns Series even if only one value is returned.
+
+        Parameters
+        ----------
+        dropna : bool, default True
+            Don't consider counts of NaN/NaT.
+
+        Returns
+        -------
+        Series
+            Modes of the Series in sorted order.
+
+        Examples
+        --------
+        >>> s = ks.Series([0, 0, 1, 1, 1, np.nan, np.nan, np.nan])
+        >>> s
+        0    0.0
+        1    0.0
+        2    1.0
+        3    1.0
+        4    1.0
+        5    NaN
+        6    NaN
+        7    NaN
+        Name: 0, dtype: float64
+
+        >>> s.mode()
+        0    1.0
+        Name: 0, dtype: float64
+
+        If there are several same modes, all items are shown
+
+        >>> s = ks.Series([0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3,
+        ...                np.nan, np.nan, np.nan])
+        >>> s
+        0     0.0
+        1     0.0
+        2     1.0
+        3     1.0
+        4     1.0
+        5     2.0
+        6     2.0
+        7     2.0
+        8     3.0
+        9     3.0
+        10    3.0
+        11    NaN
+        12    NaN
+        13    NaN
+        Name: 0, dtype: float64
+
+        >>> s.mode()
+        0    1.0
+        1    3.0
+        2    2.0
+        Name: 0, dtype: float64
+
+        With 'dropna' set to 'False', we can also see NaN in the result
+
+        >>> s.mode(False)
+        0    NaN
+        1    1.0
+        2    3.0
+        3    2.0
+        Name: 0, dtype: float64
+        """
+        ser_count = self.value_counts(dropna=dropna, sort=False)
+        sdf_count = ser_count._internal.sdf
+        most_value = ser_count.max()
+        sdf_most_value = sdf_count.where("count == {}".format(most_value))
+        sdf = sdf_most_value.select(
+            F.col(SPARK_INDEX_NAME_FORMAT(0)).alias('0'))
+        internal = _InternalFrame(sdf=sdf)
+
+        result = _col(DataFrame(internal))
+        result.name = self.name
+
+        return result
+
     def keys(self):
         """
         Return alias for index.
