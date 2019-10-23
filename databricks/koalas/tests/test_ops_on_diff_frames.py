@@ -148,6 +148,14 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             (kdf1[('x', 'a')] - kdf2[('x', 'b')]).sort_index(),
             (pdf1[('x', 'a')] - pdf2[('x', 'b')]).rename(('x', 'a')).sort_index(), almost=True)
 
+        self.assert_eq(
+            (kdf1[('x', 'a')] - kdf2['x']['b']).sort_index(),
+            (pdf1[('x', 'a')] - pdf2['x']['b']).rename(('x', 'a')).sort_index(), almost=True)
+
+        self.assert_eq(
+            (kdf1['x']['a'] - kdf2[('x', 'b')]).sort_index(),
+            (pdf1['x']['a'] - pdf2[('x', 'b')]).rename('a').sort_index(), almost=True)
+
         # DataFrame
         self.assert_eq(
             (kdf1 + kdf2).sort_index(),
@@ -395,6 +403,19 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
+    def test_loc_setitem(self):
+        pdf = pd.DataFrame(
+            [[1, 2], [4, 5], [7, 8]],
+            index=['cobra', 'viper', 'sidewinder'],
+            columns=['max_speed', 'shield'])
+        kdf = ks.DataFrame(pdf)
+        another_kdf = ks.DataFrame(pdf)
+
+        kdf.loc[['viper', 'sidewinder'], ['shield']] = another_kdf.max_speed
+        pdf.loc[['viper', 'sidewinder'], ['shield']] = pdf.max_speed
+
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
@@ -447,3 +468,14 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
             kdf = ks.from_pandas(self.pdf1)
             kdf['c'] = self.kdf1.a
+
+    def test_loc_setitem(self):
+        pdf = pd.DataFrame(
+            [[1, 2], [4, 5], [7, 8]],
+            index=['cobra', 'viper', 'sidewinder'],
+            columns=['max_speed', 'shield'])
+        kdf = ks.DataFrame(pdf)
+        another_kdf = ks.DataFrame(pdf)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+            kdf.loc[['viper', 'sidewinder'], ['shield']] = another_kdf.max_speed

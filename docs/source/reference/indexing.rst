@@ -29,6 +29,7 @@ Modifying and computations
 .. autosummary::
    :toctree: api/
 
+   Index.copy
    Index.is_boolean
    Index.is_categorical
    Index.is_floating
@@ -75,3 +76,10 @@ MultiIndex Properties
    :toctree: api/
 
    MultiIndex.names
+
+MultiIndex Modifying and computations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.copy

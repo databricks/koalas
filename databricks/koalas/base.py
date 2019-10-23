@@ -27,6 +27,7 @@ from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
 from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType
+from pyspark.sql.functions import monotonically_increasing_id
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.internal import _InternalFrame
@@ -299,9 +300,16 @@ class IndexOpsMixin(object):
 
         >>> ser.rename("a").to_frame().set_index("a").index.is_monotonic
         True
+
+        >>> ser = ks.Series([5, 4, 3, 2, 1], index=[1, 2, 3, 4, 5])
+        >>> ser.is_monotonic
+        False
+
+        >>> ser.index.is_monotonic
+        True
         """
         col = self._scol
-        window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
+        window = Window.orderBy(monotonically_increasing_id()).rowsBetween(-1, -1)
         return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull()).all()
 
     is_monotonic_increasing = is_monotonic
@@ -343,9 +351,16 @@ class IndexOpsMixin(object):
 
         >>> ser.rename("a").to_frame().set_index("a").index.is_monotonic_decreasing
         True
+
+        >>> ser = ks.Series([5, 4, 3, 2, 1], index=[1, 2, 3, 4, 5])
+        >>> ser.is_monotonic_decreasing
+        True
+
+        >>> ser.index.is_monotonic_decreasing
+        False
         """
         col = self._scol
-        window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
+        window = Window.orderBy(monotonically_increasing_id()).rowsBetween(-1, -1)
         return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull()).all()
 
     def astype(self, dtype):

@@ -1755,6 +1755,67 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=['X']))
         self.assertRaises(ValueError, lambda: kdf.reindex(columns=[('X',)]))
 
+    def test_melt(self):
+        pdf = pd.DataFrame({'A': [1, 3, 5],
+                            'B': [2, 4, 6],
+                            'C': [7, 8, 9]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.melt().sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt().sort_values(['variable', 'value']))
+        self.assert_eq(kdf.melt(id_vars='A').sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(id_vars='A').sort_values(['variable', 'value']))
+        self.assert_eq(kdf.melt(id_vars=['A', 'B']).sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(id_vars=['A', 'B']).sort_values(['variable', 'value']))
+        self.assert_eq(kdf.melt(id_vars=('A', 'B')).sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(id_vars=('A', 'B')).sort_values(['variable', 'value']))
+        self.assert_eq(kdf.melt(id_vars=['A'], value_vars=['C']).sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(id_vars=['A'], value_vars=['C']).sort_values(['variable', 'value']))
+        self.assert_eq(kdf.melt(id_vars=['A'], value_vars=['B'],
+                                var_name='myVarname', value_name='myValname')
+                       .sort_values(['myVarname', 'myValname']).reset_index(drop=True),
+                       pdf.melt(id_vars=['A'], value_vars=['B'],
+                                var_name='myVarname', value_name='myValname')
+                       .sort_values(['myVarname', 'myValname']))
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.melt().sort_values(['variable_0', 'variable_1', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt().sort_values(['variable_0', 'variable_1', 'value']))
+        self.assert_eq(kdf.melt(id_vars=[('X', 'A')])
+                       .sort_values(['variable_0', 'variable_1', 'value']).reset_index(drop=True),
+                       pdf.melt(id_vars=[('X', 'A')])
+                       .sort_values(['variable_0', 'variable_1', 'value']), almost=True)
+        self.assert_eq(kdf.melt(id_vars=[('X', 'A')], value_vars=[('Y', 'C')])
+                       .sort_values(['variable_0', 'variable_1', 'value']).reset_index(drop=True),
+                       pdf.melt(id_vars=[('X', 'A')], value_vars=[('Y', 'C')])
+                       .sort_values(['variable_0', 'variable_1', 'value']), almost=True)
+        self.assert_eq(kdf.melt(id_vars=[('X', 'A')], value_vars=[('X', 'B')],
+                                var_name=['myV1', 'myV2'], value_name='myValname')
+                       .sort_values(['myV1', 'myV2', 'myValname']).reset_index(drop=True),
+                       pdf.melt(id_vars=[('X', 'A')], value_vars=[('X', 'B')],
+                                var_name=['myV1', 'myV2'], value_name='myValname')
+                       .sort_values(['myV1', 'myV2', 'myValname']), almost=True)
+
+        columns.names = ['v0', 'v1']
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.melt().sort_values(['v0', 'v1', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt().sort_values(['v0', 'v1', 'value']))
+
+        self.assertRaises(ValueError, lambda: kdf.melt(id_vars=('X', 'A')))
+
     def test_all(self):
         pdf = pd.DataFrame({
             'col1': [False, False, False],
@@ -2100,3 +2161,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "length of index columns.*1.*3"):
             kdf.to_spark(index_col=["x", "y", "z"])
+
+    def test_keys(self):
+        kdf = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+                           index=['cobra', 'viper', 'sidewinder'],
+                           columns=['max_speed', 'shield'])
+        pdf = kdf.to_pandas()
+
+        self.assert_eq(kdf.keys(), pdf.keys())
