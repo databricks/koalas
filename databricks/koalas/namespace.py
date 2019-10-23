@@ -1274,7 +1274,7 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
             return kdf
 
         if prefix is None:
-            prefix = [name_like_string(idx) for idx in column_index]
+            prefix = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
 
         column_index_set = set(column_index)
         remaining_columns = [kdf[idx].rename(name_like_string(idx))
