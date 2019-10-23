@@ -380,7 +380,7 @@ def name_like_string(name: Union[str, Tuple]) -> str:
     '(a, b, c)'
     """
     if is_list_like(name):
-        name = [str(n) for n in name]
+        name = tuple([str(n) for n in name])
     else:
-        name = [str(name),]
+        name = tuple(str(name))
     return ('(%s)' % ', '.join(name)) if len(name) > 1 else name[0]
