@@ -3428,9 +3428,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Examples
         --------
 
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
         >>> s1 = ks.Series([0, 1, 2, 3, 4])
         >>> s2 = ks.Series([100, 200, 300, 400, 500])
-        >>> s1.where(s1 > 0)
+        >>> s1.where(s1 > 0).sort_index()
         0    NaN
         1    1.0
         2    2.0
@@ -3438,7 +3440,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         4    4.0
         Name: 0, dtype: float64
 
-        >>> s1.where(s1 > 1, 10)
+        >>> s1.where(s1 > 1, 10).sort_index()
         0    10
         1    10
         2     2
@@ -3446,7 +3448,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         4     4
         Name: 0, dtype: int64
 
-        >>> s1.where(s1 > 1, s1 + 100)
+        >>> s1.where(s1 > 1, s1 + 100).sort_index()
         0    100
         1    101
         2      2
@@ -3454,32 +3456,36 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         4      4
         Name: 0, dtype: int64
 
-        >>> s1.where(s1 > 1, s2)
+        >>> s1.where(s1 > 1, s2).sort_index()
         0    100
         1    200
         2      2
         3      3
         4      4
         Name: 0, dtype: int64
+
+        >>> reset_option("compute.ops_on_diff_frames")
         """
-        current = F.when(cond._internal.data_scols[0], self._scol)
-        if isinstance(other, Series):
-            self_sdf = self._internal.sdf
-            other_sdf = other._internal.sdf
-            if self_sdf == other_sdf:
-                current = current.otherwise(other._scol)
-                result = self._with_new_scol(current)
-            else:
-                temp_col = self.name + "_"
-                temp_idx = self._index_map[0][0]
-                other_temp = other_sdf.withColumn(temp_col, other_sdf[other.name])
-                new_sdf = self_sdf.join(other_temp, temp_idx).sort(temp_idx)
-                current = current.otherwise(other_temp[temp_col])
-                result = _col(DataFrame(_InternalFrame(sdf=new_sdf.select(current))))
-                result.name = self.name
-        else:
-            current = current.otherwise(other)
-            result = self._with_new_scol(current)
+        kdf = self.to_frame()
+        kdf['__tmp_cond_col__'] = cond
+        kdf['__tmp_other_col__'] = other
+        sdf = kdf._sdf
+        # above logic make spark dataframe looks like below:
+        # +-----------------+---+----------------+-----------------+
+        # |__index_level_0__|  0|__tmp_cond_col__|__tmp_other_col__|
+        # +-----------------+---+----------------+-----------------+
+        # |                0|  0|           false|              100|
+        # |                1|  1|           false|              200|
+        # |                3|  3|            true|              400|
+        # |                2|  2|            true|              300|
+        # |                4|  4|            true|              500|
+        # +-----------------+---+----------------+-----------------+
+        data_col_name = self._internal.column_name_for(self._internal.column_index[0])
+        index_column = self._internal.index_columns[0]
+        condition = F.when(sdf['__tmp_cond_col__'], sdf[data_col_name]) \
+                     .otherwise(sdf['__tmp_other_col__']).alias(data_col_name)
+        sdf = sdf.select(index_column, condition)
+        result = _col(ks.DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map)))
 
         return result
 
