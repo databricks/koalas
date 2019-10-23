@@ -382,5 +382,5 @@ def name_like_string(name: Union[str, Tuple]) -> str:
     if is_list_like(name):
         name = tuple([str(n) for n in name])
     else:
-        name = tuple(str(name))
+        name = (str(name),)
     return ('(%s)' % ', '.join(name)) if len(name) > 1 else name[0]
