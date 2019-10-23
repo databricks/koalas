@@ -31,9 +31,20 @@ from databricks.koalas import Series
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
+from databricks.koalas.config import set_option, reset_option
 
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
+
+    @classmethod
+    def setUpClass(cls):
+        super(SeriesTest, cls).setUpClass()
+        set_option("compute.ops_on_diff_frames", True)
+
+    @classmethod
+    def tearDownClass(cls):
+        reset_option("compute.ops_on_diff_frames")
+        super(SeriesTest, cls).tearDownClass()
 
     @property
     def pser(self):
@@ -728,3 +739,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser.drop_duplicates().sort_values(),
                        kser.drop_duplicates().sort_values())
+
+    def test_where(self):
+        pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
+        pser2 = pd.Series([100, 200, 300, 400, 500], name=0)
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(repr(pser1.where(pser2 > 100)),
+                       repr(kser1.where(kser2 > 100).sort_index()))
+
+        pser1 = pd.Series([-1, -2, -3, -4, -5], name=0)
+        pser2 = pd.Series([-100, -200, -300, -400, -500], name=0)
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(repr(pser1.where(pser2 < -250)),
+                       repr(kser1.where(kser2 < -250).sort_index()))
