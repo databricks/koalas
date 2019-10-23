@@ -126,6 +126,18 @@ class Index(IndexOpsMixin):
         return self.to_series().spark_type
 
     @property
+    def has_duplicates(self) -> bool:
+        """
+        If index has duplicates, return True, otherwise False.
+        """
+        idx_columns = self._kdf._sdf.select(self._scol)
+        drop_duplicate_index = idx_columns.drop_duplicates()
+
+        if idx_columns.count() == drop_duplicate_index.count():
+            return False
+        return True
+
+    @property
     def name(self) -> Union[str, Tuple[str, ...]]:
         """Return name of the Index."""
         return self.names[0]

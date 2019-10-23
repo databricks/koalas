@@ -236,6 +236,28 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                                         "property.*Index.*{}.*is deprecated".format(name)):
                 getattr(kdf.set_index(['a', 'b']).index, name)
 
+    def test_index_has_duplicates(self):
+        indexes = [("a", "b", "c"), ("a", "a", "c"), (1, 3, 3), (1, 2, 3)]
+        names = [None, 'ks', 'ks', None]
+        has_dup = [False, True, True, False]
+
+        for idx, name, expected in zip(indexes, names, has_dup):
+            pdf = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(idx, name=name))
+            kdf = ks.from_pandas(pdf)
+
+            self.assertEqual(kdf.index.has_duplicates, has_dup)
+
+    def test_multiindex_has_duplicates(self):
+        indexes = [(list("abc"), list("edf")), (list("aac"), list("edf")),
+                   (list("aac"), list("eef")), ([1, 4, 5, 6], [2, 4, 5, 7])]
+        has_dup = [False, False, True, True]
+
+        for idx, expected in zip(indexes, has_dup):
+            pdf = pd.DataFrame({"a": [1, 2, 3]}, index=idx)
+            kdf = ks.from_pandas(pdf)
+
+            self.assertEqual(kdf.index.has_duplicates, has_dup)
+
     def test_multi_index_not_supported(self):
         kdf = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
 
