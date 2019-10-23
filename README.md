@@ -69,7 +69,7 @@ See [Contributing Guide](https://koalas.readthedocs.io/en/latest/development/con
 
 ## FAQ
 
-### Databricks users
+### How do I use this on Databricks?
 
 Koalas requires Databricks Runtime 5.x or above. For the regular Databricks Runtime, you can install Koalas using the Libraries tab on the cluster UI, or using dbutils in a notebook:
 
