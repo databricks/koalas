@@ -255,9 +255,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assertEqual(kdf.index.nlevels, 1)
 
     def test_multiindex_nlevel(self):
-        for name in ["has_name", None]:
-            pdf = pd.DataFrame({'a': [1, 2, 3]},
-                               index=pd.Index([list('abc'), list('def')], name=name))
+            pdf = pd.DataFrame({'a': [1, 2, 3]}, index=pd.Index([list('abc'), list('def')]))
             kdf = ks.from_pandas(pdf)
 
             self.assertEqual(kdf.index.nlevels, 2)
