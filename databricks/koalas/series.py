@@ -3294,7 +3294,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         indexes = self.index
         indexes_increasing = indexes.is_monotonic_increasing
-        if not any([indexes_increasing, indexes.is_monotonic_decreasing]):
+        if not indexes_increasing and not indexes.is_monotonic_decreasing:
             raise ValueError("truncate requires a sorted index")
         if (before is None) and (after is None):
             return self.copy() if copy else self
