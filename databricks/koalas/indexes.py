@@ -151,6 +151,13 @@ class Index(IndexOpsMixin):
         names = [name if isinstance(name, tuple) else (name,) for name in names]
         self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
 
+    @property
+    def nlevels(self):
+        """
+        Number of levels.
+        """
+        return 1
+
     def rename(self, name: Union[str, Tuple[str, ...]], inplace: bool = False):
         """
         Alter Index name.
@@ -542,6 +549,10 @@ class MultiIndex(Index):
             footer = '\nShowing only the first {}'.format(max_display_count)
             return repr_string + footer
         return repr_string
+
+    @property
+    def nlevels(self) -> int:
+        return len(self._kdf._internal.index_columns)
 
     def __iter__(self):
         return _MissingPandasLikeMultiIndex.__iter__(self)

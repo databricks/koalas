@@ -246,3 +246,18 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(TypeError,
                                     "cannot perform all with this index type"):
             kdf.set_index(['a', 'b']).index.all()
+
+    def test_index_nlevels(self):
+        for name in ["has_name", None]:
+            pdf = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(['a', 'b', 'c'], name=name))
+            kdf = ks.from_pandas(pdf)
+
+            self.assertEqual(kdf.index.nlevels, 1)
+
+    def test_multiindex_nlevel(self):
+        for name in ["has_name", None]:
+            pdf = pd.DataFrame({'a': [1, 2, 3]},
+                               index=pd.Index([list('abc'), list('def')], name=name))
+            kdf = ks.from_pandas(pdf)
+
+            self.assertEqual(kdf.index.nlevels, 2)
