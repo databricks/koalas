@@ -3254,7 +3254,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             data_column_names = []
             data_columns = []
             data_columns_column_index = \
-                zip(self._internal._data_columns, self._internal.column_index)
+                zip(self._internal.data_columns, self._internal.column_index)
             # TODO: this code is similar with _InternalFrame.spark_df. Might have to deduplicate.
             for i, (column, idx) in enumerate(data_columns_column_index):
                 scol = self._internal.scol_for(idx)
