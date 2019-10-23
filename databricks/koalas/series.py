@@ -3298,19 +3298,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             raise ValueError("truncate requires a sorted index")
         if (before is None) and (after is None):
             return self.copy() if copy else self
+        if (before is not None) and (after is not None):
+            if before > after:
+                raise ValueError("Truncate: %s must be after %s" % (after, before))
 
-        if before is None:
-            sdf = indexes._internal.sdf
-            idx_col_name = self._internal.index_columns[0]
-            before = sdf.first()[idx_col_name] if indexes_increasing \
-                else sdf.orderBy(self._internal.scol_for(idx_col_name).desc()).first()[idx_col_name]
-        if after is None:
-            sdf = indexes._internal.sdf
-            idx_col_name = self._internal.index_columns[0]
-            after = sdf.first()[idx_col_name] if not indexes_increasing \
-                else sdf.orderBy(self._internal.scol_for(idx_col_name).desc()).first()[idx_col_name]
-        if before > after:
-            raise ValueError("Truncate: %s must be after %s" % (after, before))
         if indexes_increasing:
             result = _col(self.to_frame()[before:after])
         else:
