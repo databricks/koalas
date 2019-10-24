@@ -245,7 +245,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             pdf = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(idx, name=name))
             kdf = ks.from_pandas(pdf)
 
-            self.assertEqual(kdf.index.has_duplicates, has_dup)
+            self.assertEqual(kdf.index.has_duplicates, expected)
 
     def test_multiindex_has_duplicates(self):
         indexes = [(list("abc"), list("edf")), (list("aac"), list("edf")),
@@ -256,7 +256,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             pdf = pd.DataFrame({"a": [1, 2, 3]}, index=idx)
             kdf = ks.from_pandas(pdf)
 
-            self.assertEqual(kdf.index.has_duplicates, has_dup)
+            self.assertEqual(kdf.index.has_duplicates, expected)
 
     def test_multi_index_not_supported(self):
         kdf = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
