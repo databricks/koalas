@@ -377,6 +377,15 @@ class DataFrame(_Frame, Generic[T]):
     def _sdf(self) -> spark.DataFrame:
         return self._internal.sdf
 
+    @property
+    def ndim(self):
+        """
+        Return an int representing the number of array dimensions.
+
+        Return 1 if Series. Otherwise return 2 if DataFrame.
+        """
+        return 2
+
     def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=False):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
