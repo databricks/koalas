@@ -42,7 +42,8 @@ from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
-from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
+from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
+                                     name_like_string)
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
@@ -3223,6 +3224,120 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return _col(DataFrame(self._internal.copy()))
 
+    def mode(self, dropna=True) -> 'Series':
+        """
+        Return the mode(s) of the dataset.
+
+        Always returns Series even if only one value is returned.
+
+        Parameters
+        ----------
+        dropna : bool, default True
+            Don't consider counts of NaN/NaT.
+
+        Returns
+        -------
+        Series
+            Modes of the Series in sorted order.
+
+        Examples
+        --------
+        >>> s = ks.Series([0, 0, 1, 1, 1, np.nan, np.nan, np.nan])
+        >>> s
+        0    0.0
+        1    0.0
+        2    1.0
+        3    1.0
+        4    1.0
+        5    NaN
+        6    NaN
+        7    NaN
+        Name: 0, dtype: float64
+
+        >>> s.mode()
+        0    1.0
+        Name: 0, dtype: float64
+
+        If there are several same modes, all items are shown
+
+        >>> s = ks.Series([0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3,
+        ...                np.nan, np.nan, np.nan])
+        >>> s
+        0     0.0
+        1     0.0
+        2     1.0
+        3     1.0
+        4     1.0
+        5     2.0
+        6     2.0
+        7     2.0
+        8     3.0
+        9     3.0
+        10    3.0
+        11    NaN
+        12    NaN
+        13    NaN
+        Name: 0, dtype: float64
+
+        >>> s.mode()
+        0    1.0
+        1    3.0
+        2    2.0
+        Name: 0, dtype: float64
+
+        With 'dropna' set to 'False', we can also see NaN in the result
+
+        >>> s.mode(False)
+        0    NaN
+        1    1.0
+        2    3.0
+        3    2.0
+        Name: 0, dtype: float64
+        """
+        ser_count = self.value_counts(dropna=dropna, sort=False)
+        sdf_count = ser_count._internal.sdf
+        most_value = ser_count.max()
+        sdf_most_value = sdf_count.where("count == {}".format(most_value))
+        sdf = sdf_most_value.select(
+            F.col(SPARK_INDEX_NAME_FORMAT(0)).alias('0'))
+        internal = _InternalFrame(sdf=sdf)
+
+        result = _col(DataFrame(internal))
+        result.name = self.name
+
+        return result
+
+    def keys(self):
+        """
+        Return alias for index.
+
+        Returns
+        -------
+        Index
+            Index of the Series.
+
+        Examples
+        --------
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+
+        >>> kser.keys()  # doctest: +SKIP
+        MultiIndex([(  'lama',  'speed'),
+                    (  'lama', 'weight'),
+                    (  'lama', 'length'),
+                    (   'cow',  'speed'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'length'),
+                    ('falcon',  'speed'),
+                    ('falcon', 'weight'),
+                    ('falcon', 'length')],
+                   )
+        """
+        return self.index
+
     # TODO: 'regex', 'method' parameter
     def replace(self, to_replace=None, value=None, regex=False) -> 'Series':
         """
@@ -3529,7 +3644,37 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        return self._with_new_scol(self._scol.__getitem__(key))
+        if not isinstance(key, tuple):
+            key = (key,)
+        if len(self._internal._index_map) < len(key):
+            raise KeyError("Key length ({}) exceeds index depth ({})"
+                           .format(len(key), len(self._internal.index_map)))
+
+        cols = (self._internal.index_scols[len(key):] +
+                [self._internal.scol_for(self._internal.column_index[0])])
+        rows = [self._internal.scols[level] == index
+                for level, index in enumerate(key)]
+        sdf = self._internal.sdf \
+            .select(cols) \
+            .where(reduce(lambda x, y: x & y, rows))
+
+        if len(self._internal._index_map) == len(key):
+            # if sdf has one column and one data, return data only without frame
+            pdf = sdf.limit(2).toPandas()
+            length = len(pdf)
+            if length == 1:
+                return pdf[self.name].iloc[0]
+
+            key_string = name_like_string(key)
+            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(key_string))
+            internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
+            return _col(DataFrame(internal))
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            index_map=self._internal._index_map[len(key):])
+
+        return _col(DataFrame(internal))
 
     def __getattr__(self, item: str_type) -> Any:
         if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):

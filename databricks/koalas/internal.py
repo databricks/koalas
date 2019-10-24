@@ -33,7 +33,8 @@ from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type, 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
 from databricks.koalas.typedef import infer_pd_series_spark_type, spark_type_to_pandas_dtype
-from databricks.koalas.utils import column_index_level, default_session, lazy_property, scol_for
+from databricks.koalas.utils import (column_index_level, default_session, lazy_property,
+                                     name_like_string, scol_for)
 
 
 # A function to turn given numbers to Spark columns that represent Koalas index.
@@ -616,7 +617,7 @@ class _InternalFrame(object):
         for i, (column, idx) in enumerate(zip(self._data_columns, self.column_index)):
             if column not in index_columns:
                 scol = self.scol_for(idx)
-                name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+                name = str(i) if idx is None else name_like_string(idx)
                 if column != name:
                     scol = scol.alias(name)
                 data_columns.append(scol)
@@ -628,7 +629,7 @@ class _InternalFrame(object):
         data_columns = []
         for i, (column, idx) in enumerate(zip(self._data_columns, self.column_index)):
             scol = self.scol_for(idx)
-            name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+            name = str(i) if idx is None else name_like_string(idx)
             if column != name:
                 scol = scol.alias(name)
             data_columns.append(scol)
@@ -651,7 +652,7 @@ class _InternalFrame(object):
                 pdf = pdf.set_index(index_field, drop=drop, append=append)
                 append = True
             pdf = pdf[[col if col in index_columns
-                       else str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+                       else str(i) if idx is None else name_like_string(idx)
                        for i, (col, idx) in enumerate(zip(self.data_columns, self.column_index))]]
 
         if self.column_index_level > 1:

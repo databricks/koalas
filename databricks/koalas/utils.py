@@ -25,6 +25,7 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType
 import pandas as pd
+from pandas.api.types import is_list_like
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 
@@ -358,3 +359,28 @@ def column_index_level(column_index: List[Tuple[str, ...]]) -> int:
         levels = set(0 if idx is None else len(idx) for idx in column_index)
         assert len(levels) == 1, levels
         return list(levels)[0]
+
+
+def name_like_string(name: Union[str, Tuple]) -> str:
+    """
+    Return the name-like strings from str or tuple of str
+
+    Examples
+    --------
+    >>> name = 'abc'
+    >>> name_like_string(name)
+    'abc'
+
+    >>> name = ('abc',)
+    >>> name_like_string(name)
+    'abc'
+
+    >>> name = ('a', 'b', 'c')
+    >>> name_like_string(name)
+    '(a, b, c)'
+    """
+    if is_list_like(name):
+        name = tuple([str(n) for n in name])
+    else:
+        name = (str(name),)
+    return ('(%s)' % ', '.join(name)) if len(name) > 1 else name[0]

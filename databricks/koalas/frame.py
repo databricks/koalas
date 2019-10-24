@@ -51,7 +51,7 @@ from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import _InternalFrame, IndexMap, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.utils import column_index_level, scol_for
+from databricks.koalas.utils import column_index_level, name_like_string, scol_for
 from databricks.koalas.typedef import _infer_return_type, as_spark_type, as_python_type
 from databricks.koalas.plot import KoalasFramePlotMethods
 from databricks.koalas.config import get_option
@@ -419,7 +419,7 @@ class DataFrame(_Frame, Generic[T]):
                         assert num_args == 2
                         # Pass in both the column and its data type if sfun accepts two args
                         col_sdf = sfun(col_sdf, col_type)
-                    exprs.append(col_sdf.alias(str(idx) if len(idx) > 1 else idx[0]))
+                    exprs.append(col_sdf.alias(name_like_string(idx)))
 
             sdf = self._sdf.select(*exprs)
             pdf = sdf.toPandas()
@@ -3257,7 +3257,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # TODO: this code is similar with _InternalFrame.spark_df. Might have to deduplicate.
             for i, (column, idx) in enumerate(data_columns_column_index):
                 scol = self._internal.scol_for(idx)
-                name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+                name = str(i) if idx is None else name_like_string(idx)
                 data_column_names.append(name)
                 if column != name:
                     scol = scol.alias(name)
@@ -4553,7 +4553,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     "Length mismatch: Expected axis has %d elements, new values have %d elements"
                     % (len(old_names), len(column_index)))
             column_index_names = columns.names
-            data_columns = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
+            data_columns = [name_like_string(idx) for idx in column_index]
             sdf = self._sdf.select(
                 self._internal.index_scols +
                 [self._internal.scol_for(idx).alias(name)
@@ -4573,7 +4573,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 column_index_names = columns.names
             else:
                 column_index_names = None
-            data_columns = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
+            data_columns = [name_like_string(idx) for idx in column_index]
             sdf = self._sdf.select(
                 self._internal.index_scols +
                 [self._internal.scol_for(idx).alias(name)
@@ -6815,7 +6815,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 [self._internal.scol_for(idx).alias(value_name)])
             ) for idx in column_index if idx in value_vars]))
 
-        columns = ([self._internal.scol_for(idx).alias(str(idx) if len(idx) > 1 else idx[0])
+        columns = ([self._internal.scol_for(idx).alias(name_like_string(idx))
                     for idx in id_vars] +
                    [F.col("pairs.%s" % name)
                     for name in var_name[:self._internal.column_index_level]] +
@@ -7404,6 +7404,31 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return self
         else:
             return DataFrame(internal)
+
+    def keys(self):
+        """
+        Return alias for columns.
+
+        Returns
+        -------
+        Index
+            Columns of the DataFrame.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+        ...                   index=['cobra', 'viper', 'sidewinder'],
+        ...                   columns=['max_speed', 'shield'])
+        >>> df
+                    max_speed  shield
+        cobra               1       2
+        viper               4       5
+        sidewinder          7       8
+
+        >>> df.keys()
+        Index(['max_speed', 'shield'], dtype='object')
+        """
+        return self.columns
 
     def _get_from_multiindex_column(self, key):
         """ Select columns from multi-index columns.

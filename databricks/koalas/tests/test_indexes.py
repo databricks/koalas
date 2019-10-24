@@ -140,13 +140,28 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaises(PandasNotImplementedError):
             kidx.name = 'renamed'
 
-    def test_multi_index_dropna(self):
+    def test_index_unique(self):
+        kidx = self.kdf.index
+
+        # here the output is different than pandas in terms of order
+        expected = pd.Int64Index([0, 6, 9, 5, 1, 3, 8], dtype='int64')
+
+        self.assert_eq(expected, kidx.unique())
+        self.assert_eq(expected, kidx.unique(level=0))
+
+        with self.assertRaisesRegexp(IndexError, "Too many levels*"):
+            kidx.unique(level=1)
+
+        with self.assertRaisesRegexp(KeyError, "Requested level (hi)*"):
+            kidx.unique(level='hi')
+
+    def test_multi_index_copy(self):
         arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
         idx = pd.MultiIndex.from_arrays(arrays, names=('number', 'color'))
         pdf = pd.DataFrame(np.random.randn(4, 5), idx)
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(kdf.index.dropna(), pdf.index.dropna())
+        self.assert_eq(kdf.index.copy(), pdf.index.copy())
 
     def test_missing(self):
         kdf = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})

@@ -50,6 +50,7 @@ Indexing, iteration
    Series.at
    Series.loc
    Series.iloc
+   Series.keys
 
 Binary operator functions
 -------------------------
@@ -114,6 +115,7 @@ Computations / Descriptive Stats
    Series.max
    Series.mean
    Series.min
+   Series.mode
    Series.nlargest
    Series.nsmallest
    Series.nunique
