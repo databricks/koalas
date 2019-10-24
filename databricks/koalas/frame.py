@@ -383,6 +383,20 @@ class DataFrame(_Frame, Generic[T]):
         Return an int representing the number of array dimensions.
 
         Return 1 if Series. Otherwise return 2 if DataFrame.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+        ...                   index=['cobra', 'viper', None],
+        ...                   columns=['max_speed', 'shield'])
+        >>> df
+               max_speed  shield
+        cobra          1       2
+        viper          4       5
+        NaN            7       8
+        >>> df.ndim
+        2        
         """
         return 2
 
