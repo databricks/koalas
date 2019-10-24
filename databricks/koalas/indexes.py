@@ -552,7 +552,10 @@ class MultiIndex(Index):
 
     @property
     def nlevels(self) -> int:
-        return len(self.names)
+        """
+        Number of levels.
+        """
+        return len(self._kdf._internal.index_columns)
 
     def __iter__(self):
         return _MissingPandasLikeMultiIndex.__iter__(self)
