@@ -713,6 +713,19 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(NotImplementedError, msg):
             kser.replace(r'^1.$', regex=True)
 
+    def test_xs(self):
+        midx = pd.MultiIndex([['a', 'b', 'c'],
+                              ['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+                         index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(kser.xs(('a', 'lama', 'speed')), pser.xs(('a', 'lama', 'speed')))
+
     def test_duplicates(self):
         # test on texts
         pser = pd.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],
