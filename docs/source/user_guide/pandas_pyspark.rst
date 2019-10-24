@@ -97,7 +97,7 @@ Spark DataFrame can be a Koalas DataFrame easily as below:
    3   9
 
 However, note that it requires to create new default index in case Koalas DataFrame is created from
-Spark DataFrame. See `Default Index Type <options.rst#default-index-type>`__. In order to avoid this overhead, specify the column
+Spark DataFrame. See `Default Index Type <options.rst#default-index-type>`_. In order to avoid this overhead, specify the column
 to use as an index when possible.
 
 .. code-block:: python

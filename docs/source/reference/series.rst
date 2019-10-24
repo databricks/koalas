@@ -115,6 +115,7 @@ Computations / Descriptive Stats
    Series.max
    Series.mean
    Series.min
+   Series.mode
    Series.nlargest
    Series.nsmallest
    Series.nunique
@@ -149,6 +150,7 @@ Reindexing / Selection / Label manipulation
    Series.rename
    Series.reset_index
    Series.sample
+   Series.truncate
 
 Missing data handling
 ---------------------

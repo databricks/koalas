@@ -33,7 +33,7 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
-from databricks.koalas.utils import default_session
+from databricks.koalas.utils import default_session, name_like_string
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.typedef import pandas_wraps
@@ -1277,7 +1277,7 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
             prefix = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
 
         column_index_set = set(column_index)
-        remaining_columns = [kdf[idx].rename(str(idx) if len(idx) > 1 else idx[0])
+        remaining_columns = [kdf[idx].rename(name_like_string(idx))
                              for idx in kdf._internal.column_index
                              if idx not in column_index_set]
 
