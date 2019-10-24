@@ -151,6 +151,27 @@ class Index(IndexOpsMixin):
         names = [name if isinstance(name, tuple) else (name,) for name in names]
         self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
 
+    @property
+    def ndim(self):
+        """
+        Number of dimensions of the underlying data, by definition 1.
+
+        Examples
+        --------
+        >>> s = ks.Series([None, 1, 2, 3, 4], index=[4, 5, 2, 1, 8])
+        >>> s.index.ndim
+        1
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [1, 1, 1, 1, 1, 2, 1, 2, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        >>> s.index.ndim
+        1
+        """
+        return 1
+
     def rename(self, name: Union[str, Tuple[str, ...]], inplace: bool = False):
         """
         Alter Index name.
