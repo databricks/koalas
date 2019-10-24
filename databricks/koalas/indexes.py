@@ -129,11 +129,27 @@ class Index(IndexOpsMixin):
     def has_duplicates(self) -> bool:
         """
         If index has duplicates, return True, otherwise False.
-        """
-        idx_column = self._kdf._sdf.select(self._scol)
-        deduplicate_idx_column = idx_column.drop_duplicates()
 
-        if idx_column.count() == deduplicate_idx_column.count():
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=list('aac'))
+        >>> kdf.index.has_duplicates
+        True
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')])
+        >>> kdf.index.has_duplicates
+        False
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('aac'), list('eef')])
+        >>> kdf.index.has_duplicates
+        False
+        """
+        scol = self._kdf._sdf.select(self._scol)
+        col = scol.columns[0]
+
+        count = scol.agg(F.count(col).alias('count')).collect()
+        dedup_count = scol.agg(F.countDistinct(col).alias('count')).collect()
+        if count == dedup_count:
             return False
         return True
 
