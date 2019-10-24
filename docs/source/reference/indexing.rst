@@ -37,6 +37,7 @@ Modifying and computations
    Index.is_interval
    Index.is_numeric
    Index.is_object
+   Index.value_counts
 
 Missing Values
 ~~~~~~~~~~~~~~
@@ -82,4 +83,5 @@ MultiIndex Modifying and computations
 .. autosummary::
    :toctree: api/
 
-   Index.copy
+   MultiIndex.copy
+   MultiIndex.value_counts

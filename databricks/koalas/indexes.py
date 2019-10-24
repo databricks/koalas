@@ -34,7 +34,8 @@ from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
-from databricks.koalas.series import Series
+from databricks.koalas.series import Series, _col
+from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 
 
 class Index(IndexOpsMixin):
@@ -397,6 +398,139 @@ class Index(IndexOpsMixin):
         if name:
             result.name = name
         return result
+
+    def value_counts(
+        self, normalize=False, sort=False, ascending=False, dropna=True
+    ):
+        """
+        Return a Series containing counts of unique values.
+        The resulting object will be in descending order so that the
+        first element is the most frequently-occurring element.
+        Excludes NA values by default.
+
+        Parameters
+        ----------
+        normalize : boolean, default False
+            If True then the object returned will contain the relative
+            frequencies of the unique values.
+        sort : boolean, default False
+            Sort by frequencies. we set False as default unlike pandas
+        ascending : boolean, default False
+            Sort in ascending order.
+        dropna : boolean, default True
+            Don't include counts of NaN.
+
+        Returns
+        -------
+        Series
+
+        See Also
+        --------
+        Series.count: Number of non-NA elements in a Series.
+        DataFrame.count: Number of non-NA elements in a DataFrame.
+
+        Examples
+        --------
+
+        >>> s = ks.Series([0, 1, 2, 3, 4, 5], index=[3, 1, 2, 3, 4, np.nan])
+        >>> s.index
+        Float64Index([3.0, 1.0, 2.0, 3.0, 4.0, nan], dtype='float64')
+
+        >>> s.index.value_counts().sort_index()
+        1.0    1
+        2.0    1
+        3.0    2
+        4.0    1
+        Name: count, dtype: int64
+
+        **sort**
+
+        With `sort` set to `True`, the result will be sorted by number of count.
+        (But index order is not guaranteed)
+
+        >>> s.index.value_counts(sort=True)  # doctest: +SKIP
+        3.0    2
+        4.0    1
+        1.0    1
+        2.0    1
+        Name: count, dtype: int64
+
+        **normalize**
+
+        With `normalize` set to `True`, returns the relative frequency by
+        dividing all values by the sum of values.
+
+        >>> s.index.value_counts(normalize=True).sort_index()
+        1.0    0.2
+        2.0    0.2
+        3.0    0.4
+        4.0    0.2
+        Name: count, dtype: float64
+
+        **dropna**
+
+        With `dropna` set to `False` we can also see NaN index values.
+
+        >>> s.index.value_counts(dropna=False).sort_index()
+        1.0    1
+        2.0    1
+        3.0    2
+        4.0    1
+        NaN    1
+        Name: count, dtype: int64
+
+        Also support for MultiIndex.
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [1, 1, 1, 1, 1, 2, 1, 2, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        >>> s.index
+        MultiIndex([(  'lama', 'weight'),
+                    (  'lama', 'weight'),
+                    (  'lama', 'weight'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'length'),
+                    ('falcon', 'weight'),
+                    ('falcon', 'length'),
+                    ('falcon', 'length')],
+                   )
+
+        >>> s.index.value_counts().sort_index()
+        (cow, length)       1
+        (cow, weight)       2
+        (falcon, length)    2
+        (falcon, weight)    1
+        (lama, weight)      3
+        Name: count, dtype: int64
+
+        >>> s.index.value_counts(normalize=True).sort_index()
+        (cow, length)       0.111111
+        (cow, weight)       0.222222
+        (falcon, length)    0.222222
+        (falcon, weight)    0.111111
+        (lama, weight)      0.333333
+        Name: count, dtype: float64
+        """
+        idx_name = SPARK_INDEX_NAME_FORMAT(0)
+        sdf = self._kdf._sdf
+        sdf_count = sdf.groupBy(self._scol.alias(idx_name)).count()
+        if dropna:
+            sdf_count = sdf_count.dropna()
+        if sort:
+            sdf_count = sdf_count.sort('count', ascending=ascending)
+
+        if normalize:
+            sum_values = sdf_count.select(
+                F.sum(sdf_count['count'])).collect()[0][0]
+            sdf_count = sdf_count.select(
+                idx_name,
+                F.round(sdf_count['count'] / sum_values, 6).alias('count'))
+        internal = _InternalFrame(sdf=sdf_count, index_map=[(idx_name, None)])
+
+        return _col(DataFrame(internal))
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
