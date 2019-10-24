@@ -3224,6 +3224,91 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return _col(DataFrame(self._internal.copy()))
 
+    def truncate(self, before=None, after=None, copy=True):
+        """
+        Truncates a sorted Series before and/or after some particular index value.
+        Series should have sorted index.
+
+        .. note:: the current implementation of truncate uses is_monotonic_increasing internally
+            This leads to move all data into single partition in single machine and could cause
+            serious performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        before : string, int
+            Truncate all rows before this index value
+        after : string, int
+            Truncate all rows after this index value
+        copy : boolean, default is True,
+            return a copy of the truncated section
+
+        Returns
+        -------
+        truncated : Series
+
+        Examples
+        --------
+
+
+        A Series has index that sorted integers.
+
+        >>> s = ks.Series([10, 20, 30, 40, 50, 60, 70],
+        ...               index=[1, 2, 3, 4, 5, 6, 7])
+        >>> s
+        1    10
+        2    20
+        3    30
+        4    40
+        5    50
+        6    60
+        7    70
+        Name: 0, dtype: int64
+
+        >>> s.truncate(2, 5)
+        2    20
+        3    30
+        4    40
+        5    50
+        Name: 0, dtype: int64
+
+        A Series has index that sorted strings.
+
+        >>> s = ks.Series([10, 20, 30, 40, 50, 60, 70],
+        ...               index=['a', 'b', 'c', 'd', 'e', 'f', 'g'])
+        >>> s
+        a    10
+        b    20
+        c    30
+        d    40
+        e    50
+        f    60
+        g    70
+        Name: 0, dtype: int64
+
+        >>> s.truncate('b', 'e')
+        b    20
+        c    30
+        d    40
+        e    50
+        Name: 0, dtype: int64
+        """
+        indexes = self.index
+        indexes_increasing = indexes.is_monotonic_increasing
+        if not indexes_increasing and not indexes.is_monotonic_decreasing:
+            raise ValueError("truncate requires a sorted index")
+        if (before is None) and (after is None):
+            return self.copy() if copy else self
+        if (before is not None) and (after is not None):
+            if before > after:
+                raise ValueError("Truncate: %s must be after %s" % (after, before))
+
+        if indexes_increasing:
+            result = _col(self.to_frame()[before:after])
+        else:
+            result = _col(self.to_frame()[after:before])
+
+        return result.copy() if copy else result
+
     def mode(self, dropna=True) -> 'Series':
         """
         Return the mode(s) of the dataset.
@@ -3519,6 +3604,102 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             current = F.when(self._scol.isin(to_replace), value).otherwise(self._scol)
 
         return self._with_new_scol(current)
+
+    def xs(self, key, level=None):
+        """
+        Return cross-section from the Series.
+
+        This method takes a `key` argument to select data at a particular
+        level of a MultiIndex.
+
+        Parameters
+        ----------
+        key : label or tuple of label
+            Label contained in the index, or partially in a MultiIndex.
+        level : object, defaults to first n levels (n=1 or len(key))
+            In case of a key partially contained in a MultiIndex, indicate
+            which levels are used. Levels can be referred by label or position.
+
+        Returns
+        -------
+        Series
+            Cross-section from the original Series
+            corresponding to the selected index levels.
+
+        Examples
+        --------
+        >>> midx = pd.MultiIndex([['a', 'b', 'c'],
+        ...                       ['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...               index=midx)
+        >>> s
+        a  lama    speed      45.0
+                   weight    200.0
+                   length      1.2
+        b  cow     speed      30.0
+                   weight    250.0
+                   length      1.5
+        c  falcon  speed     320.0
+                   weight      1.0
+                   length      0.3
+        Name: 0, dtype: float64
+
+        Get values at specified index
+
+        >>> s.xs('a')
+        lama  speed      45.0
+              weight    200.0
+              length      1.2
+        Name: 0, dtype: float64
+
+        Get values at several indexes
+
+        >>> s.xs(('a', 'lama'))
+        speed      45.0
+        weight    200.0
+        length      1.2
+        Name: 0, dtype: float64
+
+        Get values at specified index and level
+
+        >>> s.xs('lama', level=1)
+        a  speed      45.0
+           weight    200.0
+           length      1.2
+        Name: 0, dtype: float64
+        """
+        if not isinstance(key, tuple):
+            key = (key,)
+        if level is None:
+            level = 0
+
+        cols = (self._internal.index_scols[:level] +
+                self._internal.index_scols[level+len(key):] +
+                [self._internal.scol_for(self._internal.column_index[0])])
+        rows = [self._internal.scols[lvl] == index
+                for lvl, index in enumerate(key, level)]
+        sdf = self._internal.sdf \
+            .select(cols) \
+            .where(reduce(lambda x, y: x & y, rows))
+
+        if len(self._internal._index_map) == len(key):
+            # if sdf has one column and one data, return data only without frame
+            pdf = sdf.limit(2).toPandas()
+            length = len(pdf)
+            if length == 1:
+                return pdf[self.name].iloc[0]
+
+        index_cols = [col for col in sdf.columns if col not in self._internal.data_columns]
+        index_map_dict = dict(self._internal.index_map)
+        internal = self._internal.copy(
+            sdf=sdf,
+            index_map=[(index_col, index_map_dict[index_col]) for index_col in index_cols])
+
+        return _col(DataFrame(internal))
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.

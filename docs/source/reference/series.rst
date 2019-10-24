@@ -51,6 +51,7 @@ Indexing, iteration
    Series.loc
    Series.iloc
    Series.keys
+   Series.xs
 
 Binary operator functions
 -------------------------
@@ -150,6 +151,7 @@ Reindexing / Selection / Label manipulation
    Series.rename
    Series.reset_index
    Series.sample
+   Series.truncate
 
 Missing data handling
 ---------------------
