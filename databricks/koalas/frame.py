@@ -382,7 +382,7 @@ class DataFrame(_Frame, Generic[T]):
         """
         Return an int representing the number of array dimensions.
 
-        Return 1 if Series. Otherwise return 2 if DataFrame.
+        return 2 for DataFrame.
 
         Examples
         --------
