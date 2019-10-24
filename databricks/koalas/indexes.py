@@ -142,7 +142,7 @@ class Index(IndexOpsMixin):
 
         >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('aac'), list('eef')])
         >>> kdf.index.has_duplicates
-        False
+        True
         """
         scol = self._kdf._sdf.select(self._scol)
         col = scol.columns[0]
