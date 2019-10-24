@@ -18,7 +18,7 @@
 Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 """
 
-from functools import partial
+from functools import partial, reduce
 from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
@@ -318,7 +318,7 @@ class Index(IndexOpsMixin):
 
     def dropna(self):
         """
-        Return Index without NA/NaN values
+        Return Index or MultiIndex without NA/NaN values
 
         Examples
         --------
@@ -334,11 +334,43 @@ class Index(IndexOpsMixin):
 
         >>> df.index.dropna()
         Index(['cobra', 'viper'], dtype='object')
+
+        Also support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       [None, 'weight', 'length']],
+        ...                      [[0, 1, 1, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 1, 0, 1, 2, 1, 1, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, None],
+        ...               index=midx)
+        >>> s
+        lama    NaN        45.0
+        cow     weight    200.0
+                weight      1.2
+                NaN        30.0
+                weight    250.0
+                length      1.5
+        falcon  weight    320.0
+                weight      1.0
+                length      NaN
+        Name: 0, dtype: float64
+
+        >>> s.index.dropna()
+        MultiIndex([(   'cow', 'weight'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'length'),
+                    ('falcon', 'weight'),
+                    ('falcon', 'weight'),
+                    ('falcon', 'length')],
+                   )
         """
-        kdf = self._kdf
-        sdf = self._kdf._internal.sdf
-        kdf._internal = kdf._internal.copy(sdf=sdf.where(self._scol.isNotNull()))
-        return Index(kdf)
+        kdf = self._kdf.copy()
+        sdf = kdf._internal.sdf
+        scols_not_null = [index_scol.isNotNull() for index_scol in kdf._internal.index_scols]
+        sdf = sdf.where(reduce(lambda x, y: x & y, scols_not_null))
+        kdf._internal = kdf._internal.copy(sdf=sdf)
+        return Index(kdf) if type(self) == Index else MultiIndex(kdf)
 
     def unique(self, level=None):
         """
@@ -527,17 +559,6 @@ class MultiIndex(Index):
         return self._kdf[[]]._to_internal_pandas().index
 
     toPandas = to_pandas
-
-    def dropna(self):
-        """
-        Return MultiIndex without NA/NaN values
-        """
-        kdf = self._kdf
-        sdf = self._kdf._internal.sdf
-        for index_scol in self._kdf._internal.index_scols:
-            sdf = sdf.where(index_scol.isNotNull())
-        kdf._internal = kdf._internal.copy(sdf=sdf)
-        return MultiIndex(kdf)
 
     def unique(self, level=None):
         raise PandasNotImplementedError(class_name='MultiIndex', method_name='unique')
