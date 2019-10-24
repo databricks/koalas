@@ -130,10 +130,10 @@ class Index(IndexOpsMixin):
         """
         If index has duplicates, return True, otherwise False.
         """
-        idx_columns = self._kdf._sdf.select(self._scol)
-        drop_duplicate_index = idx_columns.drop_duplicates()
+        idx_column = self._kdf._sdf.select(self._scol)
+        deduplicate_idx_column = idx_column.drop_duplicates()
 
-        if idx_columns.count() == drop_duplicate_index.count():
+        if idx_column.count() == deduplicate_idx_column.count():
             return False
         return True
 
