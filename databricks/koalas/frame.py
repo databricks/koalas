@@ -396,7 +396,7 @@ class DataFrame(_Frame, Generic[T]):
         viper          4       5
         NaN            7       8
         >>> df.ndim
-        2        
+        2
         """
         return 2
 
