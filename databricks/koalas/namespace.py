@@ -1515,11 +1515,12 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                 # TODO: NaN and None difference for missing values. pandas seems filling NaN.
                 sdf = kdf._sdf
                 for idx in columns_to_add:
-                    sdf = sdf.withColumn(str(idx), F.lit(None))
+                    sdf = sdf.withColumn(name_like_string(idx), F.lit(None))
 
                 kdf = DataFrame(kdf._internal.copy(
                     sdf=sdf,
-                    data_columns=kdf._internal.data_columns + [str(idx) for idx in columns_to_add],
+                    data_columns=(kdf._internal.data_columns
+                                  + [name_like_string(idx) for idx in columns_to_add]),
                     column_index=kdf._internal.column_index + columns_to_add))
 
                 kdfs.append(kdf[merged_columns])
