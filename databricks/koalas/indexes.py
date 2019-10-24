@@ -517,17 +517,18 @@ class Index(IndexOpsMixin):
         idx_name = SPARK_INDEX_NAME_FORMAT(0)
         sdf = self._kdf._sdf
         sdf_count = sdf.groupBy(self._scol.alias(idx_name)).count()
+
         if dropna:
             sdf_count = sdf_count.dropna()
         if sort:
             sdf_count = sdf_count.sort('count', ascending=ascending)
-
         if normalize:
             sum_values = sdf_count.select(
                 F.sum(sdf_count['count'])).collect()[0][0]
             sdf_count = sdf_count.select(
                 idx_name,
                 F.round(sdf_count['count'] / sum_values, 6).alias('count'))
+
         internal = _InternalFrame(sdf=sdf_count, index_map=[(idx_name, None)])
 
         return _col(DataFrame(internal))
