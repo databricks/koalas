@@ -3459,6 +3459,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
         >>> kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
 
         >>> kser.keys()  # doctest: +SKIP
