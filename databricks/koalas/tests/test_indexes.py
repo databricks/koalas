@@ -248,8 +248,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assertEqual(kdf.index.has_duplicates, expected)
 
     def test_multiindex_has_duplicates(self):
-        indexes = [(list("abc"), list("edf")), (list("aac"), list("edf")),
-                   (list("aac"), list("eef")), ([1, 4, 5, 6], [2, 4, 5, 7])]
+        indexes = [[list("abc"), list("edf")], [list("aac"), list("edf")],
+                   [list("aac"), list("eef")], [[1, 4, 4], [4, 6, 6]]]
         has_dup = [False, False, True, True]
 
         for idx, expected in zip(indexes, has_dup):
