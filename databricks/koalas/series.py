@@ -3605,6 +3605,102 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol(current)
 
+    def xs(self, key, level=None):
+        """
+        Return cross-section from the Series.
+
+        This method takes a `key` argument to select data at a particular
+        level of a MultiIndex.
+
+        Parameters
+        ----------
+        key : label or tuple of label
+            Label contained in the index, or partially in a MultiIndex.
+        level : object, defaults to first n levels (n=1 or len(key))
+            In case of a key partially contained in a MultiIndex, indicate
+            which levels are used. Levels can be referred by label or position.
+
+        Returns
+        -------
+        Series
+            Cross-section from the original Series
+            corresponding to the selected index levels.
+
+        Examples
+        --------
+        >>> midx = pd.MultiIndex([['a', 'b', 'c'],
+        ...                       ['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...               index=midx)
+        >>> s
+        a  lama    speed      45.0
+                   weight    200.0
+                   length      1.2
+        b  cow     speed      30.0
+                   weight    250.0
+                   length      1.5
+        c  falcon  speed     320.0
+                   weight      1.0
+                   length      0.3
+        Name: 0, dtype: float64
+
+        Get values at specified index
+
+        >>> s.xs('a')
+        lama  speed      45.0
+              weight    200.0
+              length      1.2
+        Name: 0, dtype: float64
+
+        Get values at several indexes
+
+        >>> s.xs(('a', 'lama'))
+        speed      45.0
+        weight    200.0
+        length      1.2
+        Name: 0, dtype: float64
+
+        Get values at specified index and level
+
+        >>> s.xs('lama', level=1)
+        a  speed      45.0
+           weight    200.0
+           length      1.2
+        Name: 0, dtype: float64
+        """
+        if not isinstance(key, tuple):
+            key = (key,)
+        if level is None:
+            level = 0
+
+        cols = (self._internal.index_scols[:level] +
+                self._internal.index_scols[level+len(key):] +
+                [self._internal.scol_for(self._internal.column_index[0])])
+        rows = [self._internal.scols[lvl] == index
+                for lvl, index in enumerate(key, level)]
+        sdf = self._internal.sdf \
+            .select(cols) \
+            .where(reduce(lambda x, y: x & y, rows))
+
+        if len(self._internal._index_map) == len(key):
+            # if sdf has one column and one data, return data only without frame
+            pdf = sdf.limit(2).toPandas()
+            length = len(pdf)
+            if length == 1:
+                return pdf[self.name].iloc[0]
+
+        index_cols = [col for col in sdf.columns if col not in self._internal.data_columns]
+        index_map_dict = dict(self._internal.index_map)
+        internal = self._internal.copy(
+            sdf=sdf,
+            index_map=[(index_col, index_map_dict[index_col]) for index_col in index_cols])
+
+        return _col(DataFrame(internal))
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns

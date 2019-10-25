@@ -34,8 +34,9 @@ from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
-from databricks.koalas.series import Series, _col
 from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
+from databricks.koalas.series import Series, _col
+from databricks.koalas.utils import name_like_string
 
 
 class Index(IndexOpsMixin):
@@ -233,7 +234,7 @@ class Index(IndexOpsMixin):
         kdf = self._kdf
         scol = self._scol
         if name is not None:
-            scol = scol.alias(str(name))
+            scol = scol.alias(name_like_string(name))
         column_index = [None] if len(kdf._internal.index_map) > 1 else kdf._internal.index_names
         return Series(kdf._internal.copy(scol=scol,
                                          column_index=column_index,
