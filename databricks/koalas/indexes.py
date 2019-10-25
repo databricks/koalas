@@ -487,7 +487,7 @@ class Index(IndexOpsMixin):
         ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
         ...                       [1, 1, 1, 1, 1, 2, 1, 2, 2]])
         >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
-        >>> s.index
+        >>> s.index  # doctest: +SKIP
         MultiIndex([(  'lama', 'weight'),
                     (  'lama', 'weight'),
                     (  'lama', 'weight'),
