@@ -494,16 +494,17 @@ class MultiIndex(Index):
         sdf = self._kdf._sdf
         cols = self._kdf._internal.index_columns
 
-        sdf = sdf.withColumn("order", F.monotonically_increasing_id())
+        # adding underscore is to avoid naming conflict with data columns
+        sdf = sdf.withColumn("__order__", F.monotonically_increasing_id())
         i = 0
         for col in cols:
             df = sdf.select(col).distinct()
             w = Window.orderBy(col)
-            df = df.withColumn('code_{}'.format(str(i)), F.row_number().over(w) - 1)
+            df = df.withColumn("__code_{}__".format(str(i)), F.row_number().over(w) - 1)
             sdf = sdf.join(df, sdf[col] == df[col]).drop(df[col])
             i += 1
 
-        sdf = sdf.orderBy('order').select(sdf.colRegex("`code_.`"))
+        sdf = sdf.orderBy("__order__").select(sdf.colRegex("`__code_.`"))
         return DataFrame(_InternalFrame(sdf=sdf)).astype('int').to_numpy().T.tolist()
 
     @property
