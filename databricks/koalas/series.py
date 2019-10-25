@@ -1842,9 +1842,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
 
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=['count'],
                                   index_map=[(index_name, None)],
                                   column_index=self._internal.column_index,
+                                  column_scols=[scol_for(sdf, 'count')],
                                   column_index_names=self._internal.column_index_names)
         return _col(DataFrame(internal))
 

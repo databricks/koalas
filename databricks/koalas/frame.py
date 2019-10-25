@@ -4791,10 +4791,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 columns.append(self._internal.column_name_for(idx))
                 column_index.append(idx)
 
+        sdf = self._sdf.select(self._internal.index_scols +
+                               [self._internal.scol_for(col) for col in columns])
         return DataFrame(self._internal.copy(
-            sdf=self._sdf.select(self._internal.index_scols +
-                                 [self._internal.scol_for(col) for col in columns]),
-            data_columns=columns, column_index=column_index))
+            sdf=sdf,
+            column_index=column_index,
+            column_scols=[scol_for(sdf, col) for col in columns]))
 
     def count(self, axis=None):
         """
