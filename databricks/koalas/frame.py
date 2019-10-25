@@ -447,7 +447,7 @@ class DataFrame(_Frame, Generic[T]):
             def calculate_columns_axis(*cols):
                 return getattr(pd.concat(cols, axis=1), name)(axis=axis, numeric_only=numeric_only)
 
-            df = self._sdf.select(calculate_columns_axis(*self._internal.data_scols).alias("0"))
+            df = self._sdf.select(calculate_columns_axis(*self._internal.column_scols).alias("0"))
             return DataFrame(df)["0"]
 
         else:
@@ -481,9 +481,9 @@ class DataFrame(_Frame, Generic[T]):
             sdf = self._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
             internal = self._internal.copy(sdf=sdf,
-                                           data_columns=[c._internal.data_columns[0]
-                                                         for c in applied],
                                            column_index=[c._internal.column_index[0]
+                                                         for c in applied],
+                                           column_scols=[scol_for(sdf, c._internal.data_columns[0])
                                                          for c in applied])
             return DataFrame(internal)
 
@@ -888,8 +888,9 @@ class DataFrame(_Frame, Generic[T]):
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf,
-                                       data_columns=[c._internal.data_columns[0] for c in applied],
-                                       column_index=[c._internal.column_index[0] for c in applied])
+                                       column_index=[c._internal.column_index[0] for c in applied],
+                                       column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                     for c in applied])
         return DataFrame(internal)
 
     # TODO: not all arguments are implemented comparing to Pandas' for now.
@@ -6125,7 +6126,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 results.append(col.astype(dtype=dtype))
         sdf = self._sdf.select(
             self._internal.index_scols + list(map(lambda ser: ser._scol, results)))
-        return DataFrame(self._internal.copy(sdf=sdf))
+        return DataFrame(self._internal.copy(sdf=sdf,
+                                             column_scols=[scol_for(sdf, col)
+                                                           for col in self._internal.data_columns]))
 
     def add_prefix(self, prefix):
         """
@@ -6376,10 +6379,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         stats = ["count", "mean", "stddev", "min", *formatted_perc, "max"]
 
         sdf = self._sdf.select(*exprs).summary(stats)
+        sdf = sdf.replace("stddev", "std", subset='summary')
 
-        internal = _InternalFrame(sdf=sdf.replace("stddev", "std", subset='summary'),
-                                  data_columns=data_columns,
-                                  index_map=[('summary', None)])
+        internal = _InternalFrame(sdf=sdf,
+                                  index_map=[('summary', None)],
+                                  column_scols=[scol_for(sdf, col) for col in data_columns])
         return DataFrame(internal).astype('float64')
 
     def _cum(self, func, skipna: bool):

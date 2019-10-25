@@ -1713,8 +1713,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         sdf = self._internal.sdf.select(self._scol).distinct()
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[self._internal.data_columns[0]],
                                   column_index=[self._internal.column_index[0]],
+                                  column_scols=[scol_for(sdf, self._internal.data_columns[0])],
                                   column_index_names=self._internal.column_index_names)
         return _col(DataFrame(internal))
 
@@ -2677,8 +2677,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
             internal = self.to_dataframe()._internal.copy(
                 sdf=sdf,
-                data_columns=[c._internal.data_columns[0] for c in applied],
                 column_index=[c._internal.column_index[0] for c in applied],
+                column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied],
                 column_index_names=None)
 
             return DataFrame(internal)
@@ -2816,9 +2816,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
             internal = self._kdf._internal.copy(
                 sdf=sdf,
-                data_columns=[value_column],
                 index_map=[(internal_index_column, None)],
                 column_index=None,
+                column_scols=[scol_for(sdf, value_column)],
                 column_index_names=None)
 
             return DataFrame(internal)[value_column].rename(self.name)
