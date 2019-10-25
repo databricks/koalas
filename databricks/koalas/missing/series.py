@@ -111,7 +111,6 @@ class _MissingPandasLikeSeries(object):
     update = unsupported_function('update')
     view = unsupported_function('view')
     xs = unsupported_function('xs')
-    where = unsupported_function('where')
 
     # Deprecated functions
     as_blocks = unsupported_function('as_blocks', deprecated=True)
