@@ -3813,11 +3813,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 applied.append(self[idx].fillna(value=value, method=method, axis=axis,
                                                 inplace=False, limit=limit))
             sdf = self._sdf.select(self._internal.index_scols + [col._scol for col in applied])
-            internal = self._internal.copy(sdf=sdf,
-                                           column_index=[col._internal.column_index[0]
-                                                         for col in applied],
-                                           column_scols=[scol_for(sdf, col._internal.data_columns[0])
-                                                         for col in applied])
+            internal = self._internal.copy(
+                sdf=sdf,
+                column_index=[col._internal.column_index[0] for col in applied],
+                column_scols=[scol_for(sdf, col._internal.data_columns[0]) for col in applied])
         if inplace:
             self._internal = internal
         else:

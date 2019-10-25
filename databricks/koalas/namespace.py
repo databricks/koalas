@@ -1517,12 +1517,12 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                 for idx in columns_to_add:
                     sdf = sdf.withColumn(name_like_string(idx), F.lit(None))
 
+                data_columns = (kdf._internal.data_columns
+                                + [name_like_string(idx) for idx in columns_to_add])
                 kdf = DataFrame(kdf._internal.copy(
                     sdf=sdf,
                     column_index=(kdf._internal.column_index + columns_to_add),
-                    column_scols=[scol_for(sdf, col)
-                                  for col in (kdf._internal.data_columns
-                                              + [name_like_string(idx) for idx in columns_to_add])]))
+                    column_scols=[scol_for(sdf, col) for col in data_columns]))
 
                 kdfs.append(kdf[merged_columns])
         else:

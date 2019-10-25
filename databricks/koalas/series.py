@@ -326,7 +326,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 s = pd.Series(
                     data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
             kdf = DataFrame(s)
-            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=kdf._internal.column_scols[0]), kdf)
+            IndexOpsMixin.__init__(self,
+                                   kdf._internal.copy(scol=kdf._internal.column_scols[0]), kdf)
 
     def _with_new_scol(self, scol: spark.Column) -> 'Series':
         """
