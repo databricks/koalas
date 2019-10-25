@@ -303,6 +303,7 @@ class IndexingTest(ReusedSQLTestCase):
         # TODO?: self.assert_eq(kdf.loc[['r', 'r', 'c', 'g', 'h'], ['A']],
         # TODO?:                pdf.loc[['r', 'r', 'c', 'g', 'h'], ['A']])
 
+    @unittest.skip('TODO: should handle duplicated columns properly')
     def test_loc2d_duplicated_columns(self):
         pdf = pd.DataFrame(np.random.randn(20, 5),
                            index=list('abcdefghijklmnopqrst'),
