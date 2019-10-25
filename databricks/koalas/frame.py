@@ -2358,8 +2358,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                      index_name if index_name is not None else rename(i)))
                 index_map.remove(info)
 
-        new_data_scols = [
-            self._internal.scol_for(column).alias(str(name)) for column, name in new_index_map]
+        new_data_scols = [self._internal.scol_for(column).alias(name_like_string(name))
+                          for column, name in new_index_map]
 
         if len(index_map) > 0:
             index_scols = [scol_for(self._sdf, column) for column, _ in index_map]
@@ -2379,7 +2379,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         internal = self._internal.copy(
             sdf=sdf,
-            data_columns=[str(name) for _, name in new_index_map] + self._internal.data_columns,
+            data_columns=([name_like_string(name) for _, name in new_index_map]
+                          + self._internal.data_columns),
             index_map=index_map,
             column_index=None)
 
@@ -2820,7 +2821,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             name = self._internal.index_names[0]
         else:
             name = ('0',)
-        column = str(name) if len(name) > 1 else name[0]
+        column = name_like_string(name)
 
         sdf = self._sdf
         if column == index_column:
@@ -3393,7 +3394,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         adding_column_index = []
         for idx, scol in pairs.items():
             if idx not in set(i[:len(idx)] for i in self._internal.column_index):
-                name = str(idx) if len(idx) > 1 else idx[0]
+                name = name_like_string(idx)
                 scols.append(scol.alias(name))
                 adding_data_columns.append(name)
                 adding_column_index.append(idx)
