@@ -26,13 +26,14 @@ from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
     is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
 
 from pyspark import sql as spark
-from pyspark.sql import functions as F
+from pyspark.sql import functions as F, Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
 from databricks.koalas.utils import name_like_string
@@ -470,6 +471,23 @@ class MultiIndex(Index):
 
     def all(self, *args, **kwargs):
         raise TypeError("cannot perform all with this index type: MultiIndex")
+
+    @property
+    def codes(self):
+        sdf = self._kdf._sdf
+        cols = self._kdf._internal.index_columns
+
+        sdf = sdf.withColumn("order", F.monotonically_increasing_id())
+        i = 0
+        for col in cols:
+            df = sdf.select(col).distinct()
+            w = Window.orderBy(col)
+            df = df.withColumn('code_{}'.format(str(i)), F.row_number().over(w) - 1)
+            sdf = sdf.join(df, sdf[col] == df[col]).drop(df[col])
+            i += 1
+
+        sdf = sdf.orderBy('order').select(sdf.colRegex("`code_.`"))
+        return DataFrame(_InternalFrame(sdf=sdf)).astype('int').to_numpy().T.tolist()
 
     @property
     def name(self) -> str:

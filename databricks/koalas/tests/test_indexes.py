@@ -69,6 +69,17 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(AttributeError, expected_error_message):
             kidx.__getattr__(item)
 
+    def test_mutliindex_codes(self):
+        indexes = [[list('bac'), list('ddf')], [list('abc'), list('edf')],
+                   [list('caa'), list('eat')], [list('dad'), list('pea')]]
+        expected = [[[1, 0, 2], [0, 0, 1]], [[0, 1, 2], [1, 0, 2]],
+                    [[1, 0, 0], [1, 0, 2]], [[1, 0, 1], [2, 1, 0]]]
+
+        for idx, exp in zip(indexes, expected):
+            multi_index = ks.DataFrame({'a': [1, 2, 3]}, index=idx).index
+
+            self.assertEqual(multi_index.codes, exp)
+
     def test_to_series(self):
         pidx = self.pdf.index
         kidx = self.kdf.index
