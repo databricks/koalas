@@ -474,6 +474,23 @@ class MultiIndex(Index):
 
     @property
     def codes(self):
+        """
+        Integers for each level designating which label at each location.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"a": [1, 2, 3]}, index=[list('abc'), list('ddf')])
+        >>> kdf.index.codes
+        [[0, 1, 2], [0, 0, 1]]
+
+        >>> kdf = ks.DataFrame({"a": [1, 2, 3]}, index=[list('bbc'), list('fee')])
+        >>> kdf.index.codes
+        [[0, 0, 1], [1, 0, 0]]
+
+        >>> kdf = ks.DataFrame({"a": [1, 2], "b": [3, 4]}, index=[list('cc'), list('eb')])
+        >>> kdf.index.codes
+        [[0, 0], [1, 0]]
+        """
         sdf = self._kdf._sdf
         cols = self._kdf._internal.index_columns
 
