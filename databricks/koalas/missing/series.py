@@ -110,7 +110,6 @@ class _MissingPandasLikeSeries(object):
     unstack = unsupported_function('unstack')
     update = unsupported_function('update')
     view = unsupported_function('view')
-    xs = unsupported_function('xs')
 
     # Deprecated functions
     as_blocks = unsupported_function('as_blocks', deprecated=True)
