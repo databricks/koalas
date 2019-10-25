@@ -28,6 +28,7 @@ from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
+from databricks.koalas.utils import scol_for
 
 
 def _make_col(c):
@@ -475,9 +476,9 @@ class LocIndexer(object):
             sdf = sdf.select(self._kdf._internal.index_scols + columns)
             index_columns = self._kdf._internal.index_columns
             data_columns = [column for column in sdf.columns if column not in index_columns]
-            internal = _InternalFrame(
-                sdf=sdf, data_columns=data_columns,
-                index_map=self._kdf._internal.index_map, column_index=column_index)
+            column_scols = [scol_for(sdf, col) for col in data_columns]
+            internal = _InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map,
+                                      column_index=column_index, column_scols=column_scols)
             kdf = DataFrame(internal)
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'

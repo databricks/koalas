@@ -65,8 +65,8 @@ class Index(IndexOpsMixin):
         if scol is None:
             scol = kdf._internal.index_scols[0]
         internal = kdf._internal.copy(scol=scol,
-                                      data_columns=kdf._internal.index_columns,
                                       column_index=kdf._internal.index_names,
+                                      column_scols=kdf._internal.index_scols,
                                       column_index_names=None)
         IndexOpsMixin.__init__(self, internal, kdf)
 
@@ -116,7 +116,7 @@ class Index(IndexOpsMixin):
         internal = self._kdf._internal.copy(
             sdf=sdf,
             index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
-            data_columns=[], column_index=[], column_index_names=None)
+            column_index=[], column_scols=[], column_index_names=None)
         return DataFrame(internal)._to_internal_pandas().index
 
     toPandas = to_pandas

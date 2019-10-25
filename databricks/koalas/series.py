@@ -326,7 +326,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 s = pd.Series(
                     data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
             kdf = DataFrame(s)
-            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=kdf._internal.data_scols[0]), kdf)
+            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=kdf._internal.column_scols[0]), kdf)
 
     def _with_new_scol(self, scol: spark.Column) -> 'Series':
         """
@@ -1065,9 +1065,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             column_index = renamed._internal.column_index
             column_index_names = renamed._internal.column_index_names
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[sdf.schema[-1].name],
                                   index_map=renamed._internal.index_map,
                                   column_index=column_index,
+                                  column_scols=[scol_for(sdf, sdf.columns[-1])],
                                   column_index_names=column_index_names)
         return DataFrame(internal)
 
@@ -2083,7 +2083,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.sdf
         sdf = sdf.select([F.concat(F.lit(prefix),
                                    scol_for(sdf, index_column)).alias(index_column)
-                          for index_column in internal.index_columns] + internal.data_scols)
+                          for index_column in internal.index_columns] + internal.column_scols)
         kdf._internal = internal.copy(sdf=sdf)
         return _col(kdf)
 
@@ -2133,7 +2133,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.sdf
         sdf = sdf.select([F.concat(scol_for(sdf, index_column),
                                    F.lit(suffix)).alias(index_column)
-                          for index_column in internal.index_columns] + internal.data_scols)
+                          for index_column in internal.index_columns] + internal.column_scols)
         kdf._internal = internal.copy(sdf=sdf)
         return _col(kdf)
 
