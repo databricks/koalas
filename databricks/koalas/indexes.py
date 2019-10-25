@@ -356,7 +356,7 @@ class Index(IndexOpsMixin):
                 length      NaN
         Name: 0, dtype: float64
 
-        >>> s.index.dropna()
+        >>> s.index.dropna()  # doctest: +SKIP
         MultiIndex([(   'cow', 'weight'),
                     (   'cow', 'weight'),
                     (   'cow', 'weight'),
