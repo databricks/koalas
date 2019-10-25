@@ -144,10 +144,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = self.kdf.index
 
         # here the output is different than pandas in terms of order
-        expected = pd.Int64Index([0, 6, 9, 5, 1, 3, 8], dtype='int64')
+        expected = [0, 1, 3, 5, 6, 8, 9]
 
-        self.assert_eq(expected, kidx.unique())
-        self.assert_eq(expected, kidx.unique(level=0))
+        self.assert_eq(expected, sorted(kidx.unique().to_pandas()))
+        self.assert_eq(expected, sorted(kidx.unique(level=0).to_pandas()))
+
+        expected = [1, 2, 4, 6, 7, 9, 10]
+        self.assert_eq(expected, sorted((kidx + 1).unique().to_pandas()))
 
         with self.assertRaisesRegexp(IndexError, "Too many levels*"):
             kidx.unique(level=1)

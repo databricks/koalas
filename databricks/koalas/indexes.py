@@ -33,6 +33,7 @@ from databricks.koalas.config import get_option
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
 from databricks.koalas.utils import name_like_string
@@ -335,8 +336,8 @@ class Index(IndexOpsMixin):
         """
         if level is not None:
             self._validate_index_level(level)
-        sdf = self._kdf._sdf.select(self._scol).distinct()
-        return Index(DataFrame(self._kdf._internal.copy(sdf=sdf)), scol=self._scol)
+        sdf = self._kdf._sdf.select(self._scol.alias(self._internal.index_columns[0])).distinct()
+        return DataFrame(_InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)).index
 
     def _validate_index_level(self, level):
         """
