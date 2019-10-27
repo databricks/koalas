@@ -500,7 +500,7 @@ class MultiIndex(Index):
         for col in cols:
             df = sdf.select(col).distinct()
             w = Window.orderBy(col)
-            df = df.withColumn("__code_{}__".format(str(i)), F.row_number().over(w) - 1)
+            df = df.withColumn("__code_{}".format(str(i)), F.row_number().over(w) - 1)
             sdf = sdf.join(df, sdf[col] == df[col]).drop(df[col])
             i += 1
 
