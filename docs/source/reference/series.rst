@@ -151,6 +151,7 @@ Reindexing / Selection / Label manipulation
    Series.rename
    Series.reset_index
    Series.sample
+   Series.where
    Series.truncate
 
 Missing data handling
@@ -188,6 +189,7 @@ Time series-related
    :toctree: api/
 
    Series.shift
+   Series.first_valid_index
 
 Accessors
 ---------

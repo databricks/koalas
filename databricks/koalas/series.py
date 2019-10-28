@@ -823,11 +823,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self),
 
     @property
-    def ndim(self):
-        """Returns number of dimensions of the Series."""
-        return 1
-
-    @property
     def name(self) -> Union[str, Tuple[str, ...]]:
         """Return name of the Series."""
         name = self._internal.column_index[0]
@@ -3393,6 +3388,62 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return result
 
+    def first_valid_index(self):
+        """
+        Retrieves the index of the first valid value.
+
+        Returns
+        -------
+        idx_first_valid : type of index
+
+        Examples
+        --------
+        >>> s = ks.Series([None, None, 3, 4, 5], index=[100, 200, 300, 400, 500])
+        >>> s
+        100    NaN
+        200    NaN
+        300    3.0
+        400    4.0
+        500    5.0
+        Name: 0, dtype: float64
+
+        >>> s.first_valid_index()
+        300
+
+        Support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([None, None, None, None, 250, 1.5, 320, 1, 0.3], index=midx)
+        >>> s
+        lama    speed       NaN
+                weight      NaN
+                length      NaN
+        cow     speed       NaN
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.first_valid_index()
+        ('cow', 'weight')
+        """
+        sdf = self._internal.sdf
+        data_scol = self._internal.scol
+
+        first_valid_row = sdf.where(data_scol.isNotNull()).first()
+        first_valid_idx = tuple(first_valid_row[idx_col]
+                                for idx_col in self._internal.index_columns)
+
+        if len(first_valid_idx) == 1:
+            first_valid_idx = first_valid_idx[0]
+
+        return first_valid_idx
+
     def keys(self):
         """
         Return alias for index.
@@ -3605,6 +3656,86 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             current = F.when(self._scol.isin(to_replace), value).otherwise(self._scol)
 
         return self._with_new_scol(current)
+
+    def where(self, cond, other=np.nan):
+        """
+        Replace values where the condition is False.
+
+        Parameters
+        ----------
+        cond : boolean Series
+            Where cond is True, keep the original value. Where False,
+            replace with corresponding value from other.
+        other : scalar, Series
+            Entries where cond is False are replaced with corresponding value from other.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> s1 = ks.Series([0, 1, 2, 3, 4])
+        >>> s2 = ks.Series([100, 200, 300, 400, 500])
+        >>> s1.where(s1 > 0).sort_index()
+        0    NaN
+        1    1.0
+        2    2.0
+        3    3.0
+        4    4.0
+        Name: 0, dtype: float64
+
+        >>> s1.where(s1 > 1, 10).sort_index()
+        0    10
+        1    10
+        2     2
+        3     3
+        4     4
+        Name: 0, dtype: int64
+
+        >>> s1.where(s1 > 1, s1 + 100).sort_index()
+        0    100
+        1    101
+        2      2
+        3      3
+        4      4
+        Name: 0, dtype: int64
+
+        >>> s1.where(s1 > 1, s2).sort_index()
+        0    100
+        1    200
+        2      2
+        3      3
+        4      4
+        Name: 0, dtype: int64
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        kdf = self.to_frame()
+        kdf['__tmp_cond_col__'] = cond
+        kdf['__tmp_other_col__'] = other
+        sdf = kdf._sdf
+        # above logic make spark dataframe looks like below:
+        # +-----------------+---+----------------+-----------------+
+        # |__index_level_0__|  0|__tmp_cond_col__|__tmp_other_col__|
+        # +-----------------+---+----------------+-----------------+
+        # |                0|  0|           false|              100|
+        # |                1|  1|           false|              200|
+        # |                3|  3|            true|              400|
+        # |                2|  2|            true|              300|
+        # |                4|  4|            true|              500|
+        # +-----------------+---+----------------+-----------------+
+        data_col_name = self._internal.column_name_for(self._internal.column_index[0])
+        index_column = self._internal.index_columns[0]
+        condition = F.when(sdf['__tmp_cond_col__'], sdf[data_col_name]) \
+                     .otherwise(sdf['__tmp_other_col__']).alias(data_col_name)
+        sdf = sdf.select(index_column, condition)
+        result = _col(ks.DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map)))
+
+        return result
 
     def xs(self, key, level=None):
         """
