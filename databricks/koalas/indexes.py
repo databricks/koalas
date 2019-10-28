@@ -144,14 +144,10 @@ class Index(IndexOpsMixin):
         >>> kdf.index.has_duplicates
         True
         """
-        scol = self._kdf._sdf.select(self._scol)
-        col = scol.columns[0]
+        df = self._kdf._sdf.select(self._scol)
+        col = df.columns[0]
 
-        count = scol.agg(F.count(col).alias('count')).collect()
-        dedup_count = scol.agg(F.countDistinct(col).alias('count')).collect()
-        if count == dedup_count:
-            return False
-        return True
+        return df.select(F.count(col) != F.countDistinct(col)).first()[0]
 
     @property
     def name(self) -> Union[str, Tuple[str, ...]]:
