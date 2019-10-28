@@ -35,7 +35,7 @@ Try the Koalas 10 minutes tutorial on a live Jupyter notebook [here](https://myb
 
 ## Getting Started
 
-Recommended way of installing is Conda. You can use not only Conda but also multiple ways to install Koalas. See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for full instructions to install Koalas.
+The recommended way of installing Koalas is Conda. You can use not only Conda but also multiple ways to install Koalas. See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for full instructions to install Koalas.
 
 ```bash
 conda install koalas -c conda-forge
@@ -61,15 +61,7 @@ df['x2'] = df.x * df.x
 
 For more details, see [Getting Started](https://koalas.readthedocs.io/en/latest/getting_started/index.html) and [Dependencies](https://koalas.readthedocs.io/en/latest/getting_started/install.html#dependencies) in the official documentation.
 
-
-## Contributing Guide
-
-See [Contributing Guide](https://koalas.readthedocs.io/en/latest/development/contributing.html) and [Design Principles](https://koalas.readthedocs.io/en/latest/development/design.html) in the official documentation.
-
-
-## FAQ
-
-### How do I use this on Databricks?
+### Databricks Runtime
 
 Koalas requires Databricks Runtime 5.x or above. For the regular Databricks Runtime, you can install Koalas using the Libraries tab on the cluster UI, or using dbutils in a notebook:
 
@@ -78,7 +70,14 @@ dbutils.library.installPyPI("koalas")
 dbutils.library.restartPython()
 ```
 
-In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and
-Databricks Runtime for Machine Learning.
+In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and Databricks Runtime for Machine Learning.
 
-See also the full list of frequently asked questions at [FAQ](https://koalas.readthedocs.io/en/latest/user_guide/faq.html) in the official documentation.
+
+## Contributing Guide
+
+See [Contributing Guide](https://koalas.readthedocs.io/en/latest/development/contributing.html) and [Design Principles](https://koalas.readthedocs.io/en/latest/development/design.html) in the official documentation.
+
+
+## FAQ
+
+See [FAQ](https://koalas.readthedocs.io/en/latest/user_guide/faq.html) in the official documentation.
