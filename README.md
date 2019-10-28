@@ -41,6 +41,13 @@ The recommended way of installing Koalas is Conda. You can use not only Conda bu
 conda install koalas -c conda-forge
 ```
 
+If you are a Databricks Runtime user, note that Koalas requires Databricks Runtime 5.x or above. For the regular Databricks Runtime, you can install Koalas using the Libraries tab on the cluster UI, or using dbutils in a notebook as below. In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and Databricks Runtime for Machine Learning.
+
+```python
+dbutils.library.installPyPI("koalas")
+dbutils.library.restartPython()
+```
+
 Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
 
 ```python
@@ -60,17 +67,6 @@ df['x2'] = df.x * df.x
 ```
 
 For more details, see [Getting Started](https://koalas.readthedocs.io/en/latest/getting_started/index.html) and [Dependencies](https://koalas.readthedocs.io/en/latest/getting_started/install.html#dependencies) in the official documentation.
-
-### Databricks Runtime
-
-Koalas requires Databricks Runtime 5.x or above. For the regular Databricks Runtime, you can install Koalas using the Libraries tab on the cluster UI, or using dbutils in a notebook:
-
-```python
-dbutils.library.installPyPI("koalas")
-dbutils.library.restartPython()
-```
-
-In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and Databricks Runtime for Machine Learning.
 
 
 ## Contributing Guide
