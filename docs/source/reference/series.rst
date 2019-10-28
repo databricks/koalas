@@ -189,6 +189,7 @@ Time series-related
    :toctree: api/
 
    Series.shift
+   Series.first_valid_index
 
 Accessors
 ---------
