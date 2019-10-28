@@ -43,7 +43,7 @@ from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAM
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
-                                     tuple_like_strings)
+                                     name_like_string)
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
@@ -820,11 +820,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def shape(self):
         """Return a tuple of the shape of the underlying data."""
         return len(self),
-
-    @property
-    def ndim(self):
-        """Returns number of dimensions of the Series."""
-        return 1
 
     @property
     def name(self) -> Union[str, Tuple[str, ...]]:
@@ -3224,6 +3219,91 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return _col(DataFrame(self._internal.copy()))
 
+    def truncate(self, before=None, after=None, copy=True):
+        """
+        Truncates a sorted Series before and/or after some particular index value.
+        Series should have sorted index.
+
+        .. note:: the current implementation of truncate uses is_monotonic_increasing internally
+            This leads to move all data into single partition in single machine and could cause
+            serious performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        before : string, int
+            Truncate all rows before this index value
+        after : string, int
+            Truncate all rows after this index value
+        copy : boolean, default is True,
+            return a copy of the truncated section
+
+        Returns
+        -------
+        truncated : Series
+
+        Examples
+        --------
+
+
+        A Series has index that sorted integers.
+
+        >>> s = ks.Series([10, 20, 30, 40, 50, 60, 70],
+        ...               index=[1, 2, 3, 4, 5, 6, 7])
+        >>> s
+        1    10
+        2    20
+        3    30
+        4    40
+        5    50
+        6    60
+        7    70
+        Name: 0, dtype: int64
+
+        >>> s.truncate(2, 5)
+        2    20
+        3    30
+        4    40
+        5    50
+        Name: 0, dtype: int64
+
+        A Series has index that sorted strings.
+
+        >>> s = ks.Series([10, 20, 30, 40, 50, 60, 70],
+        ...               index=['a', 'b', 'c', 'd', 'e', 'f', 'g'])
+        >>> s
+        a    10
+        b    20
+        c    30
+        d    40
+        e    50
+        f    60
+        g    70
+        Name: 0, dtype: int64
+
+        >>> s.truncate('b', 'e')
+        b    20
+        c    30
+        d    40
+        e    50
+        Name: 0, dtype: int64
+        """
+        indexes = self.index
+        indexes_increasing = indexes.is_monotonic_increasing
+        if not indexes_increasing and not indexes.is_monotonic_decreasing:
+            raise ValueError("truncate requires a sorted index")
+        if (before is None) and (after is None):
+            return self.copy() if copy else self
+        if (before is not None) and (after is not None):
+            if before > after:
+                raise ValueError("Truncate: %s must be after %s" % (after, before))
+
+        if indexes_increasing:
+            result = _col(self.to_frame()[before:after])
+        else:
+            result = _col(self.to_frame()[after:before])
+
+        return result.copy() if copy else result
+
     def mode(self, dropna=True) -> 'Series':
         """
         Return the mode(s) of the dataset.
@@ -3306,6 +3386,62 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         result.name = self.name
 
         return result
+
+    def first_valid_index(self):
+        """
+        Retrieves the index of the first valid value.
+
+        Returns
+        -------
+        idx_first_valid : type of index
+
+        Examples
+        --------
+        >>> s = ks.Series([None, None, 3, 4, 5], index=[100, 200, 300, 400, 500])
+        >>> s
+        100    NaN
+        200    NaN
+        300    3.0
+        400    4.0
+        500    5.0
+        Name: 0, dtype: float64
+
+        >>> s.first_valid_index()
+        300
+
+        Support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([None, None, None, None, 250, 1.5, 320, 1, 0.3], index=midx)
+        >>> s
+        lama    speed       NaN
+                weight      NaN
+                length      NaN
+        cow     speed       NaN
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.first_valid_index()
+        ('cow', 'weight')
+        """
+        sdf = self._internal.sdf
+        data_scol = self._internal.scol
+
+        first_valid_row = sdf.where(data_scol.isNotNull()).first()
+        first_valid_idx = tuple(first_valid_row[idx_col]
+                                for idx_col in self._internal.index_columns)
+
+        if len(first_valid_idx) == 1:
+            first_valid_idx = first_valid_idx[0]
+
+        return first_valid_idx
 
     def keys(self):
         """
@@ -3520,6 +3656,182 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol(current)
 
+    def where(self, cond, other=np.nan):
+        """
+        Replace values where the condition is False.
+
+        Parameters
+        ----------
+        cond : boolean Series
+            Where cond is True, keep the original value. Where False,
+            replace with corresponding value from other.
+        other : scalar, Series
+            Entries where cond is False are replaced with corresponding value from other.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> s1 = ks.Series([0, 1, 2, 3, 4])
+        >>> s2 = ks.Series([100, 200, 300, 400, 500])
+        >>> s1.where(s1 > 0).sort_index()
+        0    NaN
+        1    1.0
+        2    2.0
+        3    3.0
+        4    4.0
+        Name: 0, dtype: float64
+
+        >>> s1.where(s1 > 1, 10).sort_index()
+        0    10
+        1    10
+        2     2
+        3     3
+        4     4
+        Name: 0, dtype: int64
+
+        >>> s1.where(s1 > 1, s1 + 100).sort_index()
+        0    100
+        1    101
+        2      2
+        3      3
+        4      4
+        Name: 0, dtype: int64
+
+        >>> s1.where(s1 > 1, s2).sort_index()
+        0    100
+        1    200
+        2      2
+        3      3
+        4      4
+        Name: 0, dtype: int64
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        kdf = self.to_frame()
+        kdf['__tmp_cond_col__'] = cond
+        kdf['__tmp_other_col__'] = other
+        sdf = kdf._sdf
+        # above logic make spark dataframe looks like below:
+        # +-----------------+---+----------------+-----------------+
+        # |__index_level_0__|  0|__tmp_cond_col__|__tmp_other_col__|
+        # +-----------------+---+----------------+-----------------+
+        # |                0|  0|           false|              100|
+        # |                1|  1|           false|              200|
+        # |                3|  3|            true|              400|
+        # |                2|  2|            true|              300|
+        # |                4|  4|            true|              500|
+        # +-----------------+---+----------------+-----------------+
+        data_col_name = self._internal.column_name_for(self._internal.column_index[0])
+        index_column = self._internal.index_columns[0]
+        condition = F.when(sdf['__tmp_cond_col__'], sdf[data_col_name]) \
+                     .otherwise(sdf['__tmp_other_col__']).alias(data_col_name)
+        sdf = sdf.select(index_column, condition)
+        result = _col(ks.DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map)))
+
+        return result
+
+    def xs(self, key, level=None):
+        """
+        Return cross-section from the Series.
+
+        This method takes a `key` argument to select data at a particular
+        level of a MultiIndex.
+
+        Parameters
+        ----------
+        key : label or tuple of label
+            Label contained in the index, or partially in a MultiIndex.
+        level : object, defaults to first n levels (n=1 or len(key))
+            In case of a key partially contained in a MultiIndex, indicate
+            which levels are used. Levels can be referred by label or position.
+
+        Returns
+        -------
+        Series
+            Cross-section from the original Series
+            corresponding to the selected index levels.
+
+        Examples
+        --------
+        >>> midx = pd.MultiIndex([['a', 'b', 'c'],
+        ...                       ['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...               index=midx)
+        >>> s
+        a  lama    speed      45.0
+                   weight    200.0
+                   length      1.2
+        b  cow     speed      30.0
+                   weight    250.0
+                   length      1.5
+        c  falcon  speed     320.0
+                   weight      1.0
+                   length      0.3
+        Name: 0, dtype: float64
+
+        Get values at specified index
+
+        >>> s.xs('a')
+        lama  speed      45.0
+              weight    200.0
+              length      1.2
+        Name: 0, dtype: float64
+
+        Get values at several indexes
+
+        >>> s.xs(('a', 'lama'))
+        speed      45.0
+        weight    200.0
+        length      1.2
+        Name: 0, dtype: float64
+
+        Get values at specified index and level
+
+        >>> s.xs('lama', level=1)
+        a  speed      45.0
+           weight    200.0
+           length      1.2
+        Name: 0, dtype: float64
+        """
+        if not isinstance(key, tuple):
+            key = (key,)
+        if level is None:
+            level = 0
+
+        cols = (self._internal.index_scols[:level] +
+                self._internal.index_scols[level+len(key):] +
+                [self._internal.scol_for(self._internal.column_index[0])])
+        rows = [self._internal.scols[lvl] == index
+                for lvl, index in enumerate(key, level)]
+        sdf = self._internal.sdf \
+            .select(cols) \
+            .where(reduce(lambda x, y: x & y, rows))
+
+        if len(self._internal._index_map) == len(key):
+            # if sdf has one column and one data, return data only without frame
+            pdf = sdf.limit(2).toPandas()
+            length = len(pdf)
+            if length == 1:
+                return pdf[self.name].iloc[0]
+
+        index_cols = [col for col in sdf.columns if col not in self._internal.data_columns]
+        index_map_dict = dict(self._internal.index_map)
+        internal = self._internal.copy(
+            sdf=sdf,
+            index_map=[(index_col, index_map_dict[index_col]) for index_col in index_cols])
+
+        return _col(DataFrame(internal))
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns
@@ -3665,8 +3977,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             if length == 1:
                 return pdf[self.name].iloc[0]
 
-            key_string = tuple_like_strings(key) if len(key) > 1 else key[0]
-            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(str(key_string)))
+            key_string = name_like_string(key)
+            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(key_string))
             internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
             return _col(DataFrame(internal))
 

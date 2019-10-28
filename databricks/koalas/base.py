@@ -363,6 +363,39 @@ class IndexOpsMixin(object):
         window = Window.orderBy(monotonically_increasing_id()).rowsBetween(-1, -1)
         return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull()).all()
 
+    @property
+    def ndim(self):
+        """
+        Return an int representing the number of array dimensions.
+
+        Return 1 for Series / Index / MultiIndex.
+
+        Examples
+        --------
+
+        For Series
+
+        >>> s = ks.Series([None, 1, 2, 3, 4], index=[4, 5, 2, 1, 8])
+        >>> s.ndim
+        1
+
+        For Index
+
+        >>> s.index.ndim
+        1
+
+        For MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [1, 1, 1, 1, 1, 2, 1, 2, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        >>> s.index.ndim
+        1
+        """
+        return 1
+
     def astype(self, dtype):
         """
         Cast a Koalas object to a specified dtype ``dtype``.
