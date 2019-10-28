@@ -377,6 +377,29 @@ class DataFrame(_Frame, Generic[T]):
     def _sdf(self) -> spark.DataFrame:
         return self._internal.sdf
 
+    @property
+    def ndim(self):
+        """
+        Return an int representing the number of array dimensions.
+
+        return 2 for DataFrame.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+        ...                   index=['cobra', 'viper', None],
+        ...                   columns=['max_speed', 'shield'])
+        >>> df
+               max_speed  shield
+        cobra          1       2
+        viper          4       5
+        NaN            7       8
+        >>> df.ndim
+        2
+        """
+        return 2
+
     def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=False):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the

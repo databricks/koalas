@@ -822,11 +822,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self),
 
     @property
-    def ndim(self):
-        """Returns number of dimensions of the Series."""
-        return 1
-
-    @property
     def name(self) -> Union[str, Tuple[str, ...]]:
         """Return name of the Series."""
         name = self._internal.column_index[0]

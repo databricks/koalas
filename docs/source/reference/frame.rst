@@ -27,6 +27,7 @@ Attributes and underlying data
 
    DataFrame.dtypes
    DataFrame.shape
+   DataFrame.ndim
    DataFrame.size
    DataFrame.select_dtypes
 
