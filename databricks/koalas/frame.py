@@ -3029,7 +3029,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.to_table('%s.my_table' % db, partition_cols='date')
         """
         self.to_spark().write.saveAsTable(name=name, format=format, mode=mode,
-                                          partitionBy=partition_cols, options=options)
+                                          partitionBy=partition_cols, **options)
 
     def to_delta(self, path: str, mode: str = 'error',
                  partition_cols: Union[str, List[str], None] = None, **options):
@@ -3087,7 +3087,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...             mode='overwrite', replaceWhere='date >= "2019-01-01"')
         """
         self.to_spark_io(
-            path=path, mode=mode, format="delta", partition_cols=partition_cols, options=options)
+            path=path, mode=mode, format="delta", partition_cols=partition_cols, **options)
 
     def to_parquet(self, path: str, mode: str = 'error',
                    partition_cols: Union[str, List[str], None] = None,
@@ -3193,7 +3193,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.to_spark_io(path='%s/to_spark_io/foo.json' % path, format='json')
         """
         self.to_spark().write.save(
-            path=path, format=format, mode=mode, partitionBy=partition_cols, options=options)
+            path=path, format=format, mode=mode, partitionBy=partition_cols, **options)
 
     def to_spark(self, index_col: Optional[Union[str, List[str]]] = None):
         """

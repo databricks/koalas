@@ -308,7 +308,7 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
     0     a     b
     1     c     d
     """
-    return read_spark_io(path, format='json', index_col=index_col, options=options)
+    return read_spark_io(path, format='json', index_col=index_col, **options)
 
 
 def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str] = None,
@@ -356,7 +356,7 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
         options['versionAsOf'] = version
     if timestamp is not None:
         options['timestampAsOf'] = timestamp
-    return read_spark_io(path, format='delta', index_col=index_col, options=options)
+    return read_spark_io(path, format='delta', index_col=index_col, **options)
 
 
 def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> DataFrame:
@@ -437,7 +437,7 @@ def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
        id
     0   0
     """
-    sdf = default_session().read.load(path=path, format=format, schema=schema, options=options)
+    sdf = default_session().read.load(path=path, format=format, schema=schema, **options)
     index_map = _get_index_map(sdf, index_col)
 
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
@@ -722,7 +722,7 @@ def read_excel(io, sheet_name=0, header=0, names=None, index_col=None, usecols=N
         na_values=na_values, keep_default_na=keep_default_na, verbose=verbose,
         parse_dates=parse_dates, date_parser=date_parser, thousands=thousands, comment=comment,
         skipfooter=skipfooter, convert_float=convert_float, mangle_dupe_cols=mangle_dupe_cols,
-        kwds=kwds)
+        **kwds)
     if isinstance(pdfs, dict):
         return OrderedDict([(key, from_pandas(value)) for key, value in pdfs.items()])
     else:
@@ -991,9 +991,9 @@ def read_sql(sql, con, index_col=None, columns=None, **options):
     """
     striped = sql.strip()
     if ' ' not in striped:  # TODO: identify the table name or not more precisely.
-        return read_sql_table(sql, con, index_col=index_col, columns=columns, options=options)
+        return read_sql_table(sql, con, index_col=index_col, columns=columns, **options)
     else:
-        return read_sql_query(sql, con, index_col=index_col, options=options)
+        return read_sql_query(sql, con, index_col=index_col, **options)
 
 
 def to_datetime(arg, errors='raise', format=None, unit=None, infer_datetime_format=False,
