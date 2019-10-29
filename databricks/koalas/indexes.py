@@ -404,6 +404,19 @@ class Index(IndexOpsMixin):
             )
 
     def _get_level_values(self, level):
+        """
+        Return Index if a valid level is given.
+
+        Examples:
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=pd.Index(['a', 'b', 'c'], name='ks'))
+        >>> kdf.index.get_level_values(0)
+        Index(['a', 'b', 'c'], dtype='object', name='ks')
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=pd.Index(['a', 'b', 'c'], name='ks'))
+        >>> kdf.index.get_level_values('ks')
+        Index(['a', 'b', 'c'], dtype='object', name='ks')
+        """
         self._validate_index_level(level)
         return self
 
@@ -587,6 +600,11 @@ class MultiIndex(Index):
         return [sorted([row[col] for row in sdf.collect()]) for col in idx_cols]
 
     def _get_level_number(self, level):
+        """
+        Return the level number if a valid level is given.
+
+        **this is an internal method**
+        """
         count = self.names.count(level)
         if (count > 1) and not isinstance(level, int):
             raise ValueError(
@@ -614,7 +632,7 @@ class MultiIndex(Index):
                 )
         return level
 
-    def _get_level_values(self, level, unique=False):
+    def _get_level_values(self, level):
         """
         Return vector of label values for requested level,
         equal to the length of the index
@@ -624,12 +642,10 @@ class MultiIndex(Index):
         Parameters
         ----------
         level : int level
-        unique : bool, default False
-            if True, drop duplicated values
 
         Returns
         -------
-        values : ndarray
+        values : Index
         """
         # TODO: the best way is to construct an Index from levels, but since constructing Index
         # TODO: has not been implemented, will change once that is done.
