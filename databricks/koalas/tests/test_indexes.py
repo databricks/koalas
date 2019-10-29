@@ -285,7 +285,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(kdf.index.nlevels, 2)
 
     def test_multiindex_levels(self):
-        tuples = [(list('abc'), list('def')), (list('aac'), list('fed'))]
+        tuples = [[list('abc'), list('def')], [list('aac'), list('fed')]]
 
         for tup in tuples:
             pdf = pd.DataFrame({'a': [1, 2, 3]}, index=tup)
