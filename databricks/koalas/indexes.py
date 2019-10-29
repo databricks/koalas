@@ -592,6 +592,9 @@ class MultiIndex(Index):
         """
         idx_cols = self._kdf._internal.index_columns
         sdf = self._kdf._sdf.select(idx_cols).dropDuplicates()
+
+        # use sorting is because pandas doesn't care the appearance order of level
+        # names, so e.g. if ['b', 'd', 'a'] will return as ['a', 'b', 'd']
         return [sorted([row[col] for row in sdf.collect()]) for col in idx_cols]
 
     def __repr__(self):
