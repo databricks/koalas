@@ -1732,8 +1732,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.reindex(['A', 'B', 'C'], index=['numbers', '2', '3']).sort_index())
 
         self.assert_eq(
-            pdf.reindex(index=['numbers', '2', '3']).sort_index(),
-            kdf.reindex(index=['numbers', '2', '3']).sort_index())
+            pdf.reindex(index=['A', 'B']).sort_index(),
+            kdf.reindex(index=['A', 'B']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(index=['A', 'B', '2', '3']).sort_index(),
+            kdf.reindex(index=['A', 'B', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(columns=['numbers']).sort_index(),
+            kdf.reindex(columns=['numbers']).sort_index())
 
         self.assert_eq(
             pdf.reindex(columns=['numbers', '2', '3']).sort_index(),

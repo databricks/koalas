@@ -6692,19 +6692,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise ValueError("shape (1,{}) doesn't match the shape (1,{})"
                                  .format(len(col), level))
         scols, columns, idx = [], [], []
-        null_columns = False
         for label in label_columns:
             if label in self._internal.column_index:
                 scols.append(self._internal.scol_for(label))
                 columns.append(self._internal.column_name_for(label))
             else:
-                scols.append(F.lit(np.nan).alias(str(label)))
-                columns.append(str(label))
-                null_columns = True
+                scols.append(F.lit(np.nan).alias(name_like_string(label)))
+                columns.append(name_like_string(label))
             idx.append(label)
 
-        if null_columns:
-            sdf = self._sdf.select(self._internal.index_scols + list(scols))
+        sdf = self._sdf.select(self._internal.index_scols + scols)
 
         return self._internal.copy(sdf=sdf, data_columns=columns, column_index=idx)
 
