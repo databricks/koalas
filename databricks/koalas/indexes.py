@@ -174,7 +174,8 @@ class Index(IndexOpsMixin):
         if len(internal.index_map) != len(names):
             raise ValueError('Length of new names must be {}, got {}'
                              .format(len(internal.index_map), len(names)))
-        names = [name if isinstance(name, tuple) else (name,) for name in names]
+        if None not in names:
+            names = [name if isinstance(name, tuple) else (name,) for name in names]
         self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
 
     @property

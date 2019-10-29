@@ -107,6 +107,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(kidx.names, pidx.names)
         self.assert_eq(kidx, pidx)
 
+        pidx.name = None
+        kidx.name = None
+        self.assertEqual(kidx.name, pidx.name)
+        self.assertEqual(kidx.names, pidx.names)
+        self.assert_eq(kidx, pidx)
+
         with self.assertRaisesRegex(ValueError, "Names must be a list-like"):
             kidx.names = 'hi'
 
