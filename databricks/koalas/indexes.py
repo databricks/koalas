@@ -573,9 +573,26 @@ class MultiIndex(Index):
 
     @property
     def levels(self) -> list:
+        """
+        Names of index columns in list.
+
+        Examples:
+        --------
+        >>> mi = pd.MultiIndex.from_arrays((list('abc'), list('def')))
+        >>> mi.names = ['level_1', 'level_2']
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
+        >>> kdf.index.levels
+        [['a', 'b', 'c'], ['d', 'e', 'f']]
+
+        >>> mi = pd.MultiIndex.from_arrays((list('bac'), list('fee')))
+        >>> mi.names = ['level_1', 'level_2']
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
+        >>> kdf.index.levels
+        [['a', 'b', 'c'], ['d', 'e', 'f']]
+        """
         idx_cols = self._kdf._internal.index_columns
         sdf = self._kdf._sdf.select(idx_cols).dropDuplicates()
-        return [[row[col] for row in sdf.collect()] for col in idx_cols]
+        return [sorted([row[col] for row in sdf.collect()]) for col in idx_cols]
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
