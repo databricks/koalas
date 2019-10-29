@@ -2560,18 +2560,10 @@ class MultiIndex(Index):
         """
         # TODO: the best way is to construct an Index from levels, but since constructing Index
         # TODO: has not been implemented, will change once that is done.
-        name = self.names[level]
+        lev = self.levels[level]
 
         # TODO: fix name is None, related to Issue 971
-        if name is None:
-            index_col = "__index_level_{level}__".format(level=level)
-            sdf = self._kdf._sdf.select(F.col(index_col).alias('__index__')).dropDuplicates()
-            idx_values = DataFrame(sdf).set_index('__index__').index
-        else:
-            sdf = self._kdf._sdf.select(name).dropDuplicates()
-            idx_values = DataFrame(sdf).set_index(name).index
-
-        return idx_values
+        return DataFrame(index=lev).index
 
     def get_level_values(self, level):
         """
