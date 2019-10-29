@@ -31,7 +31,6 @@ class _MissingPandasLikeIndex(object):
 
     # Properties
     T = unsupported_property('T')
-    has_duplicates = unsupported_property('has_duplicates')
     nbytes = unsupported_property('nbytes')
     nlevels = unsupported_property('nlevels')
     shape = unsupported_property('shape')
@@ -129,7 +128,6 @@ class _MissingPandasLikeMultiIndex(object):
     # Properties
     T = unsupported_property('T')
     codes = unsupported_property('codes')
-    has_duplicates = unsupported_property('has_duplicates')
     is_all_dates = unsupported_property('is_all_dates')
     levels = unsupported_property('levels')
     levshape = unsupported_property('levshape')

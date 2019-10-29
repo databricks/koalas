@@ -128,6 +128,30 @@ class Index(IndexOpsMixin):
         return self.to_series().spark_type
 
     @property
+    def has_duplicates(self) -> bool:
+        """
+        If index has duplicates, return True, otherwise False.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=list('aac'))
+        >>> kdf.index.has_duplicates
+        True
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')])
+        >>> kdf.index.has_duplicates
+        False
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('aac'), list('eef')])
+        >>> kdf.index.has_duplicates
+        True
+        """
+        df = self._kdf._sdf.select(self._scol)
+        col = df.columns[0]
+
+        return df.select(F.count(col) != F.countDistinct(col)).first()[0]
+
+    @property
     def name(self) -> Union[str, Tuple[str, ...]]:
         """Return name of the Index."""
         return self.names[0]
