@@ -177,6 +177,23 @@ class Index(IndexOpsMixin):
         names = [name if isinstance(name, tuple) else (name,) for name in names]
         self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
 
+    @property
+    def nlevels(self) -> int:
+        """
+        Number of levels in Index & MultiIndex.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"a": [1, 2, 3]}, index=pd.Index(['a', 'b', 'c'], name="idx"))
+        >>> kdf.index.nlevels
+        1
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')])
+        >>> kdf.index.nlevels
+        2
+        """
+        return len(self._kdf._internal.index_columns)
+
     def rename(self, name: Union[str, Tuple[str, ...]], inplace: bool = False):
         """
         Alter Index name.

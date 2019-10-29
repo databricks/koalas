@@ -32,7 +32,6 @@ class _MissingPandasLikeIndex(object):
     # Properties
     T = unsupported_property('T')
     nbytes = unsupported_property('nbytes')
-    nlevels = unsupported_property('nlevels')
     shape = unsupported_property('shape')
 
     # Deprecated properties
@@ -131,7 +130,6 @@ class _MissingPandasLikeMultiIndex(object):
     is_all_dates = unsupported_property('is_all_dates')
     levels = unsupported_property('levels')
     levshape = unsupported_property('levshape')
-    nlevels = unsupported_property('nlevels')
     shape = unsupported_property('shape')
 
     # Deprecated properties
