@@ -2561,9 +2561,14 @@ class MultiIndex(Index):
         # TODO: the best way is to construct an Index from levels, but since constructing Index
         # TODO: has not been implemented, will change once that is done.
         lev = self.levels[level]
+        name = self.names[level]
+
+        level_values = DataFrame(index=lev).index
 
         # TODO: fix name is None, related to Issue 971
-        return DataFrame(index=lev).index
+        if name is not None:
+            level_values.name = name
+        return level_values
 
     def get_level_values(self, level):
         """
