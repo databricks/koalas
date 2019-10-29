@@ -166,6 +166,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kdf.index.copy(), pdf.index.copy())
 
+    def test_multi_index_from_tuples(self):
+        with self.assertRaisesRegexp(TypeError, "Input must be a list / sequence of tuple-likes."):
+            ks.MultiIndex.from_tuples('koalas')
+        with self.assertRaisesRegexp(TypeError, "Cannot infer number of levels from empty list"):
+            ks.MultiIndex.from_tuples(())
+
     def test_missing(self):
         kdf = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
 

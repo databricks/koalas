@@ -23,7 +23,10 @@ from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
 from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
-    is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
+    is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype, \
+    is_iterator
+
+import numpy as np
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -471,6 +474,52 @@ class MultiIndex(Index):
 
     def all(self, *args, **kwargs):
         raise TypeError("cannot perform all with this index type: MultiIndex")
+
+    @classmethod
+    def from_tuples(cls, tuples, sortorder=None, names=None):
+        """
+        Convert list of tuples to MultiIndex.
+        Parameters
+        ----------
+        tuples : list / sequence of tuple-likes
+            Each tuple is the index of one row/column.
+        sortorder : int or None
+            Level of sortedness (must be lexicographically sorted by that
+            level).
+        names : list / sequence of str, optional
+            Names for the levels in the index.
+        Returns
+        -------
+        index : MultiIndex
+
+        Examples
+        --------
+        >>> tuples = [(1, 'red'), (1, 'blue'),
+        ...           (2, 'red'), (2, 'blue')]
+        >>> ks.MultiIndex.from_tuples(tuples, names=('number', 'color'))  # doctest: +SKIP
+        MultiIndex([(1,  'red'),
+                    (1, 'blue'),
+                    (2,  'red'),
+                    (2, 'blue')],
+                   names=['number', 'color'])
+        """
+        if not is_list_like(tuples):
+            raise TypeError("Input must be a list / sequence of tuple-likes.")
+        elif is_iterator(tuples):
+            tuples = list(tuples)
+
+        if len(tuples) == 0:
+            if names is None:
+                msg = "Cannot infer number of levels from empty list"
+                raise TypeError(msg)
+
+        index = [[idx[i] for idx in tuples] for i in range(len(tuples[0]))]
+        result = DataFrame(index=index).index
+
+        if names is not None:
+            result.names = names
+
+        return result
 
     @property
     def name(self) -> str:
