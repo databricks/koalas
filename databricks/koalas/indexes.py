@@ -588,7 +588,7 @@ class MultiIndex(Index):
         >>> mi.names = ['level_1', 'level_2']
         >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
         >>> kdf.index.levels
-        [['a', 'b', 'c'], ['d', 'e', 'f']]
+        [['a', 'b', 'c'], ['e', 'e', 'f']]
         """
         idx_cols = self._kdf._internal.index_columns
         sdf = self._kdf._sdf.select(idx_cols).dropDuplicates()
