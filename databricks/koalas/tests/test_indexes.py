@@ -283,3 +283,19 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assertEqual(kdf.index.nlevels, 2)
+
+    def test_index_get_level_values(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3]}, index=pd.Index([1, 2, 3], name='ks'))
+        kdf = ks.from_pandas(pdf)
+
+        for level in [0, 'ks']:
+            self.assert_eq(kdf.index.get_level_values(level), pdf.index.get_level_values(level))
+
+    def test_multiindex_get_level_values(self):
+        mi = pd.MultiIndex.from_arrays((list('abc'), list('def')))
+        mi.names = ['level_1', 'level_2']
+        pdf = pd.DataFrame({'a': [1, 2, 3]}, index=mi)
+        kdf = ks.from_pandas(pdf)
+
+        for level in [0, 1, 'level_1', 'level_2']:
+            self.assert_eq(kdf.index.get_level_values(level), pdf.index.get_level_values(level))

@@ -403,6 +403,12 @@ class Index(IndexOpsMixin):
                 )
             )
 
+    def _get_level_values(self, level):
+        self._validate_index_level(level)
+        return self
+
+    get_level_values = _get_level_values
+
     def copy(self, name=None):
         """
         Make a copy of this object. name sets those attributes on the new object.
@@ -570,6 +576,109 @@ class MultiIndex(Index):
 
     def rename(self, name, inplace=False):
         raise NotImplementedError()
+
+    @property
+    def levels(self) -> list:
+        idx_cols = self._kdf._internal.index_columns
+        sdf = self._kdf._sdf.select(idx_cols).dropDuplicates()
+        return [[row[col] for row in sdf.collect()] for col in idx_cols]
+
+    def _get_level_number(self, level):
+        count = self.names.count(level)
+        if (count > 1) and not isinstance(level, int):
+            raise ValueError(
+                "The name %s occurs multiple times, use a level number" % level
+            )
+        try:
+            level = self.names.index(level)
+        except ValueError:
+            if not isinstance(level, int):
+                raise KeyError("Level %s not found" % str(level))
+            elif level < 0:
+                level += self.nlevels
+                if level < 0:
+                    orig_level = level - self.nlevels
+                    raise IndexError(
+                        "Too many levels: Index has only %d "
+                        "levels, %d is not a valid level number"
+                        % (self.nlevels, orig_level)
+                    )
+            # Note: levels are zero-based
+            elif level >= self.nlevels:
+                raise IndexError(
+                    "Too many levels: Index has only %d levels, "
+                    "not %d" % (self.nlevels, level + 1)
+                )
+        return level
+
+    def _get_level_values(self, level, unique=False):
+        """
+        Return vector of label values for requested level,
+        equal to the length of the index
+
+        **this is an internal method**
+
+        Parameters
+        ----------
+        level : int level
+        unique : bool, default False
+            if True, drop duplicated values
+
+        Returns
+        -------
+        values : ndarray
+        """
+        # TODO: the best way is to construct an Index from levels, but since constructing Index
+        # TODO: has not been implemented, will change once that is done.
+        name = self.names[level]
+
+        # TODO: fix name is None, related to Issue 971
+        if name is None:
+            index_col = "__index_level_{level}__".format(level=level)
+            sdf = self._kdf._sdf.select(F.col(index_col).alias('__index__')).dropDuplicates()
+            idx_values = DataFrame(sdf).set_index('__index__').index
+        else:
+            sdf = self._kdf._sdf.select(name).dropDuplicates()
+            idx_values = DataFrame(sdf).set_index(name).index
+
+        return idx_values
+
+    def get_level_values(self, level):
+        """
+        Return vector of label values for requested level,
+        equal to the length of the index.
+
+        Parameters
+        ----------
+        level : int or str
+            ``level`` is either the integer position of the level in the
+            MultiIndex, or the name of the level.
+
+        Returns
+        -------
+        values : Index
+            Values is a level of this MultiIndex converted to
+            a single :class:`Index` (or subclass thereof).
+
+        Examples
+        --------
+
+        Create a MultiIndex:
+
+        >>> mi = pd.MultiIndex.from_arrays((list('abc'), list('def')))
+        >>> mi.names = ['level_1', 'level_2']
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
+
+        Get level values by supplying level as either integer or name:
+
+        >>> kdf.index.get_level_values(0)
+        Index(['a', 'b', 'c'], dtype='object', name='level_1')
+        >>> kdf.index.get_level_values('level_2')
+        Index(['d', 'e', 'f'], dtype='object', name='level_2')
+        """
+        level = self._get_level_number(level)
+        values = self._get_level_values(level)
+        return values
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
