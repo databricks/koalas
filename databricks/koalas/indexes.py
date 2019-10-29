@@ -479,21 +479,23 @@ class MultiIndex(Index):
     def from_tuples(cls, tuples, sortorder=None, names=None):
         """
         Convert list of tuples to MultiIndex.
+
         Parameters
         ----------
         tuples : list / sequence of tuple-likes
             Each tuple is the index of one row/column.
         sortorder : int or None
-            Level of sortedness (must be lexicographically sorted by that
-            level).
+            Level of sortedness (must be lexicographically sorted by that level).
         names : list / sequence of str, optional
             Names for the levels in the index.
+
         Returns
         -------
         index : MultiIndex
 
         Examples
         --------
+
         >>> tuples = [(1, 'red'), (1, 'blue'),
         ...           (2, 'red'), (2, 'blue')]
         >>> ks.MultiIndex.from_tuples(tuples, names=('number', 'color'))  # doctest: +SKIP
