@@ -251,14 +251,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kdf.set_index(['a', 'b']).index.all()
 
     def test_index_nlevels(self):
-        for name in ["has_name", None]:
-            pdf = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(['a', 'b', 'c'], name=name))
-            kdf = ks.from_pandas(pdf)
+        pdf = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(['a', 'b', 'c']))
+        kdf = ks.from_pandas(pdf)
 
-            self.assertEqual(kdf.index.nlevels, 1)
+        self.assertEqual(kdf.index.nlevels, 1)
 
     def test_multiindex_nlevel(self):
-            pdf = pd.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')])
-            kdf = ks.from_pandas(pdf)
+        pdf = pd.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')])
+        kdf = ks.from_pandas(pdf)
 
-            self.assertEqual(kdf.index.nlevels, 2)
+        self.assertEqual(kdf.index.nlevels, 2)
