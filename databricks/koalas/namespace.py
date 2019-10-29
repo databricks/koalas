@@ -307,8 +307,16 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
       col 1 col 2
     0     a     b
     1     c     d
+
+    >>> df.to_json(path=r'%s/read_json/foo.json' % path, num_files=1, lineSep='___')
+    >>> ks.read_json(
+    ...     path=r'%s/read_json/foo.json' % path, lineSep='___'
+    ... ).sort_values(by="col 1")
+      col 1 col 2
+    0     a     b
+    1     c     d
     """
-    return read_spark_io(path, format='json', index_col=index_col, options=options)
+    return read_spark_io(path, format='json', index_col=index_col, **options)
 
 
 def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str] = None,
@@ -351,12 +359,25 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
     >>> ks.read_delta('%s/read_delta/foo' % path)
        id
     0   0
+
+    >>> ks.range(10, 15, num_partitions=1).to_delta('%s/read_delta/foo' % path, mode='overwrite')
+    >>> ks.read_delta('%s/read_delta/foo' % path)
+       id
+    0  10
+    1  11
+    2  12
+    3  13
+    4  14
+
+    >>> ks.read_delta('%s/read_delta/foo' % path, version=0)
+       id
+    0   0
     """
     if version is not None:
         options['versionAsOf'] = version
     if timestamp is not None:
         options['timestampAsOf'] = timestamp
-    return read_spark_io(path, format='delta', index_col=index_col, options=options)
+    return read_spark_io(path, format='delta', index_col=index_col, **options)
 
 
 def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> DataFrame:
@@ -436,8 +457,19 @@ def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
     ...     '%s/read_spark_io/data.parquet' % path, format='parquet', schema='id long')
        id
     0   0
+
+    >>> ks.range(10, 15, num_partitions=1).to_spark_io('%s/read_spark_io/data.json' % path,
+    ...                                                format='json', lineSep='__')
+    >>> ks.read_spark_io(
+    ...     '%s/read_spark_io/data.json' % path, format='json', schema='id long', lineSep='__')
+       id
+    0  10
+    1  11
+    2  12
+    3  13
+    4  14
     """
-    sdf = default_session().read.load(path=path, format=format, schema=schema, options=options)
+    sdf = default_session().read.load(path=path, format=format, schema=schema, **options)
     index_map = _get_index_map(sdf, index_col)
 
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
@@ -722,7 +754,7 @@ def read_excel(io, sheet_name=0, header=0, names=None, index_col=None, usecols=N
         na_values=na_values, keep_default_na=keep_default_na, verbose=verbose,
         parse_dates=parse_dates, date_parser=date_parser, thousands=thousands, comment=comment,
         skipfooter=skipfooter, convert_float=convert_float, mangle_dupe_cols=mangle_dupe_cols,
-        kwds=kwds)
+        **kwds)
     if isinstance(pdfs, dict):
         return OrderedDict([(key, from_pandas(value)) for key, value in pdfs.items()])
     else:
@@ -991,9 +1023,9 @@ def read_sql(sql, con, index_col=None, columns=None, **options):
     """
     striped = sql.strip()
     if ' ' not in striped:  # TODO: identify the table name or not more precisely.
-        return read_sql_table(sql, con, index_col=index_col, columns=columns, options=options)
+        return read_sql_table(sql, con, index_col=index_col, columns=columns, **options)
     else:
-        return read_sql_query(sql, con, index_col=index_col, options=options)
+        return read_sql_query(sql, con, index_col=index_col, **options)
 
 
 def to_datetime(arg, errors='raise', format=None, unit=None, infer_datetime_format=False,
