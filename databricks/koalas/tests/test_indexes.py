@@ -283,3 +283,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assertEqual(kdf.index.nlevels, 2)
+
+    def test_multiindex_levels(self):
+        tuples = [(list('abc'), list('def')), (list('aac'), list('fed'))]
+
+        for tup in tuples:
+            mi = pd.MultiIndex.from_tuples(tup)
+            pdf = pd.DataFrame({'a': [1, 2, 3]}, index=mi)
+            kdf = ks.from_pandas(pdf)
+
+            self.assertEqual(list(pdf.index.levels), kdf.index.levels)

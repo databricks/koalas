@@ -571,6 +571,12 @@ class MultiIndex(Index):
     def rename(self, name, inplace=False):
         raise NotImplementedError()
 
+    @property
+    def levels(self) -> list:
+        idx_cols = self._kdf._internal.index_columns
+        sdf = self._kdf._sdf.select(idx_cols).dropDuplicates()
+        return [[row[col] for row in sdf.collect()] for col in idx_cols]
+
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
