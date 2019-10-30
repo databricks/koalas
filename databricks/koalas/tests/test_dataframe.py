@@ -656,6 +656,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, msg):
             kdf.nunique(axis=1)
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('Y', 'B')], names=['1', '2'])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.nunique(), pdf.nunique())
+        self.assert_eq(kdf.nunique(dropna=False), pdf.nunique(dropna=False))
+
     def test_sort_values(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
                             'b': [7, 6, 5, 4, 3, 2, 1]})
