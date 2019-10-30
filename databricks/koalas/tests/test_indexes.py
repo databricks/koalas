@@ -134,6 +134,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx.names = ['renamed_number', 'renamed_color']
         kidx.names = ['renamed_number', 'renamed_color']
         self.assertEqual(kidx.names, pidx.names)
+
+        pidx.names = ['renamed_number', None]
+        kidx.names = ['renamed_number', None]
+        self.assertEqual(kidx.names, pidx.names)
         if LooseVersion(pyspark.__version__) < LooseVersion('2.4'):
             # PySpark < 2.4 does not support struct type with arrow enabled.
             with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
