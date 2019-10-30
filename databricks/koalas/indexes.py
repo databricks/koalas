@@ -401,7 +401,7 @@ class Index(IndexOpsMixin):
         return result
 
     def value_counts(
-        self, normalize=False, sort=False, ascending=False, dropna=True
+        self, normalize=False, sort=True, ascending=False, dropna=True
     ):
         """
         Return a Series containing counts of unique values.
@@ -414,8 +414,8 @@ class Index(IndexOpsMixin):
         normalize : boolean, default False
             If True then the object returned will contain the relative
             frequencies of the unique values.
-        sort : boolean, default False
-            Sort by frequencies. we set False as default unlike pandas
+        sort : boolean, default True
+            Sort by frequencies.
         ascending : boolean, default False
             Sort in ascending order.
         dropna : boolean, default True
@@ -446,8 +446,7 @@ class Index(IndexOpsMixin):
 
         **sort**
 
-        With `sort` set to `True`, the result will be sorted by number of count.
-        (But index order is not guaranteed)
+        With `sort` set to `False`, the result wouldn't be sorted by number of count.
 
         >>> s.index.value_counts(sort=True)  # doctest: +SKIP
         3.0    2
@@ -528,7 +527,7 @@ class Index(IndexOpsMixin):
                 F.sum(sdf_count['count'])).collect()[0][0]
             sdf_count = sdf_count.select(
                 idx_name,
-                F.round(sdf_count['count'] / sum_values, 6).alias('count'))
+                (sdf_count['count'] / sum_values).alias('count'))
 
         internal = _InternalFrame(sdf=sdf_count, index_map=[(idx_name, None)])
 
