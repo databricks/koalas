@@ -6653,29 +6653,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def _reindex_index(self, index):
         # When axis is index, we can mimic pandas' by a right outer join.
-        index_column = self._internal.index_columns
-        assert len(index_column) <= 1, "Index should be single column or not set."
+        assert len(self._internal.index_columns) <= 1, "Index should be single column or not set."
 
-        if len(index_column) == 1:
-            kser = ks.Series(list(index))
-            index_column = index_column[0]
-            labels = kser._kdf._sdf.select(kser._scol.alias(index_column))
-        else:
-            index_column = None
-            labels = ks.Series(index).to_frame()._sdf
+        index_column = self._internal.index_columns[0]
+
+        kser = ks.Series(list(index))
+        labels = kser._kdf._sdf.select(kser._scol.alias(index_column))
 
         joined_df = self._sdf.join(labels, on=index_column, how="right")
-        new_data_columns = filter(lambda x: x not in index_column, joined_df.columns)
-        if index_column is not None:
-            index_map = [(index_column, None)]  # type: List[IndexMap]
-            internal = self._internal.copy(
-                sdf=joined_df,
-                data_columns=list(new_data_columns),
-                index_map=index_map)
-        else:
-            internal = self._internal.copy(
-                sdf=joined_df,
-                data_columns=list(new_data_columns))
+        internal = self._internal.copy(sdf=joined_df)
+
         return internal
 
     def _reindex_columns(self, columns):
