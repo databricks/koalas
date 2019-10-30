@@ -132,14 +132,3 @@ class ConfigTest(ReusedSQLTestCase):
 
         self.assertTrue("default_index_type" not in dir(ks.options.plotting))
         self.assertTrue("sample_ratio" in dir(ks.options.plotting))
-
-    def test_show_options(self):
-        from unittest import mock
-        from io import StringIO
-
-        with mock.patch("sys.stdout", new=StringIO()) as mock_stdout:
-            config.show_options()
-            self.assertEqual(
-                " ".join(mock_stdout.getvalue().split("\n")[1].split()),
-                "Option Default Description"
-            )

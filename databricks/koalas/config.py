@@ -207,6 +207,16 @@ def show_options():
     """
     Make a pretty table that can be copied and pasted into public documentation.
     This is currently for an internal purpose.
+
+    Examples
+    --------
+    >>> show_options()
+    =============================== ============== =====================================================
+    Option                          Default        Description
+    =============================== ============== =====================================================
+    display.max_rows                1000           This sets the maximum number of rows koalas should
+    ...
+    =============================== ============== =====================================================
     """
 
     import textwrap
