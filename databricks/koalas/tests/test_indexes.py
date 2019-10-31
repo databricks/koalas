@@ -107,6 +107,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(kidx.names, pidx.names)
         self.assert_eq(kidx, pidx)
 
+        pidx.name = None
+        kidx.name = None
+        self.assertEqual(kidx.name, pidx.name)
+        self.assertEqual(kidx.names, pidx.names)
+        self.assert_eq(kidx, pidx)
+
         with self.assertRaisesRegex(ValueError, "Names must be a list-like"):
             kidx.names = 'hi'
 
@@ -127,6 +133,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = kdf.index
         pidx.names = ['renamed_number', 'renamed_color']
         kidx.names = ['renamed_number', 'renamed_color']
+        self.assertEqual(kidx.names, pidx.names)
+
+        pidx.names = ['renamed_number', None]
+        kidx.names = ['renamed_number', None]
         self.assertEqual(kidx.names, pidx.names)
         if LooseVersion(pyspark.__version__) < LooseVersion('2.4'):
             # PySpark < 2.4 does not support struct type with arrow enabled.
