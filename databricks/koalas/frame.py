@@ -6664,7 +6664,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index_column = self._internal.index_columns[0]
 
         kser = ks.Series(list(index))
-        labels = kser._kdf._sdf.select(kser._scol.alias(index_column))
+        labels = kser._internal._sdf.select(kser._scol.alias(index_column))
 
         joined_df = self._sdf.join(labels, on=index_column, how="right")
         internal = self._internal.copy(sdf=joined_df)
