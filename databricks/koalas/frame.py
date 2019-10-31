@@ -6774,6 +6774,30 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  b        C      4
         2  c        C      6
 
+        >>> df.melt(value_vars='A')
+          variable value
+        0        A     a
+        1        A     b
+        2        A     c
+
+        >>> df.melt(value_vars=['A', 'B'])
+          variable value
+        0        A     a
+        1        B     1
+        2        A     b
+        3        B     3
+        4        A     c
+        5        B     5
+
+        >>> df.melt(value_vars=('A', 'B'))
+          variable value
+        0        A     a
+        1        B     1
+        2        A     b
+        3        B     3
+        4        A     c
+        5        B     5
+
         The names of 'variable' and 'value' columns can be customized:
 
         >>> ks.melt(df, id_vars=['A'], value_vars=['B'],
@@ -6802,7 +6826,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         elif isinstance(value_vars, str):
             value_vars = [(value_vars,)]
         elif isinstance(value_vars, tuple):
-            value_vars = [value_vars]
+            value_vars = [(valv,) for valv in value_vars]
         else:
             value_vars = [valv if isinstance(valv, tuple) else (valv,) for valv in value_vars]
         if len(value_vars) == 0:
