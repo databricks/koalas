@@ -911,8 +911,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> ks.Series([1, 2, 3, None]).is_unique
         True
         """
-        sdf = self._kdf._sdf.select(self._scol)
-        col = self._scol
+        scol = self._scol
 
         # Here we check:
         #   1. the distinct count without nulls and count without nulls for non-null values
@@ -920,9 +919,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         #
         # This workaround is in order to calculate the distinct count including nulls in
         # single pass. Note that COUNT(DISTINCT expr) in Spark is designed to ignore nulls.
-        return sdf.select(
-            (F.count(col) == F.countDistinct(col)) &
-            (F.count(F.when(col.isNull(), 1).otherwise(None)) <= 1)
+        return self._kdf._sdf.select(
+            (F.count(scol) == F.countDistinct(scol)) &
+            (F.count(F.when(scol.isNull(), 1).otherwise(None)) <= 1)
         ).collect()[0][0]
 
     def reset_index(self, level=None, drop=False, name=None, inplace=False):

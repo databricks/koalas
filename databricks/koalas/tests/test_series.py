@@ -434,18 +434,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([1, 2, 2, None, None])
         kser = ks.from_pandas(pser)
         self.assertEqual(False, kser.is_unique)
+        self.assertEqual(False, (kser + 1).is_unique)
 
         pser = pd.Series([1, None, None])
         kser = ks.from_pandas(pser)
         self.assertEqual(False, kser.is_unique)
+        self.assertEqual(False, (kser + 1).is_unique)
 
         pser = pd.Series([1])
         kser = ks.from_pandas(pser)
         self.assertEqual(pser.is_unique, kser.is_unique)
+        self.assertEqual((pser + 1).is_unique, (kser + 1).is_unique)
 
         pser = pd.Series([1, 1, 1])
         kser = ks.from_pandas(pser)
         self.assertEqual(pser.is_unique, kser.is_unique)
+        self.assertEqual((pser + 1).is_unique, (kser + 1).is_unique)
 
     def test_to_list(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
