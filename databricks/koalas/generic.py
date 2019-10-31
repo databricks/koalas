@@ -1399,6 +1399,23 @@ class _Frame(object):
     # TODO: 'center' and 'axis' parameter should be implemented.
     #   'axis' implementation, refer https://github.com/databricks/koalas/pull/607
     def expanding(self, min_periods=1):
+        """
+        Provide expanding transformations.
+
+        .. note:: 'min_periods' in Koalas works as a fixed window size unlike pandas.
+            Unlike pandas, NA is also counted as the period. This might be changed
+            in the near future.
+
+        Parameters
+        ----------
+        min_periods : int, default 1
+            Minimum number of observations in window required to have a value
+            (otherwise result is NA).
+
+        Returns
+        -------
+        a Window sub-classed for the particular operation
+        """
         return Expanding(self, min_periods=min_periods)
 
     @property

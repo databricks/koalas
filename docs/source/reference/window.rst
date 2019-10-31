@@ -13,4 +13,7 @@ Standard expanding window functions
    :toctree: api/
 
    Expanding.count
-
+   Expanding.sum
+   Expanding.min
+   Expanding.max
+   Expanding.mean
