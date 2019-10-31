@@ -172,7 +172,6 @@ class Index(IndexOpsMixin):
             raise ValueError('Names must be a list-like')
         internal = self._kdf._internal
         if len(internal.index_map) != len(names):
-
             raise ValueError('Length of new names must be {}, got {}'
                              .format(len(internal.index_map), len(names)))
 
