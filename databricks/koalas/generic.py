@@ -1396,8 +1396,10 @@ class _Frame(object):
     def rolling(self, *args, **kwargs):
         return Rolling(self)
 
-    def expanding(self, *args, **kwargs):
-        return Expanding(self)
+    # TODO: 'center' and 'axis' parameter should be implemented.
+    #   'axis' implementation, refer https://github.com/databricks/koalas/pull/607
+    def expanding(self, min_periods=1):
+        return Expanding(self, min_periods=min_periods)
 
     @property
     def at(self):
