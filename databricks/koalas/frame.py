@@ -6825,8 +6825,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             value_vars = []
         elif isinstance(value_vars, str):
             value_vars = [(value_vars,)]
-        elif isinstance(value_vars, tuple):
-            value_vars = [(valv,) for valv in value_vars]
         else:
             value_vars = [valv if isinstance(valv, tuple) else (valv,) for valv in value_vars]
         if len(value_vars) == 0:
