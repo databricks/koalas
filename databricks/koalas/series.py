@@ -912,8 +912,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> ks.Series([1, 2, 3, None]).is_unique
         True
         """
-        sdf = self._kdf._sdf.select(self._scol)
-        col = self._scol
+        scol = self._scol
 
         # Here we check:
         #   1. the distinct count without nulls and count without nulls for non-null values
@@ -921,9 +920,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         #
         # This workaround is in order to calculate the distinct count including nulls in
         # single pass. Note that COUNT(DISTINCT expr) in Spark is designed to ignore nulls.
-        return sdf.select(
-            (F.count(col) == F.countDistinct(col)) &
-            (F.count(F.when(col.isNull(), 1).otherwise(None)) <= 1)
+        return self._kdf._sdf.select(
+            (F.count(scol) == F.countDistinct(scol)) &
+            (F.count(F.when(scol.isNull(), 1).otherwise(None)) <= 1)
         ).collect()[0][0]
 
     def reset_index(self, level=None, drop=False, name=None, inplace=False):
@@ -1755,14 +1754,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return res.collect()[0][0]
 
     def _nunique(self, dropna=True, approx=False, rsd=0.05):
-        name = self.name
+        colname = self._internal.data_columns[0]
         count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
         if dropna:
-            return count_fn(name).alias(name)
+            return count_fn(self._scol).alias(colname)
         else:
-            return (count_fn(name) +
-                    F.when(F.count(F.when(self._internal.scol_for(name).isNull(), 1)
-                                   .otherwise(None)) >= 1, 1).otherwise(0)).alias(name)
+            return (count_fn(self._scol) +
+                    F.when(F.count(F.when(self._scol.isNull(), 1)
+                                   .otherwise(None)) >= 1, 1).otherwise(0)).alias(colname)
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):

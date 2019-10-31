@@ -2693,9 +2693,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if axis not in [0, 'index']:
             raise ValueError('axis should be either 0 or "index" currently.')
-        res = self._sdf.select([self[column]._nunique(dropna, approx, rsd)
-                                for column in self.columns])
-        return res.toPandas().T.iloc[:, 0]
+        res = self._sdf.select([self[idx]._nunique(dropna, approx, rsd)
+                                for idx in self._internal.column_index]).toPandas()
+        if self._internal.column_index_level == 1:
+            res.columns = [idx[0] for idx in self._internal.column_index]
+        else:
+            res.columns = pd.MultiIndex.from_tuples(self._internal.column_index)
+        if self._internal.column_index_names is not None:
+            res.columns.names = self._internal.column_index_names
+        return res.T.iloc[:, 0]
 
     def round(self, decimals=0):
         """
@@ -3035,7 +3041,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.to_table('%s.my_table' % db, partition_cols='date')
         """
         self.to_spark().write.saveAsTable(name=name, format=format, mode=mode,
-                                          partitionBy=partition_cols, options=options)
+                                          partitionBy=partition_cols, **options)
 
     def to_delta(self, path: str, mode: str = 'error',
                  partition_cols: Union[str, List[str], None] = None, **options):
@@ -3090,10 +3096,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Overwrite an existing table's partitions, using the 'replaceWhere' capability in Delta:
 
         >>> df.to_delta('%s/to_delta/bar' % path,
-        ...             mode='overwrite', replaceWhere='date >= "2019-01-01"')
+        ...             mode='overwrite', replaceWhere='date >= "2012-01-01"')
         """
         self.to_spark_io(
-            path=path, mode=mode, format="delta", partition_cols=partition_cols, options=options)
+            path=path, mode=mode, format="delta", partition_cols=partition_cols, **options)
 
     def to_parquet(self, path: str, mode: str = 'error',
                    partition_cols: Union[str, List[str], None] = None,
@@ -3199,7 +3205,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.to_spark_io(path='%s/to_spark_io/foo.json' % path, format='json')
         """
         self.to_spark().write.save(
-            path=path, format=format, mode=mode, partitionBy=partition_cols, options=options)
+            path=path, format=format, mode=mode, partitionBy=partition_cols, **options)
 
     def to_spark(self, index_col: Optional[Union[str, List[str]]] = None):
         """
@@ -6680,29 +6686,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def _reindex_index(self, index):
         # When axis is index, we can mimic pandas' by a right outer join.
-        index_column = self._internal.index_columns
-        assert len(index_column) <= 1, "Index should be single column or not set."
+        assert len(self._internal.index_columns) <= 1, "Index should be single column or not set."
 
-        if len(index_column) == 1:
-            kser = ks.Series(list(index))
-            index_column = index_column[0]
-            labels = kser._kdf._sdf.select(kser._scol.alias(index_column))
-        else:
-            index_column = None
-            labels = ks.Series(index).to_frame()._sdf
+        index_column = self._internal.index_columns[0]
+
+        kser = ks.Series(list(index))
+        labels = kser._kdf._sdf.select(kser._scol.alias(index_column))
 
         joined_df = self._sdf.join(labels, on=index_column, how="right")
-        new_data_columns = filter(lambda x: x not in index_column, joined_df.columns)
-        if index_column is not None:
-            index_map = [(index_column, None)]  # type: List[IndexMap]
-            internal = self._internal.copy(
-                sdf=joined_df,
-                index_map=index_map,
-                column_scols=[scol_for(joined_df, col) for col in new_data_columns])
-        else:
-            internal = self._internal.copy(
-                sdf=joined_df,
-                column_scols=[scol_for(joined_df, col) for col in new_data_columns])
+        internal = self._internal.copy(sdf=joined_df)
+
         return internal
 
     def _reindex_columns(self, columns):
@@ -6719,19 +6712,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise ValueError("shape (1,{}) doesn't match the shape (1,{})"
                                  .format(len(col), level))
         scols, columns, idx = [], [], []
-        null_columns = False
         for label in label_columns:
             if label in self._internal.column_index:
                 scols.append(self._internal.scol_for(label))
                 columns.append(self._internal.column_name_for(label))
             else:
-                scols.append(F.lit(np.nan).alias(str(label)))
-                columns.append(str(label))
-                null_columns = True
+                scols.append(F.lit(np.nan).alias(name_like_string(label)))
+                columns.append(name_like_string(label))
             idx.append(label)
 
-        if null_columns:
-            sdf = self._sdf.select(self._internal.index_scols + list(scols))
+        sdf = self._sdf.select(self._internal.index_scols + scols)
 
         return self._internal.copy(sdf=sdf,
                                    column_index=idx,

@@ -207,6 +207,16 @@ def show_options():
     """
     Make a pretty table that can be copied and pasted into public documentation.
     This is currently for an internal purpose.
+
+    Examples
+    --------
+    >>> show_options()  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+    ================... =======... =====================...
+    Option              Default    Description
+    ================... =======... =====================...
+    display.max_rows    1000       This sets the maximum...
+    ...
+    ================... =======... =====================...
     """
 
     import textwrap

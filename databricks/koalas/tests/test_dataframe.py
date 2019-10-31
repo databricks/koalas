@@ -656,6 +656,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, msg):
             kdf.nunique(axis=1)
 
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('Y', 'B')], names=['1', '2'])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.nunique(), pdf.nunique())
+        self.assert_eq(kdf.nunique(dropna=False), pdf.nunique(dropna=False))
+
     def test_sort_values(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
                             'b': [7, 6, 5, 4, 3, 2, 1]})
@@ -1699,6 +1707,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 2, 2, 3], 'b': ['a', 'a', 'a', 'c', 'd']})
         kdf = ks.from_pandas(pdf)
 
+        # inplace is False
         self.assert_eq(pdf.drop_duplicates().sort_index(),
                        kdf.drop_duplicates().sort_index())
         self.assert_eq(pdf.drop_duplicates('a').sort_index(),
@@ -1706,7 +1715,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.drop_duplicates(['a', 'b']).sort_index(),
                        kdf.drop_duplicates(['a', 'b']).sort_index())
 
-        # multi-index columns
+        # multi-index columns, inplace is False
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
         pdf.columns = columns
         kdf.columns = columns
@@ -1717,6 +1726,29 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        kdf.drop_duplicates(('x', 'a')).sort_index())
         self.assert_eq(pdf.drop_duplicates([('x', 'a'), ('y', 'b')]).sort_index(),
                        kdf.drop_duplicates([('x', 'a'), ('y', 'b')]).sort_index())
+
+        # inplace is True
+        subset_list = [None, 'a', ['a', 'b']]
+        for subset in subset_list:
+            pdf = pd.DataFrame({'a': [1, 2, 2, 2, 3], 'b': ['a', 'a', 'a', 'c', 'd']})
+            kdf = ks.from_pandas(pdf)
+            pdf.drop_duplicates(subset=subset, inplace=True)
+            kdf.drop_duplicates(subset=subset, inplace=True)
+            self.assert_eq(pdf.sort_index(),
+                           kdf.sort_index())
+
+        # multi-index columns, inplace is True
+        subset_list = [None, ('x', 'a'), [('x', 'a'), ('y', 'b')]]
+        for subset in subset_list:
+            pdf = pd.DataFrame({'a': [1, 2, 2, 2, 3], 'b': ['a', 'a', 'a', 'c', 'd']})
+            kdf = ks.from_pandas(pdf)
+            columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
+            pdf.columns = columns
+            kdf.columns = columns
+            pdf.drop_duplicates(subset=subset, inplace=True)
+            kdf.drop_duplicates(subset=subset, inplace=True)
+            self.assert_eq(pdf.sort_index(),
+                           kdf.sort_index())
 
     def test_reindex(self):
         index = ['A', 'B', 'C', 'D', 'E']
@@ -1732,8 +1764,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.reindex(['A', 'B', 'C'], index=['numbers', '2', '3']).sort_index())
 
         self.assert_eq(
-            pdf.reindex(index=['numbers', '2', '3']).sort_index(),
-            kdf.reindex(index=['numbers', '2', '3']).sort_index())
+            pdf.reindex(index=['A', 'B']).sort_index(),
+            kdf.reindex(index=['A', 'B']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(index=['A', 'B', '2', '3']).sort_index(),
+            kdf.reindex(index=['A', 'B', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(columns=['numbers']).sort_index(),
+            kdf.reindex(columns=['numbers']).sort_index())
 
         self.assert_eq(
             pdf.reindex(columns=['numbers', '2', '3']).sort_index(),

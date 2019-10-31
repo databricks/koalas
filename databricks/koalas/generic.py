@@ -568,22 +568,28 @@ class _Frame(object):
                     header=header, quotechar=quotechar,
                     date_format=date_format, escapechar=escapechar, index=False)
 
-        if columns is not None:
-            data_columns = columns
-        else:
-            data_columns = self._internal.data_columns
-
         kdf = self
         if isinstance(self, ks.Series):
-            kdf = self._kdf
+            kdf = self.to_frame()
 
-        if isinstance(header, list):
+        if columns is None:
+            column_index = kdf._internal.column_index
+        elif isinstance(columns, str):
+            column_index = [(columns,)]
+        elif isinstance(columns, tuple):
+            column_index = [columns]
+        else:
+            column_index = [idx if isinstance(idx, tuple) else (idx,) for idx in columns]
+
+        if header is True and kdf._internal.column_index_level > 1:
+            raise ValueError('to_csv only support one-level index column now')
+        elif isinstance(header, list):
             sdf = kdf._sdf.select(
-                [self._internal.scol_for(old_name).alias(new_name)
-                 for (old_name, new_name) in zip(data_columns, header)])
+                [self._internal.scol_for(idx).alias(new_name)
+                 for (idx, new_name) in zip(column_index, header)])
             header = True
         else:
-            sdf = kdf._sdf.select(data_columns)
+            sdf = kdf._sdf.select([kdf._internal.scol_for(idx) for idx in column_index])
 
         if num_files is not None:
             sdf = sdf.repartition(num_files)
@@ -1390,8 +1396,10 @@ class _Frame(object):
     def rolling(self, *args, **kwargs):
         return Rolling(self)
 
-    def expanding(self, *args, **kwargs):
-        return Expanding(self)
+    # TODO: 'center' and 'axis' parameter should be implemented.
+    #   'axis' implementation, refer https://github.com/databricks/koalas/pull/607
+    def expanding(self, min_periods=1):
+        return Expanding(self, min_periods=min_periods)
 
     @property
     def at(self):

@@ -19,6 +19,7 @@ from collections import defaultdict
 from distutils.version import LooseVersion
 import inspect
 from io import BytesIO
+from datetime import datetime, timedelta
 
 import matplotlib
 matplotlib.use('agg')
@@ -433,18 +434,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([1, 2, 2, None, None])
         kser = ks.from_pandas(pser)
         self.assertEqual(False, kser.is_unique)
+        self.assertEqual(False, (kser + 1).is_unique)
 
         pser = pd.Series([1, None, None])
         kser = ks.from_pandas(pser)
         self.assertEqual(False, kser.is_unique)
+        self.assertEqual(False, (kser + 1).is_unique)
 
         pser = pd.Series([1])
         kser = ks.from_pandas(pser)
         self.assertEqual(pser.is_unique, kser.is_unique)
+        self.assertEqual((pser + 1).is_unique, (kser + 1).is_unique)
 
         pser = pd.Series([1, 1, 1])
         kser = ks.from_pandas(pser)
         self.assertEqual(pser.is_unique, kser.is_unique)
+        self.assertEqual((pser + 1).is_unique, (kser + 1).is_unique)
 
     def test_to_list(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
@@ -481,6 +486,15 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(
             repr(kser.map(d)),
             repr(pser.map(d).rename(0)))
+
+        def tomorrow(date) -> datetime:
+            return date + timedelta(days=1)
+
+        pser = pd.Series([datetime(2019, 10, 24)])
+        kser = ks.from_pandas(pser)
+        self.assertEqual(
+            repr(kser.map(tomorrow)),
+            repr(pser.map(tomorrow).rename(0)))
 
     def test_add_prefix(self):
         pser = pd.Series([1, 2, 3, 4], name='0')

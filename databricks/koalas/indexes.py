@@ -128,6 +128,30 @@ class Index(IndexOpsMixin):
         return self.to_series().spark_type
 
     @property
+    def has_duplicates(self) -> bool:
+        """
+        If index has duplicates, return True, otherwise False.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=list('aac'))
+        >>> kdf.index.has_duplicates
+        True
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')])
+        >>> kdf.index.has_duplicates
+        False
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('aac'), list('eef')])
+        >>> kdf.index.has_duplicates
+        True
+        """
+        df = self._kdf._sdf.select(self._scol)
+        col = df.columns[0]
+
+        return df.select(F.count(col) != F.countDistinct(col)).first()[0]
+
+    @property
     def name(self) -> Union[str, Tuple[str, ...]]:
         """Return name of the Index."""
         return self.names[0]
@@ -150,8 +174,26 @@ class Index(IndexOpsMixin):
         if len(internal.index_map) != len(names):
             raise ValueError('Length of new names must be {}, got {}'
                              .format(len(internal.index_map), len(names)))
-        names = [name if isinstance(name, tuple) else (name,) for name in names]
+
+        names = [name if isinstance(name, (tuple, type(None))) else (name,) for name in names]
         self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
+
+    @property
+    def nlevels(self) -> int:
+        """
+        Number of levels in Index & MultiIndex.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"a": [1, 2, 3]}, index=pd.Index(['a', 'b', 'c'], name="idx"))
+        >>> kdf.index.nlevels
+        1
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')])
+        >>> kdf.index.nlevels
+        2
+        """
+        return len(self._kdf._internal.index_columns)
 
     def rename(self, name: Union[str, Tuple[str, ...]], inplace: bool = False):
         """
