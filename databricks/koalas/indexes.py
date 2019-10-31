@@ -60,15 +60,24 @@ class Index(IndexOpsMixin):
 
     >>> ks.DataFrame({'a': [1, 2, 3]}, index=list('abc')).index
     Index(['a', 'b', 'c'], dtype='object')
+
+    >>> Index([1, 2, 3])
+    Int64Index([1, 2, 3], dtype='int64')
+
+    >>> Index(list('abc'))
+    Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None) -> None:
+    def __init__(self, kdf_or_names: Union[DataFrame, list],
+                 scol: Optional[spark.Column] = None) -> None:
+        kdf = DataFrame(index=kdf_or_names) if isinstance(kdf_or_names, list) else kdf_or_names
         if scol is None:
             scol = kdf._internal.index_scols[0]
         internal = kdf._internal.copy(scol=scol,
                                       data_columns=kdf._internal.index_columns,
                                       column_index=kdf._internal.index_names,
                                       column_index_names=None)
+
         IndexOpsMixin.__init__(self, internal, kdf)
 
     def _with_new_scol(self, scol: spark.Column) -> 'Index':
