@@ -7451,6 +7451,76 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return self.columns
 
+    # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
+    def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000):
+        """
+        Return value at the given quantile.
+
+        .. note:: Unlike pandas', the quantile in Koalas is an approximated quantile based upon
+            approximate percentile computation because computing quantile across a large dataset
+            is extremely expensive.
+
+        Parameters
+        ----------
+        q : float or array-like, default 0.5 (50% quantile)
+            0 <= q <= 1, the quantile(s) to compute.
+        axis : int, default 0 or 'index'
+            Can only be set to 0 at the moment.
+        numeric_only : bool, default True
+            If False, the quantile of datetime and timedelta data will be computed as well.
+            Can only be set to True at the moment.
+        accuracy : int, optional
+            Default accuracy of approximation. Larger value means better accuracy.
+            The relative error can be deduced by 1.0 / accuracy.
+
+        Returns
+        -------
+        Series or DataFrame
+            If q is an array, a DataFrame will be returned where the
+            index is q, the columns are the columns of self, and the values are the quantiles.
+            If q is a float, a Series will be returned where the
+            index is the columns of self and the values are the quantiles.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 4, 5], 'b': [6, 7, 8, 9, 0]})
+        >>> kdf
+           a  b
+        0  1  6
+        1  2  7
+        2  3  8
+        3  4  9
+        4  5  0
+
+        >>> kdf.quantile(.5)
+        a    3
+        b    7
+        Name: 0.5, dtype: int64
+
+        >>> kdf.quantile([.25, .5, .75])
+              a  b
+        0.25  2  6
+        0.5   3  7
+        0.75  4  8
+        """
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
+        if numeric_only is not True:
+            raise ValueError("quantile currently doesn't supports numeric_only")
+        if isinstance(q, float):
+            q = (q,)
+
+        quantile_columns = [self[col_name].quantile(q) for col_name in self.columns]
+        if len(q) == 1:
+            from databricks.koalas.series import _col
+            return _col(reduce(
+                lambda x, y: x.to_frame().merge(y.to_frame(), left_index=True, right_index=True),
+                quantile_columns).T)
+        else:
+            return reduce(
+                lambda x, y: x.to_frame().merge(y.to_frame(), left_index=True, right_index=True),
+                quantile_columns)
+
     def _get_from_multiindex_column(self, key):
         """ Select columns from multi-index columns.
 
