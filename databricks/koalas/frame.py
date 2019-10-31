@@ -2689,9 +2689,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if axis not in [0, 'index']:
             raise ValueError('axis should be either 0 or "index" currently.')
-        res = self._sdf.select([self[column]._nunique(dropna, approx, rsd)
-                                for column in self.columns])
-        return res.toPandas().T.iloc[:, 0]
+        res = self._sdf.select([self[idx]._nunique(dropna, approx, rsd)
+                                for idx in self._internal.column_index]).toPandas()
+        if self._internal.column_index_level == 1:
+            res.columns = [idx[0] for idx in self._internal.column_index]
+        else:
+            res.columns = pd.MultiIndex.from_tuples(self._internal.column_index)
+        if self._internal.column_index_names is not None:
+            res.columns.names = self._internal.column_index_names
+        return res.T.iloc[:, 0]
 
     def round(self, decimals=0):
         """

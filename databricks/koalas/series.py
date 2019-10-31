@@ -1753,14 +1753,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return res.collect()[0][0]
 
     def _nunique(self, dropna=True, approx=False, rsd=0.05):
-        name = self.name
+        colname = self._internal.data_columns[0]
         count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
         if dropna:
-            return count_fn(name).alias(name)
+            return count_fn(self._scol).alias(colname)
         else:
-            return (count_fn(name) +
-                    F.when(F.count(F.when(self._internal.scol_for(name).isNull(), 1)
-                                   .otherwise(None)) >= 1, 1).otherwise(0)).alias(name)
+            return (count_fn(self._scol) +
+                    F.when(F.count(F.when(self._scol.isNull(), 1)
+                                   .otherwise(None)) >= 1, 1).otherwise(0)).alias(colname)
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
