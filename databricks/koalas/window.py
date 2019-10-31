@@ -23,6 +23,7 @@ from databricks.koalas.missing.window import _MissingPandasLikeRolling, \
     _MissingPandasLikeExpandingGroupby
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.utils import scol_for
 
 
 class _RollingAndExpanding(object):
@@ -140,8 +141,8 @@ class Expanding(_RollingAndExpanding):
                 kdf._internal.index_scols + [c._scol for c in applied])
             internal = kdf._internal.copy(
                 sdf=sdf,
-                data_columns=[c._internal.data_columns[0] for c in applied],
-                column_index=[c._internal.column_index[0] for c in applied])
+                column_index=[c._internal.column_index[0] for c in applied],
+                column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied])
             return DataFrame(internal)
 
 
