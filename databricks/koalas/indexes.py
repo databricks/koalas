@@ -77,7 +77,6 @@ class Index(IndexOpsMixin):
                                       data_columns=kdf._internal.index_columns,
                                       column_index=kdf._internal.index_names,
                                       column_index_names=None)
-
         IndexOpsMixin.__init__(self, internal, kdf)
 
     def _with_new_scol(self, scol: spark.Column) -> 'Index':
