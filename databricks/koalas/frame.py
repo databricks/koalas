@@ -7503,23 +7503,43 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0.5   3  7
         0.75  4  8
         """
+        result_as_series = False
         if axis not in [0, 'index']:
             raise ValueError('axis should be either 0 or "index" currently.')
         if numeric_only is not True:
             raise ValueError("quantile currently doesn't supports numeric_only")
         if isinstance(q, float):
+            result_as_series = True
+            key = str(q)
             q = (q,)
+        quantiles = q
+        args = ", ".join(map(str, quantiles))
+        internal_index_column = SPARK_INDEX_NAME_FORMAT(0)
+        sdf_list = []
+        for i, column in enumerate(self.columns):
+            sdf = self._sdf
+            percentile_col = F.expr(
+                "approx_percentile(`%s`, array(%s), %s)" % (column, args, accuracy))
+            sdf = sdf.select(percentile_col.alias("percentiles"))
+            value_column = column
+            cols = []
+            for i, quantile in enumerate(quantiles):
+                cols.append(F.struct(
+                    F.lit("%s" % quantile).alias(internal_index_column),
+                    F.expr("percentiles[%s]" % i).alias(value_column)))
+            sdf = sdf.select(F.array(*cols).alias("arrays"))
+            sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
+            sdf_list.append(sdf)
 
-        quantile_columns = [self[col_name].quantile(q) for col_name in self.columns]
-        if len(q) == 1:
-            from databricks.koalas.series import _col
-            return _col(reduce(
-                lambda x, y: x.to_frame().merge(y.to_frame(), left_index=True, right_index=True),
-                quantile_columns).T)
-        else:
-            return reduce(
-                lambda x, y: x.to_frame().merge(y.to_frame(), left_index=True, right_index=True),
-                quantile_columns)
+        sdf = reduce(lambda x, y: x.join(y, on=internal_index_column), sdf_list)
+        internal = self._internal.copy(
+            sdf=sdf,
+            data_columns=self.columns,
+            index_map=[(internal_index_column, None)],
+            column_index=self._internal.column_index,
+            column_index_names=None)
+
+        return DataFrame(internal) if not result_as_series else DataFrame(internal).T[key]
 
     def _get_from_multiindex_column(self, key):
         """ Select columns from multi-index columns.
