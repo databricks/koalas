@@ -49,6 +49,14 @@ class Index(IndexOpsMixin):
     :ivar _scol: Spark Column instance
     :type _scol: pyspark.Column
 
+    Parameters
+    ----------
+    data : DataFrame or list
+        Index can be created by DataFrame or list
+    dtype : dtype, default None
+        Data type to force. Only a single dtype is allowed. If None, infer
+    name : name of index, hashable
+
     See Also
     --------
     MultiIndex : A multi-level, or hierarchical, Index.
@@ -68,9 +76,15 @@ class Index(IndexOpsMixin):
     Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __init__(self, kdf_or_names: Union[DataFrame, list],
-                 scol: Optional[spark.Column] = None) -> None:
-        kdf = DataFrame(index=kdf_or_names) if isinstance(kdf_or_names, list) else kdf_or_names
+    def __init__(self, data: Union[DataFrame, list],
+                 scol: Optional[spark.Column] = None, dtype=None, name=None) -> None:
+        if isinstance(data, DataFrame):
+            assert dtype is None
+            assert name is None
+            kdf = data
+        else:
+            assert scol is None
+            kdf = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
         if scol is None:
             scol = kdf._internal.index_scols[0]
         internal = kdf._internal.copy(scol=scol,
