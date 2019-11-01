@@ -2803,7 +2803,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             # +-----------------+-----+
             sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
 
-            internal = self._kdf._internal.copy(
+            internal = _InternalFrame(
                 sdf=sdf,
                 data_columns=[value_column],
                 index_map=[(internal_index_column, None)],
@@ -3078,7 +3078,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         sdf = self._internal._sdf
         scol = self._scol
-        index_scols = self._kdf._internal.index_scols
+        index_scols = self._internal.index_scols
         # desc_nulls_(last|first) is used via Py4J directly because
         # it's not supported in Spark 2.3.
         if skipna:
@@ -3170,7 +3170,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         sdf = self._internal._sdf
         scol = self._scol
-        index_scols = self._kdf._internal.index_scols
+        index_scols = self._internal.index_scols
         # asc_nulls_(list|first)is used via Py4J directly because
         # it's not supported in Spark 2.3.
         if skipna:
