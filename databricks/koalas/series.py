@@ -350,7 +350,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
-        return self.schema.fields[-1].dataType
+        return self._internal.spark_type_for(self._internal.column_index[0])
 
     plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
 
@@ -798,10 +798,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return self._with_new_scol(self._scol.cast(spark_type))
 
     def getField(self, name):
-        if not isinstance(self.schema, StructType):
-            raise AttributeError("Not a struct: {}".format(self.schema))
+        if not isinstance(self.spark_type, StructType):
+            raise AttributeError("Not a struct: {}".format(self.spark_type))
         else:
-            fnames = self.schema.fieldNames()
+            fnames = self.spark_type.fieldNames()
             if name not in fnames:
                 raise AttributeError(
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
@@ -810,11 +810,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def alias(self, name):
         """An alias for :meth:`Series.rename`."""
         return self.rename(name)
-
-    @property
-    def schema(self) -> StructType:
-        """Return the underlying Spark DataFrame's schema."""
-        return self.to_dataframe()._sdf.schema
 
     @property
     def shape(self):
@@ -4030,10 +4025,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return pser.to_string(name=self.name, dtype=self.dtype)
 
     def __dir__(self):
-        if not isinstance(self.schema, StructType):
+        if not isinstance(self.spark_type, StructType):
             fields = []
         else:
-            fields = [f for f in self.schema.fieldNames() if ' ' not in f]
+            fields = [f for f in self.spark_type.fieldNames() if ' ' not in f]
         return super(Series, self).__dir__() + fields
 
     def __iter__(self):

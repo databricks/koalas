@@ -26,7 +26,7 @@ Attributes
    Series.dtype
    Series.dtypes
    Series.name
-   Series.schema
+   Series.spark_type
    Series.shape
    Series.size
    Series.empty
