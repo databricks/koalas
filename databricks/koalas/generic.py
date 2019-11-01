@@ -1422,7 +1422,7 @@ class _Frame(object):
             .withColumn('__DUMMY__', F.monotonically_increasing_id())
         # This is expected to be small so it's fine to transpose.
         return DataFrame(kdf._internal.copy(sdf=sdf, index_map=[('__DUMMY__', None)])) \
-                   ._to_internal_pandas().transpose().iloc[:, 0]
+            ._to_internal_pandas().transpose().iloc[:, 0]
 
     def rolling(self, *args, **kwargs):
         return Rolling(self)
