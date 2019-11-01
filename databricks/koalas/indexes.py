@@ -475,7 +475,7 @@ class MultiIndex(Index):
     def all(self, *args, **kwargs):
         raise TypeError("cannot perform all with this index type: MultiIndex")
 
-    @classmethod
+    @staticmethod
     def from_tuples(cls, tuples, sortorder=None, names=None):
         """
         Convert list of tuples to MultiIndex.
@@ -515,13 +515,8 @@ class MultiIndex(Index):
                 msg = "Cannot infer number of levels from empty list"
                 raise TypeError(msg)
 
-        index = [[idx[i] for idx in tuples] for i in range(len(tuples[0]))]
-        result = DataFrame(index=index).index
-
-        if names is not None:
-            result.names = names
-
-        return result
+        return DataFrame(index=pd.MultiIndex.from_tuples(
+            tuples=tuples, sortorder=sortorder, names=names)).index
 
     @property
     def name(self) -> str:
