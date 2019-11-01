@@ -235,7 +235,7 @@ class IndexOpsMixin(object):
         >>> ks.DataFrame({}, index=list('abc')).index.empty
         False
         """
-        return self._kdf._sdf.rdd.isEmpty()
+        return self._internal._sdf.rdd.isEmpty()
 
     @property
     def hasnans(self):
@@ -257,7 +257,7 @@ class IndexOpsMixin(object):
         >>> ks.Series([1, 2, 3]).rename("a").to_frame().set_index("a").index.hasnans
         False
         """
-        sdf = self._kdf._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self._scol)
         col = self._scol
 
         ret = sdf.select(F.max(col.isNull() | F.isnan(col))).collect()[0][0]
@@ -609,7 +609,7 @@ class IndexOpsMixin(object):
         if axis not in [0, 'index']:
             raise ValueError('axis should be either 0 or "index" currently.')
 
-        sdf = self._kdf._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self._scol)
         col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
@@ -672,7 +672,7 @@ class IndexOpsMixin(object):
         if axis not in [0, 'index']:
             raise ValueError('axis should be either 0 or "index" currently.')
 
-        sdf = self._kdf._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self._scol)
         col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
