@@ -392,7 +392,7 @@ class LocIndexer(object):
                 stop = rows_sel.stop
 
                 index_column = self._kdf.index.to_series()
-                index_data_type = index_column.schema[0].dataType
+                index_data_type = index_column.spark_type
                 cond = []
                 if start is not None:
                     cond.append(index_column._scol >= F.lit(start).cast(index_data_type))
@@ -414,7 +414,7 @@ class LocIndexer(object):
                 sdf = sdf.where(F.lit(False))
             elif len(self._kdf._internal.index_columns) == 1:
                 index_column = self._kdf.index.to_series()
-                index_data_type = index_column.schema[0].dataType
+                index_data_type = index_column.spark_type
                 if len(rows_sel) == 1:
                     sdf = sdf.where(
                         index_column._scol == F.lit(rows_sel[0]).cast(index_data_type))

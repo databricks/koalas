@@ -536,7 +536,7 @@ class _InternalFrame(object):
 
     def spark_type_for(self, column_name_or_index: Union[str, Tuple[str, ...]]) -> DataType:
         """ Return DataType for the given column name or index. """
-        return self._sdf.schema[self.column_name_for(column_name_or_index)].dataType
+        return self._sdf.select(self.scol_for(column_name_or_index)).schema[0].dataType
 
     @property
     def sdf(self) -> spark.DataFrame:
