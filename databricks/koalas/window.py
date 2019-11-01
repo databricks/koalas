@@ -80,6 +80,10 @@ class Expanding(_RollingAndExpanding):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
+    # TODO: when add 'center' and 'axis' parameter, should add to here too.
+    def __repr__(self):
+        return "Expanding [min_periods={}]".format(self._min_periods)
+
     def count(self):
         """
         The expanding count of any non-NaN observations inside the window.
