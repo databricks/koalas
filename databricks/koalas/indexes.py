@@ -476,7 +476,7 @@ class MultiIndex(Index):
         raise TypeError("cannot perform all with this index type: MultiIndex")
 
     @staticmethod
-    def from_tuples(cls, tuples, sortorder=None, names=None):
+    def from_tuples(tuples, sortorder=None, names=None):
         """
         Convert list of tuples to MultiIndex.
 
