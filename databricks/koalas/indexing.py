@@ -159,7 +159,7 @@ class AtIndexer(object):
 
         if column is not None and column not in self._kdf._internal.data_columns:
             raise KeyError(column)
-        sdf = self._ks._kdf._sdf if self._ks is not None else self._kdf._sdf
+        sdf = self._ks._internal._sdf if self._ks is not None else self._kdf._sdf
 
         row = key[0] if self._ks is None else key
         pdf = (sdf
