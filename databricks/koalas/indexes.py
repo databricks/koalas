@@ -505,16 +505,6 @@ class MultiIndex(Index):
                     (2, 'blue')],
                    names=['number', 'color'])
         """
-        if not is_list_like(tuples):
-            raise TypeError("Input must be a list / sequence of tuple-likes.")
-        elif is_iterator(tuples):
-            tuples = list(tuples)
-
-        if len(tuples) == 0:
-            if names is None:
-                msg = "Cannot infer number of levels from empty list"
-                raise TypeError(msg)
-
         return DataFrame(index=pd.MultiIndex.from_tuples(
             tuples=tuples, sortorder=sortorder, names=names)).index
 
