@@ -25,8 +25,6 @@ import pandas as pd
 from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
     is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
 
-import numpy as np
-
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 
