@@ -7503,6 +7503,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0.5   3  7
         0.75  4  8
         """
+        from collections import defaultdict
         result_as_series = False
         if axis not in [0, 'index']:
             raise ValueError('axis should be either 0 or "index" currently.')
@@ -7512,29 +7513,59 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             result_as_series = True
             key = str(q)
             q = (q,)
+
         quantiles = q
+        # First calculate the percentiles from all columns and map it to each `quantiles`
+        # by creating each entry as a struct. So, it becomes an array of structs as below:
+        #
+        # +-----------------------------------------+
+        # |                                   arrays|
+        # +-----------------------------------------+
+        # |[[0.25, 2, 6], [0.5, 3, 7], [0.75, 4, 8]]|
+        # +-----------------------------------------+
+        sdf = self._sdf
         args = ", ".join(map(str, quantiles))
-        internal_index_column = SPARK_INDEX_NAME_FORMAT(0)
-        sdf_list = []
+
+        percentile_cols = []
         for i, column in enumerate(self.columns):
             sdf = self._sdf
-            percentile_col = F.expr(
+            percentile_cols.append(F.expr(
                 "approx_percentile(`%s`, array(%s), %s)" % (column, args, accuracy))
-            sdf = sdf.select(percentile_col.alias("percentiles"))
-            value_column = column
-            cols = []
-            for i, quantile in enumerate(quantiles):
-                cols.append(F.struct(
-                    F.lit("%s" % quantile).alias(internal_index_column),
-                    F.expr("percentiles[%s]" % i).alias(value_column)))
-            sdf = sdf.select(F.array(*cols).alias("arrays"))
-            sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
-            sdf_list.append(sdf)
+                .alias(column))
+        sdf = sdf.select(percentile_cols)
+        # Here, after select percntile cols, a sdf looks like below:
+        # +---------+---------+
+        # |        a|        b|
+        # +---------+---------+
+        # |[2, 3, 4]|[6, 7, 8]|
+        # +---------+---------+
 
-        sdf = reduce(lambda x, y: x.join(y, on=internal_index_column), sdf_list)
+        cols_dict = defaultdict(list)
+        for column in self._internal.data_columns:
+            for i in range(len(quantiles)):
+                cols_dict[column].append(F.expr("%s[%s]" % (column, i)).alias(column))
+
+        internal_index_column = SPARK_INDEX_NAME_FORMAT(0)
+        cols = []
+        for i, col in enumerate(zip(*cols_dict.values())):
+            cols.append(F.struct(
+                F.lit("%s" % quantiles[i]).alias(internal_index_column),
+                *col))
+        sdf = sdf.select(F.array(*cols).alias("arrays"))
+
+        # And then, explode it and manually set the index.
+        # +-----------------+---+---+
+        # |__index_level_0__|  a|  b|
+        # +-----------------+---+---+
+        # |             0.25|  2|  6|
+        # |              0.5|  3|  7|
+        # |             0.75|  4|  8|
+        # +-----------------+---+---+
+        sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
+
         internal = self._internal.copy(
             sdf=sdf,
-            data_columns=self.columns,
+            data_columns=self._internal.data_columns,
             index_map=[(internal_index_column, None)],
             column_index=self._internal.column_index,
             column_index_names=None)
