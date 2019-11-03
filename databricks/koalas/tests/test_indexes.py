@@ -291,4 +291,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             pdf = pd.DataFrame({'a': [1, 2, 3]}, index=tup)
             kdf = ks.from_pandas(pdf)
 
-            self.assertEqual(list(pdf.index.levels), kdf.index.levels)
+            # pandas returns FronzeList, so need to convert it to normal list
+            # for comparison
+            pdf_levels = [list(i) for i in pdf.index.levels]
+            self.assertEqual(pdf_levels, kdf.index.levels)

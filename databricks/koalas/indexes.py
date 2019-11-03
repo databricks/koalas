@@ -588,14 +588,14 @@ class MultiIndex(Index):
         >>> mi.names = ['level_1', 'level_2']
         >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
         >>> kdf.index.levels
-        [['a', 'b', 'c'], ['e', 'e', 'f']]
+        [['a', 'b', 'c'], ['e', 'f']]
         """
-        idx_cols = self._kdf._internal.index_columns
-        sdf = self._kdf._sdf.select(idx_cols).dropDuplicates()
+        scols = self._kdf._internal.index_scols
+        sdf = self._kdf._sdf.select([F.collect_set(scol) for scol in scols]).collect()[0]
 
         # use sorting is because pandas doesn't care the appearance order of level
         # names, so e.g. if ['b', 'd', 'a'] will return as ['a', 'b', 'd']
-        return [sorted([row[col] for row in sdf.collect()]) for col in idx_cols]
+        return [sorted(col) for col in sdf]
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
