@@ -59,6 +59,34 @@ class Rolling(_RollingAndExpanding):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
+    def _apply_as_series_or_frame(self, func):
+        """
+        Decorator that can wraps a function that handles Spark column in order
+        to support it in both Koalas Series and DataFrame.
+        Note that the given `func` name should be same as the API's method name.
+        """
+        from databricks.koalas import DataFrame, Series
+
+        if isinstance(self.kdf_or_kser, Series):
+            kser = self.kdf_or_kser
+            scol = F.count(kser._scol).over(self._window)
+            return kser._with_new_scol(func(kser._scol)).rename(kser.name)
+        elif isinstance(self.kdf_or_kser, DataFrame):
+            kdf = self.kdf_or_kser
+            applied = []
+            for column in kdf.columns:
+                applied.append(
+                    getattr(kdf[column].rolling(self._window_val + 1,
+                            self._min_periods), func.__name__)())
+
+            sdf = kdf._sdf.select(
+                kdf._internal.index_scols + [c._scol for c in applied])
+            internal = kdf._internal.copy(
+                sdf=sdf,
+                data_columns=[c._internal.data_columns[0] for c in applied],
+                column_index=[c._internal.column_index[0] for c in applied])
+            return DataFrame(internal)
+
     def count(self):
         """
         The rolling count of any non-NaN observations inside the window.
@@ -111,25 +139,10 @@ class Rolling(_RollingAndExpanding):
         2  2.0
         3  2.0
         """
-        from databricks.koalas import DataFrame, Series
+        def count(scol):
+            return F.count(scol).over(self._window)
 
-        if isinstance(self.kdf_or_kser, Series):
-            kser = self.kdf_or_kser
-            scol = F.count(kser._scol).over(self._window)
-            return kser._with_new_scol(scol).astype('float64').rename(kser.name)
-        elif isinstance(self.kdf_or_kser, DataFrame):
-            kdf = self.kdf_or_kser
-            applied = []
-            for column in kdf.columns:
-                applied.append(kdf[column].rolling(self._window_val + 1, self._min_periods).count())
-
-            sdf = kdf._sdf.select(
-                kdf._internal.index_scols + [c._scol for c in applied])
-            internal = kdf._internal.copy(
-                sdf=sdf,
-                data_columns=[c._internal.data_columns[0] for c in applied],
-                column_index=[c._internal.column_index[0] for c in applied])
-            return DataFrame(internal)
+        return self._apply_as_series_or_frame(count).astype('float64')
 
 
 class RollingGroupby(Rolling):
