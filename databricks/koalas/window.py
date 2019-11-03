@@ -69,7 +69,6 @@ class Rolling(_RollingAndExpanding):
 
         if isinstance(self.kdf_or_kser, Series):
             kser = self.kdf_or_kser
-            scol = F.count(kser._scol).over(self._window)
             return kser._with_new_scol(func(kser._scol)).rename(kser.name)
         elif isinstance(self.kdf_or_kser, DataFrame):
             kdf = self.kdf_or_kser
