@@ -6774,30 +6774,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  b        C      4
         2  c        C      6
 
-        >>> df.melt(value_vars='A')
-          variable value
-        0        A     a
-        1        A     b
-        2        A     c
-
-        >>> df.melt(value_vars=['A', 'B'])
-          variable value
-        0        A     a
-        1        B     1
-        2        A     b
-        3        B     3
-        4        A     c
-        5        B     5
-
-        >>> df.melt(value_vars=('A', 'B'))
-          variable value
-        0        A     a
-        1        B     1
-        2        A     b
-        3        B     3
-        4        A     c
-        5        B     5
-
         The names of 'variable' and 'value' columns can be customized:
 
         >>> ks.melt(df, id_vars=['A'], value_vars=['B'],
@@ -6806,6 +6782,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  a         B          1
         1  b         B          3
         2  c         B          5
+
+        >>> df.melt(id_vars='Z')  # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+          ...
+        KeyError: "The following 'id_vars' are not present in the DataFrame: [('Z',)]"
+
+        >>> df.melt(value_vars='Z')  # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+          ...
+        KeyError: "The following 'value_vars' are not present in the DataFrame: [('Z',)]"
+
+        >>> df.columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
+        >>> df.melt(id_vars=('A',))  # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+          ...
+        ValueError: id_vars must be a list of tuples when columns are a MultiIndex
+
+        >>> df.melt(value_vars=('A',))  # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+          ...
+        ValueError: value_vars must be a list of tuples when columns are a MultiIndex
         """
         if id_vars is None:
             id_vars = []
@@ -6821,12 +6818,29 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         column_index = self._internal.column_index
 
+        missing = [True for id_var in id_vars if id_var not in column_index]
+        if True in missing:
+            raise KeyError("The following 'id_vars' are not present"
+                           " in the DataFrame: {}"
+                           .format(id_vars))
+
         if value_vars is None:
             value_vars = []
         elif isinstance(value_vars, str):
             value_vars = [(value_vars,)]
+        elif isinstance(value_vars, tuple):
+            if self._internal.column_index_level == 1:
+                value_vars = [valv if isinstance(valv, tuple) else (valv,) for valv in value_vars]
+            else:
+                raise ValueError('value_vars must be a list of tuples'
+                                 ' when columns are a MultiIndex')
         else:
             value_vars = [valv if isinstance(valv, tuple) else (valv,) for valv in value_vars]
+        missing = [True for value_var in value_vars if value_var not in column_index]
+        if True in missing:
+            raise KeyError("The following 'value_vars' are not present"
+                           " in the DataFrame: {}"
+                           .format(value_vars))
         if len(value_vars) == 0:
             value_vars = column_index
 

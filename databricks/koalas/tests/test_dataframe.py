@@ -1822,6 +1822,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pdf.melt(id_vars=['A'], value_vars=['B'],
                                 var_name='myVarname', value_name='myValname')
                        .sort_values(['myVarname', 'myValname']))
+        self.assert_eq(kdf.melt(value_vars=('A', 'B')).sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(value_vars=('A', 'B')).sort_values(['variable', 'value']))
+
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
