@@ -1404,22 +1404,25 @@ class _Frame(object):
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series, _col
 
-        kdf_or_ks = self
-        if isinstance(kdf_or_ks, Series):
-            ks = _col(kdf_or_ks.to_frame())
-            return ks._reduce_for_stat_function(
-                lambda _: F.expr(
-                    "approx_percentile(`%s`, 0.5, %s)" % (ks._internal.data_columns[0], accuracy)),
+        kdf_or_kser = self
+        if isinstance(kdf_or_kser, Series):
+            kser = _col(kdf_or_kser.to_frame())
+            return kser._reduce_for_stat_function(
+                lambda _: F.expr("approx_percentile(`%s`, 0.5, %s)"
+                                 % (kser._internal.data_columns[0], accuracy)),
                 name="median")
-        assert isinstance(kdf_or_ks, DataFrame)
+        assert isinstance(kdf_or_kser, DataFrame)
 
         # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
         # to get a column name from Spark column but we need it to pass it through `expr`.
-        kdf = kdf_or_ks
+        kdf = kdf_or_kser
         sdf = kdf._sdf
         median = lambda name: F.expr("approx_percentile(`%s`, 0.5, %s)" % (name, accuracy))
-        sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_columns]) \
-            .withColumn('__DUMMY__', F.monotonically_increasing_id())
+        sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_columns])
+
+        # Attach a dummy column for index to avoid default index.
+        sdf = sdf.withColumn('__DUMMY__', F.monotonically_increasing_id())
+
         # This is expected to be small so it's fine to transpose.
         return DataFrame(kdf._internal.copy(sdf=sdf, index_map=[('__DUMMY__', None)])) \
             ._to_internal_pandas().transpose().iloc[:, 0]
