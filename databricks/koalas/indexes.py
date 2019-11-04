@@ -49,6 +49,14 @@ class Index(IndexOpsMixin):
     :ivar _scol: Spark Column instance
     :type _scol: pyspark.Column
 
+    Parameters
+    ----------
+    data : DataFrame or list
+        Index can be created by DataFrame or list
+    dtype : dtype, default None
+        Data type to force. Only a single dtype is allowed. If None, infer
+    name : name of index, hashable
+
     See Also
     --------
     MultiIndex : A multi-level, or hierarchical, Index.
@@ -60,9 +68,23 @@ class Index(IndexOpsMixin):
 
     >>> ks.DataFrame({'a': [1, 2, 3]}, index=list('abc')).index
     Index(['a', 'b', 'c'], dtype='object')
+
+    >>> Index([1, 2, 3])
+    Int64Index([1, 2, 3], dtype='int64')
+
+    >>> Index(list('abc'))
+    Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None) -> None:
+    def __init__(self, data: Union[DataFrame, list], dtype=None, name=None,
+                 scol: Optional[spark.Column] = None) -> None:
+        if isinstance(data, DataFrame):
+            assert dtype is None
+            assert name is None
+            kdf = data
+        else:
+            assert scol is None
+            kdf = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
         if scol is None:
             scol = kdf._internal.index_scols[0]
         internal = kdf._internal.copy(scol=scol,
@@ -78,7 +100,7 @@ class Index(IndexOpsMixin):
         :param scol: the new Spark Column
         :return: the copied Index
         """
-        return Index(self._kdf, scol)
+        return Index(self._kdf, scol=scol)
 
     @property
     def size(self) -> int:
@@ -244,7 +266,7 @@ class Index(IndexOpsMixin):
             self._kdf._internal = internal
             return self
         else:
-            return Index(DataFrame(internal), self._scol)
+            return Index(DataFrame(internal), scol=self._scol)
 
     def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
         """
@@ -437,7 +459,7 @@ class Index(IndexOpsMixin):
         Index(['cobra', 'viper', 'sidewinder'], dtype='object', name='snake')
         """
         internal = self._kdf._internal.copy()
-        result = Index(ks.DataFrame(internal), self._scol)
+        result = Index(ks.DataFrame(internal), scol=self._scol)
         if name:
             result.name = name
         return result
