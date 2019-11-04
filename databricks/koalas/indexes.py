@@ -574,7 +574,8 @@ class MultiIndex(Index):
     @property
     def levels(self) -> list:
         """
-        Names of index columns in list.
+        Names of index columns in list. Be aware of the possibility of running into out
+        of memory issue if returned list is huge.
 
         Examples:
         --------
