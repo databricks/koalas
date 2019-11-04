@@ -1826,7 +1826,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        .reset_index(drop=True),
                        pdf.melt(value_vars=('A', 'B')).sort_values(['variable', 'value']))
 
-
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
         pdf.columns = columns
