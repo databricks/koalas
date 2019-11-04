@@ -293,3 +293,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assertEqual(kdf.index.nlevels, 2)
+
+    def test_multiindex_from_arrays(self):
+        arrays = [['a', 'a', 'b', 'b'], ['red', 'blue', 'red', 'blue']]
+        pidx = pd.MultiIndex.from_arrays(arrays)
+        kidx = ks.MultiIndex.from_arrays(arrays)
+
+        self.assert_eq(pidx, kidx)
