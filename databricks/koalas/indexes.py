@@ -514,6 +514,39 @@ class MultiIndex(Index):
     def all(self, *args, **kwargs):
         raise TypeError("cannot perform all with this index type: MultiIndex")
 
+    @staticmethod
+    def from_tuples(tuples, sortorder=None, names=None):
+        """
+        Convert list of tuples to MultiIndex.
+
+        Parameters
+        ----------
+        tuples : list / sequence of tuple-likes
+            Each tuple is the index of one row/column.
+        sortorder : int or None
+            Level of sortedness (must be lexicographically sorted by that level).
+        names : list / sequence of str, optional
+            Names for the levels in the index.
+
+        Returns
+        -------
+        index : MultiIndex
+
+        Examples
+        --------
+
+        >>> tuples = [(1, 'red'), (1, 'blue'),
+        ...           (2, 'red'), (2, 'blue')]
+        >>> ks.MultiIndex.from_tuples(tuples, names=('number', 'color'))  # doctest: +SKIP
+        MultiIndex([(1,  'red'),
+                    (1, 'blue'),
+                    (2,  'red'),
+                    (2, 'blue')],
+                   names=['number', 'color'])
+        """
+        return DataFrame(index=pd.MultiIndex.from_tuples(
+            tuples=tuples, sortorder=sortorder, names=names)).index
+
     @property
     def name(self) -> str:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
