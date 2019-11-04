@@ -184,6 +184,10 @@ class GroupBy(object):
             kdf = kdf.reset_index()
 
         if relabeling:
+
+            # For MultiIndex, we need to flatten the tuple, e.g. (('y', 'A'), 'max') needs to be
+            # flattened to ('y', 'A', 'max'), it won't do anything on normal Index.
+            order = [(*levs, method) for levs, method in order]
             kdf = kdf[order]
             kdf.columns = columns
         return kdf

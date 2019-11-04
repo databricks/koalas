@@ -231,6 +231,54 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         )
         self.assert_eq(agg_kdf, agg_pdf)
 
+    @unittest.skipIf(pd.__version__ < "0.25.0", "not supported before pandas 0.25.0")
+    def test_aggregate_relabel_multiindex(self):
+        pdf = pd.DataFrame({
+            "group": ['a', 'a', 'b', 'b'],
+            "A": [0, 1, 2, 3],
+            "B": [5, 6, 7, 8]
+        })
+        pdf.columns = pd.MultiIndex.from_tuples([('x', 'group'), ('y', 'A'), ('y', 'B')])
+        kdf = ks.from_pandas(pdf)
+
+        agg_pdf = (
+            pdf.groupby(('x', 'group'))
+               .agg(a_max=(('y', 'A'), "max"))
+               .sort_index()
+        )
+        agg_kdf = (
+            kdf.groupby(('x', 'group'))
+               .agg(a_max=(('y', 'A'), "max"))
+               .sort_index()
+        )
+        self.assert_eq(agg_pdf, agg_kdf)
+
+        # same column, different methods
+        agg_pdf = (
+            pdf.groupby(('x', 'group'))
+               .agg(a_max=(('y', 'A'), "max"), a_min=(('y', 'A'), "min"))
+               .sort_index()
+        )
+        agg_kdf = (
+            kdf.groupby(('x', 'group'))
+               .agg(a_max=(('y', 'A'), "max"), a_min=(('y', 'A'), "min"))
+               .sort_index()
+        )
+        self.assert_eq(agg_pdf, agg_kdf)
+
+        # different column, different methods
+        agg_pdf = (
+            pdf.groupby(('x', 'group'))
+               .agg(a_max=(('y', 'B'), "max"), a_min=(('y', 'A'), "min"))
+               .sort_index()
+        )
+        agg_kdf = (
+            kdf.groupby(('x', 'group'))
+               .agg(a_max=(('y', 'B'), "max"), a_min=(('y', 'A'), "min"))
+               .sort_index()
+        )
+        self.assert_eq(agg_pdf, agg_kdf)
+
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
                             'B': [True, True, True, False, False, False, None, True, None, False]})
