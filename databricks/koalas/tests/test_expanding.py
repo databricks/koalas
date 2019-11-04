@@ -39,3 +39,6 @@ class ExpandingTests(ReusedSQLTestCase, TestUtils):
                 TypeError,
                 "kdf_or_kser must be a series or dataframe; however, got:.*int"):
             Expanding(1, 2)
+
+    def test_expanding_repr(self):
+        self.assertEqual(repr(ks.range(10).expanding(5)), "Expanding [min_periods=5]")
