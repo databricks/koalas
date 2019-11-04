@@ -734,15 +734,13 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: bool
         """
         if inclusive:
-            lmask = self._scol >= left
-            rmask = self._scol <= right
+            lmask = self >= left
+            rmask = self <= right
         else:
-            lmask = self._scol > left
-            rmask = self._scol < right
+            lmask = self > left
+            rmask = self < right
 
-        mask = lmask & rmask
-        scol = F.when(mask.isNull(), False).otherwise(mask)
-        return self._with_new_scol(scol).rename(self.name)
+        return (lmask & rmask).fillna(False)
 
     # TODO: arg should support Series
     # TODO: NaN and None
