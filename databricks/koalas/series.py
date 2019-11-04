@@ -744,7 +744,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         scol = F.when(mask.isNull(), False).otherwise(mask)
         return self._with_new_scol(scol).rename(self.name)
 
-
     # TODO: arg should support Series
     # TODO: NaN and None
     def map(self, arg):
