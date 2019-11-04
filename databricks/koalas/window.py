@@ -34,6 +34,7 @@ class Rolling(_RollingAndExpanding):
         from databricks.koalas import DataFrame, Series
         from databricks.koalas.groupby import SeriesGroupBy, DataFrameGroupBy
         window = window - 1
+        min_periods = min_periods if min_periods is not None else 0
 
         if window < 0:
             raise ValueError("window must be >= 0")
@@ -69,7 +70,8 @@ class Rolling(_RollingAndExpanding):
 
         if isinstance(self.kdf_or_kser, Series):
             kser = self.kdf_or_kser
-            return kser._with_new_scol(func(kser._scol)).rename(kser.name)
+            return kser._with_new_scol(
+                func(kser._scol, kser._internal.index_scols)).rename(kser.name)
         elif isinstance(self.kdf_or_kser, DataFrame):
             kdf = self.kdf_or_kser
             applied = []
@@ -138,7 +140,7 @@ class Rolling(_RollingAndExpanding):
         2  2.0
         3  2.0
         """
-        def count(scol):
+        def count(scol, _):
             return F.count(scol).over(self._window)
 
         return self._apply_as_series_or_frame(count).astype('float64')
