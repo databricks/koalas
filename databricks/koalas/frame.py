@@ -6762,6 +6762,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  c        B      5
         5  c        C      6
 
+        >>> df.melt(value_vars='A')
+          variable value
+        0        A     a
+        1        A     b
+        2        A     c
+
         >>> ks.melt(df, id_vars=['A', 'B'])
            A  B variable  value
         0  a  1        C      2
@@ -6782,27 +6788,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  a         B          1
         1  b         B          3
         2  c         B          5
-
-        >>> df.melt(id_vars='Z')  # doctest: +ELLIPSIS
-        Traceback (most recent call last):
-          ...
-        KeyError: "The following 'id_vars' are not present in the DataFrame: [('Z',)]"
-
-        >>> df.melt(value_vars='Z')  # doctest: +ELLIPSIS
-        Traceback (most recent call last):
-          ...
-        KeyError: "The following 'value_vars' are not present in the DataFrame: [('Z',)]"
-
-        >>> df.columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
-        >>> df.melt(id_vars=('A',))  # doctest: +ELLIPSIS
-        Traceback (most recent call last):
-          ...
-        ValueError: id_vars must be a list of tuples when columns are a MultiIndex
-
-        >>> df.melt(value_vars=('A',))  # doctest: +ELLIPSIS
-        Traceback (most recent call last):
-          ...
-        ValueError: value_vars must be a list of tuples when columns are a MultiIndex
         """
         if id_vars is None:
             id_vars = []
@@ -6822,7 +6807,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if True in missing:
             raise KeyError("The following 'id_vars' are not present"
                            " in the DataFrame: {}"
-                           .format(id_vars))
+                           .format([name_like_string(id_var) for id_var in id_vars]))
 
         if value_vars is None:
             value_vars = []
@@ -6840,7 +6825,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if True in missing:
             raise KeyError("The following 'value_vars' are not present"
                            " in the DataFrame: {}"
-                           .format(value_vars))
+                           .format([name_like_string(value_var) for value_var in value_vars]))
         if len(value_vars) == 0:
             value_vars = column_index
 

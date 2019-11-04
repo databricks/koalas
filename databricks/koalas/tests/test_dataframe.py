@@ -1826,6 +1826,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        .reset_index(drop=True),
                        pdf.melt(value_vars=('A', 'B')).sort_values(['variable', 'value']))
 
+        self.assertRaises(KeyError, lambda: kdf.melt(id_vars='Z'))
+        self.assertRaises(KeyError, lambda: kdf.melt(value_vars='Z'))
+
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
         pdf.columns = columns
@@ -1858,6 +1861,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pdf.melt().sort_values(['v0', 'v1', 'value']))
 
         self.assertRaises(ValueError, lambda: kdf.melt(id_vars=('X', 'A')))
+        self.assertRaises(ValueError, lambda: kdf.melt(value_vars=('X', 'A')))
 
     def test_all(self):
         pdf = pd.DataFrame({
