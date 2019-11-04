@@ -350,7 +350,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
-        return self.schema.fields[-1].dataType
+        return self._internal.spark_type_for(self._internal.column_index[0])
 
     plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
 
@@ -798,10 +798,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return self._with_new_scol(self._scol.cast(spark_type))
 
     def getField(self, name):
-        if not isinstance(self.schema, StructType):
-            raise AttributeError("Not a struct: {}".format(self.schema))
+        if not isinstance(self.spark_type, StructType):
+            raise AttributeError("Not a struct: {}".format(self.spark_type))
         else:
-            fnames = self.schema.fieldNames()
+            fnames = self.spark_type.fieldNames()
             if name not in fnames:
                 raise AttributeError(
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames)))
@@ -810,11 +810,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def alias(self, name):
         """An alias for :meth:`Series.rename`."""
         return self.rename(name)
-
-    @property
-    def schema(self) -> StructType:
-        """Return the underlying Spark DataFrame's schema."""
-        return self.to_dataframe()._sdf.schema
 
     @property
     def shape(self):
@@ -893,7 +888,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         --------
         Index
         """
-        return self._kdf.index
+        return self.to_frame().index
 
     @property
     def is_unique(self):
@@ -919,7 +914,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         #
         # This workaround is in order to calculate the distinct count including nulls in
         # single pass. Note that COUNT(DISTINCT expr) in Spark is designed to ignore nulls.
-        return self._kdf._sdf.select(
+        return self._internal._sdf.select(
             (F.count(scol) == F.countDistinct(scol)) &
             (F.count(F.when(scol.isNull(), 1).otherwise(None)) <= 1)
         ).collect()[0][0]
@@ -1749,7 +1744,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> ks.Series([1, 2, 3, np.nan]).nunique(approx=True)
         3
         """
-        res = self._kdf._sdf.select([self._nunique(dropna, approx, rsd)])
+        res = self._internal._sdf.select([self._nunique(dropna, approx, rsd)])
         return res.collect()[0][0]
 
     def _nunique(self, dropna=True, approx=False, rsd=0.05):
@@ -1820,9 +1815,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             raise NotImplementedError("value_counts currently does not support bins")
 
         if dropna:
-            sdf_dropna = self._kdf._sdf.filter(self.notna()._scol)
+            sdf_dropna = self._internal._sdf.filter(self.notna()._scol)
         else:
-            sdf_dropna = self._kdf._sdf
+            sdf_dropna = self._internal._sdf
         index_name = SPARK_INDEX_NAME_FORMAT(0)
         sdf = sdf_dropna.groupby(self._scol.alias(index_name)).count()
         if sort:
@@ -2666,7 +2661,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             for f in func:
                 applied.append(self.apply(f, args=args, **kwargs).rename(f.__name__))
 
-            sdf = self._kdf._sdf.select(
+            sdf = self._internal._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
 
             internal = self.to_dataframe()._internal.copy(
@@ -2782,7 +2777,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             # +--------------------------------+
             # |[[0.25, 2], [0.5, 3], [0.75, 4]]|
             # +--------------------------------+
-            sdf = self._kdf._sdf
+            sdf = self._internal._sdf
             args = ", ".join(map(str, quantiles))
             percentile_col = F.expr(
                 "approx_percentile(`%s`, array(%s), %s)" % (self.name, args, accuracy))
@@ -2808,7 +2803,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             # +-----------------+-----+
             sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
 
-            internal = self._kdf._internal.copy(
+            internal = _InternalFrame(
                 sdf=sdf,
                 data_columns=[value_column],
                 index_map=[(internal_index_column, None)],
@@ -3081,9 +3076,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> s.idxmax()
         ('b', 'f')
         """
-        sdf = self._kdf._sdf
+        sdf = self._internal._sdf
         scol = self._scol
-        index_scols = self._kdf._internal.index_scols
+        index_scols = self._internal.index_scols
         # desc_nulls_(last|first) is used via Py4J directly because
         # it's not supported in Spark 2.3.
         if skipna:
@@ -3173,9 +3168,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> s.idxmin()
         ('b', 'f')
         """
-        sdf = self._kdf._sdf
+        sdf = self._internal._sdf
         scol = self._scol
-        index_scols = self._kdf._internal.index_scols
+        index_scols = self._internal.index_scols
         # asc_nulls_(list|first)is used via Py4J directly because
         # it's not supported in Spark 2.3.
         if skipna:
@@ -3949,7 +3944,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             assert num_args == 2
             # Pass in both the column and its data type if sfun accepts two args
             col_sdf = sfun(col_sdf, col_type)
-        return _unpack_scalar(self._kdf._sdf.select(col_sdf))
+        return _unpack_scalar(self._internal._sdf.select(col_sdf))
 
     def __len__(self):
         return len(self.to_dataframe())
@@ -4030,10 +4025,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return pser.to_string(name=self.name, dtype=self.dtype)
 
     def __dir__(self):
-        if not isinstance(self.schema, StructType):
+        if not isinstance(self.spark_type, StructType):
             fields = []
         else:
-            fields = [f for f in self.schema.fieldNames() if ' ' not in f]
+            fields = [f for f in self.spark_type.fieldNames() if ' ' not in f]
         return super(Series, self).__dir__() + fields
 
     def __iter__(self):
