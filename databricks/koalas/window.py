@@ -47,8 +47,8 @@ class Rolling(_RollingAndExpanding):
             raise TypeError(
                 "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser))
         if isinstance(kdf_or_kser, (DataFrame, Series)):
-            index_scols = kdf_or_kser._internal.index_scols
-            self._window = Window.orderBy(index_scols).rowsBetween(
+            self._index_scols = kdf_or_kser._internal.index_scols
+            self._window = Window.orderBy(self._index_scols).rowsBetween(
                 Window.currentRow - window, Window.currentRow)
 
     def __getattr__(self, item: str) -> Any:
@@ -71,7 +71,7 @@ class Rolling(_RollingAndExpanding):
         if isinstance(self.kdf_or_kser, Series):
             kser = self.kdf_or_kser
             return kser._with_new_scol(
-                func(kser._scol, kser._internal.index_scols)).rename(kser.name)
+                func(kser._scol)).rename(kser.name)
         elif isinstance(self.kdf_or_kser, DataFrame):
             kdf = self.kdf_or_kser
             applied = []
@@ -140,7 +140,7 @@ class Rolling(_RollingAndExpanding):
         2  2.0
         3  2.0
         """
-        def count(scol, _):
+        def count(scol):
             return F.count(scol).over(self._window)
 
         return self._apply_as_series_or_frame(count).astype('float64')
