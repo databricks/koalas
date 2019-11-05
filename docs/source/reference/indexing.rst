@@ -71,6 +71,13 @@ MultiIndex
 
    MultiIndex
 
+MultiIndex Constructors
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.from_tuples
+
 MultiIndex Properties
 ~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
