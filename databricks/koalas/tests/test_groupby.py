@@ -231,7 +231,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         )
         self.assert_eq(agg_kdf, agg_pdf)
 
-    @unittest.skipIf(pd.__version__ < "0.25.0", "not supported before pandas 0.25.0")
+    @unittest.skipIf(pd.__version__ < "0.25.2", "not supported before pandas 0.25.2")
     def test_aggregate_relabel_multiindex(self):
         pdf = pd.DataFrame({
             "group": ['a', 'a', 'b', 'b'],
