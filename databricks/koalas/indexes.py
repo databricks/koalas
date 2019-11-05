@@ -577,9 +577,9 @@ class MultiIndex(Index):
         Names of index columns in list.
 
         .. note:: Be aware of the possibility of running into out
-        of memory issue if returned list is huge.
+            of memory issue if returned list is huge.
 
-        Examples:
+        Examples
         --------
         >>> mi = pd.MultiIndex.from_arrays((list('abc'), list('def')))
         >>> mi.names = ['level_1', 'level_2']
