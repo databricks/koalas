@@ -1404,6 +1404,8 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
     3    d
     Name: 0, dtype: object
 
+    >>> ks.concat([s1, s2], axis=1)
+
     Combine two ``DataFrame`` objects with identical columns.
 
     >>> df1 = ks.DataFrame([['a', 1], ['b', 2]],
@@ -1472,8 +1474,12 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                         'objects, you passed an object of type '
                         '"{name}"'.format(name=type(objs).__name__))
 
-    if axis not in [0, 'index']:
-        raise ValueError('axis should be either 0 or "index" currently.')
+    if axis in [0, 'index']:
+        axis = 0
+    elif axis in [1, 'columns']:
+        axis = 1
+    else:
+        raise ValueError('Invalid axis {} is given.'.format(axis))
 
     if len(objs) == 0:
         raise ValueError('No objects to concatenate')
@@ -1488,16 +1494,38 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
 
     # Series, Series ...
     # We should return Series if objects are all Series.
-    should_return_series = all(map(lambda obj: isinstance(obj, Series), objs))
+    if axis == 0:
+        should_return_series = all(map(lambda obj: isinstance(obj, Series), objs))
 
     # DataFrame, Series ... & Series, Series ...
     # In this case, we should return DataFrame.
     new_objs = []
-    for obj in objs:
+    for idx, obj in enumerate(objs):
         if isinstance(obj, Series):
-            obj = obj.rename('0').to_dataframe()
+            if axis == 0:
+                obj = obj.rename('0').to_dataframe()
+            else:
+                if obj.name is None:
+                    obj = obj.rename(str(idx)).to_dataframe()
+                else:
+                    obj = obj.to_dataframe()
         new_objs.append(obj)
     objs = new_objs
+
+    if axis == 1:
+        cols = []
+        for idx, obj in enumerate(objs):
+            cols.extend(obj._internal.data_columns)
+            if idx == 0:
+                internal = obj._internal
+                index_col = internal.index_columns[0]
+                sdfs = internal._sdf
+                continue
+            sdfs = sdfs.join(obj._internal._sdf,
+                             sdfs['{}'.format(index_col)] == obj._internal._sdf['{}'.format(index_col)],
+                             how=join)
+        kdf = DataFrame(_InternalFrame(sdf=sdfs.select(*cols)))
+        return kdf
 
     column_index_levels = set(obj._internal.column_index_level for obj in objs)
     if len(column_index_levels) != 1:

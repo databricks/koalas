@@ -71,6 +71,27 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
             ks.concat([kdf, kdf[['A']]], join="inner"),
             pd.concat([pdf, pdf[['A']]], join="inner"))
 
+        pdf = pd.DataFrame({'A': [0, 2, 4], 'B': [1, 3, 5], 'C': [3, 4, 5]})
+        kdf = ks.from_pandas(pdf)
+
+        # concat two Series
+        self.assert_eq(
+            ks.concat([kdf['A'], kdf['B']], axis=1),
+            pd.concat([pdf['A'], pdf['B']], axis=1)
+        )
+
+        # concat two DataFrames
+        self.assert_eq(
+            ks.concat([kdf[['A']], kdf[['B', 'C']]], axis=1),
+            pd.concat([pdf[['A']], pdf[['B', 'C']]], axis=1)
+        )
+
+        # concat Series and DataFrame
+        self.assert_eq(
+            ks.concat([kdf['A'], kdf[['B', 'C']]], axis=1),
+            pd.concat([pdf['A'], pdf[['B', 'C']]], axis=1)
+        )
+
         self.assertRaisesRegex(TypeError, "first argument must be", lambda: ks.concat(kdf))
         self.assertRaisesRegex(
             TypeError, "cannot concatenate object", lambda: ks.concat([kdf, 1]))
@@ -83,9 +104,6 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaisesRegex(
             ValueError, "All objects passed", lambda: ks.concat([None, None]))
-
-        self.assertRaisesRegex(
-            ValueError, 'axis should be either 0 or', lambda: ks.concat([kdf, kdf], axis=1))
 
         pdf3 = pdf.copy()
         kdf3 = kdf.copy()
