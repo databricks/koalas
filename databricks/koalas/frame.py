@@ -7503,7 +7503,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0.5   3  7
         0.75  4  8
         """
-        from collections import defaultdict
         result_as_series = False
         if axis not in [0, 'index']:
             raise ValueError('axis should be either 0 or "index" currently.')
@@ -7540,8 +7539,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |[2, 3, 4]|[6, 7, 8]|
         # +---------+---------+
 
-        cols_dict = defaultdict(list)
+        cols_dict = OrderedDict()
         for column in self._internal.data_columns:
+            cols_dict[column] = list()
             for i in range(len(quantiles)):
                 cols_dict[column].append(F.expr("%s[%s]" % (column, i)).alias(column))
 
