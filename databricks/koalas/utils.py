@@ -113,8 +113,9 @@ def combine_frames(this, *args, how="full"):
             this._internal.copy(sdf=joined_df, data_columns=new_data_columns,
                                 column_index=column_index, column_index_names=column_index_names))
     else:
-        raise ValueError("Cannot combine column argument because "
-                         "it comes from a different dataframe")
+        raise ValueError(
+            "Cannot combine the series or dataframe because it comes from a different dataframe. "
+            "In order to allow this operation, enable 'compute.ops_on_diff_frames' option.")
 
 
 def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
