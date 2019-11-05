@@ -1369,29 +1369,63 @@ class _Frame(object):
 
         >>> df['a'].median()
         25.0
+        >>> (df['a'] + 100).median()
+        125.0
+
+        For multi-index columns,
+
+        >>> df.columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
+        >>> df
+              x  y
+              a  b
+        0  24.0  1
+        1  21.0  2
+        2  25.0  3
+        3  33.0  4
+        4  26.0  5
+
+        On a DataFrame:
+
+        >>> df.median()
+        x  a    25.0
+        y  b     3.0
+        Name: 0, dtype: float64
+
+        On a Series:
+
+        >>> df[('x', 'a')].median()
+        25.0
+        >>> (df[('x', 'a')] + 100).median()
+        125.0
         """
         if not isinstance(accuracy, int):
             raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
 
         from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series
+        from databricks.koalas.series import Series, _col
 
-        kdf_or_ks = self
-        if isinstance(kdf_or_ks, Series):
-            ks = kdf_or_ks
-            return self._reduce_for_stat_function(
-                lambda _: F.expr(
-                    "approx_percentile(`%s`, 0.5, %s)" % (ks.name, accuracy)), name="median")
-        assert isinstance(kdf_or_ks, DataFrame)
+        kdf_or_kser = self
+        if isinstance(kdf_or_kser, Series):
+            kser = _col(kdf_or_kser.to_frame())
+            return kser._reduce_for_stat_function(
+                lambda _: F.expr("approx_percentile(`%s`, 0.5, %s)"
+                                 % (kser._internal.data_columns[0], accuracy)),
+                name="median")
+        assert isinstance(kdf_or_kser, DataFrame)
 
         # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
         # to get a column name from Spark column but we need it to pass it through `expr`.
-        kdf = kdf_or_ks
+        kdf = kdf_or_kser
         sdf = kdf._sdf
         median = lambda name: F.expr("approx_percentile(`%s`, 0.5, %s)" % (name, accuracy))
-        sdf = sdf.select([median(col).alias(col) for col in kdf.columns])
+        sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_columns])
+
+        # Attach a dummy column for index to avoid default index.
+        sdf = sdf.withColumn('__DUMMY__', F.monotonically_increasing_id())
+
         # This is expected to be small so it's fine to transpose.
-        return DataFrame(sdf)._to_internal_pandas().transpose().iloc[:, 0]
+        return DataFrame(kdf._internal.copy(sdf=sdf, index_map=[('__DUMMY__', None)])) \
+            ._to_internal_pandas().transpose().iloc[:, 0]
 
     def rolling(self, *args, **kwargs):
         return Rolling(self)
