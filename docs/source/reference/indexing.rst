@@ -78,6 +78,7 @@ MultiIndex Properties
 
    MultiIndex.names
    MultiIndex.ndim
+   MultiIndex.levels
 
 MultiIndex Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
