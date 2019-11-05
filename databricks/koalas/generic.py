@@ -1433,6 +1433,23 @@ class _Frame(object):
     # TODO: 'center' and 'axis' parameter should be implemented.
     #   'axis' implementation, refer https://github.com/databricks/koalas/pull/607
     def expanding(self, min_periods=1):
+        """
+        Provide expanding transformations.
+
+        .. note:: 'min_periods' in Koalas works as a fixed window size unlike pandas.
+            Unlike pandas, NA is also counted as the period. This might be changed
+            in the near future.
+
+        Parameters
+        ----------
+        min_periods : int, default 1
+            Minimum number of observations in window required to have a value
+            (otherwise result is NA).
+
+        Returns
+        -------
+        a Window sub-classed for the particular operation
+        """
         return Expanding(self, min_periods=min_periods)
 
     @property
@@ -1469,8 +1486,10 @@ class _Frame(object):
 
 def _resolve_col(kdf, col_like):
     if isinstance(col_like, ks.Series):
-        assert kdf is col_like._kdf, \
-            "Cannot combine column argument because it comes from a different dataframe"
+        if kdf is not col_like._kdf:
+            raise ValueError(
+                "Cannot combine the series because it comes from a different dataframe. "
+                "In order to allow this operation, enable 'compute.ops_on_diff_frames' option.")
         return col_like
     elif isinstance(col_like, tuple):
         return kdf[col_like]
