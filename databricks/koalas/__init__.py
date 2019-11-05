@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import os
 from distutils.version import LooseVersion
 
 from databricks.koalas.version import __version__
@@ -20,43 +21,30 @@ from databricks.koalas.version import __version__
 
 def assert_pyspark_version():
     import logging
-
+    pyspark_ver = None
     try:
         import pyspark
     except ImportError:
         raise ImportError('Unable to import pyspark - consider doing a pip install with [spark] '
                           'extra to install pyspark with pip')
     else:
-        if LooseVersion(pyspark.__version__) < LooseVersion('2.4'):
+        pyspark_ver = getattr(pyspark, '__version__')
+        if pyspark_ver is None or pyspark_ver < '2.4':
             logging.warning(
                 'Found pyspark version "{}" installed. pyspark>=2.4.0 is recommended.'
-                .format(pyspark.__version__))
+                .format(pyspark_ver if pyspark_ver is not None else '<unknown version>'))
 
 
 assert_pyspark_version()
 
+import pyspark
+import pyarrow
 
-def assert_pyarrow_version():
-    import logging
-    import os
-
-    import pyspark
-    import pyarrow
-
-    if LooseVersion(pyarrow.__version__) >= LooseVersion("0.15") and \
-            LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
-        logging.warning(
-            'Found pyspark version "%s" and pyarrow "%s" installed. pyarrow 0.15 and above '
-            'do not guarantee to work with pyspark lower than 3.0.' % (
-                pyspark.__version__, pyarrow.__version__))
-
-        # This is required to support PyArrow 0.15 in PySpark versions lower than 3.0.
-        # See SPARK-29367.
-        os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
-
-
-assert_pyarrow_version()
-
+if LooseVersion(pyarrow.__version__) >= LooseVersion("0.15") and \
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+    # This is required to support PyArrow 0.15 in PySpark versions lower than 3.0.
+    # See SPARK-29367.
+    os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index, MultiIndex

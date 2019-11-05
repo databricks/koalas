@@ -13,14 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from distutils.version import LooseVersion
-import re
+
 
 import pandas as pd
 import pandas.testing as mt
 import numpy as np
-import pyarrow
-import pyspark
+import re
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
@@ -205,13 +203,7 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_string_len(self):
         self.check_func(lambda x: x.str.len())
-        if LooseVersion(pyarrow.__version__) >= LooseVersion("0.15") and \
-                LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
-            # Empty data doesn't work here for some reasons.
-            pser = pd.Series([['a', 'b', 'c'], ['xx']])
-        else:
-            pser = pd.Series([['a', 'b', 'c'], ['xx'], []])
-
+        pser = pd.Series([['a', 'b', 'c'], ['xx'], []])
         self.check_func_on_series(lambda x: x.str.len(), pser)
 
     def test_string_ljust(self):

@@ -37,7 +37,7 @@ matrix:
         - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
         - SPARK_VERSION=2.4.4
         - PANDAS_VERSION=0.25.1
-        - PYARROW_VERSION=0.15.0
+        - PYARROW_VERSION=0.15.1
 
 before_install:
   - ./dev/download_travis_dependencies.sh

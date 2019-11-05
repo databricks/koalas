@@ -17,17 +17,13 @@
 """
 An internal immutable DataFrame with some metadata to manage indexes.
 """
-import logging
 import re
-from distutils.version import LooseVersion
 from typing import Dict, List, Optional, Tuple, Union
 from itertools import accumulate
 
 import numpy as np
 import pandas as pd
-import pyarrow
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
-import pyspark
 from pyspark import sql as spark
 from pyspark._globals import _NoValue, _NoValueType
 from pyspark.sql import functions as F, Window
@@ -643,26 +639,7 @@ class _InternalFrame(object):
     def pandas_df(self):
         """ Return as pandas DataFrame. """
         sdf = self.spark_internal_df
-
-        if LooseVersion(pyarrow.__version__) >= LooseVersion("0.15") and \
-                LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
-            # There seems a bug in PyArrow 0.15 with PySpark 2.4 and below.
-            # TODO(Hyukjin): I have no idea why only inserting limit works.
-            #   Other APIs like noop map, explicitly shuffle and sample with
-            #   fraction 1 still don't work.
-            max_count = 2147483646  # JVM integer's max value - 1.
-            sdf = sdf.limit(max_count + 1)
-            pdf = sdf.toPandas()
-            if len(pdf) == max_count + 1:
-                logging.warning(
-                    'This Koalas DataFrame has the number of rows more than {0}. Due to '
-                    'an unexpected behavior between PySpark 2.4 and below and PyArrow '
-                    '0.15 and above, the number of rows to collect to driver side cannot '
-                    'exceed {0}. It will truncate the output to {0}.'.format(max_count))
-                pdf = pdf.iloc[:max_count]
-        else:
-            pdf = sdf.toPandas()
-
+        pdf = sdf.toPandas()
         if len(pdf) == 0 and len(sdf.schema) > 0:
             pdf = pdf.astype({field.name: spark_type_to_pandas_dtype(field.dataType)
                               for field in sdf.schema})
