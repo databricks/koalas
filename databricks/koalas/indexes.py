@@ -592,7 +592,7 @@ class MultiIndex(Index):
         --------
 
         >>> arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
-        >>> ks..MultiIndex.from_arrays(arrays, names=('number', 'color'))
+        >>> ks.MultiIndex.from_arrays(arrays, names=('number', 'color'))
         MultiIndex([(1,  'red'),
                     (1, 'blue'),
                     (2,  'red'),
