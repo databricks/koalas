@@ -7527,7 +7527,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         args = ", ".join(map(str, quantiles))
 
         percentile_cols = []
-        for i, column in enumerate(self.columns):
+        for i, column in enumerate(self._internal.data_columns):
             sdf = self._sdf
             percentile_cols.append(F.expr(
                 "approx_percentile(`%s`, array(%s), %s)" % (column, args, accuracy))
