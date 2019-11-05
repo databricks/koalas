@@ -1435,8 +1435,10 @@ class _Frame(object):
 
 def _resolve_col(kdf, col_like):
     if isinstance(col_like, ks.Series):
-        assert kdf is col_like._kdf, \
-            "Cannot combine column argument because it comes from a different dataframe"
+        if kdf is not col_like._kdf:
+            raise ValueError(
+                "Cannot combine the series because it comes from a different dataframe. "
+                "In order to allow this operation, enable 'compute.ops_on_diff_frames' option.")
         return col_like
     elif isinstance(col_like, tuple):
         return kdf[col_like]
