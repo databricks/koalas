@@ -593,10 +593,8 @@ class MultiIndex(Index):
 
         >>> arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
         >>> ks.MultiIndex.from_arrays(arrays, names=('number', 'color'))
-        MultiIndex([(1,  'red'),
-                    (1, 'blue'),
-                    (2,  'red'),
-                    (2, 'blue')],
+        MultiIndex(levels=[[1, 2], ['blue', 'red']],
+                   codes=[[0, 0, 1, 1], [1, 0, 1, 0]],
                    names=['number', 'color'])
         """
         return DataFrame(index=pd.MultiIndex.from_arrays(
