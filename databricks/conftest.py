@@ -76,7 +76,7 @@ def add_path(doctest_namespace):
 
 @pytest.fixture(autouse=True)
 def add_db(doctest_namespace):
-    db_name = str(uuid.uuid4()).replace("-", "")
+    db_name = "db%s" % str(uuid.uuid4()).replace("-", "")
     session.sql("CREATE DATABASE %s" % db_name)
     atexit.register(lambda: session.sql("DROP DATABASE IF EXISTS %s CASCADE" % db_name))
     doctest_namespace['db'] = db_name
