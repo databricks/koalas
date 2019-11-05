@@ -104,6 +104,7 @@ Computations / Descriptive Stats
    Series.abs
    Series.all
    Series.any
+   Series.between
    Series.clip
    Series.corr
    Series.count

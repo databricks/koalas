@@ -54,7 +54,6 @@ class _MissingPandasLikeSeries(object):
     asof = unsupported_function('asof')
     at_time = unsupported_function('at_time')
     autocorr = unsupported_function('autocorr')
-    between = unsupported_function('between')
     between_time = unsupported_function('between_time')
     bfill = unsupported_function('bfill')
     combine = unsupported_function('combine')
