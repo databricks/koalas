@@ -574,7 +574,9 @@ class MultiIndex(Index):
     @property
     def levels(self) -> list:
         """
-        Names of index columns in list. Be aware of the possibility of running into out
+        Names of index columns in list.
+
+        .. note:: Be aware of the possibility of running into out
         of memory issue if returned list is huge.
 
         Examples:
@@ -592,11 +594,11 @@ class MultiIndex(Index):
         [['a', 'b', 'c'], ['e', 'f']]
         """
         scols = self._kdf._internal.index_scols
-        sdf = self._kdf._sdf.select([F.collect_set(scol) for scol in scols]).collect()[0]
+        row = self._kdf._sdf.select([F.collect_set(scol) for scol in scols]).first()
 
         # use sorting is because pandas doesn't care the appearance order of level
         # names, so e.g. if ['b', 'd', 'a'] will return as ['a', 'b', 'd']
-        return [sorted(col) for col in sdf]
+        return [sorted(col) for col in row]
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
