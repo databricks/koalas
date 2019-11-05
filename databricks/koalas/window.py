@@ -47,8 +47,8 @@ class Rolling(_RollingAndExpanding):
             raise TypeError(
                 "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser))
         if isinstance(kdf_or_kser, (DataFrame, Series)):
-            index_scols = kdf_or_kser._internal.index_scols
-            self._window = Window.orderBy(index_scols).rowsBetween(
+            self._index_scols = kdf_or_kser._internal.index_scols
+            self._window = Window.orderBy(self._index_scols).rowsBetween(
                 Window.currentRow - window, Window.currentRow)
 
     def __getattr__(self, item: str) -> Any:
@@ -71,7 +71,7 @@ class Rolling(_RollingAndExpanding):
         if isinstance(self.kdf_or_kser, Series):
             kser = self.kdf_or_kser
             return kser._with_new_scol(
-                func(kser._scol, kser._internal.index_scols)).rename(kser.name)
+                func(kser._scol)).rename(kser.name)
         elif isinstance(self.kdf_or_kser, DataFrame):
             kdf = self.kdf_or_kser
             applied = []
@@ -162,8 +162,8 @@ class Rolling(_RollingAndExpanding):
         3  10.0  38.0
         4  13.0  65.0
         """
-        def sum(scol, index_scols):
-            window = Window.orderBy(index_scols)
+        def sum(scol):
+            window = Window.orderBy(self._index_scols)
             return F.when(
                 F.lag(scol, self._window_val).over(window) >= self._min_periods,
                 F.sum(scol).over(self._window)
@@ -247,8 +247,8 @@ class Rolling(_RollingAndExpanding):
         3  2.0  4.0
         4  2.0  4.0
         """
-        def min(scol, index_scols):
-            window = Window.orderBy(index_scols)
+        def min(scol):
+            window = Window.orderBy(self._index_scols)
             return F.when(
                 F.lag(scol, self._window_val).over(window) >= self._min_periods,
                 F.min(scol).over(self._window)
@@ -329,8 +329,8 @@ class Rolling(_RollingAndExpanding):
         3  5.0  25.0
         4  6.0  36.0
         """
-        def max(scol, index_scols):
-            window = Window.orderBy(index_scols)
+        def max(scol):
+            window = Window.orderBy(self._index_scols)
             return F.when(
                 F.lag(scol, self._window_val).over(window) >= self._min_periods,
                 F.max(scol).over(self._window)
@@ -414,8 +414,8 @@ class Rolling(_RollingAndExpanding):
         3  3.333333  12.666667
         4  4.333333  21.666667
         """
-        def mean(scol, index_scols):
-            window = Window.orderBy(index_scols)
+        def mean(scol):
+            window = Window.orderBy(self._index_scols)
             return F.when(
                 F.lag(scol, self._window_val).over(window) >= self._min_periods,
                 F.mean(scol).over(self._window)
