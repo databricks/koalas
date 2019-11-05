@@ -587,15 +587,6 @@ class MultiIndex(Index):
         Returns
         -------
         index: MultiIndex
-
-        Examples
-        --------
-
-        >>> arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
-        >>> ks.MultiIndex.from_arrays(arrays, names=('number', 'color'))
-        MultiIndex(levels=[[1, 2], ['blue', 'red']],
-                   codes=[[0, 0, 1, 1], [1, 0, 1, 0]],
-                   names=['number', 'color'])
         """
         return DataFrame(index=pd.MultiIndex.from_arrays(
             arrays=arrays, sortorder=sortorder, names=names
