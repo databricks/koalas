@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import pandas as pd
+
+import pandas as pd
 
 import databricks.koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
@@ -27,7 +30,20 @@ class ExpandingTests(ReusedSQLTestCase, TestUtils):
         pser = kser.to_pandas()
         self.assert_eq(repr(getattr(kser.expanding(2), f)()), repr(getattr(pser.expanding(2), f)()))
 
+        # Multiindex
+        kser = ks.Series(
+            [1, 2, 3],
+            index=pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')]))
+        pser = kser.to_pandas()
+        self.assert_eq(repr(getattr(kser.expanding(2), f)()), repr(getattr(pser.expanding(2), f)()))
+
         kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        pdf = kdf.to_pandas()
+        self.assert_eq(repr(getattr(kdf.expanding(2), f)()), repr(getattr(pdf.expanding(2), f)()))
+
+        # Multiindex column
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
         pdf = kdf.to_pandas()
         self.assert_eq(repr(getattr(kdf.expanding(2), f)()), repr(getattr(pdf.expanding(2), f)()))
 
@@ -57,3 +73,36 @@ class ExpandingTests(ReusedSQLTestCase, TestUtils):
 
     def test_expanding_sum(self):
         self._test_expanding_func("sum")
+
+    def _test_groupby_expanding_func(self, f):
+        kser = ks.Series([1, 2, 3])
+        pser = kser.to_pandas()
+        self.assert_eq(
+            repr(getattr(kser.groupby(kser).expanding(2), f)()),
+            repr(getattr(pser.groupby(pser).expanding(2), f)()))
+
+        # Multiindex
+        kser = ks.Series(
+            [1, 2, 3],
+            index=pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')]))
+        pser = kser.to_pandas()
+        self.assert_eq(
+            repr(getattr(kser.groupby(kser).expanding(2), f)()),
+            repr(getattr(pser.groupby(pser).expanding(2), f)()))
+
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        pdf = kdf.to_pandas()
+        self.assert_eq(
+            repr(getattr(kdf.groupby(kdf.a).expanding(2), f)()),
+            repr(getattr(pdf.groupby(pdf.a).expanding(2), f)()))
+
+        # Multiindex column
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
+        pdf = kdf.to_pandas()
+        self.assert_eq(
+            repr(getattr(kdf.groupby(kdf.a).expanding(2), f)()),
+            repr(getattr(pdf.groupby(pdf.a).expanding(2), f)()))
+
+    def test_groupby_expanding_count(self):
+        self._test_expanding_func("count")

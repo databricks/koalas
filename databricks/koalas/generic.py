@@ -1427,8 +1427,9 @@ class _Frame(object):
         return DataFrame(kdf._internal.copy(sdf=sdf, index_map=[('__DUMMY__', None)])) \
             ._to_internal_pandas().transpose().iloc[:, 0]
 
-    def rolling(self, *args, **kwargs):
-        return Rolling(self)
+    # TODO: 'center', 'win_type', 'on', 'axis' parameter should be implemented.
+    def rolling(self, window, min_periods=None):
+        return Rolling(self, window=window, min_periods=min_periods)
 
     # TODO: 'center' and 'axis' parameter should be implemented.
     #   'axis' implementation, refer https://github.com/databricks/koalas/pull/607

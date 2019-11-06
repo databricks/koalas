@@ -569,6 +569,40 @@ class MultiIndex(Index):
         return DataFrame(index=pd.MultiIndex.from_tuples(
             tuples=tuples, sortorder=sortorder, names=names)).index
 
+    @staticmethod
+    def from_arrays(arrays, sortorder=None, names=None):
+        """
+        Convert arrays to MultiIndex.
+
+        Parameters
+        ----------
+        arrays: list / sequence of array-likes
+            Each array-like gives one level’s value for each data point. len(arrays)
+            is the number of levels.
+        sortorder: int or None
+            Level of sortedness (must be lexicographically sorted by that level).
+        names: list / sequence of str, optional
+            Names for the levels in the index.
+
+        Returns
+        -------
+        index: MultiIndex
+
+        Examples
+        --------
+
+        >>> arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
+        >>> ks.MultiIndex.from_arrays(arrays, names=('number', 'color'))  # doctest: +SKIP
+        MultiIndex([(1,  'red'),
+                    (1, 'blue'),
+                    (2,  'red'),
+                    (2, 'blue')],
+                   names=['number', 'color'])
+        """
+        return DataFrame(index=pd.MultiIndex.from_arrays(
+            arrays=arrays, sortorder=sortorder, names=names
+        )).index
+
     @property
     def name(self) -> str:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
@@ -626,6 +660,35 @@ class MultiIndex(Index):
 
     def rename(self, name, inplace=False):
         raise NotImplementedError()
+
+    @property
+    def levels(self) -> list:
+        """
+        Names of index columns in list.
+
+        .. note:: Be aware of the possibility of running into out
+            of memory issue if returned list is huge.
+
+        Examples
+        --------
+        >>> mi = pd.MultiIndex.from_arrays((list('abc'), list('def')))
+        >>> mi.names = ['level_1', 'level_2']
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
+        >>> kdf.index.levels
+        [['a', 'b', 'c'], ['d', 'e', 'f']]
+
+        >>> mi = pd.MultiIndex.from_arrays((list('bac'), list('fee')))
+        >>> mi.names = ['level_1', 'level_2']
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
+        >>> kdf.index.levels
+        [['a', 'b', 'c'], ['e', 'f']]
+        """
+        scols = self._kdf._internal.index_scols
+        row = self._kdf._sdf.select([F.collect_set(scol) for scol in scols]).first()
+
+        # use sorting is because pandas doesn't care the appearance order of level
+        # names, so e.g. if ['b', 'd', 'a'] will return as ['a', 'b', 'd']
+        return [sorted(col) for col in row]
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")

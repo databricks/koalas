@@ -293,3 +293,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assertEqual(kdf.index.nlevels, 2)
+
+    def test_multiindex_from_arrays(self):
+        arrays = [['a', 'a', 'b', 'b'], ['red', 'blue', 'red', 'blue']]
+        pidx = pd.MultiIndex.from_arrays(arrays)
+        kidx = ks.MultiIndex.from_arrays(arrays)
+
+        self.assert_eq(pidx, kidx)
+
+    def test_multiindex_levels(self):
+        tuples = [[list('abc'), list('def')], [list('aac'), list('fed')]]
+
+        for tup in tuples:
+            pdf = pd.DataFrame({'a': [1, 2, 3]}, index=tup)
+            kdf = ks.from_pandas(pdf)
+
+            # pandas returns FronzeList, so need to convert it to normal list
+            # for comparison
+            pdf_levels = [list(i) for i in pdf.index.levels]
+            self.assertEqual(pdf_levels, kdf.index.levels)
