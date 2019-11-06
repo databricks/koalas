@@ -7543,7 +7543,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for column in self._internal.data_columns:
             cols_dict[column] = list()
             for i in range(len(quantiles)):
-                cols_dict[column].append(F.col(column).getItem(i).alias(column))
+                cols_dict[column].append(scol_for(sdf, column).getItem(i).alias(column))
 
         internal_index_column = SPARK_INDEX_NAME_FORMAT(0)
         cols = []
