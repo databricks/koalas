@@ -1862,6 +1862,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(ValueError, lambda: kdf.melt(id_vars=('X', 'A')))
         self.assertRaises(ValueError, lambda: kdf.melt(value_vars=('X', 'A')))
+        self.assertRaises(KeyError, lambda: kdf.melt(id_vars=[('Y', 'A')]))
+        self.assertRaises(KeyError, lambda: kdf.melt(value_vars=[('Y', 'A')]))
 
     def test_all(self):
         pdf = pd.DataFrame({

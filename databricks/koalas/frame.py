@@ -6807,13 +6807,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 id_vars = [idv if isinstance(idv, tuple) else (idv,)
                            for idv in id_vars]
 
-            raveled_column_index = np.ravel(column_index)
-            missing = [idv for idv in np.ravel(id_vars)
-                       if idv not in raveled_column_index]
-            if len(missing) != 0:
-                raise KeyError("The following 'id_vars' are not present"
-                               " in the DataFrame: {}"
-                               .format(missing))
+            non_existence_col = [idv for idv in id_vars if idv not in column_index]
+            if len(non_existence_col) != 0:
+                raveled_column_index = np.ravel(column_index)
+                missing = [nec for nec in np.ravel(non_existence_col)
+                           if nec not in raveled_column_index]
+                if len(missing) != 0:
+                    raise KeyError("The following 'id_vars' are not present"
+                                   " in the DataFrame: {}".format(missing))
+                else:
+                    raise KeyError("None of [{}] are in the [columns]"
+                                   .format(pd.MultiIndex.from_tuples(non_existence_col)))
 
         if value_vars is None:
             value_vars = []
@@ -6831,13 +6835,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 value_vars = [valv if isinstance(valv, tuple) else (valv,)
                               for valv in value_vars]
 
-            raveled_column_index = np.ravel(column_index)
-            missing = [valv for valv in np.ravel(value_vars)
-                       if valv not in raveled_column_index]
-            if len(missing) != 0:
-                raise KeyError("The following 'value_vars' are not present"
-                               " in the DataFrame: {}"
-                               .format(missing))
+            non_existence_col = [valv for valv in value_vars if valv not in column_index]
+            if len(non_existence_col) != 0:
+                raveled_column_index = np.ravel(column_index)
+                missing = [nec for nec in np.ravel(non_existence_col)
+                           if nec not in raveled_column_index]
+                if len(missing) != 0:
+                    raise KeyError("The following 'id_vars' are not present"
+                                   " in the DataFrame: {}".format(missing))
+                else:
+                    raise KeyError("None of [{}] are in the [columns]"
+                                   .format(pd.MultiIndex.from_tuples(non_existence_col)))
 
         if len(value_vars) == 0:
             value_vars = column_index
