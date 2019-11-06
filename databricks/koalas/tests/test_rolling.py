@@ -53,3 +53,6 @@ class RollingTests(ReusedSQLTestCase, TestUtils):
 
     def test_rolling_sum(self):
         self._test_rolling_func("sum")
+
+    def test_rolling_count(self):
+        self._test_rolling_func("count")

@@ -12,6 +12,7 @@ Standard moving window functions
 .. autosummary::
    :toctree: api/
 
+   Rolling.count
    Rolling.sum
    Rolling.min
    Rolling.max
@@ -24,4 +25,7 @@ Standard expanding window functions
    :toctree: api/
 
    Expanding.count
-
+   Expanding.sum
+   Expanding.min
+   Expanding.max
+   Expanding.mean
