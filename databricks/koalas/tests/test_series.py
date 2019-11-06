@@ -842,3 +842,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = kser.to_pandas()
 
         self.assert_eq(kser.keys(), pser.keys())
+
+    def test_series_name_none(self):
+        pser = pd.Series([1, 2, 3])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.name, pser.name)

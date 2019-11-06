@@ -323,6 +323,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 assert not fastpath
                 s = data
             else:
+                if name is None:
+                    self._has_no_name = True
+                else:
+                    self._has_no_name = False
                 s = pd.Series(
                     data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
             kdf = DataFrame(s)
@@ -893,6 +897,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     @property
     def name(self) -> Union[str, Tuple[str, ...]]:
         """Return name of the Series."""
+        if self._has_no_name:
+            return None
         name = self._internal.column_index[0]
         if name is not None and len(name) == 1:
             return name[0]
