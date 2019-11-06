@@ -270,7 +270,7 @@ if (3, 5) <= sys.version_info < (3, 7):
 
 class DataFrame(_Frame, Generic[T]):
     """
-    Koala DataFrame that corresponds to Pandas DataFrame logically. This holds Spark DataFrame
+    Koalas DataFrame that corresponds to Pandas DataFrame logically. This holds Spark DataFrame
     internally.
 
     :ivar _internal: an internal immutable Frame to manage metadata.
