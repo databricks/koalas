@@ -325,8 +325,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             else:
                 if name is None:
                     self._has_no_name = True
-                else:
-                    self._has_no_name = False
+                self._has_no_name = False
                 s = pd.Series(
                     data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
             kdf = DataFrame(s)
