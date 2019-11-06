@@ -1521,8 +1521,9 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                 index_col = internal.index_columns[0]
                 sdfs = internal._sdf
                 continue
+            col = '{}'.format(index_col)
             sdfs = sdfs.join(obj._internal._sdf,
-                             sdfs['{}'.format(index_col)] == obj._internal._sdf['{}'.format(index_col)],
+                             sdfs[col] == obj._internal._sdf[col],
                              how=join)
         kdf = DataFrame(_InternalFrame(sdf=sdfs.select(*cols)))
         return kdf
