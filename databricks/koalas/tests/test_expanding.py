@@ -16,8 +16,6 @@
 #
 import pandas as pd
 
-import pandas as pd
-
 import databricks.koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.window import Expanding

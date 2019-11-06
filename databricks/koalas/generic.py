@@ -1429,6 +1429,30 @@ class _Frame(object):
 
     # TODO: 'center', 'win_type', 'on', 'axis' parameter should be implemented.
     def rolling(self, window, min_periods=None):
+        """
+        Provide rolling transformations.
+
+        .. note:: 'min_periods' in Koalas works as a fixed window size unlike pandas.
+            Unlike pandas, NA is also counted as the period. This might be changed
+            in the near future.
+
+        Parameters
+        ----------
+        window : int, or offset
+            Size of the moving window.
+            This is the number of observations used for calculating the statistic.
+            Each window will be a fixed size.
+
+        min_periods : int, default None
+            Minimum number of observations in window required to have a value
+            (otherwise result is NA).
+            For a window that is specified by an offset, min_periods will default to 1.
+            Otherwise, min_periods will default to the size of the window.
+
+        Returns
+        -------
+        a Window sub-classed for the particular operation
+        """
         return Rolling(self, window=window, min_periods=min_periods)
 
     # TODO: 'center' and 'axis' parameter should be implemented.

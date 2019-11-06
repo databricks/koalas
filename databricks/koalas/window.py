@@ -36,14 +36,13 @@ class Rolling(_RollingAndExpanding):
     def __init__(self, kdf_or_kser, window, min_periods=None):
         from databricks.koalas import DataFrame, Series
         from databricks.koalas.groupby import SeriesGroupBy, DataFrameGroupBy
-        window = window - 1
         min_periods = min_periods if min_periods is not None else 0
 
         if window < 0:
             raise ValueError("window must be >= 0")
         if (min_periods is not None) and (min_periods < 0):
             raise ValueError("min_periods must be >= 0")
-        self._window_val = window
+        self._window_val = window - 1
         self._min_periods = min_periods
         self.kdf_or_kser = kdf_or_kser
         if not isinstance(kdf_or_kser, (DataFrame, Series, DataFrameGroupBy, SeriesGroupBy)):
@@ -52,7 +51,7 @@ class Rolling(_RollingAndExpanding):
         if isinstance(kdf_or_kser, (DataFrame, Series)):
             self._index_scols = kdf_or_kser._internal.index_scols
             self._window = Window.orderBy(self._index_scols).rowsBetween(
-                Window.currentRow - window, Window.currentRow)
+                Window.currentRow - self._window_val, Window.currentRow)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeRolling, item):
@@ -65,7 +64,7 @@ class Rolling(_RollingAndExpanding):
 
     def _apply_as_series_or_frame(self, func):
         """
-        Decorator that can wraps a function that handles Spark column in order
+        Wraps a function that handles Spark column in order
         to support it in both Koalas Series and DataFrame.
         Note that the given `func` name should be same as the API's method name.
         """
