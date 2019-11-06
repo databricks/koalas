@@ -43,7 +43,7 @@ from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAM
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
-                                     combine_frames, tuple_like_strings, name_like_string)
+                                     combine_frames, name_like_string)
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
