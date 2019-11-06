@@ -18,6 +18,7 @@
 Wrappers around spark that correspond to common pandas functions.
 """
 from typing import Optional, Union, List
+from typing import Optional, Union, List, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
@@ -33,7 +34,7 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
-from databricks.koalas.utils import default_session
+from databricks.koalas.utils import default_session, name_like_string
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.typedef import pandas_wraps
@@ -43,7 +44,7 @@ from databricks.koalas.series import Series, _col
 __all__ = ["from_pandas", "range", "read_csv", "read_delta", "read_table", "read_spark_io",
            "read_parquet", "read_clipboard", "read_excel", "read_html", "to_datetime",
            "get_dummies", "concat", "melt", "isna", "isnull", "notna", "notnull",
-           "read_sql_table", "read_sql_query", "read_sql", "read_json"]
+           "read_sql_table", "read_sql_query", "read_sql", "read_json", "merge"]
 
 
 def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'DataFrame']:
@@ -307,8 +308,16 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
       col 1 col 2
     0     a     b
     1     c     d
+
+    >>> df.to_json(path=r'%s/read_json/foo.json' % path, num_files=1, lineSep='___')
+    >>> ks.read_json(
+    ...     path=r'%s/read_json/foo.json' % path, lineSep='___'
+    ... ).sort_values(by="col 1")
+      col 1 col 2
+    0     a     b
+    1     c     d
     """
-    return read_spark_io(path, format='json', index_col=index_col, options=options)
+    return read_spark_io(path, format='json', index_col=index_col, **options)
 
 
 def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str] = None,
@@ -351,12 +360,25 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
     >>> ks.read_delta('%s/read_delta/foo' % path)
        id
     0   0
+
+    >>> ks.range(10, 15, num_partitions=1).to_delta('%s/read_delta/foo' % path, mode='overwrite')
+    >>> ks.read_delta('%s/read_delta/foo' % path)
+       id
+    0  10
+    1  11
+    2  12
+    3  13
+    4  14
+
+    >>> ks.read_delta('%s/read_delta/foo' % path, version=0)
+       id
+    0   0
     """
     if version is not None:
         options['versionAsOf'] = version
     if timestamp is not None:
         options['timestampAsOf'] = timestamp
-    return read_spark_io(path, format='delta', index_col=index_col, options=options)
+    return read_spark_io(path, format='delta', index_col=index_col, **options)
 
 
 def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> DataFrame:
@@ -436,8 +458,19 @@ def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
     ...     '%s/read_spark_io/data.parquet' % path, format='parquet', schema='id long')
        id
     0   0
+
+    >>> ks.range(10, 15, num_partitions=1).to_spark_io('%s/read_spark_io/data.json' % path,
+    ...                                                format='json', lineSep='__')
+    >>> ks.read_spark_io(
+    ...     '%s/read_spark_io/data.json' % path, format='json', schema='id long', lineSep='__')
+       id
+    0  10
+    1  11
+    2  12
+    3  13
+    4  14
     """
-    sdf = default_session().read.load(path=path, format=format, schema=schema, options=options)
+    sdf = default_session().read.load(path=path, format=format, schema=schema, **options)
     index_map = _get_index_map(sdf, index_col)
 
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
@@ -722,7 +755,7 @@ def read_excel(io, sheet_name=0, header=0, names=None, index_col=None, usecols=N
         na_values=na_values, keep_default_na=keep_default_na, verbose=verbose,
         parse_dates=parse_dates, date_parser=date_parser, thousands=thousands, comment=comment,
         skipfooter=skipfooter, convert_float=convert_float, mangle_dupe_cols=mangle_dupe_cols,
-        kwds=kwds)
+        **kwds)
     if isinstance(pdfs, dict):
         return OrderedDict([(key, from_pandas(value)) for key, value in pdfs.items()])
     else:
@@ -991,9 +1024,9 @@ def read_sql(sql, con, index_col=None, columns=None, **options):
     """
     striped = sql.strip()
     if ' ' not in striped:  # TODO: identify the table name or not more precisely.
-        return read_sql_table(sql, con, index_col=index_col, columns=columns, options=options)
+        return read_sql_table(sql, con, index_col=index_col, columns=columns, **options)
     else:
-        return read_sql_query(sql, con, index_col=index_col, options=options)
+        return read_sql_query(sql, con, index_col=index_col, **options)
 
 
 def to_datetime(arg, errors='raise', format=None, unit=None, infer_datetime_format=False,
@@ -1277,7 +1310,7 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
             prefix = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
 
         column_index_set = set(column_index)
-        remaining_columns = [kdf[idx].rename(str(idx) if len(idx) > 1 else idx[0])
+        remaining_columns = [kdf[idx].rename(name_like_string(idx))
                              for idx in kdf._internal.column_index
                              if idx not in column_index_set]
 
@@ -1515,11 +1548,12 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                 # TODO: NaN and None difference for missing values. pandas seems filling NaN.
                 sdf = kdf._sdf
                 for idx in columns_to_add:
-                    sdf = sdf.withColumn(str(idx), F.lit(None))
+                    sdf = sdf.withColumn(name_like_string(idx), F.lit(None))
 
                 kdf = DataFrame(kdf._internal.copy(
                     sdf=sdf,
-                    data_columns=kdf._internal.data_columns + [str(idx) for idx in columns_to_add],
+                    data_columns=(kdf._internal.data_columns
+                                  + [name_like_string(idx) for idx in columns_to_add]),
                     column_index=kdf._internal.column_index + columns_to_add))
 
                 kdfs.append(kdf[merged_columns])
@@ -1702,6 +1736,127 @@ def notna(obj):
 
 
 notnull = notna
+
+
+def merge(obj, right: 'DataFrame', how: str = 'inner',
+          on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+          left_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+          right_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+          left_index: bool = False, right_index: bool = False,
+          suffixes: Tuple[str, str] = ('_x', '_y')) -> 'DataFrame':
+    """
+    Merge DataFrame objects with a database-style join.
+
+    The index of the resulting DataFrame will be one of the following:
+        - 0...n if no index is used for merging
+        - Index of the left DataFrame if merged only on the index of the right DataFrame
+        - Index of the right DataFrame if merged only on the index of the left DataFrame
+        - All involved indices if merged using the indices of both DataFrames
+            e.g. if `left` with indices (a, x) and `right` with indices (b, x), the result will
+            be an index (x, a, b)
+
+    Parameters
+    ----------
+    right: Object to merge with.
+    how: Type of merge to be performed.
+        {'left', 'right', 'outer', 'inner'}, default 'inner'
+
+        left: use only keys from left frame, similar to a SQL left outer join; preserve key
+            order.
+        right: use only keys from right frame, similar to a SQL right outer join; preserve key
+            order.
+        outer: use union of keys from both frames, similar to a SQL full outer join; sort keys
+            lexicographically.
+        inner: use intersection of keys from both frames, similar to a SQL inner join;
+            preserve the order of the left keys.
+    on: Column or index level names to join on. These must be found in both DataFrames. If on
+        is None and not merging on indexes then this defaults to the intersection of the
+        columns in both DataFrames.
+    left_on: Column or index level names to join on in the left DataFrame. Can also
+        be an array or list of arrays of the length of the left DataFrame.
+        These arrays are treated as if they are columns.
+    right_on: Column or index level names to join on in the right DataFrame. Can also
+        be an array or list of arrays of the length of the right DataFrame.
+        These arrays are treated as if they are columns.
+    left_index: Use the index from the left DataFrame as the join key(s). If it is a
+        MultiIndex, the number of keys in the other DataFrame (either the index or a number of
+        columns) must match the number of levels.
+    right_index: Use the index from the right DataFrame as the join key. Same caveats as
+        left_index.
+    suffixes: Suffix to apply to overlapping column names in the left and right side,
+        respectively.
+
+    Returns
+    -------
+    DataFrame
+        A DataFrame of the two merged objects.
+
+    Examples
+    --------
+
+    >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
+    ...                     'value': [1, 2, 3, 5]},
+    ...                    columns=['lkey', 'value'])
+    >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+    ...                     'value': [5, 6, 7, 8]},
+    ...                    columns=['rkey', 'value'])
+    >>> df1
+      lkey  value
+    0  foo      1
+    1  bar      2
+    2  baz      3
+    3  foo      5
+    >>> df2
+      rkey  value
+    0  foo      5
+    1  bar      6
+    2  baz      7
+    3  foo      8
+
+    Merge df1 and df2 on the lkey and rkey columns. The value columns have
+    the default suffixes, _x and _y, appended.
+
+    >>> merged = ks.merge(df1, df2, left_on='lkey', right_on='rkey')
+    >>> merged.sort_values(by=['lkey', 'value_x', 'rkey', 'value_y'])
+      lkey  value_x rkey  value_y
+    0  bar        2  bar        6
+    5  baz        3  baz        7
+    1  foo        1  foo        5
+    2  foo        1  foo        8
+    3  foo        5  foo        5
+    4  foo        5  foo        8
+
+    >>> left_kdf = ks.DataFrame({'A': [1, 2]})
+    >>> right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
+
+    >>> ks.merge(left_kdf, right_kdf, left_index=True, right_index=True)
+       A  B
+    1  2  x
+
+    >>> ks.merge(left_kdf, right_kdf, left_index=True, right_index=True, how='left')
+       A     B
+    0  1  None
+    1  2     x
+
+    >>> ks.merge(left_kdf, right_kdf, left_index=True, right_index=True, how='right')
+         A  B
+    1  2.0  x
+    2  NaN  y
+
+    >>> ks.merge(left_kdf, right_kdf, left_index=True, right_index=True, how='outer')
+         A     B
+    0  1.0  None
+    1  2.0     x
+    2  NaN     y
+
+    Notes
+    -----
+    As described in #263, joining string columns currently returns None for missing values
+        instead of NaN.
+    """
+    return obj.merge(
+        right, how=how, on=on, left_on=left_on, right_on=right_on,
+        left_index=left_index, right_index=right_index, suffixes=suffixes)
 
 
 # @pandas_wraps(return_col=np.datetime64)

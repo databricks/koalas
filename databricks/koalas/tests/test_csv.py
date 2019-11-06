@@ -229,10 +229,12 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
                            pd.read_csv(fn, escapechar='E'), almost=True)
 
     def test_to_csv(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]}, index=[0, 1, 3])
+        pdf = pd.DataFrame({'aa': [1, 2, 3], 'bb': [4, 5, 6]}, index=[0, 1, 3])
         kdf = ks.DataFrame(pdf)
 
         self.assert_eq(kdf.to_csv(), pdf.to_csv(index=False))
+        self.assert_eq(kdf.to_csv(columns=['aa']), pdf.to_csv(columns=['aa'], index=False))
+        self.assert_eq(kdf.aa.to_csv(), pdf.aa.to_csv(index=False, header=True))
 
         pdf = pd.DataFrame({
             'a': [1, np.nan, 3],
@@ -242,6 +244,8 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.to_csv(na_rep='null'), pdf.to_csv(na_rep='null', index=False))
+        self.assert_eq(kdf.a.to_csv(na_rep='null'),
+                       pdf.a.to_csv(na_rep='null', index=False, header=True))
 
         pdf = pd.DataFrame({
             'a': [1.0, 2.0, 3.0],
@@ -264,19 +268,38 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
         output_paths = [path for path in os.listdir(self.tmp_dir) if path.startswith("part-")]
         assert len(output_paths) > 0
         output_path = "%s/%s" % (self.tmp_dir, output_paths[0])
-        self.assertEqual(open(output_path).read(), expected)
+        with open(output_path) as f:
+            self.assertEqual(f.read(), expected)
 
     def test_to_csv_with_path_and_basic_options(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3], 'b': ['a', 'b', 'c']})
+        pdf = pd.DataFrame({'aa': [1, 2, 3], 'bb': ['a', 'b', 'c']})
         kdf = ks.DataFrame(pdf)
 
-        kdf.to_csv(self.tmp_dir, num_files=1, sep='|', header=False)
-        expected = pdf.to_csv(index=False, sep='|', header=False)
+        kdf.to_csv(self.tmp_dir, num_files=1, sep='|', header=False, columns=['aa'])
+        expected = pdf.to_csv(index=False, sep='|', header=False, columns=['aa'])
 
         output_paths = [path for path in os.listdir(self.tmp_dir) if path.startswith("part-")]
         assert len(output_paths) > 0
         output_path = "%s/%s" % (self.tmp_dir, output_paths[0])
-        self.assertEqual(open(output_path).read(), expected)
+        with open(output_path) as f:
+            self.assertEqual(f.read(), expected)
+
+    def test_to_csv_with_path_and_basic_options_multiindex_columns(self):
+        pdf = pd.DataFrame({('x', 'a'): [1, 2, 3], ('y', 'b'): ['a', 'b', 'c']})
+        kdf = ks.DataFrame(pdf)
+
+        with self.assertRaises(ValueError):
+            kdf.to_csv(self.tmp_dir, num_files=1, sep='|', columns=[('x', 'a')])
+
+        kdf.to_csv(self.tmp_dir, num_files=1, sep='|', header=['a'], columns=[('x', 'a')])
+        pdf.columns = ['a', 'b']
+        expected = pdf.to_csv(index=False, sep='|', columns=['a'])
+
+        output_paths = [path for path in os.listdir(self.tmp_dir) if path.startswith("part-")]
+        assert len(output_paths) > 0
+        output_path = "%s/%s" % (self.tmp_dir, output_paths[0])
+        with open(output_path) as f:
+            self.assertEqual(f.read(), expected)
 
     def test_to_csv_with_path_and_pyspark_options(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, None], 'b': ['a', 'b', 'c', None]})
@@ -288,4 +311,5 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
         output_paths = [path for path in os.listdir(self.tmp_dir) if path.startswith("part-")]
         assert len(output_paths) > 0
         output_path = "%s/%s" % (self.tmp_dir, output_paths[0])
-        self.assertEqual(open(output_path).read(), expected)
+        with open(output_path) as f:
+            self.assertEqual(f.read(), expected)

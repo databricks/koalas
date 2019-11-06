@@ -19,12 +19,16 @@ Commonly used utils in Koalas.
 
 import functools
 from collections import OrderedDict
+from distutils.version import LooseVersion
 from typing import Callable, Dict, List, Tuple, Union
 
+import pyarrow
+import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType
 import pandas as pd
+from pandas.api.types import is_list_like
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 
@@ -112,8 +116,9 @@ def combine_frames(this, *args, how="full"):
             this._internal.copy(sdf=joined_df, data_columns=new_data_columns,
                                 column_index=column_index, column_index_names=column_index_names))
     else:
-        raise ValueError("Cannot combine column argument because "
-                         "it comes from a different dataframe")
+        raise ValueError(
+            "Cannot combine the series or dataframe because it comes from a different dataframe. "
+            "In order to allow this operation, enable 'compute.ops_on_diff_frames' option.")
 
 
 def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
@@ -267,6 +272,12 @@ def align_diff_series(func, this_series, *args, how="full"):
 def default_session(conf=None):
     if conf is None:
         conf = dict()
+    if LooseVersion(pyarrow.__version__) >= LooseVersion("0.15") and \
+            LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+        conf["spark.executorEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
+        conf["spark.yarn.appMasterEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
+        conf["spark.mesos.driverEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
+        conf["spark.kubernetes.driverEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
     builder = spark.SparkSession.builder.appName("Koalas")
     for key, value in conf.items():
         builder = builder.config(key, value)
@@ -360,14 +371,26 @@ def column_index_level(column_index: List[Tuple[str, ...]]) -> int:
         return list(levels)[0]
 
 
-def tuple_like_strings(items):
+def name_like_string(name: Union[str, Tuple]) -> str:
     """
-    Return the tuple-like strings from items
+    Return the name-like strings from str or tuple of str
 
     Examples
     --------
-    >>> items = ('a', 'b', 'c')
-    >>> tuple_like_strings(items)
+    >>> name = 'abc'
+    >>> name_like_string(name)
+    'abc'
+
+    >>> name = ('abc',)
+    >>> name_like_string(name)
+    'abc'
+
+    >>> name = ('a', 'b', 'c')
+    >>> name_like_string(name)
     '(a, b, c)'
     """
-    return '(%s)' % ', '.join(items)
+    if is_list_like(name):
+        name = tuple([str(n) for n in name])
+    else:
+        name = (str(name),)
+    return ('(%s)' % ', '.join(name)) if len(name) > 1 else name[0]

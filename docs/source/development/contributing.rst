@@ -25,7 +25,7 @@ The largest amount of work consists simply of implementing the pandas API using 
 Step-by-step Guide For Code Contributions
 =========================================
 
-1. Read and understand the `Design Principles <https://github.com/databricks/koalas/blob/master/README.md#design-principles>`_ for the project. Contributions should follow these principles.
+1. Read and understand the `Design Principles <design.rst>`_ for the project. Contributions should follow these principles.
 
 2. Signaling your work: If you are working on something, comment on the relevant ticket that you are doing so to avoid multiple people taking on the same work at the same time. It is also a good practice to signal that your work has stalled or you have moved on and want somebody else to take over.
 

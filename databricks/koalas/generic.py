@@ -568,22 +568,28 @@ class _Frame(object):
                     header=header, quotechar=quotechar,
                     date_format=date_format, escapechar=escapechar, index=False)
 
-        if columns is not None:
-            data_columns = columns
-        else:
-            data_columns = self._internal.data_columns
-
         kdf = self
         if isinstance(self, ks.Series):
-            kdf = self._kdf
+            kdf = self.to_frame()
 
-        if isinstance(header, list):
+        if columns is None:
+            column_index = kdf._internal.column_index
+        elif isinstance(columns, str):
+            column_index = [(columns,)]
+        elif isinstance(columns, tuple):
+            column_index = [columns]
+        else:
+            column_index = [idx if isinstance(idx, tuple) else (idx,) for idx in columns]
+
+        if header is True and kdf._internal.column_index_level > 1:
+            raise ValueError('to_csv only support one-level index column now')
+        elif isinstance(header, list):
             sdf = kdf._sdf.select(
-                [self._internal.scol_for(old_name).alias(new_name)
-                 for (old_name, new_name) in zip(data_columns, header)])
+                [self._internal.scol_for(idx).alias(new_name)
+                 for (idx, new_name) in zip(column_index, header)])
             header = True
         else:
-            sdf = kdf._sdf.select(data_columns)
+            sdf = kdf._sdf.select([kdf._internal.scol_for(idx) for idx in column_index])
 
         if num_files is not None:
             sdf = sdf.repartition(num_files)
@@ -1363,35 +1369,89 @@ class _Frame(object):
 
         >>> df['a'].median()
         25.0
+        >>> (df['a'] + 100).median()
+        125.0
+
+        For multi-index columns,
+
+        >>> df.columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
+        >>> df
+              x  y
+              a  b
+        0  24.0  1
+        1  21.0  2
+        2  25.0  3
+        3  33.0  4
+        4  26.0  5
+
+        On a DataFrame:
+
+        >>> df.median()
+        x  a    25.0
+        y  b     3.0
+        Name: 0, dtype: float64
+
+        On a Series:
+
+        >>> df[('x', 'a')].median()
+        25.0
+        >>> (df[('x', 'a')] + 100).median()
+        125.0
         """
         if not isinstance(accuracy, int):
             raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
 
         from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series
+        from databricks.koalas.series import Series, _col
 
-        kdf_or_ks = self
-        if isinstance(kdf_or_ks, Series):
-            ks = kdf_or_ks
-            return self._reduce_for_stat_function(
-                lambda _: F.expr(
-                    "approx_percentile(`%s`, 0.5, %s)" % (ks.name, accuracy)), name="median")
-        assert isinstance(kdf_or_ks, DataFrame)
+        kdf_or_kser = self
+        if isinstance(kdf_or_kser, Series):
+            kser = _col(kdf_or_kser.to_frame())
+            return kser._reduce_for_stat_function(
+                lambda _: F.expr("approx_percentile(`%s`, 0.5, %s)"
+                                 % (kser._internal.data_columns[0], accuracy)),
+                name="median")
+        assert isinstance(kdf_or_kser, DataFrame)
 
         # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
         # to get a column name from Spark column but we need it to pass it through `expr`.
-        kdf = kdf_or_ks
+        kdf = kdf_or_kser
         sdf = kdf._sdf
         median = lambda name: F.expr("approx_percentile(`%s`, 0.5, %s)" % (name, accuracy))
-        sdf = sdf.select([median(col).alias(col) for col in kdf.columns])
+        sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_columns])
+
+        # Attach a dummy column for index to avoid default index.
+        sdf = sdf.withColumn('__DUMMY__', F.monotonically_increasing_id())
+
         # This is expected to be small so it's fine to transpose.
-        return DataFrame(sdf)._to_internal_pandas().transpose().iloc[:, 0]
+        return DataFrame(kdf._internal.copy(sdf=sdf, index_map=[('__DUMMY__', None)])) \
+            ._to_internal_pandas().transpose().iloc[:, 0]
 
-    def rolling(self, *args, **kwargs):
-        return Rolling(self)
+    # TODO: 'center', 'win_type', 'on', 'axis' parameter should be implemented.
+    def rolling(self, window, min_periods=None):
+        return Rolling(self, window=window, min_periods=min_periods)
 
-    def expanding(self, *args, **kwargs):
-        return Expanding(self)
+    # TODO: 'center' and 'axis' parameter should be implemented.
+    #   'axis' implementation, refer https://github.com/databricks/koalas/pull/607
+    def expanding(self, min_periods=1):
+        """
+        Provide expanding transformations.
+
+        .. note:: 'min_periods' in Koalas works as a fixed window size unlike pandas.
+            Unlike pandas, NA is also counted as the period. This might be changed
+            in the near future.
+
+        Parameters
+        ----------
+        min_periods : int, default 1
+            Minimum number of observations in window required to have a value
+            (otherwise result is NA).
+
+        Returns
+        -------
+        a Window sub-classed for the particular operation
+        """
+        return Expanding(self, min_periods=min_periods)
 
     @property
     def at(self):
@@ -1427,8 +1487,10 @@ class _Frame(object):
 
 def _resolve_col(kdf, col_like):
     if isinstance(col_like, ks.Series):
-        assert kdf is col_like._kdf, \
-            "Cannot combine column argument because it comes from a different dataframe"
+        if kdf is not col_like._kdf:
+            raise ValueError(
+                "Cannot combine the series because it comes from a different dataframe. "
+                "In order to allow this operation, enable 'compute.ops_on_diff_frames' option.")
         return col_like
     elif isinstance(col_like, tuple):
         return kdf[col_like]
