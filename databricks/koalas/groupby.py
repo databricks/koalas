@@ -1648,8 +1648,8 @@ class GroupBy(object):
                  F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0))
         return self._reduce_for_stat_function(stat_function, only_numeric=False)
 
-    def rolling(self, *args, **kwargs):
-        return RollingGroupby(self)
+    def rolling(self, window, *args, **kwargs):
+        return RollingGroupby(self, window)
 
     def expanding(self, min_periods=1):
         """
