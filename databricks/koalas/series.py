@@ -894,7 +894,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self),
 
     @property
-    def name(self) -> Union[str, Tuple[str, ...]]:
+    def name(self) -> Union[str, Tuple[str, ...], None]:
         """Return name of the Series."""
         if self._has_no_name:
             return None
