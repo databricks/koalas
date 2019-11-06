@@ -208,7 +208,7 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             (kdf1[('x', 'a')] * (kdf2[('x', 'b')] * kdf3[('y', 'c')])).sort_index(),
             (pdf1[('x', 'a')] * (pdf2[('x', 'b')] * pdf3[('y', 'c')])).rename(('x', 'a'))
-                .sort_index(),
+            .sort_index(),
             almost=True)
 
         # DataFrame
