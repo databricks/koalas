@@ -101,7 +101,6 @@ class _MissingPandasLikeDataFrame(object):
     tz_convert = unsupported_function('tz_convert')
     tz_localize = unsupported_function('tz_localize')
     unstack = unsupported_function('unstack')
-    where = unsupported_function('where')
 
     # Deprecated functions
     as_blocks = unsupported_function('as_blocks', deprecated=True)
