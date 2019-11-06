@@ -6841,7 +6841,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 missing = [nec for nec in np.ravel(non_existence_col)
                            if nec not in raveled_column_index]
                 if len(missing) != 0:
-                    raise KeyError("The following 'id_vars' are not present"
+                    raise KeyError("The following 'value_vars' are not present"
                                    " in the DataFrame: {}".format(missing))
                 else:
                     raise KeyError("None of [{}] are in the [columns]"
