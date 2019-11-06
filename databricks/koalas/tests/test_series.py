@@ -815,7 +815,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "Truncate: 2 must be after 5"
         with self.assertRaisesRegex(ValueError, msg):
             kser.truncate(5, 2)
->>>>>>> e596a588450670eed3354aec07e7c71030b9c9ad
 
     def test_getitem(self):
         pser = pd.Series([10, 20, 15, 30, 45], ['A', 'A', 'B', 'C', 'D'])

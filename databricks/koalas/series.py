@@ -3991,7 +3991,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             index_map=[(index_col, index_map_dict[index_col]) for index_col in index_cols])
 
         return _col(DataFrame(internal))
->>>>>>> e596a588450670eed3354aec07e7c71030b9c9ad
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
