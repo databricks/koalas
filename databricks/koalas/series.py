@@ -3804,6 +3804,86 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return result
 
+    def mask(self, cond, other=np.nan):
+        """
+        Replace values where the condition is True.
+
+        Parameters
+        ----------
+        cond : boolean Series
+            Where cond is False, keep the original value. Where True,
+            replace with corresponding value from other.
+        other : scalar, Series
+            Entries where cond is True are replaced with corresponding value from other.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> s1 = ks.Series([0, 1, 2, 3, 4])
+        >>> s2 = ks.Series([100, 200, 300, 400, 500])
+        >>> s1.mask(s1 > 0).sort_index()
+        0    0.0
+        1    NaN
+        2    NaN
+        3    NaN
+        4    NaN
+        Name: 0, dtype: float64
+
+        >>> s1.mask(s1 > 1, 10).sort_index()
+        0     0
+        1     1
+        2    10
+        3    10
+        4    10
+        Name: 0, dtype: int64
+
+        >>> s1.mask(s1 > 1, s1 + 100).sort_index()
+        0      0
+        1      1
+        2    102
+        3    103
+        4    104
+        Name: 0, dtype: int64
+
+        >>> s1.mask(s1 > 1, s2).sort_index()
+        0      0
+        1      1
+        2    300
+        3    400
+        4    500
+        Name: 0, dtype: int64
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        kdf = self.to_frame()
+        kdf['__tmp_cond_col__'] = cond
+        kdf['__tmp_other_col__'] = other
+        sdf = kdf._sdf
+        # above logic make spark dataframe looks like below:
+        # +-----------------+---+----------------+-----------------+
+        # |__index_level_0__|  0|__tmp_cond_col__|__tmp_other_col__|
+        # +-----------------+---+----------------+-----------------+
+        # |                0|  0|           false|              100|
+        # |                1|  1|           false|              200|
+        # |                3|  3|            true|              400|
+        # |                2|  2|            true|              300|
+        # |                4|  4|            true|              500|
+        # +-----------------+---+----------------+-----------------+
+        data_col_name = self._internal.column_name_for(self._internal.column_index[0])
+        index_column = self._internal.index_columns[0]
+        condition = F.when(~sdf['__tmp_cond_col__'], sdf[data_col_name]) \
+                     .otherwise(sdf['__tmp_other_col__']).alias(data_col_name)
+        sdf = sdf.select(index_column, condition)
+        result = _col(ks.DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map)))
+
+        return result
+
     def xs(self, key, level=None):
         """
         Return cross-section from the Series.
