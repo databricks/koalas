@@ -3861,28 +3861,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
-        kdf = self.to_frame()
-        kdf['__tmp_cond_col__'] = cond
-        kdf['__tmp_other_col__'] = other
-        sdf = kdf._sdf
-        # above logic make spark dataframe looks like below:
-        # +-----------------+---+----------------+-----------------+
-        # |__index_level_0__|  0|__tmp_cond_col__|__tmp_other_col__|
-        # +-----------------+---+----------------+-----------------+
-        # |                0|  0|           false|              100|
-        # |                1|  1|           false|              200|
-        # |                3|  3|            true|              400|
-        # |                2|  2|            true|              300|
-        # |                4|  4|            true|              500|
-        # +-----------------+---+----------------+-----------------+
-        data_col_name = self._internal.column_name_for(self._internal.column_index[0])
-        index_column = self._internal.index_columns[0]
-        condition = F.when(~sdf['__tmp_cond_col__'], sdf[data_col_name]) \
-                     .otherwise(sdf['__tmp_other_col__']).alias(data_col_name)
-        sdf = sdf.select(index_column, condition)
-        result = _col(ks.DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map)))
-
-        return result
+        return self.where(~cond, other)
 
     def xs(self, key, level=None):
         """
