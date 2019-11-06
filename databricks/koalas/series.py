@@ -323,13 +323,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 assert not fastpath
                 s = data
             else:
-                if name is None:
-                    self._has_no_name = True
-                self._has_no_name = False
                 s = pd.Series(
                     data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
             kdf = DataFrame(s)
             IndexOpsMixin.__init__(self, kdf._internal.copy(scol=kdf._internal.data_scols[0]), kdf)
+            self.name = name
 
     def _with_new_scol(self, scol: spark.Column) -> 'Series':
         """
@@ -896,8 +894,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     @property
     def name(self) -> Union[str, Tuple[str, ...], None]:
         """Return name of the Series."""
-        if self._has_no_name:
-            return None
         name = self._internal.column_index[0]
         if name is not None and len(name) == 1:
             return name[0]
