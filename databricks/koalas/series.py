@@ -278,7 +278,7 @@ str_type = str
 
 class Series(_Frame, IndexOpsMixin, Generic[T]):
     """
-    Koala Series that corresponds to Pandas Series logically. This holds Spark Column
+    Koalas Series that corresponds to Pandas Series logically. This holds Spark Column
     internally.
 
     :ivar _internal: an internal immutable Frame to manage metadata.
