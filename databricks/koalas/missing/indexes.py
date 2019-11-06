@@ -31,10 +31,7 @@ class _MissingPandasLikeIndex(object):
 
     # Properties
     T = unsupported_property('T')
-    has_duplicates = unsupported_property('has_duplicates')
     nbytes = unsupported_property('nbytes')
-    ndim = unsupported_property('ndim')
-    nlevels = unsupported_property('nlevels')
     shape = unsupported_property('shape')
 
     # Deprecated properties
@@ -103,7 +100,6 @@ class _MissingPandasLikeIndex(object):
     to_numpy = unsupported_function('to_numpy')
     transpose = unsupported_function('transpose')
     union = unsupported_function('union')
-    unique = unsupported_function('unique')
     value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
     where = unsupported_function('where')
@@ -131,12 +127,8 @@ class _MissingPandasLikeMultiIndex(object):
     # Properties
     T = unsupported_property('T')
     codes = unsupported_property('codes')
-    has_duplicates = unsupported_property('has_duplicates')
     is_all_dates = unsupported_property('is_all_dates')
-    levels = unsupported_property('levels')
     levshape = unsupported_property('levshape')
-    ndim = unsupported_property('ndim')
-    nlevels = unsupported_property('nlevels')
     shape = unsupported_property('shape')
 
     # Deprecated properties
@@ -217,7 +209,6 @@ class _MissingPandasLikeMultiIndex(object):
     transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     union = unsupported_function('union')
-    unique = unsupported_function('unique')
     value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
     where = unsupported_function('where')

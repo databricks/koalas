@@ -27,6 +27,7 @@ from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
 from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType
+from pyspark.sql.functions import monotonically_increasing_id
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.internal import _InternalFrame
@@ -234,7 +235,7 @@ class IndexOpsMixin(object):
         >>> ks.DataFrame({}, index=list('abc')).index.empty
         False
         """
-        return self._kdf._sdf.rdd.isEmpty()
+        return self._internal._sdf.rdd.isEmpty()
 
     @property
     def hasnans(self):
@@ -256,7 +257,7 @@ class IndexOpsMixin(object):
         >>> ks.Series([1, 2, 3]).rename("a").to_frame().set_index("a").index.hasnans
         False
         """
-        sdf = self._kdf._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self._scol)
         col = self._scol
 
         ret = sdf.select(F.max(col.isNull() | F.isnan(col))).collect()[0][0]
@@ -299,9 +300,16 @@ class IndexOpsMixin(object):
 
         >>> ser.rename("a").to_frame().set_index("a").index.is_monotonic
         True
+
+        >>> ser = ks.Series([5, 4, 3, 2, 1], index=[1, 2, 3, 4, 5])
+        >>> ser.is_monotonic
+        False
+
+        >>> ser.index.is_monotonic
+        True
         """
         col = self._scol
-        window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
+        window = Window.orderBy(monotonically_increasing_id()).rowsBetween(-1, -1)
         return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull()).all()
 
     is_monotonic_increasing = is_monotonic
@@ -343,10 +351,50 @@ class IndexOpsMixin(object):
 
         >>> ser.rename("a").to_frame().set_index("a").index.is_monotonic_decreasing
         True
+
+        >>> ser = ks.Series([5, 4, 3, 2, 1], index=[1, 2, 3, 4, 5])
+        >>> ser.is_monotonic_decreasing
+        True
+
+        >>> ser.index.is_monotonic_decreasing
+        False
         """
         col = self._scol
-        window = Window.orderBy(self._kdf._internal.index_scols).rowsBetween(-1, -1)
+        window = Window.orderBy(monotonically_increasing_id()).rowsBetween(-1, -1)
         return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull()).all()
+
+    @property
+    def ndim(self):
+        """
+        Return an int representing the number of array dimensions.
+
+        Return 1 for Series / Index / MultiIndex.
+
+        Examples
+        --------
+
+        For Series
+
+        >>> s = ks.Series([None, 1, 2, 3, 4], index=[4, 5, 2, 1, 8])
+        >>> s.ndim
+        1
+
+        For Index
+
+        >>> s.index.ndim
+        1
+
+        For MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [1, 1, 1, 1, 1, 2, 1, 2, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        >>> s.index.ndim
+        1
+        """
+        return 1
 
     def astype(self, dtype):
         """
@@ -561,7 +609,7 @@ class IndexOpsMixin(object):
         if axis not in [0, 'index']:
             raise ValueError('axis should be either 0 or "index" currently.')
 
-        sdf = self._kdf._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self._scol)
         col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
@@ -624,7 +672,7 @@ class IndexOpsMixin(object):
         if axis not in [0, 'index']:
             raise ValueError('axis should be either 0 or "index" currently.')
 
-        sdf = self._kdf._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self._scol)
         col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.

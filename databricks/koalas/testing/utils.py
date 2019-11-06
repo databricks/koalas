@@ -29,6 +29,7 @@ from databricks import koalas as ks
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index
 from databricks.koalas.series import Series
+from databricks.koalas.utils import name_like_string
 
 
 class PySparkTestCase(unittest.TestCase):
@@ -201,11 +202,7 @@ class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
                    "\n\nRight:\n%s\n%s" % (right, right.dtypes))
             self.assertEqual(left.shape, right.shape, msg=msg)
             for lcol, rcol in zip(left.columns, right.columns):
-                if isinstance(lcol, tuple) and isinstance(rcol, tuple):
-                    for l, r in zip(lcol, rcol):
-                        self.assertEqual(str(l), str(r), msg=msg)
-                else:
-                    self.assertEqual(str(lcol), str(rcol), msg=msg)
+                self.assertEqual(name_like_string(lcol), name_like_string(rcol), msg=msg)
                 for lnull, rnull in zip(left[lcol].isnull(), right[rcol].isnull()):
                     self.assertEqual(lnull, rnull, msg=msg)
                 for lval, rval in zip(left[lcol].dropna(), right[rcol].dropna()):

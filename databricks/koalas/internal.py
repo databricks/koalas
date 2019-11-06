@@ -33,7 +33,8 @@ from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type, 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
 from databricks.koalas.typedef import infer_pd_series_spark_type, spark_type_to_pandas_dtype
-from databricks.koalas.utils import column_index_level, default_session, lazy_property, scol_for
+from databricks.koalas.utils import (column_index_level, default_session, lazy_property,
+                                     name_like_string, scol_for)
 
 
 # A function to turn given numbers to Spark columns that represent Koalas index.
@@ -535,7 +536,7 @@ class _InternalFrame(object):
 
     def spark_type_for(self, column_name_or_index: Union[str, Tuple[str, ...]]) -> DataType:
         """ Return DataType for the given column name or index. """
-        return self._sdf.schema[self.column_name_for(column_name_or_index)].dataType
+        return self._sdf.select(self.scol_for(column_name_or_index)).schema[0].dataType
 
     @property
     def sdf(self) -> spark.DataFrame:
@@ -616,7 +617,7 @@ class _InternalFrame(object):
         for i, (column, idx) in enumerate(zip(self._data_columns, self.column_index)):
             if column not in index_columns:
                 scol = self.scol_for(idx)
-                name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+                name = str(i) if idx is None else name_like_string(idx)
                 if column != name:
                     scol = scol.alias(name)
                 data_columns.append(scol)
@@ -628,7 +629,7 @@ class _InternalFrame(object):
         data_columns = []
         for i, (column, idx) in enumerate(zip(self._data_columns, self.column_index)):
             scol = self.scol_for(idx)
-            name = str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+            name = str(i) if idx is None else name_like_string(idx)
             if column != name:
                 scol = scol.alias(name)
             data_columns.append(scol)
@@ -651,7 +652,7 @@ class _InternalFrame(object):
                 pdf = pdf.set_index(index_field, drop=drop, append=append)
                 append = True
             pdf = pdf[[col if col in index_columns
-                       else str(i) if idx is None else str(idx) if len(idx) > 1 else idx[0]
+                       else str(i) if idx is None else name_like_string(idx)
                        for i, (col, idx) in enumerate(zip(self.data_columns, self.column_index))]]
 
         if self.column_index_level > 1:
@@ -726,14 +727,15 @@ class _InternalFrame(object):
                              for i, name in enumerate(index.names)]
         else:
             name = index.name
-            index_map = [(str(name) if name is not None else SPARK_INDEX_NAME_FORMAT(0),
+            index_map = [(name_like_string(name)
+                          if name is not None else SPARK_INDEX_NAME_FORMAT(0),
                           name if name is None or isinstance(name, tuple) else (name,))]
 
         index_columns = [index_column for index_column, _ in index_map]
 
         reset_index = pdf.reset_index()
         reset_index.columns = index_columns + data_columns
-        schema = StructType([StructField(str(name), infer_pd_series_spark_type(col),
+        schema = StructType([StructField(name_like_string(name), infer_pd_series_spark_type(col),
                                          nullable=bool(col.isnull().any()))
                              for name, col in reset_index.iteritems()])
         for name, col in reset_index.iteritems():
