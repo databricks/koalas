@@ -10,6 +10,8 @@ dependencies:
   - openjdk=8
   - pip
   - pip:
-  # In Read the Docs, seems whole pip-related installation is ignored when conda is used.
+    - --upgrade cython
+  - pip:
+    # In Read the Docs, seems whole pip-related installation is ignored when conda is used.
     - -r ../requirements-dev.txt
 
