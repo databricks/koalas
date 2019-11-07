@@ -5,9 +5,11 @@
 channels:
   - conda-forge
 dependencies:
+  # In Read the Docs, seems whole pip-related installation is ignored when conda is used.
+  - python=3.7
   - openjdk=8
   - pip
   - pip:
-    # In Read the Docs, seems installing 'requirements-dev.txt' seems ignored when Conda is used.
+  # In Read the Docs, seems whole pip-related installation is ignored when conda is used.
     - -r ../requirements-dev.txt
 
