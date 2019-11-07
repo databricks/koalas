@@ -126,7 +126,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
     @classmethod
     def tearDownClass(cls):
         # We don't stop Spark session to reuse across all tests.
-        # The session will be started and stopped at session level.
+        # The Spark session will be started and stopped at PyTest session level.
         # Please see databricks/koalas/conftest.py.
         pass
 

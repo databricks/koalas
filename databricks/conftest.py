@@ -46,8 +46,8 @@ else:
 @pytest.fixture(scope='session', autouse=True)
 def session_termination():
     yield
-    # Share one session across all the tests. Repeating starting and stopping session and contexts
-    # seems causing a memory leak for an unknown reason.
+    # Share one session across all the tests. Repeating starting and stopping sessions and contexts
+    # seems causing a memory leak for an unknown reason in PySpark.
     session.stop()
 
 
