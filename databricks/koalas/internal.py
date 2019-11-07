@@ -382,7 +382,7 @@ class _InternalFrame(object):
     def __init__(self, sdf: spark.DataFrame,
                  index_map: Optional[List[IndexMap]] = None,
                  column_index: Optional[List[Tuple[str, ...]]] = None,
-                 column_scols: Optional[spark.Column] = None,
+                 column_scols: Optional[List[spark.Column]] = None,
                  column_index_names: Optional[List[str]] = None,
                  scol: Optional[spark.Column] = None) -> None:
         """
@@ -676,7 +676,7 @@ class _InternalFrame(object):
              index_map: Union[List[IndexMap], _NoValueType] = _NoValue,
              column_index: Union[List[Tuple[str, ...]], _NoValueType] = _NoValue,
              column_scols: Union[List[spark.Column], _NoValueType] = _NoValue,
-             column_index_names: Union[List[str], _NoValueType] = _NoValue,
+             column_index_names: Optional[Union[List[str], _NoValueType]] = _NoValue,
              scol: Union[spark.Column, _NoValueType] = _NoValue) -> '_InternalFrame':
         """ Copy the immutable DataFrame.
 
