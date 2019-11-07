@@ -21,7 +21,6 @@ import unittest
 from contextlib import contextmanager
 
 import pandas as pd
-from pyspark.sql import SQLContext
 
 from databricks import koalas as ks
 from databricks.koalas.frame import DataFrame
@@ -126,7 +125,10 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
 
     @classmethod
     def tearDownClass(cls):
-        cls.spark.stop()
+        # We don't stop Spark session to reuse across all tests.
+        # The session will be started and stopped at session level.
+        # Please see databricks/koalas/conftest.py.
+        pass
 
     def assertPandasEqual(self, left, right):
         if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
