@@ -471,7 +471,7 @@ class Index(IndexOpsMixin):
 
         With `dropna` set to `False` we can also see NaN index values.
 
-        >>> s.index.value_counts(dropna=False).sort_index()
+        >>> s.index.value_counts(dropna=False).sort_index()  # doctest: +SKIP
         1.0    1
         2.0    1
         3.0    2
