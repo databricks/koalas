@@ -43,7 +43,7 @@ from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAM
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
-                                     name_like_string)
+                                     combine_frames, name_like_string)
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
@@ -3724,6 +3724,98 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             current = F.when(self._scol.isin(to_replace), value).otherwise(self._scol)
 
         return self._with_new_scol(current)
+
+    def update(self, other):
+        """
+        Modify Series in place using non-NA values from passed Series. Aligns on index.
+
+        Parameters
+        ----------
+        other : Series
+
+        Examples
+        --------
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> s = ks.Series([1, 2, 3])
+        >>> s.update(ks.Series([4, 5, 6]))
+        >>> s.sort_index()
+        0    4
+        1    5
+        2    6
+        Name: 0, dtype: int64
+
+        >>> s = ks.Series(['a', 'b', 'c'])
+        >>> s.update(ks.Series(['d', 'e'], index=[0, 2]))
+        >>> s.sort_index()
+        0    d
+        1    b
+        2    e
+        Name: 0, dtype: object
+
+        >>> s = ks.Series([1, 2, 3])
+        >>> s.update(ks.Series([4, 5, 6, 7, 8]))
+        >>> s.sort_index()
+        0    4
+        1    5
+        2    6
+        Name: 0, dtype: int64
+
+        >>> s = ks.Series([1, 2, 3], index=[10, 11, 12])
+        >>> s
+        10    1
+        11    2
+        12    3
+        Name: 0, dtype: int64
+
+        >>> s.update(ks.Series([4, 5, 6]))
+        >>> s.sort_index()
+        10    1
+        11    2
+        12    3
+        Name: 0, dtype: int64
+
+        >>> s.update(ks.Series([4, 5, 6], index=[11, 12, 13]))
+        >>> s.sort_index()
+        10    1
+        11    4
+        12    5
+        Name: 0, dtype: int64
+
+        If ``other`` contains NaNs the corresponding values are not updated
+        in the original Series.
+
+        >>> s = ks.Series([1, 2, 3])
+        >>> s.update(ks.Series([4, np.nan, 6]))
+        >>> s.sort_index()
+        0    4.0
+        1    2.0
+        2    6.0
+        Name: 0, dtype: float64
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        if not isinstance(other, Series):
+            raise ValueError("'other' must be a Series")
+
+        index_scol_names = [index_map[0] for index_map in self._internal.index_map]
+        combined = combine_frames(self.to_frame(), other.to_frame(), how='leftouter')
+        combined_sdf = combined._sdf
+        this_col = "__this_%s" % str(
+            self._internal.column_name_for(self._internal.column_index[0]))
+        that_col = "__that_%s" % str(
+            self._internal.column_name_for(other._internal.column_index[0]))
+        cond = F.when(scol_for(combined_sdf, that_col).isNotNull(),
+                      scol_for(combined_sdf, that_col)) \
+                .otherwise(combined_sdf[this_col]) \
+                .alias(str(self._internal.column_name_for(self._internal.column_index[0])))
+        internal = _InternalFrame(
+            sdf=combined_sdf.select(index_scol_names + [cond]),
+            index_map=self._internal.index_map,
+            column_index=self._internal.column_index)
+        self_updated = _col(ks.DataFrame(internal))
+        self._internal = self_updated._internal
+        self._kdf = self_updated._kdf
 
     def where(self, cond, other=np.nan):
         """
