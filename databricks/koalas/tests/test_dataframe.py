@@ -30,16 +30,6 @@ from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
-    @classmethod
-    def setUpClass(cls):
-        super(DataFrameTest, cls).setUpClass()
-        set_option("compute.ops_on_diff_frames", True)
-
-    @classmethod
-    def tearDownClass(cls):
-        reset_option("compute.ops_on_diff_frames")
-        super(DataFrameTest, cls).tearDownClass()
-
     @property
     def pdf(self):
         return pd.DataFrame({
@@ -776,16 +766,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(repr(pdf1.where(pdf2 > 100)),
-                       repr(kdf1.where(kdf2 > 100).sort_index()))
+        set_option("compute.ops_on_diff_frames", True)
+        try:
+            self.assert_eq(repr(pdf1.where(pdf2 > 100)),
+                           repr(kdf1.where(kdf2 > 100).sort_index()))
+        finally:
+            reset_option("compute.ops_on_diff_frames")
 
         pdf1 = pd.DataFrame({'A': [-1, -2, -3, -4, -5], 'B': [-100, -200, -300, -400, -500]})
         pdf2 = pd.DataFrame({'A': [-10, -20, -30, -40, -50], 'B': [-5, -4, -3, -2, -1]})
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(repr(pdf1.where(pdf2 < -250)),
-                       repr(kdf1.where(kdf2 < -250).sort_index()))
+        set_option("compute.ops_on_diff_frames", True)
+        try:
+            self.assert_eq(repr(pdf1.where(pdf2 < -250)),
+                           repr(kdf1.where(kdf2 < -250).sort_index()))
+        finally:
+            reset_option("compute.ops_on_diff_frames")
 
     def test_missing(self):
         kdf = self.kdf
