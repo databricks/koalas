@@ -16,54 +16,17 @@
 
 import functools
 import shutil
-import sys
 import tempfile
 import unittest
 from contextlib import contextmanager
 
 import pandas as pd
-from pyspark import SparkConf, SparkContext
-from pyspark.sql import SparkSession, SQLContext
 
 from databricks import koalas as ks
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index
 from databricks.koalas.series import Series
-from databricks.koalas.utils import name_like_string
-
-
-class PySparkTestCase(unittest.TestCase):
-
-    def setUp(self):
-        self._old_sys_path = list(sys.path)
-        if SparkContext._active_spark_context is not None:
-            SparkContext._active_spark_context.stop()
-        class_name = self.__class__.__name__
-        self.sc = SparkContext('local[4]', class_name)
-
-    def tearDown(self):
-        self.sc.stop()
-        sys.path = self._old_sys_path
-
-
-class ReusedPySparkTestCase(unittest.TestCase):
-
-    @classmethod
-    def conf(cls):
-        """
-        Override this in subclasses to supply a more specific conf
-        """
-        return SparkConf()
-
-    @classmethod
-    def setUpClass(cls):
-        if SparkContext._active_spark_context is not None:
-            SparkContext._active_spark_context.stop()
-        cls.sc = SparkContext('local[4]', cls.__name__, conf=cls.conf())
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.sc.stop()
+from databricks.koalas.utils import name_like_string, default_session
 
 
 class SQLTestUtils(object):
@@ -154,20 +117,18 @@ class SQLTestUtils(object):
                 self.spark.sql("DROP FUNCTION IF EXISTS %s" % f)
 
 
-class ReusedSQLTestCase(ReusedPySparkTestCase, SQLTestUtils):
+class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
 
     @classmethod
     def setUpClass(cls):
-        super(ReusedSQLTestCase, cls).setUpClass()
-        cls.spark = SparkSession(cls.sc)
-
-        cls.spark.conf.set('spark.sql.execution.arrow.enabled', True)
+        cls.spark = default_session({'spark.sql.execution.arrow.enabled': True})
 
     @classmethod
     def tearDownClass(cls):
-        super(ReusedSQLTestCase, cls).tearDownClass()
-        cls.spark.stop()
-        SQLContext._instantiatedContext = None
+        # We don't stop Spark session to reuse across all tests.
+        # The session will be started and stopped at session level.
+        # Please see databricks/koalas/conftest.py.
+        pass
 
     def assertPandasEqual(self, left, right):
         if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
