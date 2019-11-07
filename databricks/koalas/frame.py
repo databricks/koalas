@@ -7588,7 +7588,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         internal = self._internal.copy(
             sdf=sdf,
-            data_columns=self._internal.data_columns,
+            column_scols=[scol_for(sdf, col) for col in self._internal.data_columns],
             index_map=[(internal_index_column, None)],
             column_index=self._internal.column_index,
             column_index_names=None)
