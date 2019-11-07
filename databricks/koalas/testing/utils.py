@@ -122,7 +122,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
     @classmethod
     def setUpClass(cls):
         cls.spark = default_session()
-        cls.spark.conf("spark.sql.execution.arrow.enabled", True)
+        cls.spark.conf.set('spark.sql.execution.arrow.enabled', True)
 
     @classmethod
     def tearDownClass(cls):
