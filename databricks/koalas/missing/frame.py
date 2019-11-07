@@ -69,7 +69,6 @@ class _MissingPandasLikeDataFrame(object):
     last_valid_index = unsupported_function('last_valid_index')
     lookup = unsupported_function('lookup')
     mad = unsupported_function('mad')
-    mask = unsupported_function('mask')
     mode = unsupported_function('mode')
     pct_change = unsupported_function('pct_change')
     prod = unsupported_function('prod')
