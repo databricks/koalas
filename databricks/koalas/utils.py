@@ -54,7 +54,7 @@ def combine_frames(this, *args, how="full"):
             "Currently only one different DataFrame (from given Series) is supported"
         if this is args[0]._kdf:
             return  # We don't need to combine. All series is in this.
-        that = args[0]._kdf[[ser.name for ser in args]]
+        that = args[0]._kdf[list(args)]
     elif len(args) == 1 and isinstance(args[0], DataFrame):
         assert isinstance(args[0], DataFrame)
         if this is args[0]:
