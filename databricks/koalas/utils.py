@@ -283,9 +283,7 @@ def default_session(conf=None):
     builder = spark.SparkSession.builder.appName("Koalas")
     for key, value in conf.items():
         builder = builder.config(key, value)
-    session = builder.getOrCreate()
-    session.sparkContext.setLogLevel("DEBUG")
-    return session
+    return builder.getOrCreate()
 
 
 def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],
