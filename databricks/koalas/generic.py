@@ -33,7 +33,7 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, ILocIndexer, LocIndexer
 from databricks.koalas.internal import _InternalFrame
-from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
 from databricks.koalas.window import Rolling, Expanding
 
 
@@ -1416,7 +1416,7 @@ class _Frame(object):
         # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
         # to get a column name from Spark column but we need it to pass it through `expr`.
         kdf = kdf_or_kser
-        sdf = kdf._sdf
+        sdf = kdf._sdf.select(kdf._internal.scols)
         median = lambda name: F.expr("approx_percentile(`%s`, 0.5, %s)" % (name, accuracy))
         sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_columns])
 
@@ -1424,7 +1424,10 @@ class _Frame(object):
         sdf = sdf.withColumn('__DUMMY__', F.monotonically_increasing_id())
 
         # This is expected to be small so it's fine to transpose.
-        return DataFrame(kdf._internal.copy(sdf=sdf, index_map=[('__DUMMY__', None)])) \
+        return DataFrame(kdf._internal.copy(
+            sdf=sdf,
+            index_map=[('__DUMMY__', None)],
+            column_scols=[scol_for(sdf, col) for col in kdf._internal.data_columns])) \
             ._to_internal_pandas().transpose().iloc[:, 0]
 
     # TODO: 'center', 'win_type', 'on', 'axis' parameter should be implemented.

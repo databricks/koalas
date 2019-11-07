@@ -182,6 +182,7 @@ Combining / joining / merging
 
    Series.append
    Series.replace
+   Series.update
 
 Time series-related
 -------------------

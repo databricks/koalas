@@ -15,7 +15,6 @@
 #
 from functools import partial
 from typing import Any
-from functools import reduce
 
 from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.utils import name_like_string
@@ -26,6 +25,7 @@ from databricks.koalas.missing.window import _MissingPandasLikeRolling, \
     _MissingPandasLikeExpandingGroupby
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.utils import scol_for
 
 
 class _RollingAndExpanding(object):
@@ -86,8 +86,9 @@ class Rolling(_RollingAndExpanding):
                 kdf._internal.index_scols + [c._scol for c in applied])
             internal = kdf._internal.copy(
                 sdf=sdf,
-                data_columns=[c._internal.data_columns[0] for c in applied],
-                column_index=[c._internal.column_index[0] for c in applied])
+                column_index=[c._internal.column_index[0] for c in applied],
+                column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                              for c in applied])
             return DataFrame(internal)
 
     def sum(self):
@@ -436,6 +437,9 @@ class Rolling(_RollingAndExpanding):
 
         Returns
         -------
+        Series.expanding : Calling object with Series data.
+        DataFrame.expanding : Calling object with DataFrames.
+        Series.count : Count of the full Series.
         DataFrame.count : Count of the full DataFrame.
 
         Examples
@@ -552,8 +556,8 @@ class Expanding(_RollingAndExpanding):
                 kdf._internal.index_scols + [c._scol for c in applied])
             internal = kdf._internal.copy(
                 sdf=sdf,
-                data_columns=[c._internal.data_columns[0] for c in applied],
-                column_index=[c._internal.column_index[0] for c in applied])
+                column_index=[c._internal.column_index[0] for c in applied],
+                column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied])
             return DataFrame(internal)
 
     def count(self):
@@ -575,6 +579,7 @@ class Expanding(_RollingAndExpanding):
         --------
         Series.expanding : Calling object with Series data.
         DataFrame.expanding : Calling object with DataFrames.
+        Series.count : Count of the full Series.
         DataFrame.count : Count of the full DataFrame.
 
         Examples
@@ -621,6 +626,8 @@ class Expanding(_RollingAndExpanding):
 
         See Also
         --------
+        Series.expanding : Calling object with Series data.
+        DataFrame.expanding : Calling object with DataFrames.
         Series.sum : Reducing sum for Series.
         DataFrame.sum : Reducing sum for DataFrame.
 
@@ -729,8 +736,10 @@ class Expanding(_RollingAndExpanding):
 
         See Also
         --------
-        Series.expanding : Series expanding.
-        DataFrame.expanding : DataFrame expanding.
+        Series.expanding : Calling object with Series data.
+        DataFrame.expanding : Calling object with DataFrames.
+        Series.max : Similar method for Series.
+        DataFrame.max : Similar method for DataFrame.
         """
         def max(scol):
             return F.when(
@@ -878,9 +887,11 @@ class ExpandingGroupby(Expanding):
             cond = cond | c._scol.isNotNull()
         sdf = sdf.select(new_index_scols + [c._scol for c in applied]).filter(cond)
 
-        internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[c._internal.data_columns[0] for c in applied],
-                                  index_map=new_index_map)
+        internal = kdf._internal.copy(
+            sdf=sdf,
+            index_map=new_index_map,
+            column_index=[c._internal.column_index[0] for c in applied],
+            column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied])
 
         ret = DataFrame(internal)
         if isinstance(self._groupby, SeriesGroupBy):
@@ -902,37 +913,262 @@ class ExpandingGroupby(Expanding):
         --------
         Series.expanding : Calling object with Series data.
         DataFrame.expanding : Calling object with DataFrames.
+        Series.count : Count of the full Series.
         DataFrame.count : Count of the full DataFrame.
 
         Examples
         --------
-        >>> s = ks.Series([2, 3, float("nan"), 10])
-        >>> s.name = "col"
-        >>> s.groupby(s).expanding().count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        col
-        2.0   0    1.0
-        3.0   1    1.0
-        10.0  3    1.0
-        Name: col, dtype: float64
+        >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
+        >>> s.groupby(s).expanding(3).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        0
+        2  0      NaN
+           1      NaN
+        3  2      NaN
+           3      NaN
+           4      9.0
+        4  5      NaN
+           6      NaN
+           7     12.0
+           8     16.0
+        5  9      NaN
+           10     NaN
+        Name: 0, dtype: float64
 
-        >>> df = s.to_frame()
-        >>> df.groupby(df.col).expanding().count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-                col
-        col
-        2.0  0  1.0
-        3.0  1  1.0
-        10.0 3  1.0
+        For DataFrame, each expanding sum is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.groupby(df.A).expanding(2).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                 A     B
+        A
+        2 0    NaN   NaN
+          1    4.0   8.0
+        3 2    NaN   NaN
+          3    6.0  18.0
+          4    9.0  27.0
+        4 5    NaN   NaN
+          6    8.0  32.0
+          7   12.0  48.0
+          8   16.0  64.0
+        5 9    NaN   NaN
+          10  10.0  50.0
         """
         return super(ExpandingGroupby, self).count()
 
     def sum(self):
-        raise NotImplementedError("groupby.expanding().sum() is currently not implemented yet.")
+        """
+        Calculate expanding sum of given DataFrame or Series.
+
+        Returns
+        -------
+        Series or DataFrame
+            Same type as the input, with the same index, containing the
+            expanding sum.
+
+        See Also
+        --------
+        Series.expanding : Calling object with Series data.
+        DataFrame.expanding : Calling object with DataFrames.
+        Series.sum : Reducing sum for Series.
+        DataFrame.sum : Reducing sum for DataFrame.
+
+        Examples
+        --------
+        >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
+        >>> s.groupby(s).expanding(3).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        0
+        2  0      NaN
+           1      NaN
+        3  2      NaN
+           3      NaN
+           4      9.0
+        4  5      NaN
+           6      NaN
+           7     12.0
+           8     16.0
+        5  9      NaN
+           10     NaN
+        Name: 0, dtype: float64
+
+        For DataFrame, each expanding sum is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.groupby(df.A).expanding(2).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                 A     B
+        A
+        2 0    NaN   NaN
+          1    4.0   8.0
+        3 2    NaN   NaN
+          3    6.0  18.0
+          4    9.0  27.0
+        4 5    NaN   NaN
+          6    8.0  32.0
+          7   12.0  48.0
+          8   16.0  64.0
+        5 9    NaN   NaN
+          10  10.0  50.0
+        """
+        return super(ExpandingGroupby, self).sum()
 
     def min(self):
-        raise NotImplementedError("groupby.expanding().min() is currently not implemented yet.")
+        """
+        Calculate the expanding minimum.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returned object type is determined by the caller of the expanding
+            calculation.
+
+        See Also
+        --------
+        Series.expanding : Calling object with a Series.
+        DataFrame.expanding : Calling object with a DataFrame.
+        Series.min : Similar method for Series.
+        DataFrame.min : Similar method for DataFrame.
+
+        Examples
+        --------
+        >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
+        >>> s.groupby(s).expanding(3).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        0
+        2  0      NaN
+           1      NaN
+        3  2      NaN
+           3      NaN
+           4      9.0
+        4  5      NaN
+           6      NaN
+           7     12.0
+           8     16.0
+        5  9      NaN
+           10     NaN
+        Name: 0, dtype: float64
+
+        For DataFrame, each expanding sum is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.groupby(df.A).expanding(2).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                 A     B
+        A
+        2 0    NaN   NaN
+          1    4.0   8.0
+        3 2    NaN   NaN
+          3    6.0  18.0
+          4    9.0  27.0
+        4 5    NaN   NaN
+          6    8.0  32.0
+          7   12.0  48.0
+          8   16.0  64.0
+        5 9    NaN   NaN
+          10  10.0  50.0
+        """
+        return super(ExpandingGroupby, self).min()
 
     def max(self):
-        raise NotImplementedError("groupby.expanding().max() is currently not implemented yet.")
+        """
+        Calculate the expanding maximum.
+
+        Returns
+        -------
+        Series or DataFrame
+            Return type is determined by the caller.
+
+        See Also
+        --------
+        Series.expanding : Calling object with Series data.
+        DataFrame.expanding : Calling object with DataFrames.
+        Series.max : Similar method for Series.
+        DataFrame.max : Similar method for DataFrame.
+
+        Examples
+        --------
+        >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
+        >>> s.groupby(s).expanding(3).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        0
+        2  0      NaN
+           1      NaN
+        3  2      NaN
+           3      NaN
+           4      9.0
+        4  5      NaN
+           6      NaN
+           7     12.0
+           8     16.0
+        5  9      NaN
+           10     NaN
+        Name: 0, dtype: float64
+
+        For DataFrame, each expanding sum is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.groupby(df.A).expanding(2).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                 A     B
+        A
+        2 0    NaN   NaN
+          1    4.0   8.0
+        3 2    NaN   NaN
+          3    6.0  18.0
+          4    9.0  27.0
+        4 5    NaN   NaN
+          6    8.0  32.0
+          7   12.0  48.0
+          8   16.0  64.0
+        5 9    NaN   NaN
+          10  10.0  50.0
+        """
+        return super(ExpandingGroupby, self).max()
 
     def mean(self):
-        raise NotImplementedError("groupby.expanding().mean() is currently not implemented yet.")
+        """
+        Calculate the expanding mean of the values.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returned object type is determined by the caller of the expanding
+            calculation.
+
+        See Also
+        --------
+        Series.expanding : Calling object with Series data.
+        DataFrame.expanding : Calling object with DataFrames.
+        Series.mean : Equivalent method for Series.
+        DataFrame.mean : Equivalent method for DataFrame.
+
+        Examples
+        --------
+        >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
+        >>> s.groupby(s).expanding(3).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        0
+        2  0      NaN
+           1      NaN
+        3  2      NaN
+           3      NaN
+           4      9.0
+        4  5      NaN
+           6      NaN
+           7     12.0
+           8     16.0
+        5  9      NaN
+           10     NaN
+        Name: 0, dtype: float64
+
+        For DataFrame, each expanding sum is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.groupby(df.A).expanding(2).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                 A     B
+        A
+        2 0    NaN   NaN
+          1    4.0   8.0
+        3 2    NaN   NaN
+          3    6.0  18.0
+          4    9.0  27.0
+        4 5    NaN   NaN
+          6    8.0  32.0
+          7   12.0  48.0
+          8   16.0  64.0
+        5 9    NaN   NaN
+          10  10.0  50.0
+        """
+        return super(ExpandingGroupby, self).mean()

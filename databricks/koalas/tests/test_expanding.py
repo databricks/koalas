@@ -104,3 +104,15 @@ class ExpandingTests(ReusedSQLTestCase, TestUtils):
 
     def test_groupby_expanding_count(self):
         self._test_expanding_func("count")
+
+    def test_groupby_expanding_min(self):
+        self._test_expanding_func("min")
+
+    def test_groupby_expanding_max(self):
+        self._test_expanding_func("max")
+
+    def test_groupby_expanding_mean(self):
+        self._test_expanding_func("mean")
+
+    def test_groupby_expanding_sum(self):
+        self._test_expanding_func("sum")
