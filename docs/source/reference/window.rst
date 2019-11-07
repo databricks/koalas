@@ -13,6 +13,10 @@ Standard moving window functions
    :toctree: api/
 
    Rolling.count
+   Rolling.sum
+   Rolling.min
+   Rolling.max
+   Rolling.mean
 
 Standard expanding window functions
 -----------------------------------
