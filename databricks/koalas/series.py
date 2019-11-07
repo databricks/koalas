@@ -326,7 +326,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 s = pd.Series(
                     data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
             kdf = DataFrame(s)
-            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=kdf._internal.data_scols[0]), kdf)
+            IndexOpsMixin.__init__(self,
+                                   kdf._internal.copy(scol=kdf._internal.column_scols[0]), kdf)
 
     def _with_new_scol(self, scol: spark.Column) -> 'Series':
         """
@@ -1128,9 +1129,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             column_index = renamed._internal.column_index
             column_index_names = renamed._internal.column_index_names
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[sdf.schema[-1].name],
                                   index_map=renamed._internal.index_map,
                                   column_index=column_index,
+                                  column_scols=[scol_for(sdf, sdf.columns[-1])],
                                   column_index_names=column_index_names)
         return DataFrame(internal)
 
@@ -1776,8 +1777,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         sdf = self._internal.sdf.select(self._scol).distinct()
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[self._internal.data_columns[0]],
                                   column_index=[self._internal.column_index[0]],
+                                  column_scols=[scol_for(sdf, self._internal.data_columns[0])],
                                   column_index_names=self._internal.column_index_names)
         return _col(DataFrame(internal))
 
@@ -1905,9 +1906,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
 
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=['count'],
                                   index_map=[(index_name, None)],
                                   column_index=self._internal.column_index,
+                                  column_scols=[scol_for(sdf, 'count')],
                                   column_index_names=self._internal.column_index_names)
         return _col(DataFrame(internal))
 
@@ -2146,7 +2147,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.sdf
         sdf = sdf.select([F.concat(F.lit(prefix),
                                    scol_for(sdf, index_column)).alias(index_column)
-                          for index_column in internal.index_columns] + internal.data_scols)
+                          for index_column in internal.index_columns] + internal.column_scols)
         kdf._internal = internal.copy(sdf=sdf)
         return _col(kdf)
 
@@ -2196,7 +2197,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.sdf
         sdf = sdf.select([F.concat(scol_for(sdf, index_column),
                                    F.lit(suffix)).alias(index_column)
-                          for index_column in internal.index_columns] + internal.data_scols)
+                          for index_column in internal.index_columns] + internal.column_scols)
         kdf._internal = internal.copy(sdf=sdf)
         return _col(kdf)
 
@@ -2740,8 +2741,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
             internal = self.to_dataframe()._internal.copy(
                 sdf=sdf,
-                data_columns=[c._internal.data_columns[0] for c in applied],
                 column_index=[c._internal.column_index[0] for c in applied],
+                column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied],
                 column_index_names=None)
 
             return DataFrame(internal)
@@ -2879,9 +2880,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
             internal = _InternalFrame(
                 sdf=sdf,
-                data_columns=[value_column],
                 index_map=[(internal_index_column, None)],
                 column_index=None,
+                column_scols=[scol_for(sdf, value_column)],
                 column_index_names=None)
 
             return DataFrame(internal)[value_column].rename(self.name)

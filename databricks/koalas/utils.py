@@ -113,8 +113,10 @@ def combine_frames(this, *args, how="full"):
                                + this._internal.column_index_names)
                               if this._internal.column_index_names is not None else None)
         return DataFrame(
-            this._internal.copy(sdf=joined_df, data_columns=new_data_columns,
-                                column_index=column_index, column_index_names=column_index_names))
+            this._internal.copy(sdf=joined_df,
+                                column_index=column_index,
+                                column_scols=[scol_for(joined_df, col) for col in new_data_columns],
+                                column_index_names=column_index_names))
     else:
         raise ValueError(
             "Cannot combine the series or dataframe because it comes from a different dataframe. "

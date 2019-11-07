@@ -26,6 +26,7 @@ from databricks.koalas.missing.window import _MissingPandasLikeRolling, \
     _MissingPandasLikeExpandingGroupby
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.utils import scol_for
 
 
 class _RollingAndExpanding(object):
@@ -87,8 +88,9 @@ class Rolling(_RollingAndExpanding):
                 kdf._internal.index_scols + [c._scol for c in applied])
             internal = kdf._internal.copy(
                 sdf=sdf,
-                data_columns=[c._internal.data_columns[0] for c in applied],
-                column_index=[c._internal.column_index[0] for c in applied])
+                column_index=[c._internal.column_index[0] for c in applied],
+                column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                              for c in applied])
             return DataFrame(internal)
 
     def count(self):
@@ -214,8 +216,8 @@ class Expanding(_RollingAndExpanding):
                 kdf._internal.index_scols + [c._scol for c in applied])
             internal = kdf._internal.copy(
                 sdf=sdf,
-                data_columns=[c._internal.data_columns[0] for c in applied],
-                column_index=[c._internal.column_index[0] for c in applied])
+                column_index=[c._internal.column_index[0] for c in applied],
+                column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied])
             return DataFrame(internal)
 
     def count(self):
@@ -541,8 +543,9 @@ class ExpandingGroupby(Expanding):
         sdf = sdf.select(new_index_scols + [c._scol for c in applied]).filter(cond)
 
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[c._internal.data_columns[0] for c in applied],
-                                  index_map=new_index_map)
+                                  index_map=new_index_map,
+                                  column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                for c in applied])
 
         ret = DataFrame(internal)
         if isinstance(self._groupby, SeriesGroupBy):
