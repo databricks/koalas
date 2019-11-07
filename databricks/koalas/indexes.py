@@ -448,11 +448,11 @@ class Index(IndexOpsMixin):
 
         With `sort` set to `False`, the result wouldn't be sorted by number of count.
 
-        >>> s.index.value_counts(sort=True)  # doctest: +SKIP
-        3.0    2
-        4.0    1
+        >>> s.index.value_counts(sort=True).sort_index()
         1.0    1
         2.0    1
+        3.0    2
+        4.0    1
         Name: count, dtype: int64
 
         **normalize**
@@ -471,7 +471,7 @@ class Index(IndexOpsMixin):
 
         With `dropna` set to `False` we can also see NaN index values.
 
-        >>> s.index.value_counts(dropna=False).sort_index()  # doctest: +SKIP
+        >>> s.index.value_counts(dropna=False).sort_index()
         1.0    1
         2.0    1
         3.0    2
@@ -523,11 +523,10 @@ class Index(IndexOpsMixin):
         if sort:
             sdf_count = sdf_count.sort('count', ascending=ascending)
         if normalize:
-            sum_values = sdf_count.select(
-                F.sum(sdf_count['count'])).collect()[0][0]
             sdf_count = sdf_count.select(
                 idx_name,
-                (sdf_count['count'] / sum_values).alias('count'))
+                (sdf_count['count'] / sdf_count.select(F.sum(sdf_count['count']))
+                                               .first()[0]).alias('count'))
 
         internal = _InternalFrame(sdf=sdf_count, index_map=[(idx_name, None)])
 
