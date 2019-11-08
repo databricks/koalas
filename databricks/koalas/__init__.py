@@ -14,6 +14,12 @@
 # limitations under the License.
 #
 
+import sys
+
+if sys.version < '3':
+    raise ImportError('Koalas does not support Python 2.')
+
+
 from databricks.koalas.version import __version__
 
 
