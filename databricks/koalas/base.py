@@ -59,7 +59,8 @@ def _column_op(f):
 
             # If f is a logistic operator, fill NULL with False
             log_ops = ['eq', 'ne', 'lt', 'le', 'ge', 'gt']
-            is_log_op = any(f == getattr(spark.Column, f'__{log_op}__') for log_op in log_ops)
+            is_log_op = any(f == getattr(spark.Column, '__{}__'.format(log_op))
+                            for log_op in log_ops)
             if is_log_op:
                 filler = f == spark.Column.__ne__
                 scol = F.when(scol.isNull(), filler).otherwise(scol)
