@@ -456,6 +456,7 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(repr(pdf1.mask(pdf2 > -250)),
                        repr(kdf1.mask(kdf2 > -250).sort_index()))
 
+
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
     @classmethod

@@ -2141,8 +2141,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 F.when(sdf[tmp_cond_col_name.format(column)], sdf[data_col_name])
                  .otherwise(sdf[tmp_other_col_name.format(column)]).alias(data_col_name))
 
-        index_column = self._internal.index_columns[0]
-        sdf = sdf.select(index_column, *conditions)
+        index_columns = self._internal.index_columns
+        sdf = sdf.select(*index_columns, *conditions)
         internal = self._internal.copy(
             sdf=sdf,
             index_map=self._internal.index_map,
@@ -2226,7 +2226,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         sdf = cond._internal.sdf
         for col in cond._internal.data_columns:
-           sdf = sdf.withColumn(col, ~F.col(col))
+            sdf = sdf.withColumn(col, ~F.col(col))
 
         internal = cond._internal.copy(
             sdf=sdf,
