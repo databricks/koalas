@@ -109,7 +109,7 @@ _base = {
     types.LongType(): [np.int64, 'int64', 'long', 'bigint'],
     types.FloatType(): [float, 'float', np.float],
     types.DoubleType(): [np.float64, 'float64', 'double'],
-    types.TimestampType(): [np.datetime64],
+    types.TimestampType(): [datetime.datetime, np.datetime64],
     types.DateType(): [datetime.date],
     types.BooleanType(): [bool, 'boolean', 'bool', np.bool],
     types.ArrayType(types.StringType()): []

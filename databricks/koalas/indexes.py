@@ -49,6 +49,14 @@ class Index(IndexOpsMixin):
     :ivar _scol: Spark Column instance
     :type _scol: pyspark.Column
 
+    Parameters
+    ----------
+    data : DataFrame or list
+        Index can be created by DataFrame or list
+    dtype : dtype, default None
+        Data type to force. Only a single dtype is allowed. If None, infer
+    name : name of index, hashable
+
     See Also
     --------
     MultiIndex : A multi-level, or hierarchical, Index.
@@ -60,14 +68,28 @@ class Index(IndexOpsMixin):
 
     >>> ks.DataFrame({'a': [1, 2, 3]}, index=list('abc')).index
     Index(['a', 'b', 'c'], dtype='object')
+
+    >>> Index([1, 2, 3])
+    Int64Index([1, 2, 3], dtype='int64')
+
+    >>> Index(list('abc'))
+    Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None) -> None:
+    def __init__(self, data: Union[DataFrame, list], dtype=None, name=None,
+                 scol: Optional[spark.Column] = None) -> None:
+        if isinstance(data, DataFrame):
+            assert dtype is None
+            assert name is None
+            kdf = data
+        else:
+            assert scol is None
+            kdf = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
         if scol is None:
             scol = kdf._internal.index_scols[0]
         internal = kdf._internal.copy(scol=scol,
-                                      data_columns=kdf._internal.index_columns,
                                       column_index=kdf._internal.index_names,
+                                      column_scols=kdf._internal.index_scols,
                                       column_index_names=None)
         IndexOpsMixin.__init__(self, internal, kdf)
 
@@ -78,7 +100,7 @@ class Index(IndexOpsMixin):
         :param scol: the new Spark Column
         :return: the copied Index
         """
-        return Index(self._kdf, scol)
+        return Index(self._kdf, scol=scol)
 
     @property
     def size(self) -> int:
@@ -117,7 +139,7 @@ class Index(IndexOpsMixin):
         internal = self._kdf._internal.copy(
             sdf=sdf,
             index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
-            data_columns=[], column_index=[], column_index_names=None)
+            column_index=[], column_scols=[], column_index_names=None)
         return DataFrame(internal)._to_internal_pandas().index
 
     toPandas = to_pandas
@@ -174,7 +196,8 @@ class Index(IndexOpsMixin):
         if len(internal.index_map) != len(names):
             raise ValueError('Length of new names must be {}, got {}'
                              .format(len(internal.index_map), len(names)))
-        names = [name if isinstance(name, tuple) else (name,) for name in names]
+
+        names = [name if isinstance(name, (tuple, type(None))) else (name,) for name in names]
         self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
 
     @property
@@ -243,7 +266,7 @@ class Index(IndexOpsMixin):
             self._kdf._internal = internal
             return self
         else:
-            return Index(DataFrame(internal), self._scol)
+            return Index(DataFrame(internal), scol=self._scol)
 
     def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
         """
@@ -455,7 +478,7 @@ class Index(IndexOpsMixin):
         Index(['cobra', 'viper', 'sidewinder'], dtype='object', name='snake')
         """
         internal = self._kdf._internal.copy()
-        result = Index(ks.DataFrame(internal), self._scol)
+        result = Index(ks.DataFrame(internal), scol=self._scol)
         if name:
             result.name = name
         return result
@@ -532,6 +555,73 @@ class MultiIndex(Index):
     def all(self, *args, **kwargs):
         raise TypeError("cannot perform all with this index type: MultiIndex")
 
+    @staticmethod
+    def from_tuples(tuples, sortorder=None, names=None):
+        """
+        Convert list of tuples to MultiIndex.
+
+        Parameters
+        ----------
+        tuples : list / sequence of tuple-likes
+            Each tuple is the index of one row/column.
+        sortorder : int or None
+            Level of sortedness (must be lexicographically sorted by that level).
+        names : list / sequence of str, optional
+            Names for the levels in the index.
+
+        Returns
+        -------
+        index : MultiIndex
+
+        Examples
+        --------
+
+        >>> tuples = [(1, 'red'), (1, 'blue'),
+        ...           (2, 'red'), (2, 'blue')]
+        >>> ks.MultiIndex.from_tuples(tuples, names=('number', 'color'))  # doctest: +SKIP
+        MultiIndex([(1,  'red'),
+                    (1, 'blue'),
+                    (2,  'red'),
+                    (2, 'blue')],
+                   names=['number', 'color'])
+        """
+        return DataFrame(index=pd.MultiIndex.from_tuples(
+            tuples=tuples, sortorder=sortorder, names=names)).index
+
+    @staticmethod
+    def from_arrays(arrays, sortorder=None, names=None):
+        """
+        Convert arrays to MultiIndex.
+
+        Parameters
+        ----------
+        arrays: list / sequence of array-likes
+            Each array-like gives one level’s value for each data point. len(arrays)
+            is the number of levels.
+        sortorder: int or None
+            Level of sortedness (must be lexicographically sorted by that level).
+        names: list / sequence of str, optional
+            Names for the levels in the index.
+
+        Returns
+        -------
+        index: MultiIndex
+
+        Examples
+        --------
+
+        >>> arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
+        >>> ks.MultiIndex.from_arrays(arrays, names=('number', 'color'))  # doctest: +SKIP
+        MultiIndex([(1,  'red'),
+                    (1, 'blue'),
+                    (2,  'red'),
+                    (2, 'blue')],
+                   names=['number', 'color'])
+        """
+        return DataFrame(index=pd.MultiIndex.from_arrays(
+            arrays=arrays, sortorder=sortorder, names=names
+        )).index
+
     @property
     def name(self) -> str:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
@@ -592,12 +682,32 @@ class MultiIndex(Index):
 
     @property
     def levels(self) -> list:
-        idx_cols = self._kdf._internal.index_columns
-        sdf = self._kdf._sdf.select(idx_cols).dropDuplicates()
+        """
+        Names of index columns in list.
+
+        .. note:: Be aware of the possibility of running into out
+            of memory issue if returned list is huge.
+
+        Examples
+        --------
+        >>> mi = pd.MultiIndex.from_arrays((list('abc'), list('def')))
+        >>> mi.names = ['level_1', 'level_2']
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
+        >>> kdf.index.levels
+        [['a', 'b', 'c'], ['d', 'e', 'f']]
+
+        >>> mi = pd.MultiIndex.from_arrays((list('bac'), list('fee')))
+        >>> mi.names = ['level_1', 'level_2']
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
+        >>> kdf.index.levels
+        [['a', 'b', 'c'], ['e', 'f']]
+        """
+        scols = self._kdf._internal.index_scols
+        row = self._kdf._sdf.select([F.collect_set(scol) for scol in scols]).first()
 
         # use sorting is because pandas doesn't care the appearance order of level
         # names, so e.g. if ['b', 'd', 'a'] will return as ['a', 'b', 'd']
-        return [sorted([row[col] for row in sdf.collect()]) for col in idx_cols]
+        return [sorted(col) for col in row]
 
     def _get_level_number(self, level):
         """
@@ -647,17 +757,10 @@ class MultiIndex(Index):
         -------
         values : Index
         """
-        # TODO: the best way is to construct an Index from levels, but since constructing Index
-        # TODO: has not been implemented, will change once that is done.
         lev = self.levels[level]
         name = self.names[level]
 
-        level_values = DataFrame(index=lev).index
-
-        # TODO: fix name is None, related to Issue 971
-        if name is not None:
-            level_values.name = name
-        return level_values
+        return ks.Index(lev, name=name)
 
     def get_level_values(self, level):
         """

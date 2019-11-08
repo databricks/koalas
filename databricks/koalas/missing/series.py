@@ -54,7 +54,6 @@ class _MissingPandasLikeSeries(object):
     asof = unsupported_function('asof')
     at_time = unsupported_function('at_time')
     autocorr = unsupported_function('autocorr')
-    between = unsupported_function('between')
     between_time = unsupported_function('between_time')
     bfill = unsupported_function('bfill')
     combine = unsupported_function('combine')
@@ -77,7 +76,6 @@ class _MissingPandasLikeSeries(object):
     last = unsupported_function('last')
     last_valid_index = unsupported_function('last_valid_index')
     mad = unsupported_function('mad')
-    mask = unsupported_function('mask')
     pct_change = unsupported_function('pct_change')
     pop = unsupported_function('pop')
     prod = unsupported_function('prod')
@@ -107,7 +105,6 @@ class _MissingPandasLikeSeries(object):
     tz_convert = unsupported_function('tz_convert')
     tz_localize = unsupported_function('tz_localize')
     unstack = unsupported_function('unstack')
-    update = unsupported_function('update')
     view = unsupported_function('view')
 
     # Deprecated functions

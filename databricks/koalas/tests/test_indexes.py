@@ -107,6 +107,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(kidx.names, pidx.names)
         self.assert_eq(kidx, pidx)
 
+        pidx.name = None
+        kidx.name = None
+        self.assertEqual(kidx.name, pidx.name)
+        self.assertEqual(kidx.names, pidx.names)
+        self.assert_eq(kidx, pidx)
+
         with self.assertRaisesRegex(ValueError, "Names must be a list-like"):
             kidx.names = 'hi'
 
@@ -127,6 +133,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = kdf.index
         pidx.names = ['renamed_number', 'renamed_color']
         kidx.names = ['renamed_number', 'renamed_color']
+        self.assertEqual(kidx.names, pidx.names)
+
+        pidx.names = ['renamed_number', None]
+        kidx.names = ['renamed_number', None]
         self.assertEqual(kidx.names, pidx.names)
         if LooseVersion(pyspark.__version__) < LooseVersion('2.4'):
             # PySpark < 2.4 does not support struct type with arrow enabled.
@@ -284,6 +294,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assertEqual(kdf.index.nlevels, 2)
 
+<<<<<<< HEAD
     def test_index_get_level_values(self):
         pdf = pd.DataFrame({'a': [1, 2, 3]}, index=pd.Index([1, 2, 3], name='ks'))
         kdf = ks.from_pandas(pdf)
@@ -339,3 +350,23 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         for lv, output in zip(level_names, outputs):
             self.assertEqual(output, kdf.index._get_level_number(lv))
+=======
+    def test_multiindex_from_arrays(self):
+        arrays = [['a', 'a', 'b', 'b'], ['red', 'blue', 'red', 'blue']]
+        pidx = pd.MultiIndex.from_arrays(arrays)
+        kidx = ks.MultiIndex.from_arrays(arrays)
+
+        self.assert_eq(pidx, kidx)
+
+    def test_multiindex_levels(self):
+        tuples = [[list('abc'), list('def')], [list('aac'), list('fed')]]
+
+        for tup in tuples:
+            pdf = pd.DataFrame({'a': [1, 2, 3]}, index=tup)
+            kdf = ks.from_pandas(pdf)
+
+            # pandas returns FronzeList, so need to convert it to normal list
+            # for comparison
+            pdf_levels = [list(i) for i in pdf.index.levels]
+            self.assertEqual(pdf_levels, kdf.index.levels)
+>>>>>>> upstream/master
