@@ -36,14 +36,19 @@ class Rolling(_RollingAndExpanding):
     def __init__(self, kdf_or_kser, window, min_periods=None):
         from databricks.koalas import DataFrame, Series
         from databricks.koalas.groupby import SeriesGroupBy, DataFrameGroupBy
-        min_periods = min_periods if min_periods is not None else 0
 
         if window < 0:
             raise ValueError("window must be >= 0")
         if (min_periods is not None) and (min_periods < 0):
             raise ValueError("min_periods must be >= 0")
         self._window_val = window
-        self._min_periods = min_periods
+        if min_periods is not None:
+            self._min_periods = min_periods
+        else:
+            # TODO: 'min_periods' is not equivalent in pandas because it does not count NA as
+            #  a value.
+            self._min_periods = window
+
         self.kdf_or_kser = kdf_or_kser
         if not isinstance(kdf_or_kser, (DataFrame, Series, DataFrameGroupBy, SeriesGroupBy)):
             raise TypeError(
@@ -52,6 +57,8 @@ class Rolling(_RollingAndExpanding):
             self._index_scols = kdf_or_kser._internal.index_scols
             self._window = Window.orderBy(self._index_scols).rowsBetween(
                 Window.currentRow - (self._window_val-1), Window.currentRow)
+
+            self._unbounded_window = Window.orderBy(self._index_scols)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeRolling, item):
@@ -72,8 +79,7 @@ class Rolling(_RollingAndExpanding):
 
         if isinstance(self.kdf_or_kser, Series):
             kser = self.kdf_or_kser
-            return kser._with_new_scol(
-                func(kser._scol)).rename(kser.name)
+            return kser._with_new_scol(func(kser._scol)).rename(kser.name)
         elif isinstance(self.kdf_or_kser, DataFrame):
             kdf = self.kdf_or_kser
             applied = []
@@ -87,9 +93,60 @@ class Rolling(_RollingAndExpanding):
             internal = kdf._internal.copy(
                 sdf=sdf,
                 column_index=[c._internal.column_index[0] for c in applied],
-                column_scols=[scol_for(sdf, c._internal.data_columns[0])
-                              for c in applied])
+                column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied])
             return DataFrame(internal)
+
+    def count(self):
+        """
+        The rolling count of any non-NaN observations inside the window.
+
+        .. note:: the current implementation of this API uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Returns
+        -------
+        Series.expanding : Calling object with Series data.
+        DataFrame.expanding : Calling object with DataFrames.
+        Series.count : Count of the full Series.
+        DataFrame.count : Count of the full DataFrame.
+
+        Examples
+        --------
+        >>> s = ks.Series([2, 3, float("nan"), 10])
+        >>> s.rolling(1).count()
+        0    1.0
+        1    1.0
+        2    0.0
+        3    1.0
+        Name: 0, dtype: float64
+
+        >>> s.rolling(3).count()
+        0    1.0
+        1    2.0
+        2    2.0
+        3    2.0
+        Name: 0, dtype: float64
+
+        >>> s.to_frame().rolling(1).count()
+             0
+        0  1.0
+        1  1.0
+        2  0.0
+        3  1.0
+
+        >>> s.to_frame().rolling(3).count()
+             0
+        0  1.0
+        1  2.0
+        2  2.0
+        3  2.0
+        """
+        def count(scol):
+            return F.count(scol).over(self._window)
+
+        return self._apply_as_series_or_frame(count).astype('float64')
 
     def sum(self):
         """
@@ -108,6 +165,8 @@ class Rolling(_RollingAndExpanding):
 
         See Also
         --------
+        Series.expanding : Calling object with Series data.
+        DataFrame.expanding : Calling object with DataFrames.
         Series.sum : Reducing sum for Series.
         DataFrame.sum : Reducing sum for DataFrame.
 
@@ -166,9 +225,8 @@ class Rolling(_RollingAndExpanding):
         4  13.0  65.0
         """
         def sum(scol):
-            window = Window.orderBy(self._index_scols)
             return F.when(
-                F.lag(scol, self._window_val - 1).over(window) >= self._min_periods,
+                F.row_number().over(self._unbounded_window) >= self._min_periods,
                 F.sum(scol).over(self._window)
             ).otherwise(F.lit(None))
 
@@ -251,9 +309,8 @@ class Rolling(_RollingAndExpanding):
         4  2.0  4.0
         """
         def min(scol):
-            window = Window.orderBy(self._index_scols)
             return F.when(
-                F.lag(scol, self._window_val - 1).over(window) >= self._min_periods,
+                F.row_number().over(self._unbounded_window) >= self._min_periods,
                 F.min(scol).over(self._window)
             ).otherwise(F.lit(None))
 
@@ -277,6 +334,8 @@ class Rolling(_RollingAndExpanding):
         --------
         Series.rolling : Series rolling.
         DataFrame.rolling : DataFrame rolling.
+        Series.max : Similar method for Series.
+        DataFrame.max : Similar method for DataFrame.
 
         Examples
         --------
@@ -333,9 +392,8 @@ class Rolling(_RollingAndExpanding):
         4  6.0  36.0
         """
         def max(scol):
-            window = Window.orderBy(self._index_scols)
             return F.when(
-                F.lag(scol, self._window_val - 1).over(window) >= self._min_periods,
+                F.row_number().over(self._unbounded_window) >= self._min_periods,
                 F.max(scol).over(self._window)
             ).otherwise(F.lit(None))
 
@@ -418,65 +476,12 @@ class Rolling(_RollingAndExpanding):
         4  4.333333  21.666667
         """
         def mean(scol):
-            window = Window.orderBy(self._index_scols)
             return F.when(
-                F.lag(scol, self._window_val - 1).over(window) >= self._min_periods,
+                F.row_number().over(self._unbounded_window) >= self._min_periods,
                 F.mean(scol).over(self._window)
             ).otherwise(F.lit(None))
 
         return self._apply_as_series_or_frame(mean)
-
-    def count(self):
-        """
-        The rolling count of any non-NaN observations inside the window.
-
-        .. note:: the current implementation of this API uses Spark's Window without
-            specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
-
-        Returns
-        -------
-        Series.expanding : Calling object with Series data.
-        DataFrame.expanding : Calling object with DataFrames.
-        Series.count : Count of the full Series.
-        DataFrame.count : Count of the full DataFrame.
-
-        Examples
-        --------
-        >>> s = ks.Series([2, 3, float("nan"), 10])
-        >>> s.rolling(1).count()
-        0    1.0
-        1    1.0
-        2    0.0
-        3    1.0
-        Name: 0, dtype: float64
-
-        >>> s.rolling(3).count()
-        0    1.0
-        1    2.0
-        2    2.0
-        3    2.0
-        Name: 0, dtype: float64
-
-        >>> s.to_frame().rolling(1).count()
-             0
-        0  1.0
-        1  1.0
-        2  0.0
-        3  1.0
-
-        >>> s.to_frame().rolling(3).count()
-             0
-        0  1.0
-        1  2.0
-        2  2.0
-        3  2.0
-        """
-        def count(scol):
-            return F.count(scol).over(self._window)
-
-        return self._apply_as_series_or_frame(count).astype('float64')
 
 
 class RollingGroupby(Rolling):
@@ -489,6 +494,9 @@ class RollingGroupby(Rolling):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
+    def count(self):
+        raise NotImplementedError("groupby.rolling().count() is currently not implemented yet.")
+
     def sum(self):
         raise NotImplementedError("groupby.rolling().sum() is currently not implemented yet.")
 
@@ -500,9 +508,6 @@ class RollingGroupby(Rolling):
 
     def mean(self):
         raise NotImplementedError("groupby.rolling().mean() is currently not implemented yet.")
-
-    def count(self):
-        raise NotImplementedError("groupby.rolling().count() is currently not implemented yet.")
 
 
 class Expanding(_RollingAndExpanding):
