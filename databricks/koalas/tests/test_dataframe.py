@@ -760,56 +760,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(KeyError, msg):
             kdf.xs(('mammal', 'dog', 'walks', 'foo'))
 
-    def test_where(self):
-        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
-        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
-        kdf1 = ks.from_pandas(pdf1)
-        kdf2 = ks.from_pandas(pdf2)
-
-        set_option("compute.ops_on_diff_frames", True)
-        try:
-            self.assert_eq(repr(pdf1.where(pdf2 > 100)),
-                           repr(kdf1.where(kdf2 > 100).sort_index()))
-        finally:
-            reset_option("compute.ops_on_diff_frames")
-
-        pdf1 = pd.DataFrame({'A': [-1, -2, -3, -4, -5], 'B': [-100, -200, -300, -400, -500]})
-        pdf2 = pd.DataFrame({'A': [-10, -20, -30, -40, -50], 'B': [-5, -4, -3, -2, -1]})
-        kdf1 = ks.from_pandas(pdf1)
-        kdf2 = ks.from_pandas(pdf2)
-
-        set_option("compute.ops_on_diff_frames", True)
-        try:
-            self.assert_eq(repr(pdf1.where(pdf2 < -250)),
-                           repr(kdf1.where(kdf2 < -250).sort_index()))
-        finally:
-            reset_option("compute.ops_on_diff_frames")
-
-    def test_mask(self):
-        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
-        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
-        kdf1 = ks.from_pandas(pdf1)
-        kdf2 = ks.from_pandas(pdf2)
-
-        set_option("compute.ops_on_diff_frames", True)
-        try:
-            self.assert_eq(repr(pdf1.mask(pdf2 < 100)),
-                           repr(kdf1.mask(kdf2 < 100).sort_index()))
-        finally:
-            reset_option("compute.ops_on_diff_frames")
-
-        pdf1 = pd.DataFrame({'A': [-1, -2, -3, -4, -5], 'B': [-100, -200, -300, -400, -500]})
-        pdf2 = pd.DataFrame({'A': [-10, -20, -30, -40, -50], 'B': [-5, -4, -3, -2, -1]})
-        kdf1 = ks.from_pandas(pdf1)
-        kdf2 = ks.from_pandas(pdf2)
-
-        set_option("compute.ops_on_diff_frames", True)
-        try:
-            self.assert_eq(repr(pdf1.mask(pdf2 > -250)),
-                           repr(kdf1.mask(kdf2 > -250).sort_index()))
-        finally:
-            reset_option("compute.ops_on_diff_frames")
-
     def test_missing(self):
         kdf = self.kdf
 

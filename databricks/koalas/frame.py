@@ -2115,7 +2115,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         tmp_cond_col_name = '__tmp_cond_col_{}__'
         tmp_other_col_name = '__tmp_other_col_{}__'
         kdf = self.copy()
-        for column in self._internal._data_columns:
+        for column in self._internal.data_columns:
             kdf[tmp_cond_col_name.format(column)] = cond[column]
             if isinstance(other, DataFrame):
                 kdf[tmp_other_col_name.format(column)] = other[column]
@@ -2135,7 +2135,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = kdf._sdf
         conditions = []
-        for column in self._internal._data_columns:
+        for column in self._internal.data_columns:
             data_col_name = self._internal.column_name_for(column)
             conditions.append(
                 F.when(sdf[tmp_cond_col_name.format(column)], sdf[data_col_name])
@@ -2146,8 +2146,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.copy(
             sdf=sdf,
             index_map=self._internal.index_map,
-            data_columns=self._internal._data_columns,
             column_index=self._internal.column_index,
+            column_scols=[scol_for(sdf, col) for col in self._internal.data_columns],
             column_index_names=None)
 
         return DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map))
@@ -2224,45 +2224,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
-        tmp_cond_col_name = '__tmp_cond_col_{}__'
-        tmp_other_col_name = '__tmp_other_col_{}__'
-        kdf = self.copy()
-        for column in self._internal._data_columns:
-            kdf[tmp_cond_col_name.format(column)] = ~cond[column]
-            if isinstance(other, DataFrame):
-                kdf[tmp_other_col_name.format(column)] = other[column]
-            else:
-                kdf[tmp_other_col_name.format(column)] = other
+        sdf = cond._internal.sdf
+        for col in cond._internal.data_columns:
+           sdf = sdf.withColumn(col, ~F.col(col))
 
-        # above logic make spark dataframe looks like below:
-        # +-----------------+---+---+------------------+-------------------+------------------+--...
-        # |__index_level_0__|  A|  B|__tmp_cond_col_A__|__tmp_other_col_A__|__tmp_cond_col_B__|__...
-        # +-----------------+---+---+------------------+-------------------+------------------+--...
-        # |                0|  0|100|              true|                  0|             false|  ...
-        # |                1|  1|200|             false|                 -1|             false|  ...
-        # |                3|  3|400|              true|                 -3|             false|  ...
-        # |                2|  2|300|             false|                 -2|              true|  ...
-        # |                4|  4|500|             false|                 -4|             false|  ...
-        # +-----------------+---+---+------------------+-------------------+------------------+--...
-
-        sdf = kdf._sdf
-        conditions = []
-        for column in self._internal._data_columns:
-            data_col_name = self._internal.column_name_for(column)
-            conditions.append(
-                F.when(sdf[tmp_cond_col_name.format(column)], sdf[data_col_name])
-                 .otherwise(sdf[tmp_other_col_name.format(column)]).alias(data_col_name))
-
-        index_column = self._internal.index_columns[0]
-        sdf = sdf.select(index_column, *conditions)
-        internal = self._internal.copy(
+        internal = cond._internal.copy(
             sdf=sdf,
-            index_map=self._internal.index_map,
-            data_columns=self._internal._data_columns,
-            column_index=self._internal.column_index,
+            index_map=cond._internal.index_map,
+            column_index=cond._internal.column_index,
+            column_scols=[scol_for(sdf, col) for col in cond._internal.data_columns],
             column_index_names=None)
 
-        return DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map))
+        cond_inversed = DataFrame(internal)
+        return self.where(cond_inversed, other)
 
     @property
     def index(self):
