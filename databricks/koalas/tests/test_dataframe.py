@@ -1822,6 +1822,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pdf.melt(id_vars=['A'], value_vars=['B'],
                                 var_name='myVarname', value_name='myValname')
                        .sort_values(['myVarname', 'myValname']))
+        self.assert_eq(kdf.melt(value_vars=('A', 'B')).sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(value_vars=('A', 'B')).sort_values(['variable', 'value']))
+
+        self.assertRaises(KeyError, lambda: kdf.melt(id_vars='Z'))
+        self.assertRaises(KeyError, lambda: kdf.melt(value_vars='Z'))
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
@@ -1855,6 +1861,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pdf.melt().sort_values(['v0', 'v1', 'value']))
 
         self.assertRaises(ValueError, lambda: kdf.melt(id_vars=('X', 'A')))
+        self.assertRaises(ValueError, lambda: kdf.melt(value_vars=('X', 'A')))
+        self.assertRaises(KeyError, lambda: kdf.melt(id_vars=[('Y', 'A')]))
+        self.assertRaises(KeyError, lambda: kdf.melt(value_vars=[('Y', 'A')]))
 
     def test_all(self):
         pdf = pd.DataFrame({

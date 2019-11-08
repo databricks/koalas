@@ -6791,6 +6791,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  c        B      5
         5  c        C      6
 
+        >>> df.melt(value_vars='A')
+          variable value
+        0        A     a
+        1        A     b
+        2        A     c
+
         >>> ks.melt(df, id_vars=['A', 'B'])
            A  B variable  value
         0  a  1        C      2
@@ -6812,28 +6818,64 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  b         B          3
         2  c         B          5
         """
+        column_index = self._internal.column_index
+
         if id_vars is None:
             id_vars = []
-        elif isinstance(id_vars, str):
-            id_vars = [(id_vars,)]
-        elif isinstance(id_vars, tuple):
-            if self._internal.column_index_level == 1:
-                id_vars = [idv if isinstance(idv, tuple) else (idv,) for idv in id_vars]
-            else:
-                raise ValueError('id_vars must be a list of tuples when columns are a MultiIndex')
         else:
-            id_vars = [idv if isinstance(idv, tuple) else (idv,) for idv in id_vars]
+            if isinstance(id_vars, str):
+                id_vars = [(id_vars,)]
+            elif isinstance(id_vars, tuple):
+                if self._internal.column_index_level == 1:
+                    id_vars = [idv if isinstance(idv, tuple) else (idv,)
+                               for idv in id_vars]
+                else:
+                    raise ValueError('id_vars must be a list of tuples'
+                                     ' when columns are a MultiIndex')
+            else:
+                id_vars = [idv if isinstance(idv, tuple) else (idv,)
+                           for idv in id_vars]
 
-        column_index = self._internal.column_index
+            non_existence_col = [idv for idv in id_vars if idv not in column_index]
+            if len(non_existence_col) != 0:
+                raveled_column_index = np.ravel(column_index)
+                missing = [nec for nec in np.ravel(non_existence_col)
+                           if nec not in raveled_column_index]
+                if len(missing) != 0:
+                    raise KeyError("The following 'id_vars' are not present"
+                                   " in the DataFrame: {}".format(missing))
+                else:
+                    raise KeyError("None of {} are in the {}"
+                                   .format(non_existence_col, column_index))
 
         if value_vars is None:
             value_vars = []
-        elif isinstance(value_vars, str):
-            value_vars = [(value_vars,)]
-        elif isinstance(value_vars, tuple):
-            value_vars = [value_vars]
         else:
-            value_vars = [valv if isinstance(valv, tuple) else (valv,) for valv in value_vars]
+            if isinstance(value_vars, str):
+                value_vars = [(value_vars,)]
+            elif isinstance(value_vars, tuple):
+                if self._internal.column_index_level == 1:
+                    value_vars = [valv if isinstance(valv, tuple) else (valv,)
+                                  for valv in value_vars]
+                else:
+                    raise ValueError('value_vars must be a list of tuples'
+                                     ' when columns are a MultiIndex')
+            else:
+                value_vars = [valv if isinstance(valv, tuple) else (valv,)
+                              for valv in value_vars]
+
+            non_existence_col = [valv for valv in value_vars if valv not in column_index]
+            if len(non_existence_col) != 0:
+                raveled_column_index = np.ravel(column_index)
+                missing = [nec for nec in np.ravel(non_existence_col)
+                           if nec not in raveled_column_index]
+                if len(missing) != 0:
+                    raise KeyError("The following 'value_vars' are not present"
+                                   " in the DataFrame: {}".format(missing))
+                else:
+                    raise KeyError("None of {} are in the {}"
+                                   .format(non_existence_col, column_index))
+
         if len(value_vars) == 0:
             value_vars = column_index
 
