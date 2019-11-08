@@ -15,7 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from __future__ import print_function
 
+from io import open
 import sys
 from setuptools import setup
 from os import path

@@ -74,7 +74,6 @@ class _MissingPandasLikeDataFrame(object):
     pct_change = unsupported_function('pct_change')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
-    quantile = unsupported_function('quantile')
     query = unsupported_function('query')
     reindex_like = unsupported_function('reindex_like')
     rename_axis = unsupported_function('rename_axis')

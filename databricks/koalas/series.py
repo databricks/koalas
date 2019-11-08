@@ -43,7 +43,7 @@ from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAM
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
-                                     name_like_string)
+                                     combine_frames, name_like_string)
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
@@ -326,8 +326,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 s = pd.Series(
                     data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath)
             kdf = DataFrame(s)
-            IndexOpsMixin.__init__(self, kdf._internal.copy(scol=kdf._internal.data_scols[0]), kdf)
-            self.name = name
+            IndexOpsMixin.__init__(self,
+                                   kdf._internal.copy(scol=kdf._internal.column_scols[0]), kdf)
+            self.name = s.name
 
     def _with_new_scol(self, scol: spark.Column) -> 'Series':
         """
@@ -892,7 +893,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self),
 
     @property
-    def name(self) -> Union[str, Tuple[str, ...], None]:
+    def name(self) -> Optional[Union[str, Tuple[str, ...]]:
         """Return name of the Series."""
         name = self._internal.column_index[0]
         if name is not None and len(name) == 1:
@@ -901,7 +902,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             return name
 
     @name.setter
-    def name(self, name: Union[str, Tuple[str, ...]]):
+    def name(self, name: Optional[Union[str, Tuple[str, ...]]):
         self.rename(name, inplace=True)
 
     # TODO: Functionality and documentation should be matched. Currently, changing index labels
@@ -1129,9 +1130,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             column_index = renamed._internal.column_index
             column_index_names = renamed._internal.column_index_names
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[sdf.schema[-1].name],
                                   index_map=renamed._internal.index_map,
                                   column_index=column_index,
+                                  column_scols=[scol_for(sdf, sdf.columns[-1])],
                                   column_index_names=column_index_names)
         return DataFrame(internal)
 
@@ -1777,8 +1778,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         sdf = self._internal.sdf.select(self._scol).distinct()
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[self._internal.data_columns[0]],
                                   column_index=[self._internal.column_index[0]],
+                                  column_scols=[scol_for(sdf, self._internal.data_columns[0])],
                                   column_index_names=self._internal.column_index_names)
         return _col(DataFrame(internal))
 
@@ -1906,9 +1907,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
 
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=['count'],
                                   index_map=[(index_name, None)],
                                   column_index=self._internal.column_index,
+                                  column_scols=[scol_for(sdf, 'count')],
                                   column_index_names=self._internal.column_index_names)
         return _col(DataFrame(internal))
 
@@ -2147,7 +2148,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.sdf
         sdf = sdf.select([F.concat(F.lit(prefix),
                                    scol_for(sdf, index_column)).alias(index_column)
-                          for index_column in internal.index_columns] + internal.data_scols)
+                          for index_column in internal.index_columns] + internal.column_scols)
         kdf._internal = internal.copy(sdf=sdf)
         return _col(kdf)
 
@@ -2197,7 +2198,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.sdf
         sdf = sdf.select([F.concat(scol_for(sdf, index_column),
                                    F.lit(suffix)).alias(index_column)
-                          for index_column in internal.index_columns] + internal.data_scols)
+                          for index_column in internal.index_columns] + internal.column_scols)
         kdf._internal = internal.copy(sdf=sdf)
         return _col(kdf)
 
@@ -2741,8 +2742,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
             internal = self.to_dataframe()._internal.copy(
                 sdf=sdf,
-                data_columns=[c._internal.data_columns[0] for c in applied],
                 column_index=[c._internal.column_index[0] for c in applied],
+                column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied],
                 column_index_names=None)
 
             return DataFrame(internal)
@@ -2880,9 +2881,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
             internal = _InternalFrame(
                 sdf=sdf,
-                data_columns=[value_column],
                 index_map=[(internal_index_column, None)],
                 column_index=None,
+                column_scols=[scol_for(sdf, value_column)],
                 column_index_names=None)
 
             return DataFrame(internal)[value_column].rename(self.name)
@@ -3725,6 +3726,98 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol(current)
 
+    def update(self, other):
+        """
+        Modify Series in place using non-NA values from passed Series. Aligns on index.
+
+        Parameters
+        ----------
+        other : Series
+
+        Examples
+        --------
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> s = ks.Series([1, 2, 3])
+        >>> s.update(ks.Series([4, 5, 6]))
+        >>> s.sort_index()
+        0    4
+        1    5
+        2    6
+        Name: 0, dtype: int64
+
+        >>> s = ks.Series(['a', 'b', 'c'])
+        >>> s.update(ks.Series(['d', 'e'], index=[0, 2]))
+        >>> s.sort_index()
+        0    d
+        1    b
+        2    e
+        Name: 0, dtype: object
+
+        >>> s = ks.Series([1, 2, 3])
+        >>> s.update(ks.Series([4, 5, 6, 7, 8]))
+        >>> s.sort_index()
+        0    4
+        1    5
+        2    6
+        Name: 0, dtype: int64
+
+        >>> s = ks.Series([1, 2, 3], index=[10, 11, 12])
+        >>> s
+        10    1
+        11    2
+        12    3
+        Name: 0, dtype: int64
+
+        >>> s.update(ks.Series([4, 5, 6]))
+        >>> s.sort_index()
+        10    1
+        11    2
+        12    3
+        Name: 0, dtype: int64
+
+        >>> s.update(ks.Series([4, 5, 6], index=[11, 12, 13]))
+        >>> s.sort_index()
+        10    1
+        11    4
+        12    5
+        Name: 0, dtype: int64
+
+        If ``other`` contains NaNs the corresponding values are not updated
+        in the original Series.
+
+        >>> s = ks.Series([1, 2, 3])
+        >>> s.update(ks.Series([4, np.nan, 6]))
+        >>> s.sort_index()
+        0    4.0
+        1    2.0
+        2    6.0
+        Name: 0, dtype: float64
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        if not isinstance(other, Series):
+            raise ValueError("'other' must be a Series")
+
+        index_scol_names = [index_map[0] for index_map in self._internal.index_map]
+        combined = combine_frames(self.to_frame(), other.to_frame(), how='leftouter')
+        combined_sdf = combined._sdf
+        this_col = "__this_%s" % str(
+            self._internal.column_name_for(self._internal.column_index[0]))
+        that_col = "__that_%s" % str(
+            self._internal.column_name_for(other._internal.column_index[0]))
+        cond = F.when(scol_for(combined_sdf, that_col).isNotNull(),
+                      scol_for(combined_sdf, that_col)) \
+                .otherwise(combined_sdf[this_col]) \
+                .alias(str(self._internal.column_name_for(self._internal.column_index[0])))
+        internal = _InternalFrame(
+            sdf=combined_sdf.select(index_scol_names + [cond]),
+            index_map=self._internal.index_map,
+            column_index=self._internal.column_index)
+        self_updated = _col(ks.DataFrame(internal))
+        self._internal = self_updated._internal
+        self._kdf = self_updated._kdf
+
     def where(self, cond, other=np.nan):
         """
         Replace values where the condition is False.
@@ -3804,6 +3897,65 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         result = _col(ks.DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map)))
 
         return result
+
+    def mask(self, cond, other=np.nan):
+        """
+        Replace values where the condition is True.
+
+        Parameters
+        ----------
+        cond : boolean Series
+            Where cond is False, keep the original value. Where True,
+            replace with corresponding value from other.
+        other : scalar, Series
+            Entries where cond is True are replaced with corresponding value from other.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> s1 = ks.Series([0, 1, 2, 3, 4])
+        >>> s2 = ks.Series([100, 200, 300, 400, 500])
+        >>> s1.mask(s1 > 0).sort_index()
+        0    0.0
+        1    NaN
+        2    NaN
+        3    NaN
+        4    NaN
+        Name: 0, dtype: float64
+
+        >>> s1.mask(s1 > 1, 10).sort_index()
+        0     0
+        1     1
+        2    10
+        3    10
+        4    10
+        Name: 0, dtype: int64
+
+        >>> s1.mask(s1 > 1, s1 + 100).sort_index()
+        0      0
+        1      1
+        2    102
+        3    103
+        4    104
+        Name: 0, dtype: int64
+
+        >>> s1.mask(s1 > 1, s2).sort_index()
+        0      0
+        1      1
+        2    300
+        3    400
+        4    500
+        Name: 0, dtype: int64
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        return self.where(~cond, other)
 
     def xs(self, key, level=None):
         """
