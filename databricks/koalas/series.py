@@ -328,7 +328,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             kdf = DataFrame(s)
             IndexOpsMixin.__init__(self,
                                    kdf._internal.copy(scol=kdf._internal.column_scols[0]), kdf)
-            self.name = s.name
+            self._has_name = s.name
 
     def _with_new_scol(self, scol: spark.Column) -> 'Series':
         """
@@ -895,6 +895,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     @property
     def name(self) -> Optional[Union[str, Tuple[str, ...]]]:
         """Return name of the Series."""
+        if self._has_name is None:
+            return None
         name = self._internal.column_index[0]
         if name is not None and len(name) == 1:
             return name[0]
@@ -903,6 +905,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     @name.setter
     def name(self, name: Optional[Union[str, Tuple[str, ...]]]):
+        if name is None:
+            self._has_name = None
+            name = '0'
         self.rename(name, inplace=True)
 
     # TODO: Functionality and documentation should be matched. Currently, changing index labels
