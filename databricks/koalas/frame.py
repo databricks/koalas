@@ -749,11 +749,11 @@ class DataFrame(_Frame, Generic[T]):
         ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
 
         >>> df.eq(1)
-               a     b
-        a   True  True
-        b  False  None
-        c  False  True
-        d  False  None
+               a      b
+        a   True   True
+        b  False  False
+        c  False   True
+        d  False  False
         """
         return self == other
 
@@ -770,9 +770,9 @@ class DataFrame(_Frame, Generic[T]):
         >>> df.gt(2)
                a      b
         a  False  False
-        b  False   None
+        b  False  False
         c   True  False
-        d   True   None
+        d   True  False
         """
         return self > other
 
@@ -785,11 +785,11 @@ class DataFrame(_Frame, Generic[T]):
         ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
 
         >>> df.ge(1)
-              a     b
-        a  True  True
-        b  True  None
-        c  True  True
-        d  True  None
+              a      b
+        a  True   True
+        b  True  False
+        c  True   True
+        d  True  False
         """
         return self >= other
 
@@ -804,9 +804,9 @@ class DataFrame(_Frame, Generic[T]):
         >>> df.lt(1)
                a      b
         a  False  False
-        b  False   None
+        b  False  False
         c  False  False
-        d  False   None
+        d  False  False
         """
         return self < other
 
@@ -819,11 +819,11 @@ class DataFrame(_Frame, Generic[T]):
         ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
 
         >>> df.le(2)
-               a     b
-        a   True  True
-        b   True  None
-        c  False  True
-        d  False  None
+               a      b
+        a   True   True
+        b   True  False
+        c  False   True
+        d  False  False
         """
         return self <= other
 
@@ -838,9 +838,9 @@ class DataFrame(_Frame, Generic[T]):
         >>> df.ne(1)
                a      b
         a  False  False
-        b   True   None
+        b   True   True
         c   True  False
-        d   True   None
+        d   True   True
         """
         return self != other
 

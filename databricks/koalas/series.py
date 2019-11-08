@@ -539,11 +539,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: a, dtype: bool
 
         >>> df.b.eq(1)
-        a    True
-        b    None
-        c    True
-        d    None
-        Name: b, dtype: object
+        a     True
+        b    False
+        c     True
+        d    False
+        Name: b, dtype: bool
         """
         return (self == other).rename(self.name)
 
@@ -566,10 +566,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> df.b.gt(1)
         a    False
-        b     None
+        b    False
         c    False
-        d     None
-        Name: b, dtype: object
+        d    False
+        Name: b, dtype: bool
         """
         return (self > other).rename(self.name)
 
@@ -590,10 +590,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> df.b.ge(2)
         a    False
-        b     None
+        b    False
         c    False
-        d     None
-        Name: b, dtype: object
+        d    False
+        Name: b, dtype: bool
         """
         return (self >= other).rename(self.name)
 
@@ -613,11 +613,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: a, dtype: bool
 
         >>> df.b.lt(2)
-        a    True
-        b    None
-        c    True
-        d    None
-        Name: b, dtype: object
+        a     True
+        b    False
+        c     True
+        d    False
+        Name: b, dtype: bool
         """
         return (self < other).rename(self.name)
 
@@ -637,11 +637,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: a, dtype: bool
 
         >>> df.b.le(2)
-        a    True
-        b    None
-        c    True
-        d    None
-        Name: b, dtype: object
+        a     True
+        b    False
+        c     True
+        d    False
+        Name: b, dtype: bool
         """
         return (self <= other).rename(self.name)
 
@@ -662,10 +662,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> df.b.ne(1)
         a    False
-        b     None
+        b     True
         c    False
-        d     None
-        Name: b, dtype: object
+        d     True
+        Name: b, dtype: bool
         """
         return (self != other).rename(self.name)
 
