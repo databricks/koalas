@@ -61,7 +61,8 @@ def _column_op(f):
             log_ops = ['eq', 'ne', 'lt', 'le', 'ge', 'gt']
             is_log_op = any(f == getattr(spark.Column, f'__{log_op}__') for log_op in log_ops)
             if is_log_op:
-                scol = F.when(scol.isNull(), False).otherwise(scol)
+                filler = f != spark.Column.__ne__
+                scol = F.when(scol.isNull(), filler).otherwise(scol)
 
             return self._with_new_scol(scol)
         else:
