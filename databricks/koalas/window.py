@@ -939,7 +939,7 @@ class ExpandingGroupby(Expanding):
            10    2.0
         Name: 0, dtype: float64
 
-        For DataFrame, each expanding sum is computed column-wise.
+        For DataFrame, each expanding count is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df.groupby(df.A).expanding(2).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
@@ -1049,7 +1049,7 @@ class ExpandingGroupby(Expanding):
            10    NaN
         Name: 0, dtype: float64
 
-        For DataFrame, each expanding sum is computed column-wise.
+        For DataFrame, each expanding min is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df.groupby(df.A).expanding(2).min().sort_index()  # doctest: +NORMALIZE_WHITESPACE
@@ -1103,7 +1103,7 @@ class ExpandingGroupby(Expanding):
            10    NaN
         Name: 0, dtype: float64
 
-        For DataFrame, each expanding sum is computed column-wise.
+        For DataFrame, each expanding max is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df.groupby(df.A).expanding(2).max().sort_index()  # doctest: +NORMALIZE_WHITESPACE
@@ -1158,7 +1158,7 @@ class ExpandingGroupby(Expanding):
            10    NaN
         Name: 0, dtype: float64
 
-        For DataFrame, each expanding sum is computed column-wise.
+        For DataFrame, each expanding mean is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df.groupby(df.A).expanding(2).mean().sort_index()  # doctest: +NORMALIZE_WHITESPACE
