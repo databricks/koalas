@@ -893,7 +893,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self),
 
     @property
-    def name(self) -> Optional[Union[str, Tuple[str, ...]]:
+    def name(self) -> Optional[Union[str, Tuple[str, ...]]]:
         """Return name of the Series."""
         name = self._internal.column_index[0]
         if name is not None and len(name) == 1:
@@ -902,7 +902,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             return name
 
     @name.setter
-    def name(self, name: Optional[Union[str, Tuple[str, ...]]):
+    def name(self, name: Optional[Union[str, Tuple[str, ...]]]):
         self.rename(name, inplace=True)
 
     # TODO: Functionality and documentation should be matched. Currently, changing index labels
