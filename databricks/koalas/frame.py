@@ -6816,8 +6816,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     raise KeyError("The following 'id_vars' are not present"
                                    " in the DataFrame: {}".format(missing))
                 else:
-                    raise KeyError("None of [{}] are in the [columns]"
-                                   .format(pd.MultiIndex.from_tuples(non_existence_col)))
+                    raise KeyError("None of {} are in the {}"
+                                   .format(non_existence_col, column_index))
 
         if value_vars is None:
             value_vars = []
@@ -6844,8 +6844,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     raise KeyError("The following 'value_vars' are not present"
                                    " in the DataFrame: {}".format(missing))
                 else:
-                    raise KeyError("None of [{}] are in the [columns]"
-                                   .format(pd.MultiIndex.from_tuples(non_existence_col)))
+                    raise KeyError("None of {} are in the {}"
+                                   .format(non_existence_col, column_index))
 
         if len(value_vars) == 0:
             value_vars = column_index
