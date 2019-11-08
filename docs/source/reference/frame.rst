@@ -121,6 +121,7 @@ Computations / Descriptive Stats
    DataFrame.mean
    DataFrame.min
    DataFrame.median
+   DataFrame.quantile
    DataFrame.nunique
    DataFrame.skew
    DataFrame.sum

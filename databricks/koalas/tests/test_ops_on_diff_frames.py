@@ -175,8 +175,8 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             (pdf1.a - pdf2.b - pdf3.c).rename("a").sort_index(), almost=True)
 
         self.assert_eq(
-            (kdf1.a * kdf2.a * kdf3.c).sort_index(),
-            (pdf1.a * pdf2.a * pdf3.c).rename("a").sort_index(), almost=True)
+            (kdf1.a * (kdf2.a * kdf3.c)).sort_index(),
+            (pdf1.a * (pdf2.a * pdf3.c)).rename("a").sort_index(), almost=True)
 
         self.assert_eq(
             (kdf1["a"] / kdf2["a"] / kdf3["c"]).sort_index(),
@@ -202,6 +202,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             (kdf1[('x', 'a')] - kdf2[('x', 'b')] - kdf3[('y', 'c')]).sort_index(),
             (pdf1[('x', 'a')] - pdf2[('x', 'b')] - pdf3[('y', 'c')]).rename(('x', 'a'))
+            .sort_index(),
+            almost=True)
+
+        self.assert_eq(
+            (kdf1[('x', 'a')] * (kdf2[('x', 'b')] * kdf3[('y', 'c')])).sort_index(),
+            (pdf1[('x', 'a')] * (pdf2[('x', 'b')] * pdf3[('y', 'c')])).rename(('x', 'a'))
             .sort_index(),
             almost=True)
 

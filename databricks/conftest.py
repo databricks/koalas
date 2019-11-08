@@ -43,6 +43,14 @@ else:
     session = utils.default_session()
 
 
+@pytest.fixture(scope='session', autouse=True)
+def session_termination():
+    yield
+    # Share one session across all the tests. Repeating starting and stopping sessions and contexts
+    # seems causing a memory leak for an unknown reason in PySpark.
+    session.stop()
+
+
 @pytest.fixture(autouse=True)
 def add_ks(doctest_namespace):
     doctest_namespace['ks'] = koalas

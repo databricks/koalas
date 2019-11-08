@@ -470,7 +470,7 @@ class DataFrame(_Frame, Generic[T]):
             def calculate_columns_axis(*cols):
                 return getattr(pd.concat(cols, axis=1), name)(axis=axis, numeric_only=numeric_only)
 
-            df = self._sdf.select(calculate_columns_axis(*self._internal.data_scols).alias("0"))
+            df = self._sdf.select(calculate_columns_axis(*self._internal.column_scols).alias("0"))
             return DataFrame(df)["0"]
 
         else:
@@ -504,9 +504,9 @@ class DataFrame(_Frame, Generic[T]):
             sdf = self._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
             internal = self._internal.copy(sdf=sdf,
-                                           data_columns=[c._internal.data_columns[0]
-                                                         for c in applied],
                                            column_index=[c._internal.column_index[0]
+                                                         for c in applied],
+                                           column_scols=[scol_for(sdf, c._internal.data_columns[0])
                                                          for c in applied])
             return DataFrame(internal)
 
@@ -911,8 +911,9 @@ class DataFrame(_Frame, Generic[T]):
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf,
-                                       data_columns=[c._internal.data_columns[0] for c in applied],
-                                       column_index=[c._internal.column_index[0] for c in applied])
+                                       column_index=[c._internal.column_index[0] for c in applied],
+                                       column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                     for c in applied])
         return DataFrame(internal)
 
     # TODO: not all arguments are implemented comparing to Pandas' for now.
@@ -1738,9 +1739,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         internal = self._internal.copy(
             sdf=transposed_df,
-            data_columns=new_data_columns,
             index_map=[(col, None) for col in internal_index_columns],
             column_index=[tuple(json.loads(col)['a']) for col in new_data_columns],
+            column_scols=[scol_for(transposed_df, col) for col in new_data_columns],
             column_index_names=None)
 
         return DataFrame(internal)
@@ -1854,8 +1855,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf,
-                                       data_columns=[c._internal.data_columns[0] for c in applied],
-                                       column_index=[c._internal.column_index[0] for c in applied])
+                                       column_index=[c._internal.column_index[0] for c in applied],
+                                       column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                     for c in applied])
 
         return DataFrame(internal)
 
@@ -2402,7 +2404,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         internal = self._internal.copy(index_map=index_map,
                                        column_index=column_index,
-                                       data_columns=[self._internal.column_name_for(idx)
+                                       column_scols=[self._internal.scol_for(idx)
                                                      for idx in column_index])
 
         if inplace:
@@ -2611,9 +2613,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if len(index_map) > 0:
             index_scols = [scol_for(self._sdf, column) for column, _ in index_map]
             sdf = self._sdf.select(
-                index_scols + new_data_scols + self._internal.data_scols)
+                index_scols + new_data_scols + self._internal.column_scols)
         else:
-            sdf = self._sdf.select(new_data_scols + self._internal.data_scols)
+            sdf = self._sdf.select(new_data_scols + self._internal.column_scols)
 
             # Now, new internal Spark columns are named as same as index name.
             new_index_map = [(column, name) for column, name in new_index_map]
@@ -2626,10 +2628,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         internal = self._internal.copy(
             sdf=sdf,
-            data_columns=([name_like_string(name) for _, name in new_index_map]
-                          + self._internal.data_columns),
             index_map=index_map,
-            column_index=None)
+            column_index=None,
+            column_scols=([scol_for(sdf, name_like_string(name)) for _, name in new_index_map]
+                          + self._internal.column_scols))
 
         if self._internal.column_index_level > 1:
             column_depth = len(self._internal.column_index[0])
@@ -2778,8 +2780,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf,
-                                       data_columns=[c._internal.data_columns[0] for c in applied],
-                                       column_index=[c._internal.column_index[0] for c in applied])
+                                       column_index=[c._internal.column_index[0] for c in applied],
+                                       column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                     for c in applied])
         return DataFrame(internal)
 
     # TODO: axis should support 1 or 'columns' either at this moment
@@ -2859,8 +2862,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf,
-                                       data_columns=[c._internal.data_columns[0] for c in applied],
-                                       column_index=[c._internal.column_index[0] for c in applied])
+                                       column_index=[c._internal.column_index[0] for c in applied],
+                                       column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                     for c in applied])
         return DataFrame(internal)
 
     # TODO: axis should support 1 or 'columns' either at this moment
@@ -2995,7 +2999,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if idx in self._internal.column_index:
                 col = self._internal.column_name_for(idx)
                 sdf = sdf.withColumn(col, F.round(scol_for(sdf, col), decimal))
-        return DataFrame(self._internal.copy(sdf=sdf))
+        return DataFrame(self._internal.copy(sdf=sdf,
+                                             column_scols=[scol_for(sdf, col)
+                                                           for col in self._internal.data_columns]))
 
     def duplicated(self, subset=None, keep='first'):
         """
@@ -3096,12 +3102,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.withColumn(column, F.count(scol_for(sdf, index_column)).over(window) > 1)
         else:
             raise ValueError("'keep' only support 'first', 'last' and False")
-        return _col(DataFrame(_InternalFrame(sdf=sdf.select(scol_for(sdf, index_column),
-                                                            scol_for(sdf, column)),
-                                             data_columns=[column],
-                                             column_index=[name],
+        sdf = sdf.select(scol_for(sdf, index_column), scol_for(sdf, column))
+        return _col(DataFrame(_InternalFrame(sdf=sdf,
                                              index_map=[(index_column,
-                                                         self._internal.index_names[0])])))
+                                                         self._internal.index_names[0])],
+                                             column_index=[name],
+                                             column_scols=[scol_for(sdf, column)])))
 
     def to_koalas(self, index_col: Optional[Union[str, List[str]]] = None):
         """
@@ -3507,7 +3513,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             data_column_names = []
             data_columns = []
             data_columns_column_index = \
-                zip(self._internal._data_columns, self._internal.column_index)
+                zip(self._internal.data_columns, self._internal.column_index)
             # TODO: this code is similar with _InternalFrame.spark_df. Might have to deduplicate.
             for i, (column, idx) in enumerate(data_columns_column_index):
                 scol = self._internal.scol_for(idx)
@@ -3658,8 +3664,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                for idx in adding_column_index]
         internal = self._internal.copy(
             sdf=sdf,
-            data_columns=(self._internal.data_columns + adding_data_columns),
-            column_index=(self._internal.column_index + adding_column_index))
+            column_index=(self._internal.column_index + adding_column_index),
+            column_scols=[scol_for(sdf, col)
+                          for col in (self._internal.data_columns + adding_data_columns)])
         return DataFrame(internal)
 
     @staticmethod
@@ -4047,7 +4054,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if limit is not None:
                 raise ValueError('limit parameter for value is not support now')
             sdf = sdf.fillna(value)
-            internal = self._internal.copy(sdf=sdf)
+            internal = self._internal.copy(sdf=sdf,
+                                           column_scols=[scol_for(sdf, col)
+                                                         for col in self._internal.data_columns])
         else:
             if method is None:
                 raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
@@ -4057,11 +4066,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 applied.append(self[idx].fillna(value=value, method=method, axis=axis,
                                                 inplace=False, limit=limit))
             sdf = self._sdf.select(self._internal.index_scols + [col._scol for col in applied])
-            internal = self._internal.copy(sdf=sdf,
-                                           data_columns=[col._internal.data_columns[0]
-                                                         for col in applied],
-                                           column_index=[col._internal.column_index[0]
-                                                         for col in applied])
+            internal = self._internal.copy(
+                sdf=sdf,
+                column_index=[col._internal.column_index[0] for col in applied],
+                column_scols=[scol_for(sdf, col._internal.data_columns[0]) for col in applied])
         if inplace:
             self._internal = internal
         else:
@@ -4318,7 +4326,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             sdf = sdf.replace(to_replace, value, subset)
 
-        internal = self._internal.copy(sdf=sdf)
+        internal = self._internal.copy(sdf=sdf,
+                                       column_scols=[scol_for(sdf, col)
+                                                     for col in self._internal.data_columns])
         if inplace:
             self._internal = internal
         else:
@@ -4632,8 +4642,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                           + [str(columns) if len(columns) > 1 else columns[0]])
                     internal = _InternalFrame(sdf=sdf,
                                               index_map=index_map,
-                                              data_columns=data_columns,
                                               column_index=column_index,
+                                              column_scols=[scol_for(sdf, col)
+                                                            for col in data_columns],
                                               column_index_names=column_index_names)
                     kdf = DataFrame(internal)
                 else:
@@ -4643,18 +4654,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                           + [str(columns) if len(columns) > 1 else columns[0]])
                     internal = _InternalFrame(sdf=sdf,
                                               index_map=index_map,
-                                              data_columns=data_columns,
                                               column_index=column_index,
+                                              column_scols=[scol_for(sdf, col)
+                                                            for col in data_columns],
                                               column_index_names=column_index_names)
                     kdf = DataFrame(internal)
                 return kdf
             else:
                 index_columns = [self._internal.column_name_for(idx) for idx in index]
                 index_map = list(zip(index_columns, index))
-                data_columns = [column for column in sdf.columns if column not in index_columns]
                 column_index_names = [str(columns) if len(columns) > 1 else columns[0]]
                 internal = _InternalFrame(sdf=sdf,
-                                          index_map=index_map, data_columns=data_columns,
+                                          index_map=index_map,
                                           column_index_names=column_index_names)
                 return DataFrame(internal)
         else:
@@ -4812,9 +4823,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 self._internal.index_scols +
                 [self._internal.scol_for(idx).alias(name)
                  for idx, name in zip(self._internal.column_index, data_columns)])
+            column_scols = [scol_for(sdf, col) for col in data_columns]
             self._internal = self._internal.copy(sdf=sdf,
-                                                 data_columns=data_columns,
                                                  column_index=column_index,
+                                                 column_scols=column_scols,
                                                  column_index_names=column_index_names)
         else:
             old_names = self._internal.column_index
@@ -4832,9 +4844,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 self._internal.index_scols +
                 [self._internal.scol_for(idx).alias(name)
                  for idx, name in zip(self._internal.column_index, data_columns)])
+            column_scols = [scol_for(sdf, col) for col in data_columns]
             self._internal = self._internal.copy(sdf=sdf,
-                                                 data_columns=data_columns,
                                                  column_index=column_index,
+                                                 column_scols=column_scols,
                                                  column_index_names=column_index_names)
 
     @property
@@ -5031,10 +5044,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 columns.append(self._internal.column_name_for(idx))
                 column_index.append(idx)
 
+        sdf = self._sdf.select(self._internal.index_scols +
+                               [self._internal.scol_for(col) for col in columns])
         return DataFrame(self._internal.copy(
-            sdf=self._sdf.select(self._internal.index_scols +
-                                 [self._internal.scol_for(col) for col in columns]),
-            data_columns=columns, column_index=column_index))
+            sdf=sdf,
+            column_index=column_index,
+            column_scols=[scol_for(sdf, col) for col in columns]))
 
     def count(self, axis=None):
         """
@@ -5192,11 +5207,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                               for column, idx
                               in zip(self._internal.data_columns, self._internal.column_index)
                               if idx not in drop_column_index))
+            sdf = self._sdf.select(
+                self._internal.index_scols + [self._internal.scol_for(idx) for idx in idxes])
             internal = self._internal.copy(
-                sdf=self._sdf.select(
-                    self._internal.index_scols + [self._internal.scol_for(idx) for idx in idxes]),
-                data_columns=list(cols),
-                column_index=list(idxes))
+                sdf=sdf,
+                column_index=list(idxes),
+                column_scols=[scol_for(sdf, col) for col in cols])
             return DataFrame(internal)
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'columns'")
@@ -5650,7 +5666,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             raise TypeError('Values should be iterable, Series, DataFrame or dict.')
 
-        return DataFrame(self._internal.copy(sdf=self._sdf.select(_select_columns)))
+        sdf = self._sdf.select(_select_columns)
+        return DataFrame(self._internal.copy(sdf=sdf,
+                                             column_scols=[scol_for(sdf, col)
+                                                           for col in self._internal.data_columns]))
 
     @property
     def shape(self):
@@ -5928,8 +5947,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         internal = _InternalFrame(sdf=selected_columns,
                                   index_map=index_map if index_map else None,
-                                  data_columns=data_columns,
-                                  column_index=column_index)
+                                  column_index=column_index,
+                                  column_scols=[scol_for(selected_columns, col)
+                                                for col in data_columns])
         return DataFrame(internal)
 
     def join(self, right: 'DataFrame',
@@ -6201,8 +6221,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 update_sdf = update_sdf.withColumn(column_name, F.when(old_col.isNull(), new_col)
                                                    .otherwise(old_col))
-        internal = self._internal.copy(sdf=update_sdf.select([scol_for(update_sdf, col)
-                                                              for col in self._internal.columns]))
+        sdf = update_sdf.select([scol_for(update_sdf, col)
+                                 for col in self._internal.columns])
+        internal = self._internal.copy(sdf=sdf,
+                                       column_scols=[scol_for(sdf, col)
+                                                     for col in self._internal.data_columns])
         self._internal = internal
 
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
@@ -6355,7 +6378,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 results.append(col.astype(dtype=dtype))
         sdf = self._sdf.select(
             self._internal.index_scols + list(map(lambda ser: ser._scol, results)))
-        return DataFrame(self._internal.copy(sdf=sdf))
+        return DataFrame(self._internal.copy(sdf=sdf,
+                                             column_scols=[scol_for(sdf, col)
+                                                           for col in self._internal.data_columns]))
 
     def add_prefix(self, prefix):
         """
@@ -6406,8 +6431,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
              for idx, name in zip(self._internal.column_index, data_columns)])
         column_index = [tuple([prefix + i for i in idx]) for idx in self._internal.column_index]
         internal = self._internal.copy(sdf=sdf,
-                                       data_columns=data_columns,
-                                       column_index=column_index)
+                                       column_index=column_index,
+                                       column_scols=[scol_for(sdf, col) for col in data_columns])
         return DataFrame(internal)
 
     def add_suffix(self, suffix):
@@ -6459,8 +6484,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
              for idx, name in zip(self._internal.column_index, data_columns)])
         column_index = [tuple([i + suffix for i in idx]) for idx in self._internal.column_index]
         internal = self._internal.copy(sdf=sdf,
-                                       data_columns=data_columns,
-                                       column_index=column_index)
+                                       column_index=column_index,
+                                       column_scols=[scol_for(sdf, col) for col in data_columns])
         return DataFrame(internal)
 
     # TODO: include, and exclude should be implemented.
@@ -6606,10 +6631,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         stats = ["count", "mean", "stddev", "min", *formatted_perc, "max"]
 
         sdf = self._sdf.select(*exprs).summary(stats)
+        sdf = sdf.replace("stddev", "std", subset='summary')
 
-        internal = _InternalFrame(sdf=sdf.replace("stddev", "std", subset='summary'),
-                                  data_columns=data_columns,
-                                  index_map=[('summary', None)])
+        internal = _InternalFrame(sdf=sdf,
+                                  index_map=[('summary', None)],
+                                  column_scols=[scol_for(sdf, col) for col in data_columns])
         return DataFrame(internal).astype('float64')
 
     def _cum(self, func, skipna: bool):
@@ -6630,8 +6656,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf.select(
             self._internal.index_scols + [c._scol for c in applied])
         internal = self._internal.copy(sdf=sdf,
-                                       data_columns=[c._internal.data_columns[0] for c in applied],
-                                       column_index=[c._internal.column_index[0] for c in applied])
+                                       column_index=[c._internal.column_index[0] for c in applied],
+                                       column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                     for c in applied])
         return DataFrame(internal)
 
     # TODO: implements 'keep' parameters
@@ -6920,7 +6947,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf.select(self._internal.index_scols + scols)
 
-        return self._internal.copy(sdf=sdf, data_columns=columns, column_index=idx)
+        return self._internal.copy(sdf=sdf,
+                                   column_index=idx,
+                                   column_scols=[scol_for(sdf, col) for col in columns])
 
     def melt(self, id_vars=None, value_vars=None, var_name=None,
              value_name='value'):
@@ -7137,10 +7166,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                        else (self._internal.column_index_names[i],))
         internal = self._internal.copy(
             sdf=sdf,
-            data_columns=[value_column],
             index_map=[(SPARK_INDEX_NAME_FORMAT(i), index_column_name(i))
                        for i in range(self._internal.column_index_level)],
             column_index=None,
+            column_scols=[scol_for(sdf, value_column)],
             column_index_names=None)
 
         return DataFrame(internal)[value_column].rename("all")
@@ -7220,10 +7249,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                        else (self._internal.column_index_names[i],))
         internal = self._internal.copy(
             sdf=sdf,
-            data_columns=[value_column],
             index_map=[(SPARK_INDEX_NAME_FORMAT(i), index_column_name(i))
                        for i in range(self._internal.column_index_level)],
             column_index=None,
+            column_scols=[scol_for(sdf, value_column)],
             column_index_names=None)
 
         return DataFrame(internal)[value_column].rename("any")
@@ -7304,8 +7333,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf.select(self._internal.index_columns + [column._scol for column in applied])
         internal = self._internal.copy(sdf=sdf,
-                                       data_columns=[c._internal.data_columns[0] for c in applied],
-                                       column_index=[c._internal.column_index[0] for c in applied])
+                                       column_index=[c._internal.column_index[0] for c in applied],
+                                       column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                     for c in applied])
         return DataFrame(internal)
 
     def filter(self, items=None, like=None, regex=None, axis=None):
@@ -7636,7 +7666,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                               in zip(internal.data_columns, new_data_columns)]
             sdf = internal.sdf.select(*(internal.index_scols + new_data_scols))
             internal = internal.copy(sdf=sdf, column_index=new_column_index,
-                                     data_columns=new_data_columns)
+                                     column_scols=[scol_for(sdf, col) for col in new_data_columns])
         if inplace:
             self._internal = internal
             return self
@@ -7667,6 +7697,127 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Index(['max_speed', 'shield'], dtype='object')
         """
         return self.columns
+
+    # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
+    def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000):
+        """
+        Return value at the given quantile.
+
+        .. note:: Unlike pandas', the quantile in Koalas is an approximated quantile based upon
+            approximate percentile computation because computing quantile across a large dataset
+            is extremely expensive.
+
+        Parameters
+        ----------
+        q : float or array-like, default 0.5 (50% quantile)
+            0 <= q <= 1, the quantile(s) to compute.
+        axis : int, default 0 or 'index'
+            Can only be set to 0 at the moment.
+        numeric_only : bool, default True
+            If False, the quantile of datetime and timedelta data will be computed as well.
+            Can only be set to True at the moment.
+        accuracy : int, optional
+            Default accuracy of approximation. Larger value means better accuracy.
+            The relative error can be deduced by 1.0 / accuracy.
+
+        Returns
+        -------
+        Series or DataFrame
+            If q is an array, a DataFrame will be returned where the
+            index is q, the columns are the columns of self, and the values are the quantiles.
+            If q is a float, a Series will be returned where the
+            index is the columns of self and the values are the quantiles.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 4, 5], 'b': [6, 7, 8, 9, 0]})
+        >>> kdf
+           a  b
+        0  1  6
+        1  2  7
+        2  3  8
+        3  4  9
+        4  5  0
+
+        >>> kdf.quantile(.5)
+        a    3
+        b    7
+        Name: 0.5, dtype: int64
+
+        >>> kdf.quantile([.25, .5, .75])
+              a  b
+        0.25  2  6
+        0.5   3  7
+        0.75  4  8
+        """
+        result_as_series = False
+        if axis not in [0, 'index']:
+            raise ValueError('axis should be either 0 or "index" currently.')
+        if numeric_only is not True:
+            raise ValueError("quantile currently doesn't supports numeric_only")
+        if isinstance(q, float):
+            result_as_series = True
+            key = str(q)
+            q = (q,)
+
+        quantiles = q
+        # First calculate the percentiles from all columns and map it to each `quantiles`
+        # by creating each entry as a struct. So, it becomes an array of structs as below:
+        #
+        # +-----------------------------------------+
+        # |                                   arrays|
+        # +-----------------------------------------+
+        # |[[0.25, 2, 6], [0.5, 3, 7], [0.75, 4, 8]]|
+        # +-----------------------------------------+
+        sdf = self._sdf
+        args = ", ".join(map(str, quantiles))
+
+        percentile_cols = []
+        for column in self._internal.data_columns:
+            sdf = self._sdf
+            percentile_cols.append(F.expr(
+                "approx_percentile(`%s`, array(%s), %s)" % (column, args, accuracy))
+                .alias(column))
+        sdf = sdf.select(percentile_cols)
+        # Here, after select percntile cols, a sdf looks like below:
+        # +---------+---------+
+        # |        a|        b|
+        # +---------+---------+
+        # |[2, 3, 4]|[6, 7, 8]|
+        # +---------+---------+
+
+        cols_dict = OrderedDict()
+        for column in self._internal.data_columns:
+            cols_dict[column] = list()
+            for i in range(len(quantiles)):
+                cols_dict[column].append(scol_for(sdf, column).getItem(i).alias(column))
+
+        internal_index_column = SPARK_INDEX_NAME_FORMAT(0)
+        cols = []
+        for i, col in enumerate(zip(*cols_dict.values())):
+            cols.append(F.struct(
+                F.lit("%s" % quantiles[i]).alias(internal_index_column),
+                *col))
+        sdf = sdf.select(F.array(*cols).alias("arrays"))
+
+        # And then, explode it and manually set the index.
+        # +-----------------+---+---+
+        # |__index_level_0__|  a|  b|
+        # +-----------------+---+---+
+        # |             0.25|  2|  6|
+        # |              0.5|  3|  7|
+        # |             0.75|  4|  8|
+        # +-----------------+---+---+
+        sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            column_scols=[scol_for(sdf, col) for col in self._internal.data_columns],
+            index_map=[(internal_index_column, None)],
+            column_index=self._internal.column_index,
+            column_index_names=None)
+
+        return DataFrame(internal) if not result_as_series else DataFrame(internal).T[key]
 
     def _get_from_multiindex_column(self, key):
         """ Select columns from multi-index columns.
@@ -7707,8 +7858,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise KeyError(key)
         else:
             kdf_or_ser = DataFrame(self._internal.copy(
-                data_columns=[self._internal.column_name_for(idx) for idx, _ in indexes],
                 column_index=[idx for _, idx in indexes],
+                column_scols=[self._internal.scol_for(idx) for idx, _ in indexes],
                 column_index_names=column_index_names))
 
         if recursive:

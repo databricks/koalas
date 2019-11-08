@@ -153,6 +153,7 @@ Reindexing / Selection / Label manipulation
    Series.reset_index
    Series.sample
    Series.where
+   Series.mask
    Series.truncate
 
 Missing data handling
@@ -182,6 +183,7 @@ Combining / joining / merging
 
    Series.append
    Series.replace
+   Series.update
 
 Time series-related
 -------------------

@@ -34,7 +34,7 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
-from databricks.koalas.utils import default_session, name_like_string
+from databricks.koalas.utils import default_session, name_like_string, scol_for
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.typedef import pandas_wraps
@@ -1550,11 +1550,12 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                 for idx in columns_to_add:
                     sdf = sdf.withColumn(name_like_string(idx), F.lit(None))
 
+                data_columns = (kdf._internal.data_columns
+                                + [name_like_string(idx) for idx in columns_to_add])
                 kdf = DataFrame(kdf._internal.copy(
                     sdf=sdf,
-                    data_columns=(kdf._internal.data_columns
-                                  + [name_like_string(idx) for idx in columns_to_add]),
-                    column_index=kdf._internal.column_index + columns_to_add))
+                    column_index=(kdf._internal.column_index + columns_to_add),
+                    column_scols=[scol_for(sdf, col) for col in data_columns]))
 
                 kdfs.append(kdf[merged_columns])
         else:
@@ -1562,14 +1563,16 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                 "Only can inner (intersect) or outer (union) join the other axis.")
 
     if ignore_index:
-        sdfs = [kdf._sdf.select(kdf._internal.data_scols) for kdf in kdfs]
+        sdfs = [kdf._sdf.select(kdf._internal.column_scols) for kdf in kdfs]
     else:
-        sdfs = [kdf._sdf.select(kdf._internal.index_scols + kdf._internal.data_scols)
+        sdfs = [kdf._sdf.select(kdf._internal.index_scols + kdf._internal.column_scols)
                 for kdf in kdfs]
     concatenated = reduce(lambda x, y: x.union(y), sdfs)
 
     index_map = None if ignore_index else kdfs[0]._internal.index_map
-    result_kdf = DataFrame(kdfs[0]._internal.copy(sdf=concatenated, index_map=index_map))
+    result_kdf = DataFrame(kdfs[0]._internal.copy(
+        sdf=concatenated, index_map=index_map,
+        column_scols=[scol_for(concatenated, col) for col in kdfs[0]._internal.data_columns]))
 
     if should_return_series:
         # If all input were Series, we should return Series.

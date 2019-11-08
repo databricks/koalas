@@ -2259,3 +2259,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = kdf.to_pandas()
 
         self.assert_eq(kdf.keys(), pdf.keys())
+
+    def test_quantile(self):
+        kdf = ks.from_pandas(self.pdf)
+
+        with self.assertRaisesRegex(ValueError, 'axis should be either 0 or "index" currently.'):
+            kdf.quantile(.5, axis=1)
+
+        with self.assertRaisesRegex(ValueError, "quantile currently doesn't supports numeric_only"):
+            kdf.quantile(.5, numeric_only=False)
