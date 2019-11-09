@@ -571,6 +571,7 @@ class RollingGroupby(Rolling):
         for c in self._groupkeys:
             cond = cond | c._scol.isNotNull()
         sdf = sdf.select(new_index_scols + [c._scol for c in applied]).filter(cond)
+
         internal = kdf._internal.copy(
             sdf=sdf,
             index_map=new_index_map,
@@ -1240,6 +1241,7 @@ class ExpandingGroupby(Expanding):
         for c in self._groupkeys:
             cond = cond | c._scol.isNotNull()
         sdf = sdf.select(new_index_scols + [c._scol for c in applied]).filter(cond)
+
         internal = kdf._internal.copy(
             sdf=sdf,
             index_map=new_index_map,
