@@ -485,6 +485,33 @@ class Rolling(_RollingAndExpanding):
 
 
 class RollingGroupby(Rolling):
+    def __init__(self, groupby, groupkeys, window, min_periods=None):
+        from databricks.koalas.groupby import SeriesGroupBy
+        from databricks.koalas.groupby import DataFrameGroupBy
+
+        if isinstance(groupby, SeriesGroupBy):
+            kdf = groupby._ks.to_frame()
+        elif isinstance(groupby, DataFrameGroupBy):
+            kdf = groupby._kdf
+        else:
+            raise TypeError(
+                "groupby must be a SeriesGroupBy or DataFrameGroupBy; "
+                "however, got: %s" % type(groupby))
+
+        super(RollingGroupby, self).__init__(kdf, window, min_periods)
+        self._groupby = groupby
+        # NOTE THAT this code intentionally uses `F.col` instead of `scol` in
+        # given series. This is because, in case of series, we convert it into
+        # DataFrame. So, if the given `groupkeys` is a series, they end up with
+        # being a different series.
+        self._window = self._window.partitionBy(
+            *[F.col(name_like_string(ser.name)) for ser in groupkeys])
+        self._unbounded_window = self._unbounded_window.partitionBy(
+            *[F.col(name_like_string(ser.name)) for ser in groupkeys])
+        self._groupkeys = groupkeys
+        # Current implementation reuses DataFrameGroupBy implementations for Series as well.
+        self.kdf = self.kdf_or_kser
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeRollingGroupby, item):
             property_or_func = getattr(_MissingPandasLikeRollingGroupby, item)
@@ -494,20 +521,343 @@ class RollingGroupby(Rolling):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
+    def _apply_as_series_or_frame(self, func):
+        """
+        Wraps a function that handles Spark column in order
+        to support it in both Koalas Series and DataFrame.
+        Note that the given `func` name should be same as the API's method name.
+        """
+        from databricks.koalas import DataFrame
+        from databricks.koalas.series import _col
+        from databricks.koalas.groupby import SeriesGroupBy
+
+        kdf = self.kdf
+        sdf = self.kdf._sdf
+
+        # Here we need to include grouped key as an index, and shift previous index.
+        #   [index_column0, index_column1] -> [grouped key, index_column0, index_column1]
+        new_index_scols = []
+        new_index_map = []
+        for groupkey in self._groupkeys:
+            new_index_scols.append(
+                # NOTE THAT this code intentionally uses `F.col` instead of `scol` in
+                # given series. This is because, in case of series, we convert it into
+                # DataFrame. So, if the given `groupkeys` is a series, they end up with
+                # being a different series.
+                F.col(
+                    name_like_string(groupkey.name)
+                ).alias(
+                    SPARK_INDEX_NAME_FORMAT(len(new_index_scols))
+                ))
+            new_index_map.append(
+                (SPARK_INDEX_NAME_FORMAT(len(new_index_map)),
+                 groupkey._internal.column_index[0]))
+
+        for new_index_scol, index_map in zip(kdf._internal.index_scols, kdf._internal.index_map):
+            new_index_scols.append(
+                new_index_scol.alias(SPARK_INDEX_NAME_FORMAT(len(new_index_scols))))
+            _, name = index_map
+            new_index_map.append((SPARK_INDEX_NAME_FORMAT(len(new_index_map)), name))
+
+        applied = []
+        for column in kdf.columns:
+            applied.append(
+                kdf[column]._with_new_scol(
+                    func(kdf[column]._scol)
+                ).rename(kdf[column].name))
+
+        # Seems like pandas filters out when grouped key is NA.
+        cond = self._groupkeys[0]._scol.isNotNull()
+        for c in self._groupkeys:
+            cond = cond | c._scol.isNotNull()
+        sdf = sdf.select(new_index_scols + [c._scol for c in applied]).filter(cond)
+
+        internal = kdf._internal.copy(
+            sdf=sdf,
+            index_map=new_index_map,
+            column_index=[c._internal.column_index[0] for c in applied],
+            column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied])
+
+        ret = DataFrame(internal)
+        if isinstance(self._groupby, SeriesGroupBy):
+            return _col(ret)
+        else:
+            return ret
+
     def count(self):
-        raise NotImplementedError("groupby.rolling().count() is currently not implemented yet.")
+        """
+        The rolling count of any non-NaN observations inside the window.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returned object type is determined by the caller of the expanding
+            calculation.
+
+        See Also
+        --------
+        Series.rolling : Calling object with Series data.
+        DataFrame.rolling : Calling object with DataFrames.
+        Series.count : Count of the full Series.
+        DataFrame.count : Count of the full DataFrame.
+
+        Examples
+        --------
+        >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
+        >>> s.groupby(s).rolling(3).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        0
+        2  0     1.0
+           1     2.0
+        3  2     1.0
+           3     2.0
+           4     3.0
+        4  5     1.0
+           6     2.0
+           7     3.0
+           8     3.0
+        5  9     1.0
+           10    2.0
+        Name: 0, dtype: float64
+
+        For DataFrame, each rolling count is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.groupby(df.A).rolling(2).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                A    B
+        A
+        2 0   1.0  1.0
+          1   2.0  2.0
+        3 2   1.0  1.0
+          3   2.0  2.0
+          4   2.0  2.0
+        4 5   1.0  1.0
+          6   2.0  2.0
+          7   2.0  2.0
+          8   2.0  2.0
+        5 9   1.0  1.0
+          10  2.0  2.0
+        """
+        return super(RollingGroupby, self).count()
 
     def sum(self):
-        raise NotImplementedError("groupby.rolling().sum() is currently not implemented yet.")
+        """
+        The rolling sum of any non-NaN observations inside the window.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returned object type is determined by the caller of the rolling
+            calculation.
+
+        See Also
+        --------
+        Series.rolling : Calling object with Series data.
+        DataFrame.rolling : Calling object with DataFrames.
+        Series.sum : Sum of the full Series.
+        DataFrame.sum : Sum of the full DataFrame.
+
+        Examples
+        --------
+        >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
+        >>> s.groupby(s).rolling(3).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        0
+        2  0      NaN
+           1      NaN
+        3  2      NaN
+           3      NaN
+           4      9.0
+        4  5      NaN
+           6      NaN
+           7     12.0
+           8     12.0
+        5  9      NaN
+           10     NaN
+        Name: 0, dtype: float64
+
+        For DataFrame, each rolling sum is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.groupby(df.A).rolling(2).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                 A     B
+        A
+        2 0    NaN   NaN
+          1    4.0   8.0
+        3 2    NaN   NaN
+          3    6.0  18.0
+          4    6.0  18.0
+        4 5    NaN   NaN
+          6    8.0  32.0
+          7    8.0  32.0
+          8    8.0  32.0
+        5 9    NaN   NaN
+          10  10.0  50.0
+        """
+        return super(RollingGroupby, self).sum()
 
     def min(self):
-        raise NotImplementedError("groupby.rolling().min() is currently not implemented yet.")
+        """
+        The rolling min of any non-NaN observations inside the window.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returned object type is determined by the caller of the rolling
+            calculation.
+
+        See Also
+        --------
+        Series.rolling : Calling object with Series data.
+        DataFrame.rolling : Calling object with DataFrames.
+        Series.min : Min of the full Series.
+        DataFrame.min : Min of the full DataFrame.
+
+        Examples
+        --------
+        >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
+        >>> s.groupby(s).rolling(3).min().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        0
+        2  0     NaN
+           1     NaN
+        3  2     NaN
+           3     NaN
+           4     3.0
+        4  5     NaN
+           6     NaN
+           7     4.0
+           8     4.0
+        5  9     NaN
+           10    NaN
+        Name: 0, dtype: float64
+
+        For DataFrame, each rolling min is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.groupby(df.A).rolling(2).min().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                A     B
+        A
+        2 0   NaN   NaN
+          1   2.0   4.0
+        3 2   NaN   NaN
+          3   3.0   9.0
+          4   3.0   9.0
+        4 5   NaN   NaN
+          6   4.0  16.0
+          7   4.0  16.0
+          8   4.0  16.0
+        5 9   NaN   NaN
+          10  5.0  25.0
+        """
+        return super(RollingGroupby, self).min()
 
     def max(self):
-        raise NotImplementedError("groupby.rolling().max() is currently not implemented yet.")
+        """
+        The rolling max of any non-NaN observations inside the window.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returned object type is determined by the caller of the rolling
+            calculation.
+
+        See Also
+        --------
+        Series.rolling : Calling object with Series data.
+        DataFrame.rolling : Calling object with DataFrames.
+        Series.max : Max of the full Series.
+        DataFrame.max : Max of the full DataFrame.
+
+        Examples
+        --------
+        >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
+        >>> s.groupby(s).rolling(3).max().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        0
+        2  0     NaN
+           1     NaN
+        3  2     NaN
+           3     NaN
+           4     3.0
+        4  5     NaN
+           6     NaN
+           7     4.0
+           8     4.0
+        5  9     NaN
+           10    NaN
+        Name: 0, dtype: float64
+
+        For DataFrame, each rolling count is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.groupby(df.A).rolling(2).max().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                A     B
+        A
+        2 0   NaN   NaN
+          1   2.0   4.0
+        3 2   NaN   NaN
+          3   3.0   9.0
+          4   3.0   9.0
+        4 5   NaN   NaN
+          6   4.0  16.0
+          7   4.0  16.0
+          8   4.0  16.0
+        5 9   NaN   NaN
+          10  5.0  25.0
+        """
+        return super(RollingGroupby, self).max()
 
     def mean(self):
-        raise NotImplementedError("groupby.rolling().mean() is currently not implemented yet.")
+        """
+        The rolling mean of any non-NaN observations inside the window.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returned object type is determined by the caller of the rolling
+            calculation.
+
+        See Also
+        --------
+        Series.rolling : Calling object with Series data.
+        DataFrame.rolling : Calling object with DataFrames.
+        Series.mean : Mean of the full Series.
+        DataFrame.mean : Mean of the full DataFrame.
+
+        Examples
+        --------
+        >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
+        >>> s.groupby(s).rolling(3).mean().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        0
+        2  0     NaN
+           1     NaN
+        3  2     NaN
+           3     NaN
+           4     3.0
+        4  5     NaN
+           6     NaN
+           7     4.0
+           8     4.0
+        5  9     NaN
+           10    NaN
+        Name: 0, dtype: float64
+
+        For DataFrame, each rolling mean is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.groupby(df.A).rolling(2).mean().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                A     B
+        A
+        2 0   NaN   NaN
+          1   2.0   4.0
+        3 2   NaN   NaN
+          3   3.0   9.0
+          4   3.0   9.0
+        4 5   NaN   NaN
+          6   4.0  16.0
+          7   4.0  16.0
+          8   4.0  16.0
+        5 9   NaN   NaN
+          10  5.0  25.0
+        """
+        return super(RollingGroupby, self).mean()
 
 
 class Expanding(_RollingAndExpanding):
