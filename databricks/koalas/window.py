@@ -924,38 +924,38 @@ class ExpandingGroupby(Expanding):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).expanding(3).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> s.groupby(s).expanding(3).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
         0
-        2  0      NaN
-           1      NaN
-        3  2      NaN
-           3      NaN
-           4      9.0
-        4  5      NaN
-           6      NaN
-           7     12.0
-           8     16.0
-        5  9      NaN
-           10     NaN
+        2  0     1.0
+           1     2.0
+        3  2     1.0
+           3     2.0
+           4     3.0
+        4  5     1.0
+           6     2.0
+           7     3.0
+           8     4.0
+        5  9     1.0
+           10    2.0
         Name: 0, dtype: float64
 
-        For DataFrame, each expanding sum is computed column-wise.
+        For DataFrame, each expanding count is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
-        >>> df.groupby(df.A).expanding(2).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-                 A     B
+        >>> df.groupby(df.A).expanding(2).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                A    B
         A
-        2 0    NaN   NaN
-          1    4.0   8.0
-        3 2    NaN   NaN
-          3    6.0  18.0
-          4    9.0  27.0
-        4 5    NaN   NaN
-          6    8.0  32.0
-          7   12.0  48.0
-          8   16.0  64.0
-        5 9    NaN   NaN
-          10  10.0  50.0
+        2 0   1.0  1.0
+          1   2.0  2.0
+        3 2   1.0  1.0
+          3   2.0  2.0
+          4   3.0  3.0
+        4 5   1.0  1.0
+          6   2.0  2.0
+          7   3.0  3.0
+          8   4.0  4.0
+        5 9   1.0  1.0
+          10  2.0  2.0
         """
         return super(ExpandingGroupby, self).count()
 
@@ -1034,38 +1034,38 @@ class ExpandingGroupby(Expanding):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).expanding(3).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> s.groupby(s).expanding(3).min().sort_index()  # doctest: +NORMALIZE_WHITESPACE
         0
-        2  0      NaN
-           1      NaN
-        3  2      NaN
-           3      NaN
-           4      9.0
-        4  5      NaN
-           6      NaN
-           7     12.0
-           8     16.0
-        5  9      NaN
-           10     NaN
+        2  0     NaN
+           1     NaN
+        3  2     NaN
+           3     NaN
+           4     3.0
+        4  5     NaN
+           6     NaN
+           7     4.0
+           8     4.0
+        5  9     NaN
+           10    NaN
         Name: 0, dtype: float64
 
-        For DataFrame, each expanding sum is computed column-wise.
+        For DataFrame, each expanding min is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
-        >>> df.groupby(df.A).expanding(2).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-                 A     B
+        >>> df.groupby(df.A).expanding(2).min().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                A     B
         A
-        2 0    NaN   NaN
-          1    4.0   8.0
-        3 2    NaN   NaN
-          3    6.0  18.0
-          4    9.0  27.0
-        4 5    NaN   NaN
-          6    8.0  32.0
-          7   12.0  48.0
-          8   16.0  64.0
-        5 9    NaN   NaN
-          10  10.0  50.0
+        2 0   NaN   NaN
+          1   2.0   4.0
+        3 2   NaN   NaN
+          3   3.0   9.0
+          4   3.0   9.0
+        4 5   NaN   NaN
+          6   4.0  16.0
+          7   4.0  16.0
+          8   4.0  16.0
+        5 9   NaN   NaN
+          10  5.0  25.0
         """
         return super(ExpandingGroupby, self).min()
 
@@ -1088,38 +1088,38 @@ class ExpandingGroupby(Expanding):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).expanding(3).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> s.groupby(s).expanding(3).max().sort_index()  # doctest: +NORMALIZE_WHITESPACE
         0
-        2  0      NaN
-           1      NaN
-        3  2      NaN
-           3      NaN
-           4      9.0
-        4  5      NaN
-           6      NaN
-           7     12.0
-           8     16.0
-        5  9      NaN
-           10     NaN
+        2  0     NaN
+           1     NaN
+        3  2     NaN
+           3     NaN
+           4     3.0
+        4  5     NaN
+           6     NaN
+           7     4.0
+           8     4.0
+        5  9     NaN
+           10    NaN
         Name: 0, dtype: float64
 
-        For DataFrame, each expanding sum is computed column-wise.
+        For DataFrame, each expanding max is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
-        >>> df.groupby(df.A).expanding(2).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-                 A     B
+        >>> df.groupby(df.A).expanding(2).max().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                A     B
         A
-        2 0    NaN   NaN
-          1    4.0   8.0
-        3 2    NaN   NaN
-          3    6.0  18.0
-          4    9.0  27.0
-        4 5    NaN   NaN
-          6    8.0  32.0
-          7   12.0  48.0
-          8   16.0  64.0
-        5 9    NaN   NaN
-          10  10.0  50.0
+        2 0   NaN   NaN
+          1   2.0   4.0
+        3 2   NaN   NaN
+          3   3.0   9.0
+          4   3.0   9.0
+        4 5   NaN   NaN
+          6   4.0  16.0
+          7   4.0  16.0
+          8   4.0  16.0
+        5 9   NaN   NaN
+          10  5.0  25.0
         """
         return super(ExpandingGroupby, self).max()
 
@@ -1143,37 +1143,37 @@ class ExpandingGroupby(Expanding):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).expanding(3).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> s.groupby(s).expanding(3).mean().sort_index()  # doctest: +NORMALIZE_WHITESPACE
         0
-        2  0      NaN
-           1      NaN
-        3  2      NaN
-           3      NaN
-           4      9.0
-        4  5      NaN
-           6      NaN
-           7     12.0
-           8     16.0
-        5  9      NaN
-           10     NaN
+        2  0     NaN
+           1     NaN
+        3  2     NaN
+           3     NaN
+           4     3.0
+        4  5     NaN
+           6     NaN
+           7     4.0
+           8     4.0
+        5  9     NaN
+           10    NaN
         Name: 0, dtype: float64
 
-        For DataFrame, each expanding sum is computed column-wise.
+        For DataFrame, each expanding mean is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
-        >>> df.groupby(df.A).expanding(2).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-                 A     B
+        >>> df.groupby(df.A).expanding(2).mean().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                A     B
         A
-        2 0    NaN   NaN
-          1    4.0   8.0
-        3 2    NaN   NaN
-          3    6.0  18.0
-          4    9.0  27.0
-        4 5    NaN   NaN
-          6    8.0  32.0
-          7   12.0  48.0
-          8   16.0  64.0
-        5 9    NaN   NaN
-          10  10.0  50.0
+        2 0   NaN   NaN
+          1   2.0   4.0
+        3 2   NaN   NaN
+          3   3.0   9.0
+          4   3.0   9.0
+        4 5   NaN   NaN
+          6   4.0  16.0
+          7   4.0  16.0
+          8   4.0  16.0
+        5 9   NaN   NaN
+          10  5.0  25.0
         """
         return super(ExpandingGroupby, self).mean()
