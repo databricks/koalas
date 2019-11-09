@@ -1654,8 +1654,32 @@ class GroupBy(object):
                  F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0))
         return self._reduce_for_stat_function(stat_function, only_numeric=False)
 
-    def rolling(self, window, *args, **kwargs):
-        return RollingGroupby(self, window)
+    def rolling(self, window, min_periods=None):
+        """
+        Return an rolling grouper, providing rolling
+        functionality per group.
+
+        .. note:: 'min_periods' in Koalas works as a fixed window size unlike pandas.
+        Unlike pandas, NA is also counted as the period. This might be changed
+        in the near future.
+
+        Parameters
+        ----------
+        window : int, or offset
+            Size of the moving window.
+            This is the number of observations used for calculating the statistic.
+            Each window will be a fixed size.
+
+        min_periods : int, default 1
+            Minimum number of observations in window required to have a value
+            (otherwise result is NA).
+
+        See Also
+        --------
+        Series.groupby
+        DataFrame.groupby
+        """
+        return RollingGroupby(self, self._groupkeys, window, min_periods=min_periods)
 
     def expanding(self, min_periods=1):
         """
