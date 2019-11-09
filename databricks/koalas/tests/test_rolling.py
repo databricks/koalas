@@ -21,7 +21,7 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.window import Rolling
 
 
-class RollingTests(ReusedSQLTestCase, TestUtils):
+class RollingTest(ReusedSQLTestCase, TestUtils):
 
     def test_rolling_error(self):
         with self.assertRaisesRegex(ValueError, "window must be >= 0"):

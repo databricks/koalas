@@ -21,7 +21,7 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.window import Expanding
 
 
-class ExpandingTests(ReusedSQLTestCase, TestUtils):
+class ExpandingTest(ReusedSQLTestCase, TestUtils):
 
     def _test_expanding_func(self, f):
         kser = ks.Series([1, 2, 3])
