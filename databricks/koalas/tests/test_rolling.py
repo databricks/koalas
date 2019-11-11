@@ -75,6 +75,12 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
     def test_rolling_count(self):
         self._test_rolling_func("count")
 
+    def test_rolling_std(self):
+        self._test_rolling_func("std")
+
+    def test_rolling_var(self):
+        self._test_rolling_func("var")
+
     def _test_groupby_rolling_func(self, f):
         kser = ks.Series([1, 2, 3])
         pser = kser.to_pandas()
@@ -111,3 +117,9 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
 
     def test_groupby_rolling_sum(self):
         self._test_groupby_rolling_func("sum")
+
+    def test_groupby_rolling_std(self):
+        self._test_groupby_rolling_func("std")
+
+    def test_groupby_rolling_var(self):
+        self._test_groupby_rolling_func("var")
