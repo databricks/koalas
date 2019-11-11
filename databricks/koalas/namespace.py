@@ -1505,7 +1505,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
             if axis == 0:
                 obj = obj.rename('0').to_dataframe()
             else:
-                if obj.name is None:
+                if obj.name == '0':
                     obj = obj.rename(str(idx)).to_dataframe()
                 else:
                     obj = obj.to_dataframe()
