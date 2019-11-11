@@ -507,8 +507,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.dropna(axis=1)
         with self.assertRaisesRegex(NotImplementedError, msg):
-            kdf.dropna(axis='column')
-        with self.assertRaisesRegex(NotImplementedError, msg):
+            kdf.dropna(axis='columns')
+        with self.assertRaisesRegex(ValueError, 'No axis named foo'):
             kdf.dropna(axis='foo')
 
         self.assertRaises(KeyError, lambda: kdf.dropna(subset='1'))
@@ -587,7 +587,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
             kdf.fillna(-1, axis=1)
         with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
-            kdf.fillna(-1, axis='column')
+            kdf.fillna(-1, axis='columns')
         with self.assertRaisesRegex(ValueError, "limit parameter for value is not support now"):
             kdf.fillna(-1, limit=1)
         with self.assertRaisesRegex(TypeError, "Unsupported.*DataFrame"):

@@ -396,3 +396,10 @@ def name_like_string(name: Union[str, Tuple]) -> str:
     else:
         name = (str(name),)
     return ('(%s)' % ', '.join(name)) if len(name) > 1 else name[0]
+
+
+def validate_axis(axis=0, none_axis=0):
+    if axis not in (0, 1, 'index', 'columns', None):
+        raise ValueError('No axis named {0}'.format(axis))
+    # convert to numeric axis
+    return {None: none_axis, 'index': 0, 'columns': 1}.get(axis, axis)
