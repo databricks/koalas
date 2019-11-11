@@ -16,7 +16,7 @@
 from functools import partial
 from typing import Any
 
-from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
+from databricks.koalas.internal import SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.utils import name_like_string
 from pyspark.sql import Window
 from pyspark.sql import functions as F
@@ -29,13 +29,68 @@ from databricks.koalas.utils import scol_for
 
 
 class _RollingAndExpanding(object):
-    pass
+    def __init__(self, window, index_scols, min_periods):
+        self._window = window
+        # This unbounded Window is later used to handle 'min_periods' for now.
+        self._unbounded_window = Window.orderBy(index_scols).rowsBetween(
+            Window.unboundedPreceding, Window.currentRow)
+        self._min_periods = min_periods
+
+    def _apply_as_series_or_frame(self, func):
+        """
+        Wraps a function that handles Spark column in order
+        to support it in both Koalas Series and DataFrame.
+        Note that the given `func` name should be same as the API's method name.
+        """
+        raise NotImplementedError(
+            "A class that inherits this class should implement this method "
+            "to handle the index and columns of output.")
+
+    def count(self):
+        def count(scol):
+            return F.count(scol).over(self._window)
+        return self._apply_as_series_or_frame(count).astype('float64')
+
+    def sum(self):
+        def sum(scol):
+            return F.when(
+                F.row_number().over(self._unbounded_window) >= self._min_periods,
+                F.sum(scol).over(self._window)
+            ).otherwise(F.lit(None))
+
+        return self._apply_as_series_or_frame(sum)
+
+    def min(self):
+        def min(scol):
+            return F.when(
+                F.row_number().over(self._unbounded_window) >= self._min_periods,
+                F.min(scol).over(self._window)
+            ).otherwise(F.lit(None))
+
+        return self._apply_as_series_or_frame(min)
+
+    def max(self):
+        def max(scol):
+            return F.when(
+                F.row_number().over(self._unbounded_window) >= self._min_periods,
+                F.max(scol).over(self._window)
+            ).otherwise(F.lit(None))
+
+        return self._apply_as_series_or_frame(max)
+
+    def mean(self):
+        def mean(scol):
+            return F.when(
+                F.row_number().over(self._unbounded_window) >= self._min_periods,
+                F.mean(scol).over(self._window)
+            ).otherwise(F.lit(None))
+
+        return self._apply_as_series_or_frame(mean)
 
 
 class Rolling(_RollingAndExpanding):
     def __init__(self, kdf_or_kser, window, min_periods=None):
         from databricks.koalas import DataFrame, Series
-        from databricks.koalas.groupby import SeriesGroupBy, DataFrameGroupBy
 
         if window < 0:
             raise ValueError("window must be >= 0")
@@ -43,22 +98,21 @@ class Rolling(_RollingAndExpanding):
             raise ValueError("min_periods must be >= 0")
         self._window_val = window
         if min_periods is not None:
-            self._min_periods = min_periods
+            min_periods = min_periods
         else:
             # TODO: 'min_periods' is not equivalent in pandas because it does not count NA as
             #  a value.
-            self._min_periods = window
+            min_periods = window
 
         self.kdf_or_kser = kdf_or_kser
-        if not isinstance(kdf_or_kser, (DataFrame, Series, DataFrameGroupBy, SeriesGroupBy)):
+        if not isinstance(kdf_or_kser, (DataFrame, Series)):
             raise TypeError(
                 "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser))
-        if isinstance(kdf_or_kser, (DataFrame, Series)):
-            self._index_scols = kdf_or_kser._internal.index_scols
-            self._window = Window.orderBy(self._index_scols).rowsBetween(
-                Window.currentRow - (self._window_val-1), Window.currentRow)
+        index_scols = kdf_or_kser._internal.index_scols
+        window = Window.orderBy(index_scols).rowsBetween(
+            Window.currentRow - (self._window_val - 1), Window.currentRow)
 
-            self._unbounded_window = Window.orderBy(self._index_scols)
+        super(Rolling, self).__init__(window, index_scols, min_periods)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeRolling, item):
@@ -143,10 +197,7 @@ class Rolling(_RollingAndExpanding):
         2  2.0
         3  2.0
         """
-        def count(scol):
-            return F.count(scol).over(self._window)
-
-        return self._apply_as_series_or_frame(count).astype('float64')
+        return super(Rolling, self).count()
 
     def sum(self):
         """
@@ -224,13 +275,7 @@ class Rolling(_RollingAndExpanding):
         3  10.0  38.0
         4  13.0  65.0
         """
-        def sum(scol):
-            return F.when(
-                F.row_number().over(self._unbounded_window) >= self._min_periods,
-                F.sum(scol).over(self._window)
-            ).otherwise(F.lit(None))
-
-        return self._apply_as_series_or_frame(sum)
+        return super(Rolling, self).sum()
 
     def min(self):
         """
@@ -308,13 +353,7 @@ class Rolling(_RollingAndExpanding):
         3  2.0  4.0
         4  2.0  4.0
         """
-        def min(scol):
-            return F.when(
-                F.row_number().over(self._unbounded_window) >= self._min_periods,
-                F.min(scol).over(self._window)
-            ).otherwise(F.lit(None))
-
-        return self._apply_as_series_or_frame(min)
+        return super(Rolling, self).min()
 
     def max(self):
         """
@@ -391,13 +430,7 @@ class Rolling(_RollingAndExpanding):
         3  5.0  25.0
         4  6.0  36.0
         """
-        def max(scol):
-            return F.when(
-                F.row_number().over(self._unbounded_window) >= self._min_periods,
-                F.max(scol).over(self._window)
-            ).otherwise(F.lit(None))
-
-        return self._apply_as_series_or_frame(max)
+        return super(Rolling, self).max()
 
     def mean(self):
         """
@@ -475,13 +508,7 @@ class Rolling(_RollingAndExpanding):
         3  3.333333  12.666667
         4  4.333333  21.666667
         """
-        def mean(scol):
-            return F.when(
-                F.row_number().over(self._unbounded_window) >= self._min_periods,
-                F.mean(scol).over(self._window)
-            ).otherwise(F.lit(None))
-
-        return self._apply_as_series_or_frame(mean)
+        return super(Rolling, self).mean()
 
 
 class RollingGroupby(Rolling):
@@ -866,14 +893,14 @@ class Expanding(_RollingAndExpanding):
 
         if min_periods < 0:
             raise ValueError("min_periods must be >= 0")
-        self._min_periods = min_periods
         self.kdf_or_kser = kdf_or_kser
         if not isinstance(kdf_or_kser, (DataFrame, Series)):
             raise TypeError(
                 "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser))
         index_scols = kdf_or_kser._internal.index_scols
-        self._window = Window.orderBy(index_scols).rowsBetween(
+        window = Window.orderBy(index_scols).rowsBetween(
             Window.unboundedPreceding, Window.currentRow)
+        super(Expanding, self).__init__(window, index_scols, min_periods)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeExpanding, item):
@@ -954,15 +981,7 @@ class Expanding(_RollingAndExpanding):
         2  2.0
         3  3.0
         """
-        def count(scol):
-            # TODO: is this a bug? min_periods is not respected in expanding().count() in pandas.
-            # return F.when(
-            #     F.row_number().over(self._window) >= self._min_periods,
-            #     F.count(scol).over(self._window)
-            # ).otherwise(F.lit(None))
-            return F.count(scol).over(self._window)
-
-        return self._apply_as_series_or_frame(count).astype('float64')
+        return super(Expanding, self).count()
 
     def sum(self):
         """
@@ -1024,13 +1043,7 @@ class Expanding(_RollingAndExpanding):
         3  10.0  30.0
         4  15.0  55.0
         """
-        def sum(scol):
-            return F.when(
-                F.row_number().over(self._window) >= self._min_periods,
-                F.sum(scol).over(self._window)
-            ).otherwise(F.lit(None))
-
-        return self._apply_as_series_or_frame(sum)
+        return super(Expanding, self).sum()
 
     def min(self):
         """
@@ -1067,13 +1080,7 @@ class Expanding(_RollingAndExpanding):
         4    2.0
         Name: 0, dtype: float64
         """
-        def min(scol):
-            return F.when(
-                F.row_number().over(self._window) >= self._min_periods,
-                F.min(scol).over(self._window)
-            ).otherwise(F.lit(None))
-
-        return self._apply_as_series_or_frame(min)
+        return super(Expanding, self).min()
 
     def max(self):
         """
@@ -1096,13 +1103,7 @@ class Expanding(_RollingAndExpanding):
         Series.max : Similar method for Series.
         DataFrame.max : Similar method for DataFrame.
         """
-        def max(scol):
-            return F.when(
-                F.row_number().over(self._window) >= self._min_periods,
-                F.max(scol).over(self._window)
-            ).otherwise(F.lit(None))
-
-        return self._apply_as_series_or_frame(max)
+        return super(Expanding, self).max()
 
     def mean(self):
         """
@@ -1146,13 +1147,7 @@ class Expanding(_RollingAndExpanding):
         3    2.5
         Name: 0, dtype: float64
         """
-        def mean(scol):
-            return F.when(
-                F.row_number().over(self._window) >= self._min_periods,
-                F.mean(scol).over(self._window)
-            ).otherwise(F.lit(None))
-
-        return self._apply_as_series_or_frame(mean)
+        return super(Expanding, self).mean()
 
 
 class ExpandingGroupby(Expanding):
@@ -1176,6 +1171,8 @@ class ExpandingGroupby(Expanding):
         # DataFrame. So, if the given `groupkeys` is a series, they end up with
         # being a different series.
         self._window = self._window.partitionBy(
+            *[F.col(name_like_string(ser.name)) for ser in groupkeys])
+        self._unbounded_window = self._window.partitionBy(
             *[F.col(name_like_string(ser.name)) for ser in groupkeys])
         self._groupkeys = groupkeys
         # Current implementation reuses DataFrameGroupBy implementations for Series as well.
