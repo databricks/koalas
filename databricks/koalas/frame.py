@@ -7650,8 +7650,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-            extended : boolean, default ``False``.
-                If ``False``, prints only the physical plan.
+        extended : boolean, default ``False``.
+            If ``False``, prints only the physical plan.
 
         Examples
         --------
