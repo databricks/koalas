@@ -34,7 +34,7 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
-from databricks.koalas.utils import default_session, name_like_string, scol_for
+from databricks.koalas.utils import default_session, name_like_string, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.typedef import pandas_wraps
@@ -1472,7 +1472,8 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                         'objects, you passed an object of type '
                         '"{name}"'.format(name=type(objs).__name__))
 
-    if axis not in [0, 'index']:
+    axis = validate_axis(axis)
+    if axis != 0:
         raise ValueError('axis should be either 0 or "index" currently.')
 
     if len(objs) == 0:
