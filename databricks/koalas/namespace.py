@@ -1405,6 +1405,9 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
     Name: 0, dtype: object
 
     >>> ks.concat([s1, s2], axis=1)
+       0  1
+    0  a  c
+    1  b  d
 
     Combine two ``DataFrame`` objects with identical columns.
 
