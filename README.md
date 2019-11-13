@@ -35,11 +35,22 @@ Try the Koalas 10 minutes tutorial on a live Jupyter notebook [here](https://myb
 
 ## Getting Started
 
-Recommended way of installing is Conda. You can use not only Conda but also multiple ways to install Koalas. See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for full instructions to install Koalas.
+The recommended way of installing Koalas is Conda as below.
 
 ```bash
 conda install koalas -c conda-forge
 ```
+
+You can use not only Conda but also multiple ways to install Koalas. See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for full instructions to install Koalas.
+
+If you are a Databricks Runtime user, you can install Koalas using the Libraries tab on the cluster UI, or using `dbutils` in a notebook as below, for the regular Databricks Runtime.
+
+```python
+dbutils.library.installPyPI("koalas")
+dbutils.library.restartPython()
+```
+
+Note that Koalas requires Databricks Runtime 5.x or above. In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and Databricks Runtime for Machine Learning.
 
 Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
 
@@ -69,16 +80,4 @@ See [Contributing Guide](https://koalas.readthedocs.io/en/latest/development/con
 
 ## FAQ
 
-### How do I use this on Databricks?
-
-Koalas requires Databricks Runtime 5.x or above. For the regular Databricks Runtime, you can install Koalas using the Libraries tab on the cluster UI, or using dbutils in a notebook:
-
-```python
-dbutils.library.installPyPI("koalas")
-dbutils.library.restartPython()
-```
-
-In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and
-Databricks Runtime for Machine Learning.
-
-See also the full list of frequently asked questions at [FAQ](https://koalas.readthedocs.io/en/latest/user_guide/faq.html) in the official documentation.
+See [FAQ](https://koalas.readthedocs.io/en/latest/user_guide/faq.html) in the official documentation.

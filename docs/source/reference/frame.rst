@@ -27,6 +27,7 @@ Attributes and underlying data
 
    DataFrame.dtypes
    DataFrame.shape
+   DataFrame.ndim
    DataFrame.size
    DataFrame.select_dtypes
 
@@ -118,6 +119,7 @@ Computations / Descriptive Stats
    DataFrame.mean
    DataFrame.min
    DataFrame.median
+   DataFrame.quantile
    DataFrame.nunique
    DataFrame.skew
    DataFrame.sum

@@ -19,8 +19,11 @@ Commonly used utils in Koalas.
 
 import functools
 from collections import OrderedDict
+from distutils.version import LooseVersion
 from typing import Callable, Dict, List, Tuple, Union
 
+import pyarrow
+import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType
@@ -51,7 +54,7 @@ def combine_frames(this, *args, how="full"):
             "Currently only one different DataFrame (from given Series) is supported"
         if this is args[0]._kdf:
             return  # We don't need to combine. All series is in this.
-        that = args[0]._kdf[[ser.name for ser in args]]
+        that = args[0]._kdf[list(args)]
     elif len(args) == 1 and isinstance(args[0], DataFrame):
         assert isinstance(args[0], DataFrame)
         if this is args[0]:
@@ -110,11 +113,14 @@ def combine_frames(this, *args, how="full"):
                                + this._internal.column_index_names)
                               if this._internal.column_index_names is not None else None)
         return DataFrame(
-            this._internal.copy(sdf=joined_df, data_columns=new_data_columns,
-                                column_index=column_index, column_index_names=column_index_names))
+            this._internal.copy(sdf=joined_df,
+                                column_index=column_index,
+                                column_scols=[scol_for(joined_df, col) for col in new_data_columns],
+                                column_index_names=column_index_names))
     else:
-        raise ValueError("Cannot combine column argument because "
-                         "it comes from a different dataframe")
+        raise ValueError(
+            "Cannot combine the series or dataframe because it comes from a different dataframe. "
+            "In order to allow this operation, enable 'compute.ops_on_diff_frames' option.")
 
 
 def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
@@ -268,6 +274,12 @@ def align_diff_series(func, this_series, *args, how="full"):
 def default_session(conf=None):
     if conf is None:
         conf = dict()
+    if LooseVersion(pyarrow.__version__) >= LooseVersion("0.15") and \
+            LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+        conf["spark.executorEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
+        conf["spark.yarn.appMasterEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
+        conf["spark.mesos.driverEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
+        conf["spark.kubernetes.driverEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
     builder = spark.SparkSession.builder.appName("Koalas")
     for key, value in conf.items():
         builder = builder.config(key, value)
@@ -384,3 +396,11 @@ def name_like_string(name: Union[str, Tuple]) -> str:
     else:
         name = (str(name),)
     return ('(%s)' % ', '.join(name)) if len(name) > 1 else name[0]
+
+
+def validate_axis(axis=0, none_axis=0):
+    """ Check the given axis is valid. """
+    if axis not in (0, 1, 'index', 'columns', None):
+        raise ValueError('No axis named {0}'.format(axis))
+    # convert to numeric axis
+    return {None: none_axis, 'index': 0, 'columns': 1}.get(axis, axis)

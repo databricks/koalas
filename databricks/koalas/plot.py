@@ -411,7 +411,8 @@ class KoalasHistPlot(HistPlot):
 
     def _make_plot(self):
         # TODO: this logic is similar with KdePlot. Might have to deduplicate it.
-        # 'num_colors' requires ndim but Spark DataFrame does not seem knowing it.
+        # 'num_colors' requires to calculate `shape` which has to count all.
+        # Use 1 for now to save the computation.
         colors = self._get_colors(num_colors=1)
         stacking_id = self._get_stacking_id()
 
@@ -575,7 +576,8 @@ class KoalasKdePlot(KdePlot):
         self.data = numeric_data
 
     def _make_plot(self):
-        # 'num_colors' requires ndim but Spark DataFrame does not seem knowing it.
+        # 'num_colors' requires to calculate `shape` which has to count all.
+        # Use 1 for now to save the computation.
         colors = self._get_colors(num_colors=1)
         stacking_id = self._get_stacking_id()
 

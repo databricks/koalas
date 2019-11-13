@@ -28,6 +28,7 @@ from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
+from databricks.koalas.utils import scol_for
 
 
 def _make_col(c):
@@ -158,7 +159,7 @@ class AtIndexer(object):
 
         if column is not None and column not in self._kdf._internal.data_columns:
             raise KeyError(column)
-        sdf = self._ks._kdf._sdf if self._ks is not None else self._kdf._sdf
+        sdf = self._ks._internal._sdf if self._ks is not None else self._kdf._sdf
 
         row = key[0] if self._ks is None else key
         pdf = (sdf
@@ -392,7 +393,7 @@ class LocIndexer(object):
                 stop = rows_sel.stop
 
                 index_column = self._kdf.index.to_series()
-                index_data_type = index_column.schema[0].dataType
+                index_data_type = index_column.spark_type
                 cond = []
                 if start is not None:
                     cond.append(index_column._scol >= F.lit(start).cast(index_data_type))
@@ -414,7 +415,7 @@ class LocIndexer(object):
                 sdf = sdf.where(F.lit(False))
             elif len(self._kdf._internal.index_columns) == 1:
                 index_column = self._kdf.index.to_series()
-                index_data_type = index_column.schema[0].dataType
+                index_data_type = index_column.spark_type
                 if len(rows_sel) == 1:
                     sdf = sdf.where(
                         index_column._scol == F.lit(rows_sel[0]).cast(index_data_type))
@@ -437,7 +438,7 @@ class LocIndexer(object):
             cols_sel = None
 
         if cols_sel is None:
-            columns = self._kdf._internal.data_scols
+            columns = self._kdf._internal.column_scols
         elif isinstance(cols_sel, spark.Column):
             columns = [cols_sel]
             column_index = None
@@ -475,9 +476,9 @@ class LocIndexer(object):
             sdf = sdf.select(self._kdf._internal.index_scols + columns)
             index_columns = self._kdf._internal.index_columns
             data_columns = [column for column in sdf.columns if column not in index_columns]
-            internal = _InternalFrame(
-                sdf=sdf, data_columns=data_columns,
-                index_map=self._kdf._internal.index_map, column_index=column_index)
+            column_scols = [scol_for(sdf, col) for col in data_columns]
+            internal = _InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map,
+                                      column_index=column_index, column_scols=column_scols)
             kdf = DataFrame(internal)
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
@@ -710,13 +711,13 @@ class ILocIndexer(object):
         if isinstance(cols_sel, Series):
             columns = [cols_sel._scol]
         elif isinstance(cols_sel, int):
-            columns = [self._kdf._internal.data_scols[cols_sel]]
+            columns = [self._kdf._internal.column_scols[cols_sel]]
         elif cols_sel is None or cols_sel == slice(None):
-            columns = self._kdf._internal.data_scols
+            columns = self._kdf._internal.column_scols
         elif isinstance(cols_sel, slice):
             if all(s is None or isinstance(s, int)
                    for s in (cols_sel.start, cols_sel.stop, cols_sel.step)):
-                columns = self._kdf._internal.data_scols[cols_sel]
+                columns = self._kdf._internal.column_scols[cols_sel]
             else:
                 not_none = cols_sel.start if cols_sel.start is not None \
                     else cols_sel.stop if cols_sel.stop is not None else cols_sel.step
@@ -733,10 +734,7 @@ class ILocIndexer(object):
 
         try:
             sdf = sdf.select(self._kdf._internal.index_scols + columns)
-            index_columns = self._kdf._internal.index_columns
-            data_columns = [column for column in sdf.columns if column not in index_columns]
-            internal = _InternalFrame(
-                sdf=sdf, data_columns=data_columns, index_map=self._kdf._internal.index_map)
+            internal = _InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)
             kdf = DataFrame(internal)
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'

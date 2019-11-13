@@ -175,8 +175,8 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             (pdf1.a - pdf2.b - pdf3.c).rename("a").sort_index(), almost=True)
 
         self.assert_eq(
-            (kdf1.a * kdf2.a * kdf3.c).sort_index(),
-            (pdf1.a * pdf2.a * pdf3.c).rename("a").sort_index(), almost=True)
+            (kdf1.a * (kdf2.a * kdf3.c)).sort_index(),
+            (pdf1.a * (pdf2.a * pdf3.c)).rename("a").sort_index(), almost=True)
 
         self.assert_eq(
             (kdf1["a"] / kdf2["a"] / kdf3["c"]).sort_index(),
@@ -202,6 +202,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             (kdf1[('x', 'a')] - kdf2[('x', 'b')] - kdf3[('y', 'c')]).sort_index(),
             (pdf1[('x', 'a')] - pdf2[('x', 'b')] - pdf3[('y', 'c')]).rename(('x', 'a'))
+            .sort_index(),
+            almost=True)
+
+        self.assert_eq(
+            (kdf1[('x', 'a')] * (kdf2[('x', 'b')] * kdf3[('y', 'c')])).sort_index(),
+            (pdf1[('x', 'a')] * (pdf2[('x', 'b')] * pdf3[('y', 'c')])).rename(('x', 'a'))
             .sort_index(),
             almost=True)
 
@@ -452,20 +458,20 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
         return ks.from_pandas(self.pdf2)
 
     def test_arithmetic(self):
-        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             self.kdf1.a - self.kdf2.b
 
-        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             self.kdf1.a - self.kdf2.a
 
-        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             self.kdf1["a"] - self.kdf2["a"]
 
-        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             self.kdf1 - self.kdf2
 
     def test_assignment(self):
-        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf = ks.from_pandas(self.pdf1)
             kdf['c'] = self.kdf1.a
 
@@ -477,5 +483,5 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame(pdf)
         another_kdf = ks.DataFrame(pdf)
 
-        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf.loc[['viper', 'sidewinder'], ['shield']] = another_kdf.max_speed

@@ -35,9 +35,9 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)(), almost=True)
             self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)(), almost=True)
 
-        # NOTE: To test skew and kurt, just make sure they run.
+        # NOTE: To test skew, kurt, and median, just make sure they run.
         #       The numbers are different in spark and pandas.
-        functions = ['skew', 'kurt']
+        functions = ['skew', 'kurt', 'median']
         for funcname in functions:
             getattr(kdf.A, funcname)()
             getattr(kdf, funcname)()
