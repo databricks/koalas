@@ -7643,6 +7643,35 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(internal) if not result_as_series else DataFrame(internal).T[key]
 
+    def explain(self, extended: bool = False):
+        """
+        Prints the underlying (logical and physical) Spark plans to the console for debugging
+        purpose.
+
+        Parameters
+        ----------
+        extended : boolean, default ``False``.
+            If ``False``, prints only the physical plan.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'id': range(10)})
+        >>> df.explain()
+        == Physical Plan ==
+        Scan ExistingRDD[__index_level_0__#...,id#...]
+
+        >>> df.explain(True)
+        == Parsed Logical Plan ==
+        ...
+        == Analyzed Logical Plan ==
+        ...
+        == Optimized Logical Plan ==
+        ...
+        == Physical Plan ==
+        Scan ExistingRDD[__index_level_0__#...,id#...]
+        """
+        self._internal.spark_internal_df.explain(extended)
+
     def _get_from_multiindex_column(self, key):
         """ Select columns from multi-index columns.
 
