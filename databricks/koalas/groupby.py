@@ -1052,7 +1052,7 @@ class GroupBy(object):
         DataFrame with ranking of values within each group
 
         Examples
-        -------
+        --------
 
         >>> df = ks.DataFrame({
         ...     'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
