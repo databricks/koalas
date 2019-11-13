@@ -422,6 +422,14 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
+    def test_multi_index_column_assignment_frame(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        pdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
+        kdf = ks.DataFrame(pdf)
+        kdf["c"] = 1
+        pdf["c"] = 1
+        self.assert_eq(repr(kdf), repr(pdf))
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
