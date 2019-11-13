@@ -56,11 +56,10 @@ before the actual computation since Koalas is based on lazy execution. For examp
    >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'id': range(10)})
    >>> kdf = kdf[kdf.id > 5]
-   >>> kdf.to_spark().explain()
+   >>> kdf.explain()
    == Physical Plan ==
-   *(1) Project [id#509L]
-   +- *(1) Filter (id#509L > 5)
-      +- *(1) Scan ExistingRDD[__index_level_0__#508L,id#509L]
+   *(1) Filter (id#1L > 5)
+   +- *(1) Scan ExistingRDD[__index_level_0__#0L,id#1L]
 
 
 Whenever you are not sure about such cases, you can check the actual execution plans and
@@ -81,12 +80,11 @@ and exchange the data across multile nodes via networks. See the example below.
 
    >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'id': range(10)}).sort_values(by="id")
-   >>> kdf.to_spark().explain()
+   >>> kdf.explain()
    == Physical Plan ==
-   *(2) Sort [id#76L ASC NULLS LAST], true, 0
-   +- Exchange rangepartitioning(id#76L ASC NULLS LAST, 200), true, [id=#130]
-      +- *(1) Project [id#76L]
-         +- *(1) Scan ExistingRDD[__index_level_0__#75L,id#76L]
+   *(2) Sort [id#9L ASC NULLS LAST], true, 0
+   +- Exchange rangepartitioning(id#9L ASC NULLS LAST, 200), true, [id=#18]
+      +- *(1) Scan ExistingRDD[__index_level_0__#8L,id#9L]
 
 As you can see it requires ``Exchange`` which requires a shuffle and it is likely expensive.
 
@@ -103,18 +101,16 @@ Such APIs shoild be avoided very large dataset.
 .. code-block:: python
 
    >>> import databricks.koalas as ks
-   >>> kdf = ks.DataFrame({'id': range(10)}).sort_values(by="id")
-   >>> kdf.to_spark().explain()
-   >>> kdf.rank().to_spark().explain()
+   >>> kdf = ks.DataFrame({'id': range(10)})
+   >>> kdf.rank().explain()
    == Physical Plan ==
-   *(4) Project [id#547]
-   +- Window [avg(cast(_w0#549 as bigint)) windowspecdefinition(id#521L, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS id#547], [id#521L]
-      +- *(3) Project [_w0#549, id#521L]
-         +- Window [row_number() windowspecdefinition(id#521L ASC NULLS FIRST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS _w0#549], [id#521L ASC NULLS FIRST]
-            +- *(2) Sort [id#521L ASC NULLS FIRST], false, 0
-               +- Exchange SinglePartition, true, [id=#701]
-                  +- *(1) Project [id#521L]
-                     +- *(1) Scan ExistingRDD[__index_level_0__#520L,id#521L]
+   *(4) Project [__index_level_0__#16L, id#24]
+   +- Window [avg(cast(_w0#26 as bigint)) windowspecdefinition(id#17L, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS id#24], [id#17L]
+      +- *(3) Project [__index_level_0__#16L, _w0#26, id#17L]
+         +- Window [row_number() windowspecdefinition(id#17L ASC NULLS FIRST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS _w0#26], [id#17L ASC NULLS FIRST]
+            +- *(2) Sort [id#17L ASC NULLS FIRST], false, 0
+               +- Exchange SinglePartition, true, [id=#48]
+                  +- *(1) Scan ExistingRDD[__index_level_0__#16L,id#17L]
 
 Instead, use 
 `GroupBy.rank <https://koalas.readthedocs.io/en/latest/reference/api/databricks.koalas.groupby.GroupBy.rank.html>`_
@@ -142,6 +138,15 @@ this behavior. For instance, see below:
    ...
    Reference 'a' is ambiguous, could be: a, a.;
 
+
+Specify the index column in conversion from Spark DataFrame to Koalas DataFrame
+-------------------------------------------------------------------------------
+
+When Koalas Dataframe is converted from Spark DataFrame, it loses the index information, which results in using
+the default index in Koalas DataFrame. The default index is inefficient in general comparing to explicitly specifying
+the index column. Specify the index column whenever possible.
+
+See  `working with PySpark <pandas_pyspark.rst#pyspark>`_
 
 Use ``distributed`` or ``distributed-sequence`` default index
 -------------------------------------------------------------
