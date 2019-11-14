@@ -72,6 +72,12 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
     def test_expanding_sum(self):
         self._test_expanding_func("sum")
 
+    def test_expanding_std(self):
+        self._test_expanding_func("std")
+
+    def test_expanding_var(self):
+        self._test_expanding_func("var")
+
     def _test_groupby_expanding_func(self, f):
         kser = ks.Series([1, 2, 3])
         pser = kser.to_pandas()
@@ -120,3 +126,9 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
 
     def test_groupby_expanding_sum(self):
         self._test_groupby_expanding_func("sum")
+
+    def test_groupby_expanding_std(self):
+        self._test_groupby_expanding_func("std")
+
+    def test_groupby_expanding_var(self):
+        self._test_groupby_expanding_func("var")
