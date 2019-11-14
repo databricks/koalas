@@ -128,6 +128,7 @@ class _MissingPandasLikeMultiIndex(object):
     T = unsupported_property('T')
     codes = unsupported_property('codes')
     is_all_dates = unsupported_property('is_all_dates')
+    levels = unsupported_property('levels')
     levshape = unsupported_property('levshape')
     shape = unsupported_property('shape')
 
