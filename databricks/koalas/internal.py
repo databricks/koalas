@@ -524,7 +524,7 @@ class _InternalFrame(object):
             return self._column_index_to_name[column_name_or_index]
         else:
             if not isinstance(column_name_or_index, str):
-                raise KeyError(column_name_or_index)
+                raise KeyError(name_like_string(column_name_or_index))
             return column_name_or_index
 
     @lazy_property
