@@ -3386,7 +3386,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Returns
         -------
         Series
-            Modes of the Series in sorted order.
+            Modes of the Series.
 
         Examples
         --------
