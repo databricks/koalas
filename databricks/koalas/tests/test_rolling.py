@@ -97,6 +97,18 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
             repr(getattr(kdf.groupby(kdf.a).rolling(2), f)().sort_index()),
             repr(getattr(pdf.groupby(pdf.a).rolling(2), f)()))
 
+        # Multiindex column
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
+        pdf = kdf.to_pandas()
+        self.assert_eq(
+            repr(getattr(kdf.groupby(("a", "x")).rolling(2), f)().sort_index()),
+            repr(getattr(pdf.groupby(("a", "x")).rolling(2), f)()))
+
+        self.assert_eq(
+            repr(getattr(kdf.groupby([("a", "x"), ("a", "y")]).rolling(2), f)().sort_index()),
+            repr(getattr(pdf.groupby([("a", "x"), ("a", "y")]).rolling(2), f)()))
+
     def test_groupby_rolling_count(self):
         self._test_groupby_rolling_func("count")
 

@@ -1187,69 +1187,7 @@ class ExpandingGroupby(Expanding):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
-    def _apply_as_series_or_frame(self, func):
-        """
-        Wraps a function that handles Spark column in order
-        to support it in both Koalas Series and DataFrame.
-
-        Note that the given `func` name should be same as the API's method name.
-        """
-        from databricks.koalas import DataFrame
-        from databricks.koalas.series import _col
-        from databricks.koalas.groupby import SeriesGroupBy
-
-        kdf = self.kdf
-        sdf = self.kdf._sdf
-
-        # Here we need to include grouped key as an index, and shift previous index.
-        #   [index_column0, index_column1] -> [grouped key, index_column0, index_column1]
-        new_index_scols = []
-        new_index_map = []
-        for groupkey in self._groupkeys:
-            new_index_scols.append(
-                # NOTE THAT this code intentionally uses `F.col` instead of `scol` in
-                # given series. This is because, in case of series, we convert it into
-                # DataFrame. So, if the given `groupkeys` is a series, they end up with
-                # being a different series.
-                F.col(
-                    name_like_string(groupkey.name)
-                ).alias(
-                    SPARK_INDEX_NAME_FORMAT(len(new_index_scols))
-                ))
-            new_index_map.append(
-                (SPARK_INDEX_NAME_FORMAT(len(new_index_map)),
-                 groupkey._internal.column_index[0]))
-
-        for new_index_scol, index_map in zip(kdf._internal.index_scols, kdf._internal.index_map):
-            new_index_scols.append(
-                new_index_scol.alias(SPARK_INDEX_NAME_FORMAT(len(new_index_scols))))
-            _, name = index_map
-            new_index_map.append((SPARK_INDEX_NAME_FORMAT(len(new_index_map)), name))
-
-        applied = []
-        for column in kdf.columns:
-            applied.append(
-                kdf[column]._with_new_scol(
-                    func(kdf[column]._scol)
-                ).rename(kdf[column].name))
-
-        # Seems like pandas filters out when grouped key is NA.
-        cond = self._groupkeys[0]._scol.isNotNull()
-        for c in self._groupkeys:
-            cond = cond | c._scol.isNotNull()
-        sdf = sdf.select(new_index_scols + [c._scol for c in applied]).filter(cond)
-
-        internal = kdf._internal.copy(
-            sdf=sdf,
-            index_map=new_index_map,
-            column_index=[c._internal.column_index[0] for c in applied],
-            column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied])
-
-        ret = DataFrame(internal)
-        if isinstance(self._groupby, SeriesGroupBy):
-            return _col(ret)
-        else:
-            return ret
+    _apply_as_series_or_frame = RollingGroupby._apply_as_series_or_frame
 
     def count(self):
         """
