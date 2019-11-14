@@ -42,13 +42,13 @@ it can be set into Spark session as below:
    ...
 
 All Spark features such as history server, web UI and deployment modes can be used as are with Koalas.
-If you are interested in performance turning, please see also `Tuning Spark <https://spark.apache.org/docs/latest/tuning.html>`_.
+If you are interested in performance tuning, please see also `Tuning Spark <https://spark.apache.org/docs/latest/tuning.html>`_.
 
 
 Check execution plans
 ---------------------
 
-Expensive operations can be predicted by leveraging PySpark API `to_spark().explain()`
+Expensive operations can be predicted by leveraging PySpark API `DataFrame.explain()`
 before the actual computation since Koalas is based on lazy execution. For example, see below.
 
 .. code-block:: python
@@ -74,7 +74,7 @@ Avoid shuffling
 
 Some operations such as ``sort_values`` are more difficult to do in a parallel or distributed
 environment than in in-memory on a single machine because it needs to send data to other nodes,
-and exchange the data across multile nodes via networks. See the example below.
+and exchange the data across multiple nodes via networks. See the example below.
 
 .. code-block:: python
 
@@ -86,17 +86,17 @@ and exchange the data across multile nodes via networks. See the example below.
    +- Exchange rangepartitioning(id#9L ASC NULLS LAST, 200), true, [id=#18]
       +- *(1) Scan ExistingRDD[__index_level_0__#8L,id#9L]
 
-As you can see it requires ``Exchange`` which requires a shuffle and it is likely expensive.
+As you can see, it requires ``Exchange`` which requires a shuffle and it is likely expensive.
 
 
 Avoid computation on single partition
 -------------------------------------
 
-Another common case is the computation on single partition. Currently some APIs such as
+Another common case is the computation on a single partition. Currently, some APIs such as
 `DataFrame.rank <https://koalas.readthedocs.io/en/latest/reference/api/databricks.koalas.DataFrame.rank.html>`_
-uses PySpark’s Window without specifying partition specification. This leads to move all data into single
+uses PySpark’s Window without specifying partition specification. This leads to move all data into a single
 partition in single machine and could cause serious performance degradation.
-Such APIs shoild be avoided very large dataset.
+Such APIs should be avoided very large dataset.
 
 .. code-block:: python
 
@@ -114,14 +114,14 @@ Such APIs shoild be avoided very large dataset.
 
 Instead, use 
 `GroupBy.rank <https://koalas.readthedocs.io/en/latest/reference/api/databricks.koalas.groupby.GroupBy.rank.html>`_
-as it is less expensive because data can be distributed and computed on each group.
+as it is less expensive because data can be distributed and computed for each group.
 
 
 Avoid reserved column names
 ---------------------------
 
 Columns with leading ``__`` and trailing ``__`` are reserved in Koalas. To handle internal behaviors for, such as, index,
-Koalas uses some internal columns. Therefore it is discouraged to use such column names and not guaranteed to work.
+Koalas uses some internal columns. Therefore, it is discouraged to use such column names and not guaranteed to work.
 
 
 Do not use duplicated column names
@@ -152,7 +152,7 @@ Use ``distributed`` or ``distributed-sequence`` default index
 -------------------------------------------------------------
 
 One common issue when Koalas users face is the slow performance by default index. Koalas attaches
-a default index when index is unknown, for example, Spark DataFrame is directly converted to Koalas DataFrame.
+a default index when the index is unknown, for example, Spark DataFrame is directly converted to Koalas DataFrame.
 
 This default index is ``sequence`` which requires the computation on single partition which is discouraged. If you plan
 to handle large data in production, make it distributed by configuring the default index to ``distributed`` or
