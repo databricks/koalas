@@ -7830,6 +7830,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 key = [k if isinstance(k, tuple) else (k,) for k in key]
 
+            level = self._internal.column_index_level
+            key = [tuple(list(idx) + ([''] * (level - len(idx)))) for idx in key]
+
             def assign_columns(kdf, this_column_index, that_column_index):
                 assert len(key) == len(that_column_index)
                 # Note that here intentionally uses `zip_longest` that combine
