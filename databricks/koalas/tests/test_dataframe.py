@@ -507,8 +507,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.dropna(axis=1)
         with self.assertRaisesRegex(NotImplementedError, msg):
-            kdf.dropna(axis='column')
-        with self.assertRaisesRegex(NotImplementedError, msg):
+            kdf.dropna(axis='columns')
+        with self.assertRaisesRegex(ValueError, 'No axis named foo'):
             kdf.dropna(axis='foo')
 
         self.assertRaises(KeyError, lambda: kdf.dropna(subset='1'))
@@ -587,7 +587,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
             kdf.fillna(-1, axis=1)
         with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
-            kdf.fillna(-1, axis='column')
+            kdf.fillna(-1, axis='columns')
         with self.assertRaisesRegex(ValueError, "limit parameter for value is not support now"):
             kdf.fillna(-1, limit=1)
         with self.assertRaisesRegex(TypeError, "Unsupported.*DataFrame"):
@@ -655,6 +655,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = 'axis should be either 0 or "index" currently.'
         with self.assertRaisesRegex(ValueError, msg):
             kdf.nunique(axis=1)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('Y', 'B')], names=['1', '2'])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.nunique(), pdf.nunique())
+        self.assert_eq(kdf.nunique(dropna=False), pdf.nunique(dropna=False))
 
     def test_sort_values(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, None, 7],
@@ -1699,6 +1707,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 2, 2, 3], 'b': ['a', 'a', 'a', 'c', 'd']})
         kdf = ks.from_pandas(pdf)
 
+        # inplace is False
         self.assert_eq(pdf.drop_duplicates().sort_index(),
                        kdf.drop_duplicates().sort_index())
         self.assert_eq(pdf.drop_duplicates('a').sort_index(),
@@ -1706,7 +1715,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.drop_duplicates(['a', 'b']).sort_index(),
                        kdf.drop_duplicates(['a', 'b']).sort_index())
 
-        # multi-index columns
+        # multi-index columns, inplace is False
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
         pdf.columns = columns
         kdf.columns = columns
@@ -1717,6 +1726,29 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        kdf.drop_duplicates(('x', 'a')).sort_index())
         self.assert_eq(pdf.drop_duplicates([('x', 'a'), ('y', 'b')]).sort_index(),
                        kdf.drop_duplicates([('x', 'a'), ('y', 'b')]).sort_index())
+
+        # inplace is True
+        subset_list = [None, 'a', ['a', 'b']]
+        for subset in subset_list:
+            pdf = pd.DataFrame({'a': [1, 2, 2, 2, 3], 'b': ['a', 'a', 'a', 'c', 'd']})
+            kdf = ks.from_pandas(pdf)
+            pdf.drop_duplicates(subset=subset, inplace=True)
+            kdf.drop_duplicates(subset=subset, inplace=True)
+            self.assert_eq(pdf.sort_index(),
+                           kdf.sort_index())
+
+        # multi-index columns, inplace is True
+        subset_list = [None, ('x', 'a'), [('x', 'a'), ('y', 'b')]]
+        for subset in subset_list:
+            pdf = pd.DataFrame({'a': [1, 2, 2, 2, 3], 'b': ['a', 'a', 'a', 'c', 'd']})
+            kdf = ks.from_pandas(pdf)
+            columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
+            pdf.columns = columns
+            kdf.columns = columns
+            pdf.drop_duplicates(subset=subset, inplace=True)
+            kdf.drop_duplicates(subset=subset, inplace=True)
+            self.assert_eq(pdf.sort_index(),
+                           kdf.sort_index())
 
     def test_reindex(self):
         index = ['A', 'B', 'C', 'D', 'E']
@@ -1732,8 +1764,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.reindex(['A', 'B', 'C'], index=['numbers', '2', '3']).sort_index())
 
         self.assert_eq(
-            pdf.reindex(index=['numbers', '2', '3']).sort_index(),
-            kdf.reindex(index=['numbers', '2', '3']).sort_index())
+            pdf.reindex(index=['A', 'B']).sort_index(),
+            kdf.reindex(index=['A', 'B']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(index=['A', 'B', '2', '3']).sort_index(),
+            kdf.reindex(index=['A', 'B', '2', '3']).sort_index())
+
+        self.assert_eq(
+            pdf.reindex(columns=['numbers']).sort_index(),
+            kdf.reindex(columns=['numbers']).sort_index())
 
         self.assert_eq(
             pdf.reindex(columns=['numbers', '2', '3']).sort_index(),
@@ -1782,6 +1822,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pdf.melt(id_vars=['A'], value_vars=['B'],
                                 var_name='myVarname', value_name='myValname')
                        .sort_values(['myVarname', 'myValname']))
+        self.assert_eq(kdf.melt(value_vars=('A', 'B')).sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(value_vars=('A', 'B')).sort_values(['variable', 'value']))
+
+        self.assertRaises(KeyError, lambda: kdf.melt(id_vars='Z'))
+        self.assertRaises(KeyError, lambda: kdf.melt(value_vars='Z'))
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
@@ -1815,6 +1861,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pdf.melt().sort_values(['v0', 'v1', 'value']))
 
         self.assertRaises(ValueError, lambda: kdf.melt(id_vars=('X', 'A')))
+        self.assertRaises(ValueError, lambda: kdf.melt(value_vars=('X', 'A')))
+        self.assertRaises(KeyError, lambda: kdf.melt(id_vars=[('Y', 'A')]))
+        self.assertRaises(KeyError, lambda: kdf.melt(value_vars=[('Y', 'A')]))
 
     def test_all(self):
         pdf = pd.DataFrame({
@@ -2169,3 +2218,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = kdf.to_pandas()
 
         self.assert_eq(kdf.keys(), pdf.keys())
+
+    def test_quantile(self):
+        kdf = ks.from_pandas(self.pdf)
+
+        with self.assertRaisesRegex(ValueError, 'axis should be either 0 or "index" currently.'):
+            kdf.quantile(.5, axis=1)
+
+        with self.assertRaisesRegex(ValueError, "quantile currently doesn't supports numeric_only"):
+            kdf.quantile(.5, numeric_only=False)

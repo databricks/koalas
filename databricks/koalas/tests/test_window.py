@@ -24,7 +24,7 @@ from databricks.koalas.missing.window import _MissingPandasLikeExpanding, \
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
-class ExpandingRollingTests(ReusedSQLTestCase, TestUtils):
+class ExpandingRollingTest(ReusedSQLTestCase, TestUtils):
     def test_missing(self):
         kdf = ks.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 

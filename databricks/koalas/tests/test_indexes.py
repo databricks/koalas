@@ -69,17 +69,6 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(AttributeError, expected_error_message):
             kidx.__getattr__(item)
 
-    def test_mutliindex_codes(self):
-        indexes = [[list('bac'), list('ddf')], [list('abc'), list('edf')],
-                   [list('caa'), list('eat')], [list('dad'), list('pea')]]
-        expected = [[[1, 0, 2], [0, 0, 1]], [[0, 1, 2], [1, 0, 2]],
-                    [[1, 0, 0], [1, 0, 2]], [[1, 0, 1], [2, 1, 0]]]
-
-        for idx, exp in zip(indexes, expected):
-            multi_index = ks.DataFrame({'a': [1, 2, 3]}, index=idx).index
-
-            self.assertEqual(multi_index.codes, exp)
-
     def test_to_series(self):
         pidx = self.pdf.index
         kidx = self.kdf.index
@@ -118,6 +107,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(kidx.names, pidx.names)
         self.assert_eq(kidx, pidx)
 
+        pidx.name = None
+        kidx.name = None
+        self.assertEqual(kidx.name, pidx.name)
+        self.assertEqual(kidx.names, pidx.names)
+        self.assert_eq(kidx, pidx)
+
         with self.assertRaisesRegex(ValueError, "Names must be a list-like"):
             kidx.names = 'hi'
 
@@ -139,6 +134,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx.names = ['renamed_number', 'renamed_color']
         kidx.names = ['renamed_number', 'renamed_color']
         self.assertEqual(kidx.names, pidx.names)
+
+        pidx.names = ['renamed_number', None]
+        kidx.names = ['renamed_number', None]
+        self.assertEqual(kidx.names, pidx.names)
         if LooseVersion(pyspark.__version__) < LooseVersion('2.4'):
             # PySpark < 2.4 does not support struct type with arrow enabled.
             with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
@@ -155,10 +154,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = self.kdf.index
 
         # here the output is different than pandas in terms of order
-        expected = pd.Int64Index([0, 6, 9, 5, 1, 3, 8], dtype='int64')
+        expected = [0, 1, 3, 5, 6, 8, 9]
 
-        self.assert_eq(expected, kidx.unique())
-        self.assert_eq(expected, kidx.unique(level=0))
+        self.assert_eq(expected, sorted(kidx.unique().to_pandas()))
+        self.assert_eq(expected, sorted(kidx.unique(level=0).to_pandas()))
+
+        expected = [1, 2, 4, 6, 7, 9, 10]
+        self.assert_eq(expected, sorted((kidx + 1).unique().to_pandas()))
 
         with self.assertRaisesRegexp(IndexError, "Too many levels*"):
             kidx.unique(level=1)
@@ -247,6 +249,28 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                                         "property.*Index.*{}.*is deprecated".format(name)):
                 getattr(kdf.set_index(['a', 'b']).index, name)
 
+    def test_index_has_duplicates(self):
+        indexes = [("a", "b", "c"), ("a", "a", "c"), (1, 3, 3), (1, 2, 3)]
+        names = [None, 'ks', 'ks', None]
+        has_dup = [False, True, True, False]
+
+        for idx, name, expected in zip(indexes, names, has_dup):
+            pdf = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(idx, name=name))
+            kdf = ks.from_pandas(pdf)
+
+            self.assertEqual(kdf.index.has_duplicates, expected)
+
+    def test_multiindex_has_duplicates(self):
+        indexes = [[list("abc"), list("edf")], [list("aac"), list("edf")],
+                   [list("aac"), list("eef")], [[1, 4, 4], [4, 6, 6]]]
+        has_dup = [False, False, True, True]
+
+        for idx, expected in zip(indexes, has_dup):
+            pdf = pd.DataFrame({"a": [1, 2, 3]}, index=idx)
+            kdf = ks.from_pandas(pdf)
+
+            self.assertEqual(kdf.index.has_duplicates, expected)
+
     def test_multi_index_not_supported(self):
         kdf = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
 
@@ -257,3 +281,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(TypeError,
                                     "cannot perform all with this index type"):
             kdf.set_index(['a', 'b']).index.all()
+
+    def test_index_nlevels(self):
+        pdf = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(['a', 'b', 'c']))
+        kdf = ks.from_pandas(pdf)
+
+        self.assertEqual(kdf.index.nlevels, 1)
+
+    def test_multiindex_nlevel(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')])
+        kdf = ks.from_pandas(pdf)
+
+        self.assertEqual(kdf.index.nlevels, 2)
+
+    def test_multiindex_from_arrays(self):
+        arrays = [['a', 'a', 'b', 'b'], ['red', 'blue', 'red', 'blue']]
+        pidx = pd.MultiIndex.from_arrays(arrays)
+        kidx = ks.MultiIndex.from_arrays(arrays)
+
+        self.assert_eq(pidx, kidx)

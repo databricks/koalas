@@ -21,6 +21,7 @@ Properties
    Index.dtype
    Index.name
    Index.names
+   Index.ndim
    Index.empty
 
 Modifying and computations
@@ -70,12 +71,20 @@ MultiIndex
 
    MultiIndex
 
+MultiIndex Constructors
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.from_tuples
+
 MultiIndex Properties
 ~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: api/
 
    MultiIndex.names
+   MultiIndex.ndim
 
 MultiIndex Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

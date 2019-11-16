@@ -32,7 +32,6 @@ class _MissingPandasLikeDataFrame(object):
     # Properties
     axes = unsupported_property('axes')
     iat = unsupported_property('iat')
-    ndim = unsupported_property('ndim')
 
     # Deprecated properties
     blocks = unsupported_property('blocks', deprecated=True)
@@ -75,7 +74,6 @@ class _MissingPandasLikeDataFrame(object):
     pct_change = unsupported_function('pct_change')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
-    quantile = unsupported_function('quantile')
     query = unsupported_function('query')
     reindex_like = unsupported_function('reindex_like')
     rename_axis = unsupported_function('rename_axis')

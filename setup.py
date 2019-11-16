@@ -15,7 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from __future__ import print_function
 
+from io import open
 import sys
 from setuptools import setup
 from os import path
@@ -46,7 +48,7 @@ setup(
     python_requires='>=3.5',
     install_requires=[
         'pandas>=0.23.2',
-        'pyarrow>=0.10,<0.15',
+        'pyarrow>=0.10',
         'numpy>=1.14',
         'matplotlib>=3.0.0',
     ],
