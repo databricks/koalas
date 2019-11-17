@@ -30,7 +30,7 @@ from pandas.core.dtypes.common import is_datetime64tz_dtype
 
 from pyspark.sql import Window, functions as F
 from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
-from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
+from pyspark.sql.functions import PandasUDFType, pandas_udf, Column, monotonically_increasing_id
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import _infer_return_type
@@ -1401,6 +1401,66 @@ class GroupBy(object):
 
     pad = ffill
 
+    def head(self, n=5):
+        """
+        Return first n rows of each group.
+
+        Returns
+        -------
+        DataFrame or Series
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 1, 1, 2, 2, 2, 3, 3, 3],
+        ...                    'b': [2, 3, 1, 4, 6, 9, 8, 10, 7, 5],
+        ...                    'c': [3, 5, 2, 5, 1, 2, 6, 4, 3, 6]},
+        ...                   columns=['a', 'b', 'c'],
+        ...                   index=[7, 2, 4, 1, 3, 4, 9, 10, 5, 6])
+        >>> df
+            a   b  c
+        7   1   2  3
+        2   1   3  5
+        4   1   1  2
+        1   1   4  5
+        3   2   6  1
+        4   2   9  2
+        9   2   8  6
+        10  3  10  4
+        5   3   7  3
+        6   3   5  6
+
+        >>> df.groupby('a').head(2)
+            a   b  c
+        7   1   2  3
+        2   1   3  5
+        10  3  10  4
+        5   3   7  3
+        3   2   6  1
+        4   2   9  2
+
+        >>> df.groupby('a')['b'].head(2)
+        7      2
+        2      3
+        10    10
+        5      7
+        3      6
+        4      9
+        Name: b, dtype: int64
+        """
+        groupkeys = self._groupkeys
+        sdf = self._kdf._sdf.withColumn('order', monotonically_increasing_id())
+        name = self._agg_columns[0]._internal.data_columns[0]
+        window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col('order'))
+        sdf = sdf.withColumn('order', F.row_number().over(window)).filter(F.col('order') <= n)
+        internal = _InternalFrame(
+            sdf=sdf,
+            index_map=self._kdf._internal.index_map,
+            column_scols=([scol_for(sdf, name)]
+                          if isinstance(self, SeriesGroupBy)
+                          else [scol_for(sdf, name) for name in self._kdf.columns]))
+
+        return DataFrame(internal)
+
     def shift(self, periods=1, fill_value=None):
         """
         Shift each group by periods observations.
@@ -1951,6 +2011,9 @@ class SeriesGroupBy(GroupBy):
         return _col(super(SeriesGroupBy, self).idxmax(skipna))
 
     idxmax.__doc__ = GroupBy.idxmax.__doc__
+
+    def head(self, n=5):
+        return _col(super(SeriesGroupBy, self).head(n))
 
     # TODO: add keep parameter
     def nsmallest(self, n=5):

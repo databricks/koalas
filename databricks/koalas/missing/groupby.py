@@ -52,7 +52,6 @@ class _MissingPandasLikeDataFrameGroupBy(object):
     cumcount = unsupported_function('cumcount')
     describe = unsupported_function('describe')
     get_group = unsupported_function('get_group')
-    head = unsupported_function('head')
     median = unsupported_function('median')
     ngroup = unsupported_function('ngroup')
     nth = unsupported_function('nth')
