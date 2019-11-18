@@ -854,7 +854,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         left_kdf = ks.from_pandas(left_pdf)
         right_kdf = ks.from_pandas(right_pdf)
-        right_ks = ks.from_pandas(right_ps)
+        right_kser = ks.from_pandas(right_ps)
 
         def check(op, right_kdf=right_kdf, right_pdf=right_pdf):
             k_res = op(left_kdf, right_kdf)
@@ -900,22 +900,22 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Test Series on the right
         # pd.DataFrame.merge with Series is implemented since version 0.24.0
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
-            check(lambda left, right: left.merge(right), right_ks, right_ps)
+            check(lambda left, right: left.merge(right), right_kser, right_ps)
             check(lambda left, right: left.merge(right, left_on='x', right_on='x'),
-                  right_ks, right_ps)
+                  right_kser, right_ps)
             check(lambda left, right: left.set_index('x').merge(right, left_index=True,
-                                                                right_on='x'), right_ks, right_ps)
+                                                                right_on='x'), right_kser, right_ps)
 
             # Test join types with Series
             for how in ['inner', 'left', 'right', 'outer']:
-                check(lambda left, right: left.merge(right, how=how), right_ks, right_ps)
+                check(lambda left, right: left.merge(right, how=how), right_kser, right_ps)
                 check(lambda left, right: left.merge(right, left_on='x', right_on='x', how=how),
-                      right_ks, right_ps)
+                      right_kser, right_ps)
 
             # suffix with Series
             check(lambda left, right: left.merge(right, suffixes=['_left', '_right'], how='outer',
                                                  left_index=True, right_index=True),
-                  right_ks, right_ps)
+                  right_kser, right_ps)
 
         # multi-index columns
         left_columns = pd.MultiIndex.from_tuples([('a', 'lkey'), ('a', 'value'), ('b', 'x')])
