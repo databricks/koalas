@@ -126,9 +126,7 @@ class _MissingPandasLikeMultiIndex(object):
 
     # Properties
     T = unsupported_property('T')
-    codes = unsupported_property('codes')
     is_all_dates = unsupported_property('is_all_dates')
-    levels = unsupported_property('levels')
     levshape = unsupported_property('levshape')
     shape = unsupported_property('shape')
 
@@ -225,6 +223,16 @@ class _MissingPandasLikeMultiIndex(object):
     # Functions we won't support.
     values = common.values(unsupported_property)
     array = common.array(unsupported_property)
+    codes = unsupported_property(
+        'codes',
+        reason="'codes' requires to collect all data into the driver which is against the "
+               "design principle of Koalas. Alternatively, you could call 'to_pandas()' and"
+               " use 'codes' property in pandas.")
+    levels = unsupported_property(
+        'levels',
+        reason="'levels' requires to collect all data into the driver which is against the "
+               "design principle of Koalas. Alternatively, you could call 'to_pandas()' and"
+               " use 'levels' property in pandas.")
     __iter__ = common.__iter__(unsupported_function)
 
     # Properties we won't support.
