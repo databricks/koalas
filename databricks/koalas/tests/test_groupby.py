@@ -810,6 +810,15 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pdf.groupby(('x', 'a')).idxmin(skipna=False),
                        kdf.groupby(('x', 'a')).idxmin(skipna=False).sort_index())
 
+    def test_head(self):
+        pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3],
+                            'b': [1, 2, 3, 4, 5],
+                            'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.groupby(['a', 'b']).idxmin(),
+                       kdf.groupby(['a', 'b']).idxmin().sort_index())
+
     def test_missing(self):
         kdf = ks.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 
