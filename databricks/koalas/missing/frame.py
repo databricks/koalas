@@ -71,7 +71,6 @@ class _MissingPandasLikeDataFrame(object):
     mad = unsupported_function('mad')
     mask = unsupported_function('mask')
     mode = unsupported_function('mode')
-    pct_change = unsupported_function('pct_change')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
     query = unsupported_function('query')
