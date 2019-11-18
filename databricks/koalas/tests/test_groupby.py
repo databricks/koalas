@@ -816,8 +816,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pdf.groupby(['a', 'b']).idxmin(),
-                       kdf.groupby(['a', 'b']).idxmin().sort_index())
+        self.assert_eq(pdf.groupby(['a', 'b']).head(2),
+                       kdf.groupby(['a', 'b']).head(2).sort_index())
 
     def test_missing(self):
         kdf = ks.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
