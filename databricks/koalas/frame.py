@@ -2464,8 +2464,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  False   True  False
         """
         kdf = self.copy()
-        for name, ks in kdf.iteritems():
-            kdf[name] = ks.isnull()
+        for name, kser in kdf.iteritems():
+            kdf[name] = kser.isnull()
         return kdf
 
     isna = isnull
@@ -2499,8 +2499,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  True  False  True
         """
         kdf = self.copy()
-        for name, ks in kdf.iteritems():
-            kdf[name] = ks.notnull()
+        for name, kser in kdf.iteritems():
+            kdf[name] = kser.notnull()
         return kdf
 
     notna = notnull
