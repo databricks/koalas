@@ -146,6 +146,15 @@ class Index(IndexOpsMixin):
     toPandas = to_pandas
 
     def to_numpy(self, dtype=None, copy=False):
+        """
+
+        Examples
+        --------
+        >>> ks.Series([1, 2, 3, 4]).index.to_numpy()
+        array([0, 1, 2, 3])
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[[1, 2, 3], [4, 5, 6]]).index.to_numpy()
+        array([(1, 4), (2, 5), (3, 6)], dtype=object)
+        """
         return self.to_pandas().to_numpy(dtype=dtype, copy=copy)
 
     @property
