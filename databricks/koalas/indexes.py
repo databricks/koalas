@@ -120,8 +120,7 @@ class Index(IndexOpsMixin):
         """
         return len(self._kdf)  # type: ignore
 
-    @property
-    def T(self):
+    def transpose(self):
         """
         Return the transpose, For index, It will be index itself.
 
@@ -131,7 +130,7 @@ class Index(IndexOpsMixin):
         >>> idx
         Index(['a', 'b', 'c'], dtype='object')
 
-        >>> idx.T
+        >>> idx.transpose()
         Index(['a', 'b', 'c'], dtype='object')
 
         For MultiIndex
@@ -143,13 +142,15 @@ class Index(IndexOpsMixin):
                     ('c', 'z')],
                    )
 
-        >>> midx.T  # doctest: +SKIP
+        >>> midx.transpose()  # doctest: +SKIP
         MultiIndex([('a', 'x'),
                     ('b', 'y'),
                     ('c', 'z')],
                    )
         """
         return self
+
+    T = property(transpose)
 
     def to_pandas(self) -> pd.Index:
         """

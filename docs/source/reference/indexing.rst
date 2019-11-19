@@ -24,6 +24,7 @@ Properties
    Index.ndim
    Index.empty
    Index.T
+   Index.transpose
 
 Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -87,6 +88,7 @@ MultiIndex Properties
    MultiIndex.names
    MultiIndex.ndim
    MultiIndex.T
+   MultiIndex.transpose
 
 MultiIndex Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
