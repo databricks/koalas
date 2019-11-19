@@ -7522,7 +7522,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self.columns
 
     # TODO: axis = 1
-    def idxmax(self, axis=0, skipna=True):
+    def idxmax(self, axis=0):
         """
         Return index of first occurrence of maximum over requested axis.
         NA/null values are excluded.
