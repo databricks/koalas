@@ -512,7 +512,7 @@ class Index(IndexOpsMixin):
         >>> s1.index ^ s2.index
         Int64Index([5, 1], dtype='int64')
         """
-        if not isinstance(self, type(other)):
+        if type(self) != type(other):
             raise NotImplementedError(
                 "Doesn't support symmetric_difference between Index & MultiIndex for now")
 
