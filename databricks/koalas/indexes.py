@@ -145,6 +145,9 @@ class Index(IndexOpsMixin):
 
     toPandas = to_pandas
 
+    def to_numpy(self, dtype=None, copy=False):
+        return self.to_pandas().to_numpy(dtype=dtype, copy=copy)
+
     @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
