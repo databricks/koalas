@@ -786,6 +786,10 @@ class MultiIndex(Index):
                     (  'lama', 'speed')],
                    )
         """
+        if type(self) != type(other):
+            raise NotImplementedError(
+                "Doesn't support symmetric_difference between Index & MultiIndex for now")
+
         sdf_self = self._kdf._sdf.select(self._internal.index_scols)
         sdf_other = other._kdf._sdf.select(other._internal.index_scols)
 
