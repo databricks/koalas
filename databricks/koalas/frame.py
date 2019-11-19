@@ -2145,12 +2145,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         index_columns = self._internal.index_columns
         sdf = sdf.select(*index_columns, *conditions)
-        internal = self._internal.copy(
-            sdf=sdf,
-            index_map=self._internal.index_map,
-            column_index=self._internal.column_index,
-            column_scols=[scol_for(sdf, col) for col in self._internal.data_columns],
-            column_index_names=None)
+        internal = self._internal.copy(sdf=sdf)
 
         return DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map))
 
