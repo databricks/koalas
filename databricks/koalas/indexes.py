@@ -147,6 +147,9 @@ class Index(IndexOpsMixin):
 
     def to_numpy(self, dtype=None, copy=False):
         """
+        A NumPy ndarray representing the values in this Index or MultiIndex.
+
+        Returns a numpy.ndarray
 
         Examples
         --------
