@@ -525,7 +525,9 @@ class Index(IndexOpsMixin):
         if sort:
             sdf_symdiff = sdf_symdiff.sort(self._internal.index_scols)
 
-        internal = self._kdf._internal.copy(sdf=sdf_symdiff)
+        internal = _InternalFrame(
+            sdf=sdf_symdiff,
+            index_map=self._internal.index_map)
         result = Index(DataFrame(internal))
 
         if result_name:
@@ -799,7 +801,9 @@ class MultiIndex(Index):
         if sort:
             sdf_symdiff = sdf_symdiff.sort(self._internal.index_scols)
 
-        internal = self._kdf._internal.copy(sdf=sdf_symdiff)
+        internal = _InternalFrame(
+            sdf=sdf_symdiff,
+            index_map=self._internal.index_map)
         result = MultiIndex(DataFrame(internal))
 
         if result_name:
