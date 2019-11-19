@@ -152,6 +152,7 @@ Reindexing / Selection / Label manipulation
    Series.rename
    Series.reset_index
    Series.sample
+   Series.tail
    Series.where
    Series.mask
    Series.truncate

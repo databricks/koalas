@@ -86,7 +86,6 @@ class _MissingPandasLikeDataFrame(object):
     stack = unsupported_function('stack')
     swapaxes = unsupported_function('swapaxes')
     swaplevel = unsupported_function('swaplevel')
-    tail = unsupported_function('tail')
     take = unsupported_function('take')
     to_feather = unsupported_function('to_feather')
     to_gbq = unsupported_function('to_gbq')

@@ -1736,6 +1736,32 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return _col(self.to_dataframe().head(n))
 
+    def tail(self, n=5):
+        """
+        Return the last n rows.
+
+        This function returns the last n rows for the object based on position.
+        It is useful for quickly verifying data,
+        for example, after sorting or appending rows.
+
+        Parameters
+        ----------
+        n : Integer, default =  5
+
+        Returns
+        -------
+        The last n rows of the caller object.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'animal':['alligator', 'bee', 'falcon', 'lion']})
+        >>> df.animal.tail(2)  # doctest: +NORMALIZE_WHITESPACE
+        3      lion
+        2    falcon
+        Name: animal, dtype: object
+        """
+        return _col(self.to_dataframe().tail(n))
+
     # TODO: Categorical type isn't supported (due to PySpark's limitation) and
     # some doctests related with timestamps were not added.
     def unique(self):

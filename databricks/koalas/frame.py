@@ -4229,6 +4229,63 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._internal.copy(sdf=self._sdf.limit(n)))
 
+    def tail(self, n=5):
+        """
+        Return the last `n` rows.
+
+        This function returns the last `n` rows for the object based
+        on position. It is useful for quickly verifying data,
+        for example, after sorting or appending rows.
+
+        Parameters
+        ----------
+        n : int, default 5
+            Number of rows to select.
+
+        Returns
+        -------
+        obj_tail : same type as caller
+            The last `n` rows of the caller object.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'animal':['alligator', 'bee', 'falcon', 'lion',
+        ...                    'monkey', 'parrot', 'shark', 'whale', 'zebra']})
+        >>> df
+              animal
+        0  alligator
+        1        bee
+        2     falcon
+        3       lion
+        4     monkey
+        5     parrot
+        6      shark
+        7      whale
+        8      zebra
+
+        Viewing the last 5 lines
+
+        >>> df.tail()
+           animal
+        8   zebra
+        7   whale
+        6   shark
+        5  parrot
+        4  monkey
+
+        Viewing the last `n` lines (three in this case)
+
+        >>> df.tail(3)
+          animal
+        8  zebra
+        7  whale
+        6  shark
+        """
+        tmp_col = '__order__'
+        sdf = self._sdf.withColumn(tmp_col, F.monotonically_increasing_id())
+
+        return DataFrame(self._internal.copy(sdf=sdf.orderBy(tmp_col, ascending=False).limit(n)))
+
     def pivot_table(self, values=None, index=None, columns=None,
                     aggfunc='mean', fill_value=None):
         """

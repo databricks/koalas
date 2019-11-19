@@ -148,6 +148,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.set_index
    DataFrame.isin
    DataFrame.sample
+   DataFrame.tail
 
 .. _api.dataframe.missing:
 
