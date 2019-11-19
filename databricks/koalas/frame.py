@@ -2112,18 +2112,64 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  3  400
         4  4  500
 
+        When the column name of cond is different from self, it treats all values are False
+        >>> cond = ks.DataFrame({'C': [0, -1, -2, -3, -4], 'D':[4, 3, 2, 1, 0]}) % 3 == 0
+        >>> cond
+               C      D
+        0   True  False
+        1  False   True
+        2  False  False
+        3   True  False
+        4  False   True
+
+        >>> df1.where(cond).sort_index()
+            A   B
+        0 NaN NaN
+        1 NaN NaN
+        2 NaN NaN
+        3 NaN NaN
+        4 NaN NaN
+
+        When the type of cond is Series, it just check boolean regardless of column name
+
+        >>> cond = ks.Series([1, 2]) > 1
+        >>> cond
+        0    False
+        1     True
+        Name: 0, dtype: bool
+
+        >>> df1.where(cond).sort_index()
+             A      B
+        0  NaN    NaN
+        1  1.0  200.0
+        2  NaN    NaN
+        3  NaN    NaN
+        4  NaN    NaN
+
         >>> reset_option("compute.ops_on_diff_frames")
         """
+        from databricks.koalas.series import Series
         tmp_cond_col_name = '__tmp_cond_col_{}__'
         tmp_other_col_name = '__tmp_other_col_{}__'
         kdf = self.copy()
-        for column in self._internal.data_columns:
-            kdf[tmp_cond_col_name.format(column)] = cond[column]
-            if isinstance(other, DataFrame):
-                kdf[tmp_other_col_name.format(column)] = other[column]
-            else:
-                kdf[tmp_other_col_name.format(column)] = other
+        if isinstance(cond, DataFrame):
+            for column in self._internal.data_columns:
+                kdf[tmp_cond_col_name.format(column)] = cond.get(column, False)
+                if isinstance(other, DataFrame):
+                    kdf[tmp_other_col_name.format(column)] = other.get(column, np.nan)
+                else:
+                    kdf[tmp_other_col_name.format(column)] = other
+        elif isinstance(cond, Series):
+            for column in self._internal.data_columns:
+                kdf[tmp_cond_col_name.format(column)] = cond
+                if isinstance(other, DataFrame):
+                    kdf[tmp_other_col_name.format(column)] = other.get(column, np.nan)
+                else:
+                    kdf[tmp_other_col_name.format(column)] = other
+        else:
+            raise ValueError("type of cond must be a DataFrame or Series")
 
+        sdf = kdf._sdf
         # above logic make spark dataframe looks like below:
         # +-----------------+---+---+------------------+-------------------+------------------+--...
         # |__index_level_0__|  A|  B|__tmp_cond_col_A__|__tmp_other_col_A__|__tmp_cond_col_B__|__...
@@ -2135,16 +2181,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |                4|  4|500|             false|                 -4|             false|  ...
         # +-----------------+---+---+------------------+-------------------+------------------+--...
 
-        sdf = kdf._sdf
-        conditions = []
+        output = []
         for column in self._internal.data_columns:
             data_col_name = self._internal.column_name_for(column)
-            conditions.append(
-                F.when(sdf[tmp_cond_col_name.format(column)], sdf[data_col_name])
-                 .otherwise(sdf[tmp_other_col_name.format(column)]).alias(data_col_name))
+            output.append(
+                F.when(
+                    sdf[tmp_cond_col_name.format(column)], sdf[data_col_name]
+                ).otherwise(
+                    sdf[tmp_other_col_name.format(column)]
+                ).alias(data_col_name))
 
         index_columns = self._internal.index_columns
-        sdf = sdf.select(*index_columns, *conditions)
+        sdf = sdf.select(*index_columns, *output)
         internal = self._internal.copy(sdf=sdf)
 
         return DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map))
