@@ -7580,12 +7580,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.series import Series
         sdf = self._sdf
+        max_cols = map(lambda x: F.max(x).alias(x), self._internal.data_columns)
+        sdf_max = sdf.select(*max_cols)
+
         col_idxmax_dict = dict()
-        for column in self._internal.data_columns:
-            max_val = sdf.select(F.max(column)).head()[0]
+        for column_name, max_val in zip(sdf_max.columns, sdf_max.head()):
             idx_val = sdf.select(self._internal.index_columns) \
-                         .where(F.col(column) == max_val).head()[0]
-            col_idxmax_dict[column] = idx_val
+                         .where(F.col(column_name) == max_val).head()[0]
+            col_idxmax_dict[column_name] = idx_val
 
         return Series(col_idxmax_dict)
 
@@ -7648,12 +7650,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.series import Series
         sdf = self._sdf
+        min_cols = map(lambda x: F.min(x).alias(x), self._internal.data_columns)
+        sdf_min = sdf.select(*min_cols)
+
         col_idxmin_dict = dict()
-        for column in self._internal.data_columns:
-            min_val = sdf.select(F.min(column)).head()[0]
+        for column_name, min_val in zip(sdf_min.columns, sdf_min.head()):
             idx_val = sdf.select(self._internal.index_columns) \
-                         .where(F.col(column) == min_val).head()[0]
-            col_idxmin_dict[column] = idx_val
+                         .where(F.col(column_name) == min_val).head()[0]
+            col_idxmin_dict[column_name] = idx_val
 
         return Series(col_idxmin_dict)
 
