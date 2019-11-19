@@ -57,7 +57,7 @@ def _column_op(f):
             args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self._scol, *args)
 
-            # If f is a logistic operator, fill NULL
+            # check if f is a logistic operator
             log_ops = ['eq', 'ne', 'lt', 'le', 'ge', 'gt']
             is_log_op = any(f == getattr(spark.Column, '__{}__'.format(log_op))
                             for log_op in log_ops)
