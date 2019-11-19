@@ -30,7 +30,6 @@ def unsupported_property(property_name, deprecated=False, reason=""):
 class _MissingPandasLikeIndex(object):
 
     # Properties
-    T = unsupported_property('T')
     nbytes = unsupported_property('nbytes')
     shape = unsupported_property('shape')
 

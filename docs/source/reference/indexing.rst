@@ -23,6 +23,7 @@ Properties
    Index.names
    Index.ndim
    Index.empty
+   Index.T
 
 Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
