@@ -149,7 +149,22 @@ class Index(IndexOpsMixin):
         """
         A NumPy ndarray representing the values in this Index or MultiIndex.
 
-        Returns a numpy.ndarray
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        dtype : str or numpy.dtype, optional
+            The dtype to pass to :meth:`numpy.asarray`
+        copy : bool, default False
+            Whether to ensure that the returned value is a not a view on
+            another array. Note that ``copy=False`` does not *ensure* that
+            ``to_numpy()`` is no-copy. Rather, ``copy=True`` ensure that
+            a copy is made, even if not strictly necessary.
+
+        Returns
+        -------
+        numpy.ndarray
 
         Examples
         --------

@@ -54,6 +54,7 @@ Conversion
 
    Index.astype
    Index.to_series
+   Index.to_numpy
 
 .. _api.multiindex:
 
@@ -99,6 +100,13 @@ MultiIndex Modifying and computations
    :toctree: api/
 
    Index.copy
+
+Conversion
+~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.to_numpy
 
 MultiIndex Combining / joining / set operations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
