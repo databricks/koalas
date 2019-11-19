@@ -512,6 +512,10 @@ class Index(IndexOpsMixin):
         >>> s1.index ^ s2.index
         Int64Index([5, 1], dtype='int64')
         """
+        if not isinstance(self, type(other)):
+            raise NotImplementedError(
+                "Doesn't support symmetric_difference between Index & MultiIndex for now")
+
         sdf_self = self._kdf._sdf.select(self._internal.index_scols)
         sdf_other = other._kdf._sdf.select(other._internal.index_scols)
 
