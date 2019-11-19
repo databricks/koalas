@@ -7521,6 +7521,142 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return self.columns
 
+    # TODO: axis = 1
+    def idxmax(self, axis=0, skipna=True):
+        """
+        Return index of first occurrence of maximum over requested axis.
+        NA/null values are excluded.
+
+        Parameters
+        ----------
+        axis : 0 or 'index'
+            Can only be set to 0 at the moment.
+
+        Returns
+        -------
+        Series
+
+        See Also
+        --------
+        Series.idxmax
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+        ...                     'b': [4.0, 2.0, 3.0, 1.0],
+        ...                     'c': [300, 200, 400, 200]})
+        >>> kdf
+           a    b    c
+        0  1  4.0  300
+        1  2  2.0  200
+        2  3  3.0  400
+        3  2  1.0  200
+
+        >>> kdf.idxmax()
+        a    2
+        b    0
+        c    2
+        Name: 0, dtype: int64
+
+        For Multi-column Index
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+        ...                     'b': [4.0, 2.0, 3.0, 1.0],
+        ...                     'c': [300, 200, 400, 200]})
+        >>> kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> kdf
+           a    b    c
+           x    y    z
+        0  1  4.0  300
+        1  2  2.0  200
+        2  3  3.0  400
+        3  2  1.0  200
+
+        >>> kdf.idxmax()
+        (a, x)    2
+        (b, y)    0
+        (c, z)    2
+        Name: 0, dtype: int64
+        """
+        from databricks.koalas.series import Series
+        sdf = self._sdf
+        col_idxmax_dict = dict()
+        for column in self._internal.data_columns:
+            max_val = sdf.select(F.max(column)).head()[0]
+            idx_val = sdf.select(self._internal.index_columns) \
+                         .where(F.col(column) == max_val).head()[0]
+            col_idxmax_dict[column] = idx_val
+
+        return Series(col_idxmax_dict)
+
+    # TODO: axis = 1
+    def idxmin(self, axis=0):
+        """
+        Return index of first occurrence of minimum over requested axis.
+        NA/null values are excluded.
+
+        Parameters
+        ----------
+        axis : 0 or 'index'
+            Can only be set to 0 at the moment.
+
+        Returns
+        -------
+        Series
+
+        See Also
+        --------
+        Series.idxmin
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+        ...                     'b': [4.0, 2.0, 3.0, 1.0],
+        ...                     'c': [300, 200, 400, 200]})
+        >>> kdf
+           a    b    c
+        0  1  4.0  300
+        1  2  2.0  200
+        2  3  3.0  400
+        3  2  1.0  200
+
+        >>> kdf.idxmin()
+        a    0
+        b    3
+        c    1
+        Name: 0, dtype: int64
+
+        For Multi-column Index
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+        ...                     'b': [4.0, 2.0, 3.0, 1.0],
+        ...                     'c': [300, 200, 400, 200]})
+        >>> kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> kdf
+           a    b    c
+           x    y    z
+        0  1  4.0  300
+        1  2  2.0  200
+        2  3  3.0  400
+        3  2  1.0  200
+
+        >>> kdf.idxmin()
+        (a, x)    0
+        (b, y)    3
+        (c, z)    1
+        Name: 0, dtype: int64
+        """
+        from databricks.koalas.series import Series
+        sdf = self._sdf
+        col_idxmin_dict = dict()
+        for column in self._internal.data_columns:
+            min_val = sdf.select(F.min(column)).head()[0]
+            idx_val = sdf.select(self._internal.index_columns) \
+                         .where(F.col(column) == min_val).head()[0]
+            col_idxmin_dict[column] = idx_val
+
+        return Series(col_idxmin_dict)
+
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
     def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000):
         """
