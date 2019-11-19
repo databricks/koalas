@@ -2113,6 +2113,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  4  500
 
         When the column name of cond is different from self, it treats all values are False
+
         >>> cond = ks.DataFrame({'C': [0, -1, -2, -3, -4], 'D':[4, 3, 2, 1, 0]}) % 3 == 0
         >>> cond
                C      D
