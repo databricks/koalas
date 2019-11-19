@@ -4281,10 +4281,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         7  whale
         6  shark
         """
-        tmp_col = '__order__'
-        sdf = self._sdf.withColumn(tmp_col, F.monotonically_increasing_id())
 
-        return DataFrame(self._internal.copy(sdf=sdf.orderBy(tmp_col, ascending=False).limit(n)))
+        return DataFrame(self._internal.copy(
+            sdf=self._sdf.orderBy(F.monotonically_increasing_id(), ascending=False).limit(n)))
 
     def pivot_table(self, values=None, index=None, columns=None,
                     aggfunc='mean', fill_value=None):
