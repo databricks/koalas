@@ -43,7 +43,7 @@ from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAM
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
-                                     combine_frames, name_like_string)
+                                     combine_frames, name_like_string, validate_axis)
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
@@ -1421,9 +1421,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return self._fillna(value, method, axis, inplace, limit)
 
     def _fillna(self, value=None, method=None, axis=None, inplace=False, limit=None, part_cols=()):
-        if axis is None:
-            axis = 0
-        if not (axis == 0 or axis == "index"):
+        axis = validate_axis(axis)
+        if axis != 0:
             raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
         if (value is None) and (method is None):
             raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
@@ -3387,7 +3386,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Returns
         -------
         Series
-            Modes of the Series in sorted order.
+            Modes of the Series.
 
         Examples
         --------
@@ -4153,7 +4152,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         numeric_only : not used by this implementation, but passed down by stats functions
         """
         from inspect import signature
-        if axis in ('columns', 1):
+        axis = validate_axis(axis)
+        if axis == 1:
             raise ValueError("Series does not support columns axis.")
         num_args = len(signature(sfun).parameters)
         col_sdf = self._scol

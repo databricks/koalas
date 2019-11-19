@@ -32,7 +32,7 @@ from pyspark.sql.functions import monotonically_increasing_id
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
-from databricks.koalas.utils import align_diff_series, scol_for
+from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
 
 
 def _column_op(f):
@@ -605,8 +605,8 @@ class IndexOpsMixin(object):
         >>> df.set_index("a").index.all()
         False
         """
-
-        if axis not in [0, 'index']:
+        axis = validate_axis(axis)
+        if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
 
         sdf = self._internal._sdf.select(self._scol)
@@ -668,8 +668,8 @@ class IndexOpsMixin(object):
         >>> df.set_index("a").index.any()
         True
         """
-
-        if axis not in [0, 'index']:
+        axis = validate_axis(axis)
+        if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
 
         sdf = self._internal._sdf.select(self._scol)

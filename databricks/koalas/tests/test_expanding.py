@@ -21,7 +21,7 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.window import Expanding
 
 
-class ExpandingTests(ReusedSQLTestCase, TestUtils):
+class ExpandingTest(ReusedSQLTestCase, TestUtils):
 
     def _test_expanding_func(self, f):
         kser = ks.Series([1, 2, 3])
@@ -72,11 +72,17 @@ class ExpandingTests(ReusedSQLTestCase, TestUtils):
     def test_expanding_sum(self):
         self._test_expanding_func("sum")
 
+    def test_expanding_std(self):
+        self._test_expanding_func("std")
+
+    def test_expanding_var(self):
+        self._test_expanding_func("var")
+
     def _test_groupby_expanding_func(self, f):
         kser = ks.Series([1, 2, 3])
         pser = kser.to_pandas()
         self.assert_eq(
-            repr(getattr(kser.groupby(kser).expanding(2), f)()),
+            repr(getattr(kser.groupby(kser).expanding(2), f)().sort_index()),
             repr(getattr(pser.groupby(pser).expanding(2), f)()))
 
         # Multiindex
@@ -85,13 +91,13 @@ class ExpandingTests(ReusedSQLTestCase, TestUtils):
             index=pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')]))
         pser = kser.to_pandas()
         self.assert_eq(
-            repr(getattr(kser.groupby(kser).expanding(2), f)()),
+            repr(getattr(kser.groupby(kser).expanding(2), f)().sort_index()),
             repr(getattr(pser.groupby(pser).expanding(2), f)()))
 
         kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
         pdf = kdf.to_pandas()
         self.assert_eq(
-            repr(getattr(kdf.groupby(kdf.a).expanding(2), f)()),
+            repr(getattr(kdf.groupby(kdf.a).expanding(2), f)().sort_index()),
             repr(getattr(pdf.groupby(pdf.a).expanding(2), f)()))
 
         # Multiindex column
@@ -99,20 +105,30 @@ class ExpandingTests(ReusedSQLTestCase, TestUtils):
         kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
         pdf = kdf.to_pandas()
         self.assert_eq(
-            repr(getattr(kdf.groupby(kdf.a).expanding(2), f)()),
-            repr(getattr(pdf.groupby(pdf.a).expanding(2), f)()))
+            repr(getattr(kdf.groupby(("a", "x")).expanding(2), f)().sort_index()),
+            repr(getattr(pdf.groupby(("a", "x")).expanding(2), f)()))
+
+        self.assert_eq(
+            repr(getattr(kdf.groupby([("a", "x"), ("a", "y")]).expanding(2), f)().sort_index()),
+            repr(getattr(pdf.groupby([("a", "x"), ("a", "y")]).expanding(2), f)()))
 
     def test_groupby_expanding_count(self):
-        self._test_expanding_func("count")
+        self._test_groupby_expanding_func("count")
 
     def test_groupby_expanding_min(self):
-        self._test_expanding_func("min")
+        self._test_groupby_expanding_func("min")
 
     def test_groupby_expanding_max(self):
-        self._test_expanding_func("max")
+        self._test_groupby_expanding_func("max")
 
     def test_groupby_expanding_mean(self):
-        self._test_expanding_func("mean")
+        self._test_groupby_expanding_func("mean")
 
     def test_groupby_expanding_sum(self):
-        self._test_expanding_func("sum")
+        self._test_groupby_expanding_func("sum")
+
+    def test_groupby_expanding_std(self):
+        self._test_groupby_expanding_func("std")
+
+    def test_groupby_expanding_var(self):
+        self._test_groupby_expanding_func("var")

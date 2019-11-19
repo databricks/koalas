@@ -51,7 +51,7 @@ from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import _InternalFrame, IndexMap, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.utils import column_index_level, name_like_string, scol_for
+from databricks.koalas.utils import column_index_level, name_like_string, scol_for, validate_axis
 from databricks.koalas.typedef import _infer_return_type, as_spark_type, as_python_type
 from databricks.koalas.plot import KoalasFramePlotMethods
 from databricks.koalas.config import get_option
@@ -418,7 +418,8 @@ class DataFrame(_Frame, Generic[T]):
         from inspect import signature
         from databricks.koalas import Series
 
-        if axis in ('index', 0, None):
+        axis = validate_axis(axis)
+        if axis == 0:
             exprs = []
             num_args = len(signature(sfun).parameters)
             for idx in self._internal.column_index:
@@ -457,7 +458,7 @@ class DataFrame(_Frame, Generic[T]):
             # TODO: return Koalas series.
             return row  # Return first row as a Series
 
-        elif axis in ('columns', 1):
+        elif axis == 1:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = get_option("compute.shortcut_limit")
@@ -2011,7 +2012,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("'key' should have index names as only strings "
                              "or a tuple that contain index names as only strings")
 
-        if axis not in [0, 'index']:
+        axis = validate_axis(axis)
+        if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
         if isinstance(key, str):
             key = (key,)
@@ -2660,8 +2662,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  False   True  False
         """
         kdf = self.copy()
-        for name, ks in kdf.iteritems():
-            kdf[name] = ks.isnull()
+        for name, kser in kdf.iteritems():
+            kdf[name] = kser.isnull()
         return kdf
 
     isna = isnull
@@ -2695,8 +2697,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  True  False  True
         """
         kdf = self.copy()
-        for name, ks in kdf.iteritems():
-            kdf[name] = ks.notnull()
+        for name, kser in kdf.iteritems():
+            kdf[name] = kser.notnull()
         return kdf
 
     notna = notnull
@@ -2828,7 +2830,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4 -1.0 -3.0 -11.0
         5  NaN  NaN   NaN
         """
-        if axis not in [0, 'index']:
+        axis = validate_axis(axis)
+        if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
         applied = []
         for idx in self._internal.column_index:
@@ -2889,7 +2892,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         B    1
         Name: 0, dtype: int64
         """
-        if axis not in [0, 'index']:
+        axis = validate_axis(axis)
+        if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
         res = self._sdf.select([self[idx]._nunique(dropna, approx, rsd)
                                 for idx in self._internal.column_index]).toPandas()
@@ -3889,7 +3893,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
              name        toy        born
         1  Batman  Batmobile  1940-04-25
         """
-        if axis == 0 or axis == 'index':
+        axis = validate_axis(axis)
+        if axis == 0:
             if subset is not None:
                 if isinstance(subset, str):
                     idxes = [(subset,)]
@@ -4012,9 +4017,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         sdf = self._sdf
         if value is not None:
-            if axis is None:
-                axis = 0
-            if not (axis == 0 or axis == "index"):
+            axis = validate_axis(axis)
+            if axis != 0:
                 raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
             if not isinstance(value, (float, int, str, bool, dict, pd.Series)):
                 raise TypeError("Unsupported type %s" % type(value))
@@ -5160,7 +5164,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         axis = 0 is yet to be implemented.
         """
         if labels is not None:
-            axis = self._validate_axis(axis)
+            axis = validate_axis(axis)
             if axis == 1:
                 return self.drop(columns=labels)
             raise NotImplementedError("Drop currently only works for axis=1")
@@ -6848,9 +6852,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise TypeError("Cannot specify both 'axis' and any of 'index' or 'columns'.")
 
         if labels is not None:
-            if axis in ('index', 0, None):
+            axis = validate_axis(axis)
+            if axis == 0:
                 index = labels
-            elif axis in ('columns', 1):
+            elif axis == 1:
                 columns = labels
             else:
                 raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
@@ -6989,6 +6994,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  c        B      5
         5  c        C      6
 
+        >>> df.melt(value_vars='A')
+          variable value
+        0        A     a
+        1        A     b
+        2        A     c
+
         >>> ks.melt(df, id_vars=['A', 'B'])
            A  B variable  value
         0  a  1        C      2
@@ -7010,28 +7021,64 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  b         B          3
         2  c         B          5
         """
+        column_index = self._internal.column_index
+
         if id_vars is None:
             id_vars = []
-        elif isinstance(id_vars, str):
-            id_vars = [(id_vars,)]
-        elif isinstance(id_vars, tuple):
-            if self._internal.column_index_level == 1:
-                id_vars = [idv if isinstance(idv, tuple) else (idv,) for idv in id_vars]
-            else:
-                raise ValueError('id_vars must be a list of tuples when columns are a MultiIndex')
         else:
-            id_vars = [idv if isinstance(idv, tuple) else (idv,) for idv in id_vars]
+            if isinstance(id_vars, str):
+                id_vars = [(id_vars,)]
+            elif isinstance(id_vars, tuple):
+                if self._internal.column_index_level == 1:
+                    id_vars = [idv if isinstance(idv, tuple) else (idv,)
+                               for idv in id_vars]
+                else:
+                    raise ValueError('id_vars must be a list of tuples'
+                                     ' when columns are a MultiIndex')
+            else:
+                id_vars = [idv if isinstance(idv, tuple) else (idv,)
+                           for idv in id_vars]
 
-        column_index = self._internal.column_index
+            non_existence_col = [idv for idv in id_vars if idv not in column_index]
+            if len(non_existence_col) != 0:
+                raveled_column_index = np.ravel(column_index)
+                missing = [nec for nec in np.ravel(non_existence_col)
+                           if nec not in raveled_column_index]
+                if len(missing) != 0:
+                    raise KeyError("The following 'id_vars' are not present"
+                                   " in the DataFrame: {}".format(missing))
+                else:
+                    raise KeyError("None of {} are in the {}"
+                                   .format(non_existence_col, column_index))
 
         if value_vars is None:
             value_vars = []
-        elif isinstance(value_vars, str):
-            value_vars = [(value_vars,)]
-        elif isinstance(value_vars, tuple):
-            value_vars = [value_vars]
         else:
-            value_vars = [valv if isinstance(valv, tuple) else (valv,) for valv in value_vars]
+            if isinstance(value_vars, str):
+                value_vars = [(value_vars,)]
+            elif isinstance(value_vars, tuple):
+                if self._internal.column_index_level == 1:
+                    value_vars = [valv if isinstance(valv, tuple) else (valv,)
+                                  for valv in value_vars]
+                else:
+                    raise ValueError('value_vars must be a list of tuples'
+                                     ' when columns are a MultiIndex')
+            else:
+                value_vars = [valv if isinstance(valv, tuple) else (valv,)
+                              for valv in value_vars]
+
+            non_existence_col = [valv for valv in value_vars if valv not in column_index]
+            if len(non_existence_col) != 0:
+                raveled_column_index = np.ravel(column_index)
+                missing = [nec for nec in np.ravel(non_existence_col)
+                           if nec not in raveled_column_index]
+                if len(missing) != 0:
+                    raise KeyError("The following 'value_vars' are not present"
+                                   " in the DataFrame: {}".format(missing))
+                else:
+                    raise KeyError("None of {} are in the {}"
+                                   .format(non_existence_col, column_index))
+
         if len(value_vars) == 0:
             value_vars = column_index
 
@@ -7109,8 +7156,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         -------
         Series
         """
-
-        if axis not in [0, 'index']:
+        axis = validate_axis(axis)
+        if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
 
         applied = []
@@ -7192,8 +7239,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         -------
         Series
         """
-
-        if axis not in [0, 'index']:
+        axis = validate_axis(axis)
+        if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
 
         applied = []
@@ -7377,8 +7424,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 "Keyword arguments `items`, `like`, or `regex` "
                 "are mutually exclusive")
 
-        if axis not in ('index', 0, 'columns', 1, None):
-            raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
+        axis = validate_axis(axis, none_axis=1)
 
         index_scols = self._internal.index_scols
         sdf = self._sdf
@@ -7388,7 +7434,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 items = list(items)
             else:
                 raise ValueError("items should be a list-like object.")
-            if axis in ('index', 0):
+            if axis == 0:
                 # TODO: support multi-index here
                 if len(index_scols) != 1:
                     raise ValueError("Single index must be specified.")
@@ -7400,27 +7446,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         col = col | (index_scols[0] == F.lit(item))
                 sdf = sdf.filter(col)
                 return DataFrame(self._internal.copy(sdf=sdf))
-            elif axis in ('columns', 1, None):
+            elif axis == 1:
                 return self[items]
         elif like is not None:
-            if axis in ('index', 0):
+            if axis == 0:
                 # TODO: support multi-index here
                 if len(index_scols) != 1:
                     raise ValueError("Single index must be specified.")
                 sdf = sdf.filter(index_scols[0].contains(like))
                 return DataFrame(self._internal.copy(sdf=sdf))
-            elif axis in ('columns', 1, None):
+            elif axis == 1:
                 column_index = self._internal.column_index
                 output_idx = [idx for idx in column_index if any(like in i for i in idx)]
                 return self[output_idx]
         elif regex is not None:
-            if axis in ('index', 0):
+            if axis == 0:
                 # TODO: support multi-index here
                 if len(index_scols) != 1:
                     raise ValueError("Single index must be specified.")
                 sdf = sdf.filter(index_scols[0].rlike(regex))
                 return DataFrame(self._internal.copy(sdf=sdf))
-            elif axis in ('columns', 1, None):
+            elif axis == 1:
                 column_index = self._internal.column_index
                 matcher = re.compile(regex)
                 output_idx = [idx for idx in column_index
@@ -7557,9 +7603,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         columns_mapper_fn = None
 
         if mapper:
-            if axis == 'index' or axis == 0:
+            axis = validate_axis(axis)
+            if axis == 0:
                 index_mapper_fn, index_mapper_ret_stype = gen_mapper_fn(mapper)
-            elif axis == 'columns' or axis == 1:
+            elif axis == 1:
                 columns_mapper_fn, columns_mapper_ret_stype = gen_mapper_fn(mapper)
             else:
                 raise ValueError("argument axis should be either the axis name "
@@ -7725,7 +7772,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0.75  4  8
         """
         result_as_series = False
-        if axis not in [0, 'index']:
+        axis = validate_axis(axis)
+        if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
         if numeric_only is not True:
             raise ValueError("quantile currently doesn't supports numeric_only")
@@ -7792,6 +7840,35 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             column_index_names=None)
 
         return DataFrame(internal) if not result_as_series else DataFrame(internal).T[key]
+
+    def explain(self, extended: bool = False):
+        """
+        Prints the underlying (logical and physical) Spark plans to the console for debugging
+        purpose.
+
+        Parameters
+        ----------
+        extended : boolean, default ``False``.
+            If ``False``, prints only the physical plan.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'id': range(10)})
+        >>> df.explain()
+        == Physical Plan ==
+        Scan ExistingRDD[__index_level_0__#...,id#...]
+
+        >>> df.explain(True)
+        == Parsed Logical Plan ==
+        ...
+        == Analyzed Logical Plan ==
+        ...
+        == Optimized Logical Plan ==
+        ...
+        == Physical Plan ==
+        Scan ExistingRDD[__index_level_0__#...,id#...]
+        """
+        self._internal.spark_internal_df.explain(extended)
 
     def _get_from_multiindex_column(self, key):
         """ Select columns from multi-index columns.
@@ -7951,6 +8028,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 key = [k if isinstance(k, tuple) else (k,) for k in key]
 
+            level = self._internal.column_index_level
+            key = [tuple(list(idx) + ([''] * (level - len(idx)))) for idx in key]
+
             def assign_columns(kdf, this_column_index, that_column_index):
                 assert len(key) == len(that_column_index)
                 # Note that here intentionally uses `zip_longest` that combine
@@ -7998,13 +8078,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def __iter__(self):
         return iter(self.columns)
-
-    @classmethod
-    def _validate_axis(cls, axis=0):
-        if axis not in (0, 1, 'index', 'columns', None):
-            raise ValueError('No axis named {0}'.format(axis))
-        # convert to numeric axis
-        return {None: 0, 'index': 0, 'columns': 1}.get(axis, axis)
 
     if sys.version_info >= (3, 7):
         def __class_getitem__(cls, params):

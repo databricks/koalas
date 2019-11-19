@@ -81,3 +81,9 @@ See [Contributing Guide](https://koalas.readthedocs.io/en/latest/development/con
 ## FAQ
 
 See [FAQ](https://koalas.readthedocs.io/en/latest/user_guide/faq.html) in the official documentation.
+
+
+## Best Practices
+
+See [Best Practices](https://koalas.readthedocs.io/en/latest/user_guide/best_practices.html) in the official documentation.
+
