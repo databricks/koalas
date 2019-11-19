@@ -97,7 +97,6 @@ class _MissingPandasLikeIndex(object):
     to_frame = unsupported_function('to_frame')
     to_native_types = unsupported_function('to_native_types')
     to_numpy = unsupported_function('to_numpy')
-    transpose = unsupported_function('transpose')
     union = unsupported_function('union')
     value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
@@ -124,7 +123,6 @@ class _MissingPandasLikeIndex(object):
 class _MissingPandasLikeMultiIndex(object):
 
     # Properties
-    T = unsupported_property('T')
     is_all_dates = unsupported_property('is_all_dates')
     levshape = unsupported_property('levshape')
     shape = unsupported_property('shape')
@@ -204,7 +202,6 @@ class _MissingPandasLikeMultiIndex(object):
     to_frame = unsupported_function('to_frame')
     to_native_types = unsupported_function('to_native_types')
     to_numpy = unsupported_function('to_numpy')
-    transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     union = unsupported_function('union')
     value_counts = unsupported_function('value_counts')

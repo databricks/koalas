@@ -86,10 +86,11 @@ MultiIndex Properties
 
    MultiIndex.names
    MultiIndex.ndim
+   MultiIndex.T
 
 MultiIndex Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: api/
 
-   Index.copy
+   MultiIndex.copy
