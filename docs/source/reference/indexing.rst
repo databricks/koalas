@@ -58,13 +58,6 @@ Conversion
 
 .. _api.multiindex:
 
-Combining / joining / set operations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autosummary::
-   :toctree: api/
-
-   Index.symmetric_difference
-
 Selecting
 ~~~~~~~~~
 .. autosummary::
@@ -107,10 +100,3 @@ Conversion
    :toctree: api/
 
    MultiIndex.to_numpy
-
-MultiIndex Combining / joining / set operations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autosummary::
-   :toctree: api/
-
-   MultiIndex.symmetric_difference
