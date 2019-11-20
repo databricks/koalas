@@ -57,12 +57,12 @@ def _column_op(f):
             args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self._scol, *args)
 
-            # check if f is a logistic operator
-            log_ops = ['eq', 'ne', 'lt', 'le', 'ge', 'gt']
-            is_log_op = any(f == getattr(spark.Column, '__{}__'.format(log_op))
-                            for log_op in log_ops)
+            # check if `f` is a comparison operator
+            comp_ops = ['eq', 'ne', 'lt', 'le', 'ge', 'gt']
+            is_comp_op = any(f == getattr(spark.Column, '__{}__'.format(comp_op))
+                            for comp_op in comp_ops)
 
-            if is_log_op:
+            if is_comp_op:
                 filler = f == spark.Column.__ne__
                 scol = F.when(scol.isNull(), filler).otherwise(scol)
 
