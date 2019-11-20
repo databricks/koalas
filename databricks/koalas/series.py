@@ -2918,47 +2918,56 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
-        >>> df = ks.DataFrame({'A': [1, 2, 2, 3], 'B': [4, 3, 2, 1]}, columns= ['A', 'B'])
-        >>> df
-           A  B
-        0  1  4
-        1  2  3
-        2  2  2
-        3  3  1
+        >>> s = ks.Series([1, 2, 2, 3], name='A')
+        >>> s
+        0    1
+        1    2
+        2    2
+        3    3
+        Name: A, dtype: int64
 
-        >>> df.rank().sort_index()
-             A    B
-        0  1.0  4.0
-        1  2.5  3.0
-        2  2.5  2.0
-        3  4.0  1.0
+        >>> s.rank()
+        0    1.0
+        1    2.5
+        2    2.5
+        3    4.0
+        Name: A, dtype: float64
 
         If method is set to 'min', it use lowest rank in group.
 
-        >>> df.rank(method='min').sort_index()
-             A    B
-        0  1.0  4.0
-        1  2.0  3.0
-        2  2.0  2.0
-        3  4.0  1.0
+        >>> s.rank(method='min')
+        0    1.0
+        1    2.0
+        2    2.0
+        3    4.0
+        Name: A, dtype: float64
 
         If method is set to 'max', it use highest rank in group.
 
-        >>> df.rank(method='max').sort_index()
-             A    B
-        0  1.0  4.0
-        1  3.0  3.0
-        2  3.0  2.0
-        3  4.0  1.0
+        >>> s.rank(method='max')
+        0    1.0
+        1    3.0
+        2    3.0
+        3    4.0
+        Name: A, dtype: float64
+
+        If method is set to 'first', it is assigned rank in order without groups.
+
+        >>> s.rank(method='first')
+        0    1.0
+        1    2.0
+        2    3.0
+        3    4.0
+        Name: A, dtype: float64
 
         If method is set to 'dense', it leaves no gaps in group.
 
-        >>> df.rank(method='dense').sort_index()
-             A    B
-        0  1.0  4.0
-        1  2.0  3.0
-        2  2.0  2.0
-        3  3.0  1.0
+        >>> s.rank(method='dense')
+        0    1.0
+        1    2.0
+        2    2.0
+        3    3.0
+        Name: A, dtype: float64
         """
         return self._rank(method, ascending)
 
