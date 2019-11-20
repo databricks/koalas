@@ -22,6 +22,7 @@ from functools import partial
 from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
+import numpy as np
 from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
     is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
 
@@ -172,7 +173,10 @@ class Index(IndexOpsMixin):
         >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[[1, 2, 3], [4, 5, 6]]).index.to_numpy()
         array([(1, 4), (2, 5), (3, 6)], dtype=object)
         """
-        return self.to_pandas().to_numpy(dtype=dtype, copy=copy)
+        result = np.asarray(self.to_pandas()._values, dtype=dtype)
+        if copy:
+            result = result.copy()
+        return result
 
     @property
     def spark_type(self):
