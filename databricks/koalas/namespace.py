@@ -1915,7 +1915,7 @@ def to_numeric(arg):
     3   -3.0
     Name: 0, dtype: float32
 
-    Also support for list, tuple, np.array, or a single numeric type
+    Also support for list, tuple, np.array, or a scalar
 
     >>> ks.to_numeric(['1.0', '2', '-3'])
     array([ 1.,  2., -3.])
@@ -1926,7 +1926,7 @@ def to_numeric(arg):
     >>> ks.to_numeric(np.array(['1.0', '2', '-3']))
     array([ 1.,  2., -3.])
 
-    >>> ks.to_numeric(1.0)
+    >>> ks.to_numeric('1.0')
     1.0
     """
     if isinstance(arg, Series):
