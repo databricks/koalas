@@ -22,6 +22,7 @@ from functools import partial
 from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
+import numpy as np
 from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
     is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
 
@@ -143,6 +144,39 @@ class Index(IndexOpsMixin):
         return DataFrame(internal)._to_internal_pandas().index
 
     toPandas = to_pandas
+
+    def to_numpy(self, dtype=None, copy=False):
+        """
+        A NumPy ndarray representing the values in this Index or MultiIndex.
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        dtype : str or numpy.dtype, optional
+            The dtype to pass to :meth:`numpy.asarray`
+        copy : bool, default False
+            Whether to ensure that the returned value is a not a view on
+            another array. Note that ``copy=False`` does not *ensure* that
+            ``to_numpy()`` is no-copy. Rather, ``copy=True`` ensure that
+            a copy is made, even if not strictly necessary.
+
+        Returns
+        -------
+        numpy.ndarray
+
+        Examples
+        --------
+        >>> ks.Series([1, 2, 3, 4]).index.to_numpy()
+        array([0, 1, 2, 3])
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[[1, 2, 3], [4, 5, 6]]).index.to_numpy()
+        array([(1, 4), (2, 5), (3, 6)], dtype=object)
+        """
+        result = np.asarray(self.to_pandas()._values, dtype=dtype)
+        if copy:
+            result = result.copy()
+        return result
 
     @property
     def spark_type(self):
