@@ -2156,19 +2156,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(cond, DataFrame):
             for column in self._internal.data_columns:
                 kdf[tmp_cond_col_name.format(column)] = cond.get(column, False)
-                if isinstance(other, DataFrame):
-                    kdf[tmp_other_col_name.format(column)] = other.get(column, np.nan)
-                else:
-                    kdf[tmp_other_col_name.format(column)] = other
         elif isinstance(cond, Series):
             for column in self._internal.data_columns:
                 kdf[tmp_cond_col_name.format(column)] = cond
-                if isinstance(other, DataFrame):
-                    kdf[tmp_other_col_name.format(column)] = other.get(column, np.nan)
-                else:
-                    kdf[tmp_other_col_name.format(column)] = other
         else:
             raise ValueError("type of cond must be a DataFrame or Series")
+
+        if isinstance(other, DataFrame):
+            for column in self._internal.data_columns:
+                kdf[tmp_other_col_name.format(column)] = other.get(column, np.nan)
+        else:
+            for column in self._internal.data_columns:
+                kdf[tmp_other_col_name.format(column)] = other
 
         sdf = kdf._sdf
         # above logic make spark dataframe looks like below:
@@ -2194,9 +2193,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         index_columns = self._internal.index_columns
         sdf = sdf.select(*index_columns, *output)
-        internal = self._internal.copy(sdf=sdf)
 
-        return DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map))
+        return DataFrame(self._internal.copy(
+            sdf=sdf,
+            column_scols=[scol_for(sdf, column) for column in self._internal.data_columns]))
 
     def mask(self, cond, other=np.nan):
         """
