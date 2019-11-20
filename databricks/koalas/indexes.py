@@ -121,6 +121,38 @@ class Index(IndexOpsMixin):
         """
         return len(self._kdf)  # type: ignore
 
+    def transpose(self):
+        """
+        Return the transpose, For index, It will be index itself.
+
+        Examples
+        --------
+        >>> idx = ks.Index(['a', 'b', 'c'])
+        >>> idx
+        Index(['a', 'b', 'c'], dtype='object')
+
+        >>> idx.transpose()
+        Index(['a', 'b', 'c'], dtype='object')
+
+        For MultiIndex
+
+        >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> midx.transpose()  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+        """
+        return self
+
+    T = property(transpose)
+
     def to_pandas(self) -> pd.Index:
         """
         Return a pandas Index.

@@ -30,7 +30,6 @@ def unsupported_property(property_name, deprecated=False, reason=""):
 class _MissingPandasLikeIndex(object):
 
     # Properties
-    T = unsupported_property('T')
     nbytes = unsupported_property('nbytes')
     shape = unsupported_property('shape')
 
@@ -97,7 +96,6 @@ class _MissingPandasLikeIndex(object):
     to_flat_index = unsupported_function('to_flat_index')
     to_frame = unsupported_function('to_frame')
     to_native_types = unsupported_function('to_native_types')
-    transpose = unsupported_function('transpose')
     union = unsupported_function('union')
     value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
@@ -124,7 +122,6 @@ class _MissingPandasLikeIndex(object):
 class _MissingPandasLikeMultiIndex(object):
 
     # Properties
-    T = unsupported_property('T')
     is_all_dates = unsupported_property('is_all_dates')
     levshape = unsupported_property('levshape')
     shape = unsupported_property('shape')
@@ -203,7 +200,6 @@ class _MissingPandasLikeMultiIndex(object):
     to_flat_index = unsupported_function('to_flat_index')
     to_frame = unsupported_function('to_frame')
     to_native_types = unsupported_function('to_native_types')
-    transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     union = unsupported_function('union')
     value_counts = unsupported_function('value_counts')
