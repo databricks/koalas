@@ -60,7 +60,7 @@ def _column_op(f):
             # check if `f` is a comparison operator
             comp_ops = ['eq', 'ne', 'lt', 'le', 'ge', 'gt']
             is_comp_op = any(f == getattr(spark.Column, '__{}__'.format(comp_op))
-                            for comp_op in comp_ops)
+                             for comp_op in comp_ops)
 
             if is_comp_op:
                 filler = f == spark.Column.__ne__
