@@ -32,6 +32,7 @@ Top-level missing data
 .. autosummary::
    :toctree: api/
 
+   to_numeric
    isna
    isnull
    notna
