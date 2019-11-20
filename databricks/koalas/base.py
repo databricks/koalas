@@ -197,7 +197,7 @@ class IndexOpsMixin(object):
     __pow__ = _column_op(spark.Column.__pow__)
     __rpow__ = _column_op(spark.Column.__rpow__)
 
-    # logistic operators
+    # comparison operators
     __eq__ = _column_op(spark.Column.__eq__)
     __ne__ = _column_op(spark.Column.__ne__)
     __lt__ = _column_op(spark.Column.__lt__)
