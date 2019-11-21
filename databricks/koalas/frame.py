@@ -2270,18 +2270,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
+        from databricks.koalas.series import Series
+        if not isinstance(cond, (DataFrame, Series)):
+            raise ValueError("type of cond must be a DataFrame or Series")
+
         sdf = cond._internal.sdf
         for col in cond._internal.data_columns:
             sdf = sdf.withColumn(col, ~F.col(col))
 
-        internal = cond._internal.copy(
+        internal = self._internal.copy(
             sdf=sdf,
-            index_map=cond._internal.index_map,
-            column_index=cond._internal.column_index,
-            column_scols=[scol_for(sdf, col) for col in cond._internal.data_columns],
-            column_index_names=None)
-
+            column_scols=[scol_for(sdf, column) for column in self._internal.data_columns])
         cond_inversed = DataFrame(internal)
+
         return self.where(cond_inversed, other)
 
     @property
