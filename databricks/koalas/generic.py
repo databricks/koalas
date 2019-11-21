@@ -1484,11 +1484,13 @@ class _Frame(object):
     def at(self):
         return AtIndexer(self)
 
+    at.__doc__ = AtIndexer.__doc__
+
     @property
     def iat(self):
         return iAtIndexer(self)
 
-    at.__doc__ = AtIndexer.__doc__
+    iat.__doc__ = iAtIndexer.__doc__
 
     @property
     def iloc(self):
