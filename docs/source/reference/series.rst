@@ -48,6 +48,7 @@ Indexing, iteration
    :toctree: api/
 
    Series.at
+   Series.iat
    Series.loc
    Series.iloc
    Series.keys

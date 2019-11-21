@@ -191,6 +191,73 @@ class IndexingTest(ReusedSQLTestCase):
         with self.assertRaises(KeyError):
             kdf.at['B', 'bar']
 
+    def test_iat(self):
+        pdf = self.pdf
+        kdf = self.kdf
+        # Create the equivalent of pdf.loc[3] as a Koalas Series
+        # This is necessary because .loc[n] does not currently work with Koalas DataFrames (#383)
+        test_series = ks.Series([3, 6], index=['a', 'b'], name='3')
+
+        # Assert invalided signatures raise TypeError
+        with self.assertRaises(
+                TypeError,
+                msg="Use DataFrame.at like .iat[row_interget_position, column_integer_position]"):
+            kdf.iat[3]
+        with self.assertRaises(
+                ValueError,
+                msg="iAt based indexing on multi-index can only have tuple values"):
+            kdf.iat[3, 'b']  # 'ab' is of length 2 but str type instead of tuple
+        with self.assertRaises(
+                TypeError,
+                msg="Use Series.iat like .iat[row_integer_position]"):
+            test_series.iat[3, 'b']
+
+        # Assert .iat for DataFrames
+        self.assertEqual(kdf.iat[7, 0], 8)
+        self.assertEqual(kdf.iat[7, 0], pdf.iat[7, 0])
+
+        # Assert .iat for Series
+        self.assertEqual(test_series.iat[1], 6)
+        self.assertEqual(test_series.iat[1], pdf.loc[3].iat[1])
+
+        # Assert invalid column or integer position result in a KeyError like with pandas
+        with self.assertRaises(KeyError, msg=99):
+            kdf.iat[0, 99]
+        with self.assertRaises(KeyError, msg=99):
+            kdf.iat[99, 0]
+
+        with self.assertRaises(ValueError):
+            kdf.iat[(1, 1), 1]
+        with self.assertRaises(ValueError):
+            kdf.iat[1, (1, 1)]
+
+        # Assert setting values fails
+        with self.assertRaises(TypeError):
+            kdf.iat[4, 1] = 10
+
+    def test_iat_multiindex(self):
+        pdf = self.pdf.set_index('b', append=True)
+        kdf = self.kdf.set_index('b', append=True)
+
+        self.assert_eq(kdf.iat[7, 0], pdf.iat[7, 0])
+
+        with self.assertRaises(ValueError):
+            kdf.iat[3, 'a']
+
+    def test_iat_multiindex_columns(self):
+        arrays = [np.array(['bar', 'bar', 'baz', 'baz']),
+                  np.array(['one', 'two', 'one', 'two'])]
+
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=['A', 'B', 'C'], columns=arrays)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.iat[1, 3], pdf.iat[1, 3])
+
+        with self.assertRaises(KeyError):
+            kdf.iat[0, 99]
+        with self.assertRaises(KeyError):
+            kdf.iat[99, 0]
+
     def test_loc(self):
         kdf = self.kdf
         pdf = self.pdf

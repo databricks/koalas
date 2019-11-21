@@ -31,7 +31,7 @@ from pyspark.sql.readwriter import OptionUtils
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.indexing import AtIndexer, ILocIndexer, LocIndexer
+from databricks.koalas.indexing import AtIndexer, iAtIndexer, ILocIndexer, LocIndexer
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
 from databricks.koalas.window import Rolling, Expanding
@@ -1483,6 +1483,10 @@ class _Frame(object):
     @property
     def at(self):
         return AtIndexer(self)
+
+    @property
+    def iat(self):
+        return iAtIndexer(self)
 
     at.__doc__ = AtIndexer.__doc__
 

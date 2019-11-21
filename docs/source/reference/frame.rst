@@ -50,6 +50,7 @@ Indexing, iteration
    :toctree: api/
 
    DataFrame.at
+   DataFrame.iat
    DataFrame.head
    DataFrame.loc
    DataFrame.iloc

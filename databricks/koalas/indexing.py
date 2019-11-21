@@ -22,7 +22,7 @@ from functools import reduce
 import pandas as pd
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
-from pyspark.sql import functions as F
+from pyspark.sql import functions as F, Window
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
@@ -179,6 +179,105 @@ class AtIndexer(object):
         values = pdf.iloc[:, 0].values
         return values if (len(row_sel) < len(self._internal.index_map)
                           or len(values) > 1) else values[0]
+
+
+class iAtIndexer(object):
+    """
+    Access a single value for a row/column pair by integer position.
+
+    Similar to ``iloc``, in that both provide integer-based lookups. Use
+    ``iat`` if you only need to get or set a single value in a DataFrame
+    or Series.
+
+    Raises
+    ------
+    KeyError
+        When label does not exist in DataFrame
+
+    Examples
+    --------
+    >>> df = ks.DataFrame([[0, 2, 3], [0, 4, 1], [10, 20, 30]],
+    ...                   columns=['A', 'B', 'C'])
+    >>> df
+        A   B   C
+    0   0   2   3
+    1   0   4   1
+    2  10  20  30
+
+    Get value at specified row/column pair
+
+    >>> df.iat[1, 2]
+    1
+
+    Get value within a series
+
+    >>> kser = ks.Series([1, 2, 3], index=[10, 20, 30])
+    >>> kser
+    10    1
+    20    2
+    30    3
+    Name: 0, dtype: int64
+
+    >>> kser.iat[1]
+    2
+    """
+    def __init__(self, kdf_or_kser):
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series
+        assert isinstance(kdf_or_kser, (DataFrame, Series)), \
+            'unexpected argument type: {}'.format(type(kdf_or_kser))
+        self._kdf_or_kser = kdf_or_kser
+
+    @property
+    def _is_df(self):
+        from databricks.koalas.frame import DataFrame
+        return isinstance(self._kdf_or_kser, DataFrame)
+
+    @property
+    def _is_series(self):
+        from databricks.koalas.series import Series
+        return isinstance(self._kdf_or_kser, Series)
+
+    @property
+    def _internal(self):
+        return self._kdf_or_kser._internal
+
+    def __getitem__(self, key):
+        if self._is_df:
+            if not isinstance(key, tuple) or len(key) != 2:
+                raise TypeError(
+                    "Use DataFrame.iat like .iat[row_integer_position, column_integer_position]")
+            row_sel, col_sel = key
+        else:
+            assert self._is_series, type(self._kdf_or_kser)
+            if not isinstance(key, int) and len(key) != 1:
+                raise TypeError("Use Series.iat like .iat[row_integer_position]")
+            row_sel = key
+            col_sel = 0
+
+        if len(self._internal.index_map) == 1:
+            if is_list_like(row_sel):
+                raise ValueError(
+                    'iAt based indexing on a single index can only have a single value')
+        if not (isinstance(col_sel, int) or
+                (isinstance(col_sel, tuple) and all(isinstance(col, str) for col in col_sel))):
+            raise ValueError('iAt based indexing on multi-index can only have integer values')
+        if isinstance(col_sel, int):
+            if col_sel > len(self._internal.data_columns):
+                raise KeyError(name_like_string(col_sel))
+            col_sel = (self._internal.data_columns[col_sel],)
+
+        tmp_col = '__natural_order__'
+        window = Window.orderBy(F.monotonically_increasing_id())
+        sdf = self._internal.sdf.withColumn(tmp_col, F.row_number().over(window) - 1)
+        cond = F.col(tmp_col) == row_sel
+        pdf = sdf.where(cond).select(self._internal.scol_for(*col_sel)).toPandas()
+
+        if len(pdf) < 1:
+            raise KeyError(name_like_string(row_sel))
+
+        values = pdf.iloc[:, 0].values
+        return values[0]
 
 
 class LocIndexer(object):
