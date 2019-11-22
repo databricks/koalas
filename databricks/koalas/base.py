@@ -57,6 +57,21 @@ def _column_op(f):
             args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self._scol, *args)
 
+            # check if `f` is a comparison operator
+            comp_ops = ['eq', 'ne', 'lt', 'le', 'ge', 'gt']
+            is_comp_op = any(f == getattr(spark.Column, '__{}__'.format(comp_op))
+                             for comp_op in comp_ops)
+
+            if is_comp_op:
+                filler = f == spark.Column.__ne__
+                scol = F.when(scol.isNull(), filler).otherwise(scol)
+
+            elif f == spark.Column.__or__:
+                scol = F.when(self._scol.isNull() | scol.isNull(), False).otherwise(scol)
+
+            elif f == spark.Column.__and__:
+                scol = F.when(scol.isNull(), False).otherwise(scol)
+
             return self._with_new_scol(scol)
         else:
             # Different DataFrame anchors
@@ -182,7 +197,7 @@ class IndexOpsMixin(object):
     __pow__ = _column_op(spark.Column.__pow__)
     __rpow__ = _column_op(spark.Column.__rpow__)
 
-    # logistic operators
+    # comparison operators
     __eq__ = _column_op(spark.Column.__eq__)
     __ne__ = _column_op(spark.Column.__ne__)
     __lt__ = _column_op(spark.Column.__lt__)
