@@ -3425,7 +3425,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 return pdf[self.name].iloc[0]
 
             self._internal = self.drop(item)._internal
-            item_string = ('(' + ', '.join(item) + ')') if len(item) > 1 else item[0]
+            item_string = name_like_string(item)
             sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(str(item_string)))
             internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
             return _col(DataFrame(internal))
