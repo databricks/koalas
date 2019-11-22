@@ -2227,3 +2227,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "quantile currently doesn't supports numeric_only"):
             kdf.quantile(.5, numeric_only=False)
+
+    def test_where(self):
+        kdf = ks.from_pandas(self.pdf)
+
+        with self.assertRaisesRegex(ValueError, 'type of cond must be a DataFrame or Series'):
+            kdf.where(1)
+
+    def test_mask(self):
+        kdf = ks.from_pandas(self.pdf)
+
+        with self.assertRaisesRegex(ValueError, 'type of cond must be a DataFrame or Series'):
+            kdf.mask(1)
