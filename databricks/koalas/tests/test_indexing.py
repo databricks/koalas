@@ -158,9 +158,26 @@ class IndexingTest(ReusedSQLTestCase):
         with self.assertRaises(KeyError, msg=99):
             kdf.at[99, 'b']
 
+        with self.assertRaises(ValueError):
+            kdf.at[(3, 6), 'b']
+        with self.assertRaises(KeyError):
+            kdf.at[3, ('x', 'b')]
+
         # Assert setting values fails
         with self.assertRaises(TypeError):
             kdf.at[3, 'b'] = 10
+
+    def test_at_multiindex(self):
+        pdf = self.pdf.set_index('b', append=True)
+        kdf = self.kdf.set_index('b', append=True)
+
+        self.assert_eq(kdf.at[(3, 6), 'a'], pdf.at[(3, 6), 'a'])
+        self.assert_eq(kdf.at[(3,), 'a'], pdf.at[(3,), 'a'])
+        self.assert_eq(list(kdf.at[(9, 0), 'a']), list(pdf.at[(9, 0), 'a']))
+        self.assert_eq(list(kdf.at[(9,), 'a']), list(pdf.at[(9,), 'a']))
+
+        with self.assertRaises(ValueError):
+            kdf.at[3, 'a']
 
     def test_at_multiindex_columns(self):
         arrays = [np.array(['bar', 'bar', 'baz', 'baz']),
@@ -170,6 +187,9 @@ class IndexingTest(ReusedSQLTestCase):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.at['B', ('bar', 'one')], pdf.at['B', ('bar', 'one')])
+
+        with self.assertRaises(KeyError):
+            kdf.at['B', 'bar']
 
     def test_loc(self):
         kdf = self.kdf
@@ -303,6 +323,7 @@ class IndexingTest(ReusedSQLTestCase):
         # TODO?: self.assert_eq(kdf.loc[['r', 'r', 'c', 'g', 'h'], ['A']],
         # TODO?:                pdf.loc[['r', 'r', 'c', 'g', 'h'], ['A']])
 
+    @unittest.skip('TODO: should handle duplicated columns properly')
     def test_loc2d_duplicated_columns(self):
         pdf = pd.DataFrame(np.random.randn(20, 5),
                            index=list('abcdefghijklmnopqrst'),

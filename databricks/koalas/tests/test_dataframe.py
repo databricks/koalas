@@ -507,8 +507,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.dropna(axis=1)
         with self.assertRaisesRegex(NotImplementedError, msg):
-            kdf.dropna(axis='column')
-        with self.assertRaisesRegex(NotImplementedError, msg):
+            kdf.dropna(axis='columns')
+        with self.assertRaisesRegex(ValueError, 'No axis named foo'):
             kdf.dropna(axis='foo')
 
         self.assertRaises(KeyError, lambda: kdf.dropna(subset='1'))
@@ -587,7 +587,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
             kdf.fillna(-1, axis=1)
         with self.assertRaisesRegex(NotImplementedError, "fillna currently only"):
-            kdf.fillna(-1, axis='column')
+            kdf.fillna(-1, axis='columns')
         with self.assertRaisesRegex(ValueError, "limit parameter for value is not support now"):
             kdf.fillna(-1, limit=1)
         with self.assertRaisesRegex(TypeError, "Unsupported.*DataFrame"):
@@ -854,7 +854,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         left_kdf = ks.from_pandas(left_pdf)
         right_kdf = ks.from_pandas(right_pdf)
-        right_ks = ks.from_pandas(right_ps)
+        right_kser = ks.from_pandas(right_ps)
 
         def check(op, right_kdf=right_kdf, right_pdf=right_pdf):
             k_res = op(left_kdf, right_kdf)
@@ -900,22 +900,22 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Test Series on the right
         # pd.DataFrame.merge with Series is implemented since version 0.24.0
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
-            check(lambda left, right: left.merge(right), right_ks, right_ps)
+            check(lambda left, right: left.merge(right), right_kser, right_ps)
             check(lambda left, right: left.merge(right, left_on='x', right_on='x'),
-                  right_ks, right_ps)
+                  right_kser, right_ps)
             check(lambda left, right: left.set_index('x').merge(right, left_index=True,
-                                                                right_on='x'), right_ks, right_ps)
+                                                                right_on='x'), right_kser, right_ps)
 
             # Test join types with Series
             for how in ['inner', 'left', 'right', 'outer']:
-                check(lambda left, right: left.merge(right, how=how), right_ks, right_ps)
+                check(lambda left, right: left.merge(right, how=how), right_kser, right_ps)
                 check(lambda left, right: left.merge(right, left_on='x', right_on='x', how=how),
-                      right_ks, right_ps)
+                      right_kser, right_ps)
 
             # suffix with Series
             check(lambda left, right: left.merge(right, suffixes=['_left', '_right'], how='outer',
                                                  left_index=True, right_index=True),
-                  right_ks, right_ps)
+                  right_kser, right_ps)
 
         # multi-index columns
         left_columns = pd.MultiIndex.from_tuples([('a', 'lkey'), ('a', 'value'), ('b', 'x')])
@@ -1822,6 +1822,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pdf.melt(id_vars=['A'], value_vars=['B'],
                                 var_name='myVarname', value_name='myValname')
                        .sort_values(['myVarname', 'myValname']))
+        self.assert_eq(kdf.melt(value_vars=('A', 'B')).sort_values(['variable', 'value'])
+                       .reset_index(drop=True),
+                       pdf.melt(value_vars=('A', 'B')).sort_values(['variable', 'value']))
+
+        self.assertRaises(KeyError, lambda: kdf.melt(id_vars='Z'))
+        self.assertRaises(KeyError, lambda: kdf.melt(value_vars='Z'))
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
@@ -1855,6 +1861,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        pdf.melt().sort_values(['v0', 'v1', 'value']))
 
         self.assertRaises(ValueError, lambda: kdf.melt(id_vars=('X', 'A')))
+        self.assertRaises(ValueError, lambda: kdf.melt(value_vars=('X', 'A')))
+        self.assertRaises(KeyError, lambda: kdf.melt(id_vars=[('Y', 'A')]))
+        self.assertRaises(KeyError, lambda: kdf.melt(value_vars=[('Y', 'A')]))
 
     def test_all(self):
         pdf = pd.DataFrame({
@@ -2209,3 +2218,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = kdf.to_pandas()
 
         self.assert_eq(kdf.keys(), pdf.keys())
+
+    def test_quantile(self):
+        kdf = ks.from_pandas(self.pdf)
+
+        with self.assertRaisesRegex(ValueError, 'axis should be either 0 or "index" currently.'):
+            kdf.quantile(.5, axis=1)
+
+        with self.assertRaisesRegex(ValueError, "quantile currently doesn't supports numeric_only"):
+            kdf.quantile(.5, numeric_only=False)
+
+    def test_where(self):
+        kdf = ks.from_pandas(self.pdf)
+
+        with self.assertRaisesRegex(ValueError, 'type of cond must be a DataFrame or Series'):
+            kdf.where(1)
+
+    def test_mask(self):
+        kdf = ks.from_pandas(self.pdf)
+
+        with self.assertRaisesRegex(ValueError, 'type of cond must be a DataFrame or Series'):
+            kdf.mask(1)

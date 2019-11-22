@@ -33,7 +33,7 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, ILocIndexer, LocIndexer
 from databricks.koalas.internal import _InternalFrame
-from databricks.koalas.utils import validate_arguments_and_invoke_function
+from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
 from databricks.koalas.window import Rolling, Expanding
 
 
@@ -1416,7 +1416,7 @@ class _Frame(object):
         # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
         # to get a column name from Spark column but we need it to pass it through `expr`.
         kdf = kdf_or_kser
-        sdf = kdf._sdf
+        sdf = kdf._sdf.select(kdf._internal.scols)
         median = lambda name: F.expr("approx_percentile(`%s`, 0.5, %s)" % (name, accuracy))
         sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_columns])
 
@@ -1424,11 +1424,38 @@ class _Frame(object):
         sdf = sdf.withColumn('__DUMMY__', F.monotonically_increasing_id())
 
         # This is expected to be small so it's fine to transpose.
-        return DataFrame(kdf._internal.copy(sdf=sdf, index_map=[('__DUMMY__', None)])) \
+        return DataFrame(kdf._internal.copy(
+            sdf=sdf,
+            index_map=[('__DUMMY__', None)],
+            column_scols=[scol_for(sdf, col) for col in kdf._internal.data_columns])) \
             ._to_internal_pandas().transpose().iloc[:, 0]
 
     # TODO: 'center', 'win_type', 'on', 'axis' parameter should be implemented.
     def rolling(self, window, min_periods=None):
+        """
+        Provide rolling transformations.
+
+        .. note:: 'min_periods' in Koalas works as a fixed window size unlike pandas.
+            Unlike pandas, NA is also counted as the period. This might be changed
+            in the near future.
+
+        Parameters
+        ----------
+        window : int, or offset
+            Size of the moving window.
+            This is the number of observations used for calculating the statistic.
+            Each window will be a fixed size.
+
+        min_periods : int, default None
+            Minimum number of observations in window required to have a value
+            (otherwise result is NA).
+            For a window that is specified by an offset, min_periods will default to 1.
+            Otherwise, min_periods will default to the size of the window.
+
+        Returns
+        -------
+        a Window sub-classed for the particular operation
+        """
         return Rolling(self, window=window, min_periods=min_periods)
 
     # TODO: 'center' and 'axis' parameter should be implemented.
@@ -1498,17 +1525,17 @@ def _resolve_col(kdf, col_like):
         raise ValueError(col_like)
 
 
-def _spark_col_apply(kdf_or_ks, sfun):
+def _spark_col_apply(kdf_or_kser, sfun):
     """
     Performs a function to all cells on a dataframe, the function being a known sql function.
     """
     from databricks.koalas.frame import DataFrame
     from databricks.koalas.series import Series
-    if isinstance(kdf_or_ks, Series):
-        ks = kdf_or_ks
-        return ks._with_new_scol(sfun(ks._scol))
-    assert isinstance(kdf_or_ks, DataFrame)
-    kdf = kdf_or_ks
+    if isinstance(kdf_or_kser, Series):
+        kser = kdf_or_kser
+        return kser._with_new_scol(sfun(kser._scol))
+    assert isinstance(kdf_or_kser, DataFrame)
+    kdf = kdf_or_kser
     sdf = kdf._sdf
     sdf = sdf.select([sfun(kdf._internal.scol_for(col)).alias(col) for col in kdf.columns])
     return DataFrame(sdf)

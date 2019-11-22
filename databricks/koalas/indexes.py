@@ -22,6 +22,7 @@ from functools import partial
 from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
+import numpy as np
 from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
     is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
 
@@ -88,8 +89,8 @@ class Index(IndexOpsMixin):
         if scol is None:
             scol = kdf._internal.index_scols[0]
         internal = kdf._internal.copy(scol=scol,
-                                      data_columns=kdf._internal.index_columns,
                                       column_index=kdf._internal.index_names,
+                                      column_scols=kdf._internal.index_scols,
                                       column_index_names=None)
         IndexOpsMixin.__init__(self, internal, kdf)
 
@@ -120,6 +121,38 @@ class Index(IndexOpsMixin):
         """
         return len(self._kdf)  # type: ignore
 
+    def transpose(self):
+        """
+        Return the transpose, For index, It will be index itself.
+
+        Examples
+        --------
+        >>> idx = ks.Index(['a', 'b', 'c'])
+        >>> idx
+        Index(['a', 'b', 'c'], dtype='object')
+
+        >>> idx.transpose()
+        Index(['a', 'b', 'c'], dtype='object')
+
+        For MultiIndex
+
+        >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> midx.transpose()  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+        """
+        return self
+
+    T = property(transpose)
+
     def to_pandas(self) -> pd.Index:
         """
         Return a pandas Index.
@@ -139,10 +172,43 @@ class Index(IndexOpsMixin):
         internal = self._kdf._internal.copy(
             sdf=sdf,
             index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
-            data_columns=[], column_index=[], column_index_names=None)
+            column_index=[], column_scols=[], column_index_names=None)
         return DataFrame(internal)._to_internal_pandas().index
 
     toPandas = to_pandas
+
+    def to_numpy(self, dtype=None, copy=False):
+        """
+        A NumPy ndarray representing the values in this Index or MultiIndex.
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        dtype : str or numpy.dtype, optional
+            The dtype to pass to :meth:`numpy.asarray`
+        copy : bool, default False
+            Whether to ensure that the returned value is a not a view on
+            another array. Note that ``copy=False`` does not *ensure* that
+            ``to_numpy()`` is no-copy. Rather, ``copy=True`` ensure that
+            a copy is made, even if not strictly necessary.
+
+        Returns
+        -------
+        numpy.ndarray
+
+        Examples
+        --------
+        >>> ks.Series([1, 2, 3, 4]).index.to_numpy()
+        array([0, 1, 2, 3])
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[[1, 2, 3], [4, 5, 6]]).index.to_numpy()
+        array([(1, 4), (2, 5), (3, 6)], dtype=object)
+        """
+        result = np.asarray(self.to_pandas()._values, dtype=dtype)
+        if copy:
+            result = result.copy()
+        return result
 
     @property
     def spark_type(self):
@@ -660,35 +726,6 @@ class MultiIndex(Index):
 
     def rename(self, name, inplace=False):
         raise NotImplementedError()
-
-    @property
-    def levels(self) -> list:
-        """
-        Names of index columns in list.
-
-        .. note:: Be aware of the possibility of running into out
-            of memory issue if returned list is huge.
-
-        Examples
-        --------
-        >>> mi = pd.MultiIndex.from_arrays((list('abc'), list('def')))
-        >>> mi.names = ['level_1', 'level_2']
-        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
-        >>> kdf.index.levels
-        [['a', 'b', 'c'], ['d', 'e', 'f']]
-
-        >>> mi = pd.MultiIndex.from_arrays((list('bac'), list('fee')))
-        >>> mi.names = ['level_1', 'level_2']
-        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
-        >>> kdf.index.levels
-        [['a', 'b', 'c'], ['e', 'f']]
-        """
-        scols = self._kdf._internal.index_scols
-        row = self._kdf._sdf.select([F.collect_set(scol) for scol in scols]).first()
-
-        # use sorting is because pandas doesn't care the appearance order of level
-        # names, so e.g. if ['b', 'd', 'a'] will return as ['a', 'b', 'd']
-        return [sorted(col) for col in row]
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")

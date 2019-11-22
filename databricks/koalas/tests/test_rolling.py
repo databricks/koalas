@@ -14,13 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import pandas as pd
 
 import databricks.koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 from databricks.koalas.window import Rolling
 
 
-class RollingTests(ReusedSQLTestCase, TestUtils):
+class RollingTest(ReusedSQLTestCase, TestUtils):
 
     def test_rolling_error(self):
         with self.assertRaisesRegex(ValueError, "window must be >= 0"):
@@ -42,5 +43,95 @@ class RollingTests(ReusedSQLTestCase, TestUtils):
         pdf = kdf.to_pandas()
         self.assert_eq(repr(getattr(kdf.rolling(2), f)()), repr(getattr(pdf.rolling(2), f)()))
 
+        # Multiindex
+        kser = ks.Series(
+            [1, 2, 3],
+            index=pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')]))
+        pser = kser.to_pandas()
+        self.assert_eq(repr(getattr(kser.rolling(2), f)()), repr(getattr(pser.rolling(2), f)()))
+
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        pdf = kdf.to_pandas()
+        self.assert_eq(repr(getattr(kdf.rolling(2), f)()), repr(getattr(pdf.rolling(2), f)()))
+
+        # Multiindex column
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
+        pdf = kdf.to_pandas()
+        self.assert_eq(repr(getattr(kdf.expanding(2), f)()), repr(getattr(pdf.expanding(2), f)()))
+
+    def test_rolling_min(self):
+        self._test_rolling_func("min")
+
+    def test_rolling_max(self):
+        self._test_rolling_func("max")
+
+    def test_rolling_mean(self):
+        self._test_rolling_func("mean")
+
+    def test_rolling_sum(self):
+        self._test_rolling_func("sum")
+
     def test_rolling_count(self):
         self._test_rolling_func("count")
+
+    def test_rolling_std(self):
+        self._test_rolling_func("std")
+
+    def test_rolling_var(self):
+        self._test_rolling_func("var")
+
+    def _test_groupby_rolling_func(self, f):
+        kser = ks.Series([1, 2, 3])
+        pser = kser.to_pandas()
+        self.assert_eq(
+            repr(getattr(kser.groupby(kser).rolling(2), f)().sort_index()),
+            repr(getattr(pser.groupby(pser).rolling(2), f)()))
+
+        # Multiindex
+        kser = ks.Series(
+            [1, 2, 3],
+            index=pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')]))
+        pser = kser.to_pandas()
+        self.assert_eq(
+            repr(getattr(kser.groupby(kser).rolling(2), f)().sort_index()),
+            repr(getattr(pser.groupby(pser).rolling(2), f)()))
+
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        pdf = kdf.to_pandas()
+        self.assert_eq(
+            repr(getattr(kdf.groupby(kdf.a).rolling(2), f)().sort_index()),
+            repr(getattr(pdf.groupby(pdf.a).rolling(2), f)()))
+
+        # Multiindex column
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
+        pdf = kdf.to_pandas()
+        self.assert_eq(
+            repr(getattr(kdf.groupby(("a", "x")).rolling(2), f)().sort_index()),
+            repr(getattr(pdf.groupby(("a", "x")).rolling(2), f)()))
+
+        self.assert_eq(
+            repr(getattr(kdf.groupby([("a", "x"), ("a", "y")]).rolling(2), f)().sort_index()),
+            repr(getattr(pdf.groupby([("a", "x"), ("a", "y")]).rolling(2), f)()))
+
+    def test_groupby_rolling_count(self):
+        self._test_groupby_rolling_func("count")
+
+    def test_groupby_rolling_min(self):
+        self._test_groupby_rolling_func("min")
+
+    def test_groupby_rolling_max(self):
+        self._test_groupby_rolling_func("max")
+
+    def test_groupby_rolling_mean(self):
+        self._test_groupby_rolling_func("mean")
+
+    def test_groupby_rolling_sum(self):
+        self._test_groupby_rolling_func("sum")
+
+    def test_groupby_rolling_std(self):
+        self._test_groupby_rolling_func("std")
+
+    def test_groupby_rolling_var(self):
+        self._test_groupby_rolling_func("var")

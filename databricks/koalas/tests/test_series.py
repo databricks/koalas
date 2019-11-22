@@ -177,6 +177,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaises(NotImplementedError, msg=msg):
             kser.values
 
+    def test_or(self):
+        pdf = pd.DataFrame({
+            'left':  [True, False, True, False, np.nan, np.nan, True, False, np.nan],
+            'right': [True, False, False, True, True, False, np.nan, np.nan, np.nan]
+        })
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf['left'] | pdf['right'],
+                       kdf['left'] | kdf['right'])
+
+    def test_and(self):
+        pdf = pd.DataFrame({
+            'left':  [True, False, True, False, np.nan, np.nan, True, False, np.nan],
+            'right': [True, False, False, True, True, False, np.nan, np.nan, np.nan]
+        })
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf['left'] & pdf['right'],
+                       kdf['left'] & kdf['right'])
+
     def test_to_numpy(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
 
@@ -789,6 +809,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.drop_duplicates().sort_values(),
                        kser.drop_duplicates().sort_values())
 
+    def test_update(self):
+        pser = pd.Series([10, 20, 15, 30, 45], name='x')
+        kser = ks.Series(pser)
+
+        msg = "'other' must be a Series"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.update(10)
+
     def test_where(self):
         pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
         pser2 = pd.Series([100, 200, 300, 400, 500], name=0)
@@ -805,6 +833,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(repr(pser1.where(pser2 < -250)),
                        repr(kser1.where(kser2 < -250).sort_index()))
+
+    def test_mask(self):
+        pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
+        pser2 = pd.Series([100, 200, 300, 400, 500], name=0)
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(repr(pser1.mask(pser2 > 100)),
+                       repr(kser1.mask(kser2 > 100).sort_index()))
+
+        pser1 = pd.Series([-1, -2, -3, -4, -5], name=0)
+        pser2 = pd.Series([-100, -200, -300, -400, -500], name=0)
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(repr(pser1.mask(pser2 < -250)),
+                       repr(kser1.mask(kser2 < -250).sort_index()))
 
     def test_truncate(self):
         pser1 = pd.Series([10, 20, 30, 40, 50, 60, 70], index=[1, 2, 3, 4, 5, 6, 7])

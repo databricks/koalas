@@ -23,6 +23,7 @@ Properties
    Index.names
    Index.ndim
    Index.empty
+   Index.T
 
 Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,6 +55,7 @@ Conversion
 
    Index.astype
    Index.to_series
+   Index.to_numpy
 
 .. _api.multiindex:
 
@@ -85,11 +87,18 @@ MultiIndex Properties
 
    MultiIndex.names
    MultiIndex.ndim
-   MultiIndex.levels
+   MultiIndex.T
 
 MultiIndex Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: api/
 
-   Index.copy
+   MultiIndex.copy
+
+Conversion
+~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.to_numpy

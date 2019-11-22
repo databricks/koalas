@@ -32,7 +32,7 @@ from pyspark.sql.functions import monotonically_increasing_id
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
-from databricks.koalas.utils import align_diff_series, scol_for
+from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
 
 
 def _column_op(f):
@@ -56,6 +56,21 @@ def _column_op(f):
             # Same DataFrame anchors
             args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self._scol, *args)
+
+            # check if `f` is a comparison operator
+            comp_ops = ['eq', 'ne', 'lt', 'le', 'ge', 'gt']
+            is_comp_op = any(f == getattr(spark.Column, '__{}__'.format(comp_op))
+                             for comp_op in comp_ops)
+
+            if is_comp_op:
+                filler = f == spark.Column.__ne__
+                scol = F.when(scol.isNull(), filler).otherwise(scol)
+
+            elif f == spark.Column.__or__:
+                scol = F.when(self._scol.isNull() | scol.isNull(), False).otherwise(scol)
+
+            elif f == spark.Column.__and__:
+                scol = F.when(scol.isNull(), False).otherwise(scol)
 
             return self._with_new_scol(scol)
         else:
@@ -182,7 +197,7 @@ class IndexOpsMixin(object):
     __pow__ = _column_op(spark.Column.__pow__)
     __rpow__ = _column_op(spark.Column.__rpow__)
 
-    # logistic operators
+    # comparison operators
     __eq__ = _column_op(spark.Column.__eq__)
     __ne__ = _column_op(spark.Column.__ne__)
     __lt__ = _column_op(spark.Column.__lt__)
@@ -605,8 +620,8 @@ class IndexOpsMixin(object):
         >>> df.set_index("a").index.all()
         False
         """
-
-        if axis not in [0, 'index']:
+        axis = validate_axis(axis)
+        if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
 
         sdf = self._internal._sdf.select(self._scol)
@@ -668,8 +683,8 @@ class IndexOpsMixin(object):
         >>> df.set_index("a").index.any()
         True
         """
-
-        if axis not in [0, 'index']:
+        axis = validate_axis(axis)
+        if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
 
         sdf = self._internal._sdf.select(self._scol)
