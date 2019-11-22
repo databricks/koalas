@@ -367,9 +367,7 @@ class Index(IndexOpsMixin):
                    )
         """
         kdf = self._kdf.copy()
-        sdf = kdf._internal.sdf
-        scols_not_null = [index_scol.isNotNull() for index_scol in kdf._internal.index_scols]
-        sdf = sdf.where(reduce(lambda x, y: x & y, scols_not_null))
+        sdf = kdf._internal.sdf.dropna()
         kdf._internal = kdf._internal.copy(sdf=sdf)
         return Index(kdf) if type(self) == Index else MultiIndex(kdf)
 
