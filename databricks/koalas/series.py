@@ -3273,6 +3273,171 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return tuple(values)
 
+    def pop(self, item):
+        """
+        Return item and drop from sereis.
+
+        Parameters
+        ----------
+        item : str
+            Label of index to be popped.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+        >>> s = ks.Series(data=np.arange(3), index=['A', 'B', 'C'])
+        >>> s
+        A    0
+        B    1
+        C    2
+        Name: 0, dtype: int64
+
+        >>> s.pop('A')
+        0
+
+        >>> s
+        B    1
+        C    2
+        Name: 0, dtype: int64
+
+        >>> s = ks.Series(data=np.arange(3), index=['A', 'A', 'C'])
+        >>> s
+        A    0
+        A    1
+        C    2
+        Name: 0, dtype: int64
+
+        >>> s.pop('A')
+        A    0
+        A    1
+        Name: 0, dtype: int64
+
+        >>> s
+        C    2
+        Name: 0, dtype: int64
+
+        Also support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...               index=midx)
+        >>> s
+        lama    speed      45.0
+                weight    200.0
+                length      1.2
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.pop('lama')
+        speed      45.0
+        weight    200.0
+        length      1.2
+        Name: 0, dtype: float64
+
+        >>> s
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        Also support for MultiIndex with several indexs.
+
+        >>> midx = pd.MultiIndex([['a', 'b', 'c'],
+        ...                       ['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 0, 0, 0, 1, 1, 1],
+        ...                       [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 0, 2]]
+        ...  )
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...              index=midx)
+        >>> s
+        a  lama    speed      45.0
+                   weight    200.0
+                   length      1.2
+           cow     speed      30.0
+                   weight    250.0
+                   length      1.5
+        b  falcon  speed     320.0
+                   speed       1.0
+                   length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.pop(('a', 'lama'))
+        speed      45.0
+        weight    200.0
+        length      1.2
+        Name: 0, dtype: float64
+
+        >>> s
+        a  cow     speed      30.0
+                   weight    250.0
+                   length      1.5
+        b  falcon  speed     320.0
+                   speed       1.0
+                   length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.pop(('b', 'falcon', 'speed'))
+        (b, falcon, speed)    320.0
+        (b, falcon, speed)      1.0
+        Name: 0, dtype: float64
+        """
+        if not isinstance(item, (str, tuple)):
+            raise ValueError("'key' should be string or tuple that contains strings")
+        if isinstance(item, str):
+            item = (item,)
+        if not all(isinstance(index, str) for index in item):
+            raise ValueError("'key' should have index names as only strings "
+                             "or a tuple that contain index names as only strings")
+        if len(self._internal._index_map) < len(item):
+            raise KeyError("Key length ({}) exceeds index depth ({})"
+                           .format(len(item), len(self._internal.index_map)))
+
+        cols = (self._internal.index_scols[len(item):] +
+                [self._internal.scol_for(self._internal.column_index[0])])
+        rows = [self._internal.scols[level] == index
+                for level, index in enumerate(item)]
+        sdf = self._internal.sdf \
+            .select(cols) \
+            .where(reduce(lambda x, y: x & y, rows))
+
+        if len(self._internal._index_map) == len(item):
+            # if sdf has one column and one data, return data only without frame
+            pdf = sdf.limit(2).toPandas()
+            length = len(pdf)
+            if length == 1:
+                self._internal = self.drop(item)._internal
+                return pdf[self.name].iloc[0]
+
+            self._internal = self.drop(item)._internal
+            item_string = name_like_string(item)
+            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(str(item_string)))
+            internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
+            return _col(DataFrame(internal))
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            index_map=self._internal._index_map[len(item):])
+
+        self._internal = self.drop(item)._internal
+
+        return _col(DataFrame(internal))
+
     def copy(self) -> 'Series':
         """
         Make a copy of this object's indices and data.

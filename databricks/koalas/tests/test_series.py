@@ -741,6 +741,28 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.drop(('lama', 'speed', 'x'))
         self.assert_eq(kser.drop(('lama', 'speed', 'x'), level=1), kser)
 
+    def test_pop(self):
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+                         index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(kser.pop(('lama', 'speed')), pser.pop(('lama', 'speed')))
+
+        msg = "'key' should be string or tuple that contains strings"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.pop(0)
+        msg = ("'key' should have index names as only strings "
+               "or a tuple that contain index names as only strings")
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.pop(('lama', 0))
+        msg = r"'Key length \(3\) exceeds index depth \(2\)'"
+        with self.assertRaisesRegex(KeyError, msg):
+            kser.pop(('lama', 'speed', 'x'))
+
     def test_replace(self):
         pser = pd.Series([10, 20, 15, 30, 45], name='x')
         kser = ks.Series(pser)
