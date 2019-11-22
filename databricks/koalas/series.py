@@ -3098,7 +3098,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         Return the row label of the maximum value.
 
-        If multiple values equal the maximum, the row label with that
+        If multiple values equal the maximum, the first row label with that
         value is returned.
 
         Parameters
@@ -3185,7 +3185,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         Return the row label of the minimum value.
 
-        If multiple values equal the minimum, the row label with that
+        If multiple values equal the minimum, the first row label with that
         value is returned.
 
         Parameters
