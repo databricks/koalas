@@ -49,9 +49,7 @@ class _MissingPandasLikeExpanding(object):
     median = unsupported_function_expanding("median")
     quantile = unsupported_function_expanding("quantile")
     skew = unsupported_function_expanding("skew")
-    std = unsupported_function_expanding("std")
     validate = unsupported_function_expanding("validate")
-    var = unsupported_function_expanding("var")
 
     exclusions = unsupported_property_expanding("exclusions")
     is_datetimelike = unsupported_property_expanding("is_datetimelike")
@@ -69,9 +67,7 @@ class _MissingPandasLikeRolling(object):
     median = unsupported_function_rolling("median")
     quantile = unsupported_function_rolling("quantile")
     skew = unsupported_function_rolling("skew")
-    std = unsupported_function_rolling("std")
     validate = unsupported_function_rolling("validate")
-    var = unsupported_function_rolling("var")
 
     exclusions = unsupported_property_rolling("exclusions")
     is_datetimelike = unsupported_property_rolling("is_datetimelike")
@@ -89,9 +85,7 @@ class _MissingPandasLikeExpandingGroupby(object):
     median = unsupported_function_expanding("median")
     quantile = unsupported_function_expanding("quantile")
     skew = unsupported_function_expanding("skew")
-    std = unsupported_function_expanding("std")
     validate = unsupported_function_expanding("validate")
-    var = unsupported_function_expanding("var")
 
     exclusions = unsupported_property_expanding("exclusions")
     is_datetimelike = unsupported_property_expanding("is_datetimelike")
@@ -109,9 +103,7 @@ class _MissingPandasLikeRollingGroupby(object):
     median = unsupported_function_rolling("median")
     quantile = unsupported_function_rolling("quantile")
     skew = unsupported_function_rolling("skew")
-    std = unsupported_function_rolling("std")
     validate = unsupported_function_rolling("validate")
-    var = unsupported_function_rolling("var")
 
     exclusions = unsupported_property_rolling("exclusions")
     is_datetimelike = unsupported_property_rolling("is_datetimelike")

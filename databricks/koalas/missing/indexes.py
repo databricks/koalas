@@ -30,7 +30,6 @@ def unsupported_property(property_name, deprecated=False, reason=""):
 class _MissingPandasLikeIndex(object):
 
     # Properties
-    T = unsupported_property('T')
     nbytes = unsupported_property('nbytes')
     shape = unsupported_property('shape')
 
@@ -96,8 +95,6 @@ class _MissingPandasLikeIndex(object):
     to_flat_index = unsupported_function('to_flat_index')
     to_frame = unsupported_function('to_frame')
     to_native_types = unsupported_function('to_native_types')
-    to_numpy = unsupported_function('to_numpy')
-    transpose = unsupported_function('transpose')
     union = unsupported_function('union')
     value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
@@ -124,8 +121,6 @@ class _MissingPandasLikeIndex(object):
 class _MissingPandasLikeMultiIndex(object):
 
     # Properties
-    T = unsupported_property('T')
-    codes = unsupported_property('codes')
     is_all_dates = unsupported_property('is_all_dates')
     levshape = unsupported_property('levshape')
     shape = unsupported_property('shape')
@@ -203,8 +198,6 @@ class _MissingPandasLikeMultiIndex(object):
     to_flat_index = unsupported_function('to_flat_index')
     to_frame = unsupported_function('to_frame')
     to_native_types = unsupported_function('to_native_types')
-    to_numpy = unsupported_function('to_numpy')
-    transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     union = unsupported_function('union')
     value_counts = unsupported_function('value_counts')
@@ -222,6 +215,16 @@ class _MissingPandasLikeMultiIndex(object):
     # Functions we won't support.
     values = common.values(unsupported_property)
     array = common.array(unsupported_property)
+    codes = unsupported_property(
+        'codes',
+        reason="'codes' requires to collect all data into the driver which is against the "
+               "design principle of Koalas. Alternatively, you could call 'to_pandas()' and"
+               " use 'codes' property in pandas.")
+    levels = unsupported_property(
+        'levels',
+        reason="'levels' requires to collect all data into the driver which is against the "
+               "design principle of Koalas. Alternatively, you could call 'to_pandas()' and"
+               " use 'levels' property in pandas.")
     __iter__ = common.__iter__(unsupported_function)
 
     # Properties we won't support.

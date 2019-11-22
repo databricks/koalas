@@ -87,6 +87,24 @@ class _RollingAndExpanding(object):
 
         return self._apply_as_series_or_frame(mean)
 
+    def std(self):
+        def std(scol):
+            return F.when(
+                F.row_number().over(self._unbounded_window) >= self._min_periods,
+                F.stddev(scol).over(self._window)
+            ).otherwise(F.lit(None))
+
+        return self._apply_as_series_or_frame(std)
+
+    def var(self):
+        def var(scol):
+            return F.when(
+                F.row_number().over(self._unbounded_window) >= self._min_periods,
+                F.variance(scol).over(self._window)
+            ).otherwise(F.lit(None))
+
+        return self._apply_as_series_or_frame(var)
+
 
 class Rolling(_RollingAndExpanding):
     def __init__(self, kdf_or_kser, window, min_periods=None):
@@ -201,7 +219,7 @@ class Rolling(_RollingAndExpanding):
 
     def sum(self):
         """
-        Calculate rolling sum of given DataFrame or Series.
+        Calculate rolling summation of given DataFrame or Series.
 
         .. note:: the current implementation of this API uses Spark's Window without
             specifying partition specification. This leads to move all data into
@@ -212,7 +230,7 @@ class Rolling(_RollingAndExpanding):
         -------
         Series or DataFrame
             Same type as the input, with the same index, containing the
-            rolling sum.
+            rolling summation.
 
         See Also
         --------
@@ -248,7 +266,7 @@ class Rolling(_RollingAndExpanding):
         4    13.0
         Name: 0, dtype: float64
 
-        For DataFrame, each rolling max is computed column-wise.
+        For DataFrame, each rolling summation is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df
@@ -326,7 +344,7 @@ class Rolling(_RollingAndExpanding):
         4    2.0
         Name: 0, dtype: float64
 
-        For DataFrame, each rolling min is computed column-wise.
+        For DataFrame, each rolling minimum is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df
@@ -403,7 +421,7 @@ class Rolling(_RollingAndExpanding):
         4    6.0
         Name: 0, dtype: float64
 
-        For DataFrame, each rolling max is computed column-wise.
+        For DataFrame, each rolling maximum is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df
@@ -481,7 +499,7 @@ class Rolling(_RollingAndExpanding):
         4    4.333333
         Name: 0, dtype: float64
 
-        For DataFrame, each rolling max is computed column-wise.
+        For DataFrame, each rolling mean is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df
@@ -510,6 +528,106 @@ class Rolling(_RollingAndExpanding):
         """
         return super(Rolling, self).mean()
 
+    def std(self):
+        """
+        Calculate rolling standard deviation.
+
+        .. note:: the current implementation of this API uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returns the same object type as the caller of the rolling calculation.
+
+        See Also
+        --------
+        Series.rolling : Calling object with Series data.
+        DataFrame.rolling : Calling object with DataFrames.
+        Series.std : Equivalent method for Series.
+        DataFrame.std : Equivalent method for DataFrame.
+        numpy.std : Equivalent method for Numpy array.
+
+        Examples
+        --------
+        >>> s = ks.Series([5, 5, 6, 7, 5, 5, 5])
+        >>> s.rolling(3).std()
+        0         NaN
+        1         NaN
+        2    0.577350
+        3    1.000000
+        4    1.000000
+        5    1.154701
+        6    0.000000
+        Name: 0, dtype: float64
+
+        For DataFrame, each rolling standard deviation is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.rolling(2).std()
+                  A          B
+        0       NaN        NaN
+        1  0.000000   0.000000
+        2  0.707107   7.778175
+        3  0.707107   9.192388
+        4  1.414214  16.970563
+        5  0.000000   0.000000
+        6  0.000000   0.000000
+        """
+        return super(Rolling, self).std()
+
+    def var(self):
+        """
+        Calculate unbiased rolling variance.
+
+        .. note:: the current implementation of this API uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returns the same object type as the caller of the rolling calculation.
+
+        See Also
+        --------
+        Series.rolling : Calling object with Series data.
+        DataFrame.rolling : Calling object with DataFrames.
+        Series.var : Equivalent method for Series.
+        DataFrame.var : Equivalent method for DataFrame.
+        numpy.var : Equivalent method for Numpy array.
+
+        Examples
+        --------
+        >>> s = ks.Series([5, 5, 6, 7, 5, 5, 5])
+        >>> s.rolling(3).var()
+        0         NaN
+        1         NaN
+        2    0.333333
+        3    1.000000
+        4    1.000000
+        5    1.333333
+        6    0.000000
+        Name: 0, dtype: float64
+
+        For DataFrame, each unbiased rolling variance is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.rolling(2).var()
+             A      B
+        0  NaN    NaN
+        1  0.0    0.0
+        2  0.5   60.5
+        3  0.5   84.5
+        4  2.0  288.0
+        5  0.0    0.0
+        6  0.0    0.0
+        """
+        return super(Rolling, self).var()
+
 
 class RollingGroupby(Rolling):
     def __init__(self, groupby, groupkeys, window, min_periods=None):
@@ -517,7 +635,7 @@ class RollingGroupby(Rolling):
         from databricks.koalas.groupby import DataFrameGroupBy
 
         if isinstance(groupby, SeriesGroupBy):
-            kdf = groupby._ks.to_frame()
+            kdf = groupby._kser.to_frame()
         elif isinstance(groupby, DataFrameGroupBy):
             kdf = groupby._kdf
         else:
@@ -668,7 +786,7 @@ class RollingGroupby(Rolling):
 
     def sum(self):
         """
-        The rolling sum of any non-NaN observations inside the window.
+        The rolling summation of any non-NaN observations inside the window.
 
         Returns
         -------
@@ -701,7 +819,7 @@ class RollingGroupby(Rolling):
            10     NaN
         Name: 0, dtype: float64
 
-        For DataFrame, each rolling sum is computed column-wise.
+        For DataFrame, each rolling summation is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df.groupby(df.A).rolling(2).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
@@ -723,7 +841,7 @@ class RollingGroupby(Rolling):
 
     def min(self):
         """
-        The rolling min of any non-NaN observations inside the window.
+        The rolling minimum of any non-NaN observations inside the window.
 
         Returns
         -------
@@ -756,7 +874,7 @@ class RollingGroupby(Rolling):
            10    NaN
         Name: 0, dtype: float64
 
-        For DataFrame, each rolling min is computed column-wise.
+        For DataFrame, each rolling minimum is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df.groupby(df.A).rolling(2).min().sort_index()  # doctest: +NORMALIZE_WHITESPACE
@@ -778,7 +896,7 @@ class RollingGroupby(Rolling):
 
     def max(self):
         """
-        The rolling max of any non-NaN observations inside the window.
+        The rolling maximum of any non-NaN observations inside the window.
 
         Returns
         -------
@@ -811,7 +929,7 @@ class RollingGroupby(Rolling):
            10    NaN
         Name: 0, dtype: float64
 
-        For DataFrame, each rolling count is computed column-wise.
+        For DataFrame, each rolling maximum is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df.groupby(df.A).rolling(2).max().sort_index()  # doctest: +NORMALIZE_WHITESPACE
@@ -885,6 +1003,44 @@ class RollingGroupby(Rolling):
           10  5.0  25.0
         """
         return super(RollingGroupby, self).mean()
+
+    def std(self):
+        """
+        Calculate rolling standard deviation.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returns the same object type as the caller of the rolling calculation.
+
+        See Also
+        --------
+        Series.rolling : Calling object with Series data.
+        DataFrame.rolling : Calling object with DataFrames.
+        Series.std : Equivalent method for Series.
+        DataFrame.std : Equivalent method for DataFrame.
+        numpy.std : Equivalent method for Numpy array.
+        """
+        return super(RollingGroupby, self).std()
+
+    def var(self):
+        """
+        Calculate unbiased rolling variance.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returns the same object type as the caller of the rolling calculation.
+
+        See Also
+        --------
+        Series.rolling : Calling object with Series data.
+        DataFrame.rolling : Calling object with DataFrames.
+        Series.var : Equivalent method for Series.
+        DataFrame.var : Equivalent method for DataFrame.
+        numpy.var : Equivalent method for Numpy array.
+        """
+        return super(RollingGroupby, self).var()
 
 
 class Expanding(_RollingAndExpanding):
@@ -985,7 +1141,7 @@ class Expanding(_RollingAndExpanding):
 
     def sum(self):
         """
-        Calculate expanding sum of given DataFrame or Series.
+        Calculate expanding summation of given DataFrame or Series.
 
         .. note:: the current implementation of this API uses Spark's Window without
             specifying partition specification. This leads to move all data into
@@ -996,7 +1152,7 @@ class Expanding(_RollingAndExpanding):
         -------
         Series or DataFrame
             Same type as the input, with the same index, containing the
-            expanding sum.
+            expanding summation.
 
         See Also
         --------
@@ -1024,7 +1180,7 @@ class Expanding(_RollingAndExpanding):
         4    15.0
         Name: 0, dtype: float64
 
-        For DataFrame, each expanding sum is computed column-wise.
+        For DataFrame, each expanding summation is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df
@@ -1149,6 +1305,106 @@ class Expanding(_RollingAndExpanding):
         """
         return super(Expanding, self).mean()
 
+    def std(self):
+        """
+        Calculate expanding standard deviation.
+
+        .. note:: the current implementation of this API uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returns the same object type as the caller of the expanding calculation.
+
+        See Also
+        --------
+        Series.expanding : Calling object with Series data.
+        DataFrame.expanding : Calling object with DataFrames.
+        Series.std : Equivalent method for Series.
+        DataFrame.std : Equivalent method for DataFrame.
+        numpy.std : Equivalent method for Numpy array.
+
+        Examples
+        --------
+        >>> s = ks.Series([5, 5, 6, 7, 5, 5, 5])
+        >>> s.expanding(3).std()
+        0         NaN
+        1         NaN
+        2    0.577350
+        3    0.957427
+        4    0.894427
+        5    0.836660
+        6    0.786796
+        Name: 0, dtype: float64
+
+        For DataFrame, each expanding standard deviation variance is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.expanding(2).std()
+                  A          B
+        0       NaN        NaN
+        1  0.000000   0.000000
+        2  0.577350   6.350853
+        3  0.957427  11.412712
+        4  0.894427  10.630146
+        5  0.836660   9.928075
+        6  0.786796   9.327379
+        """
+        return super(Expanding, self).std()
+
+    def var(self):
+        """
+        Calculate unbiased expanding variance.
+
+        .. note:: the current implementation of this API uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returns the same object type as the caller of the expanding calculation.
+
+        See Also
+        --------
+        Series.expanding : Calling object with Series data.
+        DataFrame.expanding : Calling object with DataFrames.
+        Series.var : Equivalent method for Series.
+        DataFrame.var : Equivalent method for DataFrame.
+        numpy.var : Equivalent method for Numpy array.
+
+        Examples
+        --------
+        >>> s = ks.Series([5, 5, 6, 7, 5, 5, 5])
+        >>> s.expanding(3).var()
+        0         NaN
+        1         NaN
+        2    0.333333
+        3    0.916667
+        4    0.800000
+        5    0.700000
+        6    0.619048
+        Name: 0, dtype: float64
+
+        For DataFrame, each unbiased expanding variance is computed column-wise.
+
+        >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
+        >>> df.expanding(2).var()
+                  A           B
+        0       NaN         NaN
+        1  0.000000    0.000000
+        2  0.333333   40.333333
+        3  0.916667  130.250000
+        4  0.800000  113.000000
+        5  0.700000   98.566667
+        6  0.619048   87.000000
+        """
+        return super(Expanding, self).var()
+
 
 class ExpandingGroupby(Expanding):
     def __init__(self, groupby, groupkeys, min_periods=1):
@@ -1156,7 +1412,7 @@ class ExpandingGroupby(Expanding):
         from databricks.koalas.groupby import DataFrameGroupBy
 
         if isinstance(groupby, SeriesGroupBy):
-            kdf = groupby._ks.to_frame()
+            kdf = groupby._kser.to_frame()
         elif isinstance(groupby, DataFrameGroupBy):
             kdf = groupby._kdf
         else:
@@ -1187,69 +1443,7 @@ class ExpandingGroupby(Expanding):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
-    def _apply_as_series_or_frame(self, func):
-        """
-        Wraps a function that handles Spark column in order
-        to support it in both Koalas Series and DataFrame.
-
-        Note that the given `func` name should be same as the API's method name.
-        """
-        from databricks.koalas import DataFrame
-        from databricks.koalas.series import _col
-        from databricks.koalas.groupby import SeriesGroupBy
-
-        kdf = self.kdf
-        sdf = self.kdf._sdf
-
-        # Here we need to include grouped key as an index, and shift previous index.
-        #   [index_column0, index_column1] -> [grouped key, index_column0, index_column1]
-        new_index_scols = []
-        new_index_map = []
-        for groupkey in self._groupkeys:
-            new_index_scols.append(
-                # NOTE THAT this code intentionally uses `F.col` instead of `scol` in
-                # given series. This is because, in case of series, we convert it into
-                # DataFrame. So, if the given `groupkeys` is a series, they end up with
-                # being a different series.
-                F.col(
-                    name_like_string(groupkey.name)
-                ).alias(
-                    SPARK_INDEX_NAME_FORMAT(len(new_index_scols))
-                ))
-            new_index_map.append(
-                (SPARK_INDEX_NAME_FORMAT(len(new_index_map)),
-                 groupkey._internal.column_index[0]))
-
-        for new_index_scol, index_map in zip(kdf._internal.index_scols, kdf._internal.index_map):
-            new_index_scols.append(
-                new_index_scol.alias(SPARK_INDEX_NAME_FORMAT(len(new_index_scols))))
-            _, name = index_map
-            new_index_map.append((SPARK_INDEX_NAME_FORMAT(len(new_index_map)), name))
-
-        applied = []
-        for column in kdf.columns:
-            applied.append(
-                kdf[column]._with_new_scol(
-                    func(kdf[column]._scol)
-                ).rename(kdf[column].name))
-
-        # Seems like pandas filters out when grouped key is NA.
-        cond = self._groupkeys[0]._scol.isNotNull()
-        for c in self._groupkeys:
-            cond = cond | c._scol.isNotNull()
-        sdf = sdf.select(new_index_scols + [c._scol for c in applied]).filter(cond)
-
-        internal = kdf._internal.copy(
-            sdf=sdf,
-            index_map=new_index_map,
-            column_index=[c._internal.column_index[0] for c in applied],
-            column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied])
-
-        ret = DataFrame(internal)
-        if isinstance(self._groupby, SeriesGroupBy):
-            return _col(ret)
-        else:
-            return ret
+    _apply_as_series_or_frame = RollingGroupby._apply_as_series_or_frame
 
     def count(self):
         """
@@ -1308,13 +1502,13 @@ class ExpandingGroupby(Expanding):
 
     def sum(self):
         """
-        Calculate expanding sum of given DataFrame or Series.
+        Calculate expanding summation of given DataFrame or Series.
 
         Returns
         -------
         Series or DataFrame
             Same type as the input, with the same index, containing the
-            expanding sum.
+            expanding summation.
 
         See Also
         --------
@@ -1341,7 +1535,7 @@ class ExpandingGroupby(Expanding):
            10     NaN
         Name: 0, dtype: float64
 
-        For DataFrame, each expanding sum is computed column-wise.
+        For DataFrame, each expanding summation is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df.groupby(df.A).expanding(2).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
@@ -1396,7 +1590,7 @@ class ExpandingGroupby(Expanding):
            10    NaN
         Name: 0, dtype: float64
 
-        For DataFrame, each expanding min is computed column-wise.
+        For DataFrame, each expanding minimum is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df.groupby(df.A).expanding(2).min().sort_index()  # doctest: +NORMALIZE_WHITESPACE
@@ -1450,7 +1644,7 @@ class ExpandingGroupby(Expanding):
            10    NaN
         Name: 0, dtype: float64
 
-        For DataFrame, each expanding max is computed column-wise.
+        For DataFrame, each expanding maximum is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
         >>> df.groupby(df.A).expanding(2).max().sort_index()  # doctest: +NORMALIZE_WHITESPACE
@@ -1524,3 +1718,42 @@ class ExpandingGroupby(Expanding):
           10  5.0  25.0
         """
         return super(ExpandingGroupby, self).mean()
+
+    def std(self):
+        """
+        Calculate expanding standard deviation.
+
+
+        Returns
+        -------
+        Series or DataFrame
+            Returns the same object type as the caller of the expanding calculation.
+
+        See Also
+        --------
+        Series.expanding: Calling object with Series data.
+        DataFrame.expanding : Calling object with DataFrames.
+        Series.std : Equivalent method for Series.
+        DataFrame.std : Equivalent method for DataFrame.
+        numpy.std : Equivalent method for Numpy array.
+        """
+        return super(ExpandingGroupby, self).std()
+
+    def var(self):
+        """
+        Calculate unbiased expanding variance.
+
+        Returns
+        -------
+        Series or DataFrame
+            Returns the same object type as the caller of the expanding calculation.
+
+        See Also
+        --------
+        Series.expanding : Calling object with Series data.
+        DataFrame.expanding : Calling object with DataFrames.
+        Series.var : Equivalent method for Series.
+        DataFrame.var : Equivalent method for DataFrame.
+        numpy.var : Equivalent method for Numpy array.
+        """
+        return super(ExpandingGroupby, self).var()

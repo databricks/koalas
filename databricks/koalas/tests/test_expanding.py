@@ -72,6 +72,12 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
     def test_expanding_sum(self):
         self._test_expanding_func("sum")
 
+    def test_expanding_std(self):
+        self._test_expanding_func("std")
+
+    def test_expanding_var(self):
+        self._test_expanding_func("var")
+
     def _test_groupby_expanding_func(self, f):
         kser = ks.Series([1, 2, 3])
         pser = kser.to_pandas()
@@ -94,14 +100,17 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             repr(getattr(kdf.groupby(kdf.a).expanding(2), f)().sort_index()),
             repr(getattr(pdf.groupby(pdf.a).expanding(2), f)()))
 
-        # TODO: restore below tests when issue #1032 is solved
         # Multiindex column
-        # kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
-        # kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
-        # pdf = kdf.to_pandas()
-        # self.assert_eq(
-        #     repr(getattr(kdf.groupby(kdf.a).expanding(2), f)().sort_index()),
-        #     repr(getattr(pdf.groupby(pdf.a).expanding(2), f)()))
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
+        pdf = kdf.to_pandas()
+        self.assert_eq(
+            repr(getattr(kdf.groupby(("a", "x")).expanding(2), f)().sort_index()),
+            repr(getattr(pdf.groupby(("a", "x")).expanding(2), f)()))
+
+        self.assert_eq(
+            repr(getattr(kdf.groupby([("a", "x"), ("a", "y")]).expanding(2), f)().sort_index()),
+            repr(getattr(pdf.groupby([("a", "x"), ("a", "y")]).expanding(2), f)()))
 
     def test_groupby_expanding_count(self):
         self._test_groupby_expanding_func("count")
@@ -117,3 +126,9 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
 
     def test_groupby_expanding_sum(self):
         self._test_groupby_expanding_func("sum")
+
+    def test_groupby_expanding_std(self):
+        self._test_groupby_expanding_func("std")
+
+    def test_groupby_expanding_var(self):
+        self._test_groupby_expanding_func("var")

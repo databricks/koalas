@@ -28,7 +28,7 @@ from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
-from databricks.koalas.utils import scol_for
+from databricks.koalas.utils import name_like_string, scol_for
 
 
 def _make_col(c):
@@ -122,55 +122,63 @@ class AtIndexer(object):
     >>> kdf.at[5, 'B']
     array([ 4, 20])
     """
-    def __init__(self, df_or_s):
+    def __init__(self, kdf_or_kser):
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series
-        assert isinstance(df_or_s, (DataFrame, Series)), \
-            'unexpected argument type: {}'.format(type(df_or_s))
-        if isinstance(df_or_s, DataFrame):
-            self._kdf = df_or_s
-            self._ks = None
-        else:
-            # If df_or_col is Column, store both the DataFrame anchored to the Column and
-            # the Column itself.
-            self._kdf = df_or_s._kdf
-            self._ks = df_or_s
+        assert isinstance(kdf_or_kser, (DataFrame, Series)), \
+            'unexpected argument type: {}'.format(type(kdf_or_kser))
+        self._kdf_or_kser = kdf_or_kser
+
+    @property
+    def _is_df(self):
+        from databricks.koalas.frame import DataFrame
+        return isinstance(self._kdf_or_kser, DataFrame)
+
+    @property
+    def _is_series(self):
+        from databricks.koalas.series import Series
+        return isinstance(self._kdf_or_kser, Series)
+
+    @property
+    def _internal(self):
+        return self._kdf_or_kser._internal
 
     def __getitem__(self, key):
-        if self._ks is None and (not isinstance(key, tuple) or len(key) != 2):
-            raise TypeError("Use DataFrame.at like .at[row_index, column_name]")
-        if self._ks is not None and not isinstance(key, str) and len(key) != 1:
-            raise TypeError("Use Series.at like .at[row_index]")
-
-        # TODO Maybe extend to multilevel indices in the future
-        if len(self._kdf._internal.index_columns) != 1:
-            raise ValueError("'.at' only supports indices with level 1 right now")
-
-        if self._ks is None:
-            if self._kdf._internal.column_index_level > 1:
-                column = dict(zip(self._kdf._internal.column_index,
-                                  self._kdf._internal.data_columns)).get(key[1], None)
-                if column is None:
-                    raise KeyError(key[1])
-            else:
-                column = key[1]
+        if self._is_df:
+            if not isinstance(key, tuple) or len(key) != 2:
+                raise TypeError("Use DataFrame.at like .at[row_index, column_name]")
+            row_sel, col_sel = key
         else:
-            column = self._ks.name
+            assert self._is_series, type(self._kdf_or_kser)
+            if not isinstance(key, str) and len(key) != 1:
+                raise TypeError("Use Series.at like .at[row_index]")
+            row_sel = key
+            col_sel = self._internal.column_index[0]
 
-        if column is not None and column not in self._kdf._internal.data_columns:
-            raise KeyError(column)
-        sdf = self._ks._internal._sdf if self._ks is not None else self._kdf._sdf
+        if len(self._internal.index_map) == 1:
+            if is_list_like(row_sel):
+                raise ValueError(
+                    'At based indexing on a single index can only have a single value')
+            row_sel = (row_sel,)
+        elif not isinstance(row_sel, tuple):
+            raise ValueError(
+                'At based indexing on multi-index can only have tuple values')
+        if not (isinstance(col_sel, str) or
+                (isinstance(col_sel, tuple) and all(isinstance(col, str) for col in col_sel))):
+            raise ValueError('At based indexing on multi-index can only have tuple values')
+        if isinstance(col_sel, str):
+            col_sel = (col_sel,)
 
-        row = key[0] if self._ks is None else key
-        pdf = (sdf
-               .where(self._kdf._internal.index_scols[0] == row)
-               .select(_make_col(column))
-               .toPandas())
+        cond = reduce(lambda x, y: x & y,
+                      [scol == row for scol, row in zip(self._internal.index_scols, row_sel)])
+        pdf = self._internal.sdf.where(cond).select(self._internal.scol_for(col_sel)).toPandas()
+
         if len(pdf) < 1:
-            raise KeyError(row)
+            raise KeyError(name_like_string(row_sel))
 
         values = pdf.iloc[:, 0].values
-        return values[0] if len(values) == 1 else values
+        return values if (len(row_sel) < len(self._internal.index_map)
+                          or len(values) > 1) else values[0]
 
 
 class LocIndexer(object):
@@ -349,19 +357,19 @@ class LocIndexer(object):
     9          7       8
     """
 
-    def __init__(self, df_or_s):
+    def __init__(self, kdf_or_kser):
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series
-        assert isinstance(df_or_s, (DataFrame, Series)), \
-            'unexpected argument type: {}'.format(type(df_or_s))
-        if isinstance(df_or_s, DataFrame):
-            self._kdf = df_or_s
-            self._ks = None
+        assert isinstance(kdf_or_kser, (DataFrame, Series)), \
+            'unexpected argument type: {}'.format(type(kdf_or_kser))
+        if isinstance(kdf_or_kser, DataFrame):
+            self._kdf = kdf_or_kser
+            self._kser = None
         else:
             # If df_or_col is Column, store both the DataFrame anchored to the Column and
             # the Column itself.
-            self._kdf = df_or_s._kdf
-            self._ks = df_or_s
+            self._kdf = kdf_or_kser._kdf
+            self._kser = kdf_or_kser
 
     def __getitem__(self, key):
         from databricks.koalas.frame import DataFrame
@@ -373,7 +381,7 @@ class LocIndexer(object):
                 pandas_function=".loc[..., ...]",
                 spark_target_function="select, where")
 
-        rows_sel, cols_sel = _unfold(key, self._ks)
+        rows_sel, cols_sel = _unfold(key, self._kser)
 
         sdf = self._kdf._sdf
         if isinstance(rows_sel, Series):
@@ -657,19 +665,19 @@ class ILocIndexer(object):
     2  1000  3000
     """
 
-    def __init__(self, df_or_s):
+    def __init__(self, kdf_or_kser):
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series
-        assert isinstance(df_or_s, (DataFrame, Series)), \
-            'unexpected argument type: {}'.format(type(df_or_s))
-        if isinstance(df_or_s, DataFrame):
-            self._kdf = df_or_s
-            self._ks = None
+        assert isinstance(kdf_or_kser, (DataFrame, Series)), \
+            'unexpected argument type: {}'.format(type(kdf_or_kser))
+        if isinstance(kdf_or_kser, DataFrame):
+            self._kdf = kdf_or_kser
+            self._kser = None
         else:
             # If df_or_col is Column, store both the DataFrame anchored to the Column and
             # the Column itself.
-            self._kdf = df_or_s._kdf
-            self._ks = df_or_s
+            self._kdf = kdf_or_kser._kdf
+            self._kser = kdf_or_kser
 
     def __getitem__(self, key):
         from databricks.koalas.frame import DataFrame
@@ -682,7 +690,7 @@ class ILocIndexer(object):
                 pandas_function=".iloc[..., ...]",
                 spark_target_function="select, where")
 
-        rows_sel, cols_sel = _unfold(key, self._ks)
+        rows_sel, cols_sel = _unfold(key, self._kser)
 
         sdf = self._kdf._sdf
         if isinstance(rows_sel, Index):
