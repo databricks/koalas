@@ -741,7 +741,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             lmask = self > left
             rmask = self < right
 
-        return (lmask & rmask).fillna(False)
+        return (lmask & rmask)
 
     # TODO: arg should support Series
     # TODO: NaN and None
