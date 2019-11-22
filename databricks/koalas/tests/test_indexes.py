@@ -186,6 +186,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
     def test_multi_index_symmetric_difference(self):
         idx = ks.Index(['a', 'b', 'c'])
         midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        midx_ = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+
+        self.assert_eq(
+            midx.symmetric_difference(midx_),
+            midx.to_pandas().symmetric_difference(midx_.to_pandas()))
 
         with self.assertRaisesRegexp(NotImplementedError, "Doesn't support*"):
             midx.symmetric_difference(idx)
