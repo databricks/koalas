@@ -1056,7 +1056,7 @@ class DataFrame(_Frame, Generic[T]):
 
           * `min_periods` argument is not supported
         """
-        return corr(self, method)
+        return ks.from_pandas(corr(self, method))
 
     def iteritems(self) -> Iterable:
         """

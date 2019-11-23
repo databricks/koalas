@@ -42,6 +42,7 @@ from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
+from databricks.koalas.ml import corr
 from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
                                      combine_frames, name_like_string, validate_axis)
 from databricks.koalas.datetimes import DatetimeMethods
@@ -2239,8 +2240,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         # This implementation is suboptimal because it computes more than necessary,
         # but it should be a start
-        df = self._kdf.assign(corr_arg1=self, corr_arg2=other)[["corr_arg1", "corr_arg2"]]
-        c = df.corr(method=method)
+        kdf = self._kdf.assign(corr_arg1=self, corr_arg2=other)[["corr_arg1", "corr_arg2"]]
+        c = corr(kdf, method=method)
         return c.loc["corr_arg1", "corr_arg2"]
 
     def nsmallest(self, n: int = 5) -> 'Series':
