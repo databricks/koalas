@@ -1448,15 +1448,15 @@ class GroupBy(object):
         Name: b, dtype: int64
         """
         groupkeys = self._groupkeys
-        tmp_col = '__order__'
-        sdf = self._kdf._sdf.withColumn(tmp_col, monotonically_increasing_id())
-        name = self._agg_columns[0]._internal.data_columns[0]
-        window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(tmp_col))
+        tmp_col = '__row_number__'
+        sdf = self._kdf._sdf
+        window = Window.partitionBy([s._scol for s in groupkeys]) \
+                       .orderBy(F.monotonically_increasing_id())
         sdf = sdf.withColumn(tmp_col, F.row_number().over(window)).filter(F.col(tmp_col) <= n)
         internal = _InternalFrame(
             sdf=sdf,
             index_map=self._kdf._internal.index_map,
-            column_scols=([scol_for(sdf, name)]
+            column_scols=([scol_for(sdf, self._agg_columns[0]._internal.data_columns[0])]
                           if isinstance(self, SeriesGroupBy)
                           else [scol_for(sdf, name) for name in self._kdf._internal.data_columns]))
 
