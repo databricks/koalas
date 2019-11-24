@@ -1100,6 +1100,21 @@ class DataFrame(_Frame, Generic[T]):
         cols = list(self.columns)
         return list((col_name, self[col_name]) for col_name in cols)
 
+    def iterrows(self):
+        # TODO: document
+        columns = self.columns
+        internal_index_columns = self._internal.index_columns
+        internal_data_columns = self._internal.data_columns
+
+        def extract_kv_from_spark_row(row):
+            k = tuple(row[c] for c in internal_index_columns)
+            v = [row[c] for c in internal_data_columns]
+            return k, v
+
+        for k, v in map(extract_kv_from_spark_row, self._sdf.toLocalIterator()):
+            s = pd.Series(v, index=columns, name=k)
+            yield k, s
+
     def items(self) -> Iterable:
         """This is an alias of ``iteritems``."""
         return self.iteritems()
