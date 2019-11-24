@@ -21,7 +21,9 @@ Properties
    Index.dtype
    Index.name
    Index.names
+   Index.ndim
    Index.empty
+   Index.T
 
 Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,8 +56,16 @@ Conversion
 
    Index.astype
    Index.to_series
+   Index.to_numpy
 
 .. _api.multiindex:
+
+Combining / joining / set operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.symmetric_difference
 
 Selecting
 ~~~~~~~~~
@@ -71,12 +81,21 @@ MultiIndex
 
    MultiIndex
 
+MultiIndex Constructors
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.from_tuples
+
 MultiIndex Properties
 ~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: api/
 
    MultiIndex.names
+   MultiIndex.ndim
+   MultiIndex.T
 
 MultiIndex Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -85,3 +104,17 @@ MultiIndex Modifying and computations
 
    MultiIndex.copy
    MultiIndex.value_counts
+
+MultiIndex Combining / joining / set operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.symmetric_difference
+
+Conversion
+~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.to_numpy

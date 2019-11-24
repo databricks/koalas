@@ -30,9 +30,10 @@ from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, Times
 from pyspark.sql.functions import monotonically_increasing_id
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
-from databricks.koalas.utils import align_diff_series, scol_for
+from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
+from databricks.koalas.frame import DataFrame
 
 
 def _column_op(f):
@@ -56,6 +57,21 @@ def _column_op(f):
             # Same DataFrame anchors
             args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self._scol, *args)
+
+            # check if `f` is a comparison operator
+            comp_ops = ['eq', 'ne', 'lt', 'le', 'ge', 'gt']
+            is_comp_op = any(f == getattr(spark.Column, '__{}__'.format(comp_op))
+                             for comp_op in comp_ops)
+
+            if is_comp_op:
+                filler = f == spark.Column.__ne__
+                scol = F.when(scol.isNull(), filler).otherwise(scol)
+
+            elif f == spark.Column.__or__:
+                scol = F.when(self._scol.isNull() | scol.isNull(), False).otherwise(scol)
+
+            elif f == spark.Column.__and__:
+                scol = F.when(scol.isNull(), False).otherwise(scol)
 
             return self._with_new_scol(scol)
         else:
@@ -182,7 +198,7 @@ class IndexOpsMixin(object):
     __pow__ = _column_op(spark.Column.__pow__)
     __rpow__ = _column_op(spark.Column.__rpow__)
 
-    # logistic operators
+    # comparison operators
     __eq__ = _column_op(spark.Column.__eq__)
     __ne__ = _column_op(spark.Column.__ne__)
     __lt__ = _column_op(spark.Column.__lt__)
@@ -235,7 +251,7 @@ class IndexOpsMixin(object):
         >>> ks.DataFrame({}, index=list('abc')).index.empty
         False
         """
-        return self._kdf._sdf.rdd.isEmpty()
+        return self._internal._sdf.rdd.isEmpty()
 
     @property
     def hasnans(self):
@@ -257,7 +273,7 @@ class IndexOpsMixin(object):
         >>> ks.Series([1, 2, 3]).rename("a").to_frame().set_index("a").index.hasnans
         False
         """
-        sdf = self._kdf._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self._scol)
         col = self._scol
 
         ret = sdf.select(F.max(col.isNull() | F.isnan(col))).collect()[0][0]
@@ -362,6 +378,39 @@ class IndexOpsMixin(object):
         col = self._scol
         window = Window.orderBy(monotonically_increasing_id()).rowsBetween(-1, -1)
         return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull()).all()
+
+    @property
+    def ndim(self):
+        """
+        Return an int representing the number of array dimensions.
+
+        Return 1 for Series / Index / MultiIndex.
+
+        Examples
+        --------
+
+        For Series
+
+        >>> s = ks.Series([None, 1, 2, 3, 4], index=[4, 5, 2, 1, 8])
+        >>> s.ndim
+        1
+
+        For Index
+
+        >>> s.index.ndim
+        1
+
+        For MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [1, 1, 1, 1, 1, 2, 1, 2, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        >>> s.index.ndim
+        1
+        """
+        return 1
 
     def astype(self, dtype):
         """
@@ -572,11 +621,11 @@ class IndexOpsMixin(object):
         >>> df.set_index("a").index.all()
         False
         """
-
-        if axis not in [0, 'index']:
+        axis = validate_axis(axis)
+        if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
 
-        sdf = self._kdf._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self._scol)
         col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
@@ -635,11 +684,11 @@ class IndexOpsMixin(object):
         >>> df.set_index("a").index.any()
         True
         """
-
-        if axis not in [0, 'index']:
+        axis = validate_axis(axis)
+        if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
 
-        sdf = self._kdf._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self._scol)
         col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
@@ -712,3 +761,174 @@ class IndexOpsMixin(object):
         lag_col = F.lag(col, periods).over(window)
         col = F.when(lag_col.isNull() | F.isnan(lag_col), fill_value).otherwise(lag_col)
         return self._with_new_scol(col).rename(self.name)
+
+    # TODO: Update Documentation for Bins Parameter when its supported
+    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+        """
+        Return a Series containing counts of unique values.
+        The resulting object will be in descending order so that the
+        first element is the most frequently-occurring element.
+        Excludes NA values by default.
+
+        Parameters
+        ----------
+        normalize : boolean, default False
+            If True then the object returned will contain the relative
+            frequencies of the unique values.
+        sort : boolean, default True
+            Sort by values.
+        ascending : boolean, default False
+            Sort in ascending order.
+        bins : Not Yet Supported
+        dropna : boolean, default True
+            Don't include counts of NaN.
+
+        Returns
+        -------
+        counts : Series
+
+        See Also
+        --------
+        Series.count: Number of non-NA elements in a Series.
+
+        Examples
+        --------
+        For Series
+
+        >>> df = ks.DataFrame({'x':[0, 0, 1, 1, 1, np.nan]})
+        >>> df.x.value_counts()  # doctest: +NORMALIZE_WHITESPACE
+        1.0    3
+        0.0    2
+        Name: x, dtype: int64
+
+        With `normalize` set to `True`, returns the relative frequency by
+        dividing all values by the sum of values.
+
+        >>> df.x.value_counts(normalize=True)  # doctest: +NORMALIZE_WHITESPACE
+        1.0    0.6
+        0.0    0.4
+        Name: x, dtype: float64
+
+        **dropna**
+        With `dropna` set to `False` we can also see NaN index values.
+
+        >>> df.x.value_counts(dropna=False)  # doctest: +NORMALIZE_WHITESPACE
+        1.0    3
+        0.0    2
+        NaN    1
+        Name: x, dtype: int64
+
+        For Index
+
+        >>> s = ks.Series([0, 1, 2, 3, 4, 5], index=[3, 1, 2, 3, 4, np.nan])
+        >>> s.index
+        Float64Index([3.0, 1.0, 2.0, 3.0, 4.0, nan], dtype='float64')
+
+        >>> s.index.value_counts().sort_index()
+        1.0    1
+        2.0    1
+        3.0    2
+        4.0    1
+        Name: count, dtype: int64
+
+        **sort**
+
+        With `sort` set to `False`, the result wouldn't be sorted by number of count.
+
+        >>> s.index.value_counts(sort=True).sort_index()
+        1.0    1
+        2.0    1
+        3.0    2
+        4.0    1
+        Name: count, dtype: int64
+
+        **normalize**
+
+        With `normalize` set to `True`, returns the relative frequency by
+        dividing all values by the sum of values.
+
+        >>> s.index.value_counts(normalize=True).sort_index()
+        1.0    0.2
+        2.0    0.2
+        3.0    0.4
+        4.0    0.2
+        Name: count, dtype: float64
+
+        **dropna**
+
+        With `dropna` set to `False` we can also see NaN index values.
+
+        >>> s.index.value_counts(dropna=False).sort_index()  # doctest: +SKIP
+        1.0    1
+        2.0    1
+        3.0    2
+        4.0    1
+        NaN    1
+        Name: count, dtype: int64
+
+        For MultiIndex.
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [1, 1, 1, 1, 1, 2, 1, 2, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        >>> s.index  # doctest: +SKIP
+        MultiIndex([(  'lama', 'weight'),
+                    (  'lama', 'weight'),
+                    (  'lama', 'weight'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'length'),
+                    ('falcon', 'weight'),
+                    ('falcon', 'length'),
+                    ('falcon', 'length')],
+                   )
+
+        >>> s.index.value_counts().sort_index()
+        (cow, length)       1
+        (cow, weight)       2
+        (falcon, length)    2
+        (falcon, weight)    1
+        (lama, weight)      3
+        Name: count, dtype: int64
+
+        >>> s.index.value_counts(normalize=True).sort_index()
+        (cow, length)       0.111111
+        (cow, weight)       0.222222
+        (falcon, length)    0.222222
+        (falcon, weight)    0.111111
+        (lama, weight)      0.333333
+        Name: count, dtype: float64
+        """
+        from databricks.koalas.series import Series, _col
+        if bins is not None:
+            raise NotImplementedError("value_counts currently does not support bins")
+
+        if dropna:
+            sdf_dropna = self._internal._sdf.dropna()
+        else:
+            sdf_dropna = self._internal._sdf
+        index_name = SPARK_INDEX_NAME_FORMAT(0)
+        sdf = sdf_dropna.groupby(self._scol.alias(index_name)).count()
+        if sort:
+            if ascending:
+                sdf = sdf.orderBy(F.col('count'))
+            else:
+                sdf = sdf.orderBy(F.col('count').desc())
+
+        if normalize:
+            sum = sdf_dropna.count()
+            sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
+
+        # column_index & column_index_name are need for Series, but not for Index/MtutiIndex
+        internal = _InternalFrame(sdf=sdf,
+                                  index_map=[(index_name, None)],
+                                  column_index=self._internal.column_index,
+                                  column_scols=[scol_for(sdf, 'count')],
+                                  column_index_names=self._internal.column_index_names) \
+            if isinstance(self, Series) else \
+            _InternalFrame(sdf=sdf,
+                           index_map=[(index_name, None)],
+                           column_scols=[scol_for(sdf, 'count')])
+        return _col(DataFrame(internal))

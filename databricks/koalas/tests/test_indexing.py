@@ -158,9 +158,26 @@ class IndexingTest(ReusedSQLTestCase):
         with self.assertRaises(KeyError, msg=99):
             kdf.at[99, 'b']
 
+        with self.assertRaises(ValueError):
+            kdf.at[(3, 6), 'b']
+        with self.assertRaises(KeyError):
+            kdf.at[3, ('x', 'b')]
+
         # Assert setting values fails
         with self.assertRaises(TypeError):
             kdf.at[3, 'b'] = 10
+
+    def test_at_multiindex(self):
+        pdf = self.pdf.set_index('b', append=True)
+        kdf = self.kdf.set_index('b', append=True)
+
+        self.assert_eq(kdf.at[(3, 6), 'a'], pdf.at[(3, 6), 'a'])
+        self.assert_eq(kdf.at[(3,), 'a'], pdf.at[(3,), 'a'])
+        self.assert_eq(list(kdf.at[(9, 0), 'a']), list(pdf.at[(9, 0), 'a']))
+        self.assert_eq(list(kdf.at[(9,), 'a']), list(pdf.at[(9,), 'a']))
+
+        with self.assertRaises(ValueError):
+            kdf.at[3, 'a']
 
     def test_at_multiindex_columns(self):
         arrays = [np.array(['bar', 'bar', 'baz', 'baz']),
@@ -170,6 +187,9 @@ class IndexingTest(ReusedSQLTestCase):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.at['B', ('bar', 'one')], pdf.at['B', ('bar', 'one')])
+
+        with self.assertRaises(KeyError):
+            kdf.at['B', 'bar']
 
     def test_loc(self):
         kdf = self.kdf
@@ -303,29 +323,30 @@ class IndexingTest(ReusedSQLTestCase):
         # TODO?: self.assert_eq(kdf.loc[['r', 'r', 'c', 'g', 'h'], ['A']],
         # TODO?:                pdf.loc[['r', 'r', 'c', 'g', 'h'], ['A']])
 
+    @unittest.skip('TODO: should handle duplicated columns properly')
     def test_loc2d_duplicated_columns(self):
         pdf = pd.DataFrame(np.random.randn(20, 5),
                            index=list('abcdefghijklmnopqrst'),
                            columns=list('AABCD'))
-        pdf = ks.from_pandas(pdf)
+        kdf = ks.from_pandas(pdf)
 
-        # TODO?: self.assert_eq(pdf.loc[['a'], 'A'], pdf.loc[['a'], 'A'])
-        # TODO?: self.assert_eq(pdf.loc[['a'], ['A']], pdf.loc[['a'], ['A']])
-        self.assert_eq(pdf.loc[['j'], 'B'], pdf.loc[['j'], 'B'])
-        self.assert_eq(pdf.loc[['j'], ['B']], pdf.loc[['j'], ['B']])
+        # TODO?: self.assert_eq(kdf.loc[['a'], 'A'], pdf.loc[['a'], 'A'])
+        # TODO?: self.assert_eq(kdf.loc[['a'], ['A']], pdf.loc[['a'], ['A']])
+        self.assert_eq(kdf.loc[['j'], 'B'], pdf.loc[['j'], 'B'])
+        self.assert_eq(kdf.loc[['j'], ['B']], pdf.loc[['j'], ['B']])
 
-        # TODO?: self.assert_eq(pdf.loc['a':'o', 'A'], pdf.loc['a':'o', 'A'])
-        # TODO?: self.assert_eq(pdf.loc['a':'o', ['A']], pdf.loc['a':'o', ['A']])
-        self.assert_eq(pdf.loc['j':'q', 'B'], pdf.loc['j':'q', 'B'])
-        self.assert_eq(pdf.loc['j':'q', ['B']], pdf.loc['j':'q', ['B']])
+        # TODO?: self.assert_eq(kdf.loc['a':'o', 'A'], pdf.loc['a':'o', 'A'])
+        # TODO?: self.assert_eq(kdf.loc['a':'o', ['A']], pdf.loc['a':'o', ['A']])
+        self.assert_eq(kdf.loc['j':'q', 'B'], pdf.loc['j':'q', 'B'])
+        self.assert_eq(kdf.loc['j':'q', ['B']], pdf.loc['j':'q', ['B']])
 
-        # TODO?: self.assert_eq(pdf.loc['a':'o', 'B':'D'], pdf.loc['a':'o', 'B':'D'])
-        # TODO?: self.assert_eq(pdf.loc['a':'o', 'B':'D'], pdf.loc['a':'o', 'B':'D'])
-        # TODO?: self.assert_eq(pdf.loc['j':'q', 'B':'A'], pdf.loc['j':'q', 'B':'A'])
-        # TODO?: self.assert_eq(pdf.loc['j':'q', 'B':'A'], pdf.loc['j':'q', 'B':'A'])
+        # TODO?: self.assert_eq(kdf.loc['a':'o', 'B':'D'], pdf.loc['a':'o', 'B':'D'])
+        # TODO?: self.assert_eq(kdf.loc['a':'o', 'B':'D'], pdf.loc['a':'o', 'B':'D'])
+        # TODO?: self.assert_eq(kdf.loc['j':'q', 'B':'A'], pdf.loc['j':'q', 'B':'A'])
+        # TODO?: self.assert_eq(kdf.loc['j':'q', 'B':'A'], pdf.loc['j':'q', 'B':'A'])
 
-        self.assert_eq(pdf.loc[pdf.B > 0, 'B'], pdf.loc[pdf.B > 0, 'B'])
-        # TODO?: self.assert_eq(pdf.loc[pdf.B > 0, ['A', 'C']], pdf.loc[pdf.B > 0, ['A', 'C']])
+        self.assert_eq(kdf.loc[kdf.B > 0, 'B'], pdf.loc[pdf.B > 0, 'B'])
+        # TODO?: self.assert_eq(kdf.loc[kdf.B > 0, ['A', 'C']], pdf.loc[pdf.B > 0, ['A', 'C']])
 
     def test_getitem(self):
         pdf = pd.DataFrame({'A': [1, 2, 3, 4, 5, 6, 7, 8, 9],

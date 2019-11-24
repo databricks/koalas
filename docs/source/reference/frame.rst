@@ -27,6 +27,7 @@ Attributes and underlying data
 
    DataFrame.dtypes
    DataFrame.shape
+   DataFrame.ndim
    DataFrame.size
    DataFrame.select_dtypes
 
@@ -57,6 +58,8 @@ Indexing, iteration
    DataFrame.keys
    DataFrame.xs
    DataFrame.get
+   DataFrame.where
+   DataFrame.mask
 
 Binary operator functions
 -------------------------
@@ -118,6 +121,7 @@ Computations / Descriptive Stats
    DataFrame.mean
    DataFrame.min
    DataFrame.median
+   DataFrame.quantile
    DataFrame.nunique
    DataFrame.skew
    DataFrame.sum

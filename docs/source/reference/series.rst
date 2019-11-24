@@ -26,7 +26,7 @@ Attributes
    Series.dtype
    Series.dtypes
    Series.name
-   Series.schema
+   Series.spark_type
    Series.shape
    Series.size
    Series.empty
@@ -51,6 +51,7 @@ Indexing, iteration
    Series.loc
    Series.iloc
    Series.keys
+   Series.pop
    Series.xs
 
 Binary operator functions
@@ -104,6 +105,7 @@ Computations / Descriptive Stats
    Series.abs
    Series.all
    Series.any
+   Series.between
    Series.clip
    Series.corr
    Series.count
@@ -151,6 +153,8 @@ Reindexing / Selection / Label manipulation
    Series.rename
    Series.reset_index
    Series.sample
+   Series.where
+   Series.mask
    Series.truncate
 
 Missing data handling
@@ -180,6 +184,7 @@ Combining / joining / merging
 
    Series.append
    Series.replace
+   Series.update
 
 Time series-related
 -------------------
@@ -188,6 +193,7 @@ Time series-related
    :toctree: api/
 
    Series.shift
+   Series.first_valid_index
 
 Accessors
 ---------

@@ -175,8 +175,8 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             (pdf1.a - pdf2.b - pdf3.c).rename("a").sort_index(), almost=True)
 
         self.assert_eq(
-            (kdf1.a * kdf2.a * kdf3.c).sort_index(),
-            (pdf1.a * pdf2.a * pdf3.c).rename("a").sort_index(), almost=True)
+            (kdf1.a * (kdf2.a * kdf3.c)).sort_index(),
+            (pdf1.a * (pdf2.a * pdf3.c)).rename("a").sort_index(), almost=True)
 
         self.assert_eq(
             (kdf1["a"] / kdf2["a"] / kdf3["c"]).sort_index(),
@@ -202,6 +202,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             (kdf1[('x', 'a')] - kdf2[('x', 'b')] - kdf3[('y', 'c')]).sort_index(),
             (pdf1[('x', 'a')] - pdf2[('x', 'b')] - pdf3[('y', 'c')]).rename(('x', 'a'))
+            .sort_index(),
+            almost=True)
+
+        self.assert_eq(
+            (kdf1[('x', 'a')] * (kdf2[('x', 'b')] * kdf3[('y', 'c')])).sort_index(),
+            (pdf1[('x', 'a')] * (pdf2[('x', 'b')] * pdf3[('y', 'c')])).rename(('x', 'a'))
             .sort_index(),
             almost=True)
 
@@ -416,6 +422,48 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
+    def test_where(self):
+        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(repr(pdf1.where(pdf2 > 100)),
+                       repr(kdf1.where(kdf2 > 100).sort_index()))
+
+        pdf1 = pd.DataFrame({'A': [-1, -2, -3, -4, -5], 'B': [-100, -200, -300, -400, -500]})
+        pdf2 = pd.DataFrame({'A': [-10, -20, -30, -40, -50], 'B': [-5, -4, -3, -2, -1]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(repr(pdf1.where(pdf2 < -250)),
+                       repr(kdf1.where(kdf2 < -250).sort_index()))
+
+    def test_mask(self):
+        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(repr(pdf1.mask(pdf2 < 100)),
+                       repr(kdf1.mask(kdf2 < 100).sort_index()))
+
+        pdf1 = pd.DataFrame({'A': [-1, -2, -3, -4, -5], 'B': [-100, -200, -300, -400, -500]})
+        pdf2 = pd.DataFrame({'A': [-10, -20, -30, -40, -50], 'B': [-5, -4, -3, -2, -1]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(repr(pdf1.mask(pdf2 > -250)),
+                       repr(kdf1.mask(kdf2 > -250).sort_index()))
+
+    def test_multi_index_column_assignment_frame(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        pdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
+        kdf = ks.DataFrame(pdf)
+        kdf["c"] = 1
+        pdf["c"] = 1
+        self.assert_eq(repr(kdf), repr(pdf))
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
@@ -452,20 +500,20 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
         return ks.from_pandas(self.pdf2)
 
     def test_arithmetic(self):
-        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             self.kdf1.a - self.kdf2.b
 
-        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             self.kdf1.a - self.kdf2.a
 
-        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             self.kdf1["a"] - self.kdf2["a"]
 
-        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             self.kdf1 - self.kdf2
 
     def test_assignment(self):
-        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf = ks.from_pandas(self.pdf1)
             kdf['c'] = self.kdf1.a
 
@@ -477,5 +525,43 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame(pdf)
         another_kdf = ks.DataFrame(pdf)
 
-        with self.assertRaisesRegex(ValueError, "Cannot combine column argument"):
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf.loc[['viper', 'sidewinder'], ['shield']] = another_kdf.max_speed
+
+    def test_where(self):
+        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            self.assert_eq(repr(pdf1.where(pdf2 > 100)),
+                           repr(kdf1.where(kdf2 > 100).sort_index()))
+
+        pdf1 = pd.DataFrame({'A': [-1, -2, -3, -4, -5], 'B': [-100, -200, -300, -400, -500]})
+        pdf2 = pd.DataFrame({'A': [-10, -20, -30, -40, -50], 'B': [-5, -4, -3, -2, -1]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            self.assert_eq(repr(pdf1.where(pdf2 < -250)),
+                           repr(kdf1.where(kdf2 < -250).sort_index()))
+
+    def test_mask(self):
+        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            self.assert_eq(repr(pdf1.mask(pdf2 < 100)),
+                           repr(kdf1.mask(kdf2 < 100).sort_index()))
+
+        pdf1 = pd.DataFrame({'A': [-1, -2, -3, -4, -5], 'B': [-100, -200, -300, -400, -500]})
+        pdf2 = pd.DataFrame({'A': [-10, -20, -30, -40, -50], 'B': [-5, -4, -3, -2, -1]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            self.assert_eq(repr(pdf1.mask(pdf2 > -250)),
+                           repr(kdf1.mask(kdf2 > -250).sort_index()))

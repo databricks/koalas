@@ -22,6 +22,7 @@ from functools import partial
 from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
+import numpy as np
 from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
     is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
 
@@ -33,6 +34,7 @@ from databricks.koalas.config import get_option
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.series import Series, _col
@@ -49,6 +51,14 @@ class Index(IndexOpsMixin):
     :ivar _scol: Spark Column instance
     :type _scol: pyspark.Column
 
+    Parameters
+    ----------
+    data : DataFrame or list
+        Index can be created by DataFrame or list
+    dtype : dtype, default None
+        Data type to force. Only a single dtype is allowed. If None, infer
+    name : name of index, hashable
+
     See Also
     --------
     MultiIndex : A multi-level, or hierarchical, Index.
@@ -60,14 +70,28 @@ class Index(IndexOpsMixin):
 
     >>> ks.DataFrame({'a': [1, 2, 3]}, index=list('abc')).index
     Index(['a', 'b', 'c'], dtype='object')
+
+    >>> Index([1, 2, 3])
+    Int64Index([1, 2, 3], dtype='int64')
+
+    >>> Index(list('abc'))
+    Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __init__(self, kdf: DataFrame, scol: Optional[spark.Column] = None) -> None:
+    def __init__(self, data: Union[DataFrame, list], dtype=None, name=None,
+                 scol: Optional[spark.Column] = None) -> None:
+        if isinstance(data, DataFrame):
+            assert dtype is None
+            assert name is None
+            kdf = data
+        else:
+            assert scol is None
+            kdf = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
         if scol is None:
             scol = kdf._internal.index_scols[0]
         internal = kdf._internal.copy(scol=scol,
-                                      data_columns=kdf._internal.index_columns,
                                       column_index=kdf._internal.index_names,
+                                      column_scols=kdf._internal.index_scols,
                                       column_index_names=None)
         IndexOpsMixin.__init__(self, internal, kdf)
 
@@ -78,7 +102,7 @@ class Index(IndexOpsMixin):
         :param scol: the new Spark Column
         :return: the copied Index
         """
-        return Index(self._kdf, scol)
+        return Index(self._kdf, scol=scol)
 
     @property
     def size(self) -> int:
@@ -97,6 +121,38 @@ class Index(IndexOpsMixin):
         4
         """
         return len(self._kdf)  # type: ignore
+
+    def transpose(self):
+        """
+        Return the transpose, For index, It will be index itself.
+
+        Examples
+        --------
+        >>> idx = ks.Index(['a', 'b', 'c'])
+        >>> idx
+        Index(['a', 'b', 'c'], dtype='object')
+
+        >>> idx.transpose()
+        Index(['a', 'b', 'c'], dtype='object')
+
+        For MultiIndex
+
+        >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> midx.transpose()  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+        """
+        return self
+
+    T = property(transpose)
 
     def to_pandas(self) -> pd.Index:
         """
@@ -117,15 +173,72 @@ class Index(IndexOpsMixin):
         internal = self._kdf._internal.copy(
             sdf=sdf,
             index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
-            data_columns=[], column_index=[], column_index_names=None)
+            column_index=[], column_scols=[], column_index_names=None)
         return DataFrame(internal)._to_internal_pandas().index
 
     toPandas = to_pandas
+
+    def to_numpy(self, dtype=None, copy=False):
+        """
+        A NumPy ndarray representing the values in this Index or MultiIndex.
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        dtype : str or numpy.dtype, optional
+            The dtype to pass to :meth:`numpy.asarray`
+        copy : bool, default False
+            Whether to ensure that the returned value is a not a view on
+            another array. Note that ``copy=False`` does not *ensure* that
+            ``to_numpy()`` is no-copy. Rather, ``copy=True`` ensure that
+            a copy is made, even if not strictly necessary.
+
+        Returns
+        -------
+        numpy.ndarray
+
+        Examples
+        --------
+        >>> ks.Series([1, 2, 3, 4]).index.to_numpy()
+        array([0, 1, 2, 3])
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[[1, 2, 3], [4, 5, 6]]).index.to_numpy()
+        array([(1, 4), (2, 5), (3, 6)], dtype=object)
+        """
+        result = np.asarray(self.to_pandas()._values, dtype=dtype)
+        if copy:
+            result = result.copy()
+        return result
 
     @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self.to_series().spark_type
+
+    @property
+    def has_duplicates(self) -> bool:
+        """
+        If index has duplicates, return True, otherwise False.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=list('aac'))
+        >>> kdf.index.has_duplicates
+        True
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')])
+        >>> kdf.index.has_duplicates
+        False
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('aac'), list('eef')])
+        >>> kdf.index.has_duplicates
+        True
+        """
+        df = self._kdf._sdf.select(self._scol)
+        col = df.columns[0]
+
+        return df.select(F.count(col) != F.countDistinct(col)).first()[0]
 
     @property
     def name(self) -> Union[str, Tuple[str, ...]]:
@@ -150,8 +263,26 @@ class Index(IndexOpsMixin):
         if len(internal.index_map) != len(names):
             raise ValueError('Length of new names must be {}, got {}'
                              .format(len(internal.index_map), len(names)))
-        names = [name if isinstance(name, tuple) else (name,) for name in names]
+
+        names = [name if isinstance(name, (tuple, type(None))) else (name,) for name in names]
         self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
+
+    @property
+    def nlevels(self) -> int:
+        """
+        Number of levels in Index & MultiIndex.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"a": [1, 2, 3]}, index=pd.Index(['a', 'b', 'c'], name="idx"))
+        >>> kdf.index.nlevels
+        1
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')])
+        >>> kdf.index.nlevels
+        2
+        """
+        return len(self._kdf._internal.index_columns)
 
     def rename(self, name: Union[str, Tuple[str, ...]], inplace: bool = False):
         """
@@ -202,7 +333,7 @@ class Index(IndexOpsMixin):
             self._kdf._internal = internal
             return self
         else:
-            return Index(DataFrame(internal), self._scol)
+            return Index(DataFrame(internal), scol=self._scol)
 
     def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
         """
@@ -336,8 +467,8 @@ class Index(IndexOpsMixin):
         """
         if level is not None:
             self._validate_index_level(level)
-        sdf = self._kdf._sdf.select(self._scol).distinct()
-        return Index(DataFrame(self._kdf._internal.copy(sdf=sdf)), scol=self._scol)
+        sdf = self._kdf._sdf.select(self._scol.alias(self._internal.index_columns[0])).distinct()
+        return DataFrame(_InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)).index
 
     def _validate_index_level(self, level):
         """
@@ -395,142 +526,80 @@ class Index(IndexOpsMixin):
         Index(['cobra', 'viper', 'sidewinder'], dtype='object', name='snake')
         """
         internal = self._kdf._internal.copy()
-        result = Index(ks.DataFrame(internal), self._scol)
+        result = Index(ks.DataFrame(internal), scol=self._scol)
         if name:
             result.name = name
         return result
 
-    def value_counts(
-        self, normalize=False, sort=True, ascending=False, dropna=True
-    ):
+    def symmetric_difference(self, other, result_name=None, sort=None):
         """
-        Return a Series containing counts of unique values.
-        The resulting object will be in descending order so that the
-        first element is the most frequently-occurring element.
-        Excludes NA values by default.
+        Compute the symmetric difference of two Index objects.
 
         Parameters
         ----------
-        normalize : boolean, default False
-            If True then the object returned will contain the relative
-            frequencies of the unique values.
-        sort : boolean, default True
-            Sort by frequencies.
-        ascending : boolean, default False
-            Sort in ascending order.
-        dropna : boolean, default True
-            Don't include counts of NaN.
+        other : Index or array-like
+        result_name : str
+        sort : True or None, default None
+            Whether to sort the resulting index.
+            * True : Attempt to sort the result.
+            * None : Do not sort the result.
 
         Returns
         -------
-        Series
+        symmetric_difference : Index
 
-        See Also
-        --------
-        Series.count: Number of non-NA elements in a Series.
-        DataFrame.count: Number of non-NA elements in a DataFrame.
+        Notes
+        -----
+        ``symmetric_difference`` contains elements that appear in either
+        ``idx1`` or ``idx2`` but not both. Equivalent to the Index created by
+        ``idx1.difference(idx2) | idx2.difference(idx1)`` with duplicates
+        dropped.
 
         Examples
         --------
+        >>> s1 = ks.Series([1, 2, 3, 4], index=[1, 2, 3, 4])
+        >>> s2 = ks.Series([1, 2, 3, 4], index=[2, 3, 4, 5])
 
-        >>> s = ks.Series([0, 1, 2, 3, 4, 5], index=[3, 1, 2, 3, 4, np.nan])
-        >>> s.index
-        Float64Index([3.0, 1.0, 2.0, 3.0, 4.0, nan], dtype='float64')
+        >>> s1.index.symmetric_difference(s2.index)
+        Int64Index([5, 1], dtype='int64')
 
-        >>> s.index.value_counts().sort_index()
-        1.0    1
-        2.0    1
-        3.0    2
-        4.0    1
-        Name: count, dtype: int64
+        You can set name of result Index.
 
-        **sort**
+        >>> s1.index.symmetric_difference(s2.index, result_name='koalas')
+        Int64Index([5, 1], dtype='int64', name='koalas')
 
-        With `sort` set to `False`, the result wouldn't be sorted by number of count.
+        You can set sort to `True`, if you want to sort the resulting index.
 
-        >>> s.index.value_counts(sort=True).sort_index()
-        1.0    1
-        2.0    1
-        3.0    2
-        4.0    1
-        Name: count, dtype: int64
+        >>> s1.index.symmetric_difference(s2.index, sort=True)
+        Int64Index([1, 5], dtype='int64')
 
-        **normalize**
+        You can also use the ``^`` operator:
 
-        With `normalize` set to `True`, returns the relative frequency by
-        dividing all values by the sum of values.
-
-        >>> s.index.value_counts(normalize=True).sort_index()
-        1.0    0.2
-        2.0    0.2
-        3.0    0.4
-        4.0    0.2
-        Name: count, dtype: float64
-
-        **dropna**
-
-        With `dropna` set to `False` we can also see NaN index values.
-
-        >>> s.index.value_counts(dropna=False).sort_index()  # doctest: +SKIP
-        1.0    1
-        2.0    1
-        3.0    2
-        4.0    1
-        NaN    1
-        Name: count, dtype: int64
-
-        Also support for MultiIndex.
-
-        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
-        ...                       ['speed', 'weight', 'length']],
-        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
-        ...                       [1, 1, 1, 1, 1, 2, 1, 2, 2]])
-        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
-        >>> s.index  # doctest: +SKIP
-        MultiIndex([(  'lama', 'weight'),
-                    (  'lama', 'weight'),
-                    (  'lama', 'weight'),
-                    (   'cow', 'weight'),
-                    (   'cow', 'weight'),
-                    (   'cow', 'length'),
-                    ('falcon', 'weight'),
-                    ('falcon', 'length'),
-                    ('falcon', 'length')],
-                   )
-
-        >>> s.index.value_counts().sort_index()
-        (cow, length)       1
-        (cow, weight)       2
-        (falcon, length)    2
-        (falcon, weight)    1
-        (lama, weight)      3
-        Name: count, dtype: int64
-
-        >>> s.index.value_counts(normalize=True).sort_index()
-        (cow, length)       0.111111
-        (cow, weight)       0.222222
-        (falcon, length)    0.222222
-        (falcon, weight)    0.111111
-        (lama, weight)      0.333333
-        Name: count, dtype: float64
+        >>> s1.index ^ s2.index
+        Int64Index([5, 1], dtype='int64')
         """
-        idx_name = SPARK_INDEX_NAME_FORMAT(0)
-        sdf = self._kdf._sdf
-        sdf_count = sdf.groupBy(self._scol.alias(idx_name)).count()
+        if type(self) != type(other):
+            raise NotImplementedError(
+                "Doesn't support symmetric_difference between Index & MultiIndex for now")
 
-        if dropna:
-            sdf_count = sdf_count.dropna()
+        sdf_self = self._kdf._sdf.select(self._internal.index_scols)
+        sdf_other = other._kdf._sdf.select(other._internal.index_scols)
+
+        sdf_symdiff = sdf_self.union(sdf_other) \
+                              .subtract(sdf_self.intersect(sdf_other))
+
         if sort:
-            sdf_count = sdf_count.sort('count', ascending=ascending)
-        if normalize:
-            sdf_count = sdf_count.select(
-                idx_name,
-                (sdf_count['count'] / sdf_count.select(F.sum(sdf_count['count']))
-                                               .first()[0]).alias('count'))
+            sdf_symdiff = sdf_symdiff.sort(self._internal.index_scols)
 
-        internal = _InternalFrame(sdf=sdf_count, index_map=[(idx_name, None)])
+        internal = _InternalFrame(
+            sdf=sdf_symdiff,
+            index_map=self._internal.index_map)
+        result = Index(DataFrame(internal))
 
-        return _col(DataFrame(internal))
+        if result_name:
+            result.name = result_name
+
+        return result
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
@@ -558,6 +627,9 @@ class Index(IndexOpsMixin):
 
     def __iter__(self):
         return _MissingPandasLikeIndex.__iter__(self)
+
+    def __xor__(self, other):
+        return self.symmetric_difference(other)
 
 
 class MultiIndex(Index):
@@ -604,6 +676,73 @@ class MultiIndex(Index):
     def all(self, *args, **kwargs):
         raise TypeError("cannot perform all with this index type: MultiIndex")
 
+    @staticmethod
+    def from_tuples(tuples, sortorder=None, names=None):
+        """
+        Convert list of tuples to MultiIndex.
+
+        Parameters
+        ----------
+        tuples : list / sequence of tuple-likes
+            Each tuple is the index of one row/column.
+        sortorder : int or None
+            Level of sortedness (must be lexicographically sorted by that level).
+        names : list / sequence of str, optional
+            Names for the levels in the index.
+
+        Returns
+        -------
+        index : MultiIndex
+
+        Examples
+        --------
+
+        >>> tuples = [(1, 'red'), (1, 'blue'),
+        ...           (2, 'red'), (2, 'blue')]
+        >>> ks.MultiIndex.from_tuples(tuples, names=('number', 'color'))  # doctest: +SKIP
+        MultiIndex([(1,  'red'),
+                    (1, 'blue'),
+                    (2,  'red'),
+                    (2, 'blue')],
+                   names=['number', 'color'])
+        """
+        return DataFrame(index=pd.MultiIndex.from_tuples(
+            tuples=tuples, sortorder=sortorder, names=names)).index
+
+    @staticmethod
+    def from_arrays(arrays, sortorder=None, names=None):
+        """
+        Convert arrays to MultiIndex.
+
+        Parameters
+        ----------
+        arrays: list / sequence of array-likes
+            Each array-like gives one level’s value for each data point. len(arrays)
+            is the number of levels.
+        sortorder: int or None
+            Level of sortedness (must be lexicographically sorted by that level).
+        names: list / sequence of str, optional
+            Names for the levels in the index.
+
+        Returns
+        -------
+        index: MultiIndex
+
+        Examples
+        --------
+
+        >>> arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
+        >>> ks.MultiIndex.from_arrays(arrays, names=('number', 'color'))  # doctest: +SKIP
+        MultiIndex([(1,  'red'),
+                    (1, 'blue'),
+                    (2,  'red'),
+                    (2, 'blue')],
+                   names=['number', 'color'])
+        """
+        return DataFrame(index=pd.MultiIndex.from_arrays(
+            arrays=arrays, sortorder=sortorder, names=names
+        )).index
+
     @property
     def name(self) -> str:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
@@ -648,6 +787,94 @@ class MultiIndex(Index):
         """
         internal = self._kdf._internal.copy()
         result = MultiIndex(ks.DataFrame(internal))
+        return result
+
+    def symmetric_difference(self, other, result_name=None, sort=None):
+        """
+        Compute the symmetric difference of two MultiIndex objects.
+
+        Parameters
+        ----------
+        other : Index or array-like
+        result_name : list
+        sort : True or None, default None
+            Whether to sort the resulting index.
+            * True : Attempt to sort the result.
+            * None : Do not sort the result.
+
+        Returns
+        -------
+        symmetric_difference : MiltiIndex
+
+        Notes
+        -----
+        ``symmetric_difference`` contains elements that appear in either
+        ``idx1`` or ``idx2`` but not both. Equivalent to the Index created by
+        ``idx1.difference(idx2) | idx2.difference(idx1)`` with duplicates
+        dropped.
+
+        Examples
+        --------
+        >>> midx1 = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                        ['speed', 'weight', 'length']],
+        ...                       [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                        [0, 0, 0, 0, 1, 2, 0, 1, 2]])
+        >>> midx2 = pd.MultiIndex([['koalas', 'cow', 'falcon'],
+        ...                        ['speed', 'weight', 'length']],
+        ...                       [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                        [0, 0, 0, 0, 1, 2, 0, 1, 2]])
+        >>> s1 = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...                index=midx1)
+        >>> s2 = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...              index=midx2)
+
+        >>> s1.index.symmetric_difference(s2.index)  # doctest: +SKIP
+        MultiIndex([('koalas', 'speed'),
+                    (  'lama', 'speed')],
+                   )
+
+        You can set names of result Index.
+
+        >>> s1.index.symmetric_difference(s2.index, result_name=['a', 'b'])  # doctest: +SKIP
+        MultiIndex([('koalas', 'speed'),
+                    (  'lama', 'speed')],
+                   names=['a', 'b'])
+
+        You can set sort to `True`, if you want to sort the resulting index.
+
+        >>> s1.index.symmetric_difference(s2.index, sort=True)  # doctest: +SKIP
+        MultiIndex([('koalas', 'speed'),
+                    (  'lama', 'speed')],
+                   )
+
+        You can also use the ``^`` operator:
+
+        >>> s1.index ^ s2.index  # doctest: +SKIP
+        MultiIndex([('koalas', 'speed'),
+                    (  'lama', 'speed')],
+                   )
+        """
+        if type(self) != type(other):
+            raise NotImplementedError(
+                "Doesn't support symmetric_difference between Index & MultiIndex for now")
+
+        sdf_self = self._kdf._sdf.select(self._internal.index_scols)
+        sdf_other = other._kdf._sdf.select(other._internal.index_scols)
+
+        sdf_symdiff = sdf_self.union(sdf_other) \
+                              .subtract(sdf_self.intersect(sdf_other))
+
+        if sort:
+            sdf_symdiff = sdf_symdiff.sort(self._internal.index_scols)
+
+        internal = _InternalFrame(
+            sdf=sdf_symdiff,
+            index_map=self._internal.index_map)
+        result = MultiIndex(DataFrame(internal))
+
+        if result_name:
+            result.names = result_name
+
         return result
 
     def __getattr__(self, item: str) -> Any:

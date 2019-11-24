@@ -19,6 +19,7 @@ from collections import defaultdict
 from distutils.version import LooseVersion
 import inspect
 from io import BytesIO
+from datetime import datetime, timedelta
 
 import matplotlib
 matplotlib.use('agg')
@@ -31,9 +32,20 @@ from databricks.koalas import Series
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
+from databricks.koalas.config import set_option, reset_option
 
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
+
+    @classmethod
+    def setUpClass(cls):
+        super(SeriesTest, cls).setUpClass()
+        set_option("compute.ops_on_diff_frames", True)
+
+    @classmethod
+    def tearDownClass(cls):
+        reset_option("compute.ops_on_diff_frames")
+        super(SeriesTest, cls).tearDownClass()
 
     @property
     def pser(self):
@@ -164,6 +176,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                "as an NumPy array, use 'to_numpy()' instead.")
         with self.assertRaises(NotImplementedError, msg=msg):
             kser.values
+
+    def test_or(self):
+        pdf = pd.DataFrame({
+            'left':  [True, False, True, False, np.nan, np.nan, True, False, np.nan],
+            'right': [True, False, False, True, True, False, np.nan, np.nan, np.nan]
+        })
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf['left'] | pdf['right'],
+                       kdf['left'] | kdf['right'])
+
+    def test_and(self):
+        pdf = pd.DataFrame({
+            'left':  [True, False, True, False, np.nan, np.nan, True, False, np.nan],
+            'right': [True, False, False, True, True, False, np.nan, np.nan, np.nan]
+        })
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf['left'] & pdf['right'],
+                       kdf['left'] & kdf['right'])
 
     def test_to_numpy(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
@@ -422,18 +454,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([1, 2, 2, None, None])
         kser = ks.from_pandas(pser)
         self.assertEqual(False, kser.is_unique)
+        self.assertEqual(False, (kser + 1).is_unique)
 
         pser = pd.Series([1, None, None])
         kser = ks.from_pandas(pser)
         self.assertEqual(False, kser.is_unique)
+        self.assertEqual(False, (kser + 1).is_unique)
 
         pser = pd.Series([1])
         kser = ks.from_pandas(pser)
         self.assertEqual(pser.is_unique, kser.is_unique)
+        self.assertEqual((pser + 1).is_unique, (kser + 1).is_unique)
 
         pser = pd.Series([1, 1, 1])
         kser = ks.from_pandas(pser)
         self.assertEqual(pser.is_unique, kser.is_unique)
+        self.assertEqual((pser + 1).is_unique, (kser + 1).is_unique)
 
     def test_to_list(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
@@ -471,6 +507,15 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             repr(kser.map(d)),
             repr(pser.map(d).rename(0)))
 
+        def tomorrow(date) -> datetime:
+            return date + timedelta(days=1)
+
+        pser = pd.Series([datetime(2019, 10, 24)])
+        kser = ks.from_pandas(pser)
+        self.assertEqual(
+            repr(kser.map(tomorrow)),
+            repr(pser.map(tomorrow).rename(0)))
+
     def test_add_prefix(self):
         pser = pd.Series([1, 2, 3, 4], name='0')
         kser = ks.from_pandas(pser)
@@ -491,8 +536,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.add_suffix('_item'), kser.add_suffix('_item'))
 
-    def test_pandas_wrapser(self):
-        # This test checkser the return column name of `isna()`. Previously it returned the column
+    def test_pandas_wraps(self):
+        # This test checks the return column name of `isna()`. Previously it returned the column
         # name as its internal expression which contains, for instance, '`f(x)`' in the middle of
         # column name which currently cannot be recognized in PySpark.
         @ks.pandas_wraps
@@ -696,6 +741,28 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.drop(('lama', 'speed', 'x'))
         self.assert_eq(kser.drop(('lama', 'speed', 'x'), level=1), kser)
 
+    def test_pop(self):
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+                         index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(kser.pop(('lama', 'speed')), pser.pop(('lama', 'speed')))
+
+        msg = "'key' should be string or tuple that contains strings"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.pop(0)
+        msg = ("'key' should have index names as only strings "
+               "or a tuple that contain index names as only strings")
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.pop(('lama', 0))
+        msg = r"'Key length \(3\) exceeds index depth \(2\)'"
+        with self.assertRaisesRegex(KeyError, msg):
+            kser.pop(('lama', 'speed', 'x'))
+
     def test_replace(self):
         pser = pd.Series([10, 20, 15, 30, 45], name='x')
         kser = ks.Series(pser)
@@ -741,6 +808,48 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser.drop_duplicates().sort_values(),
                        kser.drop_duplicates().sort_values())
+
+    def test_update(self):
+        pser = pd.Series([10, 20, 15, 30, 45], name='x')
+        kser = ks.Series(pser)
+
+        msg = "'other' must be a Series"
+        with self.assertRaisesRegex(ValueError, msg):
+            kser.update(10)
+
+    def test_where(self):
+        pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
+        pser2 = pd.Series([100, 200, 300, 400, 500], name=0)
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(repr(pser1.where(pser2 > 100)),
+                       repr(kser1.where(kser2 > 100).sort_index()))
+
+        pser1 = pd.Series([-1, -2, -3, -4, -5], name=0)
+        pser2 = pd.Series([-100, -200, -300, -400, -500], name=0)
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(repr(pser1.where(pser2 < -250)),
+                       repr(kser1.where(kser2 < -250).sort_index()))
+
+    def test_mask(self):
+        pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
+        pser2 = pd.Series([100, 200, 300, 400, 500], name=0)
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(repr(pser1.mask(pser2 > 100)),
+                       repr(kser1.mask(kser2 > 100).sort_index()))
+
+        pser1 = pd.Series([-1, -2, -3, -4, -5], name=0)
+        pser2 = pd.Series([-100, -200, -300, -400, -500], name=0)
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(repr(pser1.mask(pser2 < -250)),
+                       repr(kser1.mask(kser2 < -250).sort_index()))
 
     def test_truncate(self):
         pser1 = pd.Series([10, 20, 30, 40, 50, 60, 70], index=[1, 2, 3, 4, 5, 6, 7])

@@ -35,9 +35,9 @@ class ReshapeTest(ReusedSQLTestCase):
                           pd.DataFrame({'a': [1, 2, 3, 4, 4, 3, 2, 1],
                                         # 'b': pd.Categorical(list('abcdabcd')),
                                         'b': list('abcdabcd')})]:
-            kdf_or_ks = ks.from_pandas(pdf_or_ps)
+            kdf_or_kser = ks.from_pandas(pdf_or_ps)
 
-            self.assert_eq(ks.get_dummies(kdf_or_ks), pd.get_dummies(pdf_or_ps), almost=True)
+            self.assert_eq(ks.get_dummies(kdf_or_kser), pd.get_dummies(pdf_or_ps), almost=True)
 
     def test_get_dummies_object(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 4, 3, 2, 1],

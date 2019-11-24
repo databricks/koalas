@@ -219,8 +219,8 @@ class GroupBy(object):
         else:
             index_map = None
         return _InternalFrame(sdf=sdf,
-                              data_columns=data_columns,
                               column_index=column_index,
+                              column_scols=[scol_for(sdf, col) for col in data_columns],
                               index_map=index_map)
 
     def count(self):
@@ -493,10 +493,10 @@ class GroupBy(object):
         else:
             name = 'count'
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[name],
                                   index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
-                                             for i, s in enumerate(groupkeys)])
+                                             for i, s in enumerate(groupkeys)],
+                                  column_scols=[scol_for(sdf, name)])
         return _col(DataFrame(internal))
 
     def diff(self, periods=1):
@@ -702,7 +702,7 @@ class GroupBy(object):
             #
             # This is a bit hacky. Maybe we should fix it.
 
-            return_type = self._ks._internal.spark_type_for(self._ks._internal.column_index[0])
+            return_type = self._kser._internal.spark_type_for(self._kser._internal.column_index[0])
 
             @pandas_udf(returnType=return_type)
             def negative_check(s):
@@ -893,7 +893,9 @@ class GroupBy(object):
 
         if should_infer_schema:
             # If schema is inferred, we can restore indexes too.
-            internal = kdf._internal.copy(sdf=sdf)
+            internal = kdf._internal.copy(sdf=sdf,
+                                          column_scols=[scol_for(sdf, col)
+                                                        for col in kdf._internal.data_columns])
         else:
             # Otherwise, it loses index.
             internal = _InternalFrame(sdf=sdf)
@@ -945,7 +947,9 @@ class GroupBy(object):
 
         sdf = self._spark_group_map_apply(
             pandas_filter, data_schema, retain_index=True)
-        return DataFrame(self._kdf._internal.copy(sdf=sdf))
+        return DataFrame(self._kdf._internal.copy(
+            sdf=sdf,
+            column_scols=[scol_for(sdf, col) for col in self._kdf._internal.data_columns]))
 
     def _spark_group_map_apply(self, func, return_schema, retain_index):
         index_columns = self._kdf._internal.index_columns
@@ -1048,7 +1052,7 @@ class GroupBy(object):
         DataFrame with ranking of values within each group
 
         Examples
-        -------
+        --------
 
         >>> df = ks.DataFrame({
         ...     'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
@@ -1139,13 +1143,13 @@ class GroupBy(object):
         index = self._kdf._internal.index_columns[0]
 
         stat_exprs = []
-        for ks in self._agg_columns:
-            name = ks._internal.data_columns[0]
+        for kser in self._agg_columns:
+            name = kser._internal.data_columns[0]
 
             if skipna:
-                order_column = Column(ks._scol._jc.desc_nulls_last())
+                order_column = Column(kser._scol._jc.desc_nulls_last())
             else:
-                order_column = Column(ks._scol._jc.desc_nulls_first())
+                order_column = Column(kser._scol._jc.desc_nulls_first())
             window = Window.partitionBy(groupkey_cols).orderBy(order_column)
             sdf = sdf.withColumn(name,
                                  F.when(F.row_number().over(window) == 1, scol_for(sdf, index))
@@ -1153,13 +1157,13 @@ class GroupBy(object):
             stat_exprs.append(F.max(scol_for(sdf, name)).alias(name))
         sdf = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[ks._internal.data_columns[0]
-                                                for ks in self._agg_columns],
-                                  column_index=[ks._internal.column_index[0]
-                                                for ks in self._agg_columns],
                                   index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
-                                             for i, s in enumerate(groupkeys)])
+                                             for i, s in enumerate(groupkeys)],
+                                  column_index=[kser._internal.column_index[0]
+                                                for kser in self._agg_columns],
+                                  column_scols=[scol_for(sdf, kser._internal.data_columns[0])
+                                                for kser in self._agg_columns])
         return DataFrame(internal)
 
     # TODO: add axis parameter
@@ -1209,13 +1213,13 @@ class GroupBy(object):
         index = self._kdf._internal.index_columns[0]
 
         stat_exprs = []
-        for ks in self._agg_columns:
-            name = ks._internal.data_columns[0]
+        for kser in self._agg_columns:
+            name = kser._internal.data_columns[0]
 
             if skipna:
-                order_column = Column(ks._scol._jc.asc_nulls_last())
+                order_column = Column(kser._scol._jc.asc_nulls_last())
             else:
-                order_column = Column(ks._scol._jc.asc_nulls_first())
+                order_column = Column(kser._scol._jc.asc_nulls_first())
             window = Window.partitionBy(groupkey_cols).orderBy(order_column)
             sdf = sdf.withColumn(name,
                                  F.when(F.row_number().over(window) == 1, scol_for(sdf, index))
@@ -1223,13 +1227,13 @@ class GroupBy(object):
             stat_exprs.append(F.max(scol_for(sdf, name)).alias(name))
         sdf = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[ks._internal.data_columns[0]
-                                                for ks in self._agg_columns],
-                                  column_index=[ks._internal.column_index[0]
-                                                for ks in self._agg_columns],
                                   index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
-                                             for i, s in enumerate(groupkeys)])
+                                             for i, s in enumerate(groupkeys)],
+                                  column_index=[kser._internal.column_index[0]
+                                                for kser in self._agg_columns],
+                                  column_scols=[scol_for(sdf, kser._internal.data_columns[0])
+                                                for kser in self._agg_columns])
         return DataFrame(internal)
 
     def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
@@ -1581,7 +1585,9 @@ class GroupBy(object):
             sdf = self._spark_group_map_apply(
                 pandas_transform, return_schema, retain_index=True)
             # If schema is inferred, we can restore indexes too.
-            internal = kdf._internal.copy(sdf=sdf)
+            internal = kdf._internal.copy(sdf=sdf,
+                                          column_scols=[scol_for(sdf, col)
+                                                        for col in kdf._internal.data_columns])
         else:
             return_type = _infer_return_type(func).tpe
             data_columns = self._kdf._internal.data_columns
@@ -1648,11 +1654,54 @@ class GroupBy(object):
                  F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0))
         return self._reduce_for_stat_function(stat_function, only_numeric=False)
 
-    def rolling(self, *args, **kwargs):
-        return RollingGroupby(self)
+    def rolling(self, window, min_periods=None):
+        """
+        Return an rolling grouper, providing rolling
+        functionality per group.
 
-    def expanding(self, *args, **kwargs):
-        return ExpandingGroupby(self)
+        .. note:: 'min_periods' in Koalas works as a fixed window size unlike pandas.
+        Unlike pandas, NA is also counted as the period. This might be changed
+        in the near future.
+
+        Parameters
+        ----------
+        window : int, or offset
+            Size of the moving window.
+            This is the number of observations used for calculating the statistic.
+            Each window will be a fixed size.
+
+        min_periods : int, default 1
+            Minimum number of observations in window required to have a value
+            (otherwise result is NA).
+
+        See Also
+        --------
+        Series.groupby
+        DataFrame.groupby
+        """
+        return RollingGroupby(self, self._groupkeys, window, min_periods=min_periods)
+
+    def expanding(self, min_periods=1):
+        """
+        Return an expanding grouper, providing expanding
+        functionality per group.
+
+        .. note:: 'min_periods' in Koalas works as a fixed window size unlike pandas.
+        Unlike pandas, NA is also counted as the period. This might be changed
+        in the near future.
+
+        Parameters
+        ----------
+        min_periods : int, default 1
+            Minimum number of observations in window required to have a value
+            (otherwise result is NA).
+
+        See Also
+        --------
+        Series.groupby
+        DataFrame.groupby
+        """
+        return ExpandingGroupby(self, self._groupkeys, min_periods=min_periods)
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
         groupkeys = self._groupkeys
@@ -1664,20 +1713,20 @@ class GroupBy(object):
         column_index = []
         if len(self._agg_columns) > 0:
             stat_exprs = []
-            for ks in self._agg_columns:
-                spark_type = ks.spark_type
-                name = ks._internal.data_columns[0]
-                idx = ks._internal.column_index[0]
+            for kser in self._agg_columns:
+                spark_type = kser.spark_type
+                name = kser._internal.data_columns[0]
+                idx = kser._internal.column_index[0]
                 # TODO: we should have a function that takes dataframes and converts the numeric
                 # types. Converting the NaNs is used in a few places, it should be in utils.
                 # Special handle floating point types because Spark's count treats nan as a valid
                 # value, whereas Pandas count doesn't include nan.
                 if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
-                    stat_exprs.append(sfun(F.nanvl(ks._scol, F.lit(None))).alias(name))
+                    stat_exprs.append(sfun(F.nanvl(kser._scol, F.lit(None))).alias(name))
                     data_columns.append(name)
                     column_index.append(idx)
                 elif isinstance(spark_type, NumericType) or not only_numeric:
-                    stat_exprs.append(sfun(ks._scol).alias(name))
+                    stat_exprs.append(sfun(kser._scol).alias(name))
                     data_columns.append(name)
                     column_index.append(idx)
             sdf = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
@@ -1689,8 +1738,8 @@ class GroupBy(object):
                                   index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
                                              for i, s in enumerate(groupkeys)],
-                                  data_columns=data_columns,
                                   column_index=column_index,
+                                  column_scols=[scol_for(sdf, col) for col in data_columns],
                                   column_index_names=self._kdf._internal.column_index_names)
         kdf = DataFrame(internal)
         if not self._as_index:
@@ -1748,8 +1797,9 @@ class DataFrameGroupBy(GroupBy):
 
         sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
         internal = kdf._internal.copy(sdf=sdf,
-                                      data_columns=[c._internal.data_columns[0] for c in applied],
-                                      column_index=[c._internal.column_index[0] for c in applied])
+                                      column_index=[c._internal.column_index[0] for c in applied],
+                                      column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                    for c in applied])
         return DataFrame(internal)
 
     def _rank(self, *args, **kwargs):
@@ -1762,8 +1812,9 @@ class DataFrameGroupBy(GroupBy):
 
         sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
         internal = kdf._internal.copy(sdf=sdf,
-                                      data_columns=[c._internal.data_columns[0] for c in applied],
-                                      column_index=[c._internal.column_index[0] for c in applied])
+                                      column_index=[c._internal.column_index[0] for c in applied],
+                                      column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                    for c in applied])
         return DataFrame(internal)
 
     def _cum(self, func):
@@ -1787,8 +1838,9 @@ class DataFrameGroupBy(GroupBy):
         sdf = kdf._sdf.select(
             kdf._internal.index_scols + [c._scol for c in applied])
         internal = kdf._internal.copy(sdf=sdf,
-                                      data_columns=[c._internal.data_columns[0] for c in applied],
-                                      column_index=[c._internal.column_index[0] for c in applied])
+                                      column_index=[c._internal.column_index[0] for c in applied],
+                                      column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                    for c in applied])
         return DataFrame(internal)
 
     def _fillna(self, *args, **kwargs):
@@ -1801,8 +1853,9 @@ class DataFrameGroupBy(GroupBy):
 
         sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
         internal = kdf._internal.copy(sdf=sdf,
-                                      data_columns=[c._internal.data_columns[0] for c in applied],
-                                      column_index=[c._internal.column_index[0] for c in applied])
+                                      column_index=[c._internal.column_index[0] for c in applied],
+                                      column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                    for c in applied])
         return DataFrame(internal)
 
     def _shift(self, periods, fill_value):
@@ -1814,15 +1867,16 @@ class DataFrameGroupBy(GroupBy):
 
         sdf = kdf._sdf.select(kdf._internal.index_scols + [c._scol for c in applied])
         internal = kdf._internal.copy(sdf=sdf,
-                                      data_columns=[c._internal.data_columns[0] for c in applied],
-                                      column_index=[c._internal.column_index[0] for c in applied])
+                                      column_index=[c._internal.column_index[0] for c in applied],
+                                      column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                    for c in applied])
         return DataFrame(internal)
 
 
 class SeriesGroupBy(GroupBy):
 
-    def __init__(self, ks: Series, by: List[Series], as_index: bool = True):
-        self._ks = ks
+    def __init__(self, kser: Series, by: List[Series], as_index: bool = True):
+        self._kser = kser
         self._groupkeys = by
         if not as_index:
             raise TypeError('as_index=False only valid with DataFrame')
@@ -1840,31 +1894,31 @@ class SeriesGroupBy(GroupBy):
 
     def _diff(self, *args, **kwargs):
         groupkey_scols = [s._scol for s in self._groupkeys]
-        return Series._diff(self._ks, *args, **kwargs, part_cols=groupkey_scols)
+        return Series._diff(self._kser, *args, **kwargs, part_cols=groupkey_scols)
 
     def _cum(self, func):
         groupkey_scols = [s._scol for s in self._groupkeys]
-        return Series._cum(self._ks, func, True, part_cols=groupkey_scols)
+        return Series._cum(self._kser, func, True, part_cols=groupkey_scols)
 
     def _rank(self, *args, **kwargs):
         groupkey_scols = [s._scol for s in self._groupkeys]
-        return Series._rank(self._ks, *args, **kwargs, part_cols=groupkey_scols)
+        return Series._rank(self._kser, *args, **kwargs, part_cols=groupkey_scols)
 
     def _fillna(self, *args, **kwargs):
         groupkey_scols = [s._scol for s in self._groupkeys]
-        return Series._fillna(self._ks, *args, **kwargs, part_cols=groupkey_scols)
+        return Series._fillna(self._kser, *args, **kwargs, part_cols=groupkey_scols)
 
     def _shift(self, periods, fill_value):
         groupkey_scols = [s._scol for s in self._groupkeys]
-        return Series._shift(self._ks, periods, fill_value, part_cols=groupkey_scols)
+        return Series._shift(self._kser, periods, fill_value, part_cols=groupkey_scols)
 
     @property
     def _kdf(self) -> DataFrame:
-        return self._ks._kdf
+        return self._kser._kdf
 
     @property
     def _agg_columns(self):
-        return [self._ks]
+        return [self._kser]
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
         return _col(super(SeriesGroupBy, self)._reduce_for_stat_function(sfun, only_numeric))
@@ -1937,11 +1991,11 @@ class SeriesGroupBy(GroupBy):
         window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name))
         sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[name],
                                   index_map=([(s._internal.data_columns[0],
                                                s._internal.column_index[0])
                                               for s in self._groupkeys]
-                                             + self._kdf._internal.index_map))
+                                             + self._kdf._internal.index_map),
+                                  column_scols=[scol_for(sdf, name)])
         return _col(DataFrame(internal))
 
     # TODO: add keep parameter
@@ -1983,11 +2037,11 @@ class SeriesGroupBy(GroupBy):
         window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name).desc())
         sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[name],
                                   index_map=([(s._internal.data_columns[0],
                                                s._internal.column_index[0])
                                               for s in self._groupkeys]
-                                             + self._kdf._internal.index_map))
+                                             + self._kdf._internal.index_map),
+                                  column_scols=[scol_for(sdf, name)])
         return _col(DataFrame(internal))
 
     # TODO: add bins, normalize parameter
@@ -2045,10 +2099,10 @@ class SeriesGroupBy(GroupBy):
                 sdf = sdf.orderBy(F.col(agg_column).desc())
 
         internal = _InternalFrame(sdf=sdf,
-                                  data_columns=[agg_column],
                                   index_map=[(SPARK_INDEX_NAME_FORMAT(i),
                                               s._internal.column_index[0])
-                                             for i, s in enumerate(groupkeys)])
+                                             for i, s in enumerate(groupkeys)],
+                                  column_scols=[scol_for(sdf, agg_column)])
         return _col(DataFrame(internal))
 
 
