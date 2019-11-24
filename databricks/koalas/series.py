@@ -4258,6 +4258,60 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return _col(DataFrame(internal))
 
+    def pct_change(self, periods=1):
+        """
+        Percentage change between the current and a prior element.
+
+        .. note:: the current implementation of this API uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        periods : int, default 1
+            Periods to shift for forming percent change.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+
+        >>> kser = ks.Series([90, 91, 85])
+        >>> kser
+        0    90
+        1    91
+        2    85
+        Name: 0, dtype: int64
+
+        >>> kser.pct_change()
+        0         NaN
+        1    0.011111
+        2   -0.065934
+        Name: 0, dtype: float64
+
+        >>> kser.pct_change(periods=2)
+        0         NaN
+        1         NaN
+        2   -0.055556
+        Name: 0, dtype: float64
+        """
+        sdf = self._internal._sdf
+        window = Window.orderBy(self._internal.index_columns).rowsBetween(-periods, -periods)
+
+        for column_name in self._internal.data_columns:
+            prev_row = F.lag(F.col(column_name), periods).over(window)
+            sdf = sdf.withColumn(column_name, (F.col(column_name) - prev_row) / prev_row)
+
+        internal = _InternalFrame(
+            sdf=sdf,
+            index_map=self._internal.index_map,
+            column_index=self._internal.column_index)
+
+        return Series(internal)
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns
