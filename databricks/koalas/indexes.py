@@ -36,6 +36,7 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
 from databricks.koalas.utils import name_like_string
+from databricks.koalas.internal import _InternalFrame
 
 
 class Index(IndexOpsMixin):
@@ -367,8 +368,9 @@ class Index(IndexOpsMixin):
                    )
         """
         kdf = self._kdf.copy()
-        sdf = kdf._internal.sdf.dropna()
-        kdf._internal = kdf._internal.copy(sdf=sdf)
+        sdf = kdf._internal.sdf.select(self._internal.index_scols).dropna()
+        internal = _InternalFrame(sdf=sdf, index_map=self._internal.index_map)
+        kdf = DataFrame(internal)
         return Index(kdf) if type(self) == Index else MultiIndex(kdf)
 
     def unique(self, level=None):
