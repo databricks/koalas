@@ -122,26 +122,26 @@ class AtIndexer(object):
     >>> kdf.at[5, 'B']
     array([ 4, 20])
     """
-    def __init__(self, df_or_s):
+    def __init__(self, kdf_or_kser):
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series
-        assert isinstance(df_or_s, (DataFrame, Series)), \
-            'unexpected argument type: {}'.format(type(df_or_s))
-        self._df_or_s = df_or_s
+        assert isinstance(kdf_or_kser, (DataFrame, Series)), \
+            'unexpected argument type: {}'.format(type(kdf_or_kser))
+        self._kdf_or_kser = kdf_or_kser
 
     @property
     def _is_df(self):
         from databricks.koalas.frame import DataFrame
-        return isinstance(self._df_or_s, DataFrame)
+        return isinstance(self._kdf_or_kser, DataFrame)
 
     @property
     def _is_series(self):
         from databricks.koalas.series import Series
-        return isinstance(self._df_or_s, Series)
+        return isinstance(self._kdf_or_kser, Series)
 
     @property
     def _internal(self):
-        return self._df_or_s._internal
+        return self._kdf_or_kser._internal
 
     def __getitem__(self, key):
         if self._is_df:
@@ -149,7 +149,7 @@ class AtIndexer(object):
                 raise TypeError("Use DataFrame.at like .at[row_index, column_name]")
             row_sel, col_sel = key
         else:
-            assert self._is_series, type(self._df_or_s)
+            assert self._is_series, type(self._kdf_or_kser)
             if not isinstance(key, str) and len(key) != 1:
                 raise TypeError("Use Series.at like .at[row_index]")
             row_sel = key
@@ -357,19 +357,19 @@ class LocIndexer(object):
     9          7       8
     """
 
-    def __init__(self, df_or_s):
+    def __init__(self, kdf_or_kser):
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series
-        assert isinstance(df_or_s, (DataFrame, Series)), \
-            'unexpected argument type: {}'.format(type(df_or_s))
-        if isinstance(df_or_s, DataFrame):
-            self._kdf = df_or_s
-            self._ks = None
+        assert isinstance(kdf_or_kser, (DataFrame, Series)), \
+            'unexpected argument type: {}'.format(type(kdf_or_kser))
+        if isinstance(kdf_or_kser, DataFrame):
+            self._kdf = kdf_or_kser
+            self._kser = None
         else:
             # If df_or_col is Column, store both the DataFrame anchored to the Column and
             # the Column itself.
-            self._kdf = df_or_s._kdf
-            self._ks = df_or_s
+            self._kdf = kdf_or_kser._kdf
+            self._kser = kdf_or_kser
 
     def __getitem__(self, key):
         from databricks.koalas.frame import DataFrame
@@ -381,7 +381,7 @@ class LocIndexer(object):
                 pandas_function=".loc[..., ...]",
                 spark_target_function="select, where")
 
-        rows_sel, cols_sel = _unfold(key, self._ks)
+        rows_sel, cols_sel = _unfold(key, self._kser)
 
         sdf = self._kdf._sdf
         if isinstance(rows_sel, Series):
@@ -665,19 +665,19 @@ class ILocIndexer(object):
     2  1000  3000
     """
 
-    def __init__(self, df_or_s):
+    def __init__(self, kdf_or_kser):
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series
-        assert isinstance(df_or_s, (DataFrame, Series)), \
-            'unexpected argument type: {}'.format(type(df_or_s))
-        if isinstance(df_or_s, DataFrame):
-            self._kdf = df_or_s
-            self._ks = None
+        assert isinstance(kdf_or_kser, (DataFrame, Series)), \
+            'unexpected argument type: {}'.format(type(kdf_or_kser))
+        if isinstance(kdf_or_kser, DataFrame):
+            self._kdf = kdf_or_kser
+            self._kser = None
         else:
             # If df_or_col is Column, store both the DataFrame anchored to the Column and
             # the Column itself.
-            self._kdf = df_or_s._kdf
-            self._ks = df_or_s
+            self._kdf = kdf_or_kser._kdf
+            self._kser = kdf_or_kser
 
     def __getitem__(self, key):
         from databricks.koalas.frame import DataFrame
@@ -690,7 +690,7 @@ class ILocIndexer(object):
                 pandas_function=".iloc[..., ...]",
                 spark_target_function="select, where")
 
-        rows_sel, cols_sel = _unfold(key, self._ks)
+        rows_sel, cols_sel = _unfold(key, self._kser)
 
         sdf = self._kdf._sdf
         if isinstance(rows_sel, Index):

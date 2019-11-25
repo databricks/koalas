@@ -23,6 +23,7 @@ Properties
    Index.names
    Index.ndim
    Index.empty
+   Index.T
 
 Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -44,6 +45,7 @@ Missing Values
 .. autosummary::
    :toctree: api/
 
+   Index.dropna
    Index.isna
    Index.notna
 
@@ -54,8 +56,16 @@ Conversion
 
    Index.astype
    Index.to_series
+   Index.to_numpy
 
 .. _api.multiindex:
+
+Combining / joining / set operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.symmetric_difference
 
 Selecting
 ~~~~~~~~~
@@ -85,6 +95,14 @@ MultiIndex Properties
 
    MultiIndex.names
    MultiIndex.ndim
+   MultiIndex.T
+
+MultiIndex Missing Values
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.dropna
 
 MultiIndex Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -92,3 +110,18 @@ MultiIndex Modifying and computations
    :toctree: api/
 
    Index.copy
+
+MultiIndex Combining / joining / set operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.symmetric_difference
+   MultiIndex.copy
+
+Conversion
+~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.to_numpy
