@@ -7576,9 +7576,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             prev_row = F.lag(F.col(column_name), periods).over(window)
             sdf = sdf.withColumn(column_name, (F.col(column_name) - prev_row) / prev_row)
 
-        internal = _InternalFrame(
+        internal = self._internal.copy(
             sdf=sdf,
-            index_map=self._internal.index_map)
+            column_scols=[scol_for(sdf, col) for col in self._internal.data_columns]
+        )
 
         return DataFrame(internal)
 

@@ -2227,3 +2227,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "quantile currently doesn't supports numeric_only"):
             kdf.quantile(.5, numeric_only=False)
+
+    def test_pct_change(self):
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+                            'b': [4.0, 2.0, 3.0, 1.0],
+                            'c': [300, 200, 400, 200]})
+        kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        pdf = kdf.to_pandas()
+
+        self.assert_eq(repr(kdf.pct_change(2)), repr(pdf.pct_change(2)))
