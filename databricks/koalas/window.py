@@ -635,7 +635,7 @@ class RollingGroupby(Rolling):
         from databricks.koalas.groupby import DataFrameGroupBy
 
         if isinstance(groupby, SeriesGroupBy):
-            kdf = groupby._ks.to_frame()
+            kdf = groupby._kser.to_frame()
         elif isinstance(groupby, DataFrameGroupBy):
             kdf = groupby._kdf
         else:
@@ -1412,7 +1412,7 @@ class ExpandingGroupby(Expanding):
         from databricks.koalas.groupby import DataFrameGroupBy
 
         if isinstance(groupby, SeriesGroupBy):
-            kdf = groupby._ks.to_frame()
+            kdf = groupby._kser.to_frame()
         elif isinstance(groupby, DataFrameGroupBy):
             kdf = groupby._kdf
         else:

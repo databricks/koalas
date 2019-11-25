@@ -58,6 +58,8 @@ Indexing, iteration
    DataFrame.keys
    DataFrame.xs
    DataFrame.get
+   DataFrame.where
+   DataFrame.mask
 
 Binary operator functions
 -------------------------

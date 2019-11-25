@@ -102,7 +102,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
             res = kdf.corr()
             sol = pdf.corr()
-            self.assertPandasAlmostEqual(res, sol)
+            self.assert_eq(res, sol, almost=True)
 
             # Series
             a = pdf.A
