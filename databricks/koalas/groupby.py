@@ -1453,14 +1453,15 @@ class GroupBy(object):
                        .orderBy(F.monotonically_increasing_id())
         sdf = sdf.select("*", F.when(F.row_number().over(window) <= n, True)).dropna()
 
-        if isinstance(self, SeriesGroupBy):
-            column_scols = [scol_for(sdf, self._ks.name)]
+        if isinstance(self, DataFrameGroupBy):
+            internal = self._kdf._internal.copy(
+                sdf=sdf,
+                column_scols=[scol_for(sdf, col) for col in self._kdf._internal.data_columns])
         else:
-            column_scols = [scol_for(sdf, col) for col in self._kdf._internal.data_columns]
-
-        internal = self._kdf._internal.copy(
-            sdf=sdf.select(self._kdf._sdf.columns),
-            column_scols=column_scols)
+            internal = self._kdf._internal.copy(
+                sdf=sdf,
+                column_index=[(self._kser.name,)],
+                column_scols=[scol_for(sdf, self._kser.name)])
 
         return DataFrame(internal)
 
