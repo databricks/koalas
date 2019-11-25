@@ -4393,7 +4393,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             key = (key,)
         if len(self._internal._index_map) < len(key):
             raise KeyError("Key length ({}) exceeds index depth ({})"
-                        .format(len(key), len(self._internal.index_map)))
+                           .format(len(key), len(self._internal.index_map)))
 
         cols = (self._internal.index_scols[len(key):] +
                 [self._internal.scol_for(self._internal.column_index[0])])
