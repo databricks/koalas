@@ -921,13 +921,13 @@ class IndexOpsMixin(object):
             sum = sdf_dropna.count()
             sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
 
-        # column_index & column_index_name are need for Series, but not for Index/MtutiIndex
+        # column_index & column_index_name are needed for Series, but not for Index/MultiIndex
         if isinstance(self, Series):
             internal = _InternalFrame(sdf=sdf,
                                       index_map=[(index_name, None)],
                                       column_index=self._internal.column_index,
                                       column_scols=[scol_for(sdf, 'count')],
-                                      column_index_names=self._internal.column_index_names) \
+                                      column_index_names=self._internal.column_index_names)
         else:
             internal = _InternalFrame(sdf=sdf,
                                       index_map=[(index_name, None)],
