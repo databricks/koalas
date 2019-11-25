@@ -45,6 +45,7 @@ Missing Values
 .. autosummary::
    :toctree: api/
 
+   Index.dropna
    Index.isna
    Index.notna
 
@@ -95,6 +96,13 @@ MultiIndex Properties
    MultiIndex.names
    MultiIndex.ndim
    MultiIndex.T
+
+MultiIndex Missing Values
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.dropna
 
 MultiIndex Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
