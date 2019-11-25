@@ -79,7 +79,6 @@ class _MissingPandasLikeSeries(object):
     pct_change = unsupported_function('pct_change')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
-    ravel = unsupported_function('ravel')
     rdivmod = unsupported_function('rdivmod')
     reindex = unsupported_function('reindex')
     reindex_like = unsupported_function('reindex_like')
@@ -142,6 +141,10 @@ class _MissingPandasLikeSeries(object):
         reason="'nbytes' requires to compute whole dataset. You can calculate manually it, "
                "with its 'itemsize', by explicitly executing its count. Use Spark's web UI "
                "to monitor disk and memory usage of your application in general.")
+    ravel = unsupported_property(
+        'ravel',
+        reason="If you want to collect your flattened underlying data as an NumPy array, "
+               "use 'to_numpy().ravel()' instead.")
 
     # Functions we won't support.
     memory_usage = common.memory_usage(unsupported_function)
