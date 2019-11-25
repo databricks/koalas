@@ -4383,11 +4383,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
+        if isinstance(key, Series):
+            bcol = key._scol.cast(BooleanType())
+            sdf = self._internal.sdf.filter(bcol)
+            internal = self._internal.copy(sdf=sdf)
+            return _col(DataFrame(internal))
+
         if not isinstance(key, tuple):
             key = (key,)
         if len(self._internal._index_map) < len(key):
             raise KeyError("Key length ({}) exceeds index depth ({})"
-                           .format(len(key), len(self._internal.index_map)))
+                        .format(len(key), len(self._internal.index_map)))
 
         cols = (self._internal.index_scols[len(key):] +
                 [self._internal.scol_for(self._internal.column_index[0])])
