@@ -26,9 +26,10 @@ from pyspark.sql import functions as F, Window
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 from databricks.koalas.utils import name_like_string, scol_for
+from databricks.koalas.config import set_option, reset_option
 
 
 def _make_col(c):
@@ -267,11 +268,14 @@ class iAtIndexer(object):
                 raise KeyError(name_like_string(col_sel))
             col_sel = (self._internal.data_columns[col_sel],)
 
-        tmp_col = '__natural_order__'
-        window = Window.orderBy(F.monotonically_increasing_id())
-        sdf = self._internal.sdf.withColumn(tmp_col, F.row_number().over(window) - 1)
-        cond = F.col(tmp_col) == row_sel
-        pdf = sdf.where(cond).select(self._internal.scol_for(*col_sel)).toPandas()
+        sdf = self._internal.sdf.select(self._internal.data_columns)
+        set_option("compute.default_index_type", "distributed-sequence")
+        try:
+            sdf = _InternalFrame.attach_default_index(sdf)
+        finally:
+            reset_option("compute.default_index_type")
+        cond = F.col(SPARK_INDEX_NAME_FORMAT(0)) == row_sel
+        pdf = sdf.where(cond).select(*col_sel).toPandas()
 
         if len(pdf) < 1:
             raise KeyError(name_like_string(row_sel))
