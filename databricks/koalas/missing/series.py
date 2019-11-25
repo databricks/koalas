@@ -141,13 +141,13 @@ class _MissingPandasLikeSeries(object):
         reason="'nbytes' requires to compute whole dataset. You can calculate manually it, "
                "with its 'itemsize', by explicitly executing its count. Use Spark's web UI "
                "to monitor disk and memory usage of your application in general.")
-    ravel = unsupported_property(
-        'ravel',
-        reason="If you want to collect your flattened underlying data as an NumPy array, "
-               "use 'to_numpy().ravel()' instead.")
 
     # Functions we won't support.
     memory_usage = common.memory_usage(unsupported_function)
     to_pickle = common.to_pickle(unsupported_function)
     to_xarray = common.to_xarray(unsupported_function)
     __iter__ = common.__iter__(unsupported_function)
+    ravel = unsupported_function(
+        'ravel',
+        reason="If you want to collect your flattened underlying data as an NumPy array, "
+               "use 'to_numpy().ravel()' instead.")
