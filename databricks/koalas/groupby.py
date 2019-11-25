@@ -1448,17 +1448,19 @@ class GroupBy(object):
         Name: b, dtype: int64
         """
         groupkeys = self._groupkeys
-        tmp_col = '__row_number__'
         sdf = self._kdf._sdf
         window = Window.partitionBy([s._scol for s in groupkeys]) \
                        .orderBy(F.monotonically_increasing_id())
-        sdf = sdf.withColumn(tmp_col, F.row_number().over(window)).filter(F.col(tmp_col) <= n)
-        internal = _InternalFrame(
-            sdf=sdf,
-            index_map=self._kdf._internal.index_map,
-            column_scols=([scol_for(sdf, self._agg_columns[0]._internal.data_columns[0])]
-                          if isinstance(self, SeriesGroupBy)
-                          else [scol_for(sdf, name) for name in self._kdf._internal.data_columns]))
+        sdf = sdf.select("*", F.when(F.row_number().over(window) <= n, True)).dropna()
+
+        if isinstance(self, SeriesGroupBy):
+            column_scols = [scol_for(sdf, self._ks.name)]
+        else:
+            column_scols = [scol_for(sdf, col) for col in self._kdf._internal.data_columns]
+
+        internal = self._kdf._internal.copy(
+            sdf=sdf.select(self._kdf._sdf.columns),
+            column_scols=column_scols)
 
         return DataFrame(internal)
 
