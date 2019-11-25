@@ -36,8 +36,7 @@ from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
-from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
-from databricks.koalas.series import Series, _col
+from databricks.koalas.series import Series
 from databricks.koalas.utils import name_like_string
 
 

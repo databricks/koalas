@@ -922,13 +922,15 @@ class IndexOpsMixin(object):
             sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
 
         # column_index & column_index_name are need for Series, but not for Index/MtutiIndex
-        internal = _InternalFrame(sdf=sdf,
-                                  index_map=[(index_name, None)],
-                                  column_index=self._internal.column_index,
-                                  column_scols=[scol_for(sdf, 'count')],
-                                  column_index_names=self._internal.column_index_names) \
-            if isinstance(self, Series) else \
-            _InternalFrame(sdf=sdf,
-                           index_map=[(index_name, None)],
-                           column_scols=[scol_for(sdf, 'count')])
+        if isinstance(self, Series):
+            internal = _InternalFrame(sdf=sdf,
+                                      index_map=[(index_name, None)],
+                                      column_index=self._internal.column_index,
+                                      column_scols=[scol_for(sdf, 'count')],
+                                      column_index_names=self._internal.column_index_names) \
+        else:
+            internal = _InternalFrame(sdf=sdf,
+                                      index_map=[(index_name, None)],
+                                      column_scols=[scol_for(sdf, 'count')])
+
         return _col(DataFrame(internal))
