@@ -3099,7 +3099,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         Return the row label of the maximum value.
 
-        If multiple values equal the maximum, the first row label with that
+        If multiple values equal the maximum, the row label with that
         value is returned.
 
         Parameters
@@ -3159,22 +3159,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> s.idxmax()
         ('b', 'f')
-
-        If multiple values equal the maximum, the first row label with that
-        value is returned.
-
-        >>> s = ks.Series([1, 100, 1, 100, 1, 100])
-        >>> s
-        0      1
-        1    100
-        2      1
-        3    100
-        4      1
-        5    100
-        Name: 0, dtype: int64
-
-        >>> s.idxmax()
-        1
         """
         sdf = self._internal._sdf
         scol = self._scol
@@ -3182,9 +3166,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         # desc_nulls_(last|first) is used via Py4J directly because
         # it's not supported in Spark 2.3.
         if skipna:
-            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()), *index_scols)
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()))
         else:
-            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()), *index_scols)
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()))
         results = sdf.select([scol] + index_scols).take(1)
         if len(results) == 0:
             raise ValueError("attempt to get idxmin of an empty sequence")
@@ -3202,7 +3186,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         Return the row label of the minimum value.
 
-        If multiple values equal the minimum, the first row label with that
+        If multiple values equal the minimum, the row label with that
         value is returned.
 
         Parameters
@@ -3267,32 +3251,16 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> s.idxmin()
         ('b', 'f')
-
-        If multiple values equal the minimum, the first row label with that
-        value is returned.
-
-        >>> s = ks.Series([1, 100, 1, 100, 1, 100])
-        >>> s
-        0      1
-        1    100
-        2      1
-        3    100
-        4      1
-        5    100
-        Name: 0, dtype: int64
-
-        >>> s.idxmin()
-        0
         """
         sdf = self._internal._sdf
         scol = self._scol
         index_scols = self._internal.index_scols
-        # asc_nulls_(last|first)is used via Py4J directly because
+        # asc_nulls_(list|first)is used via Py4J directly because
         # it's not supported in Spark 2.3.
         if skipna:
-            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()), *index_scols)
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()))
         else:
-            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()), *index_scols)
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()))
         results = sdf.select([scol] + index_scols).take(1)
         if len(results) == 0:
             raise ValueError("attempt to get idxmin of an empty sequence")
