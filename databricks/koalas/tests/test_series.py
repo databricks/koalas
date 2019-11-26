@@ -909,3 +909,25 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = kser.to_pandas()
 
         self.assert_eq(kser.keys(), pser.keys())
+
+    def test_index(self):
+        # to check setting name of Index properly.
+        idx = pd.Index([1, 2, 3, 4, 5, 6, 7, 8, 9])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=idx)
+        pser = kser.to_pandas()
+
+        kser.name = 'koalas'
+        pser.name = 'koalas'
+        self.assert_eq(kser.index.name, pser.index.name)
+
+        # for check setting names of MultiIndex properly.
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        pser = kser.to_pandas()
+
+        kser.names = ['hello', 'koalas']
+        pser.names = ['hello', 'koalas']
+        self.assert_eq(kser.index.names, pser.index.names)

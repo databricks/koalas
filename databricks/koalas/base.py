@@ -135,8 +135,11 @@ class IndexOpsMixin(object):
         Creates new object with the new column
     """
     def __init__(self, internal: _InternalFrame, kdf):
+        from databricks.koalas.series import Series
         self._internal = internal  # type: _InternalFrame
         self._kdf = kdf
+        if isinstance(self, Series):
+            self._index = kdf.index
 
     @property
     def _scol(self):

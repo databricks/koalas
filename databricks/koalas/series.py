@@ -964,7 +964,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         --------
         Index
         """
-        return self.to_frame().index
+        return self._index
 
     @property
     def is_unique(self):
