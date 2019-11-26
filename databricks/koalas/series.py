@@ -958,8 +958,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def index(self):
         """The index (axis labels) Column of the Series.
 
-        Currently not supported when the DataFrame has no index.
-
         See Also
         --------
         Index
