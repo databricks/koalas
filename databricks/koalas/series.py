@@ -3162,40 +3162,37 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         If multiple values equal the maximum, the first row label with that
         value is returned.
 
-        >>> s = ks.Series([1, 100, 1, 100, 1, 100])
+        >>> s = ks.Series([1, 100, 1, 100, 1, 100], index=[10, 3, 5, 2, 1, 8])
         >>> s
-        0      1
-        1    100
-        2      1
-        3    100
-        4      1
-        5    100
+        10      1
+        3     100
+        5       1
+        2     100
+        1       1
+        8     100
         Name: 0, dtype: int64
 
         >>> s.idxmax()
-        1
+        3
         """
+        if len(self) == 0:
+            raise ValueError("attempt to get idxmin of an empty sequence")
+
         sdf = self._internal._sdf
         scol = self._scol
         index_scols = self._internal.index_scols
-        # desc_nulls_(last|first) is used via Py4J directly because
-        # it's not supported in Spark 2.3.
         if skipna:
-            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()), *index_scols)
+            max_value = sdf.orderBy(scol.desc_nulls_last()).select([scol]).first()[0]
         else:
-            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()), *index_scols)
-        results = sdf.select([scol] + index_scols).take(1)
-        if len(results) == 0:
-            raise ValueError("attempt to get idxmin of an empty sequence")
-        if results[0][0] is None:
-            # This will only happens when skipna is False because we will
-            # place nulls first.
+            max_value = sdf.orderBy(scol.desc_nulls_first()).select([scol]).first()[0]
+
+        if max_value is None:
             return np.nan
-        values = list(results[0][1:])
-        if len(values) == 1:
-            return values[0]
-        else:
-            return tuple(values)
+
+        sdf = sdf.filter(scol == max_value)
+        max_idx = tuple(sdf.select(index_scols).first())
+
+        return max_idx if len(max_idx) > 1 else max_idx[0]
 
     def idxmin(self, skipna=True):
         """
@@ -3270,40 +3267,37 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         If multiple values equal the minimum, the first row label with that
         value is returned.
 
-        >>> s = ks.Series([1, 100, 1, 100, 1, 100])
+        >>> s = ks.Series([1, 100, 1, 100, 1, 100], index=[10, 3, 5, 2, 1, 8])
         >>> s
-        0      1
-        1    100
-        2      1
-        3    100
-        4      1
-        5    100
+        10      1
+        3     100
+        5       1
+        2     100
+        1       1
+        8     100
         Name: 0, dtype: int64
 
         >>> s.idxmin()
-        0
+        10
         """
+        if len(self) == 0:
+            raise ValueError("attempt to get idxmin of an empty sequence")
+
         sdf = self._internal._sdf
         scol = self._scol
         index_scols = self._internal.index_scols
-        # asc_nulls_(last|first)is used via Py4J directly because
-        # it's not supported in Spark 2.3.
         if skipna:
-            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()), *index_scols)
+            min_value = sdf.orderBy(scol.asc_nulls_last()).select([scol]).first()[0]
         else:
-            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()), *index_scols)
-        results = sdf.select([scol] + index_scols).take(1)
-        if len(results) == 0:
-            raise ValueError("attempt to get idxmin of an empty sequence")
-        if results[0][0] is None:
-            # This will only happens when skipna is False because we will
-            # place nulls first.
+            min_value = sdf.orderBy(scol.asc_nulls_first()).select([scol]).first()[0]
+
+        if min_value is None:
             return np.nan
-        values = list(results[0][1:])
-        if len(values) == 1:
-            return values[0]
-        else:
-            return tuple(values)
+
+        sdf = sdf.filter(scol == min_value)
+        min_idx = tuple(sdf.select(index_scols).first())
+
+        return min_idx if len(min_idx) > 1 else min_idx[0]
 
     def copy(self) -> 'Series':
         """
