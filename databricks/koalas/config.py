@@ -17,6 +17,7 @@
 """
 Infrastructure of options for Koalas.
 """
+from contextlib import contextmanager
 import json
 from typing import Union, Any, Tuple, Callable, List, Dict
 
@@ -25,7 +26,7 @@ from pyspark._globals import _NoValue, _NoValueType
 from databricks.koalas.utils import default_session
 
 
-__all__ = ['get_option', 'set_option', 'reset_option', 'options']
+__all__ = ['get_option', 'set_option', 'reset_option', 'options', 'option_context']
 
 
 class Option:
@@ -301,6 +302,34 @@ def reset_option(key: str) -> None:
     """
     _check_option(key)
     default_session().conf.unset(_key_format(key))
+
+
+@contextmanager
+def option_context(*args):
+    """
+    Context manager to temporarily set options in the `with` statement context.
+
+    You need to invoke as ``option_context(pat, val, [(pat, val), ...])``.
+
+    Examples
+    --------
+    >>> with option_context('display.max_rows', 10, 'compute.max_rows', 5):
+    ...     print(get_option('display.max_rows'), get_option('compute.max_rows'))
+    10 5
+    >>> print(get_option('display.max_rows'), get_option('compute.max_rows'))
+    1000 1000
+    """
+    if len(args) == 0 or len(args) % 2 != 0:
+        raise ValueError('Need to invoke as option_context(pat, val, [(pat, val), ...]).')
+    opts = dict(zip(args[::2], args[1::2]))
+    orig_opts = {key: get_option(key) for key in opts}
+    try:
+        for key, value in opts.items():
+            set_option(key, value)
+        yield
+    finally:
+        for key, value in orig_opts.items():
+            set_option(key, value)
 
 
 def _check_option(key: str) -> None:
