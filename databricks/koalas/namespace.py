@@ -26,6 +26,7 @@ import itertools
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -44,7 +45,7 @@ from databricks.koalas.series import Series, _col
 __all__ = ["from_pandas", "range", "read_csv", "read_delta", "read_table", "read_spark_io",
            "read_parquet", "read_clipboard", "read_excel", "read_html", "to_datetime",
            "get_dummies", "concat", "melt", "isna", "isnull", "notna", "notnull",
-           "read_sql_table", "read_sql_query", "read_sql", "read_json", "merge"]
+           "read_sql_table", "read_sql_query", "read_sql", "read_json", "merge", "crosstab"]
 
 
 def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'DataFrame']:
@@ -1861,6 +1862,90 @@ def merge(obj, right: 'DataFrame', how: str = 'inner',
     return obj.merge(
         right, how=how, on=on, left_on=left_on, right_on=right_on,
         left_index=left_index, right_index=right_index, suffixes=suffixes)
+
+
+# TODO: values, aggfunc, margins, margins_name, dropna, normalize
+def crosstab(index, columns, rownames=None, colnames=None):
+    """
+    Compute a simple cross tabulation of two factors. By default
+    computes a frequency table of the factors unless an array of values and an
+    aggregation function are passed.
+
+    Parameters
+    ----------
+    index : array-like, Series, or list of arrays/Series
+        Values to group by in the rows.
+    columns : array-like, Series, or list of arrays/Series
+        Values to group by in the columns.
+    rownames : sequence, default None
+        If passed, must match number of row arrays passed.
+    colnames : sequence, default None
+        If passed, must match number of column arrays passed.
+
+    Returns
+    -------
+    DataFrame
+        Cross tabulation of the data.
+
+    Examples
+    --------
+    >>> a = np.array(["foo", "foo", "foo", "foo", "bar", "bar",
+    ...               "bar", "bar", "foo", "foo", "foo"], dtype=object)
+    >>> b = np.array(["one", "one", "one", "two", "one", "one",
+    ...               "one", "two", "two", "two", "one"], dtype=object)
+
+    >>> ks.crosstab(a, b).sort_index()
+    0    one  two
+    0
+    bar    3    1
+    foo    4    3
+
+    >>> ks.crosstab(a, b, rownames=['koalas'], colnames=['hello']).sort_index()
+    hello   one  two
+    koalas
+    bar       3    1
+    foo       4    3
+    """
+    if isinstance(index, list):
+        raise NotImplementedError("multi index is not yet supported")
+    if isinstance(columns, list):
+        raise NotImplementedError("multi index column is not yet supported")
+    if not isinstance(index, (np.ndarray, Series)):
+        raise ValueError("index should be one of `np.ndarray`, `Series`")
+    if not isinstance(columns, (np.ndarray, Series)):
+        raise ValueError("columns should be one of `np.ndarray`, `Series`")
+
+    if isinstance(index, np.ndarray):
+        index = Series(index)
+    if isinstance(columns, np.ndarray):
+        columns = Series(columns)
+
+    if colnames is not None:
+        columns.name = colnames[0] if is_list_like(colnames) else colnames
+    if rownames is not None:
+        index.name = rownames[0] if is_list_like(rownames) else rownames
+
+    if index.name != columns.name:
+        columns_name = columns.name
+    else:
+        columns_name = '__tmp_col__'
+
+    kdf = index.to_frame()
+    kdf[columns_name] = columns
+    sdf = kdf._sdf.crosstab(index.name, columns_name)
+    sdf = sdf.withColumn(index.name, scol_for(sdf, index.name + '_' + columns_name))
+
+    internal = _InternalFrame(
+        sdf=sdf,
+        index_map=[(index.name, (index.name,))],
+        column_index=[(col,) for col in sdf.columns[1:-1]],
+        column_scols=[scol_for(sdf, col) for col in sdf.columns[1:-1]],
+        column_index_names=[columns.name])
+
+    result = DataFrame(internal)
+    result.index.name = index.name
+
+    return result
 
 
 # @pandas_wraps(return_col=np.datetime64)

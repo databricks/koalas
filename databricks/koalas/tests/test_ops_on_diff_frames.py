@@ -464,6 +464,36 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf["c"] = 1
         self.assert_eq(repr(kdf), repr(pdf))
 
+    def test_crosstab(self):
+        raw_data = {'regiment': ['Nighthawks', 'Nighthawks', 'Nighthawks', 'Nighthawks',
+                                 'Dragoons', 'Dragoons', 'Dragoons', 'Dragoons', 'Scouts',
+                                 'Scouts', 'Scouts', 'Scouts'],
+                    'company': ['infantry', 'infantry', 'cavalry', 'cavalry', 'infantry',
+                                'infantry', 'cavalry', 'cavalry', 'infantry', 'infantry',
+                                'cavalry', 'cavalry'],
+                    'experience': ['veteran', 'rookie', 'veteran', 'rookie', 'veteran',
+                                   'rookie', 'veteran', 'rookie', 'veteran', 'rookie',
+                                   'veteran', 'rookie'],
+                    'name': ['Miller', 'Jacobson', 'Ali', 'Milner', 'Cooze', 'Jacon',
+                             'Ryaner', 'Sone', 'Sloan', 'Piger', 'Riani', 'Ali'],
+                    'preTestScore': [4, 24, 31, 2, 3, 4, 24, 31, 2, 3, 2, 3],
+                    'postTestScore': [25, 94, 57, 62, 70, 25, 94, 57, 62, 70, 62, 70]}
+
+        pdf = pd.DataFrame(raw_data)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pd.crosstab(pdf.company, pdf.name),
+                       ks.crosstab(kdf.company, kdf.name).sort_index())
+
+        with self.assertRaisesRegex(NotImplementedError, "multi index is not yet supported"):
+            ks.crosstab([kdf.regiment, kdf.company], kdf.name)
+        with self.assertRaisesRegex(NotImplementedError, "multi index column is not yet supported"):
+            ks.crosstab(kdf.regiment, [kdf.company, kdf.name])
+        with self.assertRaisesRegex(ValueError, "index should be one of `np.ndarray`, `Series`"):
+            ks.crosstab(kdf, kdf.name)
+        with self.assertRaisesRegex(ValueError, "columns should be one of `np.ndarray`, `Series`"):
+            ks.crosstab(kdf.company, kdf)
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 

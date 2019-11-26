@@ -21,6 +21,7 @@ Data manipulations and SQL
    :toctree: api/
 
    melt
+   crosstab
    merge
    get_dummies
    concat
