@@ -1942,9 +1942,9 @@ def to_numeric(arg):
     """
     if isinstance(arg, Series):
         sdf = arg._internal.sdf
-        name = arg.name
+        name = arg._internal.data_columns[0]
         sdf = sdf.withColumn(name, sdf[name].cast('float'))
-        column_scols = [sdf[name]]
+        column_scols = [scol_for(sdf, name)]
         return Series(arg._internal.copy(
             sdf=sdf,
             column_scols=column_scols,
