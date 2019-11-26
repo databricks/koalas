@@ -14,6 +14,7 @@ Working with options
     reset_option
     get_option
     set_option
+    option_context
 
 Data manipulations and SQL
 --------------------------
