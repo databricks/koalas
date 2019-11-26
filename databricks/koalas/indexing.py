@@ -29,7 +29,7 @@ from pyspark.sql.utils import AnalysisException
 from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 from databricks.koalas.utils import name_like_string, scol_for
-from databricks.koalas.config import set_option, reset_option
+from databricks.koalas.config import set_option, get_option
 
 
 def _make_col(c):
@@ -260,8 +260,7 @@ class iAtIndexer(object):
             if is_list_like(row_sel):
                 raise ValueError(
                     'iAt based indexing on a single index can only have a single value')
-        if not (isinstance(col_sel, int) or
-                (isinstance(col_sel, tuple) and all(isinstance(col, str) for col in col_sel))):
+        if not isinstance(col_sel, int):
             raise ValueError('iAt based indexing on multi-index can only have integer values')
         if isinstance(col_sel, int):
             if col_sel > len(self._internal.data_columns):
@@ -269,11 +268,13 @@ class iAtIndexer(object):
             col_sel = (self._internal.data_columns[col_sel],)
 
         sdf = self._internal.sdf.select(self._internal.data_columns)
+
+        option_origin = get_option("compute.default_index_type")
         set_option("compute.default_index_type", "distributed-sequence")
         try:
             sdf = _InternalFrame.attach_default_index(sdf)
         finally:
-            reset_option("compute.default_index_type")
+            set_option("compute.default_index_type", option_origin)
         cond = F.col(SPARK_INDEX_NAME_FORMAT(0)) == row_sel
         pdf = sdf.where(cond).select(*col_sel).toPandas()
 
