@@ -1103,6 +1103,7 @@ class DataFrame(_Frame, Generic[T]):
     def iterrows(self):
         """
         Iterate over DataFrame rows as (index, Series) pairs.
+
         Yields
         ------
         index : label or tuple of label
@@ -1114,6 +1115,7 @@ class DataFrame(_Frame, Generic[T]):
 
         Notes
         -----
+
         1. Because ``iterrows`` returns a Series for each row,
            it does **not** preserve dtypes across the rows (dtypes are
            preserved across columns for DataFrames). For example,
@@ -1130,6 +1132,7 @@ class DataFrame(_Frame, Generic[T]):
            To preserve dtypes while iterating over the rows, it is better
            to use :meth:`itertuples` which returns namedtuples of the values
            and which is generally faster than ``iterrows``.
+
         2. You should **never modify** something you are iterating over.
            This is not guaranteed to work in all cases. Depending on the
            data types, the iterator returns a copy and not a view, and writing
