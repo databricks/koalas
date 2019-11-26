@@ -4303,14 +4303,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         for column_name in self._internal.data_columns:
             prev_row = F.lag(F.col(column_name), periods).over(window)
-            sdf = sdf.withColumn(column_name, (F.col(column_name) - prev_row) / prev_row)
+            sdf = sdf.withColumn(column_name, (scol_for(sdf, column_name) - prev_row) / prev_row)
 
         internal = _InternalFrame(
             sdf=sdf,
             index_map=self._internal.index_map,
             column_index=self._internal.column_index)
 
-        return Series(internal)
+        return _col(DataFrame(internal))
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
