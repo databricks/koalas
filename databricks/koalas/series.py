@@ -315,12 +315,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             assert not fastpath
             IndexOpsMixin.__init__(self, data, anchor)
         else:
+            assert anchor is None
             if isinstance(data, pd.Series):
                 assert index is None
                 assert dtype is None
                 assert name is None
                 assert not copy
-                assert anchor is None
                 assert not fastpath
                 s = data
             else:
