@@ -1110,6 +1110,7 @@ class DataFrame(_Frame, Generic[T]):
             The index of the row. A tuple for a `MultiIndex`.
         data : pandas.Series
             The data of the row as a Series.
+
         it : generator
             A generator that iterates over the rows of the frame.
 
@@ -1119,7 +1120,8 @@ class DataFrame(_Frame, Generic[T]):
         1. Because ``iterrows`` returns a Series for each row,
            it does **not** preserve dtypes across the rows (dtypes are
            preserved across columns for DataFrames). For example,
-           >>> df = pd.DataFrame([[1, 1.5]], columns=['int', 'float'])
+
+           >>> df = ks.DataFrame([[1, 1.5]], columns=['int', 'float'])
            >>> row = next(df.iterrows())[1]
            >>> row
            int      1.0
@@ -1129,6 +1131,7 @@ class DataFrame(_Frame, Generic[T]):
            float64
            >>> print(df['int'].dtype)
            int64
+
            To preserve dtypes while iterating over the rows, it is better
            to use :meth:`itertuples` which returns namedtuples of the values
            and which is generally faster than ``iterrows``.
