@@ -1458,10 +1458,10 @@ class GroupBy(object):
             internal = self._kdf._internal.copy(
                 sdf=sdf,
                 column_scols=[scol_for(sdf, col) for col in self._kdf._internal.data_columns])
-            return DataFrame(internal)
         else:
             internal = self._kser._internal.copy(sdf)
-            return _col(DataFrame(internal))
+
+        return DataFrame(internal)
 
     def shift(self, periods=1, fill_value=None):
         """
