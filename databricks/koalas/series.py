@@ -4311,7 +4311,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             prev_row = F.lag(scol_for(sdf, column_name), periods).over(window)
             sdf = sdf.withColumn(column_name, (scol_for(sdf, column_name) - prev_row) / prev_row)
 
-        internal = self._internal.copy(sdf=sdf)
+        internal = self._internal.copy(
+            sdf=sdf,
+            scol=scol_for(sdf, self._internal.data_columns[0]))
 
         return _col(DataFrame(internal))
 
