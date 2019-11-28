@@ -811,13 +811,64 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        kdf.groupby(('x', 'a')).idxmin(skipna=False).sort_index())
 
     def test_head(self):
-        pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3],
-                            'b': [1, 2, 3, 4, 5],
-                            'c': [5, 4, 3, 2, 1]}, columns=['a', 'b', 'c'])
+        pdf = pd.DataFrame({'a': [1, 1, 1, 1, 2, 2, 2, 3, 3, 3],
+                            'b': [2, 3, 1, 4, 6, 9, 8, 10, 7, 5],
+                            'c': [3, 5, 2, 5, 1, 2, 6, 4, 3, 6]},
+                           columns=['a', 'b', 'c'],
+                           index=[7, 2, 4, 1, 3, 4, 9, 10, 5, 6])
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pdf.groupby(['a', 'b']).head(2),
-                       kdf.groupby(['a', 'b']).head(2).sort_index())
+        self.assert_eq(pdf.groupby('a').head(2).sort_index(),
+                       kdf.groupby('a').head(2).sort_index())
+        self.assert_eq(pdf.groupby('a').head(-2).sort_index(),
+                       kdf.groupby('a').head(-2).sort_index())
+        self.assert_eq(pdf.groupby('a').head(100000).sort_index(),
+                       kdf.groupby('a').head(100000).sort_index())
+
+        self.assert_eq(pdf.groupby('a')['b'].head(2).sort_index(),
+                       kdf.groupby('a')['b'].head(2).sort_index())
+        self.assert_eq(pdf.groupby('a')['b'].head(-2).sort_index(),
+                       kdf.groupby('a')['b'].head(-2).sort_index())
+        self.assert_eq(pdf.groupby('a')['b'].head(100000).sort_index(),
+                       kdf.groupby('a')['b'].head(100000).sort_index())
+
+        # multi-index
+        midx = pd.MultiIndex([['x', 'y'],
+                              ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']],
+                             [[0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+                              [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]])
+        pdf = pd.DataFrame({'a': [1, 1, 1, 1, 2, 2, 2, 3, 3, 3],
+                            'b': [2, 3, 1, 4, 6, 9, 8, 10, 7, 5],
+                            'c': [3, 5, 2, 5, 1, 2, 6, 4, 3, 6]},
+                           columns=['a', 'b', 'c'],
+                           index=midx)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.groupby('a').head(2).sort_index(),
+                       kdf.groupby('a').head(2).sort_index())
+        self.assert_eq(pdf.groupby('a').head(-2).sort_index(),
+                       kdf.groupby('a').head(-2).sort_index())
+        self.assert_eq(pdf.groupby('a').head(100000).sort_index(),
+                       kdf.groupby('a').head(100000).sort_index())
+
+        self.assert_eq(pdf.groupby('a')['b'].head(2).sort_index(),
+                       kdf.groupby('a')['b'].head(2).sort_index())
+        self.assert_eq(pdf.groupby('a')['b'].head(-2).sort_index(),
+                       kdf.groupby('a')['b'].head(-2).sort_index())
+        self.assert_eq(pdf.groupby('a')['b'].head(100000).sort_index(),
+                       kdf.groupby('a')['b'].head(100000).sort_index())
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(pdf.groupby(('x', 'a')).head(2).sort_index(),
+                       kdf.groupby(('x', 'a')).head(2).sort_index())
+        self.assert_eq(pdf.groupby(('x', 'a')).head(-2).sort_index(),
+                       kdf.groupby(('x', 'a')).head(-2).sort_index())
+        self.assert_eq(pdf.groupby(('x', 'a')).head(100000).sort_index(),
+                       kdf.groupby(('x', 'a')).head(100000).sort_index())
 
     def test_missing(self):
         kdf = ks.DataFrame({'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
