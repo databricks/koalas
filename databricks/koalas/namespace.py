@@ -34,11 +34,12 @@ from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatT
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
-from databricks.koalas.utils import default_session, name_like_string
+from databricks.koalas.utils import default_session, name_like_string, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import _InternalFrame, IndexMap
 from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.series import Series, _col
+from databricks.koalas.config import get_option
 
 
 __all__ = ["from_pandas", "range", "read_csv", "read_delta", "read_table", "read_spark_io",
@@ -1477,12 +1478,9 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                         'objects, you passed an object of type '
                         '"{name}"'.format(name=type(objs).__name__))
 
-    if axis in [0, 'index']:
-        axis = 0
-    elif axis in [1, 'columns']:
-        axis = 1
-    else:
-        raise ValueError('Invalid axis {} is given.'.format(axis))
+    axis = validate_axis(axis)
+    if axis != 0:
+        raise ValueError('axis should be either 0 or "index" currently.')
 
     if len(objs) == 0:
         raise ValueError('No objects to concatenate')
@@ -1516,6 +1514,13 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
     objs = new_objs
 
     if axis == 1:
+        if ignore_index is True:
+            raise NotImplementedError("This is not implemented yet when axis=1")
+
+        if not get_option("compute.ops_on_diff_frames"):
+            raise ValueError("Cannot concatenate because it comes from a different "
+                             "dataframe. In order to allow this operation, enable "
+                             "'compute.ops_on_diff_frames' option.")
         cols = []
         for idx, obj in enumerate(objs):
             cols.extend(obj._internal.data_columns)
@@ -1582,11 +1587,12 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                 for idx in columns_to_add:
                     sdf = sdf.withColumn(name_like_string(idx), F.lit(None))
 
+                data_columns = (kdf._internal.data_columns
+                                + [name_like_string(idx) for idx in columns_to_add])
                 kdf = DataFrame(kdf._internal.copy(
                     sdf=sdf,
-                    data_columns=(kdf._internal.data_columns
-                                  + [name_like_string(idx) for idx in columns_to_add]),
-                    column_index=kdf._internal.column_index + columns_to_add))
+                    column_index=(kdf._internal.column_index + columns_to_add),
+                    column_scols=[scol_for(sdf, col) for col in data_columns]))
 
                 kdfs.append(kdf[merged_columns])
         else:
@@ -1594,14 +1600,16 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                 "Only can inner (intersect) or outer (union) join the other axis.")
 
     if ignore_index:
-        sdfs = [kdf._sdf.select(kdf._internal.data_scols) for kdf in kdfs]
+        sdfs = [kdf._sdf.select(kdf._internal.column_scols) for kdf in kdfs]
     else:
-        sdfs = [kdf._sdf.select(kdf._internal.index_scols + kdf._internal.data_scols)
+        sdfs = [kdf._sdf.select(kdf._internal.index_scols + kdf._internal.column_scols)
                 for kdf in kdfs]
     concatenated = reduce(lambda x, y: x.union(y), sdfs)
 
     index_map = None if ignore_index else kdfs[0]._internal.index_map
-    result_kdf = DataFrame(kdfs[0]._internal.copy(sdf=concatenated, index_map=index_map))
+    result_kdf = DataFrame(kdfs[0]._internal.copy(
+        sdf=concatenated, index_map=index_map,
+        column_scols=[scol_for(concatenated, col) for col in kdfs[0]._internal.data_columns]))
 
     if should_return_series:
         # If all input were Series, we should return Series.

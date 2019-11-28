@@ -69,12 +69,10 @@ class _MissingPandasLikeDataFrame(object):
     last_valid_index = unsupported_function('last_valid_index')
     lookup = unsupported_function('lookup')
     mad = unsupported_function('mad')
-    mask = unsupported_function('mask')
     mode = unsupported_function('mode')
     pct_change = unsupported_function('pct_change')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
-    quantile = unsupported_function('quantile')
     query = unsupported_function('query')
     reindex_like = unsupported_function('reindex_like')
     rename_axis = unsupported_function('rename_axis')
@@ -101,7 +99,6 @@ class _MissingPandasLikeDataFrame(object):
     tz_convert = unsupported_function('tz_convert')
     tz_localize = unsupported_function('tz_localize')
     unstack = unsupported_function('unstack')
-    where = unsupported_function('where')
 
     # Deprecated functions
     as_blocks = unsupported_function('as_blocks', deprecated=True)

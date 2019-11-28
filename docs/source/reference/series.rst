@@ -51,6 +51,7 @@ Indexing, iteration
    Series.loc
    Series.iloc
    Series.keys
+   Series.pop
    Series.xs
 
 Binary operator functions
@@ -153,6 +154,7 @@ Reindexing / Selection / Label manipulation
    Series.reset_index
    Series.sample
    Series.where
+   Series.mask
    Series.truncate
 
 Missing data handling
@@ -182,6 +184,7 @@ Combining / joining / merging
 
    Series.append
    Series.replace
+   Series.update
 
 Time series-related
 -------------------

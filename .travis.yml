@@ -36,7 +36,7 @@ matrix:
         - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
         - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
         - SPARK_VERSION=2.4.4
-        - PANDAS_VERSION=0.25.1
+        - PANDAS_VERSION=0.25.3
         - PYARROW_VERSION=0.15.1
 
 before_install:

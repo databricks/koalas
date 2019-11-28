@@ -43,6 +43,14 @@ else:
     session = utils.default_session()
 
 
+@pytest.fixture(scope='session', autouse=True)
+def session_termination():
+    yield
+    # Share one session across all the tests. Repeating starting and stopping sessions and contexts
+    # seems causing a memory leak for an unknown reason in PySpark.
+    session.stop()
+
+
 @pytest.fixture(autouse=True)
 def add_ks(doctest_namespace):
     doctest_namespace['ks'] = koalas
@@ -76,7 +84,7 @@ def add_path(doctest_namespace):
 
 @pytest.fixture(autouse=True)
 def add_db(doctest_namespace):
-    db_name = str(uuid.uuid4()).replace("-", "")
+    db_name = "db%s" % str(uuid.uuid4()).replace("-", "")
     session.sql("CREATE DATABASE %s" % db_name)
     atexit.register(lambda: session.sql("DROP DATABASE IF EXISTS %s CASCADE" % db_name))
     doctest_namespace['db'] = db_name

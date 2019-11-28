@@ -54,7 +54,7 @@ def combine_frames(this, *args, how="full"):
             "Currently only one different DataFrame (from given Series) is supported"
         if this is args[0]._kdf:
             return  # We don't need to combine. All series is in this.
-        that = args[0]._kdf[[ser.name for ser in args]]
+        that = args[0]._kdf[list(args)]
     elif len(args) == 1 and isinstance(args[0], DataFrame):
         assert isinstance(args[0], DataFrame)
         if this is args[0]:
@@ -113,8 +113,10 @@ def combine_frames(this, *args, how="full"):
                                + this._internal.column_index_names)
                               if this._internal.column_index_names is not None else None)
         return DataFrame(
-            this._internal.copy(sdf=joined_df, data_columns=new_data_columns,
-                                column_index=column_index, column_index_names=column_index_names))
+            this._internal.copy(sdf=joined_df,
+                                column_index=column_index,
+                                column_scols=[scol_for(joined_df, col) for col in new_data_columns],
+                                column_index_names=column_index_names))
     else:
         raise ValueError(
             "Cannot combine the series or dataframe because it comes from a different dataframe. "
@@ -394,3 +396,11 @@ def name_like_string(name: Union[str, Tuple]) -> str:
     else:
         name = (str(name),)
     return ('(%s)' % ', '.join(name)) if len(name) > 1 else name[0]
+
+
+def validate_axis(axis=0, none_axis=0):
+    """ Check the given axis is valid. """
+    if axis not in (0, 1, 'index', 'columns', None):
+        raise ValueError('No axis named {0}'.format(axis))
+    # convert to numeric axis
+    return {None: none_axis, 'index': 0, 'columns': 1}.get(axis, axis)

@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas as ks
-from databricks.koalas.config import set_option, reset_option
+from databricks.koalas.config import option_context
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
@@ -72,9 +72,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         # Less than 'compute.shortcut_limit' will execute a shortcut
         # by using collected pandas dataframe directly.
         # now we set the 'compute.shortcut_limit' as 1000 explicitly
-        set_option('compute.shortcut_limit', 1000)
-
-        try:
+        with option_context('compute.shortcut_limit', 1000):
             pdf = pd.DataFrame({'A': [1, -2, 3, -4, 5] * 300,
                                 'B': [1., -2, 3, -4, 5] * 300,
                                 'C': [-6., -7, -8, -9, 10] * 300,
@@ -89,8 +87,6 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf.kurtosis(axis=1), pdf.kurtosis(axis=1))
             self.assert_eq(kdf.skew(axis=1), pdf.skew(axis=1))
             self.assert_eq(kdf.mean(axis=1), pdf.mean(axis=1))
-        finally:
-            reset_option('compute.shortcut_limit')
 
     def test_corr(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.
@@ -102,7 +98,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
             res = kdf.corr()
             sol = pdf.corr()
-            self.assertPandasAlmostEqual(res, sol)
+            self.assert_eq(res, sol, almost=True)
 
             # Series
             a = pdf.A

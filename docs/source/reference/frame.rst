@@ -58,6 +58,8 @@ Indexing, iteration
    DataFrame.keys
    DataFrame.xs
    DataFrame.get
+   DataFrame.where
+   DataFrame.mask
 
 Binary operator functions
 -------------------------
@@ -119,6 +121,7 @@ Computations / Descriptive Stats
    DataFrame.mean
    DataFrame.min
    DataFrame.median
+   DataFrame.quantile
    DataFrame.nunique
    DataFrame.skew
    DataFrame.sum

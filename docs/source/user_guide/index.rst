@@ -8,3 +8,4 @@ User Guide
     options
     pandas_pyspark
     faq
+    best_practices

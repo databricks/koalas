@@ -176,6 +176,25 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kdf.index.copy(), pdf.index.copy())
 
+    def test_index_symmetric_difference(self):
+        idx = ks.Index(['a', 'b', 'c'])
+        midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+
+        with self.assertRaisesRegexp(NotImplementedError, "Doesn't support*"):
+            idx.symmetric_difference(midx)
+
+    def test_multi_index_symmetric_difference(self):
+        idx = ks.Index(['a', 'b', 'c'])
+        midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        midx_ = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+
+        self.assert_eq(
+            midx.symmetric_difference(midx_),
+            midx.to_pandas().symmetric_difference(midx_.to_pandas()))
+
+        with self.assertRaisesRegexp(NotImplementedError, "Doesn't support*"):
+            midx.symmetric_difference(idx)
+
     def test_missing(self):
         kdf = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
 
@@ -293,3 +312,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assertEqual(kdf.index.nlevels, 2)
+
+    def test_multiindex_from_arrays(self):
+        arrays = [['a', 'a', 'b', 'b'], ['red', 'blue', 'red', 'blue']]
+        pidx = pd.MultiIndex.from_arrays(arrays)
+        kidx = ks.MultiIndex.from_arrays(arrays)
+
+        self.assert_eq(pidx, kidx)

@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 from databricks import koalas as ks
-from databricks.koalas.config import set_option, reset_option
+from databricks.koalas.config import set_option, reset_option, option_context
 from databricks.koalas.plot import TopNPlot, SampledPlot
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
@@ -422,14 +422,14 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         check_kde_plot(pdf1, kdf1, ind=[1, 2, 3], bw_method=3.0)
 
     def test_missing(self):
-        ks = self.kdf1
+        kser = self.kdf1
 
         unsupported_functions = ['box', 'hexbin']
 
         for name in unsupported_functions:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*DataFrame.*{}.*not implemented".format(name)):
-                getattr(ks.plot, name)()
+                getattr(kser.plot, name)()
 
     def test_topn_max_rows(self):
 
@@ -440,14 +440,11 @@ class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(len(data), 2000)
 
     def test_sampled_plot_with_ratio(self):
-        set_option('plotting.sample_ratio', 0.5)
-        try:
+        with option_context('plotting.sample_ratio', 0.5):
             pdf = pd.DataFrame(np.random.rand(2500, 4), columns=['a', 'b', 'c', 'd'])
             kdf = ks.from_pandas(pdf)
             data = SampledPlot().get_sampled(kdf)
             self.assertEqual(round(len(data) / 2500, 1), 0.5)
-        finally:
-            set_option('plotting.sample_ratio', DataFramePlotTest.sample_ratio_default)
 
     def test_sampled_plot_with_max_rows(self):
         # 'plotting.max_rows' is 2000
