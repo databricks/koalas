@@ -3175,16 +3175,18 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> s.idxmax()
         3
         """
-        if len(self) == 0:
-            raise ValueError("attempt to get idxmin of an empty sequence")
-
         sdf = self._internal._sdf
         scol = self._scol
         index_scols = self._internal.index_scols
         if skipna:
-            max_value = sdf.orderBy(scol.desc_nulls_last()).select([scol]).first()[0]
+            max_row = sdf.orderBy(scol.desc_nulls_last()).select([scol]).first()
         else:
-            max_value = sdf.orderBy(scol.desc_nulls_first()).select([scol]).first()[0]
+            max_row = sdf.orderBy(scol.desc_nulls_first()).select([scol]).first()
+
+        if max_row is None:
+            raise ValueError("attempt to get idxmax of an empty sequence")
+
+        max_value = max_row[0]
 
         if max_value is None:
             return np.nan
@@ -3280,16 +3282,18 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> s.idxmin()
         10
         """
-        if len(self) == 0:
-            raise ValueError("attempt to get idxmin of an empty sequence")
-
         sdf = self._internal._sdf
         scol = self._scol
         index_scols = self._internal.index_scols
         if skipna:
-            min_value = sdf.orderBy(scol.asc_nulls_last()).select([scol]).first()[0]
+            min_row = sdf.orderBy(scol.asc_nulls_last()).select([scol]).first()
         else:
-            min_value = sdf.orderBy(scol.asc_nulls_first()).select([scol]).first()[0]
+            min_row = sdf.orderBy(scol.asc_nulls_first()).select([scol]).first()
+
+        if min_row is None:
+            raise ValueError("attempt to get idxmin of an empty sequence")
+
+        min_value = min_row[0]
 
         if min_value is None:
             return np.nan
