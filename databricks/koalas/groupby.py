@@ -1448,22 +1448,20 @@ class GroupBy(object):
         Name: b, dtype: int64
         """
         groupkeys = self._groupkeys
+        tmp_col = '__row_number__'
         sdf = self._kdf._sdf
         window = Window.partitionBy([s._scol for s in groupkeys]) \
                        .orderBy(F.monotonically_increasing_id())
-        sdf = sdf.select("*", F.when(F.row_number().over(window) <= n, True)).dropna()
+        sdf = sdf.withColumn(tmp_col, F.row_number().over(window)).filter(F.col(tmp_col) <= n)
 
         if isinstance(self, DataFrameGroupBy):
             internal = self._kdf._internal.copy(
                 sdf=sdf,
                 column_scols=[scol_for(sdf, col) for col in self._kdf._internal.data_columns])
+            return DataFrame(internal)
         else:
-            internal = self._kdf._internal.copy(
-                sdf=sdf,
-                column_index=[(self._kser.name,)],
-                column_scols=[scol_for(sdf, self._kser.name)])
-
-        return DataFrame(internal)
+            internal = self._kser._internal.copy(sdf)
+            return _col(DataFrame(internal))
 
     def shift(self, periods=1, fill_value=None):
         """
