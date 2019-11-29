@@ -1889,22 +1889,27 @@ def crosstab(index, columns, rownames=None, colnames=None):
 
     Examples
     --------
+    >>> from databricks.koalas.config import set_option, reset_option
+    >>> set_option("compute.ops_on_diff_frames", True)
     >>> a = np.array(["foo", "foo", "foo", "foo", "bar", "bar",
     ...               "bar", "bar", "foo", "foo", "foo"], dtype=object)
     >>> b = np.array(["one", "one", "one", "two", "one", "one",
     ...               "one", "two", "two", "two", "one"], dtype=object)
 
-    >>> ks.crosstab(a, b).sort_index()
+    >>> ks.crosstab(a, b).sort_index()  # doctest: +NORMALIZE_WHITESPACE
     0    one  two
     0
     bar    3    1
     foo    4    3
 
     >>> ks.crosstab(a, b, rownames=['koalas'], colnames=['hello']).sort_index()
+    ... # doctest: +NORMALIZE_WHITESPACE
     hello   one  two
     koalas
     bar       3    1
     foo       4    3
+
+    >>> reset_option("compute.ops_on_diff_frames")
     """
     if not isinstance(index, (np.ndarray, Series, list)):
         raise ValueError("index should be one of `np.ndarray`, `Series`")
