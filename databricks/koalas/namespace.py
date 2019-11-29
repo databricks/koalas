@@ -1906,44 +1906,136 @@ def crosstab(index, columns, rownames=None, colnames=None):
     bar       3    1
     foo       4    3
     """
-    if isinstance(index, list):
-        raise NotImplementedError("multi index is not yet supported")
-    if isinstance(columns, list):
-        raise NotImplementedError("multi index column is not yet supported")
-    if not isinstance(index, (np.ndarray, Series)):
+    if not isinstance(index, (np.ndarray, Series, list)):
         raise ValueError("index should be one of `np.ndarray`, `Series`")
-    if not isinstance(columns, (np.ndarray, Series)):
+    if not isinstance(columns, (np.ndarray, Series, list)):
         raise ValueError("columns should be one of `np.ndarray`, `Series`")
 
-    if isinstance(index, np.ndarray):
-        index = Series(index)
-    if isinstance(columns, np.ndarray):
-        columns = Series(columns)
+    # convert types of parameter `index` and `columns` to list.
+    if not isinstance(index, list):
+        if isinstance(index, np.ndarray):
+            index = [Series(index)]
+        else:
+            index = [index]
+    if not isinstance(columns, list):
+        if isinstance(columns, np.ndarray):
+            columns = [Series(columns)]
+        else:
+            columns = [columns]
 
-    if colnames is not None:
-        columns.name = colnames[0] if is_list_like(colnames) else colnames
-    if rownames is not None:
-        index.name = rownames[0] if is_list_like(rownames) else rownames
+    # since there is a high possibility duplicated index and column names,
+    # we just make tmporal names for all index & columns
+    # seems like pandas is also doing similar internally
+    #
+    # >>> pd.crosstab([a, a, a, a, a], [c, c, c, c])
+    # col_0                         dull shiny
+    # col_1                         dull shiny
+    # col_2                         dull shiny
+    # col_3                         dull shiny
+    # row_0 row_1 row_2 row_3 row_4
+    # bar   bar   bar   bar   bar      2     2
+    # foo   foo   foo   foo   foo      3     4
+    tmp_index_names = ['row_{}'.format(i) for i in range(len(index))]
+    tmp_columns_names = ['col_{}'.format(i) for i in range(len(columns))]
 
-    if index.name != columns.name:
-        columns_name = columns.name
+    # covert all np.ndarray to Series.
+    index = (Series(idx) if isinstance(idx, np.ndarray) else idx for idx in index)
+    columns = (Series(col) if isinstance(col, np.ndarray) else col for col in columns)
+
+    # make base DataFrame `kdf` from the first factor of `index`,
+    # then append all Series in `index` and `columns` to `kdf`
+    first = next(index).rename(tmp_index_names[0])
+    kdf = first.to_frame()
+
+    for kser, tmp_index_name in zip(index, tmp_index_names[1:]):
+        kdf[tmp_index_name] = kser
+
+    for kser, tmp_columns_name in zip(columns, tmp_columns_names):
+        kdf[tmp_columns_name] = kser
+
+    sdf = kdf._sdf
+
+    # if `index` or `columns` has multiple values,
+    # we should merge(group) them to estimate crosstab properly
+    if len(tmp_index_names) > 1:
+        index_name = '__index_merged__'
+        sdf = sdf.withColumn(index_name, F.struct(*tmp_index_names))
     else:
-        columns_name = '__tmp_col__'
+        index_name = 'row_0'
 
-    kdf = index.to_frame()
-    kdf[columns_name] = columns
-    sdf = kdf._sdf.crosstab(index.name, columns_name)
-    sdf = sdf.withColumn(index.name, scol_for(sdf, index.name + '_' + columns_name))
+    if len(tmp_columns_names) > 1:
+        columns_name = '__columns_merged__'
+        sdf = sdf.withColumn(columns_name, F.struct(*tmp_columns_names))
+    else:
+        columns_name = 'col_0'
+
+    # now we can estimate crosstab with the names of `index` and `columns`
+    sdf_crosstab = sdf.crosstab(index_name, columns_name)
+
+    # `sdf` here is shown like below.
+    # +-----------------------------------+-------------------+-------------------+-------------...
+    # |__index_merged_____columns_merged__|[dull,one,one,dull]|[dull,two,two,dull]|[shiny,two,tw...
+    # +-----------------------------------+-------------------+-------------------+-------------...
+    # |                      [bar,bar,bar]|                  1|                  1|             ...
+    # |                      [foo,foo,foo]|                  2|                  1|             ...
+    # +-----------------------------------+-------------------+-------------------+-------------...
+
+    # since the type of `__index_merged_____columns_merged__` is `string`, not `struct`
+    # we need to make `struct` column for address multi index.
+    merged_col = index_name + '_' + columns_name
+
+    sdf_struct_map = sdf.select(sdf[index_name],
+                                F.regexp_replace(sdf[index_name].cast('string'), ' ', '')
+                                .alias(merged_col)) \
+                        .dropDuplicates()
+    # `sdf_struct_map` here is shown like below.
+    # +----------------+-----------------------------------+
+    # |__index_merged__|__index_merged_____columns_merged__|
+    # +----------------+-----------------------------------+
+    # | [bar, bar, bar]|                      [bar,bar,bar]|
+    # | [foo, foo, foo]|                      [foo,foo,foo]|
+    # +----------------+-----------------------------------+
+    data_columns = sdf_crosstab.columns[1:]
+
+    sdf = sdf_crosstab \
+        .join(sdf_struct_map, sdf_crosstab[merged_col] == sdf_struct_map[merged_col]) \
+        .select(index_name, *data_columns)
+    # now, `sdf` here is shown like below which has a struct column `__index_merged__`
+    # +----------------+-------------------+-------------------+---------------------+
+    # |__index_merged__|[dull,one,one,dull]|[dull,two,two,dull]|[shiny,two,two,shiny]|
+    # +----------------+-------------------+-------------------+---------------------+
+    # | [bar, bar, bar]|                  1|                  1|                    0|
+    # | [foo, foo, foo]|                  2|                  1|                    2|
+    # +----------------+-------------------+-------------------+---------------------+
+
+    # but if given `index` as parameter is single value (not list-like),
+    # `sdf` here is shown like below.
+    # +-----+----+-----+
+    # |row_0|dull|shiny|
+    # +-----+----+-----+
+    # |  foo|   3|    4|
+    # |  bar|   2|    2|
+    # +-----+----+-----+
+
+    if len(tmp_index_names) > 1:
+        sdf = sdf.select(F.expr("__index_merged__.*"), *data_columns)
+    # fianlly, `sdf` here is shown like below
+    # +-----+-----+-----+-------------------+-------------------+---------------------+
+    # |row_0|row_1|row_2|[dull,one,one,dull]|[dull,two,two,dull]|[shiny,two,two,shiny]|
+    # +-----+-----+-----+-------------------+-------------------+---------------------+
+    # |  bar|  bar|  bar|                  1|                  1|                    0|
+    # |  foo|  foo|  foo|                  2|                  1|                    2|
+    # +-----+-----+-----+-------------------+-------------------+---------------------+
 
     internal = _InternalFrame(
         sdf=sdf,
-        index_map=[(index.name, (index.name,))],
-        column_index=[(col,) for col in sdf.columns[1:-1]],
-        column_scols=[scol_for(sdf, col) for col in sdf.columns[1:-1]],
-        column_index_names=[columns.name])
+        index_map=[(index_name, (index_name,)) for index_name in tmp_index_names],
+        column_index=[tuple(col.replace('[', '').replace(']', '').split(','))
+                      for col in data_columns],
+        column_scols=[scol_for(sdf, col) for col in data_columns],
+        column_index_names=tmp_columns_names)
 
     result = DataFrame(internal)
-    result.index.name = index.name
 
     return result
 
