@@ -31,7 +31,6 @@ class _MissingPandasLikeIndex(object):
 
     # Properties
     nbytes = unsupported_property('nbytes')
-    shape = unsupported_property('shape')
 
     # Deprecated properties
     strides = unsupported_property('strides', deprecated=True)
@@ -122,7 +121,6 @@ class _MissingPandasLikeMultiIndex(object):
     # Properties
     is_all_dates = unsupported_property('is_all_dates')
     levshape = unsupported_property('levshape')
-    shape = unsupported_property('shape')
 
     # Deprecated properties
     strides = unsupported_property('strides', deprecated=True)
