@@ -19,12 +19,12 @@ Properties
    :toctree: api/
 
    Index.dtype
+   Index.shape
    Index.name
    Index.names
    Index.ndim
    Index.empty
    Index.T
-   Index.shape
 
 Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -94,10 +94,10 @@ MultiIndex Properties
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.shape
    MultiIndex.names
    MultiIndex.ndim
    MultiIndex.T
-   MultiIndex.shape
 
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
