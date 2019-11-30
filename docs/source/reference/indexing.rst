@@ -24,6 +24,7 @@ Properties
    Index.ndim
    Index.empty
    Index.T
+   Index.shape
 
 Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -96,6 +97,7 @@ MultiIndex Properties
    MultiIndex.names
    MultiIndex.ndim
    MultiIndex.T
+   MultiIndex.shape
 
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~

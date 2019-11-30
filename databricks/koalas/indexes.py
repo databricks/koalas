@@ -133,6 +133,8 @@ class Index(IndexOpsMixin):
         >>> idx = ks.Index(['a', 'b', 'c'])
         >>> idx
         Index(['a', 'b', 'c'], dtype='object')
+        >>> idx.shape
+        (3,)
 
         >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
         >>> midx  # doctest: +SKIP
