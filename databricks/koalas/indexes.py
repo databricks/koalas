@@ -807,6 +807,27 @@ class MultiIndex(Index):
     def name(self, name: str) -> None:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
 
+    @property
+    def levshape(self) -> tuple:
+        """
+        A tuple with the length of each level.
+
+        Examples
+        --------
+        >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> midx.levshape
+        (3,3)
+        """
+        result = self._internal._sdf\
+            .agg(*(F.countDistinct(F.col(c)) for c in self._internal.index_columns)).collect()
+        return tuple(v for v in result[0])
+
     def to_pandas(self) -> pd.MultiIndex:
         """
         Return a pandas MultiIndex.

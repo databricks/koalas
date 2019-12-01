@@ -121,7 +121,6 @@ class _MissingPandasLikeMultiIndex(object):
 
     # Properties
     is_all_dates = unsupported_property('is_all_dates')
-    levshape = unsupported_property('levshape')
     shape = unsupported_property('shape')
 
     # Deprecated properties

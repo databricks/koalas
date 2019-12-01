@@ -96,6 +96,7 @@ MultiIndex Properties
    MultiIndex.names
    MultiIndex.ndim
    MultiIndex.T
+   MultiIndex.levshape
 
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
