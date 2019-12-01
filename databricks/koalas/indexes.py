@@ -587,6 +587,67 @@ class Index(IndexOpsMixin):
             result.name = name
         return result
 
+    def droplevel(self, level):
+        """
+        Return index with requested level(s) removed.
+        If resulting index has only 1 level left, the result will be
+        of Index type, not MultiIndex.
+
+        Parameters
+        ----------
+        level : int, str, or list-like, default 0
+            If a string is given, must be the name of a level
+            If list-like, elements must be names or indexes of levels.
+
+        Returns
+        -------
+        Index or MultiIndex
+
+
+        Examples
+        --------
+        >>> midx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)],
+        ...                                  names=['level1', 'level2', 'level3'])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 'x', 1),
+                    ('b', 'y', 2),
+                   names=['level1', 'level2', 'level3'])
+
+        >>> midx.droplevel([0, 1])
+        Int64Index([1, 2], dtype='int64', name='level3')
+
+        >>> midx.droplevel('level1')
+        MultiIndex([('x', 1),
+                    ('y', 2)],
+                   names=['level2', 'level3'])
+        """
+        if not isinstance(level, (tuple, list)):
+            level = [level]
+
+        for l in level:
+            if isinstance(l, int) and (l > self.nlevels - 1):
+                raise IndexError("Too many levels: Index has only {} levels, not {}"
+                                 .format(self.nlevels, l))
+            if isinstance(l, str) and (l not in self._internal.index_columns):
+                raise KeyError("Level {} not found".format(l))
+
+        if len(level) >= self.nlevels:
+            raise ValueError(
+                "Cannot remove {} levels from an index with {} "
+                "levels: at least one level must be "
+                "left.".format(len(level), self.nlevels)
+            )
+
+        index_columns = [v for k, v in enumerate(self._internal.index_columns)
+                         if ((k not in level) & (v not in level))]
+        internal = _InternalFrame(sdf=self._internal._sdf.select(index_columns),
+                                  index_map=[(i, (i,)) for i in index_columns])
+        if len(index_columns) > 1:
+            result = MultiIndex(DataFrame(internal))
+        else:
+            result = Index(DataFrame(internal))
+        return result
+
     def symmetric_difference(self, other, result_name=None, sort=None):
         """
         Compute the symmetric difference of two Index objects.
@@ -806,67 +867,6 @@ class MultiIndex(Index):
     @name.setter
     def name(self, name: str) -> None:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
-
-    def droplevel(self, level):
-        """
-        Return index with requested level(s) removed.
-        If resulting index has only 1 level left, the result will be
-        of Index type, not MultiIndex.
-
-        Parameters
-        ----------
-        level : int, str, or list-like, default 0
-            If a string is given, must be the name of a level
-            If list-like, elements must be names or indexes of levels.
-
-        Returns
-        -------
-        Index or MultiIndex
-
-
-        Examples
-        --------
-        >>> midx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)],
-        ...                                  names=['level1', 'level2', 'level3'])
-        >>> midx  # doctest: +SKIP
-        MultiIndex([('a', 'x', 1),
-                    ('b', 'y', 2),
-                   names=['level1', 'level2', 'level3'])
-
-        >>> midx.droplevel([0, 1])
-        Int64Index([1, 2], dtype='int64', name='level3')
-
-        >>> midx.droplevel('level1')
-        MultiIndex([('x', 1),
-                    ('y', 2)],
-                   names=['level2', 'level3'])
-        """
-        if not isinstance(level, (tuple, list)):
-            level = [level]
-
-        for l in level:
-            if isinstance(l, int) and (l > self.nlevels - 1):
-                raise IndexError("Too many levels: Index has only {} levels, not {}"
-                                 .format(self.nlevels, l))
-            if isinstance(l, str) and (l not in self._internal.index_columns):
-                raise KeyError("Level {} not found".format(l))
-
-        if len(level) >= self.nlevels:
-            raise ValueError(
-                "Cannot remove {} levels from an index with {} "
-                "levels: at least one level must be "
-                "left.".format(len(level), self.nlevels)
-            )
-
-        index_columns = [v for k, v in enumerate(self._internal.index_columns)
-                         if ((k not in level) & (v not in level))]
-        internal = _InternalFrame(sdf=self._internal._sdf.select(index_columns),
-                                  index_map=[(i, (i,)) for i in index_columns])
-        if len(index_columns) > 1:
-            result = MultiIndex(DataFrame(internal))
-        else:
-            result = Index(DataFrame(internal))
-        return result
 
     def to_pandas(self) -> pd.MultiIndex:
         """
