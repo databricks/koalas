@@ -807,25 +807,6 @@ class MultiIndex(Index):
     def name(self, name: str) -> None:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
 
-    @property
-    def nlevels(self) -> int:
-        """
-        A tuple with the length of each level.
-
-        Examples
-        --------
-        >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
-        >>> midx  # doctest: +SKIP
-        MultiIndex([('a', 'x'),
-                    ('b', 'y'),
-                    ('c', 'z')],
-                   )
-
-        >>> midx.nlevels
-        2
-        """
-        return len(self._kdf._internal.index_columns)
-
     def to_pandas(self) -> pd.MultiIndex:
         """
         Return a pandas MultiIndex.
