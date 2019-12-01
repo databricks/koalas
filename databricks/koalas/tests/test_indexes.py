@@ -319,3 +319,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_arrays(arrays)
 
         self.assert_eq(pidx, kidx)
+
+    def test_multiindex_droplevel(self):
+        pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)],
+                                         names=['level1', 'level2', 'level3'])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)],
+                                         names=['level1', 'level2', 'level3'])
+        with self.assertRaisesRegex(IndexError,
+                                    "Too many levels: Index has only 3 levels, not 4"):
+            kidx.droplevel(4)
+
+        with self.assertRaisesRegex(KeyError, "Level level4 not found"):
+            kidx.droplevel('level4')
+
+        with self.assertRaisesRegex(ValueError, "Cannot remove 4 levels from an index with 3 "
+                                                "levels: at least one level must be left."):
+            kidx.droplevel([0, 0, 1, 2])
+
+        self.assert_eq(pidx.droplevel(0), kidx.droplevel(0))
+        self.assert_eq(pidx.droplevel([0, 1]), kidx.droplevel([0, 1]))

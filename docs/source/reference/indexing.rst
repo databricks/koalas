@@ -40,6 +40,13 @@ Modifying and computations
    Index.is_numeric
    Index.is_object
 
+Compatibility with MultiIndex
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.droplevel
+
 Missing Values
 ~~~~~~~~~~~~~~
 .. autosummary::
@@ -96,6 +103,13 @@ MultiIndex Properties
    MultiIndex.names
    MultiIndex.ndim
    MultiIndex.T
+
+MultiIndex components
+~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.droplevel
 
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
