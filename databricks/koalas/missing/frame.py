@@ -56,7 +56,6 @@ class _MissingPandasLikeDataFrame(object):
     eval = unsupported_function('eval')
     ewm = unsupported_function('ewm')
     first = unsupported_function('first')
-    first_valid_index = unsupported_function('first_valid_index')
     infer_objects = unsupported_function('infer_objects')
     info = unsupported_function('info')
     insert = unsupported_function('insert')
@@ -67,7 +66,6 @@ class _MissingPandasLikeDataFrame(object):
     last_valid_index = unsupported_function('last_valid_index')
     lookup = unsupported_function('lookup')
     mad = unsupported_function('mad')
-    mask = unsupported_function('mask')
     mode = unsupported_function('mode')
     pct_change = unsupported_function('pct_change')
     prod = unsupported_function('prod')
@@ -98,7 +96,6 @@ class _MissingPandasLikeDataFrame(object):
     tz_convert = unsupported_function('tz_convert')
     tz_localize = unsupported_function('tz_localize')
     unstack = unsupported_function('unstack')
-    where = unsupported_function('where')
 
     # Deprecated functions
     as_blocks = unsupported_function('as_blocks', deprecated=True)

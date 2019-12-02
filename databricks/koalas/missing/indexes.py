@@ -30,9 +30,7 @@ def unsupported_property(property_name, deprecated=False, reason=""):
 class _MissingPandasLikeIndex(object):
 
     # Properties
-    T = unsupported_property('T')
     nbytes = unsupported_property('nbytes')
-    shape = unsupported_property('shape')
 
     # Deprecated properties
     strides = unsupported_property('strides', deprecated=True)
@@ -53,7 +51,6 @@ class _MissingPandasLikeIndex(object):
     drop = unsupported_function('drop')
     drop_duplicates = unsupported_function('drop_duplicates')
     droplevel = unsupported_function('droplevel')
-    dropna = unsupported_function('dropna')
     duplicated = unsupported_function('duplicated')
     equals = unsupported_function('equals')
     factorize = unsupported_function('factorize')
@@ -92,15 +89,11 @@ class _MissingPandasLikeIndex(object):
     sort = unsupported_function('sort')
     sort_values = unsupported_function('sort_values')
     sortlevel = unsupported_function('sortlevel')
-    symmetric_difference = unsupported_function('symmetric_difference')
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
     to_frame = unsupported_function('to_frame')
     to_native_types = unsupported_function('to_native_types')
-    to_numpy = unsupported_function('to_numpy')
-    transpose = unsupported_function('transpose')
     union = unsupported_function('union')
-    value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
     where = unsupported_function('where')
 
@@ -125,10 +118,8 @@ class _MissingPandasLikeIndex(object):
 class _MissingPandasLikeMultiIndex(object):
 
     # Properties
-    T = unsupported_property('T')
     is_all_dates = unsupported_property('is_all_dates')
     levshape = unsupported_property('levshape')
-    shape = unsupported_property('shape')
 
     # Deprecated properties
     strides = unsupported_property('strides', deprecated=True)
@@ -150,7 +141,6 @@ class _MissingPandasLikeMultiIndex(object):
     drop = unsupported_function('drop')
     drop_duplicates = unsupported_function('drop_duplicates')
     droplevel = unsupported_function('droplevel')
-    dropna = unsupported_function('dropna')
     duplicated = unsupported_function('duplicated')
     equal_levels = unsupported_function('equal_levels')
     equals = unsupported_function('equals')
@@ -199,16 +189,12 @@ class _MissingPandasLikeMultiIndex(object):
     sort_values = unsupported_function('sort_values')
     sortlevel = unsupported_function('sortlevel')
     swaplevel = unsupported_function('swaplevel')
-    symmetric_difference = unsupported_function('symmetric_difference')
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
     to_frame = unsupported_function('to_frame')
     to_native_types = unsupported_function('to_native_types')
-    to_numpy = unsupported_function('to_numpy')
-    transpose = unsupported_function('transpose')
     truncate = unsupported_function('truncate')
     union = unsupported_function('union')
-    value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
     where = unsupported_function('where')
 
