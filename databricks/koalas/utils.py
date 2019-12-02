@@ -74,12 +74,12 @@ def combine_frames(this, *args, how="full"):
 
         # If the same named index is found, that's used.
         for this_column, this_name in this_index_map:
-            for that_col, that_name in that_index_map:
-                if (this_column == that_col) and (this_name == that_name):
+            for that_column, that_name in that_index_map:
+                if (this_column == that_column) and (this_name == that_name):
                     # We should merge the Spark columns into one
                     # to mimic pandas' behavior.
                     this_scol = this._internal.scol_for(this_column)
-                    that_scol = that._internal.scol_for(that_col)
+                    that_scol = that._internal.scol_for(that_column)
                     join_scol = this_scol == that_scol
                     join_scols.append(join_scol)
                     merged_index_scols.append(
