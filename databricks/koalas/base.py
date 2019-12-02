@@ -902,6 +902,15 @@ class IndexOpsMixin(object):
         (falcon, weight)    0.111111
         (lama, weight)      0.333333
         Name: count, dtype: float64
+
+        If Index has own name, keep the name up.
+        >>> idx = Index([0, 0, 0, 1, 1, 2, 3], name='koalas')
+        >>> idx.value_counts().sort_index()
+        0    3
+        1    2
+        2    1
+        3    1
+        Name: koalas, dtype: int64
         """
         from databricks.koalas.series import Series, _col
         if bins is not None:
@@ -923,16 +932,16 @@ class IndexOpsMixin(object):
             sum = sdf_dropna.count()
             sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
 
-        # column_index & column_index_name are needed for Series, but not for Index/MultiIndex
-        if isinstance(self, Series):
-            internal = _InternalFrame(sdf=sdf,
-                                      index_map=[(index_name, None)],
-                                      column_index=self._internal.column_index,
-                                      column_scols=[scol_for(sdf, 'count')],
-                                      column_index_names=self._internal.column_index_names)
-        else:
+        column_index = self._internal.column_index
+        if (column_index[0] is None) or (None in column_index[0]):
             internal = _InternalFrame(sdf=sdf,
                                       index_map=[(index_name, None)],
                                       column_scols=[scol_for(sdf, 'count')])
+        else:
+            internal = _InternalFrame(sdf=sdf,
+                                      index_map=[(index_name, None)],
+                                      column_index=column_index,
+                                      column_scols=[scol_for(sdf, 'count')],
+                                      column_index_names=self._internal.column_index_names)
 
         return _col(DataFrame(internal))
