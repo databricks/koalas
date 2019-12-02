@@ -326,7 +326,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)],
                                          names=['level1', 'level2', 'level3'])
         with self.assertRaisesRegex(IndexError,
-                                    "Too many levels: Index has only 3 levels, not 4"):
+                                    "Too many levels: Index has only 3 levels, not 5"):
             kidx.droplevel(4)
 
         with self.assertRaisesRegex(KeyError, "Level level4 not found"):

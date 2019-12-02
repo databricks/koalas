@@ -627,7 +627,7 @@ class Index(IndexOpsMixin):
         for l in level:
             if isinstance(l, int) and (l > self.nlevels - 1):
                 raise IndexError("Too many levels: Index has only {} levels, not {}"
-                                 .format(self.nlevels, l))
+                                 .format(self.nlevels, l+1))
             if isinstance(l, str) and (l not in self._internal.index_columns):
                 raise KeyError("Level {} not found".format(l))
 
