@@ -1902,11 +1902,83 @@ def crosstab(index, columns, rownames=None, colnames=None):
     you sould specify `rownames` or `colnames` if you want to use duplicated name.
     if not, default names are made automatically started with `row_`, `cols_`.
 
-    >>> ks.crosstab(a, b).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+    >>> ks.crosstab(a, b).sort_index()
+    ... # doctest: +NORMALIZE_WHITESPACE
     col_0  one  two
     row_0
     bar      3    1
     foo      4    3
+
+    >>> ks.crosstab(a, b, rownames=['0'], colnames=['0']).sort_index()
+    ... # doctest: +NORMALIZE_WHITESPACE
+    0    one  two
+    0
+    bar    3    1
+    foo    4    3
+
+    You can specify multiple index or columns
+
+    >>> ks.crosstab([a, b], a).sort_index()
+    ... # doctest: +NORMALIZE_WHITESPACE
+    col_0        bar  foo
+    row_0 row_1
+    bar   one      3    0
+          two      1    0
+    foo   one      0    4
+          two      0    3
+
+    >>> ks.crosstab(a, [b, a]).sort_index()
+    ... # doctest: +NORMALIZE_WHITESPACE
+    col_0 one     two
+    col_1 bar foo bar foo
+    row_0
+    bar     3   0   1   0
+    foo     0   4   0   3
+
+    >>> ks.crosstab([a, b], [b, a]).sort_index()
+    ... # doctest: +NORMALIZE_WHITESPACE
+    col_0       one     two
+    col_1       bar foo bar foo
+    row_0 row_1
+    bar   one     3   0   0   0
+          two     0   0   1   0
+    foo   one     0   4   0   0
+          two     0   0   0   3
+
+    Of course, with specifying multiple names of index or columns
+
+    >>> ks.crosstab([a, b], a,
+    ...             rownames=['myidx_1', 'myidx_2'],
+    ...             colnames=['mycol_1']).sort_index()
+    ... # doctest: +NORMALIZE_WHITESPACE
+    mycol_1          bar  foo
+    myidx_1 myidx_2
+    bar     one        3    0
+            two        1    0
+    foo     one        0    4
+            two        0    3
+
+    >>> ks.crosstab(a, [b, a],
+    ...             rownames=['myidx_1'],
+    ...             colnames=['mycol_1', 'mycol_2']).sort_index()
+    ... # doctest: +NORMALIZE_WHITESPACE
+    mycol_1 one     two
+    mycol_2 bar foo bar foo
+    myidx_1
+    bar       3   0   1   0
+    foo       0   4   0   3
+
+    >>> ks.crosstab([a, b], [b, a],
+    ...             rownames=['myidx_1', 'myidx_2'],
+    ...             colnames=['mycol_1', 'mycol_2']).sort_index()
+    ... # doctest: +NORMALIZE_WHITESPACE
+    mycol_1         one     two
+    mycol_2         bar foo bar foo
+    myidx_1 myidx_2
+    bar     one       3   0   0   0
+            two       0   0   1   0
+    foo     one       0   4   0   0
+            two       0   0   0   3
 
     >>> reset_option("compute.ops_on_diff_frames")
     """
@@ -2045,12 +2117,20 @@ def crosstab(index, columns, rownames=None, colnames=None):
         if len(tmp_index_names) > 1:
             result.index.names = rownames
         else:
-            result.index.name = list(rownames)[0]
+            if not isinstance(rownames, str):
+                rownames = rownames[0]
+            result.index.name = rownames
     if colnames is not None:
         if len(tmp_columns_names) > 1:
-            result.columns.names = colnames
+            columns = result.columns
+            columns.names = colnames
+            result.columns = columns
         else:
-            result.columns.name = list(colnames)[0]
+            if not isinstance(colnames, str):
+                colnames = colnames[0]
+            columns = result.columns
+            columns.name = colnames
+            result.columns = columns
 
     return result
 

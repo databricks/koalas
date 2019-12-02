@@ -489,18 +489,88 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame(raw_data)
         kdf = ks.from_pandas(pdf)
 
+        # index & columns as numpy array
         self.assert_eq(pd.crosstab(a, b),
                        ks.crosstab(a, b).sort_index())
+
         self.assert_eq(pd.crosstab([a, b], c),
                        ks.crosstab([a, b], c).sort_index())
+
         self.assert_eq(pd.crosstab(a, [b, c]),
                        ks.crosstab(a, [b, c]).sort_index())
+
         self.assert_eq(pd.crosstab([a, c, b, a, b, c], [b, b, c, c, a, a]),
                        ks.crosstab([a, c, b, a, b, c], [b, b, c, c, a, a]).sort_index())
-        # self.assert_eq(pd.crosstab(pdf.company, pdf.name),
-        #                ks.crosstab(kdf.company, kdf.name).sort_index())
-        # self.assert_eq(pd.crosstab([pdf.company, pdf.experience], pdf.name),
-        #                ks.crosstab([kdf.company, kdf.experience], kdf.name).sort_index())
+
+        self.assert_eq(pd.crosstab(a, b,
+                                   rownames=['index_1'],
+                                   colnames=['column_1']),
+                       ks.crosstab(a, b,
+                                   rownames=['index_1'],
+                                   colnames=['column_1']).sort_index())
+
+        self.assert_eq(pd.crosstab([a, b], c,
+                                   rownames=['index_1', 'index_2'],
+                                   colnames=['column_1']),
+                       ks.crosstab([a, b], c,
+                                   rownames=['index_1', 'index_2'],
+                                   colnames=['column_1']).sort_index())
+
+        self.assert_eq(pd.crosstab(a, [b, c],
+                                   rownames=['index_1'],
+                                   colnames=['column_1', 'column_2']),
+                       ks.crosstab(a, [b, c],
+                                   rownames=['index_1'],
+                                   colnames=['column_1', 'column_2']).sort_index())
+
+        self.assert_eq(pd.crosstab([a, b], [b, c],
+                                   rownames=['index_1', 'index_2'],
+                                   colnames=['column_1', 'column_2']),
+                       ks.crosstab([a, b], [b, c],
+                                   rownames=['index_1', 'index_2'],
+                                   colnames=['column_1', 'column_2']).sort_index())
+
+        # index & columns as Series
+        self.assert_eq(pd.crosstab(pdf.company, pdf.name),
+                       ks.crosstab(kdf.company, kdf.name).sort_index())
+
+        self.assert_eq(pd.crosstab([pdf.company, pdf.experience], pdf.name),
+                       ks.crosstab([kdf.company, kdf.experience], kdf.name).sort_index())
+
+        self.assert_eq(pd.crosstab(pdf.company, [pdf.experience, pdf.name]),
+                       ks.crosstab(kdf.company, [kdf.experience, kdf.name]).sort_index())
+
+        self.assert_eq(
+            pd.crosstab([pdf.company, pdf.experience], [pdf.regiment, pdf.name]),
+            ks.crosstab([kdf.company, kdf.experience], [kdf.regiment, kdf.name]).sort_index())
+
+        self.assert_eq(pd.crosstab(pdf.company, pdf.name,
+                                   rownames=['index_1'],
+                                   colnames=['column_1']),
+                       ks.crosstab(kdf.company, kdf.name,
+                                   rownames=['index_1'],
+                                   colnames=['column_1']).sort_index())
+
+        self.assert_eq(pd.crosstab([pdf.company, pdf.experience], pdf.name,
+                                   rownames=['index_1', 'index_2'],
+                                   colnames=['column_1']),
+                       ks.crosstab([kdf.company, kdf.experience], kdf.name,
+                                   rownames=['index_1', 'index_2'],
+                                   colnames=['column_1']).sort_index())
+
+        self.assert_eq(pd.crosstab(pdf.company, [pdf.experience, pdf.name],
+                                   rownames=['index_1'],
+                                   colnames=['column_1', 'column_2']),
+                       ks.crosstab(kdf.company, [kdf.experience, kdf.name],
+                                   rownames=['index_1'],
+                                   colnames=['column_1', 'column_2']).sort_index())
+
+        self.assert_eq(pd.crosstab([pdf.company, pdf.experience], [pdf.regiment, pdf.name],
+                                   rownames=['index_1', 'index_2'],
+                                   colnames=['column_1', 'column_2']),
+                       ks.crosstab([kdf.company, kdf.experience], [kdf.regiment, kdf.name],
+                                   rownames=['index_1', 'index_2'],
+                                   colnames=['column_1', 'column_2']).sort_index())
 
         with self.assertRaisesRegex(
                 ValueError, "type of index should be one of `np.ndarray`, `Series`, `list`"):
