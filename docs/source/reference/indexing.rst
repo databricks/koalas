@@ -40,6 +40,7 @@ Modifying and computations
    Index.is_interval
    Index.is_numeric
    Index.is_object
+   Index.value_counts
 
 Missing Values
 ~~~~~~~~~~~~~~
@@ -112,7 +113,8 @@ MultiIndex Modifying and computations
 .. autosummary::
    :toctree: api/
 
-   Index.copy
+   MultiIndex.copy
+   MultiIndex.value_counts
 
 MultiIndex Combining / joining / set operations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -120,7 +122,6 @@ MultiIndex Combining / joining / set operations
    :toctree: api/
 
    MultiIndex.symmetric_difference
-   MultiIndex.copy
 
 Conversion
 ~~~~~~~~~~

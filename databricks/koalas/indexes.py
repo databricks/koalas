@@ -37,7 +37,6 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
-from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.utils import name_like_string
 from databricks.koalas.internal import _InternalFrame
 

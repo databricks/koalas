@@ -30,10 +30,10 @@ from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, Times
 from pyspark.sql.functions import monotonically_increasing_id
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.frame import DataFrame
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
+from databricks.koalas.frame import DataFrame
 
 
 def booleanize_null(left_scol, scol, f):
@@ -771,3 +771,187 @@ class IndexOpsMixin(object):
         lag_col = F.lag(col, periods).over(window)
         col = F.when(lag_col.isNull() | F.isnan(lag_col), fill_value).otherwise(lag_col)
         return self._with_new_scol(col).rename(self.name)
+
+    # TODO: Update Documentation for Bins Parameter when its supported
+    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+        """
+        Return a Series containing counts of unique values.
+        The resulting object will be in descending order so that the
+        first element is the most frequently-occurring element.
+        Excludes NA values by default.
+
+        Parameters
+        ----------
+        normalize : boolean, default False
+            If True then the object returned will contain the relative
+            frequencies of the unique values.
+        sort : boolean, default True
+            Sort by values.
+        ascending : boolean, default False
+            Sort in ascending order.
+        bins : Not Yet Supported
+        dropna : boolean, default True
+            Don't include counts of NaN.
+
+        Returns
+        -------
+        counts : Series
+
+        See Also
+        --------
+        Series.count: Number of non-NA elements in a Series.
+
+        Examples
+        --------
+        For Series
+
+        >>> df = ks.DataFrame({'x':[0, 0, 1, 1, 1, np.nan]})
+        >>> df.x.value_counts()  # doctest: +NORMALIZE_WHITESPACE
+        1.0    3
+        0.0    2
+        Name: x, dtype: int64
+
+        With `normalize` set to `True`, returns the relative frequency by
+        dividing all values by the sum of values.
+
+        >>> df.x.value_counts(normalize=True)  # doctest: +NORMALIZE_WHITESPACE
+        1.0    0.6
+        0.0    0.4
+        Name: x, dtype: float64
+
+        **dropna**
+        With `dropna` set to `False` we can also see NaN index values.
+
+        >>> df.x.value_counts(dropna=False)  # doctest: +NORMALIZE_WHITESPACE
+        1.0    3
+        0.0    2
+        NaN    1
+        Name: x, dtype: int64
+
+        For Index
+
+        >>> from databricks.koalas.indexes import Index
+        >>> idx = Index([3, 1, 2, 3, 4, np.nan])
+        >>> idx
+        Float64Index([3.0, 1.0, 2.0, 3.0, 4.0, nan], dtype='float64')
+
+        >>> idx.value_counts().sort_index()
+        1.0    1
+        2.0    1
+        3.0    2
+        4.0    1
+        Name: count, dtype: int64
+
+        **sort**
+
+        With `sort` set to `False`, the result wouldn't be sorted by number of count.
+
+        >>> idx.value_counts(sort=True).sort_index()
+        1.0    1
+        2.0    1
+        3.0    2
+        4.0    1
+        Name: count, dtype: int64
+
+        **normalize**
+
+        With `normalize` set to `True`, returns the relative frequency by
+        dividing all values by the sum of values.
+
+        >>> idx.value_counts(normalize=True).sort_index()
+        1.0    0.2
+        2.0    0.2
+        3.0    0.4
+        4.0    0.2
+        Name: count, dtype: float64
+
+        **dropna**
+
+        With `dropna` set to `False` we can also see NaN index values.
+
+        >>> idx.value_counts(dropna=False).sort_index()  # doctest: +SKIP
+        1.0    1
+        2.0    1
+        3.0    2
+        4.0    1
+        NaN    1
+        Name: count, dtype: int64
+
+        For MultiIndex.
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [1, 1, 1, 1, 1, 2, 1, 2, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        >>> s.index  # doctest: +SKIP
+        MultiIndex([(  'lama', 'weight'),
+                    (  'lama', 'weight'),
+                    (  'lama', 'weight'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'length'),
+                    ('falcon', 'weight'),
+                    ('falcon', 'length'),
+                    ('falcon', 'length')],
+                   )
+
+        >>> s.index.value_counts().sort_index()
+        (cow, length)       1
+        (cow, weight)       2
+        (falcon, length)    2
+        (falcon, weight)    1
+        (lama, weight)      3
+        Name: count, dtype: int64
+
+        >>> s.index.value_counts(normalize=True).sort_index()
+        (cow, length)       0.111111
+        (cow, weight)       0.222222
+        (falcon, length)    0.222222
+        (falcon, weight)    0.111111
+        (lama, weight)      0.333333
+        Name: count, dtype: float64
+
+        If Index has name, keep the name up.
+
+        >>> idx = Index([0, 0, 0, 1, 1, 2, 3], name='koalas')
+        >>> idx.value_counts().sort_index()
+        0    3
+        1    2
+        2    1
+        3    1
+        Name: koalas, dtype: int64
+        """
+        from databricks.koalas.series import Series, _col
+        if bins is not None:
+            raise NotImplementedError("value_counts currently does not support bins")
+
+        if dropna:
+            sdf_dropna = self._internal._sdf.dropna()
+        else:
+            sdf_dropna = self._internal._sdf
+        index_name = SPARK_INDEX_NAME_FORMAT(0)
+        sdf = sdf_dropna.groupby(self._scol.alias(index_name)).count()
+        if sort:
+            if ascending:
+                sdf = sdf.orderBy(F.col('count'))
+            else:
+                sdf = sdf.orderBy(F.col('count').desc())
+
+        if normalize:
+            sum = sdf_dropna.count()
+            sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
+
+        column_index = self._internal.column_index
+        if (column_index[0] is None) or (None in column_index[0]):
+            internal = _InternalFrame(sdf=sdf,
+                                      index_map=[(index_name, None)],
+                                      column_scols=[scol_for(sdf, 'count')])
+        else:
+            internal = _InternalFrame(sdf=sdf,
+                                      index_map=[(index_name, None)],
+                                      column_index=column_index,
+                                      column_scols=[scol_for(sdf, 'count')],
+                                      column_index_names=self._internal.column_index_names)
+
+        return _col(DataFrame(internal))
