@@ -72,6 +72,8 @@ def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'Da
     else:
         raise ValueError("Unknown data type: {}".format(type(pobj)))
 
+_range = range
+
 
 def range(start: int,
           end: Optional[int] = None,
@@ -1940,8 +1942,8 @@ def crosstab(index, columns, rownames=None, colnames=None):
     # row_0 row_1 row_2 row_3 row_4
     # bar   bar   bar   bar   bar      2     2
     # foo   foo   foo   foo   foo      3     4
-    tmp_index_names = ['row_{}'.format(i) for i in range(len(index))]
-    tmp_columns_names = ['col_{}'.format(i) for i in range(len(columns))]
+    tmp_index_names = ['row_{}'.format(i) for i in _range(len(index))]
+    tmp_columns_names = ['col_{}'.format(i) for i in _range(len(columns))]
 
     # covert all np.ndarray to Series.
     index = (Series(idx) if isinstance(idx, np.ndarray) else idx for idx in index)
