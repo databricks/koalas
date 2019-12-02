@@ -4215,11 +4215,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        if isinstance(key, Series):
-            bcol = key._scol.cast(BooleanType())
-            sdf = self._internal.sdf.filter(bcol)
-            internal = self._internal.copy(sdf=sdf)
-            return _col(DataFrame(internal))
+        if isinstance(key, Series) and isinstance(key.spark_type, BooleanType):
+            self._kdf["__temp_col__"] = key
+            sdf = self._kdf._sdf.filter(F.col("__temp_col__")).drop("__temp_col__")
+            return _col(DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map)))
 
         if not isinstance(key, tuple):
             key = (key,)
