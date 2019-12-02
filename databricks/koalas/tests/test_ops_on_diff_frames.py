@@ -488,10 +488,10 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
                        ks.crosstab([kdf.company, kdf.experience], kdf.name).sort_index())
 
         with self.assertRaisesRegex(
-            ValueError, "type of index should be one of `np.ndarray`, `Series`, `list`"):
+                ValueError, "type of index should be one of `np.ndarray`, `Series`, `list`"):
             ks.crosstab(kdf, kdf.name)
         with self.assertRaisesRegex(
-            ValueError, "type of columns should be one of `np.ndarray`, `Series`, `list`"):
+                ValueError, "type of columns should be one of `np.ndarray`, `Series`, `list`"):
             ks.crosstab(kdf.company, kdf)
 
 
