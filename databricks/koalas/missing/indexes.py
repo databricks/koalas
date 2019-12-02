@@ -188,7 +188,6 @@ class _MissingPandasLikeMultiIndex(object):
     sort = unsupported_function('sort')
     sort_values = unsupported_function('sort_values')
     sortlevel = unsupported_function('sortlevel')
-    swaplevel = unsupported_function('swaplevel')
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
     to_frame = unsupported_function('to_frame')

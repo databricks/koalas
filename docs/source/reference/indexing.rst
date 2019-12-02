@@ -101,6 +101,13 @@ MultiIndex Properties
    MultiIndex.T
    MultiIndex.nlevels
 
+MultiIndex components
+~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.swaplevel
+
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::

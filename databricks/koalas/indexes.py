@@ -831,6 +831,55 @@ class MultiIndex(Index):
     def name(self, name: str) -> None:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
 
+    def swaplevel(self, i=-2, j=-1):
+        """
+        Swap level i with level j.
+        Calling this method does not change the ordering of the values.
+
+        Parameters
+        ----------
+        i : int, str, default -2
+            First level of index to be swapped. Can pass level name as string.
+            Type of parameters can be mixed.
+        j : int, str, default -1
+            Second level of index to be swapped. Can pass level name as string.
+            Type of parameters can be mixed.
+
+        Returns
+        -------
+        MultiIndex
+            A new MultiIndex.
+
+        See Also
+        --------
+        Series.swaplevel : Swap levels i and j in a MultiIndex.
+        Dataframe.swaplevel : Swap levels i and j in a MultiIndex on a
+            particular axis.
+
+        Examples
+        --------
+        >>> midx = ks.DataFrame({'a': ['a', 'b']}, index=[['a', 'b'], ['x', 'y'], [1, 2]]).index
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 'x', 1),
+                    ('b', 'y', 2),
+                   )
+
+        >>> midx.swaplevel(0, 1)
+        MultiIndex([('x', 'a', 1),
+                    ('y', 'b', 2)],
+                   )
+        """
+        index_columns = self._internal.index_columns
+        sdf = self._internal._sdf
+        before = index_columns[i]
+        after = index_columns[j]
+        sdf = sdf.withColumnRenamed(after, 'tmp')\
+            .withColumnRenamed(before, after)\
+            .withColumnRenamed('tmp', before)
+        result = MultiIndex(DataFrame(_InternalFrame(sdf=sdf,
+                                                     index_map=[(i, None) for i in index_columns])))
+        return result
+
     def to_pandas(self) -> pd.MultiIndex:
         """
         Return a pandas MultiIndex.
