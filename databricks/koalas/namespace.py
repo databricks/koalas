@@ -1914,9 +1914,9 @@ def crosstab(index, columns, rownames=None, colnames=None):
     >>> reset_option("compute.ops_on_diff_frames")
     """
     if not isinstance(index, (np.ndarray, Series, list)):
-        raise ValueError("index should be one of `np.ndarray`, `Series`")
+        raise ValueError("type of index should be one of `np.ndarray`, `Series`, `list`")
     if not isinstance(columns, (np.ndarray, Series, list)):
-        raise ValueError("columns should be one of `np.ndarray`, `Series`")
+        raise ValueError("type of columns should be one of `np.ndarray`, `Series`, `list`")
 
     # convert types of parameter `index` and `columns` to list.
     if not isinstance(index, list):

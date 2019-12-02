@@ -484,14 +484,14 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pd.crosstab(pdf.company, pdf.name),
                        ks.crosstab(kdf.company, kdf.name).sort_index())
+        self.assert_eq(pd.crosstab([pdf.company, pdf.experience], pdf.name),
+                       ks.crosstab([kdf.company, kdf.experience], kdf.name).sort_index())
 
-        with self.assertRaisesRegex(NotImplementedError, "multi index is not yet supported"):
-            ks.crosstab([kdf.regiment, kdf.company], kdf.name)
-        with self.assertRaisesRegex(NotImplementedError, "multi index column is not yet supported"):
-            ks.crosstab(kdf.regiment, [kdf.company, kdf.name])
-        with self.assertRaisesRegex(ValueError, "index should be one of `np.ndarray`, `Series`"):
+        with self.assertRaisesRegex(
+            ValueError, "type of index should be one of `np.ndarray`, `Series`, `list`"):
             ks.crosstab(kdf, kdf.name)
-        with self.assertRaisesRegex(ValueError, "columns should be one of `np.ndarray`, `Series`"):
+        with self.assertRaisesRegex(
+            ValueError, "type of columns should be one of `np.ndarray`, `Series`, `list`"):
             ks.crosstab(kdf.company, kdf)
 
 
