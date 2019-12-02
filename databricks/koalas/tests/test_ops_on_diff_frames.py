@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import pandas as pd
+import numpy as np
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
@@ -478,21 +479,41 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
                              'Ryaner', 'Sone', 'Sloan', 'Piger', 'Riani', 'Ali'],
                     'preTestScore': [4, 24, 31, 2, 3, 4, 24, 31, 2, 3, 2, 3],
                     'postTestScore': [25, 94, 57, 62, 70, 25, 94, 57, 62, 70, 62, 70]}
+        a = np.array(["foo", "foo", "foo", "foo", "bar", "bar", "bar",
+                      "bar", "foo", "foo", "foo"], dtype=object)
+        b = np.array(["one", "one", "one", "two", "one", "one", "one",
+                      "two", "two", "two", "one"], dtype=object)
+        c = np.array(["dull", "dull", "shiny", "dull", "dull", "shiny",
+                      "shiny", "dull", "shiny", "shiny", "shiny"], dtype=object)
 
         pdf = pd.DataFrame(raw_data)
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pd.crosstab(pdf.company, pdf.name),
-                       ks.crosstab(kdf.company, kdf.name).sort_index())
-        self.assert_eq(pd.crosstab([pdf.company, pdf.experience], pdf.name),
-                       ks.crosstab([kdf.company, kdf.experience], kdf.name).sort_index())
+        self.assert_eq(pd.crosstab(a, b),
+                       ks.crosstab(a, b).sort_index())
+        self.assert_eq(pd.crosstab([a, b], c),
+                       ks.crosstab([a, b], c).sort_index())
+        self.assert_eq(pd.crosstab(a, [b, c]),
+                       ks.crosstab(a, [b, c]).sort_index())
+        self.assert_eq(pd.crosstab([a, c, b, a, b, c], [b, b, c, c, a, a]),
+                       ks.crosstab([a, c, b, a, b, c], [b, b, c, c, a, a]).sort_index())
+        # self.assert_eq(pd.crosstab(pdf.company, pdf.name),
+        #                ks.crosstab(kdf.company, kdf.name).sort_index())
+        # self.assert_eq(pd.crosstab([pdf.company, pdf.experience], pdf.name),
+        #                ks.crosstab([kdf.company, kdf.experience], kdf.name).sort_index())
 
         with self.assertRaisesRegex(
                 ValueError, "type of index should be one of `np.ndarray`, `Series`, `list`"):
             ks.crosstab(kdf, kdf.name)
         with self.assertRaisesRegex(
+                ValueError, "type of index should be one of `np.ndarray`, `Series`, `list`"):
+            ks.crosstab((kdf.company, kdf.experience), kdf.name).sort_index()
+        with self.assertRaisesRegex(
                 ValueError, "type of columns should be one of `np.ndarray`, `Series`, `list`"):
             ks.crosstab(kdf.company, kdf)
+        with self.assertRaisesRegex(
+                ValueError, "type of columns should be one of `np.ndarray`, `Series`, `list`"):
+            ks.crosstab(kdf.company, (kdf.experience, kdf.name)).sort_index()
 
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):

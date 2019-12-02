@@ -1898,18 +1898,15 @@ def crosstab(index, columns, rownames=None, colnames=None):
     >>> b = np.array(["one", "one", "one", "two", "one", "one",
     ...               "one", "two", "two", "two", "one"], dtype=object)
 
-    >>> ks.crosstab(a, b).sort_index()  # doctest: +NORMALIZE_WHITESPACE
-    0    one  two
-    0
-    bar    3    1
-    foo    4    3
+    Since Koalas doesn't support duplicated index or columns names internally,
+    you sould specify `rownames` or `colnames` if you want to use duplicated name.
+    if not, default names are made automatically started with `row_`, `cols_`.
 
-    >>> ks.crosstab(a, b, rownames=['koalas'], colnames=['hello']).sort_index()
-    ... # doctest: +NORMALIZE_WHITESPACE
-    hello   one  two
-    koalas
-    bar       3    1
-    foo       4    3
+    >>> ks.crosstab(a, b).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+    col_0  one  two
+    row_0
+    bar      3    1
+    foo      4    3
 
     >>> reset_option("compute.ops_on_diff_frames")
     """
@@ -2043,6 +2040,17 @@ def crosstab(index, columns, rownames=None, colnames=None):
         column_index_names=tmp_columns_names)
 
     result = DataFrame(internal)
+
+    if rownames is not None:
+        if len(tmp_index_names) > 1:
+            result.index.names = rownames
+        else:
+            result.index.name = list(rownames)[0]
+    if colnames is not None:
+        if len(tmp_columns_names) > 1:
+            result.columns.names = colnames
+        else:
+            result.columns.name = list(colnames)[0]
 
     return result
 
