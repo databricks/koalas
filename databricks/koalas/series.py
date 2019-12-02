@@ -962,7 +962,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         --------
         Index
         """
-        return self._index
+        return self._kdf.index
 
     @property
     def is_unique(self):
