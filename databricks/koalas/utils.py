@@ -72,21 +72,23 @@ def combine_frames(this, *args, how="full"):
         join_scols = []
         merged_index_scols = []
 
+        # Note that the order of each element in index_map is guaranteed according to the index
+        # level.
+        this_and_that_index_map = zip(this_index_map, that_index_map)
+
         # If the same named index is found, that's used.
-        for this_column, this_name in this_index_map:
-            for that_column, that_name in that_index_map:
-                if (this_column == that_column) and (this_name == that_name):
-                    # We should merge the Spark columns into one
-                    # to mimic pandas' behavior.
-                    this_scol = this._internal.scol_for(this_column)
-                    that_scol = that._internal.scol_for(that_column)
-                    join_scol = this_scol == that_scol
-                    join_scols.append(join_scol)
-                    merged_index_scols.append(
-                        F.when(
-                            this_scol.isNotNull(), this_scol
-                        ).otherwise(that_scol).alias(this_column))
-                    break
+        for (this_column, this_name), (that_column, that_name) in this_and_that_index_map:
+            if this_name == that_name:
+                # We should merge the Spark columns into one
+                # to mimic pandas' behavior.
+                this_scol = this._internal.scol_for(this_column)
+                that_scol = that._internal.scol_for(that_column)
+                join_scol = this_scol == that_scol
+                join_scols.append(join_scol)
+                merged_index_scols.append(
+                    F.when(
+                        this_scol.isNotNull(), this_scol
+                    ).otherwise(that_scol).alias(this_column))
             else:
                 raise ValueError("Index names must be exactly matched currently.")
 
