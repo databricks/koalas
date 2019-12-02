@@ -136,7 +136,6 @@ class IndexOpsMixin(object):
         Creates new object with the new column
     """
     def __init__(self, internal: _InternalFrame, kdf):
-        from databricks.koalas.series import Series
         assert internal is not None
         assert kdf is not None and isinstance(kdf, DataFrame)
         self._internal = internal  # type: _InternalFrame
