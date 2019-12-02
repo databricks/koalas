@@ -7572,24 +7572,28 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  3  3.0  400
         3  2  1.0  200
 
-        >>> kdf.idxmax()
-        (a, x)    2
-        (b, y)    0
-        (c, z)    2
+        >>> kdf.idxmax().sort_index()
+        a  x    2
+        b  y    0
+        c  z    2
         Name: 0, dtype: int64
         """
         from databricks.koalas.series import Series
         sdf = self._sdf
         max_cols = map(lambda x: F.max(x).alias(x), self._internal.data_columns)
         sdf_max = sdf.select(*max_cols)
+        # `sdf_max` looks like below
+        # +------+------+------+
+        # |(a, x)|(b, y)|(c, z)|
+        # +------+------+------+
+        # |     3|   4.0|   400|
+        # +------+------+------+
 
-        col_idxmax_dict = dict()
-        for column_name, max_val in zip(sdf_max.columns, sdf_max.head()):
-            idx_val = sdf.select(self._internal.index_columns) \
-                         .where(F.col(column_name) == max_val).head()[0]
-            col_idxmax_dict[column_name] = idx_val
+        max_vals = [sdf.select(self._internal.index_columns)
+                       .where(F.col(column_name) == max_val).head()[0]
+                    for column_name, max_val in zip(sdf_max.columns, sdf_max.head())]
 
-        return Series(col_idxmax_dict)
+        return Series(max_vals, index=self.columns)
 
     # TODO: axis = 1
     def idxmin(self, axis=0):
@@ -7642,10 +7646,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  3  3.0  400
         3  2  1.0  200
 
-        >>> kdf.idxmin()
-        (a, x)    0
-        (b, y)    3
-        (c, z)    1
+        >>> kdf.idxmin().sort_index()
+        a  x    0
+        b  y    3
+        c  z    1
         Name: 0, dtype: int64
         """
         from databricks.koalas.series import Series
@@ -7653,13 +7657,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         min_cols = map(lambda x: F.min(x).alias(x), self._internal.data_columns)
         sdf_min = sdf.select(*min_cols)
 
-        col_idxmin_dict = dict()
-        for column_name, min_val in zip(sdf_min.columns, sdf_min.head()):
-            idx_val = sdf.select(self._internal.index_columns) \
-                         .where(F.col(column_name) == min_val).head()[0]
-            col_idxmin_dict[column_name] = idx_val
+        min_vals = [sdf.select(self._internal.index_columns)
+                       .where(F.col(column_name) == min_val).head()[0]
+                    for column_name, min_val in zip(sdf_min.columns, sdf_min.head())]
 
-        return Series(col_idxmin_dict)
+        return Series(min_vals, index=self.columns)
 
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
     def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000):
