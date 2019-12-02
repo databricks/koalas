@@ -1587,9 +1587,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             then group twice - it is a huge operation. To prevent misusage, this method
             has the 'compute.max_rows' default limit of input length, and raises a ValueError.
 
-                >>> from databricks.koalas.config import get_option, set_option
-                >>> set_option('compute.max_rows', 1000)
-                >>> ks.DataFrame({'a': range(1001)}).transpose()  # doctest: +NORMALIZE_WHITESPACE
+                >>> from databricks.koalas.config import option_context
+                >>> with option_context('compute.max_rows', 1000):  # doctest: +NORMALIZE_WHITESPACE
+                ...     ks.DataFrame({'a': range(1001)}).transpose()
                 Traceback (most recent call last):
                   ...
                 ValueError: Current DataFrame has more then the given limit 1000 rows.
