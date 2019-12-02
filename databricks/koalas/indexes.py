@@ -821,7 +821,7 @@ class MultiIndex(Index):
                     ('c', 'z')],
                    )
 
-        >>> midx.levshape
+        >>> midx.levshape # doctest: +SKIP
         (3,3)
         """
         result = self._internal._sdf\
