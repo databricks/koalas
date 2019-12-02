@@ -36,6 +36,27 @@ from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
 
 
+def booleanize_null(left_scol, scol, f):
+    """
+    Booleanize Null in Spark Column
+    """
+    comp_ops = [getattr(spark.Column, '__{}__'.format(comp_op))
+                for comp_op in ['eq', 'ne', 'lt', 'le', 'ge', 'gt']]
+
+    if f in comp_ops:
+        # if `f` is "!=", fill null with True otherwise False
+        filler = f == spark.Column.__ne__
+        scol = F.when(scol.isNull(), filler).otherwise(scol)
+
+    elif f == spark.Column.__or__:
+        scol = F.when(left_scol.isNull() | scol.isNull(), False).otherwise(scol)
+
+    elif f == spark.Column.__and__:
+        scol = F.when(scol.isNull(), False).otherwise(scol)
+
+    return scol
+
+
 def _column_op(f):
     """
     A decorator that wraps APIs taking/returning Spark Column so that Koalas Series can be
@@ -57,27 +78,14 @@ def _column_op(f):
             # Same DataFrame anchors
             args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self._scol, *args)
-
-            # check if `f` is a comparison operator
-            comp_ops = ['eq', 'ne', 'lt', 'le', 'ge', 'gt']
-            is_comp_op = any(f == getattr(spark.Column, '__{}__'.format(comp_op))
-                             for comp_op in comp_ops)
-
-            if is_comp_op:
-                filler = f == spark.Column.__ne__
-                scol = F.when(scol.isNull(), filler).otherwise(scol)
-
-            elif f == spark.Column.__or__:
-                scol = F.when(self._scol.isNull() | scol.isNull(), False).otherwise(scol)
-
-            elif f == spark.Column.__and__:
-                scol = F.when(scol.isNull(), False).otherwise(scol)
+            scol = booleanize_null(self._scol, scol, f)
 
             return self._with_new_scol(scol)
         else:
             # Different DataFrame anchors
             def apply_func(this_column, *that_columns):
-                return f(this_column, *that_columns)
+                scol = f(this_column, *that_columns)
+                return booleanize_null(this_column, scol, f)
 
             return align_diff_series(apply_func, self, *args, how="full")
 
