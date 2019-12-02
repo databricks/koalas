@@ -123,6 +123,31 @@ class Index(IndexOpsMixin):
         """
         return len(self._kdf)  # type: ignore
 
+    @property
+    def shape(self) -> tuple:
+        """
+        Return a tuple of the shape of the underlying data.
+
+        Examples
+        --------
+        >>> idx = ks.Index(['a', 'b', 'c'])
+        >>> idx
+        Index(['a', 'b', 'c'], dtype='object')
+        >>> idx.shape
+        (3,)
+
+        >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> midx.shape
+        (3,)
+        """
+        return len(self._kdf),
+
     def transpose(self):
         """
         Return the transpose, For index, It will be index itself.
