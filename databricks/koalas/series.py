@@ -42,6 +42,7 @@ from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
+from databricks.koalas.ml import corr
 from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
                                      combine_frames, name_like_string, validate_axis)
 from databricks.koalas.datetimes import DatetimeMethods
@@ -314,12 +315,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             assert not fastpath
             IndexOpsMixin.__init__(self, data, anchor)
         else:
+            assert anchor is None
             if isinstance(data, pd.Series):
                 assert index is None
                 assert dtype is None
                 assert name is None
                 assert not copy
-                assert anchor is None
                 assert not fastpath
                 s = data
             else:
@@ -539,11 +540,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: a, dtype: bool
 
         >>> df.b.eq(1)
-        a    True
-        b    None
-        c    True
-        d    None
-        Name: b, dtype: object
+        a     True
+        b    False
+        c     True
+        d    False
+        Name: b, dtype: bool
         """
         return (self == other).rename(self.name)
 
@@ -566,10 +567,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> df.b.gt(1)
         a    False
-        b     None
+        b    False
         c    False
-        d     None
-        Name: b, dtype: object
+        d    False
+        Name: b, dtype: bool
         """
         return (self > other).rename(self.name)
 
@@ -590,10 +591,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> df.b.ge(2)
         a    False
-        b     None
+        b    False
         c    False
-        d     None
-        Name: b, dtype: object
+        d    False
+        Name: b, dtype: bool
         """
         return (self >= other).rename(self.name)
 
@@ -613,11 +614,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: a, dtype: bool
 
         >>> df.b.lt(2)
-        a    True
-        b    None
-        c    True
-        d    None
-        Name: b, dtype: object
+        a     True
+        b    False
+        c     True
+        d    False
+        Name: b, dtype: bool
         """
         return (self < other).rename(self.name)
 
@@ -637,11 +638,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: a, dtype: bool
 
         >>> df.b.le(2)
-        a    True
-        b    None
-        c    True
-        d    None
-        Name: b, dtype: object
+        a     True
+        b    False
+        c     True
+        d    False
+        Name: b, dtype: bool
         """
         return (self <= other).rename(self.name)
 
@@ -662,10 +663,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> df.b.ne(1)
         a    False
-        b     None
+        b     True
         c    False
-        d     None
-        Name: b, dtype: object
+        d     True
+        Name: b, dtype: bool
         """
         return (self != other).rename(self.name)
 
@@ -741,7 +742,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             lmask = self > left
             rmask = self < right
 
-        return (lmask & rmask).fillna(False)
+        return (lmask & rmask)
 
     # TODO: arg should support Series
     # TODO: NaN and None
@@ -1831,86 +1832,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                     F.when(F.count(F.when(self._scol.isNull(), 1)
                                    .otherwise(None)) >= 1, 1).otherwise(0)).alias(colname)
 
-    # TODO: Update Documentation for Bins Parameter when its supported
-    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
-        """
-        Return a Series containing counts of unique values.
-        The resulting object will be in descending order so that the
-        first element is the most frequently-occurring element.
-        Excludes NA values by default.
-
-        Parameters
-        ----------
-        normalize : boolean, default False
-            If True then the object returned will contain the relative
-            frequencies of the unique values.
-        sort : boolean, default True
-            Sort by values.
-        ascending : boolean, default False
-            Sort in ascending order.
-        bins : Not Yet Supported
-        dropna : boolean, default True
-            Don't include counts of NaN.
-
-        Returns
-        -------
-        counts : Series
-
-        See Also
-        --------
-        Series.count: Number of non-NA elements in a Series.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame({'x':[0, 0, 1, 1, 1, np.nan]})
-        >>> df.x.value_counts()  # doctest: +NORMALIZE_WHITESPACE
-        1.0    3
-        0.0    2
-        Name: x, dtype: int64
-
-        With `normalize` set to `True`, returns the relative frequency by
-        dividing all values by the sum of values.
-
-        >>> df.x.value_counts(normalize=True)  # doctest: +NORMALIZE_WHITESPACE
-        1.0    0.6
-        0.0    0.4
-        Name: x, dtype: float64
-
-        **dropna**
-        With `dropna` set to `False` we can also see NaN index values.
-
-        >>> df.x.value_counts(dropna=False)  # doctest: +NORMALIZE_WHITESPACE
-        1.0    3
-        0.0    2
-        NaN    1
-        Name: x, dtype: int64
-        """
-        if bins is not None:
-            raise NotImplementedError("value_counts currently does not support bins")
-
-        if dropna:
-            sdf_dropna = self._internal._sdf.filter(self.notna()._scol)
-        else:
-            sdf_dropna = self._internal._sdf
-        index_name = SPARK_INDEX_NAME_FORMAT(0)
-        sdf = sdf_dropna.groupby(self._scol.alias(index_name)).count()
-        if sort:
-            if ascending:
-                sdf = sdf.orderBy(F.col('count'))
-            else:
-                sdf = sdf.orderBy(F.col('count').desc())
-
-        if normalize:
-            sum = sdf_dropna.count()
-            sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
-
-        internal = _InternalFrame(sdf=sdf,
-                                  index_map=[(index_name, None)],
-                                  column_index=self._internal.column_index,
-                                  column_scols=[scol_for(sdf, 'count')],
-                                  column_index_names=self._internal.column_index_names)
-        return _col(DataFrame(internal))
-
     def sort_values(self, ascending: bool = True, inplace: bool = False,
                     na_position: str = 'last') -> Union['Series', None]:
         """
@@ -2239,8 +2160,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         # This implementation is suboptimal because it computes more than necessary,
         # but it should be a start
-        df = self._kdf.assign(corr_arg1=self, corr_arg2=other)[["corr_arg1", "corr_arg2"]]
-        c = df.corr(method=method)
+        kdf = self._kdf.assign(corr_arg1=self, corr_arg2=other)[["corr_arg1", "corr_arg2"]]
+        c = corr(kdf, method=method)
         return c.loc["corr_arg1", "corr_arg2"]
 
     def nsmallest(self, n: int = 5) -> 'Series':
@@ -3273,6 +3194,171 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return tuple(values)
 
+    def pop(self, item):
+        """
+        Return item and drop from sereis.
+
+        Parameters
+        ----------
+        item : str
+            Label of index to be popped.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+        >>> s = ks.Series(data=np.arange(3), index=['A', 'B', 'C'])
+        >>> s
+        A    0
+        B    1
+        C    2
+        Name: 0, dtype: int64
+
+        >>> s.pop('A')
+        0
+
+        >>> s
+        B    1
+        C    2
+        Name: 0, dtype: int64
+
+        >>> s = ks.Series(data=np.arange(3), index=['A', 'A', 'C'])
+        >>> s
+        A    0
+        A    1
+        C    2
+        Name: 0, dtype: int64
+
+        >>> s.pop('A')
+        A    0
+        A    1
+        Name: 0, dtype: int64
+
+        >>> s
+        C    2
+        Name: 0, dtype: int64
+
+        Also support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...               index=midx)
+        >>> s
+        lama    speed      45.0
+                weight    200.0
+                length      1.2
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.pop('lama')
+        speed      45.0
+        weight    200.0
+        length      1.2
+        Name: 0, dtype: float64
+
+        >>> s
+        cow     speed      30.0
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        Also support for MultiIndex with several indexs.
+
+        >>> midx = pd.MultiIndex([['a', 'b', 'c'],
+        ...                       ['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 0, 0, 0, 1, 1, 1],
+        ...                       [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 0, 2]]
+        ...  )
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3],
+        ...              index=midx)
+        >>> s
+        a  lama    speed      45.0
+                   weight    200.0
+                   length      1.2
+           cow     speed      30.0
+                   weight    250.0
+                   length      1.5
+        b  falcon  speed     320.0
+                   speed       1.0
+                   length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.pop(('a', 'lama'))
+        speed      45.0
+        weight    200.0
+        length      1.2
+        Name: 0, dtype: float64
+
+        >>> s
+        a  cow     speed      30.0
+                   weight    250.0
+                   length      1.5
+        b  falcon  speed     320.0
+                   speed       1.0
+                   length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.pop(('b', 'falcon', 'speed'))
+        (b, falcon, speed)    320.0
+        (b, falcon, speed)      1.0
+        Name: 0, dtype: float64
+        """
+        if not isinstance(item, (str, tuple)):
+            raise ValueError("'key' should be string or tuple that contains strings")
+        if isinstance(item, str):
+            item = (item,)
+        if not all(isinstance(index, str) for index in item):
+            raise ValueError("'key' should have index names as only strings "
+                             "or a tuple that contain index names as only strings")
+        if len(self._internal._index_map) < len(item):
+            raise KeyError("Key length ({}) exceeds index depth ({})"
+                           .format(len(item), len(self._internal.index_map)))
+
+        cols = (self._internal.index_scols[len(item):] +
+                [self._internal.scol_for(self._internal.column_index[0])])
+        rows = [self._internal.scols[level] == index
+                for level, index in enumerate(item)]
+        sdf = self._internal.sdf \
+            .select(cols) \
+            .where(reduce(lambda x, y: x & y, rows))
+
+        if len(self._internal._index_map) == len(item):
+            # if sdf has one column and one data, return data only without frame
+            pdf = sdf.limit(2).toPandas()
+            length = len(pdf)
+            if length == 1:
+                self._internal = self.drop(item)._internal
+                return pdf[self.name].iloc[0]
+
+            self._internal = self.drop(item)._internal
+            item_string = name_like_string(item)
+            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(str(item_string)))
+            internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
+            return _col(DataFrame(internal))
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            index_map=self._internal._index_map[len(item):])
+
+        self._internal = self.drop(item)._internal
+
+        return _col(DataFrame(internal))
+
     def copy(self) -> 'Series':
         """
         Make a copy of this object's indices and data.
@@ -3463,62 +3549,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         result.name = self.name
 
         return result
-
-    def first_valid_index(self):
-        """
-        Retrieves the index of the first valid value.
-
-        Returns
-        -------
-        idx_first_valid : type of index
-
-        Examples
-        --------
-        >>> s = ks.Series([None, None, 3, 4, 5], index=[100, 200, 300, 400, 500])
-        >>> s
-        100    NaN
-        200    NaN
-        300    3.0
-        400    4.0
-        500    5.0
-        Name: 0, dtype: float64
-
-        >>> s.first_valid_index()
-        300
-
-        Support for MultiIndex
-
-        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
-        ...                       ['speed', 'weight', 'length']],
-        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
-        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
-        >>> s = ks.Series([None, None, None, None, 250, 1.5, 320, 1, 0.3], index=midx)
-        >>> s
-        lama    speed       NaN
-                weight      NaN
-                length      NaN
-        cow     speed       NaN
-                weight    250.0
-                length      1.5
-        falcon  speed     320.0
-                weight      1.0
-                length      0.3
-        Name: 0, dtype: float64
-
-        >>> s.first_valid_index()
-        ('cow', 'weight')
-        """
-        sdf = self._internal.sdf
-        data_scol = self._internal.scol
-
-        first_valid_row = sdf.where(data_scol.isNotNull()).first()
-        first_valid_idx = tuple(first_valid_row[idx_col]
-                                for idx_col in self._internal.index_columns)
-
-        if len(first_valid_idx) == 1:
-            first_valid_idx = first_valid_idx[0]
-
-        return first_valid_idx
 
     def keys(self):
         """

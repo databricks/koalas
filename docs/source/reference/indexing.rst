@@ -19,6 +19,7 @@ Properties
    :toctree: api/
 
    Index.dtype
+   Index.shape
    Index.name
    Index.names
    Index.ndim
@@ -39,12 +40,14 @@ Modifying and computations
    Index.is_interval
    Index.is_numeric
    Index.is_object
+   Index.value_counts
 
 Missing Values
 ~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: api/
 
+   Index.dropna
    Index.isna
    Index.notna
 
@@ -58,6 +61,13 @@ Conversion
    Index.to_numpy
 
 .. _api.multiindex:
+
+Combining / joining / set operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.symmetric_difference
 
 Selecting
 ~~~~~~~~~
@@ -85,9 +95,18 @@ MultiIndex Properties
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.shape
    MultiIndex.names
    MultiIndex.ndim
    MultiIndex.T
+   MultiIndex.nlevels
+
+MultiIndex Missing Values
+~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.dropna
 
 MultiIndex Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -95,6 +114,14 @@ MultiIndex Modifying and computations
    :toctree: api/
 
    MultiIndex.copy
+   MultiIndex.value_counts
+
+MultiIndex Combining / joining / set operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.symmetric_difference
 
 Conversion
 ~~~~~~~~~~

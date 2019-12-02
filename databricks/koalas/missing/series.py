@@ -76,10 +76,8 @@ class _MissingPandasLikeSeries(object):
     last_valid_index = unsupported_function('last_valid_index')
     mad = unsupported_function('mad')
     pct_change = unsupported_function('pct_change')
-    pop = unsupported_function('pop')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
-    ravel = unsupported_function('ravel')
     rdivmod = unsupported_function('rdivmod')
     reindex = unsupported_function('reindex')
     reindex_like = unsupported_function('reindex_like')
@@ -148,3 +146,7 @@ class _MissingPandasLikeSeries(object):
     to_pickle = common.to_pickle(unsupported_function)
     to_xarray = common.to_xarray(unsupported_function)
     __iter__ = common.__iter__(unsupported_function)
+    ravel = unsupported_function(
+        'ravel',
+        reason="If you want to collect your flattened underlying data as an NumPy array, "
+               "use 'to_numpy().ravel()' instead.")

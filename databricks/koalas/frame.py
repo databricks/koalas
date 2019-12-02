@@ -750,11 +750,11 @@ class DataFrame(_Frame, Generic[T]):
         ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
 
         >>> df.eq(1)
-               a     b
-        a   True  True
-        b  False  None
-        c  False  True
-        d  False  None
+               a      b
+        a   True   True
+        b  False  False
+        c  False   True
+        d  False  False
         """
         return self == other
 
@@ -771,9 +771,9 @@ class DataFrame(_Frame, Generic[T]):
         >>> df.gt(2)
                a      b
         a  False  False
-        b  False   None
+        b  False  False
         c   True  False
-        d   True   None
+        d   True  False
         """
         return self > other
 
@@ -786,11 +786,11 @@ class DataFrame(_Frame, Generic[T]):
         ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
 
         >>> df.ge(1)
-              a     b
-        a  True  True
-        b  True  None
-        c  True  True
-        d  True  None
+              a      b
+        a  True   True
+        b  True  False
+        c  True   True
+        d  True  False
         """
         return self >= other
 
@@ -805,9 +805,9 @@ class DataFrame(_Frame, Generic[T]):
         >>> df.lt(1)
                a      b
         a  False  False
-        b  False   None
+        b  False  False
         c  False  False
-        d  False   None
+        d  False  False
         """
         return self < other
 
@@ -820,11 +820,11 @@ class DataFrame(_Frame, Generic[T]):
         ...                   index=['a', 'b', 'c', 'd'], columns=['a', 'b'])
 
         >>> df.le(2)
-               a     b
-        a   True  True
-        b   True  None
-        c  False  True
-        d  False  None
+               a      b
+        a   True   True
+        b   True  False
+        c  False   True
+        d  False  False
         """
         return self <= other
 
@@ -839,9 +839,9 @@ class DataFrame(_Frame, Generic[T]):
         >>> df.ne(1)
                a      b
         a  False  False
-        b   True   None
+        b   True   True
         c   True  False
-        d   True   None
+        d   True   True
         """
         return self != other
 
@@ -1056,7 +1056,7 @@ class DataFrame(_Frame, Generic[T]):
 
           * `min_periods` argument is not supported
         """
-        return corr(self, method)
+        return ks.from_pandas(corr(self, method))
 
     def iteritems(self) -> Iterable:
         """
@@ -1587,9 +1587,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             then group twice - it is a huge operation. To prevent misusage, this method
             has the 'compute.max_rows' default limit of input length, and raises a ValueError.
 
-                >>> from databricks.koalas.config import get_option, set_option
-                >>> set_option('compute.max_rows', 1000)
-                >>> ks.DataFrame({'a': range(1001)}).transpose()  # doctest: +NORMALIZE_WHITESPACE
+                >>> from databricks.koalas.config import option_context
+                >>> with option_context('compute.max_rows', 1000):  # doctest: +NORMALIZE_WHITESPACE
+                ...     ks.DataFrame({'a': range(1001)}).transpose()
                 Traceback (most recent call last):
                   ...
                 ValueError: Current DataFrame has more then the given limit 1000 rows.
@@ -2041,6 +2041,249 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             result = DataFrame(internal)
 
         return result
+
+    def where(self, cond, other=np.nan):
+        """
+        Replace values where the condition is False.
+
+        Parameters
+        ----------
+        cond : boolean DataFrame
+            Where cond is True, keep the original value. Where False,
+            replace with corresponding value from other.
+        other : scalar, DataFrame
+            Entries where cond is False are replaced with corresponding value from other.
+
+        Returns
+        -------
+        DataFrame
+
+        Examples
+        --------
+
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> df1 = ks.DataFrame({'A': [0, 1, 2, 3, 4], 'B':[100, 200, 300, 400, 500]})
+        >>> df2 = ks.DataFrame({'A': [0, -1, -2, -3, -4], 'B':[-100, -200, -300, -400, -500]})
+        >>> df1
+           A    B
+        0  0  100
+        1  1  200
+        2  2  300
+        3  3  400
+        4  4  500
+        >>> df2
+           A    B
+        0  0 -100
+        1 -1 -200
+        2 -2 -300
+        3 -3 -400
+        4 -4 -500
+
+        >>> df1.where(df1 > 0).sort_index()
+             A      B
+        0  NaN  100.0
+        1  1.0  200.0
+        2  2.0  300.0
+        3  3.0  400.0
+        4  4.0  500.0
+
+        >>> df1.where(df1 > 1, 10).sort_index()
+            A    B
+        0  10  100
+        1  10  200
+        2   2  300
+        3   3  400
+        4   4  500
+
+        >>> df1.where(df1 > 1, df1 + 100).sort_index()
+             A    B
+        0  100  100
+        1  101  200
+        2    2  300
+        3    3  400
+        4    4  500
+
+        >>> df1.where(df1 > 1, df2).sort_index()
+           A    B
+        0  0  100
+        1 -1  200
+        2  2  300
+        3  3  400
+        4  4  500
+
+        When the column name of cond is different from self, it treats all values are False
+
+        >>> cond = ks.DataFrame({'C': [0, -1, -2, -3, -4], 'D':[4, 3, 2, 1, 0]}) % 3 == 0
+        >>> cond
+               C      D
+        0   True  False
+        1  False   True
+        2  False  False
+        3   True  False
+        4  False   True
+
+        >>> df1.where(cond).sort_index()
+            A   B
+        0 NaN NaN
+        1 NaN NaN
+        2 NaN NaN
+        3 NaN NaN
+        4 NaN NaN
+
+        When the type of cond is Series, it just check boolean regardless of column name
+
+        >>> cond = ks.Series([1, 2]) > 1
+        >>> cond
+        0    False
+        1     True
+        Name: 0, dtype: bool
+
+        >>> df1.where(cond).sort_index()
+             A      B
+        0  NaN    NaN
+        1  1.0  200.0
+        2  NaN    NaN
+        3  NaN    NaN
+        4  NaN    NaN
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        from databricks.koalas.series import Series
+        tmp_cond_col_name = '__tmp_cond_col_{}__'
+        tmp_other_col_name = '__tmp_other_col_{}__'
+        kdf = self.copy()
+        if isinstance(cond, DataFrame):
+            for column in self._internal.data_columns:
+                kdf[tmp_cond_col_name.format(column)] = cond.get(column, False)
+        elif isinstance(cond, Series):
+            for column in self._internal.data_columns:
+                kdf[tmp_cond_col_name.format(column)] = cond
+        else:
+            raise ValueError("type of cond must be a DataFrame or Series")
+
+        if isinstance(other, DataFrame):
+            for column in self._internal.data_columns:
+                kdf[tmp_other_col_name.format(column)] = other.get(column, np.nan)
+        else:
+            for column in self._internal.data_columns:
+                kdf[tmp_other_col_name.format(column)] = other
+
+        sdf = kdf._sdf
+        # above logic make spark dataframe looks like below:
+        # +-----------------+---+---+------------------+-------------------+------------------+--...
+        # |__index_level_0__|  A|  B|__tmp_cond_col_A__|__tmp_other_col_A__|__tmp_cond_col_B__|__...
+        # +-----------------+---+---+------------------+-------------------+------------------+--...
+        # |                0|  0|100|              true|                  0|             false|  ...
+        # |                1|  1|200|             false|                 -1|             false|  ...
+        # |                3|  3|400|              true|                 -3|             false|  ...
+        # |                2|  2|300|             false|                 -2|              true|  ...
+        # |                4|  4|500|             false|                 -4|             false|  ...
+        # +-----------------+---+---+------------------+-------------------+------------------+--...
+
+        output = []
+        for column in self._internal.data_columns:
+            data_col_name = self._internal.column_name_for(column)
+            output.append(
+                F.when(
+                    sdf[tmp_cond_col_name.format(column)], sdf[data_col_name]
+                ).otherwise(
+                    sdf[tmp_other_col_name.format(column)]
+                ).alias(data_col_name))
+
+        index_columns = self._internal.index_columns
+        sdf = sdf.select(*index_columns, *output)
+
+        return DataFrame(self._internal.copy(
+            sdf=sdf,
+            column_scols=[scol_for(sdf, column) for column in self._internal.data_columns]))
+
+    def mask(self, cond, other=np.nan):
+        """
+        Replace values where the condition is True.
+
+        Parameters
+        ----------
+        cond : boolean DataFrame
+            Where cond is False, keep the original value. Where True,
+            replace with corresponding value from other.
+        other : scalar, DataFrame
+            Entries where cond is True are replaced with corresponding value from other.
+
+        Returns
+        -------
+        DataFrame
+
+        Examples
+        --------
+
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> df1 = ks.DataFrame({'A': [0, 1, 2, 3, 4], 'B':[100, 200, 300, 400, 500]})
+        >>> df2 = ks.DataFrame({'A': [0, -1, -2, -3, -4], 'B':[-100, -200, -300, -400, -500]})
+        >>> df1
+           A    B
+        0  0  100
+        1  1  200
+        2  2  300
+        3  3  400
+        4  4  500
+        >>> df2
+           A    B
+        0  0 -100
+        1 -1 -200
+        2 -2 -300
+        3 -3 -400
+        4 -4 -500
+
+        >>> df1.mask(df1 > 0).sort_index()
+             A   B
+        0  0.0 NaN
+        1  NaN NaN
+        2  NaN NaN
+        3  NaN NaN
+        4  NaN NaN
+
+        >>> df1.mask(df1 > 1, 10).sort_index()
+            A   B
+        0   0  10
+        1   1  10
+        2  10  10
+        3  10  10
+        4  10  10
+
+        >>> df1.mask(df1 > 1, df1 + 100).sort_index()
+             A    B
+        0    0  200
+        1    1  300
+        2  102  400
+        3  103  500
+        4  104  600
+
+        >>> df1.mask(df1 > 1, df2).sort_index()
+           A    B
+        0  0 -100
+        1  1 -200
+        2 -2 -300
+        3 -3 -400
+        4 -4 -500
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        from databricks.koalas.series import Series
+        if not isinstance(cond, (DataFrame, Series)):
+            raise ValueError("type of cond must be a DataFrame or Series")
+
+        sdf = cond._internal.sdf
+        for col in cond._internal.data_columns:
+            sdf = sdf.withColumn(col, ~F.col(col))
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            column_scols=[scol_for(sdf, column) for column in self._internal.data_columns])
+        cond_inversed = DataFrame(internal)
+
+        return self.where(cond_inversed, other)
 
     @property
     def index(self):

@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas as ks
-from databricks.koalas.config import set_option, reset_option
+from databricks.koalas.config import set_option, reset_option, option_context
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
@@ -1601,8 +1601,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             repr(pdf2.transpose().sort_index()),
             repr(kdf2.transpose().sort_index()))
 
-        set_option("compute.max_rows", None)
-        try:
+        with option_context("compute.max_rows", None):
             self.assertEqual(
                 repr(pdf1.transpose().sort_index()),
                 repr(kdf1.transpose().sort_index()))
@@ -1610,8 +1609,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(
                 repr(pdf2.transpose().sort_index()),
                 repr(kdf2.transpose().sort_index()))
-        finally:
-            reset_option("compute.max_rows")
 
         pdf3 = pd.DataFrame({('cg1', 'a'): [1, 2, 3], ('cg1', 'b'): [4, 5, 6],
                              ('cg2', 'c'): [7, 8, 9], ('cg3', 'd'): [9, 9, 9]},
@@ -1623,13 +1620,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             repr(pdf3.transpose().sort_index()),
             repr(kdf3.transpose().sort_index()))
 
-        set_option("compute.max_rows", None)
-        try:
+        with option_context("compute.max_rows", None):
             self.assertEqual(
                 repr(pdf3.transpose().sort_index()),
                 repr(kdf3.transpose().sort_index()))
-        finally:
-            reset_option("compute.max_rows")
 
     def _test_cummin(self, pdf, kdf):
         self.assert_eq(pdf.cummin(), kdf.cummin())
@@ -2176,11 +2170,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         def _test(kdf, expected):
             self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(), expected)
 
-            set_option("compute.shortcut_limit", 500)
-            try:
+            with option_context("compute.shortcut_limit", 500):
                 self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(), expected)
-            finally:
-                reset_option("compute.shortcut_limit")
 
         _test(kdf, pdf.transform(lambda x: x + 1))
 
@@ -2227,3 +2218,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "quantile currently doesn't supports numeric_only"):
             kdf.quantile(.5, numeric_only=False)
+
+    def test_where(self):
+        kdf = ks.from_pandas(self.pdf)
+
+        with self.assertRaisesRegex(ValueError, 'type of cond must be a DataFrame or Series'):
+            kdf.where(1)
+
+    def test_mask(self):
+        kdf = ks.from_pandas(self.pdf)
+
+        with self.assertRaisesRegex(ValueError, 'type of cond must be a DataFrame or Series'):
+            kdf.mask(1)

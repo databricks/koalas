@@ -52,6 +52,7 @@ Indexing, iteration
    Series.loc
    Series.iloc
    Series.keys
+   Series.pop
    Series.xs
 
 Binary operator functions
