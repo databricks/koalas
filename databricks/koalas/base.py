@@ -141,8 +141,6 @@ class IndexOpsMixin(object):
         assert kdf is not None and isinstance(kdf, DataFrame)
         self._internal = internal  # type: _InternalFrame
         self._kdf = kdf
-        if isinstance(self, Series):
-            self._index = kdf.index
 
     @property
     def _scol(self):
