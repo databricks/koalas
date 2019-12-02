@@ -315,12 +315,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             assert not fastpath
             IndexOpsMixin.__init__(self, data, anchor)
         else:
+            assert anchor is None
             if isinstance(data, pd.Series):
                 assert index is None
                 assert dtype is None
                 assert name is None
                 assert not copy
-                assert anchor is None
                 assert not fastpath
                 s = data
             else:
@@ -3627,62 +3627,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         result.name = self.name
 
         return result
-
-    def first_valid_index(self):
-        """
-        Retrieves the index of the first valid value.
-
-        Returns
-        -------
-        idx_first_valid : type of index
-
-        Examples
-        --------
-        >>> s = ks.Series([None, None, 3, 4, 5], index=[100, 200, 300, 400, 500])
-        >>> s
-        100    NaN
-        200    NaN
-        300    3.0
-        400    4.0
-        500    5.0
-        Name: 0, dtype: float64
-
-        >>> s.first_valid_index()
-        300
-
-        Support for MultiIndex
-
-        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
-        ...                       ['speed', 'weight', 'length']],
-        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
-        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
-        >>> s = ks.Series([None, None, None, None, 250, 1.5, 320, 1, 0.3], index=midx)
-        >>> s
-        lama    speed       NaN
-                weight      NaN
-                length      NaN
-        cow     speed       NaN
-                weight    250.0
-                length      1.5
-        falcon  speed     320.0
-                weight      1.0
-                length      0.3
-        Name: 0, dtype: float64
-
-        >>> s.first_valid_index()
-        ('cow', 'weight')
-        """
-        sdf = self._internal.sdf
-        data_scol = self._internal.scol
-
-        first_valid_row = sdf.where(data_scol.isNotNull()).first()
-        first_valid_idx = tuple(first_valid_row[idx_col]
-                                for idx_col in self._internal.index_columns)
-
-        if len(first_valid_idx) == 1:
-            first_valid_idx = first_valid_idx[0]
-
-        return first_valid_idx
 
     def keys(self):
         """

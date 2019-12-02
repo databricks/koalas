@@ -30,6 +30,7 @@ from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, Times
 from pyspark.sql.functions import monotonically_increasing_id
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
@@ -136,6 +137,8 @@ class IndexOpsMixin(object):
     """
     def __init__(self, internal: _InternalFrame, kdf):
         from databricks.koalas.series import Series
+        assert internal is not None
+        assert kdf is not None and isinstance(kdf, DataFrame)
         self._internal = internal  # type: _InternalFrame
         self._kdf = kdf
         if isinstance(self, Series):

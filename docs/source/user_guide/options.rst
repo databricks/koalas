@@ -72,6 +72,22 @@ All options also have a default value, and you can use ``reset_option`` to do ju
    >>> ks.get_option("display.max_rows")
    1000
 
+``option_context`` context manager has been exposed through
+the top-level API, allowing you to execute code with given option values. Option values
+are restored automatically when you exit the `with` block:
+
+.. code-block:: python
+
+   >>> with ks.option_context("display.max_rows", 10, "compute.max_rows", 5):
+   ...    print(ks.get_option("display.max_rows"))
+   ...    print(ks.get_option("compute.max_rows"))
+   10
+   5
+   >>> print(ks.get_option("display.max_rows"))
+   >>> print(ks.get_option("compute.max_rows"))
+   1000
+   1000
+
 
 Operations on different DataFrames
 ----------------------------------
