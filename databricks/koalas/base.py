@@ -822,11 +822,12 @@ class IndexOpsMixin(object):
 
         For Index
 
-        >>> s = ks.Series([0, 1, 2, 3, 4, 5], index=[3, 1, 2, 3, 4, np.nan])
-        >>> s.index
+        >>> from databricks.koalas.indexes import Index
+        >>> idx = Index([3, 1, 2, 3, 4, np.nan])
+        >>> idx
         Float64Index([3.0, 1.0, 2.0, 3.0, 4.0, nan], dtype='float64')
 
-        >>> s.index.value_counts().sort_index()
+        >>> idx.value_counts().sort_index()
         1.0    1
         2.0    1
         3.0    2
@@ -837,7 +838,7 @@ class IndexOpsMixin(object):
 
         With `sort` set to `False`, the result wouldn't be sorted by number of count.
 
-        >>> s.index.value_counts(sort=True).sort_index()
+        >>> idx.value_counts(sort=True).sort_index()
         1.0    1
         2.0    1
         3.0    2
@@ -849,7 +850,7 @@ class IndexOpsMixin(object):
         With `normalize` set to `True`, returns the relative frequency by
         dividing all values by the sum of values.
 
-        >>> s.index.value_counts(normalize=True).sort_index()
+        >>> idx.value_counts(normalize=True).sort_index()
         1.0    0.2
         2.0    0.2
         3.0    0.4
@@ -860,7 +861,7 @@ class IndexOpsMixin(object):
 
         With `dropna` set to `False` we can also see NaN index values.
 
-        >>> s.index.value_counts(dropna=False).sort_index()  # doctest: +SKIP
+        >>> idx.value_counts(dropna=False).sort_index()  # doctest: +SKIP
         1.0    1
         2.0    1
         3.0    2
@@ -903,7 +904,8 @@ class IndexOpsMixin(object):
         (lama, weight)      0.333333
         Name: count, dtype: float64
 
-        If Index has own name, keep the name up.
+        If Index has name, keep the name up.
+
         >>> idx = Index([0, 0, 0, 1, 1, 2, 3], name='koalas')
         >>> idx.value_counts().sort_index()
         0    3
