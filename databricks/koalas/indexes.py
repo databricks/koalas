@@ -606,20 +606,19 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
-        >>> midx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)],
-        ...                                  names=['level1', 'level2', 'level3'])
+        >>> midx = ks.DataFrame({'a': ['a', 'b']}, index=[['a', 'x'], ['b', 'y'], [1, 2]]).index
         >>> midx  # doctest: +SKIP
-        MultiIndex([('a', 'x', 1),
-                    ('b', 'y', 2),
-                   names=['level1', 'level2', 'level3'])
+        MultiIndex([('a', 'b', 1),
+                    ('x', 'y', 2),
+                   )
 
         >>> midx.droplevel([0, 1])
-        Int64Index([1, 2], dtype='int64', name='level3')
+        Int64Index([1, 2], dtype='int64')
 
-        >>> midx.droplevel('level1')
-        MultiIndex([('x', 1),
-                    ('y', 2)],
-                   names=['level2', 'level3'])
+        >>> midx.droplevel(0) # doctest: +SKIP
+        MultiIndex([('b', 1),
+                    ('y', 2)]
+                   )
         """
         if not isinstance(level, (tuple, list)):
             level = [level]
@@ -641,7 +640,7 @@ class Index(IndexOpsMixin):
         index_columns = [v for k, v in enumerate(self._internal.index_columns)
                          if ((k not in level) & (v not in level))]
         internal = _InternalFrame(sdf=self._internal._sdf.select(index_columns),
-                                  index_map=[(i, (i,)) for i in index_columns])
+                                  index_map=[(i, None) for i in index_columns])
         if len(index_columns) > 1:
             result = MultiIndex(DataFrame(internal))
         else:
