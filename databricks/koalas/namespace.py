@@ -17,7 +17,6 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union, List
 from typing import Optional, Union, List, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
@@ -26,7 +25,6 @@ import itertools
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
