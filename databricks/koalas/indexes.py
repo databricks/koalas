@@ -18,7 +18,7 @@
 Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 """
 
-from functools import partial
+from functools import partial, reduce
 from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
@@ -38,6 +38,7 @@ from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
 from databricks.koalas.utils import name_like_string
+from databricks.koalas.internal import _InternalFrame
 
 
 class Index(IndexOpsMixin):
@@ -447,6 +448,61 @@ class Index(IndexOpsMixin):
         True
         """
         return is_object_dtype(self.dtype)
+
+    def dropna(self):
+        """
+        Return Index or MultiIndex without NA/NaN values
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+        ...                   index=['cobra', 'viper', None],
+        ...                   columns=['max_speed', 'shield'])
+        >>> df
+               max_speed  shield
+        cobra          1       2
+        viper          4       5
+        NaN            7       8
+
+        >>> df.index.dropna()
+        Index(['cobra', 'viper'], dtype='object')
+
+        Also support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       [None, 'weight', 'length']],
+        ...                      [[0, 1, 1, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 1, 0, 1, 2, 1, 1, 2]])
+        >>> s = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, None],
+        ...               index=midx)
+        >>> s
+        lama    NaN        45.0
+        cow     weight    200.0
+                weight      1.2
+                NaN        30.0
+                weight    250.0
+                length      1.5
+        falcon  weight    320.0
+                weight      1.0
+                length      NaN
+        Name: 0, dtype: float64
+
+        >>> s.index.dropna()  # doctest: +SKIP
+        MultiIndex([(   'cow', 'weight'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'weight'),
+                    (   'cow', 'length'),
+                    ('falcon', 'weight'),
+                    ('falcon', 'weight'),
+                    ('falcon', 'length')],
+                   )
+        """
+        kdf = self._kdf.copy()
+        sdf = kdf._internal.sdf.select(self._internal.index_scols).dropna()
+        internal = _InternalFrame(sdf=sdf, index_map=self._internal.index_map)
+        kdf = DataFrame(internal)
+        return Index(kdf) if type(self) == Index else MultiIndex(kdf)
 
     def unique(self, level=None):
         """
