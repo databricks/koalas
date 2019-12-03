@@ -1111,8 +1111,6 @@ class DataFrame(_Frame, Generic[T]):
         data : pandas.Series
             The data of the row as a Series.
 
-        Returns
-        -------
         it : generator
             A generator that iterates over the rows of the frame.
 
