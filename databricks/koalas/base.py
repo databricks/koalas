@@ -19,11 +19,12 @@ Base and utility classes for Koalas objects.
 """
 
 from functools import wraps
-from typing import Union
+from typing import Union, Callable, Any
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like
+from pandas.core import ops
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
 from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType
@@ -223,6 +224,19 @@ class IndexOpsMixin(object):
     __invert__ = _column_op(spark.Column.__invert__)
     __rand__ = _column_op(spark.Column.__rand__)
     __ror__ = _column_op(spark.Column.__ror__)
+
+    # NDArray Compat
+    def __array_ufunc__(self, ufunc: Callable, method: str, *inputs: Any, **kwargs: Any):
+        # TODO(Hyukjin): I used pandas' maybe_dispatch_ufunc_to_dunder_op as is.
+        #   Maybe we will have to port it into Koalas in the future for a stability sake.
+        result = ops.maybe_dispatch_ufunc_to_dunder_op(
+            self, ufunc, method, *inputs, **kwargs
+        )
+        if result is not NotImplemented:
+            return result
+        else:
+            # TODO: support more APIs?
+            raise NotImplementedError("Koalas objects currently do not support %s." % ufunc)
 
     @property
     def dtype(self):
