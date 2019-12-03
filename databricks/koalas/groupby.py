@@ -1459,7 +1459,7 @@ class GroupBy(object):
                 sdf=sdf,
                 column_scols=[scol_for(sdf, col) for col in self._kdf._internal.data_columns])
         else:
-            internal = self._kser._internal.copy(sdf)
+            internal = self._kser._internal.copy(sdf, scol=None)
 
         return DataFrame(internal)
 
