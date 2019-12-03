@@ -226,6 +226,9 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf1.A[pdf2.A > 100],
                        kdf1.A[kdf2.A > 100].sort_index())
 
+        self.assert_eq((pdf1.A + 1)[pdf2.A > 100],
+                       (kdf1.A + 1)[kdf2.A > 100].sort_index())
+
     def test_bitwise(self):
         pser1 = pd.Series([True, False, True, False, np.nan, np.nan, True, False, np.nan])
         pser2 = pd.Series([True, False, False, True, True, False, np.nan, np.nan, np.nan])
