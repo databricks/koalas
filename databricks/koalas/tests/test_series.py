@@ -881,6 +881,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser['A'], pser['A'])
         self.assert_eq(kser['B'], pser['B'])
+        self.assert_eq(kser[kser > 15], pser[pser > 15])
 
         # for MultiIndex
         midx = pd.MultiIndex([['a', 'b', 'c'],
@@ -895,6 +896,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser['a'], pser['a'])
         self.assert_eq(kser['a', 'lama'], pser['a', 'lama'])
+        self.assert_eq(kser[kser > 1.5], pser[pser > 1.5])
 
         msg = r"'Key length \(4\) exceeds index depth \(3\)'"
         with self.assertRaisesRegex(KeyError, msg):
