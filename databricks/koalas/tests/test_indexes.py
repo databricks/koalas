@@ -319,3 +319,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_arrays(arrays)
 
         self.assert_eq(pidx, kidx)
+
+    def test_index_fillna(self):
+        pidx = pd.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index
+        kidx = ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index
+
+        self.assert_eq(pidx.fillna(0), kidx.fillna(0))
+
+        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
+            kidx.fillna([1, 2])
