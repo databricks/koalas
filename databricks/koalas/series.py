@@ -4304,18 +4304,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         1   -0.055556
         Name: 0, dtype: float64
         """
-        sdf = self._internal._sdf
+        scol = self._internal.scol
+
         window = Window.orderBy(F.monotonically_increasing_id()).rowsBetween(-periods, -periods)
+        prev_row = F.lag(scol, periods).over(window)
 
-        for column_name in self._internal.data_columns:
-            prev_row = F.lag(scol_for(sdf, column_name), periods).over(window)
-            sdf = sdf.withColumn(column_name, (scol_for(sdf, column_name) - prev_row) / prev_row)
-
-        internal = self._internal.copy(
-            sdf=sdf,
-            scol=scol_for(sdf, self._internal.data_columns[0]))
-
-        return _col(DataFrame(internal))
+        return self._with_new_scol((scol - prev_row) / prev_row)
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
