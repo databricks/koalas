@@ -24,7 +24,6 @@ from typing import Union, Callable, Any
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like
-from pandas.core import ops
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
 from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType
@@ -35,6 +34,71 @@ from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
+
+
+# Copied from pandas.
+def maybe_dispatch_ufunc_to_dunder_op(
+    self, ufunc: Callable, method: str, *inputs, **kwargs: Any
+):
+    special = {
+        "add",
+        "sub",
+        "mul",
+        "pow",
+        "mod",
+        "floordiv",
+        "truediv",
+        "divmod",
+        "eq",
+        "ne",
+        "lt",
+        "gt",
+        "le",
+        "ge",
+        "remainder",
+        "matmul",
+    }
+    aliases = {
+        "subtract": "sub",
+        "multiply": "mul",
+        "floor_divide": "floordiv",
+        "true_divide": "truediv",
+        "power": "pow",
+        "remainder": "mod",
+        "divide": "div",
+        "equal": "eq",
+        "not_equal": "ne",
+        "less": "lt",
+        "less_equal": "le",
+        "greater": "gt",
+        "greater_equal": "ge",
+    }
+
+    # For op(., Array) -> Array.__r{op}__
+    flipped = {
+        "lt": "__gt__",
+        "le": "__ge__",
+        "gt": "__lt__",
+        "ge": "__le__",
+        "eq": "__eq__",
+        "ne": "__ne__",
+    }
+
+    op_name = ufunc.__name__
+    op_name = aliases.get(op_name, op_name)
+
+    def not_implemented(*args, **kwargs):
+        return NotImplemented
+
+    if method == "__call__" and op_name in special and kwargs.get("out") is None:
+        if isinstance(inputs[0], type(self)):
+            name = "__{}__".format(op_name)
+            return getattr(self, name, not_implemented)(inputs[1])
+        else:
+            name = flipped.get(op_name, "__r{}__".format(op_name))
+            return getattr(self, name, not_implemented)(inputs[0])
+    else:
+        return NotImplemented
 
 
 def booleanize_null(left_scol, scol, f):
@@ -227,11 +291,8 @@ class IndexOpsMixin(object):
 
     # NDArray Compat
     def __array_ufunc__(self, ufunc: Callable, method: str, *inputs: Any, **kwargs: Any):
-        # TODO(Hyukjin): I used pandas' maybe_dispatch_ufunc_to_dunder_op as is.
-        #   Maybe we will have to port it into Koalas in the future for a stability sake.
-        result = ops.maybe_dispatch_ufunc_to_dunder_op(
-            self, ufunc, method, *inputs, **kwargs
-        )
+        result = maybe_dispatch_ufunc_to_dunder_op(
+            self, ufunc, method, *inputs, **kwargs)
         if result is not NotImplemented:
             return result
         else:
