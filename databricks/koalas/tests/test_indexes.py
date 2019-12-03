@@ -324,4 +324,3 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pd.DataFrame({'a': ['a', 'b']}, index=[['a', 'b'], ['x', 'y'], [1, 2]]).index
         kidx = ks.DataFrame({'a': ['a', 'b']}, index=[['a', 'b'], ['x', 'y'], [1, 2]]).index
         self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
-
