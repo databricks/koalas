@@ -1279,6 +1279,8 @@ class _Frame(object):
             col_by = [_resolve_col(df, col_or_s) for col_or_s in by]
             return DataFrameGroupBy(df_or_s, col_by, as_index=as_index)
         if isinstance(df_or_s, Series):
+            if not isinstance(by[0], Series):
+                raise KeyError(by[0])
             col = df_or_s  # type: Series
             anchor = df_or_s._kdf
             col_by = [_resolve_col(anchor, col_or_s) for col_or_s in by]
