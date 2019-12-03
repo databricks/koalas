@@ -323,4 +323,6 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
     def test_multiindex_swaplevel(self):
         pidx = pd.DataFrame({'a': ['a', 'b']}, index=[['a', 'b'], ['x', 'y'], [1, 2]]).index
         kidx = ks.DataFrame({'a': ['a', 'b']}, index=[['a', 'b'], ['x', 'y'], [1, 2]]).index
-        self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
+
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25.3"):
+            self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
