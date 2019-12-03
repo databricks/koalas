@@ -864,7 +864,7 @@ class MultiIndex(Index):
                     ('b', 'y', 2),
                    )
 
-        >>> midx.swaplevel(0, 1)
+        >>> midx.swaplevel(0, 1) # doctest: +SKIP
         MultiIndex([('x', 'a', 1),
                     ('y', 'b', 2)],
                    )
