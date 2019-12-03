@@ -911,3 +911,33 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = kser.to_pandas()
 
         self.assert_eq(kser.keys(), pser.keys())
+
+    def test_pct_change(self):
+        kser = ks.Series([90, 91, 85], index=[2, 4, 1])
+        pser = kser.to_pandas()
+
+        self.assert_eq(kser.pct_change(periods=-1),
+                       pser.pct_change(periods=-1), almost=True)
+        self.assert_eq(kser.pct_change(periods=-100000000),
+                       pser.pct_change(periods=-100000000), almost=True)
+        self.assert_eq(kser.pct_change(periods=100000000),
+                       pser.pct_change(periods=100000000), almost=True)
+
+        # for MultiIndex
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(kser.pct_change(),
+                       pser.pct_change(), almost=True)
+        self.assert_eq(kser.pct_change(periods=2),
+                       pser.pct_change(periods=2), almost=True)
+        self.assert_eq(kser.pct_change(periods=-1),
+                       pser.pct_change(periods=-1), almost=True)
+        self.assert_eq(kser.pct_change(periods=-100000000),
+                       pser.pct_change(periods=-100000000), almost=True)
+        self.assert_eq(kser.pct_change(periods=100000000),
+                       pser.pct_change(periods=100000000), almost=True)

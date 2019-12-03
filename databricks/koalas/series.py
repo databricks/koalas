@@ -4090,6 +4090,59 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return _col(DataFrame(internal))
 
+    def pct_change(self, periods=1):
+        """
+        Percentage change between the current and a prior element.
+
+        .. note:: the current implementation of this API uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        periods : int, default 1
+            Periods to shift for forming percent change.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+
+        >>> kser = ks.Series([90, 91, 85], index=[2, 4, 1])
+        >>> kser
+        2    90
+        4    91
+        1    85
+        Name: 0, dtype: int64
+
+        >>> kser.pct_change()
+        2         NaN
+        4    0.011111
+        1   -0.065934
+        Name: 0, dtype: float64
+
+        >>> kser.sort_index().pct_change()
+        1         NaN
+        2    0.058824
+        4    0.011111
+        Name: 0, dtype: float64
+
+        >>> kser.pct_change(periods=2)
+        2         NaN
+        4         NaN
+        1   -0.055556
+        Name: 0, dtype: float64
+        """
+        scol = self._internal.scol
+
+        window = Window.orderBy(F.monotonically_increasing_id()).rowsBetween(-periods, -periods)
+        prev_row = F.lag(scol, periods).over(window)
+
+        return self._with_new_scol((scol - prev_row) / prev_row)
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns
