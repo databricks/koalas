@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import pandas as pd
+import numpy as np
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
@@ -295,6 +296,32 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             (kser1 + kser2 * kser3).sort_index(),
             (pser1 + pser2 * pser3).sort_index(), almost=True)
+
+    def test_getitem_boolean_series(self):
+        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(pdf1.A[pdf2.A > 100],
+                       kdf1.A[kdf2.A > 100].sort_index())
+
+    def test_bitwise(self):
+        pser1 = pd.Series([True, False, True, False, np.nan, np.nan, True, False, np.nan])
+        pser2 = pd.Series([True, False, False, True, True, False, np.nan, np.nan, np.nan])
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(pser1 | pser2, (kser1 | kser2).sort_index())
+        self.assert_eq(pser1 & pser2, (kser1 & kser2).sort_index())
+
+        pser1 = pd.Series([True, False, np.nan], index=list('ABC'))
+        pser2 = pd.Series([False, True, np.nan], index=list('DEF'))
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(pser1 | pser2, (kser1 | kser2).sort_index())
+        self.assert_eq(pser1 & pser2, (kser1 & kser2).sort_index())
 
     def test_different_columns(self):
         kdf1 = self.kdf1
