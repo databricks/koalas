@@ -458,13 +458,14 @@ class _InternalFrame(object):
             self._column_index_names = column_index_names
 
     @staticmethod
-    def attach_default_index(sdf):
+    def attach_default_index(sdf, default_index_type=None):
         """
         This method attaches a default index to Spark DataFrame. Spark does not have the index
         notion so corresponding column should be generated.
         There are several types of default index can be configured by `compute.default_index_type`.
         """
-        default_index_type = get_option("compute.default_index_type")
+        if default_index_type is None:
+            default_index_type = get_option("compute.default_index_type")
         if default_index_type == "sequence":
             sequential_index = F.row_number().over(
                 Window.orderBy(F.monotonically_increasing_id().asc())) - 1

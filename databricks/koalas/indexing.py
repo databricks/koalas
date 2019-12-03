@@ -269,20 +269,14 @@ class iAtIndexer(object):
 
         sdf = self._internal.sdf.select(self._internal.data_columns)
 
-        option_origin = get_option("compute.default_index_type")
-        set_option("compute.default_index_type", "distributed-sequence")
-        try:
-            sdf = _InternalFrame.attach_default_index(sdf)
-        finally:
-            set_option("compute.default_index_type", option_origin)
+        sdf = _InternalFrame.attach_default_index(sdf, default_index_type="distributed-sequence")
         cond = F.col(SPARK_INDEX_NAME_FORMAT(0)) == row_sel
         pdf = sdf.where(cond).select(*col_sel).toPandas()
 
         if len(pdf) < 1:
             raise KeyError(name_like_string(row_sel))
 
-        values = pdf.iloc[:, 0].values
-        return values[0]
+        return pdf.iloc[0, 0]
 
 
 class LocIndexer(object):
