@@ -72,6 +72,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(KeyError, lambda: kdf.a.groupby(by='a'))
         self.assertRaises(KeyError, lambda: kdf.a.groupby(by=['a', 'b']))
 
+        # we can't use DataFrame as a parameter `by` for `DataFrameGroupBy`/`SeriesGroupBy`.
+        self.assertRaises(ValueError, lambda: kdf.groupby(kdf))
+        self.assertRaises(ValueError, lambda: kdf.a.groupby(kdf))
+
     def test_groupby_multiindex_columns(self):
         pdf = pd.DataFrame({('x', 'a'): [1, 2, 6, 4, 4, 6, 4, 3, 7],
                             ('x', 'b'): [4, 2, 7, 3, 3, 1, 1, 1, 2],
