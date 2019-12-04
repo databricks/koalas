@@ -832,25 +832,9 @@ class MultiIndex(Index):
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
 
     @property
-    def levshape(self, i=-2, j=-1):
+    def levshape(self):
         """
         A tuple with the length of each level.
-        Swap level i with level j.
-        Calling this method does not change the ordering of the values.
-
-        Parameters
-        ----------
-        i : int, str, default -2
-            First level of index to be swapped. Can pass level name as string.
-            Type of parameters can be mixed.
-        j : int, str, default -1
-            Second level of index to be swapped. Can pass level name as string.
-            Type of parameters can be mixed.
-
-        Returns
-        -------
-        MultiIndex
-            A new MultiIndex.
 
         Examples
         --------
