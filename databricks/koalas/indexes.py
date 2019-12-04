@@ -387,7 +387,7 @@ class Index(IndexOpsMixin):
         if not isinstance(value, (float, int, str, bool)):
             raise TypeError("Unsupported type %s" % type(value))
         sdf = self._internal.sdf.fillna(value)
-        result = Index(DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map)))
+        result = DataFrame(self._kdf._internal.copy(sdf=sdf)).index
         return result
 
     def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:

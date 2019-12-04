@@ -325,6 +325,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index
 
         self.assert_eq(pidx.fillna(0), kidx.fillna(0))
+        self.assert_eq(pidx.rename('name').fillna(0), kidx.rename('name').fillna(0))
 
         with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
             kidx.fillna([1, 2])
