@@ -1832,86 +1832,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                     F.when(F.count(F.when(self._scol.isNull(), 1)
                                    .otherwise(None)) >= 1, 1).otherwise(0)).alias(colname)
 
-    # TODO: Update Documentation for Bins Parameter when its supported
-    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
-        """
-        Return a Series containing counts of unique values.
-        The resulting object will be in descending order so that the
-        first element is the most frequently-occurring element.
-        Excludes NA values by default.
-
-        Parameters
-        ----------
-        normalize : boolean, default False
-            If True then the object returned will contain the relative
-            frequencies of the unique values.
-        sort : boolean, default True
-            Sort by values.
-        ascending : boolean, default False
-            Sort in ascending order.
-        bins : Not Yet Supported
-        dropna : boolean, default True
-            Don't include counts of NaN.
-
-        Returns
-        -------
-        counts : Series
-
-        See Also
-        --------
-        Series.count: Number of non-NA elements in a Series.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame({'x':[0, 0, 1, 1, 1, np.nan]})
-        >>> df.x.value_counts()  # doctest: +NORMALIZE_WHITESPACE
-        1.0    3
-        0.0    2
-        Name: x, dtype: int64
-
-        With `normalize` set to `True`, returns the relative frequency by
-        dividing all values by the sum of values.
-
-        >>> df.x.value_counts(normalize=True)  # doctest: +NORMALIZE_WHITESPACE
-        1.0    0.6
-        0.0    0.4
-        Name: x, dtype: float64
-
-        **dropna**
-        With `dropna` set to `False` we can also see NaN index values.
-
-        >>> df.x.value_counts(dropna=False)  # doctest: +NORMALIZE_WHITESPACE
-        1.0    3
-        0.0    2
-        NaN    1
-        Name: x, dtype: int64
-        """
-        if bins is not None:
-            raise NotImplementedError("value_counts currently does not support bins")
-
-        if dropna:
-            sdf_dropna = self._internal._sdf.filter(self.notna()._scol)
-        else:
-            sdf_dropna = self._internal._sdf
-        index_name = SPARK_INDEX_NAME_FORMAT(0)
-        sdf = sdf_dropna.groupby(self._scol.alias(index_name)).count()
-        if sort:
-            if ascending:
-                sdf = sdf.orderBy(F.col('count'))
-            else:
-                sdf = sdf.orderBy(F.col('count').desc())
-
-        if normalize:
-            sum = sdf_dropna.count()
-            sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
-
-        internal = _InternalFrame(sdf=sdf,
-                                  index_map=[(index_name, None)],
-                                  column_index=self._internal.column_index,
-                                  column_scols=[scol_for(sdf, 'count')],
-                                  column_index_names=self._internal.column_index_names)
-        return _col(DataFrame(internal))
-
     def sort_values(self, ascending: bool = True, inplace: bool = False,
                     na_position: str = 'last') -> Union['Series', None]:
         """
@@ -3630,62 +3550,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return result
 
-    def first_valid_index(self):
-        """
-        Retrieves the index of the first valid value.
-
-        Returns
-        -------
-        idx_first_valid : type of index
-
-        Examples
-        --------
-        >>> s = ks.Series([None, None, 3, 4, 5], index=[100, 200, 300, 400, 500])
-        >>> s
-        100    NaN
-        200    NaN
-        300    3.0
-        400    4.0
-        500    5.0
-        Name: 0, dtype: float64
-
-        >>> s.first_valid_index()
-        300
-
-        Support for MultiIndex
-
-        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
-        ...                       ['speed', 'weight', 'length']],
-        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
-        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
-        >>> s = ks.Series([None, None, None, None, 250, 1.5, 320, 1, 0.3], index=midx)
-        >>> s
-        lama    speed       NaN
-                weight      NaN
-                length      NaN
-        cow     speed       NaN
-                weight    250.0
-                length      1.5
-        falcon  speed     320.0
-                weight      1.0
-                length      0.3
-        Name: 0, dtype: float64
-
-        >>> s.first_valid_index()
-        ('cow', 'weight')
-        """
-        sdf = self._internal.sdf
-        data_scol = self._internal.scol
-
-        first_valid_row = sdf.where(data_scol.isNotNull()).first()
-        first_valid_idx = tuple(first_valid_row[idx_col]
-                                for idx_col in self._internal.index_columns)
-
-        if len(first_valid_idx) == 1:
-            first_valid_idx = first_valid_idx[0]
-
-        return first_valid_idx
-
     def keys(self):
         """
         Return alias for index.
@@ -4226,6 +4090,59 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return _col(DataFrame(internal))
 
+    def pct_change(self, periods=1):
+        """
+        Percentage change between the current and a prior element.
+
+        .. note:: the current implementation of this API uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        periods : int, default 1
+            Periods to shift for forming percent change.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+
+        >>> kser = ks.Series([90, 91, 85], index=[2, 4, 1])
+        >>> kser
+        2    90
+        4    91
+        1    85
+        Name: 0, dtype: int64
+
+        >>> kser.pct_change()
+        2         NaN
+        4    0.011111
+        1   -0.065934
+        Name: 0, dtype: float64
+
+        >>> kser.sort_index().pct_change()
+        1         NaN
+        2    0.058824
+        4    0.011111
+        Name: 0, dtype: float64
+
+        >>> kser.pct_change(periods=2)
+        2         NaN
+        4         NaN
+        1   -0.055556
+        Name: 0, dtype: float64
+        """
+        scol = self._internal.scol
+
+        window = Window.orderBy(F.monotonically_increasing_id()).rowsBetween(-periods, -periods)
+        prev_row = F.lag(scol, periods).over(window)
+
+        return self._with_new_scol((scol - prev_row) / prev_row)
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns
@@ -4351,6 +4268,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
+        if isinstance(key, Series) and isinstance(key.spark_type, BooleanType):
+            self._kdf["__temp_col__"] = key
+            sdf = self._kdf._sdf.filter(F.col("__temp_col__")).drop("__temp_col__")
+            return _col(DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map)))
+
         if not isinstance(key, tuple):
             key = (key,)
         if len(self._internal._index_map) < len(key):

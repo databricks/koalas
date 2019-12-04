@@ -197,6 +197,7 @@ Time series-related
    :toctree: api/
 
    DataFrame.shift
+   DataFrame.first_valid_index
 
 Cache
 -------------------------------

@@ -19,6 +19,7 @@ Properties
    :toctree: api/
 
    Index.dtype
+   Index.shape
    Index.name
    Index.names
    Index.ndim
@@ -39,6 +40,7 @@ Modifying and computations
    Index.is_interval
    Index.is_numeric
    Index.is_object
+   Index.value_counts
 
 Missing Values
 ~~~~~~~~~~~~~~
@@ -93,10 +95,15 @@ MultiIndex Properties
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.shape
    MultiIndex.names
    MultiIndex.ndim
    MultiIndex.T
+<<<<<<< HEAD
    MultiIndex.levshape
+=======
+   MultiIndex.nlevels
+>>>>>>> 2b0014f0c6ab9c82cb78257ee4363d49c90e9bb0
 
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -110,7 +117,8 @@ MultiIndex Modifying and computations
 .. autosummary::
    :toctree: api/
 
-   Index.copy
+   MultiIndex.copy
+   MultiIndex.value_counts
 
 MultiIndex Combining / joining / set operations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -118,7 +126,6 @@ MultiIndex Combining / joining / set operations
    :toctree: api/
 
    MultiIndex.symmetric_difference
-   MultiIndex.copy
 
 Conversion
 ~~~~~~~~~~
