@@ -37,16 +37,6 @@ from databricks.koalas.config import set_option, reset_option
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
-    @classmethod
-    def setUpClass(cls):
-        super(SeriesTest, cls).setUpClass()
-        set_option("compute.ops_on_diff_frames", True)
-
-    @classmethod
-    def tearDownClass(cls):
-        reset_option("compute.ops_on_diff_frames")
-        super(SeriesTest, cls).tearDownClass()
-
     @property
     def pser(self):
         return pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
@@ -819,37 +809,17 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_where(self):
         pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
-        pser2 = pd.Series([100, 200, 300, 400, 500], name=0)
         kser1 = ks.from_pandas(pser1)
-        kser2 = ks.from_pandas(pser2)
 
-        self.assert_eq(repr(pser1.where(pser2 > 100)),
-                       repr(kser1.where(kser2 > 100).sort_index()))
-
-        pser1 = pd.Series([-1, -2, -3, -4, -5], name=0)
-        pser2 = pd.Series([-100, -200, -300, -400, -500], name=0)
-        kser1 = ks.from_pandas(pser1)
-        kser2 = ks.from_pandas(pser2)
-
-        self.assert_eq(repr(pser1.where(pser2 < -250)),
-                       repr(kser1.where(kser2 < -250).sort_index()))
+        self.assert_eq(repr(pser1.where(pser1 > 3)),
+                       repr(kser1.where(kser1 > 3).sort_index()))
 
     def test_mask(self):
         pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
-        pser2 = pd.Series([100, 200, 300, 400, 500], name=0)
         kser1 = ks.from_pandas(pser1)
-        kser2 = ks.from_pandas(pser2)
 
-        self.assert_eq(repr(pser1.mask(pser2 > 100)),
-                       repr(kser1.mask(kser2 > 100).sort_index()))
-
-        pser1 = pd.Series([-1, -2, -3, -4, -5], name=0)
-        pser2 = pd.Series([-100, -200, -300, -400, -500], name=0)
-        kser1 = ks.from_pandas(pser1)
-        kser2 = ks.from_pandas(pser2)
-
-        self.assert_eq(repr(pser1.mask(pser2 < -250)),
-                       repr(kser1.mask(kser2 < -250).sort_index()))
+        self.assert_eq(repr(pser1.mask(pser1 > 3)),
+                       repr(kser1.mask(kser1 > 3).sort_index()))
 
     def test_truncate(self):
         pser1 = pd.Series([10, 20, 30, 40, 50, 60, 70], index=[1, 2, 3, 4, 5, 6, 7])

@@ -3912,28 +3912,49 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
-        kdf = self.to_frame()
-        kdf['__tmp_cond_col__'] = cond
-        kdf['__tmp_other_col__'] = other
-        sdf = kdf._sdf
-        # above logic make spark dataframe looks like below:
-        # +-----------------+---+----------------+-----------------+
-        # |__index_level_0__|  0|__tmp_cond_col__|__tmp_other_col__|
-        # +-----------------+---+----------------+-----------------+
-        # |                0|  0|           false|              100|
-        # |                1|  1|           false|              200|
-        # |                3|  3|            true|              400|
-        # |                2|  2|            true|              300|
-        # |                4|  4|            true|              500|
-        # +-----------------+---+----------------+-----------------+
         data_col_name = self._internal.column_name_for(self._internal.column_index[0])
-        index_column = self._internal.index_columns[0]
-        condition = F.when(sdf['__tmp_cond_col__'], sdf[data_col_name]) \
-                     .otherwise(sdf['__tmp_other_col__']).alias(data_col_name)
-        sdf = sdf.select(index_column, condition)
-        result = _col(ks.DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map)))
 
-        return result
+        assert isinstance(cond, Series)
+
+        # We should check the DataFrame from both `cond` and `other`.
+        should_try_ops_on_diff_frame = (
+            cond._kdf is not self._kdf or
+            (isinstance(other, Series) and other._kdf is not self._kdf))
+
+        if should_try_ops_on_diff_frame:
+            # Try to perform it with 'compute.ops_on_diff_frame' option.
+            kdf = self.to_frame()
+            kdf['__tmp_cond_col__'] = cond
+            kdf['__tmp_other_col__'] = other
+
+            sdf = kdf._sdf
+            # above logic makes a Spark DataFrame looks like below:
+            # +-----------------+---+----------------+-----------------+
+            # |__index_level_0__|  0|__tmp_cond_col__|__tmp_other_col__|
+            # +-----------------+---+----------------+-----------------+
+            # |                0|  0|           false|              100|
+            # |                1|  1|           false|              200|
+            # |                3|  3|            true|              400|
+            # |                2|  2|            true|              300|
+            # |                4|  4|            true|              500|
+            # +-----------------+---+----------------+-----------------+
+            condition = F.when(
+                sdf['__tmp_cond_col__'], sdf[data_col_name]
+            ).otherwise(sdf['__tmp_other_col__']).alias(data_col_name)
+
+            sdf = sdf.select(*self._internal.index_columns + [condition])
+            return _col(ks.DataFrame(_InternalFrame(
+                sdf=sdf,
+                index_map=self._internal.index_map,
+                column_index=self._internal.column_index,
+                column_index_names=self._internal.column_index_names)))
+        else:
+            if isinstance(other, Series):
+                other = other._scol
+            condition = F.when(
+                cond._scol, self._scol
+            ).otherwise(other).alias(data_col_name)
+            return self._with_new_scol(condition)
 
     def mask(self, cond, other=np.nan):
         """
@@ -4269,9 +4290,19 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def __getitem__(self, key):
         if isinstance(key, Series) and isinstance(key.spark_type, BooleanType):
-            self._kdf["__temp_col__"] = key
-            sdf = self._kdf._sdf.filter(F.col("__temp_col__")).drop("__temp_col__")
-            return _col(DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map)))
+            should_try_ops_on_diff_frame = key._kdf is not self._kdf
+
+            if should_try_ops_on_diff_frame:
+                kdf = self.to_frame()
+                kdf["__temp_col__"] = key
+                sdf = kdf._sdf.filter(F.col("__temp_col__")).drop("__temp_col__")
+                return _col(ks.DataFrame(_InternalFrame(
+                    sdf=sdf,
+                    index_map=self._internal.index_map,
+                    column_index=self._internal.column_index,
+                    column_index_names=self._internal.column_index_names)))
+            else:
+                return _col(DataFrame(self._internal.copy(sdf=self._kdf._sdf.filter(key._scol))))
 
         if not isinstance(key, tuple):
             key = (key,)
