@@ -321,8 +321,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pidx, kidx)
 
     def test_multiindex_swaplevel(self):
-        pidx = pd.DataFrame({'a': ['a', 'b']}, index=[['a', 'b'], ['x', 'y'], [1, 2]]).index
-        kidx = ks.DataFrame({'a': ['a', 'b']}, index=[['a', 'b'], ['x', 'y'], [1, 2]]).index
+        pidx = pd.MultiIndex.from_arrays([['a', 'b'], [1, 2]])
+        kidx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]])
+        self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
 
-        if LooseVersion(pd.__version__) >= LooseVersion("0.25.3"):
-            self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
+        pidx = pd.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', 'number'])
+        kidx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', 'number'])
+        self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
+
+        pidx = pd.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', 'number'])
+        kidx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', 'number'])
+        self.assert_eq(pidx.swaplevel('word', 'number'), kidx.swaplevel('word', 'number'))
