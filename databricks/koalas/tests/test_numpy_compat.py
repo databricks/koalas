@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 import numpy as np
 import pandas as pd
 
 from databricks import koalas as ks
+from databricks.koalas.numpy_compat import unary_np_spark_mappings, binary_np_spark_mappings
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
@@ -52,3 +52,54 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = self.kdf
         with self.assertRaisesRegex(NotImplementedError, "Koalas.*not.*support.*sqrt.*"):
             np.sqrt(kdf.a, kdf.b)
+
+    def test_np_spark_compat(self):
+        # Use randomly generated dataFrame
+        pdf = pd.DataFrame(
+            np.random.randint(-100, 100, size=(np.random.randint(100), 2)), columns=['a', 'b'])
+        kdf = ks.from_pandas(pdf)
+
+        blacklist = [
+            # Koalas does not currently support
+            "conj",
+            "conjugate",
+            "isnat",
+            "matmul",
+            "frexp",
+
+            # Values are close enough but tests failed.
+            "arccos",
+            "exp",
+            "expm1",
+            "log",  # flaky
+            "log10",  # flaky
+            "log1p",  # flaky
+            "modf",
+            "floor_divide",  # flaky
+
+            # Results seem inconsistent in a different version of, I (Hyukjin) suspect, PyArrow.
+            # From PyArrow 0.15, seems it returns the correct results via PySpark. Probably we
+            # can enable it later when Koalas switches to PyArrow 0.15 completely.
+            "left_shift",
+        ]
+
+        for np_name, spark_func in unary_np_spark_mappings.items():
+            np_func = getattr(np, np_name)
+            if np_name not in blacklist:
+                try:
+                    # unary ufunc
+                    self.assert_eq(np_func(pdf.a), np_func(kdf.a), almost=True)
+                except Exception as e:
+                    raise AssertionError("Test in '%s' function was failed." % np_name) from e
+
+        for np_name, spark_func in binary_np_spark_mappings.items():
+            np_func = getattr(np, np_name)
+            if np_name not in blacklist:
+                try:
+                    # binary ufunc
+                    self.assert_eq(
+                        np_func(pdf.a, pdf.b), np_func(kdf.a, kdf.b), almost=True)
+                    self.assert_eq(
+                        np_func(pdf.a, 1), np_func(kdf.a, 1), almost=True)
+                except Exception as e:
+                    raise AssertionError("Test in '%s' function was failed." % np_name) from e
