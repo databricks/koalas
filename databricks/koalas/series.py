@@ -3918,8 +3918,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         # We should check the DataFrame from both `cond` and `other`.
         should_try_ops_on_diff_frame = (
-                cond._kdf is not self._kdf or
-                (isinstance(other, Series) and other._kdf is not self._kdf))
+            cond._kdf is not self._kdf or
+            (isinstance(other, Series) and other._kdf is not self._kdf))
 
         if should_try_ops_on_diff_frame:
             # Try to perform it with 'compute.ops_on_diff_frame' option.
