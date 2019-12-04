@@ -99,11 +99,8 @@ MultiIndex Properties
    MultiIndex.names
    MultiIndex.ndim
    MultiIndex.T
-<<<<<<< HEAD
    MultiIndex.levshape
-=======
    MultiIndex.nlevels
->>>>>>> 2b0014f0c6ab9c82cb78257ee4363d49c90e9bb0
 
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
