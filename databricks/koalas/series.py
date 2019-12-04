@@ -3178,23 +3178,24 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = self._internal._sdf
         scol = self._scol
         index_scols = self._internal.index_scols
+        # desc_nulls_(last|first) is used via Py4J directly because
+        # it's not supported in Spark 2.3.
         if skipna:
-            max_row = sdf.orderBy(scol.desc_nulls_last()).select([scol]).first()
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()), F.monotonically_increasing_id())
         else:
-            max_row = sdf.orderBy(scol.desc_nulls_first()).select([scol]).first()
-
-        if max_row is None:
-            raise ValueError("attempt to get idxmax of an empty sequence")
-
-        max_value = max_row[0]
-
-        if max_value is None:
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()), F.monotonically_increasing_id())
+        results = sdf.select([scol] + index_scols).take(1)
+        if len(results) == 0:
+            raise ValueError("attempt to get idxmin of an empty sequence")
+        if results[0][0] is None:
+            # This will only happens when skipna is False because we will
+            # place nulls first.
             return np.nan
-
-        sdf = sdf.filter(scol == max_value)
-        max_idx = tuple(sdf.select(index_scols).first())
-
-        return max_idx if len(max_idx) > 1 else max_idx[0]
+        values = list(results[0][1:])
+        if len(values) == 1:
+            return values[0]
+        else:
+            return tuple(values)
 
     def idxmin(self, skipna=True):
         """
@@ -3285,23 +3286,24 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = self._internal._sdf
         scol = self._scol
         index_scols = self._internal.index_scols
+        # asc_nulls_(last|first)is used via Py4J directly because
+        # it's not supported in Spark 2.3.
         if skipna:
-            min_row = sdf.orderBy(scol.asc_nulls_last()).select([scol]).first()
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()), F.monotonically_increasing_id())
         else:
-            min_row = sdf.orderBy(scol.asc_nulls_first()).select([scol]).first()
-
-        if min_row is None:
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()), F.monotonically_increasing_id())
+        results = sdf.select([scol] + index_scols).take(1)
+        if len(results) == 0:
             raise ValueError("attempt to get idxmin of an empty sequence")
-
-        min_value = min_row[0]
-
-        if min_value is None:
+        if results[0][0] is None:
+            # This will only happens when skipna is False because we will
+            # place nulls first.
             return np.nan
-
-        sdf = sdf.filter(scol == min_value)
-        min_idx = tuple(sdf.select(index_scols).first())
-
-        return min_idx if len(min_idx) > 1 else min_idx[0]
+        values = list(results[0][1:])
+        if len(values) == 1:
+            return values[0]
+        else:
+            return tuple(values)
 
     def copy(self) -> 'Series':
         """
