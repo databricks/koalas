@@ -853,18 +853,18 @@ class MultiIndex(Index):
         Examples
         --------
         >>> midx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names = ['word', 'number'])
-        >>> midx
+        >>> midx # doctest: +SKIP
         MultiIndex([('a', 1),
                     ('b', 2)],
                    names=['word', 'number'])
 
-        >>> midx.swaplevel(0, 1)
+        >>> midx.swaplevel(0, 1) # doctest: +SKIP
         MultiIndex([(1, 'a'),
                     (2, 'b')],
                    names=['number', 'word'])
 
         >>> midx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names = ['word', 'number'])
-        >>> midx.swaplevel('number', 'word')
+        >>> midx.swaplevel('number', 'word') # doctest: +SKIP
         MultiIndex([(1, 'a'),
                     (2, 'b')],
                    names=['number', 'word'])
