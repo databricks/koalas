@@ -650,6 +650,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "an empty sequence"):
             kser.idxmax()
 
+        pser = pd.Series([1, 100, None, 100, 1, 100], index=[10, 3, 5, 2, 1, 8])
+        kser = ks.Series(pser)
+
+        self.assertEqual(kser.idxmax(), pser.idxmax())
+        self.assertEqual(repr(kser.idxmax(skipna=False)), repr(pser.idxmax(skipna=False)))
+
     def test_idxmin(self):
         pser = pd.Series(data=[1, 4, 5], index=['A', 'B', 'C'])
         kser = ks.Series(pser)
@@ -668,6 +674,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([])
         with self.assertRaisesRegex(ValueError, "an empty sequence"):
             kser.idxmin()
+
+        pser = pd.Series([1, 100, None, 100, 1, 100], index=[10, 3, 5, 2, 1, 8])
+        kser = ks.Series(pser)
+
+        self.assertEqual(kser.idxmin(), pser.idxmin())
+        self.assertEqual(repr(kser.idxmin(skipna=False)), repr(pser.idxmin(skipna=False)))
 
     def test_shift(self):
         pser = pd.Series([10, 20, 15, 30, 45], name='x')
