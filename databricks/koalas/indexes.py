@@ -846,11 +846,11 @@ class MultiIndex(Index):
                    )
 
         >>> midx.levshape # doctest: +SKIP
-        (3,3)
+        (3, 3)
         """
-        result = self._internal._sdf\
-            .agg(*(F.countDistinct(F.col(c)) for c in self._internal.index_columns)).collect()
-        return tuple(v for v in result[0])
+        internal = self._internal
+        result = internal._sdf.agg(*(F.countDistinct(c) for c in internal.index_scols)).collect()[0]
+        return tuple(result)
 
     def to_pandas(self) -> pd.MultiIndex:
         """

@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 
-import sys
 from distutils.version import LooseVersion
 import inspect
 
@@ -154,10 +153,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
     def test_multi_index_levshape(self):
         pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
         kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
-        if sys.version[0:3] == '3.6':
-            self.assertEqual(pidx.levshape, kidx.levshape)
-        else:
-            self.assertEqual((3, 3), kidx.levshape)
+        self.assertEqual(pidx.levshape, kidx.levshape)
 
     def test_index_unique(self):
         kidx = self.kdf.index
