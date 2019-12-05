@@ -329,6 +329,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', 'number'])
         self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
 
-        pidx = pd.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', 'number'])
-        kidx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', 'number'])
-        self.assert_eq(pidx.swaplevel('word', 'number'), kidx.swaplevel('word', 'number'))
+        pidx = pd.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', None])
+        kidx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', None])
+        self.assert_eq(pidx.swaplevel(-2, -1), kidx.swaplevel(-2, -1))
+        self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
+        self.assert_eq(pidx.swaplevel('word', 1), kidx.swaplevel('word', 1))

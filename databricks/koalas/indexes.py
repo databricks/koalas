@@ -853,40 +853,26 @@ class MultiIndex(Index):
         Examples
         --------
         >>> midx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names = ['word', 'number'])
-        >>> midx # doctest: +SKIP
+        >>> midx
         MultiIndex([('a', 1),
                     ('b', 2)],
                    names=['word', 'number'])
 
-        >>> midx.swaplevel(0, 1) # doctest: +SKIP
+        >>> midx.swaplevel(0, 1)
         MultiIndex([(1, 'a'),
                     (2, 'b')],
                    names=['number', 'word'])
 
-        >>> midx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names = ['word', 'number'])
-        >>> midx.swaplevel('number', 'word') # doctest: +SKIP
+        >>> midx.swaplevel('number', 'word')
         MultiIndex([(1, 'a'),
                     (2, 'b')],
                    names=['number', 'word'])
         """
-        index_columns = self._internal.index_columns
-        sdf = self._internal._sdf
+        i = i if isinstance(i, int) else self.names.index(i)
+        j = j if isinstance(j, int) else self.names.index(j)
         index_map = self._internal.index_map
-        if any(map(lambda x: x is None, self._internal.index_names)):
-            if isinstance(i, int):
-                i = index_columns[i]
-            if isinstance(j, int):
-                j = index_columns[j]
-            sdf = sdf.withColumnRenamed(j, 'tmp')\
-                .withColumnRenamed(i, j).withColumnRenamed('tmp', i)
-        else:
-            if isinstance(i, str):
-                i = index_columns.index(i)
-            if isinstance(j, str):
-                j = index_columns.index(j)
-            index_map[i], index_map[j] = index_map[j], index_map[i]
-            sdf = sdf.select([im[0] for im in index_map])
-        result = MultiIndex(DataFrame(_InternalFrame(sdf=sdf, index_map=index_map)))
+        index_map[i], index_map[j], = index_map[j], index_map[i]
+        result = DataFrame(self._kdf._internal.copy(index_map=index_map)).index
         return result
 
     def to_pandas(self) -> pd.MultiIndex:
