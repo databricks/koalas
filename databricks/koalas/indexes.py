@@ -870,7 +870,7 @@ class MultiIndex(Index):
         """
         i = i if isinstance(i, int) else self.names.index(i)
         j = j if isinstance(j, int) else self.names.index(j)
-        index_map = self._internal.index_map
+        index_map = self._internal.index_map.copy()
         index_map[i], index_map[j], = index_map[j], index_map[i]
         result = DataFrame(self._kdf._internal.copy(index_map=index_map)).index
         return result
