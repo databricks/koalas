@@ -54,6 +54,9 @@ dbutils.library.restartPython()
 
 Note that Koalas requires Databricks Runtime 5.x or above. In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and Databricks Runtime for Machine Learning.
 
+Lastly, note that if your PyArrow version is 0.15+, it is best for you to set `ARROW_PRE_0_15_IPC_FORMAT` environment variable to `1` manually.
+Koalas will try its best to set it for you but it is impossible to set it if there is a Spark context already launched.
+
 Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
 
 ```python

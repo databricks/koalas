@@ -19,7 +19,7 @@ jobs:
           - python-version: 3.5
             spark-version: 2.3.4
             pandas-version: 0.23.4
-            pyarrow-version: 0.10.0
+            pyarrow-version: 0.16.0
           - python-version: 3.5
             spark-version: 2.3.4
             pandas-version: 0.24.2
@@ -103,7 +103,7 @@ jobs:
           - python-version: 3.7
             spark-version: 2.4.5
             pandas-version: 1.0.3
-            pyarrow-version: 0.14.1
+            pyarrow-version: 0.15.1
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
       SPARK_VERSION: ${{ matrix.spark-version }}
