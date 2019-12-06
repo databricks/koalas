@@ -612,39 +612,44 @@ class Index(IndexOpsMixin):
                     ('x', 'y', 2),
                    )
 
-        >>> midx.droplevel([0, 1])
+        >>> midx.droplevel([0, 1])  # doctest: +SKIP
         Int64Index([1, 2], dtype='int64')
 
-        >>> midx.droplevel(0) # doctest: +SKIP
+        >>> midx.droplevel(0)  # doctest: +SKIP
         MultiIndex([('b', 1),
-                    ('y', 2)]
+                    ('y', 2)],
                    )
         """
+        names = self.names
+        nlevels = self.nlevels
         if not isinstance(level, (tuple, list)):
             level = [level]
 
-        for l in level:
-            if isinstance(l, int) and (l > self.nlevels - 1):
+        for n in level:
+            if isinstance(n, int) and (n > nlevels - 1):
                 raise IndexError("Too many levels: Index has only {} levels, not {}"
-                                 .format(self.nlevels, l+1))
-            if isinstance(l, str) and (l not in self._internal.index_columns):
-                raise KeyError("Level {} not found".format(l))
+                                 .format(nlevels, n+1))
+            if isinstance(n, str) and (n not in names):
+                raise KeyError("Level {} not found".format(n))
 
-        if len(level) >= self.nlevels:
+        if len(level) >= nlevels:
             raise ValueError(
                 "Cannot remove {} levels from an index with {} "
                 "levels: at least one level must be "
-                "left.".format(len(level), self.nlevels)
+                "left.".format(len(level), nlevels)
             )
+        int_level = [n if isinstance(n, int) else names.index(n) for n in level]
+        index_columns = self._internal.index_columns.copy()
+        index_columns = [index_columns[c] for c in range(0, nlevels)
+                         if c not in int_level]
 
-        index_columns = [v for k, v in enumerate(self._internal.index_columns)
-                         if ((k not in level) & (v not in level))]
-        internal = _InternalFrame(sdf=self._internal._sdf.select(index_columns),
-                                  index_map=[(i, None) for i in index_columns])
+        index_map = self._internal.index_map.copy()
+        index_map = [index_map[c] for c in range(0, nlevels) if c not in int_level]
+        result = _InternalFrame(sdf=self._internal._sdf.select(index_columns), index_map=index_map)
         if len(index_columns) > 1:
-            result = MultiIndex(DataFrame(internal))
+            result = MultiIndex(DataFrame(result))
         else:
-            result = Index(DataFrame(internal))
+            result = Index(DataFrame(result))
         return result
 
     def symmetric_difference(self, other, result_name=None, sort=None):

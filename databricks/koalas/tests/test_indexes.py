@@ -338,3 +338,4 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pidx.droplevel(0), kidx.droplevel(0))
         self.assert_eq(pidx.droplevel([0, 1]), kidx.droplevel([0, 1]))
+        self.assert_eq(pidx.droplevel([0, 'level2']), kidx.droplevel([0, 'level2']))
