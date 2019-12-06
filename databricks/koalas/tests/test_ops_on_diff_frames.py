@@ -79,6 +79,30 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         }, index=list(range(9))).set_index(['a', 'b'])
 
     @property
+    def pser1(self):
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon', 'koala'],
+                              ['speed', 'weight', 'length', 'power']],
+                             [[0, 3, 1, 1, 1, 2, 2, 2],
+                              [0, 2, 0, 3, 2, 0, 1, 3]])
+        return pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1], index=midx)
+
+    @property
+    def pser2(self):
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        return pd.Series([-45, 200, -1.2, 30, -250, 1.5, 320, 1, -0.3], index=midx)
+
+    @property
+    def pser3(self):
+        midx = pd.MultiIndex([['koalas', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [1, 1, 2, 0, 0, 2, 2, 2, 1]])
+        return pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+
+    @property
     def kdf1(self):
         return ks.from_pandas(self.pdf1)
 
@@ -102,6 +126,18 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
     def kdf6(self):
         return ks.from_pandas(self.pdf6)
 
+    @property
+    def kser1(self):
+        return ks.from_pandas(self.pser1)
+
+    @property
+    def kser2(self):
+        return ks.from_pandas(self.pser2)
+
+    @property
+    def kser3(self):
+        return ks.from_pandas(self.pser3)
+
     def test_ranges(self):
         self.assert_eq(
             (ks.range(10) + ks.range(10)).sort_index(),
@@ -118,6 +154,10 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kdf2 = self.kdf2
         pdf1 = self.pdf1
         pdf2 = self.pdf2
+        kser1 = self.kser1
+        pser1 = self.pser1
+        kser2 = self.kser2
+        pser2 = self.pser2
 
         # Series
         self.assert_eq(
@@ -162,6 +202,23 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             (kdf1 + kdf2).sort_index(),
             (pdf1 + pdf2).sort_index(), almost=True)
 
+        # MultiIndex Series
+        self.assert_eq(
+            (kser1 + kser2).sort_index(),
+            (pser1 + pser2).sort_index(), almost=True)
+
+        self.assert_eq(
+            (kser1 - kser2).sort_index(),
+            (pser1 - pser2).sort_index(), almost=True)
+
+        self.assert_eq(
+            (kser1 * kser2).sort_index(),
+            (pser1 * pser2).sort_index(), almost=True)
+
+        self.assert_eq(
+            (kser1 / kser2).sort_index(),
+            (pser1 / pser2).sort_index(), almost=True)
+
     def test_arithmetic_chain(self):
         kdf1 = self.kdf1
         kdf2 = self.kdf2
@@ -169,6 +226,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf1 = self.pdf1
         pdf2 = self.pdf2
         pdf3 = self.pdf3
+        kser1 = self.kser1
+        pser1 = self.pser1
+        kser2 = self.kser2
+        pser2 = self.pser2
+        kser3 = self.kser3
+        pser3 = self.pser3
 
         # Series
         self.assert_eq(
@@ -216,6 +279,35 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             (kdf1 + kdf2 - kdf3).sort_index(),
             (pdf1 + pdf2 - pdf3).sort_index(), almost=True)
+
+        # MultiIndex Series
+        self.assert_eq(
+            (kser1 + kser2 - kser3).sort_index(),
+            (pser1 + pser2 - pser3).sort_index(), almost=True)
+
+        self.assert_eq(
+            (kser1 * kser2 * kser3).sort_index(),
+            (pser1 * pser2 * pser3).sort_index(), almost=True)
+
+        self.assert_eq(
+            (kser1 - kser2 / kser3).sort_index(),
+            (pser1 - pser2 / pser3).sort_index(), almost=True)
+
+        self.assert_eq(
+            (kser1 + kser2 * kser3).sort_index(),
+            (pser1 + pser2 * pser3).sort_index(), almost=True)
+
+    def test_getitem_boolean_series(self):
+        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(pdf1.A[pdf2.A > 100],
+                       kdf1.A[kdf2.A > 100].sort_index())
+
+        self.assert_eq((pdf1.A + 1)[pdf2.A > 100],
+                       (kdf1.A + 1)[kdf2.A > 100].sort_index())
 
     def test_bitwise(self):
         pser1 = pd.Series([True, False, True, False, np.nan, np.nan, True, False, np.nan])

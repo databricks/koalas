@@ -47,6 +47,7 @@ Missing Values
 .. autosummary::
    :toctree: api/
 
+   Index.fillna
    Index.dropna
    Index.isna
    Index.notna

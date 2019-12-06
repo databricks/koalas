@@ -55,6 +55,7 @@ Indexing, iteration
    DataFrame.iloc
    DataFrame.items
    DataFrame.iteritems
+   DataFrame.iterrows
    DataFrame.keys
    DataFrame.xs
    DataFrame.get

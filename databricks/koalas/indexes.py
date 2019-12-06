@@ -360,6 +360,36 @@ class Index(IndexOpsMixin):
         else:
             return Index(DataFrame(internal), scol=self._scol)
 
+    # TODO: add downcast parameter for fillna function
+    def fillna(self, value):
+        """
+        Fill NA/NaN values with the specified value.
+
+        Parameters
+        ----------
+        value : scalar
+            Scalar value to use to fill holes (e.g. 0). This value cannot be a list-likes.
+
+        Returns
+        -------
+        Index :
+            filled with value
+
+        Examples
+        --------
+        >>> ki = ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index
+        >>> ki
+        Float64Index([1.0, 2.0, nan], dtype='float64')
+
+        >>> ki.fillna(0)
+        Float64Index([1.0, 2.0, 0.0], dtype='float64')
+        """
+        if not isinstance(value, (float, int, str, bool)):
+            raise TypeError("Unsupported type %s" % type(value))
+        sdf = self._internal.sdf.fillna(value)
+        result = DataFrame(self._kdf._internal.copy(sdf=sdf)).index
+        return result
+
     def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
         """
         Create a Series with both index and values equal to the index keys
