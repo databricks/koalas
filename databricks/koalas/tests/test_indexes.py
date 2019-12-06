@@ -150,6 +150,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaises(PandasNotImplementedError):
             kidx.name = 'renamed'
 
+    def test_multi_index_levshape(self):
+        pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
+        self.assertEqual(pidx.levshape, kidx.levshape)
+
     def test_index_unique(self):
         kidx = self.kdf.index
 
