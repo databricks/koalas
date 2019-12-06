@@ -339,3 +339,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pidx.droplevel(0), kidx.droplevel(0))
         self.assert_eq(pidx.droplevel([0, 1]), kidx.droplevel([0, 1]))
         self.assert_eq(pidx.droplevel([0, 'level2']), kidx.droplevel([0, 'level2']))
+
+    def test_index_fillna(self):
+        pidx = pd.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index
+        kidx = ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index
+
+        self.assert_eq(pidx.fillna(0), kidx.fillna(0))
+        self.assert_eq(pidx.rename('name').fillna(0), kidx.rename('name').fillna(0))
+
+        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
+            kidx.fillna([1, 2])
