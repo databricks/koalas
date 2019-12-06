@@ -894,6 +894,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser.keys(), pser.keys())
 
+    def test_index(self):
+        # to check setting name of Index properly.
+        idx = pd.Index([1, 2, 3, 4, 5, 6, 7, 8, 9])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=idx)
+        pser = kser.to_pandas()
+
+        kser.name = 'koalas'
+        pser.name = 'koalas'
+        self.assert_eq(kser.index.name, pser.index.name)
+
+        # for check setting names of MultiIndex properly.
+        kser.names = ['hello', 'koalas']
+        pser.names = ['hello', 'koalas']
+        self.assert_eq(kser.index.names, pser.index.names)
+
     def test_pct_change(self):
         kser = ks.Series([90, 91, 85], index=[2, 4, 1])
         pser = kser.to_pandas()
