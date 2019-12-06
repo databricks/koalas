@@ -102,7 +102,6 @@ MultiIndex Properties
    MultiIndex.nlevels
    MultiIndex.levshape
 
-
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
