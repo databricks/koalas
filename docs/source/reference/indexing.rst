@@ -101,6 +101,7 @@ MultiIndex Properties
    MultiIndex.ndim
    MultiIndex.T
    MultiIndex.nlevels
+   MultiIndex.levshape
 
 MultiIndex components
 ~~~~~~~~~~~~~~~~~~~~~
