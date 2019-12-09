@@ -20,7 +20,7 @@ from distutils.version import LooseVersion
 import pandas as pd
 
 from databricks import koalas as ks
-from databricks.koalas.config import set_option, reset_option
+from databricks.koalas.config import option_context
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
@@ -705,8 +705,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby([('x', 'a'), ('x', 'b')])
                        .transform(lambda x: x * x).sort_index())
 
-        set_option('compute.shortcut_limit', 1000)
-        try:
+        with option_context('compute.shortcut_limit', 1000):
             pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
                                 'b': [1, 1, 2, 3, 5, 8] * 300,
                                 'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
@@ -731,8 +730,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                            .transform(lambda x: x * x).sort_index(),
                            pdf.groupby([('x', 'a'), ('x', 'b')])
                            .transform(lambda x: x * x).sort_index())
-        finally:
-            reset_option('compute.shortcut_limit')
 
     def test_filter(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],

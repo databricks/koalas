@@ -13,6 +13,8 @@
   <a href="https://github.com/databricks/koalas/issues">Issues</a>
   ·
   <a href="https://groups.google.com/forum/#!forum/koalas-dev">Mailing list</a>
+  <br/>
+  <strong><a href="https://www.gofundme.com/f/help-thirsty-koalas-devastated-by-recent-fires">Help Thirsty Koalas Devasted by Recent Fires</a></strong>
 </p>
 
 The Koalas project makes data scientists more productive when interacting with big data, by implementing the pandas DataFrame API on top of Apache Spark.

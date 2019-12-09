@@ -150,6 +150,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaises(PandasNotImplementedError):
             kidx.name = 'renamed'
 
+    def test_multi_index_levshape(self):
+        pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
+        self.assertEqual(pidx.levshape, kidx.levshape)
+
     def test_index_unique(self):
         kidx = self.kdf.index
 
@@ -319,3 +324,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_arrays(arrays)
 
         self.assert_eq(pidx, kidx)
+
+    def test_index_fillna(self):
+        pidx = pd.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index
+        kidx = ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index
+
+        self.assert_eq(pidx.fillna(0), kidx.fillna(0))
+        self.assert_eq(pidx.rename('name').fillna(0), kidx.rename('name').fillna(0))
+
+        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
+            kidx.fillna([1, 2])
