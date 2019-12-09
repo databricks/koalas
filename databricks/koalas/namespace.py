@@ -1867,17 +1867,6 @@ def to_numeric(arg):
     """
     Convert argument to a numeric type.
 
-    .. note:: this API executes the function once to infer the type which is
-         potentially expensive, for instance, when the dataset is created after
-         aggregations or sorting.
-
-         To avoid this, specify return type in ``func``, for instance, as below:
-
-         >>> def square(x) -> np.int32:
-         ...     return x ** 2
-
-         Koalas uses return type hint and does not try to infer the type.
-
     Parameters
     ----------
     arg : scalar, list, tuple, 1-d array, or Series
@@ -1941,14 +1930,7 @@ def to_numeric(arg):
     1.0
     """
     if isinstance(arg, Series):
-        sdf = arg._internal.sdf
-        name = arg._internal.data_columns[0]
-        sdf = sdf.withColumn(name, sdf[name].cast('float'))
-        column_scols = [scol_for(sdf, name)]
-        return Series(arg._internal.copy(
-            sdf=sdf,
-            column_scols=column_scols,
-            scol=column_scols[0]))
+        return arg._with_new_scol(arg._internal.scol.cast('float'))
     else:
         return pd.to_numeric(arg)
 
