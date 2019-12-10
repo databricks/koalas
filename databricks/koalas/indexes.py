@@ -716,7 +716,7 @@ class Index(IndexOpsMixin):
         Use sort_values instead.
         """
         raise TypeError(
-            "cannot sort an Index object in-place, use " "sort_values instead"
+            "cannot sort an Index object in-place, use sort_values instead"
         )
 
     def __getattr__(self, item: str) -> Any:
