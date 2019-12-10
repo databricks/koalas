@@ -711,6 +711,14 @@ class Index(IndexOpsMixin):
 
         return result
 
+    def sort(self, *args, **kwargs):
+        """
+        Use sort_values instead.
+        """
+        raise TypeError(
+            "cannot sort an Index object in-place, use " "sort_values instead"
+        )
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)
