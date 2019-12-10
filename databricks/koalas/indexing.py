@@ -670,14 +670,21 @@ class ILocIndexer(object):
         from databricks.koalas.series import Series
         assert isinstance(kdf_or_kser, (DataFrame, Series)), \
             'unexpected argument type: {}'.format(type(kdf_or_kser))
-        if isinstance(kdf_or_kser, DataFrame):
-            self._kdf = kdf_or_kser
-            self._kser = None
-        else:
-            # If df_or_col is Column, store both the DataFrame anchored to the Column and
-            # the Column itself.
-            self._kdf = kdf_or_kser._kdf
-            self._kser = kdf_or_kser
+        self._kdf_or_kser = kdf_or_kser
+
+    @property
+    def _is_df(self):
+        from databricks.koalas.frame import DataFrame
+        return isinstance(self._kdf_or_kser, DataFrame)
+
+    @property
+    def _is_series(self):
+        from databricks.koalas.series import Series
+        return isinstance(self._kdf_or_kser, Series)
+
+    @property
+    def _internal(self):
+        return self._kdf_or_kser._internal
 
     def __getitem__(self, key):
         from databricks.koalas.frame import DataFrame
@@ -690,9 +697,9 @@ class ILocIndexer(object):
                 pandas_function=".iloc[..., ...]",
                 spark_target_function="select, where")
 
-        rows_sel, cols_sel = _unfold(key, self._kser)
+        rows_sel, cols_sel = _unfold(key, self._kdf_or_kser if self._is_series else None)
 
-        sdf = self._kdf._sdf
+        sdf = self._internal.sdf
         if isinstance(rows_sel, Index):
             sdf_for_check_schema = sdf.select(rows_sel._scol)
             assert isinstance(sdf_for_check_schema.schema.fields[0].dataType, BooleanType), \
@@ -716,24 +723,31 @@ class ILocIndexer(object):
                                 "got {}".format(rows_sel))
 
         # make cols_sel a 1-tuple of string if a single string
-        if isinstance(cols_sel, Series):
-            columns = [cols_sel._scol]
+        if isinstance(cols_sel, Series) and cols_sel._equals(self._kdf_or_kser):
+            columns = cols_sel._internal.column_scols
+            column_index = cols_sel._internal.column_index
         elif isinstance(cols_sel, int):
-            columns = [self._kdf._internal.column_scols[cols_sel]]
+            columns = [self._internal.column_scols[cols_sel]]
+            column_index = [self._internal.column_index[cols_sel]]
         elif cols_sel is None or cols_sel == slice(None):
-            columns = self._kdf._internal.column_scols
+            columns = self._internal.column_scols
+            column_index = self._internal.column_index
         elif isinstance(cols_sel, slice):
             if all(s is None or isinstance(s, int)
                    for s in (cols_sel.start, cols_sel.stop, cols_sel.step)):
-                columns = self._kdf._internal.column_scols[cols_sel]
+                columns = self._internal.column_scols[cols_sel]
+                column_index = self._internal.column_index[cols_sel]
             else:
                 not_none = cols_sel.start if cols_sel.start is not None \
                     else cols_sel.stop if cols_sel.stop is not None else cols_sel.step
                 raise TypeError('cannot do slice indexing with these indexers {} of {}'
                                 .format(not_none, type(not_none)))
         elif is_list_like(cols_sel):
+            if all(isinstance(s, bool) for s in cols_sel):
+                cols_sel = [i for i, s in enumerate(cols_sel) if s]
             if all(isinstance(s, int) for s in cols_sel):
-                columns = [self._kdf._internal.scol_for(col) for col in self._kdf.columns[cols_sel]]
+                columns = [self._internal.column_scols[s] for s in cols_sel]
+                column_index = [self._internal.column_index[s] for s in cols_sel]
             else:
                 raise TypeError('cannot perform reduce with flexible type')
         else:
@@ -741,22 +755,16 @@ class ILocIndexer(object):
                              "listlike of integers, boolean array] types, got {}".format(cols_sel))
 
         try:
-            sdf = sdf.select(self._kdf._internal.index_scols + columns)
-            internal = _InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)
+            sdf = sdf.select(self._internal.index_scols + columns)
+            internal = _InternalFrame(sdf=sdf,
+                                      index_map=self._internal.index_map,
+                                      column_index=column_index,
+                                      column_index_names=self._internal.column_index_names)
             kdf = DataFrame(internal)
         except AnalysisException:
             raise KeyError('[{}] don\'t exist in columns'
                            .format([col._jc.toString() for col in columns]))
 
-        column_index = self._kdf._internal.column_index
-        if cols_sel is not None:
-            if isinstance(cols_sel, (Series, int)):
-                column_index = None
-            else:
-                column_index = \
-                    pd.MultiIndex.from_tuples(self._kdf._internal.column_index)[cols_sel].tolist()
-
-        kdf = DataFrame(kdf._internal.copy(column_index=column_index))
         if cols_sel is not None and isinstance(cols_sel, (Series, int)):
             from databricks.koalas.series import _col
             return _col(kdf)

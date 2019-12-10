@@ -44,7 +44,7 @@ from databricks.koalas.series import Series, _col
 __all__ = ["from_pandas", "range", "read_csv", "read_delta", "read_table", "read_spark_io",
            "read_parquet", "read_clipboard", "read_excel", "read_html", "to_datetime",
            "get_dummies", "concat", "melt", "isna", "isnull", "notna", "notnull",
-           "read_sql_table", "read_sql_query", "read_sql", "read_json", "merge"]
+           "read_sql_table", "read_sql_query", "read_sql", "read_json", "merge", "to_numeric"]
 
 
 def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'DataFrame']:
@@ -1861,6 +1861,78 @@ def merge(obj, right: 'DataFrame', how: str = 'inner',
     return obj.merge(
         right, how=how, on=on, left_on=left_on, right_on=right_on,
         left_index=left_index, right_index=right_index, suffixes=suffixes)
+
+
+def to_numeric(arg):
+    """
+    Convert argument to a numeric type.
+
+    Parameters
+    ----------
+    arg : scalar, list, tuple, 1-d array, or Series
+
+    Returns
+    -------
+    ret : numeric if parsing succeeded.
+
+    See Also
+    --------
+    DataFrame.astype : Cast argument to a specified dtype.
+    to_datetime : Convert argument to datetime.
+    to_timedelta : Convert argument to timedelta.
+    numpy.ndarray.astype : Cast a numpy array to a specified type.
+
+    Examples
+    --------
+
+    >>> kser = ks.Series(['1.0', '2', '-3'])
+    >>> kser
+    0    1.0
+    1      2
+    2     -3
+    Name: 0, dtype: object
+
+    >>> ks.to_numeric(kser)
+    0    1.0
+    1    2.0
+    2   -3.0
+    Name: 0, dtype: float32
+
+    If given Series contains invalid value to cast float, just cast it to `np.nan`
+
+    >>> kser = ks.Series(['apple', '1.0', '2', '-3'])
+    >>> kser
+    0    apple
+    1      1.0
+    2        2
+    3       -3
+    Name: 0, dtype: object
+
+    >>> ks.to_numeric(kser)
+    0    NaN
+    1    1.0
+    2    2.0
+    3   -3.0
+    Name: 0, dtype: float32
+
+    Also support for list, tuple, np.array, or a scalar
+
+    >>> ks.to_numeric(['1.0', '2', '-3'])
+    array([ 1.,  2., -3.])
+
+    >>> ks.to_numeric(('1.0', '2', '-3'))
+    array([ 1.,  2., -3.])
+
+    >>> ks.to_numeric(np.array(['1.0', '2', '-3']))
+    array([ 1.,  2., -3.])
+
+    >>> ks.to_numeric('1.0')
+    1.0
+    """
+    if isinstance(arg, Series):
+        return arg._with_new_scol(arg._internal.scol.cast('float'))
+    else:
+        return pd.to_numeric(arg)
 
 
 # @pandas_wraps(return_col=np.datetime64)
