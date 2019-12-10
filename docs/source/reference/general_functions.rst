@@ -14,6 +14,7 @@ Working with options
     reset_option
     get_option
     set_option
+    option_context
 
 Data manipulations and SQL
 --------------------------
@@ -32,6 +33,7 @@ Top-level missing data
 .. autosummary::
    :toctree: api/
 
+   to_numeric
    isna
    isnull
    notna

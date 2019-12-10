@@ -20,7 +20,7 @@ from distutils.version import LooseVersion
 import pandas as pd
 
 from databricks import koalas as ks
-from databricks.koalas.config import set_option, reset_option
+from databricks.koalas.config import option_context
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
@@ -67,6 +67,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(KeyError, lambda: kdf.groupby([0], as_index=False)[['a', 'c']])
 
         self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.b, as_index=False))
+
+        # we can't use column name/names as a parameter `by` for `SeriesGroupBy`.
+        self.assertRaises(KeyError, lambda: kdf.a.groupby(by='a'))
+        self.assertRaises(KeyError, lambda: kdf.a.groupby(by=['a', 'b']))
+        self.assertRaises(KeyError, lambda: kdf.a.groupby(by=('a', 'b')))
+
+        # we can't use DataFrame as a parameter `by` for `DataFrameGroupBy`/`SeriesGroupBy`.
+        self.assertRaises(ValueError, lambda: kdf.groupby(kdf))
+        self.assertRaises(ValueError, lambda: kdf.a.groupby(kdf))
+        self.assertRaises(ValueError, lambda: kdf.a.groupby((kdf,)))
 
     def test_groupby_multiindex_columns(self):
         pdf = pd.DataFrame({('x', 'a'): [1, 2, 6, 4, 4, 6, 4, 3, 7],
@@ -705,8 +715,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby([('x', 'a'), ('x', 'b')])
                        .transform(lambda x: x * x).sort_index())
 
-        set_option('compute.shortcut_limit', 1000)
-        try:
+        with option_context('compute.shortcut_limit', 1000):
             pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 300,
                                 'b': [1, 1, 2, 3, 5, 8] * 300,
                                 'c': [1, 4, 9, 16, 25, 36] * 300}, columns=['a', 'b', 'c'])
@@ -731,8 +740,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                            .transform(lambda x: x * x).sort_index(),
                            pdf.groupby([('x', 'a'), ('x', 'b')])
                            .transform(lambda x: x * x).sort_index())
-        finally:
-            reset_option('compute.shortcut_limit')
 
     def test_filter(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],
@@ -841,7 +848,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             with self.assertRaisesRegex(
                     PandasNotImplementedError,
                     "method.*GroupBy.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
-                getattr(kdf.a.groupby('a'), name)()
+                getattr(kdf.a.groupby(kdf.a), name)()
 
         deprecated_functions = [name for (name, type_) in missing_functions
                                 if type_.__name__ == 'deprecated_function']
@@ -849,7 +856,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*GroupBy.*{}.*is deprecated"
                                         .format(name)):
-                getattr(kdf.a.groupby('a'), name)()
+                getattr(kdf.a.groupby(kdf.a), name)()
 
         # DataFrameGroupBy properties
         missing_properties = inspect.getmembers(_MissingPandasLikeDataFrameGroupBy,
@@ -878,14 +885,14 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             with self.assertRaisesRegex(
                     PandasNotImplementedError,
                     "property.*GroupBy.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
-                getattr(kdf.a.groupby('a'), name)
+                getattr(kdf.a.groupby(kdf.a), name)
         deprecated_properties = [name for (name, type_) in missing_properties
                                  if type_.fget.__name__ == 'deprecated_property']
         for name in deprecated_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*GroupBy.*{}.*is deprecated"
                                         .format(name)):
-                getattr(kdf.a.groupby('a'), name)
+                getattr(kdf.a.groupby(kdf.a), name)
 
     @staticmethod
     def test_is_multi_agg_with_relabel():

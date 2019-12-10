@@ -51,10 +51,13 @@ Indexing, iteration
 
    DataFrame.at
    DataFrame.head
+   DataFrame.idxmax
+   DataFrame.idxmin
    DataFrame.loc
    DataFrame.iloc
    DataFrame.items
    DataFrame.iteritems
+   DataFrame.iterrows
    DataFrame.keys
    DataFrame.xs
    DataFrame.get
@@ -198,6 +201,7 @@ Time series-related
    :toctree: api/
 
    DataFrame.shift
+   DataFrame.first_valid_index
 
 Cache
 -------------------------------
