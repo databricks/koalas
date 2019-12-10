@@ -7770,6 +7770,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Return index of first occurrence of maximum over requested axis.
         NA/null values are excluded.
 
+        .. note:: This API collect all rows with maximum value using `to_pandas()`
+            because we suppose the number of rows with max values are usually small in general.
+
         Parameters
         ----------
         axis : 0 or 'index'
@@ -7832,17 +7835,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |     3|   4.0|   400|
         # +------+------+------+
 
-        max_vals = [sdf.select(self._internal.index_columns)
-                       .where(F.col(column_name) == max_val).head()[0]
-                    for column_name, max_val in zip(sdf_max.columns, sdf_max.head())]
+        conds = (F.col(column_name) == max_val
+                 for column_name, max_val in zip(sdf_max.columns, sdf_max.head()))
+        cond = reduce(lambda x, y: x | y, conds)
 
-        return Series(max_vals, index=self.columns)
+        kdf = DataFrame(self._internal.copy(sdf=sdf.where(cond)))
+        pdf = kdf.to_pandas()
+
+        return ks.from_pandas(pdf.idxmax())
 
     # TODO: axis = 1
     def idxmin(self, axis=0):
         """
         Return index of first occurrence of minimum over requested axis.
         NA/null values are excluded.
+
+        .. note:: This API collect all rows with minimum value using `to_pandas()`
+            because we suppose the number of rows with min values are usually small in general.
 
         Parameters
         ----------
@@ -7900,11 +7909,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         min_cols = map(lambda x: F.min(x).alias(x), self._internal.data_columns)
         sdf_min = sdf.select(*min_cols)
 
-        min_vals = [sdf.select(self._internal.index_columns)
-                       .where(F.col(column_name) == min_val).head()[0]
-                    for column_name, min_val in zip(sdf_min.columns, sdf_min.head())]
+        conds = (F.col(column_name) == min_val
+                 for column_name, min_val in zip(sdf_min.columns, sdf_min.head()))
+        cond = reduce(lambda x, y: x | y, conds)
 
-        return Series(min_vals, index=self.columns)
+        kdf = DataFrame(self._internal.copy(sdf=sdf.where(cond)))
+        pdf = kdf.to_pandas()
+
+        return ks.from_pandas(pdf.idxmin())
 
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
     def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000):
