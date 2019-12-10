@@ -4168,7 +4168,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns
         window = Window.orderBy(
-            index_columns).partitionBy(*part_cols).rowsBetween(
+            F.monotonically_increasing_id()).partitionBy(*part_cols).rowsBetween(
                 Window.unboundedPreceding, Window.currentRow)
 
         if skipna:

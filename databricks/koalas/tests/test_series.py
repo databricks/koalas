@@ -567,8 +567,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(repr(pser.cummin()), repr(kser.cummin()))
         self.assertEqual(repr(pser.cummin(skipna=False)), repr(kser.cummin(skipna=False)))
 
+        # with reversed index
+        pser.index = [4, 3, 2, 1, 0]
+        kser = ks.from_pandas(pser)
+        self.assertEqual(repr(pser.cummin()), repr(kser.cummin()))
+        self.assertEqual(repr(pser.cummin(skipna=False)), repr(kser.cummin(skipna=False)))
+
     def test_cummax(self):
         pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        kser = ks.from_pandas(pser)
+        self.assertEqual(repr(pser.cummax()), repr(kser.cummax()))
+        self.assertEqual(repr(pser.cummax(skipna=False)), repr(kser.cummax(skipna=False)))
+
+        # with reversed index
+        pser.index = [4, 3, 2, 1, 0]
         kser = ks.from_pandas(pser)
         self.assertEqual(repr(pser.cummax()), repr(kser.cummax()))
         self.assertEqual(repr(pser.cummax(skipna=False)), repr(kser.cummax(skipna=False)))
@@ -579,8 +591,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(repr(pser.cumsum()), repr(kser.cumsum()))
         self.assertEqual(repr(pser.cumsum(skipna=False)), repr(kser.cumsum(skipna=False)))
 
+        # with reversed index
+        pser.index = [4, 3, 2, 1, 0]
+        kser = ks.from_pandas(pser)
+        self.assertEqual(repr(pser.cumsum()), repr(kser.cumsum()))
+        self.assertEqual(repr(pser.cumsum(skipna=False)), repr(kser.cumsum(skipna=False)))
+
     def test_cumprod(self):
         pser = pd.Series([1.0, None, 1.0, 4.0, 9.0]).rename("a")
+        kser = ks.from_pandas(pser)
+        self.assertEqual(repr(pser.cumprod()), repr(kser.cumprod()))
+        self.assertEqual(repr(pser.cumprod(skipna=False)), repr(kser.cumprod(skipna=False)))
+
+        # with reversed index
+        pser.index = [4, 3, 2, 1, 0]
         kser = ks.from_pandas(pser)
         self.assertEqual(repr(pser.cumprod()), repr(kser.cumprod()))
         self.assertEqual(repr(pser.cumprod(skipna=False)), repr(kser.cumprod(skipna=False)))
