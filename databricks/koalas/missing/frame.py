@@ -56,8 +56,6 @@ class _MissingPandasLikeDataFrame(object):
     eval = unsupported_function('eval')
     ewm = unsupported_function('ewm')
     first = unsupported_function('first')
-    idxmax = unsupported_function('idxmax')
-    idxmin = unsupported_function('idxmin')
     infer_objects = unsupported_function('infer_objects')
     info = unsupported_function('info')
     insert = unsupported_function('insert')

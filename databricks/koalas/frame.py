@@ -7820,6 +7820,160 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return self.columns
 
+    # TODO: axis = 1
+    def idxmax(self, axis=0):
+        """
+        Return index of first occurrence of maximum over requested axis.
+        NA/null values are excluded.
+
+        .. note:: This API collect all rows with maximum value using `to_pandas()`
+            because we suppose the number of rows with max values are usually small in general.
+
+        Parameters
+        ----------
+        axis : 0 or 'index'
+            Can only be set to 0 at the moment.
+
+        Returns
+        -------
+        Series
+
+        See Also
+        --------
+        Series.idxmax
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+        ...                     'b': [4.0, 2.0, 3.0, 1.0],
+        ...                     'c': [300, 200, 400, 200]})
+        >>> kdf
+           a    b    c
+        0  1  4.0  300
+        1  2  2.0  200
+        2  3  3.0  400
+        3  2  1.0  200
+
+        >>> kdf.idxmax()
+        a    2
+        b    0
+        c    2
+        Name: 0, dtype: int64
+
+        For Multi-column Index
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+        ...                     'b': [4.0, 2.0, 3.0, 1.0],
+        ...                     'c': [300, 200, 400, 200]})
+        >>> kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> kdf
+           a    b    c
+           x    y    z
+        0  1  4.0  300
+        1  2  2.0  200
+        2  3  3.0  400
+        3  2  1.0  200
+
+        >>> kdf.idxmax().sort_index()
+        a  x    2
+        b  y    0
+        c  z    2
+        Name: 0, dtype: int64
+        """
+        from databricks.koalas.series import Series
+        sdf = self._sdf
+        max_cols = map(lambda x: F.max(x).alias(x), self._internal.data_columns)
+        sdf_max = sdf.select(*max_cols)
+        # `sdf_max` looks like below
+        # +------+------+------+
+        # |(a, x)|(b, y)|(c, z)|
+        # +------+------+------+
+        # |     3|   4.0|   400|
+        # +------+------+------+
+
+        conds = (F.col(column_name) == max_val
+                 for column_name, max_val in zip(sdf_max.columns, sdf_max.head()))
+        cond = reduce(lambda x, y: x | y, conds)
+
+        kdf = DataFrame(self._internal.copy(sdf=sdf.where(cond)))
+        pdf = kdf.to_pandas()
+
+        return ks.from_pandas(pdf.idxmax())
+
+    # TODO: axis = 1
+    def idxmin(self, axis=0):
+        """
+        Return index of first occurrence of minimum over requested axis.
+        NA/null values are excluded.
+
+        .. note:: This API collect all rows with minimum value using `to_pandas()`
+            because we suppose the number of rows with min values are usually small in general.
+
+        Parameters
+        ----------
+        axis : 0 or 'index'
+            Can only be set to 0 at the moment.
+
+        Returns
+        -------
+        Series
+
+        See Also
+        --------
+        Series.idxmin
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+        ...                     'b': [4.0, 2.0, 3.0, 1.0],
+        ...                     'c': [300, 200, 400, 200]})
+        >>> kdf
+           a    b    c
+        0  1  4.0  300
+        1  2  2.0  200
+        2  3  3.0  400
+        3  2  1.0  200
+
+        >>> kdf.idxmin()
+        a    0
+        b    3
+        c    1
+        Name: 0, dtype: int64
+
+        For Multi-column Index
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+        ...                     'b': [4.0, 2.0, 3.0, 1.0],
+        ...                     'c': [300, 200, 400, 200]})
+        >>> kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> kdf
+           a    b    c
+           x    y    z
+        0  1  4.0  300
+        1  2  2.0  200
+        2  3  3.0  400
+        3  2  1.0  200
+
+        >>> kdf.idxmin().sort_index()
+        a  x    0
+        b  y    3
+        c  z    1
+        Name: 0, dtype: int64
+        """
+        from databricks.koalas.series import Series
+        sdf = self._sdf
+        min_cols = map(lambda x: F.min(x).alias(x), self._internal.data_columns)
+        sdf_min = sdf.select(*min_cols)
+
+        conds = (F.col(column_name) == min_val
+                 for column_name, min_val in zip(sdf_min.columns, sdf_min.head()))
+        cond = reduce(lambda x, y: x | y, conds)
+
+        kdf = DataFrame(self._internal.copy(sdf=sdf.where(cond)))
+        pdf = kdf.to_pandas()
+
+        return ks.from_pandas(pdf.idxmin())
+
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
     def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000):
         """

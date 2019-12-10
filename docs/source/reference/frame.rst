@@ -51,6 +51,8 @@ Indexing, iteration
 
    DataFrame.at
    DataFrame.head
+   DataFrame.idxmax
+   DataFrame.idxmin
    DataFrame.loc
    DataFrame.iloc
    DataFrame.items
