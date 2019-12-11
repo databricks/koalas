@@ -943,7 +943,8 @@ class IndexOpsMixin(object):
         from databricks.koalas.series import Series, _col
         if bins is not None:
             raise NotImplementedError("value_counts currently does not support bins")
-        # if Series from DataFrame, we should've specified a proper subset.
+
+        # if given Series is a subset of DataFrame, we should've specified a proper subset.
         if self._kdf._internal is not self._internal:
             self = _col(self.to_frame())
         if dropna:
