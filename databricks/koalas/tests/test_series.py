@@ -282,6 +282,19 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.a.value_counts(ascending=True, dropna=False),
                        pdf.a.value_counts(ascending=True, dropna=False), almost=True)
 
+        # Series with NaN index
+        pser = pd.Series([1, 2, 3], index=[2, None, 5])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.value_counts(normalize=True),
+                       pser.value_counts(normalize=True), almost=True)
+        self.assert_eq(kser.value_counts(ascending=True),
+                       pser.value_counts(ascending=True), almost=True)
+        self.assert_eq(kser.value_counts(normalize=True, dropna=False),
+                       pser.value_counts(normalize=True, dropna=False), almost=True)
+        self.assert_eq(kser.value_counts(ascending=True, dropna=False),
+                       pser.value_counts(ascending=True, dropna=False), almost=True)
+
     def test_nsmallest(self):
         sample_lst = [1, 2, 3, 4, np.nan, 6]
         pser = pd.Series(sample_lst, name='x')

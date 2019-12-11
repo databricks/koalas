@@ -944,15 +944,12 @@ class IndexOpsMixin(object):
         if bins is not None:
             raise NotImplementedError("value_counts currently does not support bins")
 
-        # if given Series is a subset of DataFrame, we should've specified a proper subset.
-        if self._kdf._internal is not self._internal:
-            self = _col(self.to_frame())
         if dropna:
-            sdf_dropna = self._internal._sdf.dropna()
+            sdf_dropna = self._internal._sdf.select(self._scol).dropna()
         else:
             sdf_dropna = self._internal._sdf
         index_name = SPARK_INDEX_NAME_FORMAT(0)
-        sdf = sdf_dropna.groupby(self._scol.alias(index_name)).count()
+        sdf = sdf_dropna.groupby(sdf_dropna[self.name].alias(index_name)).count()
         if sort:
             if ascending:
                 sdf = sdf.orderBy(F.col('count'))
