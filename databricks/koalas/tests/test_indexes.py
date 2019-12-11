@@ -334,3 +334,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
             kidx.fillna([1, 2])
+
+    def test_index_drop(self):
+        pidx = pd.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, 3]).index
+        kidx = ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, 3]).index
+
+        self.assert_eq(pidx.drop(1), kidx.drop(1))
+        self.assert_eq(pidx.drop([1, 2]), kidx.drop([1, 2]))

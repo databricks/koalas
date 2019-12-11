@@ -580,6 +580,33 @@ class Index(IndexOpsMixin):
         sdf = self._kdf._sdf.select(self._scol.alias(self._internal.index_columns[0])).distinct()
         return DataFrame(_InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)).index
 
+    # TODO: add error parameter
+    def drop(self, labels):
+        """
+        Make new Index with passed list of labels deleted.
+
+        Parameters
+        ----------
+        labels : array-like
+
+        Returns
+        -------
+        dropped : Index
+
+        Examples
+        --------
+        >>> index = ks.Index([1, 2, 3])
+        >>> index
+        Int64Index([1, 2, 3], dtype='int64')
+
+        >>> index.drop([1])
+        Int64Index([2, 3], dtype='int64')
+        """
+        if not isinstance(labels, (tuple, list)):
+            labels = [labels]
+        sdf = self._internal.sdf[~self._internal.index_scols[0].isin(labels)]
+        return Index(DataFrame(_InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)))
+
     def _validate_index_level(self, level):
         """
         Validate index level.
