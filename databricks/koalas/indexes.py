@@ -775,7 +775,7 @@ class Index(IndexOpsMixin):
 
         For a MultiIndex, the maximum is determined lexicographically.
 
-        >>> idx = pd.MultiIndex.from_product([('a', 'b'), (2, 1)])
+        >>> idx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
         >>> idx.max()
         ('b', 'y', 2)
         """
