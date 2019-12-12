@@ -61,7 +61,12 @@ Conversion
    Index.to_series
    Index.to_numpy
 
-.. _api.multiindex:
+Sorting
+~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.sort_values
 
 Combining / joining / set operations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -76,6 +81,8 @@ Selecting
    :toctree: api/
 
    Index.isin
+
+.. _api.multiindex:
 
 MultiIndex
 ----------
