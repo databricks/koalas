@@ -42,6 +42,7 @@ Modifying and computations
    Index.is_object
    Index.min
    Index.max
+   Index.rename
    Index.value_counts
 
 Missing Values
@@ -118,6 +119,7 @@ MultiIndex Modifying and computations
    :toctree: api/
 
    MultiIndex.copy
+   MultiIndex.rename
    MultiIndex.value_counts
 
 MultiIndex Combining / joining / set operations
