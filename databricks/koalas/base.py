@@ -947,10 +947,10 @@ class IndexOpsMixin(object):
         if dropna:
             sdf_dropna = self._internal._sdf.select(self._scol).dropna()
         else:
-            sdf_dropna = self._internal._sdf
+            sdf_dropna = self._internal._sdf.select(self._scol)
         index_name = SPARK_INDEX_NAME_FORMAT(0)
         column_name = self._internal.data_columns[0]
-        sdf = sdf_dropna.groupby(sdf_dropna[column_name].alias(index_name)).count()
+        sdf = sdf_dropna.groupby(scol_for(sdf_dropna, column_name).alias(index_name)).count()
         if sort:
             if ascending:
                 sdf = sdf.orderBy(F.col('count'))
