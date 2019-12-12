@@ -20,7 +20,9 @@ Base and utility classes for Koalas objects.
 
 from functools import wraps
 from typing import Union, Callable, Any
+from distutils.version import LooseVersion
 
+import pyspark
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like
@@ -33,7 +35,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas import numpy_compat
 from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
-from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
+from databricks.koalas.utils import align_diff_series, scol_for, validate_axis, default_session
 from databricks.koalas.frame import DataFrame
 
 
@@ -941,6 +943,11 @@ class IndexOpsMixin(object):
         Name: koalas, dtype: int64
         """
         from databricks.koalas.series import Series, _col
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4") and \
+                default_session().conf.get("spark.sql.execution.arrow.enabled") == "true":
+            raise RuntimeError("if you're using pyspark < 2.4, set conf "
+                               "'spark.sql.execution.arrow.enabled' to 'false' "
+                               "for using this function")
         if bins is not None:
             raise NotImplementedError("value_counts currently does not support bins")
 

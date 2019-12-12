@@ -24,6 +24,7 @@ from datetime import datetime, timedelta
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot as plt
+import pyspark
 import numpy as np
 import pandas as pd
 
@@ -33,6 +34,7 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.config import set_option, reset_option
+from databricks.koalas.utils import default_session
 
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
@@ -244,6 +246,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(ks.Series(range(100)).nunique(approx=True, rsd=0.01), 100)
 
     def test_value_counts(self):
+        set_arrow_conf = False
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4") and \
+                default_session().conf.get("spark.sql.execution.arrow.enabled") == "true":
+            default_session().conf.set("spark.sql.execution.arrow.enabled", "false")
+            set_arrow_conf = True
+
         # this is also containing test for Index & MultiIndex
         pser = pd.Series([1, 2, 1, 3, 3, np.nan, 1, 4], name="x")
         kser = ks.from_pandas(pser)
@@ -388,6 +396,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                        pser.index.value_counts(normalize=True, dropna=False), almost=True)
         self.assert_eq(kser.index.value_counts(ascending=True, dropna=False),
                        pser.index.value_counts(ascending=True, dropna=False), almost=True)
+
+        if set_arrow_conf:
+            default_session().conf.set("spark.sql.execution.arrow.enabled", "true")
+            self.assertRaises(RuntimeError, lambda: kser.value_counts())
 
     def test_nsmallest(self):
         sample_lst = [1, 2, 3, 4, np.nan, 6]
