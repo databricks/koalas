@@ -340,6 +340,6 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.Index([1, 1, 2])
         self.assert_eq(pidx.drop_duplicates(), kidx.drop_duplicates())
 
-        pidx = pd.MultiIndex.from_tuples([(1, 1), (1, 1), (2, 2)])
-        kidx = ks.MultiIndex.from_tuples([(1, 1), (1, 1), (2, 2)])
+        pidx = pd.MultiIndex.from_tuples([(1, 1), (1, 1), (2, 2)], names=['level1', 'level2'])
+        kidx = ks.MultiIndex.from_tuples([(1, 1), (1, 1), (2, 2)], names=['level1', 'level2'])
         self.assert_eq(pidx.drop_duplicates(), kidx.drop_duplicates())
