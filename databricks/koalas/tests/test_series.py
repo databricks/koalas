@@ -377,7 +377,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Series with MultiIndex some of index is NaN.
         # This test only available for pandas >= 0.24.
-        if LooseVersion(pd.__version__) < LooseVersion("0.24"):
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             pser.index = pd.MultiIndex.from_tuples([('x', 'a'), None, ('y', 'c')])
             kser = ks.from_pandas(pser)
 
