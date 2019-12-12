@@ -390,6 +390,7 @@ class Index(IndexOpsMixin):
         result = DataFrame(self._kdf._internal.copy(sdf=sdf)).index
         return result
 
+    # TODO: ADD keep parameter
     def drop_duplicates(self):
         """
         Return Index with duplicate values removed.
@@ -408,10 +409,6 @@ class Index(IndexOpsMixin):
         Generate an pandas.Index with duplicate values.
 
         >>> idx = pd.Index(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'])
-
-        The `keep` parameter controls  which duplicate values are removed.
-        The value 'first' keeps the first occurrence for each
-        set of duplicated entries. The default value of keep is 'first'.
 
         >>> idx.drop_duplicates()
         Index(['lama', 'cow', 'beetle', 'hippo'], dtype='object')
