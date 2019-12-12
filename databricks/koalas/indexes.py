@@ -311,7 +311,7 @@ class Index(IndexOpsMixin):
 
     def rename(self, name: Union[str, Tuple[str, ...]], inplace: bool = False):
         """
-        Alter Index name.
+        Alter Index or MultiIndex name.
         Able to set new names without level. Defaults to returning new index.
 
         Parameters
@@ -319,11 +319,11 @@ class Index(IndexOpsMixin):
         name : label or list of labels
             Name(s) to set.
         inplace : boolean, default False
-            Modifies the object directly, instead of creating a new Index.
+            Modifies the object directly, instead of creating a new Index or MultiIndex.
 
         Returns
         -------
-        Index
+        Index or MultiIndex
             The same type as the caller or None if inplace is True.
 
         Examples
@@ -346,19 +346,29 @@ class Index(IndexOpsMixin):
         e
         A  A
         C  B
+
+        Support for MultiIndex
+
+        >>> kidx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y')])
+        >>> kidx.names = ['hello', 'koalas']
+        >>> kidx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   names=['hello', 'koalas'])
+
+        >>> kidx.rename(['aloha', 'databricks'])  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   names=['aloha', 'databricks'])
         """
-        index_columns = self._kdf._internal.index_columns
-        assert len(index_columns) == 1
-
-        if isinstance(name, str):
-            name = (name,)
-        internal = self._kdf._internal.copy(index_map=[(index_columns[0], name)])
-
-        if inplace:
-            self._kdf._internal = internal
-            return self
+        if not inplace:
+            self = self.copy()
+        if isinstance(self, MultiIndex):
+            self.names = name
         else:
-            return Index(DataFrame(internal), scol=self._scol)
+            self.name = name
+        return self
 
     # TODO: add downcast parameter for fillna function
     def fillna(self, value):
@@ -1090,9 +1100,6 @@ class MultiIndex(Index):
             else:
                 return partial(property_or_func, self)
         raise AttributeError("'MultiIndex' object has no attribute '{}'".format(item))
-
-    def rename(self, name, inplace=False):
-        raise NotImplementedError()
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
