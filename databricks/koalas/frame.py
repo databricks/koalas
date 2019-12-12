@@ -8036,6 +8036,100 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return ks.from_pandas(pdf.idxmin())
 
+    def info(
+        self, verbose=None, buf=None, max_cols=None, null_counts=None
+    ):
+        """
+        Print a concise summary of a DataFrame.
+
+        This method prints information about a DataFrame including
+        the index dtype and column dtypes, non-null values and memory usage.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Whether to print the full summary.
+        buf : writable buffer, defaults to sys.stdout
+            Where to send the output. By default, the output is printed to
+            sys.stdout. Pass a writable buffer if you need to further process
+            the output.
+        max_cols : int, optional
+            When to switch from the verbose to the truncated output. If the
+            DataFrame has more than `max_cols` columns, the truncated output
+            is used.
+        null_counts : bool, optional
+            Whether to show the non-null counts.
+
+        Returns
+        -------
+        None
+            This method prints a summary of a DataFrame and returns None.
+
+        See Also
+        --------
+        DataFrame.describe: Generate descriptive statistics of DataFrame
+            columns.
+
+        Examples
+        --------
+        >>> int_values = [1, 2, 3, 4, 5]
+        >>> text_values = ['alpha', 'beta', 'gamma', 'delta', 'epsilon']
+        >>> float_values = [0.0, 0.25, 0.5, 0.75, 1.0]
+        >>> df = ks.DataFrame(
+        ...     {"int_col": int_values, "text_col": text_values, "float_col": float_values},
+        ...     columns=['int_col', 'text_col', 'float_col'])
+        >>> df
+           int_col text_col  float_col
+        0        1    alpha       0.00
+        1        2     beta       0.25
+        2        3    gamma       0.50
+        3        4    delta       0.75
+        4        5  epsilon       1.00
+
+        Prints information of all columns:
+
+        >>> df.info(verbose=True)
+        <class 'databricks.koalas.frame.DataFrame'>
+        Index: 5 entries, 0 to 4
+        Data columns (total 3 columns):
+        int_col      5 non-null int64
+        text_col     5 non-null object
+        float_col    5 non-null float64
+        dtypes: float64(1), int64(1), object(1)
+
+        Prints a summary of columns count and its dtypes but not per column
+        information:
+
+        >>> df.info(verbose=False)
+        <class 'databricks.koalas.frame.DataFrame'>
+        Index: 5 entries, 0 to 4
+        Columns: 3 entries, int_col to float_col
+        dtypes: float64(1), int64(1), object(1)
+
+        Pipe output of DataFrame.info to buffer instead of sys.stdout, get
+        buffer content and writes to a text file:
+
+        >>> import io
+        >>> buffer = io.StringIO()
+        >>> df.info(buf=buffer)
+        >>> s = buffer.getvalue()
+        >>> with open('%s/info.txt' % path, "w",
+        ...           encoding="utf-8") as f:
+        ...     _ = f.write(s)
+        """
+        # To avoid pandas' existing config affects Koalas.
+        # TODO: should we have corresponding Koalas configs?
+        with pd.option_context(
+                'display.max_info_columns', sys.maxsize,
+                'display.max_info_rows', sys.maxsize):
+            try:
+                self._data = self  # hack to use pandas' info as is.
+                return pd.DataFrame.info(
+                    self, verbose=verbose, buf=buf, max_cols=max_cols,
+                    memory_usage=False, null_counts=null_counts)
+            finally:
+                del self._data
+
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
     def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000):
         """

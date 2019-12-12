@@ -216,6 +216,7 @@ Serialization / IO / Conversion
    :toctree: api/
 
    DataFrame.from_records
+   DataFrame.info
    DataFrame.to_table
    DataFrame.to_delta
    DataFrame.to_parquet
