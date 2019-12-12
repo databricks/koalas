@@ -375,27 +375,29 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.index.value_counts(ascending=True, dropna=False),
                        pser.index.value_counts(ascending=True, dropna=False), almost=True)
 
-        # Series with MultiIndex some of index is NaN
-        pser.index = pd.MultiIndex.from_tuples([('x', 'a'), None, ('y', 'c')])
-        kser = ks.from_pandas(pser)
+        # Series with MultiIndex some of index is NaN.
+        # This test only available for pandas >= 0.24.
+        if LooseVersion(pd.__version__) < LooseVersion("0.24"):
+            pser.index = pd.MultiIndex.from_tuples([('x', 'a'), None, ('y', 'c')])
+            kser = ks.from_pandas(pser)
 
-        self.assert_eq(kser.value_counts(normalize=True),
-                       pser.value_counts(normalize=True), almost=True)
-        self.assert_eq(kser.value_counts(ascending=True),
-                       pser.value_counts(ascending=True), almost=True)
-        self.assert_eq(kser.value_counts(normalize=True, dropna=False),
-                       pser.value_counts(normalize=True, dropna=False), almost=True)
-        self.assert_eq(kser.value_counts(ascending=True, dropna=False),
-                       pser.value_counts(ascending=True, dropna=False), almost=True)
+            self.assert_eq(kser.value_counts(normalize=True),
+                           pser.value_counts(normalize=True), almost=True)
+            self.assert_eq(kser.value_counts(ascending=True),
+                           pser.value_counts(ascending=True), almost=True)
+            self.assert_eq(kser.value_counts(normalize=True, dropna=False),
+                           pser.value_counts(normalize=True, dropna=False), almost=True)
+            self.assert_eq(kser.value_counts(ascending=True, dropna=False),
+                           pser.value_counts(ascending=True, dropna=False), almost=True)
 
-        self.assert_eq(kser.index.value_counts(normalize=True),
-                       pser.index.value_counts(normalize=True), almost=True)
-        self.assert_eq(kser.index.value_counts(ascending=True),
-                       pser.index.value_counts(ascending=True), almost=True)
-        self.assert_eq(kser.index.value_counts(normalize=True, dropna=False),
-                       pser.index.value_counts(normalize=True, dropna=False), almost=True)
-        self.assert_eq(kser.index.value_counts(ascending=True, dropna=False),
-                       pser.index.value_counts(ascending=True, dropna=False), almost=True)
+            self.assert_eq(kser.index.value_counts(normalize=True),
+                           pser.index.value_counts(normalize=True), almost=True)
+            self.assert_eq(kser.index.value_counts(ascending=True),
+                           pser.index.value_counts(ascending=True), almost=True)
+            self.assert_eq(kser.index.value_counts(normalize=True, dropna=False),
+                           pser.index.value_counts(normalize=True, dropna=False), almost=True)
+            self.assert_eq(kser.index.value_counts(ascending=True, dropna=False),
+                           pser.index.value_counts(ascending=True, dropna=False), almost=True)
 
         if set_arrow_conf:
             default_session().conf.set("spark.sql.execution.arrow.enabled", "true")
