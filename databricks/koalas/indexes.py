@@ -744,7 +744,7 @@ class Index(IndexOpsMixin):
         """
         sdf = self._internal.sdf
         min_row = sdf.select(F.min(F.struct(self._internal.index_scols))).head()
-        result = tuple(min_row[0][level] for level in range(self.nlevels))
+        result = tuple(min_row[0])
 
         return result if len(result) > 1 else result[0]
 
@@ -781,7 +781,7 @@ class Index(IndexOpsMixin):
         """
         sdf = self._internal.sdf
         max_row = sdf.select(F.max(F.struct(self._internal.index_scols))).head()
-        result = tuple(max_row[0][level] for level in range(self.nlevels))
+        result = tuple(max_row[0])
 
         return result if len(result) > 1 else result[0]
 
