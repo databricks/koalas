@@ -116,6 +116,7 @@ MultiIndex Modifying and computations
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.drop
    MultiIndex.copy
    MultiIndex.value_counts
 

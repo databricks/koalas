@@ -1035,6 +1035,49 @@ class MultiIndex(Index):
 
         return result
 
+    # TODO: ADD error parameter
+    def drop(self, labels, level=None):
+        """
+        Make new MultiIndex with passed list of labels deleted
+
+        Parameters
+        ----------
+        labels : array-like
+            Must be a list of tuples
+        level : int or level name, default None
+
+        Returns
+        -------
+        dropped : MultiIndex
+
+        Examples
+        --------
+        >>> index = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> index # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> index.drop(['a']) # doctest: +SKIP
+        MultiIndex([('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> index.drop(['x', 'y'], level=1) # doctest: +SKIP
+        MultiIndex([('c', 'z')],
+                   )
+        """
+        sdf = self._internal.sdf
+        index_scols = self._internal.index_scols
+        if level is None:
+            scol = index_scols[0]
+        else:
+            scol = index_scols[level] if isinstance(level, int) else sdf[level]
+        sdf = sdf[~scol.isin(labels)]
+        return MultiIndex(DataFrame(_InternalFrame(sdf=sdf,
+                                                   index_map=self._kdf._internal.index_map)))
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):
             property_or_func = getattr(_MissingPandasLikeMultiIndex, item)
