@@ -66,7 +66,6 @@ class _MissingPandasLikeDataFrame(object):
     lookup = unsupported_function('lookup')
     mad = unsupported_function('mad')
     mode = unsupported_function('mode')
-    pct_change = unsupported_function('pct_change')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
     query = unsupported_function('query')

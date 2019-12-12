@@ -7820,6 +7820,68 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return self.columns
 
+    def pct_change(self, periods=1):
+        """
+        Percentage change between the current and a prior element.
+
+        .. note:: the current implementation of this API uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        periods : int, default 1
+            Periods to shift for forming percent change.
+
+        Returns
+        -------
+        DataFrame
+
+        Examples
+        --------
+        Percentage change in French franc, Deutsche Mark, and Italian lira
+        from 1980-01-01 to 1980-03-01.
+
+        >>> df = ks.DataFrame({
+        ...     'FR': [4.0405, 4.0963, 4.3149],
+        ...     'GR': [1.7246, 1.7482, 1.8519],
+        ...     'IT': [804.74, 810.01, 860.13]},
+        ...     index=['1980-01-01', '1980-02-01', '1980-03-01'])
+        >>> df
+                        FR      GR      IT
+        1980-01-01  4.0405  1.7246  804.74
+        1980-02-01  4.0963  1.7482  810.01
+        1980-03-01  4.3149  1.8519  860.13
+
+        >>> df.pct_change()
+                          FR        GR        IT
+        1980-01-01       NaN       NaN       NaN
+        1980-02-01  0.013810  0.013684  0.006549
+        1980-03-01  0.053365  0.059318  0.061876
+
+        You can set periods to shift for forming percent change
+
+        >>> df.pct_change(2)
+                          FR        GR       IT
+        1980-01-01       NaN       NaN      NaN
+        1980-02-01       NaN       NaN      NaN
+        1980-03-01  0.067912  0.073814  0.06883
+        """
+        sdf = self._sdf
+        window = Window.orderBy(self._internal.index_columns).rowsBetween(-periods, -periods)
+
+        for column_name in self._internal.data_columns:
+            prev_row = F.lag(F.col(column_name), periods).over(window)
+            sdf = sdf.withColumn(column_name, (F.col(column_name) - prev_row) / prev_row)
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            column_scols=[scol_for(sdf, col) for col in self._internal.data_columns]
+        )
+
+        return DataFrame(internal)
+
     # TODO: axis = 1
     def idxmax(self, axis=0):
         """

@@ -124,6 +124,7 @@ Computations / Descriptive Stats
    DataFrame.mean
    DataFrame.min
    DataFrame.median
+   DataFrame.pct_change
    DataFrame.quantile
    DataFrame.nunique
    DataFrame.skew
