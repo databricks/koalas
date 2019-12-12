@@ -711,6 +711,80 @@ class Index(IndexOpsMixin):
 
         return result
 
+    def min(self):
+        """
+        Return the minimum value of the Index.
+
+        Returns
+        -------
+        scalar
+            Minimum value.
+
+        See Also
+        --------
+        Index.max : Return the maximum value of the object.
+        Series.min : Return the minimum value in a Series.
+        DataFrame.min : Return the minimum values in a DataFrame.
+
+        Examples
+        --------
+        >>> idx = ks.Index([3, 2, 1])
+        >>> idx.min()
+        1
+
+        >>> idx = ks.Index(['c', 'b', 'a'])
+        >>> idx.min()
+        'a'
+
+        For a MultiIndex, the maximum is determined lexicographically.
+
+        >>> idx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
+        >>> idx.min()
+        ('a', 'x', 1)
+        """
+        sdf = self._internal.sdf
+        min_row = sdf.select(F.min(F.struct(self._internal.index_scols))).head()
+        result = tuple(min_row[0])
+
+        return result if len(result) > 1 else result[0]
+
+    def max(self):
+        """
+        Return the maximum value of the Index.
+
+        Returns
+        -------
+        scalar
+            Maximum value.
+
+        See Also
+        --------
+        Index.min : Return the minimum value in an Index.
+        Series.max : Return the maximum value in a Series.
+        DataFrame.max : Return the maximum values in a DataFrame.
+
+        Examples
+        --------
+        >>> idx = pd.Index([3, 2, 1])
+        >>> idx.max()
+        3
+
+        >>> idx = pd.Index(['c', 'b', 'a'])
+        >>> idx.max()
+        'c'
+
+        For a MultiIndex, the maximum is determined lexicographically.
+
+        >>> idx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
+        >>> idx.max()
+        ('b', 'y', 2)
+        """
+        sdf = self._internal.sdf
+        max_row = sdf.select(F.max(F.struct(self._internal.index_scols))).head()
+        result = tuple(max_row[0])
+
+        return result if len(result) > 1 else result[0]
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)

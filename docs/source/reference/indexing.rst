@@ -40,6 +40,8 @@ Modifying and computations
    Index.is_interval
    Index.is_numeric
    Index.is_object
+   Index.min
+   Index.max
    Index.value_counts
 
 Missing Values
