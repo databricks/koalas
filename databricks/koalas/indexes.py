@@ -353,8 +353,7 @@ class Index(IndexOpsMixin):
         >>> kidx.names = ['hello', 'koalas']
         >>> kidx  # doctest: +SKIP
         MultiIndex([('a', 'x'),
-                    ('b', 'y'),
-                    ('c', 'z')],
+                    ('b', 'y')],
                    names=['hello', 'koalas'])
 
         >>> kidx.rename(['aloha', 'databricks'])  # doctest: +SKIP
