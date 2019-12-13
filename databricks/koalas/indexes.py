@@ -309,7 +309,7 @@ class Index(IndexOpsMixin):
         """
         return len(self._kdf._internal.index_columns)
 
-    def rename(self, name: Union[str, Tuple[str, ...]], inplace: bool = False):
+    def rename(self, name: Union[str, Tuple[str, ...], List[str]], inplace: bool = False):
         """
         Alter Index or MultiIndex name.
         Able to set new names without level. Defaults to returning new index.
