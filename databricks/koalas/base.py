@@ -943,11 +943,13 @@ class IndexOpsMixin(object):
         Name: koalas, dtype: int64
         """
         from databricks.koalas.series import Series, _col
+        from databricks.koalas.indexes import MultiIndex
         if LooseVersion(pyspark.__version__) < LooseVersion("2.4") and \
-                default_session().conf.get("spark.sql.execution.arrow.enabled") == "true":
+                default_session().conf.get("spark.sql.execution.arrow.enabled") == "true" and \
+                isinstance(self, MultiIndex):
             raise RuntimeError("if you're using pyspark < 2.4, set conf "
                                "'spark.sql.execution.arrow.enabled' to 'false' "
-                               "for using this function")
+                               "for using this function with MultiIndex")
         if bins is not None:
             raise NotImplementedError("value_counts currently does not support bins")
 
