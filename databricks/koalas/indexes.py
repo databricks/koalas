@@ -806,14 +806,9 @@ class Index(IndexOpsMixin):
 
         internal = _InternalFrame(
             sdf=sdf.select(self._internal.index_scols),
-            index_map=self._internal.index_map)
+            index_map=self._kdf._internal.index_map)
 
         result = DataFrame(internal).index
-
-        if isinstance(self, MultiIndex):
-            result.names = self.names
-        else:
-            result.name = self.name
 
         return result
 
