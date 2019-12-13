@@ -255,10 +255,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(res.name, exp.name)
         self.assert_eq(res, exp, almost=True)
 
-        if LooseVersion(pyspark.__version__) < LooseVersion("2.4") and \
-                default_session().conf.get("spark.sql.execution.arrow.enabled") == "true":
-            self.assertRaises(RuntimeError, lambda: kser.value_counts())
-
         self.assert_eq(kser.value_counts(normalize=True),
                        pser.value_counts(normalize=True), almost=True)
         self.assert_eq(kser.value_counts(ascending=True),
@@ -405,6 +401,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 self._test_value_counts()
             finally:
                 default_session().conf.set("spark.sql.execution.arrow.enabled", "true")
+            self.assertRaises(
+                RuntimeError,
+                lambda: ks.MultiIndex.from_tuples([('x', 'a'), ('x', 'b')]).value_counts())
         else:
             self._test_value_counts()
 
