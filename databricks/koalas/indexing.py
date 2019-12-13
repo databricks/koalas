@@ -85,7 +85,31 @@ def _unfold(key, kseries):
     return rows_sel, cols_sel
 
 
-class AtIndexer(object):
+class _IndexerLike(object):
+
+    def __init__(self, kdf_or_kser):
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series
+        assert isinstance(kdf_or_kser, (DataFrame, Series)), \
+            'unexpected argument type: {}'.format(type(kdf_or_kser))
+        self._kdf_or_kser = kdf_or_kser
+
+    @property
+    def _is_df(self):
+        from databricks.koalas.frame import DataFrame
+        return isinstance(self._kdf_or_kser, DataFrame)
+
+    @property
+    def _is_series(self):
+        from databricks.koalas.series import Series
+        return isinstance(self._kdf_or_kser, Series)
+
+    @property
+    def _internal(self):
+        return self._kdf_or_kser._internal
+
+
+class AtIndexer(_IndexerLike):
     """
     Access a single value for a row/column label pair.
     If the index is not unique, all matching pairs are returned as an array.
@@ -122,26 +146,6 @@ class AtIndexer(object):
     >>> kdf.at[5, 'B']
     array([ 4, 20])
     """
-    def __init__(self, kdf_or_kser):
-        from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series
-        assert isinstance(kdf_or_kser, (DataFrame, Series)), \
-            'unexpected argument type: {}'.format(type(kdf_or_kser))
-        self._kdf_or_kser = kdf_or_kser
-
-    @property
-    def _is_df(self):
-        from databricks.koalas.frame import DataFrame
-        return isinstance(self._kdf_or_kser, DataFrame)
-
-    @property
-    def _is_series(self):
-        from databricks.koalas.series import Series
-        return isinstance(self._kdf_or_kser, Series)
-
-    @property
-    def _internal(self):
-        return self._kdf_or_kser._internal
 
     def __getitem__(self, key):
         if self._is_df:
@@ -181,7 +185,7 @@ class AtIndexer(object):
                           or len(values) > 1) else values[0]
 
 
-class LocIndexer(object):
+class LocIndexer(_IndexerLike):
     """
     Access a group of rows and columns by label(s) or a boolean Series.
 
@@ -356,27 +360,6 @@ class LocIndexer(object):
     8          4       5
     9          7       8
     """
-
-    def __init__(self, kdf_or_kser):
-        from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series
-        assert isinstance(kdf_or_kser, (DataFrame, Series)), \
-            'unexpected argument type: {}'.format(type(kdf_or_kser))
-        self._kdf_or_kser = kdf_or_kser
-
-    @property
-    def _is_df(self):
-        from databricks.koalas.frame import DataFrame
-        return isinstance(self._kdf_or_kser, DataFrame)
-
-    @property
-    def _is_series(self):
-        from databricks.koalas.series import Series
-        return isinstance(self._kdf_or_kser, Series)
-
-    @property
-    def _internal(self):
-        return self._kdf_or_kser._internal
 
     def __getitem__(self, key):
         from databricks.koalas.frame import DataFrame
@@ -563,7 +546,7 @@ class LocIndexer(object):
                     self._kdf_or_kser[col_sel] = value
 
 
-class ILocIndexer(object):
+class ILocIndexer(_IndexerLike):
     """
     Purely integer-location based indexing for selection by position.
 
@@ -676,27 +659,6 @@ class ILocIndexer(object):
     1   100   300
     2  1000  3000
     """
-
-    def __init__(self, kdf_or_kser):
-        from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series
-        assert isinstance(kdf_or_kser, (DataFrame, Series)), \
-            'unexpected argument type: {}'.format(type(kdf_or_kser))
-        self._kdf_or_kser = kdf_or_kser
-
-    @property
-    def _is_df(self):
-        from databricks.koalas.frame import DataFrame
-        return isinstance(self._kdf_or_kser, DataFrame)
-
-    @property
-    def _is_series(self):
-        from databricks.koalas.series import Series
-        return isinstance(self._kdf_or_kser, Series)
-
-    @property
-    def _internal(self):
-        return self._kdf_or_kser._internal
 
     def __getitem__(self, key):
         from databricks.koalas.frame import DataFrame
