@@ -19,7 +19,7 @@ Base and utility classes for Koalas objects.
 """
 
 from functools import wraps
-from typing import Union
+from typing import Union, Callable, Any
 
 import numpy as np
 import pandas as pd
@@ -30,6 +30,7 @@ from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, Times
 from pyspark.sql.functions import monotonically_increasing_id
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas import numpy_compat
 from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
@@ -223,6 +224,23 @@ class IndexOpsMixin(object):
     __invert__ = _column_op(spark.Column.__invert__)
     __rand__ = _column_op(spark.Column.__rand__)
     __ror__ = _column_op(spark.Column.__ror__)
+
+    # NDArray Compat
+    def __array_ufunc__(self, ufunc: Callable, method: str, *inputs: Any, **kwargs: Any):
+        # Try dunder methods first.
+        result = numpy_compat.maybe_dispatch_ufunc_to_dunder_op(
+            self, ufunc, method, *inputs, **kwargs)
+
+        # After that, we try with PySpark APIs.
+        if result is NotImplemented:
+            result = numpy_compat.maybe_dispatch_ufunc_to_spark_func(
+                self, ufunc, method, *inputs, **kwargs)
+
+        if result is not NotImplemented:
+            return result
+        else:
+            # TODO: support more APIs?
+            raise NotImplementedError("Koalas objects currently do not support %s." % ufunc)
 
     @property
     def dtype(self):

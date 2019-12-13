@@ -122,6 +122,7 @@ Computations / Descriptive Stats
    Series.mode
    Series.nlargest
    Series.nsmallest
+   Series.pct_change
    Series.nunique
    Series.quantile
    Series.rank

@@ -441,7 +441,8 @@ class _InternalFrame(object):
         elif column_index is None:
             self._column_index = [(sdf.select(scol).columns[0],) for scol in self._column_scols]
         else:
-            assert len(column_index) == len(self._column_scols)
+            assert len(column_index) == len(self._column_scols), \
+                (len(column_index), len(self._column_scols))
             assert all(isinstance(i, tuple) for i in column_index), column_index
             assert len(set(len(i) for i in column_index)) <= 1, column_index
             self._column_index = column_index

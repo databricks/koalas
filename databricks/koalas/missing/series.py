@@ -75,7 +75,6 @@ class _MissingPandasLikeSeries(object):
     last = unsupported_function('last')
     last_valid_index = unsupported_function('last_valid_index')
     mad = unsupported_function('mad')
-    pct_change = unsupported_function('pct_change')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
     rdivmod = unsupported_function('rdivmod')

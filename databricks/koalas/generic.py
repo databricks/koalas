@@ -1262,16 +1262,31 @@ class _Frame(object):
         from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 
         df_or_s = self
-        if isinstance(by, str):
+        if isinstance(by, DataFrame):
+            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
+        elif isinstance(by, str):
+            if isinstance(df_or_s, Series):
+                raise KeyError(by)
             by = [(by,)]
         elif isinstance(by, tuple):
+            if isinstance(df_or_s, Series):
+                for key in by:
+                    if isinstance(key, str):
+                        raise KeyError(key)
+            for key in by:
+                if isinstance(key, DataFrame):
+                    raise ValueError("Grouper for '{}' not 1-dimensional".format(type(key)))
             by = [by]
         elif isinstance(by, Series):
             by = [by]
         elif isinstance(by, Iterable):
+            if isinstance(df_or_s, Series):
+                for key in by:
+                    if isinstance(key, str):
+                        raise KeyError(key)
             by = [key if isinstance(key, (tuple, Series)) else (key,) for key in by]
         else:
-            raise ValueError('Not a valid index: TODO')
+            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
         if not len(by):
             raise ValueError('No group keys passed!')
         if isinstance(df_or_s, DataFrame):
