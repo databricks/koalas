@@ -350,10 +350,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         with self.assertRaisesRegex(
                 NotImplementedError,
-                "isna is not defined for MultiIndex"):
+                "notna is not defined for MultiIndex"):
             kidx.notna()
 
         with self.assertRaisesRegex(
                 NotImplementedError,
-                "isna is not defined for MultiIndex"):
+                "notna is not defined for MultiIndex"):
             kidx.notnull()

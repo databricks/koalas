@@ -604,7 +604,7 @@ class IndexOpsMixin(object):
         """
         from databricks.koalas.indexes import MultiIndex
         if isinstance(self, MultiIndex):
-            raise NotImplementedError("isna is not defined for MultiIndex")
+            raise NotImplementedError("notna is not defined for MultiIndex")
         return (~self.isnull()).rename(self.name)
 
     notna = notnull
