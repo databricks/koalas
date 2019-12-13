@@ -245,13 +245,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(ks.Series(range(100)).nunique(approx=True), 103)
         self.assertEqual(ks.Series(range(100)).nunique(approx=True, rsd=0.01), 100)
 
-    def test_value_counts(self):
-        set_arrow_conf = False
-        if LooseVersion(pyspark.__version__) < LooseVersion("2.4") and \
-                default_session().conf.get("spark.sql.execution.arrow.enabled") == "true":
-            default_session().conf.set("spark.sql.execution.arrow.enabled", "false")
-            set_arrow_conf = True
-
+    def _test_value_counts(self):
         # this is also containing test for Index & MultiIndex
         pser = pd.Series([1, 2, 1, 3, 3, np.nan, 1, 4], name="x")
         kser = ks.from_pandas(pser)
@@ -260,6 +254,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         res = kser.value_counts()
         self.assertEqual(res.name, exp.name)
         self.assert_eq(res, exp, almost=True)
+
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4") and \
+                default_session().conf.get("spark.sql.execution.arrow.enabled") == "true":
+            self.assertRaises(RuntimeError, lambda: kser.value_counts())
 
         self.assert_eq(kser.value_counts(normalize=True),
                        pser.value_counts(normalize=True), almost=True)
@@ -399,9 +397,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kser.index.value_counts(ascending=True, dropna=False),
                            pser.index.value_counts(ascending=True, dropna=False), almost=True)
 
-        if set_arrow_conf:
-            default_session().conf.set("spark.sql.execution.arrow.enabled", "true")
-            self.assertRaises(RuntimeError, lambda: kser.value_counts())
+    def test_value_counts(self):
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4") and \
+                default_session().conf.get("spark.sql.execution.arrow.enabled") == "true":
+            default_session().conf.set("spark.sql.execution.arrow.enabled", "false")
+            try:
+                self._test_value_counts()
+            finally:
+                default_session().conf.set("spark.sql.execution.arrow.enabled", "true")
+        else:
+            self._test_value_counts()
 
     def test_nsmallest(self):
         sample_lst = [1, 2, 3, 4, np.nan, 6]
