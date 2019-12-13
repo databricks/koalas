@@ -558,6 +558,9 @@ class IndexOpsMixin(object):
         >>> ser.rename("a").to_frame().set_index("a").index.isna()
         Index([False, False, True], dtype='object', name='a')
         """
+        from databricks.koalas.indexes import MultiIndex
+        if isinstance(self, MultiIndex):
+            raise NotImplementedError("isna is not defined for MultiIndex")
         if isinstance(self.spark_type, (FloatType, DoubleType)):
             return self._with_new_scol(self._scol.isNull() | F.isnan(self._scol)).rename(self.name)
         else:
@@ -599,6 +602,9 @@ class IndexOpsMixin(object):
         >>> ser.rename("a").to_frame().set_index("a").index.notna()
         Index([True, True, False], dtype='object', name='a')
         """
+        from databricks.koalas.indexes import MultiIndex
+        if isinstance(self, MultiIndex):
+            raise NotImplementedError("notna is not defined for MultiIndex")
         return (~self.isnull()).rename(self.name)
 
     notna = notnull
