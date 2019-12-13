@@ -8088,7 +8088,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Prints information of all columns:
 
-        >>> df.info(verbose=True)
+        >>> df.info(verbose=True)  # doctest: +SKIP
         <class 'databricks.koalas.frame.DataFrame'>
         Index: 5 entries, 0 to 4
         Data columns (total 3 columns):
@@ -8100,7 +8100,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Prints a summary of columns count and its dtypes but not per column
         information:
 
-        >>> df.info(verbose=False)
+        >>> df.info(verbose=False)  # doctest: +SKIP
         <class 'databricks.koalas.frame.DataFrame'>
         Index: 5 entries, 0 to 4
         Columns: 3 entries, int_col to float_col
