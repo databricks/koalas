@@ -413,15 +413,9 @@ class Index(IndexOpsMixin):
         >>> idx.drop_duplicates() # doctest: +SKIP
         Index(['lama', 'cow', 'beetle', 'hippo'], dtype='object')
         """
-        kdf = self._kdf.copy()
-        sdf = kdf._internal.sdf.select(self._internal.index_scols).drop_duplicates()
+        sdf = self._internal.sdf.select(self._internal.index_scols).drop_duplicates()
         internal = _InternalFrame(sdf=sdf, index_map=self._internal.index_map)
         result = DataFrame(internal).index
-
-        if isinstance(self, MultiIndex):
-            result.names = self.names
-        else:
-            result.name = self.name
         return result
 
     def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
