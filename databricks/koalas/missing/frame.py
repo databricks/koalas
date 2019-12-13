@@ -57,7 +57,6 @@ class _MissingPandasLikeDataFrame(object):
     ewm = unsupported_function('ewm')
     first = unsupported_function('first')
     infer_objects = unsupported_function('infer_objects')
-    info = unsupported_function('info')
     insert = unsupported_function('insert')
     interpolate = unsupported_function('interpolate')
     itertuples = unsupported_function('itertuples')

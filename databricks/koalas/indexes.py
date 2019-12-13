@@ -25,6 +25,7 @@ import pandas as pd
 import numpy as np
 from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
     is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
+from pandas.io.formats.printing import pprint_thing
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -103,6 +104,34 @@ class Index(IndexOpsMixin):
         :return: the copied Index
         """
         return Index(self._kdf, scol=scol)
+
+    # This method is used via `DataFrame.info` API internally.
+    def _summary(self, name=None):
+        """
+        Return a summarized representation.
+
+        Parameters
+        ----------
+        name : str
+            name to use in the summary representation
+
+        Returns
+        -------
+        String with a summarized representation of the index
+        """
+        head, tail, total_count = self._kdf._sdf.select(
+            F.first(self._scol),
+            F.last(self._scol),
+            F.count(F.expr("*"))).first()
+
+        if total_count > 0:
+            index_summary = ", %s to %s" % (pprint_thing(head), pprint_thing(tail))
+        else:
+            index_summary = ""
+
+        if name is None:
+            name = type(self).__name__
+        return "%s: %s entries%s" % (name, total_count, index_summary)
 
     @property
     def size(self) -> int:
