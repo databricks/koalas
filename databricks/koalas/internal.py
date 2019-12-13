@@ -494,15 +494,16 @@ class _InternalFrame(object):
             sums = dict(zip(map(lambda count: count[0], sorted_counts), cumulative_counts))
 
             # 3. Group by partition id and assign each range.
+            return_schema = StructType(
+                [StructField(SPARK_INDEX_NAME_FORMAT(0), LongType())] + list(sdf.schema))
+
             def default_index(pdf):
                 current_partition_max = sums[pdf["__spark_partition_id"].iloc[0]]
                 offset = len(pdf)
                 pdf[SPARK_INDEX_NAME_FORMAT(0)] = list(range(
                     current_partition_max - offset, current_partition_max))
-                return pdf.drop(columns=["__spark_partition_id"])
+                return pdf.drop(columns=["__spark_partition_id"])[return_schema.names]
 
-            return_schema = StructType(
-                [StructField(SPARK_INDEX_NAME_FORMAT(0), LongType())] + list(sdf.schema))
             grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(default_index)
 
             sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
