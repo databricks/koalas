@@ -109,6 +109,12 @@ circle          1      361
 triangle        4      181
 rectangle       5      361
 
+>>> df.add(df)
+           angles  degrees
+circle          0      720
+triangle        6      360
+rectangle       8      720
+
 >>> df.radd(1)
            angles  degrees
 circle          1      361
@@ -500,7 +506,11 @@ class DataFrame(_Frame, Generic[T]):
             # DataFrame and Series
             applied = []
             for idx in self._internal.column_index:
-                applied.append(getattr(self[idx], op)(other))
+                if isinstance(other, DataFrame):
+                    argument = other[idx]
+                else:
+                    argument = other
+                applied.append(getattr(self[idx], op)(argument))
 
             sdf = self._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
