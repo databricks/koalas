@@ -29,6 +29,7 @@ from pandas.io.formats.printing import pprint_thing
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
+from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
@@ -37,8 +38,8 @@ from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
-from databricks.koalas.series import Series
-from databricks.koalas.utils import name_like_string
+from databricks.koalas.series import Series, _col
+from databricks.koalas.utils import name_like_string, scol_for
 from databricks.koalas.internal import _InternalFrame
 
 
@@ -455,6 +456,47 @@ class Index(IndexOpsMixin):
                                          column_index=column_index,
                                          column_index_names=None),
                       anchor=kdf)
+
+    def duplicated(self, keep=False):
+        """
+        Indicate duplicate index values.
+        Duplicated values are indicated as ``True`` values in the resulting
+        array. Either all duplicates, all except the first, or all except the
+        last occurrence of duplicates can be indicated.
+
+        Parameters
+        ----------
+        keep : {False}, default False
+            - ``False`` : Mark all duplicates as ``True``.
+
+        Returns
+        -------
+        duplicated : Index
+
+        See Also
+        --------
+        Series.duplicated : Equivalent method on koalas.Series.
+        DataFrame.duplicated : Equivalent method on koalas.DataFrame.
+
+        Examples
+        --------
+        By default, for each set of duplicated values, all duplicates is set to True:
+
+        >>> idx = ks.Index(['lama', 'cow', 'lama'])
+        >>> idx.duplicated()
+        0    True
+        1   False
+        2    True
+        Name: duplicated, dtype: bool
+        """
+        index_scols = self._internal.index_scols
+        sdf = self._internal.sdf
+        window = Window.partitionBy(index_scols).rowsBetween(Window.unboundedPreceding,
+                                                             Window.unboundedFollowing)
+        sdf = sdf.withColumn('duplicated', F.count(index_scols[0]).over(window) > 1)
+        sdf = sdf.select('duplicated')
+        result = _col(DataFrame(_InternalFrame(sdf=sdf)))
+        return result
 
     def is_boolean(self):
         """
