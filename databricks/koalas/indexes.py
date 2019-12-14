@@ -414,7 +414,7 @@ class Index(IndexOpsMixin):
         Index(['lama', 'cow', 'beetle', 'hippo'], dtype='object')
         """
         sdf = self._internal.sdf.select(self._internal.index_scols).drop_duplicates()
-        internal = _InternalFrame(sdf=sdf, index_map=self._internal.index_map)
+        internal = _InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)
         result = DataFrame(internal).index
         return result
 
