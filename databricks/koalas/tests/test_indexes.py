@@ -357,3 +357,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 NotImplementedError,
                 "notna is not defined for MultiIndex"):
             kidx.notnull()
+
+    def test_index_nunique(self):
+        pidx = pd.DataFrame({'a': ['a', 'b', 'c', 'd']}, index=[1, 1, 2, None]).index
+        kidx = ks.DataFrame({'a': ['a', 'b', 'c', 'd']}, index=[1, 1, 2, None]).index
+
+        self.assert_eq(pidx.nunique(), kidx.nunique())
+        self.assert_eq(pidx.nunique(dropna=True), kidx.nunique(dropna=True))
