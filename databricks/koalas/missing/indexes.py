@@ -73,7 +73,6 @@ class _MissingPandasLikeIndex(object):
     is_type_compatible = unsupported_function('is_type_compatible')
     join = unsupported_function('join')
     map = unsupported_function('map')
-    nunique = unsupported_function('nunique')
     putmask = unsupported_function('putmask')
     ravel = unsupported_function('ravel')
     reindex = unsupported_function('reindex')
