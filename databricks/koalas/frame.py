@@ -6727,9 +6727,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             func = "cumsum"
         elif func.__name__ == "cumprod":
             func = "cumprod"
-
+        self = self.copy()
+        columns = self.columns
+        # add a temporal column to keep natural order.
+        self['__natural_order__'] = F.monotonically_increasing_id()
         applied = []
-        for column in self.columns:
+        for column in columns:
             applied.append(getattr(self[column], func)(skipna))
 
         sdf = self._sdf.select(
@@ -6738,6 +6741,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                        column_index=[c._internal.column_index[0] for c in applied],
                                        column_scols=[scol_for(sdf, c._internal.data_columns[0])
                                                      for c in applied])
+        # add a temporal column to keep natural order.
+        self = self.drop('__natural_order__')
         return DataFrame(internal)
 
     # TODO: implements 'keep' parameters

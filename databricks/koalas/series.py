@@ -4167,8 +4167,18 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns
+
+        # address temporal column to keep natural order.
+        if '__natural_order__' in self._kdf.columns:
+            # if given series comes from DataFrame, just use existing `self._kdf`
+            kdf = self._kdf
+        else:
+            # else, make copy of `self._kdf` and make a new temporal column on it
+            kdf = self._kdf.copy()
+            kdf['__natural_order__'] = F.monotonically_increasing_id()
+
         window = Window.orderBy(
-            F.monotonically_increasing_id()).partitionBy(*part_cols).rowsBetween(
+            '__natural_order__').partitionBy(*part_cols).rowsBetween(
                 Window.unboundedPreceding, Window.currentRow)
 
         if skipna:
@@ -4243,7 +4253,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if func.__name__ == "cumprod":
             scol = F.exp(scol)
 
-        return self._with_new_scol(scol).rename(self.name)
+        internal = self._internal.copy(sdf=kdf._internal.sdf, scol=scol)
+
+        return _col(DataFrame(internal))
 
     # ----------------------------------------------------------------------
     # Accessor Methods
