@@ -359,8 +359,16 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx.notnull()
 
     def test_index_nunique(self):
-        pidx = pd.DataFrame({'a': ['a', 'b', 'c', 'd']}, index=[1, 1, 2, None]).index
-        kidx = ks.DataFrame({'a': ['a', 'b', 'c', 'd']}, index=[1, 1, 2, None]).index
+        pidx = pd.Index([1, 1, 2, None])
+        kidx = ks.Index([1, 1, 2, None])
 
         self.assert_eq(pidx.nunique(), kidx.nunique())
         self.assert_eq(pidx.nunique(dropna=True), kidx.nunique(dropna=True))
+
+    def test_multiindex_nunique(self):
+        kmidx = ks.MultiIndex.from_tuples([('a', 1), ('b', 2)])
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "isna is not defined for MultiIndex"):
+            kmidx.nunique()
