@@ -7820,6 +7820,68 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return self.columns
 
+    def pct_change(self, periods=1):
+        """
+        Percentage change between the current and a prior element.
+
+        .. note:: the current implementation of this API uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        periods : int, default 1
+            Periods to shift for forming percent change.
+
+        Returns
+        -------
+        DataFrame
+
+        Examples
+        --------
+        Percentage change in French franc, Deutsche Mark, and Italian lira
+        from 1980-01-01 to 1980-03-01.
+
+        >>> df = ks.DataFrame({
+        ...     'FR': [4.0405, 4.0963, 4.3149],
+        ...     'GR': [1.7246, 1.7482, 1.8519],
+        ...     'IT': [804.74, 810.01, 860.13]},
+        ...     index=['1980-01-01', '1980-02-01', '1980-03-01'])
+        >>> df
+                        FR      GR      IT
+        1980-01-01  4.0405  1.7246  804.74
+        1980-02-01  4.0963  1.7482  810.01
+        1980-03-01  4.3149  1.8519  860.13
+
+        >>> df.pct_change()
+                          FR        GR        IT
+        1980-01-01       NaN       NaN       NaN
+        1980-02-01  0.013810  0.013684  0.006549
+        1980-03-01  0.053365  0.059318  0.061876
+
+        You can set periods to shift for forming percent change
+
+        >>> df.pct_change(2)
+                          FR        GR       IT
+        1980-01-01       NaN       NaN      NaN
+        1980-02-01       NaN       NaN      NaN
+        1980-03-01  0.067912  0.073814  0.06883
+        """
+        sdf = self._sdf
+        window = Window.orderBy(self._internal.index_columns).rowsBetween(-periods, -periods)
+
+        for column_name in self._internal.data_columns:
+            prev_row = F.lag(F.col(column_name), periods).over(window)
+            sdf = sdf.withColumn(column_name, (F.col(column_name) - prev_row) / prev_row)
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            column_scols=[scol_for(sdf, col) for col in self._internal.data_columns]
+        )
+
+        return DataFrame(internal)
+
     # TODO: axis = 1
     def idxmax(self, axis=0):
         """
@@ -7973,6 +8035,109 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         pdf = kdf.to_pandas()
 
         return ks.from_pandas(pdf.idxmin())
+
+    def info(
+        self, verbose=None, buf=None, max_cols=None, null_counts=None
+    ):
+        """
+        Print a concise summary of a DataFrame.
+
+        This method prints information about a DataFrame including
+        the index dtype and column dtypes, non-null values and memory usage.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Whether to print the full summary.
+        buf : writable buffer, defaults to sys.stdout
+            Where to send the output. By default, the output is printed to
+            sys.stdout. Pass a writable buffer if you need to further process
+            the output.
+        max_cols : int, optional
+            When to switch from the verbose to the truncated output. If the
+            DataFrame has more than `max_cols` columns, the truncated output
+            is used.
+        null_counts : bool, optional
+            Whether to show the non-null counts.
+
+        Returns
+        -------
+        None
+            This method prints a summary of a DataFrame and returns None.
+
+        See Also
+        --------
+        DataFrame.describe: Generate descriptive statistics of DataFrame
+            columns.
+
+        Examples
+        --------
+        >>> int_values = [1, 2, 3, 4, 5]
+        >>> text_values = ['alpha', 'beta', 'gamma', 'delta', 'epsilon']
+        >>> float_values = [0.0, 0.25, 0.5, 0.75, 1.0]
+        >>> df = ks.DataFrame(
+        ...     {"int_col": int_values, "text_col": text_values, "float_col": float_values},
+        ...     columns=['int_col', 'text_col', 'float_col'])
+        >>> df
+           int_col text_col  float_col
+        0        1    alpha       0.00
+        1        2     beta       0.25
+        2        3    gamma       0.50
+        3        4    delta       0.75
+        4        5  epsilon       1.00
+
+        Prints information of all columns:
+
+        >>> df.info(verbose=True)  # doctest: +SKIP
+        <class 'databricks.koalas.frame.DataFrame'>
+        Index: 5 entries, 0 to 4
+        Data columns (total 3 columns):
+        int_col      5 non-null int64
+        text_col     5 non-null object
+        float_col    5 non-null float64
+        dtypes: float64(1), int64(1), object(1)
+
+        Prints a summary of columns count and its dtypes but not per column
+        information:
+
+        >>> df.info(verbose=False)  # doctest: +SKIP
+        <class 'databricks.koalas.frame.DataFrame'>
+        Index: 5 entries, 0 to 4
+        Columns: 3 entries, int_col to float_col
+        dtypes: float64(1), int64(1), object(1)
+
+        Pipe output of DataFrame.info to buffer instead of sys.stdout, get
+        buffer content and writes to a text file:
+
+        >>> import io
+        >>> buffer = io.StringIO()
+        >>> df.info(buf=buffer)
+        >>> s = buffer.getvalue()
+        >>> with open('%s/info.txt' % path, "w",
+        ...           encoding="utf-8") as f:
+        ...     _ = f.write(s)
+        >>> with open('%s/info.txt' % path) as f:
+        ...     f.readlines()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+        [...databricks.koalas.frame.DataFrame...,
+        'Index: 5 entries, 0 to 4\\n',
+        'Data columns (total 3 columns):\\n',
+        'int_col      5 non-null int64\\n',
+        'text_col     5 non-null object\\n',
+        'float_col    5 non-null float64\\n',
+        'dtypes: float64(1), int64(1), object(1)']
+        """
+        # To avoid pandas' existing config affects Koalas.
+        # TODO: should we have corresponding Koalas configs?
+        with pd.option_context(
+                'display.max_info_columns', sys.maxsize,
+                'display.max_info_rows', sys.maxsize):
+            try:
+                self._data = self  # hack to use pandas' info as is.
+                return pd.DataFrame.info(
+                    self, verbose=verbose, buf=buf, max_cols=max_cols,
+                    memory_usage=False, null_counts=null_counts)
+            finally:
+                del self._data
 
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
     def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000):

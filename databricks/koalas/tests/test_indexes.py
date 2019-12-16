@@ -347,3 +347,26 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 TypeError,
                 "cannot sort an Index object in-place, use sort_values instead"):
             midx.sort()
+
+    def test_multiindex_isna(self):
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "isna is not defined for MultiIndex"):
+            kidx.isna()
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "isna is not defined for MultiIndex"):
+            kidx.isnull()
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "notna is not defined for MultiIndex"):
+            kidx.notna()
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "notna is not defined for MultiIndex"):
+            kidx.notnull()

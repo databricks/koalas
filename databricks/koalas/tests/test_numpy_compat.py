@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas as ks
+from databricks.koalas import set_option, reset_option
 from databricks.koalas.numpy_compat import unary_np_spark_mappings, binary_np_spark_mappings
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
@@ -57,7 +58,10 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
         # Use randomly generated dataFrame
         pdf = pd.DataFrame(
             np.random.randint(-100, 100, size=(np.random.randint(100), 2)), columns=['a', 'b'])
+        pdf2 = pd.DataFrame(
+            np.random.randint(-100, 100, size=(len(pdf), len(pdf.columns))), columns=['a', 'b'])
         kdf = ks.from_pandas(pdf)
+        kdf2 = ks.from_pandas(pdf2)
 
         blacklist = [
             # Koalas does not currently support
@@ -103,3 +107,19 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
                         np_func(pdf.a, 1), np_func(kdf.a, 1), almost=True)
                 except Exception as e:
                     raise AssertionError("Test in '%s' function was failed." % np_name) from e
+
+        # Test only top 5 for now. 'compute.ops_on_diff_frames' option increases too much time.
+        try:
+            set_option('compute.ops_on_diff_frames', True)
+            for np_name, spark_func in list(binary_np_spark_mappings.items())[:5]:
+                np_func = getattr(np, np_name)
+                if np_name not in blacklist:
+                    try:
+                        # binary ufunc
+                        self.assert_eq(
+                            np_func(pdf.a, pdf2.b).sort_index(),
+                            np_func(kdf.a, kdf2.b).sort_index(), almost=True)
+                    except Exception as e:
+                        raise AssertionError("Test in '%s' function was failed." % np_name) from e
+        finally:
+            reset_option('compute.ops_on_diff_frames')
