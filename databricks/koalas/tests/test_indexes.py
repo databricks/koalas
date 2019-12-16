@@ -357,3 +357,15 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 NotImplementedError,
                 "notna is not defined for MultiIndex"):
             kidx.notnull()
+
+    def test_multiindex_rename(self):
+        pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        pidx = pidx.rename(list('ABC'))
+        kidx = kidx.rename(list('ABC'))
+        self.assert_eq(pidx, kidx)
+
+        pidx = pidx.rename(['my', 'name', 'is'])
+        kidx = kidx.rename(['my', 'name', 'is'])
+        self.assert_eq(pidx, kidx)
