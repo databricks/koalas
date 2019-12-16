@@ -364,3 +364,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pidx.nunique(), kidx.nunique())
         self.assert_eq(pidx.nunique(dropna=True), kidx.nunique(dropna=True))
+
+    def test_multiindex_nunique(self):
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "notna is not defined for MultiIndex"):
+            kidx.notnull()
