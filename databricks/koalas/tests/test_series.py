@@ -674,6 +674,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "an empty sequence"):
             kser.idxmax()
 
+        pser = pd.Series([1, 100, None, 100, 1, 100], index=[10, 3, 5, 2, 1, 8])
+        kser = ks.Series(pser)
+
+        self.assertEqual(kser.idxmax(), pser.idxmax())
+        self.assertEqual(repr(kser.idxmax(skipna=False)), repr(pser.idxmax(skipna=False)))
+
     def test_idxmin(self):
         pser = pd.Series(data=[1, 4, 5], index=['A', 'B', 'C'])
         kser = ks.Series(pser)
@@ -692,6 +698,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([])
         with self.assertRaisesRegex(ValueError, "an empty sequence"):
             kser.idxmin()
+
+        pser = pd.Series([1, 100, None, 100, 1, 100], index=[10, 3, 5, 2, 1, 8])
+        kser = ks.Series(pser)
+
+        self.assertEqual(kser.idxmin(), pser.idxmin())
+        self.assertEqual(repr(kser.idxmin(skipna=False)), repr(pser.idxmin(skipna=False)))
 
     def test_shift(self):
         pser = pd.Series([10, 20, 15, 30, 45], name='x')
@@ -905,6 +917,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = kser.to_pandas()
 
         self.assert_eq(kser.keys(), pser.keys())
+
+    def test_index(self):
+        # to check setting name of Index properly.
+        idx = pd.Index([1, 2, 3, 4, 5, 6, 7, 8, 9])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=idx)
+        pser = kser.to_pandas()
+
+        kser.name = 'koalas'
+        pser.name = 'koalas'
+        self.assert_eq(kser.index.name, pser.index.name)
+
+        # for check setting names of MultiIndex properly.
+        kser.names = ['hello', 'koalas']
+        pser.names = ['hello', 'koalas']
+        self.assert_eq(kser.index.names, pser.index.names)
 
     def test_pct_change(self):
         kser = ks.Series([90, 91, 85], index=[2, 4, 1])
