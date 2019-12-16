@@ -368,6 +368,7 @@ class Index(IndexOpsMixin):
         You can also change the index name in place.
 
         >>> df.index.rename("e", inplace=True)
+        >>> df.index
         Index(['A', 'C'], dtype='object', name='e')
 
         >>> df  # doctest: +NORMALIZE_WHITESPACE
@@ -396,7 +397,9 @@ class Index(IndexOpsMixin):
             self.names = name  # type: ignore
         else:
             self.name = name
-        return self
+        # return only when `inplace` is `False`
+        if not inplace:
+            return self
 
     # TODO: add downcast parameter for fillna function
     def fillna(self, value):
@@ -822,6 +825,66 @@ class Index(IndexOpsMixin):
         result = tuple(max_row[0])
 
         return result if len(result) > 1 else result[0]
+
+    def set_names(self, names, level=None, inplace=False):
+        """
+        Set Index or MultiIndex name.
+        Able to set new names partially and by level.
+
+        Parameters
+        ----------
+        names : label or list of label
+            Name(s) to set.
+        level : int, label or list of int or label, optional
+            If the index is a MultiIndex, level(s) to set (None for all
+            levels). Otherwise level must be None.
+        inplace : bool, default False
+            Modifies the object directly, instead of creating a new Index or
+            MultiIndex.
+
+        Returns
+        -------
+        Index
+            The same type as the caller or None if inplace is True.
+
+        See Also
+        --------
+        Index.rename : Able to set new names without level.
+
+        Examples
+        --------
+        >>> idx = ks.Index([1, 2, 3, 4])
+        >>> idx
+        Int64Index([1, 2, 3, 4], dtype='int64')
+
+        >>> idx.set_names('quarter')
+        Int64Index([1, 2, 3, 4], dtype='int64', name='quarter')
+
+        For MultiIndex
+
+        >>> idx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y')])
+        >>> idx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   )
+
+        >>> idx.set_names(['kind', 'year'], inplace=True)
+        >>> idx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   names=['kind', 'year'])
+
+        >>> idx.set_names('species', level=0)  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   names=['species', 'year'])
+        """
+        if isinstance(self, MultiIndex):
+            if level is not None:
+                self_names = self.names
+                self_names[level] = names
+                names = self_names
+        return self.rename(name=names, inplace=inplace)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
