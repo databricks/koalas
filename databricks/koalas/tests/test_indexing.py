@@ -608,5 +608,5 @@ class IndexingTest(ReusedSQLTestCase):
             kdf.iloc[:, 'A']
 
         with self.assertRaisesRegex(IndexError,
-                                    'index 5 is out of bounds'):
+                                    'out of range'):
             kdf.iloc[:, [5, 6]]

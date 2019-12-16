@@ -958,13 +958,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def index(self):
         """The index (axis labels) Column of the Series.
 
-        Currently not supported when the DataFrame has no index.
-
         See Also
         --------
         Index
         """
-        return self.to_frame().index
+        return self._kdf.index
 
     @property
     def is_unique(self):
@@ -1831,86 +1829,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             return (count_fn(self._scol) +
                     F.when(F.count(F.when(self._scol.isNull(), 1)
                                    .otherwise(None)) >= 1, 1).otherwise(0)).alias(colname)
-
-    # TODO: Update Documentation for Bins Parameter when its supported
-    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
-        """
-        Return a Series containing counts of unique values.
-        The resulting object will be in descending order so that the
-        first element is the most frequently-occurring element.
-        Excludes NA values by default.
-
-        Parameters
-        ----------
-        normalize : boolean, default False
-            If True then the object returned will contain the relative
-            frequencies of the unique values.
-        sort : boolean, default True
-            Sort by values.
-        ascending : boolean, default False
-            Sort in ascending order.
-        bins : Not Yet Supported
-        dropna : boolean, default True
-            Don't include counts of NaN.
-
-        Returns
-        -------
-        counts : Series
-
-        See Also
-        --------
-        Series.count: Number of non-NA elements in a Series.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame({'x':[0, 0, 1, 1, 1, np.nan]})
-        >>> df.x.value_counts()  # doctest: +NORMALIZE_WHITESPACE
-        1.0    3
-        0.0    2
-        Name: x, dtype: int64
-
-        With `normalize` set to `True`, returns the relative frequency by
-        dividing all values by the sum of values.
-
-        >>> df.x.value_counts(normalize=True)  # doctest: +NORMALIZE_WHITESPACE
-        1.0    0.6
-        0.0    0.4
-        Name: x, dtype: float64
-
-        **dropna**
-        With `dropna` set to `False` we can also see NaN index values.
-
-        >>> df.x.value_counts(dropna=False)  # doctest: +NORMALIZE_WHITESPACE
-        1.0    3
-        0.0    2
-        NaN    1
-        Name: x, dtype: int64
-        """
-        if bins is not None:
-            raise NotImplementedError("value_counts currently does not support bins")
-
-        if dropna:
-            sdf_dropna = self._internal._sdf.filter(self.notna()._scol)
-        else:
-            sdf_dropna = self._internal._sdf
-        index_name = SPARK_INDEX_NAME_FORMAT(0)
-        sdf = sdf_dropna.groupby(self._scol.alias(index_name)).count()
-        if sort:
-            if ascending:
-                sdf = sdf.orderBy(F.col('count'))
-            else:
-                sdf = sdf.orderBy(F.col('count').desc())
-
-        if normalize:
-            sum = sdf_dropna.count()
-            sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
-
-        internal = _InternalFrame(sdf=sdf,
-                                  index_map=[(index_name, None)],
-                                  column_index=self._internal.column_index,
-                                  column_scols=[scol_for(sdf, 'count')],
-                                  column_index_names=self._internal.column_index_names)
-        return _col(DataFrame(internal))
 
     def sort_values(self, ascending: bool = True, inplace: bool = False,
                     na_position: str = 'last') -> Union['Series', None]:
@@ -3099,7 +3017,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         Return the row label of the maximum value.
 
-        If multiple values equal the maximum, the row label with that
+        If multiple values equal the maximum, the first row label with that
         value is returned.
 
         Parameters
@@ -3159,6 +3077,22 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> s.idxmax()
         ('b', 'f')
+
+        If multiple values equal the maximum, the first row label with that
+        value is returned.
+
+        >>> s = ks.Series([1, 100, 1, 100, 1, 100], index=[10, 3, 5, 2, 1, 8])
+        >>> s
+        10      1
+        3     100
+        5       1
+        2     100
+        1       1
+        8     100
+        Name: 0, dtype: int64
+
+        >>> s.idxmax()
+        3
         """
         sdf = self._internal._sdf
         scol = self._scol
@@ -3166,9 +3100,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         # desc_nulls_(last|first) is used via Py4J directly because
         # it's not supported in Spark 2.3.
         if skipna:
-            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()))
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()), F.monotonically_increasing_id())
         else:
-            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()))
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()), F.monotonically_increasing_id())
         results = sdf.select([scol] + index_scols).take(1)
         if len(results) == 0:
             raise ValueError("attempt to get idxmin of an empty sequence")
@@ -3186,7 +3120,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         Return the row label of the minimum value.
 
-        If multiple values equal the minimum, the row label with that
+        If multiple values equal the minimum, the first row label with that
         value is returned.
 
         Parameters
@@ -3251,16 +3185,32 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> s.idxmin()
         ('b', 'f')
+
+        If multiple values equal the minimum, the first row label with that
+        value is returned.
+
+        >>> s = ks.Series([1, 100, 1, 100, 1, 100], index=[10, 3, 5, 2, 1, 8])
+        >>> s
+        10      1
+        3     100
+        5       1
+        2     100
+        1       1
+        8     100
+        Name: 0, dtype: int64
+
+        >>> s.idxmin()
+        10
         """
         sdf = self._internal._sdf
         scol = self._scol
         index_scols = self._internal.index_scols
-        # asc_nulls_(list|first)is used via Py4J directly because
+        # asc_nulls_(last|first)is used via Py4J directly because
         # it's not supported in Spark 2.3.
         if skipna:
-            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()))
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()), F.monotonically_increasing_id())
         else:
-            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()))
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()), F.monotonically_increasing_id())
         results = sdf.select([scol] + index_scols).take(1)
         if len(results) == 0:
             raise ValueError("attempt to get idxmin of an empty sequence")
@@ -3630,62 +3580,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return result
 
-    def first_valid_index(self):
-        """
-        Retrieves the index of the first valid value.
-
-        Returns
-        -------
-        idx_first_valid : type of index
-
-        Examples
-        --------
-        >>> s = ks.Series([None, None, 3, 4, 5], index=[100, 200, 300, 400, 500])
-        >>> s
-        100    NaN
-        200    NaN
-        300    3.0
-        400    4.0
-        500    5.0
-        Name: 0, dtype: float64
-
-        >>> s.first_valid_index()
-        300
-
-        Support for MultiIndex
-
-        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
-        ...                       ['speed', 'weight', 'length']],
-        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
-        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
-        >>> s = ks.Series([None, None, None, None, 250, 1.5, 320, 1, 0.3], index=midx)
-        >>> s
-        lama    speed       NaN
-                weight      NaN
-                length      NaN
-        cow     speed       NaN
-                weight    250.0
-                length      1.5
-        falcon  speed     320.0
-                weight      1.0
-                length      0.3
-        Name: 0, dtype: float64
-
-        >>> s.first_valid_index()
-        ('cow', 'weight')
-        """
-        sdf = self._internal.sdf
-        data_scol = self._internal.scol
-
-        first_valid_row = sdf.where(data_scol.isNotNull()).first()
-        first_valid_idx = tuple(first_valid_row[idx_col]
-                                for idx_col in self._internal.index_columns)
-
-        if len(first_valid_idx) == 1:
-            first_valid_idx = first_valid_idx[0]
-
-        return first_valid_idx
-
     def keys(self):
         """
         Return alias for index.
@@ -4048,28 +3942,49 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
-        kdf = self.to_frame()
-        kdf['__tmp_cond_col__'] = cond
-        kdf['__tmp_other_col__'] = other
-        sdf = kdf._sdf
-        # above logic make spark dataframe looks like below:
-        # +-----------------+---+----------------+-----------------+
-        # |__index_level_0__|  0|__tmp_cond_col__|__tmp_other_col__|
-        # +-----------------+---+----------------+-----------------+
-        # |                0|  0|           false|              100|
-        # |                1|  1|           false|              200|
-        # |                3|  3|            true|              400|
-        # |                2|  2|            true|              300|
-        # |                4|  4|            true|              500|
-        # +-----------------+---+----------------+-----------------+
         data_col_name = self._internal.column_name_for(self._internal.column_index[0])
-        index_column = self._internal.index_columns[0]
-        condition = F.when(sdf['__tmp_cond_col__'], sdf[data_col_name]) \
-                     .otherwise(sdf['__tmp_other_col__']).alias(data_col_name)
-        sdf = sdf.select(index_column, condition)
-        result = _col(ks.DataFrame(_InternalFrame(sdf=sdf, index_map=self._internal.index_map)))
 
-        return result
+        assert isinstance(cond, Series)
+
+        # We should check the DataFrame from both `cond` and `other`.
+        should_try_ops_on_diff_frame = (
+            cond._kdf is not self._kdf or
+            (isinstance(other, Series) and other._kdf is not self._kdf))
+
+        if should_try_ops_on_diff_frame:
+            # Try to perform it with 'compute.ops_on_diff_frame' option.
+            kdf = self.to_frame()
+            kdf['__tmp_cond_col__'] = cond
+            kdf['__tmp_other_col__'] = other
+
+            sdf = kdf._sdf
+            # above logic makes a Spark DataFrame looks like below:
+            # +-----------------+---+----------------+-----------------+
+            # |__index_level_0__|  0|__tmp_cond_col__|__tmp_other_col__|
+            # +-----------------+---+----------------+-----------------+
+            # |                0|  0|           false|              100|
+            # |                1|  1|           false|              200|
+            # |                3|  3|            true|              400|
+            # |                2|  2|            true|              300|
+            # |                4|  4|            true|              500|
+            # +-----------------+---+----------------+-----------------+
+            condition = F.when(
+                sdf['__tmp_cond_col__'], sdf[data_col_name]
+            ).otherwise(sdf['__tmp_other_col__']).alias(data_col_name)
+
+            sdf = sdf.select(*self._internal.index_columns + [condition])
+            return _col(ks.DataFrame(_InternalFrame(
+                sdf=sdf,
+                index_map=self._internal.index_map,
+                column_index=self._internal.column_index,
+                column_index_names=self._internal.column_index_names)))
+        else:
+            if isinstance(other, Series):
+                other = other._scol
+            condition = F.when(
+                cond._scol, self._scol
+            ).otherwise(other).alias(data_col_name)
+            return self._with_new_scol(condition)
 
     def mask(self, cond, other=np.nan):
         """
@@ -4226,6 +4141,59 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return _col(DataFrame(internal))
 
+    def pct_change(self, periods=1):
+        """
+        Percentage change between the current and a prior element.
+
+        .. note:: the current implementation of this API uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        periods : int, default 1
+            Periods to shift for forming percent change.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+
+        >>> kser = ks.Series([90, 91, 85], index=[2, 4, 1])
+        >>> kser
+        2    90
+        4    91
+        1    85
+        Name: 0, dtype: int64
+
+        >>> kser.pct_change()
+        2         NaN
+        4    0.011111
+        1   -0.065934
+        Name: 0, dtype: float64
+
+        >>> kser.sort_index().pct_change()
+        1         NaN
+        2    0.058824
+        4    0.011111
+        Name: 0, dtype: float64
+
+        >>> kser.pct_change(periods=2)
+        2         NaN
+        4         NaN
+        1   -0.055556
+        Name: 0, dtype: float64
+        """
+        scol = self._internal.scol
+
+        window = Window.orderBy(F.monotonically_increasing_id()).rowsBetween(-periods, -periods)
+        prev_row = F.lag(scol, periods).over(window)
+
+        return self._with_new_scol((scol - prev_row) / prev_row)
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns
@@ -4351,6 +4319,21 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
+        if isinstance(key, Series) and isinstance(key.spark_type, BooleanType):
+            should_try_ops_on_diff_frame = key._kdf is not self._kdf
+
+            if should_try_ops_on_diff_frame:
+                kdf = self.to_frame()
+                kdf["__temp_col__"] = key
+                sdf = kdf._sdf.filter(F.col("__temp_col__")).drop("__temp_col__")
+                return _col(ks.DataFrame(_InternalFrame(
+                    sdf=sdf,
+                    index_map=self._internal.index_map,
+                    column_index=self._internal.column_index,
+                    column_index_names=self._internal.column_index_names)))
+            else:
+                return _col(DataFrame(self._internal.copy(sdf=self._kdf._sdf.filter(key._scol))))
+
         if not isinstance(key, tuple):
             key = (key,)
         if len(self._internal._index_map) < len(key):

@@ -68,6 +68,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.b, as_index=False))
 
+        # we can't use column name/names as a parameter `by` for `SeriesGroupBy`.
+        self.assertRaises(KeyError, lambda: kdf.a.groupby(by='a'))
+        self.assertRaises(KeyError, lambda: kdf.a.groupby(by=['a', 'b']))
+        self.assertRaises(KeyError, lambda: kdf.a.groupby(by=('a', 'b')))
+
+        # we can't use DataFrame as a parameter `by` for `DataFrameGroupBy`/`SeriesGroupBy`.
+        self.assertRaises(ValueError, lambda: kdf.groupby(kdf))
+        self.assertRaises(ValueError, lambda: kdf.a.groupby(kdf))
+        self.assertRaises(ValueError, lambda: kdf.a.groupby((kdf,)))
+
     def test_groupby_multiindex_columns(self):
         pdf = pd.DataFrame({('x', 'a'): [1, 2, 6, 4, 4, 6, 4, 3, 7],
                             ('x', 'b'): [4, 2, 7, 3, 3, 1, 1, 1, 2],
@@ -838,7 +848,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             with self.assertRaisesRegex(
                     PandasNotImplementedError,
                     "method.*GroupBy.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
-                getattr(kdf.a.groupby('a'), name)()
+                getattr(kdf.a.groupby(kdf.a), name)()
 
         deprecated_functions = [name for (name, type_) in missing_functions
                                 if type_.__name__ == 'deprecated_function']
@@ -846,7 +856,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "method.*GroupBy.*{}.*is deprecated"
                                         .format(name)):
-                getattr(kdf.a.groupby('a'), name)()
+                getattr(kdf.a.groupby(kdf.a), name)()
 
         # DataFrameGroupBy properties
         missing_properties = inspect.getmembers(_MissingPandasLikeDataFrameGroupBy,
@@ -875,14 +885,14 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             with self.assertRaisesRegex(
                     PandasNotImplementedError,
                     "property.*GroupBy.*{}.*not implemented( yet\\.|\\. .+)".format(name)):
-                getattr(kdf.a.groupby('a'), name)
+                getattr(kdf.a.groupby(kdf.a), name)
         deprecated_properties = [name for (name, type_) in missing_properties
                                  if type_.fget.__name__ == 'deprecated_property']
         for name in deprecated_properties:
             with self.assertRaisesRegex(PandasNotImplementedError,
                                         "property.*GroupBy.*{}.*is deprecated"
                                         .format(name)):
-                getattr(kdf.a.groupby('a'), name)
+                getattr(kdf.a.groupby(kdf.a), name)
 
     @staticmethod
     def test_is_multi_agg_with_relabel():

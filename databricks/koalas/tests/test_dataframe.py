@@ -143,6 +143,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[('X', 'A')].to_pandas().columns.names, pdf[('X', 'A')].columns.names)
         self.assert_eq(kdf[('X', 'A', 'Z')], pdf[('X', 'A', 'Z')])
 
+    def test_iterrows(self):
+        pdf = pd.DataFrame({
+            ('x', 'a', '1'): [1, 2, 3],
+            ('x', 'b', '2'): [4, 5, 6],
+            ('y.z', 'c.d', '3'): [7, 8, 9],
+            ('x', 'b', '4'): [10, 11, 12],
+        },
+            index=[[0, 0, 1], [0, 1, 2]])
+        kdf = ks.from_pandas(pdf)
+
+        for (pdf_k, pdf_v), (kdf_k, kdf_v) in zip(pdf.iterrows(), kdf.iterrows()):
+            self.assert_eq(pdf_k, kdf_k)
+            self.assert_eq(pdf_v, kdf_v)
+
     def test_reset_index_with_multiindex_columns(self):
         index = pd.MultiIndex.from_tuples([('bird', 'falcon'),
                                            ('bird', 'parrot'),
@@ -2218,6 +2232,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "quantile currently doesn't supports numeric_only"):
             kdf.quantile(.5, numeric_only=False)
+
+    def test_pct_change(self):
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+                            'b': [4.0, 2.0, 3.0, 1.0],
+                            'c': [300, 200, 400, 200]})
+        kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        pdf = kdf.to_pandas()
+
+        self.assert_eq(repr(kdf.pct_change(2)), repr(pdf.pct_change(2)))
 
     def test_where(self):
         kdf = ks.from_pandas(self.pdf)

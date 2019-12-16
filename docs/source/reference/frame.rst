@@ -51,10 +51,13 @@ Indexing, iteration
 
    DataFrame.at
    DataFrame.head
+   DataFrame.idxmax
+   DataFrame.idxmin
    DataFrame.loc
    DataFrame.iloc
    DataFrame.items
    DataFrame.iteritems
+   DataFrame.iterrows
    DataFrame.keys
    DataFrame.xs
    DataFrame.get
@@ -121,6 +124,7 @@ Computations / Descriptive Stats
    DataFrame.mean
    DataFrame.min
    DataFrame.median
+   DataFrame.pct_change
    DataFrame.quantile
    DataFrame.nunique
    DataFrame.skew
@@ -197,6 +201,7 @@ Time series-related
    :toctree: api/
 
    DataFrame.shift
+   DataFrame.first_valid_index
 
 Cache
 -------------------------------
@@ -211,6 +216,7 @@ Serialization / IO / Conversion
    :toctree: api/
 
    DataFrame.from_records
+   DataFrame.info
    DataFrame.to_table
    DataFrame.to_delta
    DataFrame.to_parquet

@@ -18,10 +18,18 @@ Properties
 .. autosummary::
    :toctree: api/
 
+   Index.is_monotonic
+   Index.is_monotonic_increasing
+   Index.is_monotonic_decreasing
+   Index.has_duplicates
+   Index.hasnans
    Index.dtype
+   Index.shape
    Index.name
    Index.names
    Index.ndim
+   Index.size
+   Index.nlevels
    Index.empty
    Index.T
 
@@ -31,6 +39,8 @@ Modifying and computations
 .. autosummary::
    :toctree: api/
 
+   Index.all
+   Index.any
    Index.copy
    Index.is_boolean
    Index.is_categorical
@@ -39,12 +49,18 @@ Modifying and computations
    Index.is_interval
    Index.is_numeric
    Index.is_object
+   Index.min
+   Index.max
+   Index.rename
+   Index.unique
+   Index.value_counts
 
 Missing Values
 ~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: api/
 
+   Index.fillna
    Index.dropna
    Index.isna
    Index.notna
@@ -58,7 +74,12 @@ Conversion
    Index.to_series
    Index.to_numpy
 
-.. _api.multiindex:
+Time-specific operations
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.shift
 
 Combining / joining / set operations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,6 +95,8 @@ Selecting
 
    Index.isin
 
+.. _api.multiindex:
+
 MultiIndex
 ----------
 .. autosummary::
@@ -86,6 +109,7 @@ MultiIndex Constructors
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.from_arrays
    MultiIndex.from_tuples
 
 MultiIndex Properties
@@ -93,15 +117,23 @@ MultiIndex Properties
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.has_duplicates
+   MultiIndex.hasnans
+   MultiIndex.shape
    MultiIndex.names
    MultiIndex.ndim
+   MultiIndex.empty
    MultiIndex.T
+   MultiIndex.size
+   MultiIndex.nlevels
+   MultiIndex.levshape
 
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.fillna
    MultiIndex.dropna
 
 MultiIndex Modifying and computations
@@ -109,7 +141,10 @@ MultiIndex Modifying and computations
 .. autosummary::
    :toctree: api/
 
-   Index.copy
+   MultiIndex.copy
+   MultiIndex.min
+   MultiIndex.max
+   MultiIndex.value_counts
 
 MultiIndex Combining / joining / set operations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -117,11 +152,11 @@ MultiIndex Combining / joining / set operations
    :toctree: api/
 
    MultiIndex.symmetric_difference
-   MultiIndex.copy
 
-Conversion
-~~~~~~~~~~
+MultiIndex Conversion
+~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.astype
    MultiIndex.to_numpy

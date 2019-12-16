@@ -25,6 +25,7 @@ import pandas as pd
 import numpy as np
 from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
     is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
+from pandas.io.formats.printing import pprint_thing
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -37,7 +38,6 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
-from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.utils import name_like_string
 from databricks.koalas.internal import _InternalFrame
 
@@ -105,6 +105,34 @@ class Index(IndexOpsMixin):
         """
         return Index(self._kdf, scol=scol)
 
+    # This method is used via `DataFrame.info` API internally.
+    def _summary(self, name=None):
+        """
+        Return a summarized representation.
+
+        Parameters
+        ----------
+        name : str
+            name to use in the summary representation
+
+        Returns
+        -------
+        String with a summarized representation of the index
+        """
+        head, tail, total_count = self._kdf._sdf.select(
+            F.first(self._scol),
+            F.last(self._scol),
+            F.count(F.expr("*"))).first()
+
+        if total_count > 0:
+            index_summary = ", %s to %s" % (pprint_thing(head), pprint_thing(tail))
+        else:
+            index_summary = ""
+
+        if name is None:
+            name = type(self).__name__
+        return "%s: %s entries%s" % (name, total_count, index_summary)
+
     @property
     def size(self) -> int:
         """
@@ -122,6 +150,31 @@ class Index(IndexOpsMixin):
         4
         """
         return len(self._kdf)  # type: ignore
+
+    @property
+    def shape(self) -> tuple:
+        """
+        Return a tuple of the shape of the underlying data.
+
+        Examples
+        --------
+        >>> idx = ks.Index(['a', 'b', 'c'])
+        >>> idx
+        Index(['a', 'b', 'c'], dtype='object')
+        >>> idx.shape
+        (3,)
+
+        >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> midx.shape
+        (3,)
+        """
+        return len(self._kdf),
 
     def transpose(self):
         """
@@ -335,6 +388,36 @@ class Index(IndexOpsMixin):
             return self
         else:
             return Index(DataFrame(internal), scol=self._scol)
+
+    # TODO: add downcast parameter for fillna function
+    def fillna(self, value):
+        """
+        Fill NA/NaN values with the specified value.
+
+        Parameters
+        ----------
+        value : scalar
+            Scalar value to use to fill holes (e.g. 0). This value cannot be a list-likes.
+
+        Returns
+        -------
+        Index :
+            filled with value
+
+        Examples
+        --------
+        >>> ki = ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index
+        >>> ki
+        Float64Index([1.0, 2.0, nan], dtype='float64')
+
+        >>> ki.fillna(0)
+        Float64Index([1.0, 2.0, 0.0], dtype='float64')
+        """
+        if not isinstance(value, (float, int, str, bool)):
+            raise TypeError("Unsupported type %s" % type(value))
+        sdf = self._internal.sdf.fillna(value)
+        result = DataFrame(self._kdf._internal.copy(sdf=sdf)).index
+        return result
 
     def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
         """
@@ -657,6 +740,80 @@ class Index(IndexOpsMixin):
 
         return result
 
+    def min(self):
+        """
+        Return the minimum value of the Index.
+
+        Returns
+        -------
+        scalar
+            Minimum value.
+
+        See Also
+        --------
+        Index.max : Return the maximum value of the object.
+        Series.min : Return the minimum value in a Series.
+        DataFrame.min : Return the minimum values in a DataFrame.
+
+        Examples
+        --------
+        >>> idx = ks.Index([3, 2, 1])
+        >>> idx.min()
+        1
+
+        >>> idx = ks.Index(['c', 'b', 'a'])
+        >>> idx.min()
+        'a'
+
+        For a MultiIndex, the maximum is determined lexicographically.
+
+        >>> idx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
+        >>> idx.min()
+        ('a', 'x', 1)
+        """
+        sdf = self._internal.sdf
+        min_row = sdf.select(F.min(F.struct(self._internal.index_scols))).head()
+        result = tuple(min_row[0])
+
+        return result if len(result) > 1 else result[0]
+
+    def max(self):
+        """
+        Return the maximum value of the Index.
+
+        Returns
+        -------
+        scalar
+            Maximum value.
+
+        See Also
+        --------
+        Index.min : Return the minimum value in an Index.
+        Series.max : Return the maximum value in a Series.
+        DataFrame.max : Return the maximum values in a DataFrame.
+
+        Examples
+        --------
+        >>> idx = pd.Index([3, 2, 1])
+        >>> idx.max()
+        3
+
+        >>> idx = pd.Index(['c', 'b', 'a'])
+        >>> idx.max()
+        'c'
+
+        For a MultiIndex, the maximum is determined lexicographically.
+
+        >>> idx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
+        >>> idx.max()
+        ('b', 'y', 2)
+        """
+        sdf = self._internal.sdf
+        max_row = sdf.select(F.max(F.struct(self._internal.index_scols))).head()
+        result = tuple(max_row[0])
+
+        return result if len(result) > 1 else result[0]
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)
@@ -806,6 +963,27 @@ class MultiIndex(Index):
     @name.setter
     def name(self, name: str) -> None:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
+
+    @property
+    def levshape(self):
+        """
+        A tuple with the length of each level.
+
+        Examples
+        --------
+        >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> midx.levshape
+        (3, 3)
+        """
+        internal = self._internal
+        result = internal._sdf.agg(*(F.countDistinct(c) for c in internal.index_scols)).collect()[0]
+        return tuple(result)
 
     def to_pandas(self) -> pd.MultiIndex:
         """

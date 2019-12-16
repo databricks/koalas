@@ -31,7 +31,6 @@ class _MissingPandasLikeIndex(object):
 
     # Properties
     nbytes = unsupported_property('nbytes')
-    shape = unsupported_property('shape')
 
     # Deprecated properties
     strides = unsupported_property('strides', deprecated=True)
@@ -55,7 +54,6 @@ class _MissingPandasLikeIndex(object):
     duplicated = unsupported_function('duplicated')
     equals = unsupported_function('equals')
     factorize = unsupported_function('factorize')
-    fillna = unsupported_function('fillna')
     format = unsupported_function('format')
     get_indexer = unsupported_function('get_indexer')
     get_indexer_for = unsupported_function('get_indexer_for')
@@ -75,8 +73,6 @@ class _MissingPandasLikeIndex(object):
     is_type_compatible = unsupported_function('is_type_compatible')
     join = unsupported_function('join')
     map = unsupported_function('map')
-    max = unsupported_function('max')
-    min = unsupported_function('min')
     nunique = unsupported_function('nunique')
     putmask = unsupported_function('putmask')
     ravel = unsupported_function('ravel')
@@ -95,7 +91,6 @@ class _MissingPandasLikeIndex(object):
     to_frame = unsupported_function('to_frame')
     to_native_types = unsupported_function('to_native_types')
     union = unsupported_function('union')
-    value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
     where = unsupported_function('where')
 
@@ -121,8 +116,6 @@ class _MissingPandasLikeMultiIndex(object):
 
     # Properties
     is_all_dates = unsupported_property('is_all_dates')
-    levshape = unsupported_property('levshape')
-    shape = unsupported_property('shape')
 
     # Deprecated properties
     strides = unsupported_property('strides', deprecated=True)
@@ -148,7 +141,6 @@ class _MissingPandasLikeMultiIndex(object):
     equal_levels = unsupported_function('equal_levels')
     equals = unsupported_function('equals')
     factorize = unsupported_function('factorize')
-    fillna = unsupported_function('fillna')
     format = unsupported_function('format')
     get_indexer = unsupported_function('get_indexer')
     get_indexer_for = unsupported_function('get_indexer_for')
@@ -171,8 +163,6 @@ class _MissingPandasLikeMultiIndex(object):
     is_type_compatible = unsupported_function('is_type_compatible')
     join = unsupported_function('join')
     map = unsupported_function('map')
-    max = unsupported_function('max')
-    min = unsupported_function('min')
     nunique = unsupported_function('nunique')
     putmask = unsupported_function('putmask')
     ravel = unsupported_function('ravel')
@@ -198,7 +188,6 @@ class _MissingPandasLikeMultiIndex(object):
     to_native_types = unsupported_function('to_native_types')
     truncate = unsupported_function('truncate')
     union = unsupported_function('union')
-    value_counts = unsupported_function('value_counts')
     view = unsupported_function('view')
     where = unsupported_function('where')
 

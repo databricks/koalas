@@ -21,6 +21,7 @@ import warnings
 from collections import Counter
 from collections.abc import Iterable
 from distutils.version import LooseVersion
+from functools import reduce
 
 import numpy as np
 import pandas as pd
@@ -1261,16 +1262,31 @@ class _Frame(object):
         from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 
         df_or_s = self
-        if isinstance(by, str):
+        if isinstance(by, DataFrame):
+            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
+        elif isinstance(by, str):
+            if isinstance(df_or_s, Series):
+                raise KeyError(by)
             by = [(by,)]
         elif isinstance(by, tuple):
+            if isinstance(df_or_s, Series):
+                for key in by:
+                    if isinstance(key, str):
+                        raise KeyError(key)
+            for key in by:
+                if isinstance(key, DataFrame):
+                    raise ValueError("Grouper for '{}' not 1-dimensional".format(type(key)))
             by = [by]
         elif isinstance(by, Series):
             by = [by]
         elif isinstance(by, Iterable):
+            if isinstance(df_or_s, Series):
+                for key in by:
+                    if isinstance(key, str):
+                        raise KeyError(key)
             by = [key if isinstance(key, (tuple, Series)) else (key,) for key in by]
         else:
-            raise ValueError('Not a valid index: TODO')
+            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
         if not len(by):
             raise ValueError('No group keys passed!')
         if isinstance(df_or_s, DataFrame):
@@ -1327,6 +1343,97 @@ class _Frame(object):
             raise TypeError('bool() expects DataFrame or Series; however, '
                             'got [%s]' % (self,))
         return df.head(2)._to_internal_pandas().bool()
+
+    def first_valid_index(self):
+        """
+        Retrieves the index of the first valid value.
+
+        Returns
+        -------
+        idx_first_valid : type of index
+
+        Examples
+        --------
+
+        Support for DataFrame
+
+        >>> kdf = ks.DataFrame({'a': [None, 2, 3, 2],
+        ...                     'b': [None, 2.0, 3.0, 1.0],
+        ...                     'c': [None, 200, 400, 200]},
+        ...                     index=['Q', 'W', 'E', 'R'])
+        >>> kdf
+             a    b      c
+        Q  NaN  NaN    NaN
+        W  2.0  2.0  200.0
+        E  3.0  3.0  400.0
+        R  2.0  1.0  200.0
+
+        >>> kdf.first_valid_index()
+        'W'
+
+        Support for MultiIndex columns
+
+        >>> kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> kdf
+             a    b      c
+             x    y      z
+        Q  NaN  NaN    NaN
+        W  2.0  2.0  200.0
+        E  3.0  3.0  400.0
+        R  2.0  1.0  200.0
+
+        >>> kdf.first_valid_index()
+        'W'
+
+        Support for Series.
+
+        >>> s = ks.Series([None, None, 3, 4, 5], index=[100, 200, 300, 400, 500])
+        >>> s
+        100    NaN
+        200    NaN
+        300    3.0
+        400    4.0
+        500    5.0
+        Name: 0, dtype: float64
+
+        >>> s.first_valid_index()
+        300
+
+        Support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([None, None, None, None, 250, 1.5, 320, 1, 0.3], index=midx)
+        >>> s
+        lama    speed       NaN
+                weight      NaN
+                length      NaN
+        cow     speed       NaN
+                weight    250.0
+                length      1.5
+        falcon  speed     320.0
+                weight      1.0
+                length      0.3
+        Name: 0, dtype: float64
+
+        >>> s.first_valid_index()
+        ('cow', 'weight')
+        """
+        sdf = self._internal.sdf
+        column_scols = self._internal.column_scols
+        cond = reduce(lambda x, y: x & y,
+                      map(lambda x: x.isNotNull(), column_scols))
+
+        first_valid_row = sdf.where(cond).first()
+        first_valid_idx = tuple(first_valid_row[idx_col]
+                                for idx_col in self._internal.index_columns)
+
+        if len(first_valid_idx) == 1:
+            first_valid_idx = first_valid_idx[0]
+
+        return first_valid_idx
 
     def median(self, accuracy=10000):
         """

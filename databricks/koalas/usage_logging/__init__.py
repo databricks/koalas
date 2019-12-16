@@ -173,6 +173,8 @@ def _wrap_property(class_name, property_name, prop, logger):
         finally:
             _local.logging = False
 
+    wrapper.__doc__ = prop.__doc__
+
     if prop.fset is not None:
         wrapper = wrapper.setter(_wrap_function(class_name, prop.fset.__name__, prop.fset, logger))
 

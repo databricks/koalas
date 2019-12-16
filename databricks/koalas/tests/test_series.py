@@ -37,16 +37,6 @@ from databricks.koalas.config import set_option, reset_option
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
-    @classmethod
-    def setUpClass(cls):
-        super(SeriesTest, cls).setUpClass()
-        set_option("compute.ops_on_diff_frames", True)
-
-    @classmethod
-    def tearDownClass(cls):
-        reset_option("compute.ops_on_diff_frames")
-        super(SeriesTest, cls).tearDownClass()
-
     @property
     def pser(self):
         return pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
@@ -660,6 +650,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "an empty sequence"):
             kser.idxmax()
 
+        pser = pd.Series([1, 100, None, 100, 1, 100], index=[10, 3, 5, 2, 1, 8])
+        kser = ks.Series(pser)
+
+        self.assertEqual(kser.idxmax(), pser.idxmax())
+        self.assertEqual(repr(kser.idxmax(skipna=False)), repr(pser.idxmax(skipna=False)))
+
     def test_idxmin(self):
         pser = pd.Series(data=[1, 4, 5], index=['A', 'B', 'C'])
         kser = ks.Series(pser)
@@ -678,6 +674,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([])
         with self.assertRaisesRegex(ValueError, "an empty sequence"):
             kser.idxmin()
+
+        pser = pd.Series([1, 100, None, 100, 1, 100], index=[10, 3, 5, 2, 1, 8])
+        kser = ks.Series(pser)
+
+        self.assertEqual(kser.idxmin(), pser.idxmin())
+        self.assertEqual(repr(kser.idxmin(skipna=False)), repr(pser.idxmin(skipna=False)))
 
     def test_shift(self):
         pser = pd.Series([10, 20, 15, 30, 45], name='x')
@@ -819,37 +821,17 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_where(self):
         pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
-        pser2 = pd.Series([100, 200, 300, 400, 500], name=0)
         kser1 = ks.from_pandas(pser1)
-        kser2 = ks.from_pandas(pser2)
 
-        self.assert_eq(repr(pser1.where(pser2 > 100)),
-                       repr(kser1.where(kser2 > 100).sort_index()))
-
-        pser1 = pd.Series([-1, -2, -3, -4, -5], name=0)
-        pser2 = pd.Series([-100, -200, -300, -400, -500], name=0)
-        kser1 = ks.from_pandas(pser1)
-        kser2 = ks.from_pandas(pser2)
-
-        self.assert_eq(repr(pser1.where(pser2 < -250)),
-                       repr(kser1.where(kser2 < -250).sort_index()))
+        self.assert_eq(repr(pser1.where(pser1 > 3)),
+                       repr(kser1.where(kser1 > 3).sort_index()))
 
     def test_mask(self):
         pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
-        pser2 = pd.Series([100, 200, 300, 400, 500], name=0)
         kser1 = ks.from_pandas(pser1)
-        kser2 = ks.from_pandas(pser2)
 
-        self.assert_eq(repr(pser1.mask(pser2 > 100)),
-                       repr(kser1.mask(kser2 > 100).sort_index()))
-
-        pser1 = pd.Series([-1, -2, -3, -4, -5], name=0)
-        pser2 = pd.Series([-100, -200, -300, -400, -500], name=0)
-        kser1 = ks.from_pandas(pser1)
-        kser2 = ks.from_pandas(pser2)
-
-        self.assert_eq(repr(pser1.mask(pser2 < -250)),
-                       repr(kser1.mask(kser2 < -250).sort_index()))
+        self.assert_eq(repr(pser1.mask(pser1 > 3)),
+                       repr(kser1.mask(kser1 > 3).sort_index()))
 
     def test_truncate(self):
         pser1 = pd.Series([10, 20, 30, 40, 50, 60, 70], index=[1, 2, 3, 4, 5, 6, 7])
@@ -881,6 +863,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser['A'], pser['A'])
         self.assert_eq(kser['B'], pser['B'])
+        self.assert_eq(kser[kser > 15], pser[pser > 15])
 
         # for MultiIndex
         midx = pd.MultiIndex([['a', 'b', 'c'],
@@ -895,6 +878,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser['a'], pser['a'])
         self.assert_eq(kser['a', 'lama'], pser['a', 'lama'])
+        self.assert_eq(kser[kser > 1.5], pser[pser > 1.5])
 
         msg = r"'Key length \(4\) exceeds index depth \(3\)'"
         with self.assertRaisesRegex(KeyError, msg):
@@ -909,3 +893,48 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = kser.to_pandas()
 
         self.assert_eq(kser.keys(), pser.keys())
+
+    def test_index(self):
+        # to check setting name of Index properly.
+        idx = pd.Index([1, 2, 3, 4, 5, 6, 7, 8, 9])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=idx)
+        pser = kser.to_pandas()
+
+        kser.name = 'koalas'
+        pser.name = 'koalas'
+        self.assert_eq(kser.index.name, pser.index.name)
+
+        # for check setting names of MultiIndex properly.
+        kser.names = ['hello', 'koalas']
+        pser.names = ['hello', 'koalas']
+        self.assert_eq(kser.index.names, pser.index.names)
+
+    def test_pct_change(self):
+        kser = ks.Series([90, 91, 85], index=[2, 4, 1])
+        pser = kser.to_pandas()
+
+        self.assert_eq(kser.pct_change(periods=-1),
+                       pser.pct_change(periods=-1), almost=True)
+        self.assert_eq(kser.pct_change(periods=-100000000),
+                       pser.pct_change(periods=-100000000), almost=True)
+        self.assert_eq(kser.pct_change(periods=100000000),
+                       pser.pct_change(periods=100000000), almost=True)
+
+        # for MultiIndex
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(kser.pct_change(),
+                       pser.pct_change(), almost=True)
+        self.assert_eq(kser.pct_change(periods=2),
+                       pser.pct_change(periods=2), almost=True)
+        self.assert_eq(kser.pct_change(periods=-1),
+                       pser.pct_change(periods=-1), almost=True)
+        self.assert_eq(kser.pct_change(periods=-100000000),
+                       pser.pct_change(periods=-100000000), almost=True)
+        self.assert_eq(kser.pct_change(periods=100000000),
+                       pser.pct_change(periods=100000000), almost=True)
