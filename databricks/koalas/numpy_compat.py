@@ -17,7 +17,7 @@ from collections import OrderedDict
 from typing import Callable, Any
 
 import numpy as np
-from pyspark.sql import functions as F
+from pyspark.sql import functions as F, Column
 from pyspark.sql.types import DoubleType, LongType, BooleanType
 
 
@@ -180,19 +180,23 @@ def maybe_dispatch_ufunc_to_spark_func(
     ser_or_index, ufunc: Callable, method: str, *inputs, **kwargs: Any
 ):
     from databricks.koalas import Series
+    from databricks.koalas.base import _column_op
 
     op_name = ufunc.__name__
 
     if (method == "__call__"
             and (op_name in unary_np_spark_mappings or op_name in binary_np_spark_mappings)
             and kwargs.get("out") is None):
-        inputs = [  # type: ignore
-            inp._scol if isinstance(inp, Series) else F.lit(inp) for inp in inputs]  # type: ignore
 
         np_spark_map_func = (
             unary_np_spark_mappings.get(op_name)
             or binary_np_spark_mappings.get(op_name))
 
-        return ser_or_index._with_new_scol(np_spark_map_func(*inputs))  # type: ignore
+        def convert_arguments(*args):
+            args = [  # type: ignore
+                F.lit(inp) if not isinstance(inp, Column) else inp for inp in args]  # type: ignore
+            return np_spark_map_func(*args)
+
+        return _column_op(convert_arguments)(*inputs)  # type: ignore
     else:
         return NotImplemented
