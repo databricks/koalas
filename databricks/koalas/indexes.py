@@ -428,6 +428,34 @@ class Index(IndexOpsMixin):
         result = DataFrame(self._kdf._internal.copy(sdf=sdf)).index
         return result
 
+    # TODO: ADD keep parameter
+    def drop_duplicates(self):
+        """
+        Return Index with duplicate values removed.
+
+        Returns
+        -------
+        deduplicated : Index
+
+        See Also
+        --------
+        Series.drop_duplicates : Equivalent method on Series.
+        DataFrame.drop_duplicates : Equivalent method on DataFrame.
+
+        Examples
+        --------
+        Generate an pandas.Index with duplicate values.
+
+        >>> idx = ks.Index(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'])
+
+        >>> idx.drop_duplicates() # doctest: +SKIP
+        Index(['lama', 'cow', 'beetle', 'hippo'], dtype='object')
+        """
+        sdf = self._internal.sdf.select(self._internal.index_scols).drop_duplicates()
+        internal = _InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)
+        result = DataFrame(internal).index
+        return result
+
     def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
         """
         Create a Series with both index and values equal to the index keys
