@@ -334,3 +334,51 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
             kidx.fillna([1, 2])
+
+    def test_index_sort(self):
+        idx = ks.Index([1, 2, 3, 4, 5])
+        midx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
+
+        with self.assertRaisesRegex(
+                TypeError,
+                "cannot sort an Index object in-place, use sort_values instead"):
+            idx.sort()
+        with self.assertRaisesRegex(
+                TypeError,
+                "cannot sort an Index object in-place, use sort_values instead"):
+            midx.sort()
+
+    def test_multiindex_isna(self):
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "isna is not defined for MultiIndex"):
+            kidx.isna()
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "isna is not defined for MultiIndex"):
+            kidx.isnull()
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "notna is not defined for MultiIndex"):
+            kidx.notna()
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "notna is not defined for MultiIndex"):
+            kidx.notnull()
+
+    def test_multiindex_rename(self):
+        pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        pidx = pidx.rename(list('ABC'))
+        kidx = kidx.rename(list('ABC'))
+        self.assert_eq(pidx, kidx)
+
+        pidx = pidx.rename(['my', 'name', 'is'])
+        kidx = kidx.rename(['my', 'name', 'is'])
+        self.assert_eq(pidx, kidx)

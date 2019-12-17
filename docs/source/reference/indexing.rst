@@ -142,6 +142,7 @@ MultiIndex Modifying and computations
    :toctree: api/
 
    MultiIndex.copy
+   MultiIndex.rename
    MultiIndex.min
    MultiIndex.max
    MultiIndex.value_counts
