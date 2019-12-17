@@ -115,7 +115,7 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
         # Test only top 5 for now. 'compute.ops_on_diff_frames' option increases too much time.
         try:
             set_option('compute.ops_on_diff_frames', True)
-            for np_name, spark_func in list(binary_np_spark_mappings.items())[:5]:
+            for np_name, spark_func in list(binary_np_spark_mappings.items()):
                 np_func = getattr(np, np_name)
                 if np_name not in self.blacklist:
                     try:
@@ -161,7 +161,7 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
         # Test only top 5 for now. 'compute.ops_on_diff_frames' option increases too much time.
         try:
             set_option('compute.ops_on_diff_frames', True)
-            for np_name, spark_func in list(binary_np_spark_mappings.items())[:5]:
+            for np_name, spark_func in list(binary_np_spark_mappings.items()):
                 np_func = getattr(np, np_name)
                 if np_name not in self.blacklist:
                     try:
