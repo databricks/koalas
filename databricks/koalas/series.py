@@ -4194,6 +4194,70 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol((scol - prev_row) / prev_row)
 
+    def dot(self, other):
+        """
+        Compute the dot product between the Series and the columns of other.
+
+        This method computes the dot product between the Series and another
+        one, or the Series and each columns of a DataFrame.
+
+        It can also be called using `self @ other` in Python >= 3.5.
+
+        Parameters
+        ----------
+        other : Series, DataFrame.
+            The other object to compute the dot product with its columns.
+
+        Returns
+        -------
+        scalar, Series
+            Return the dot product of the Series and other if other is a
+            Series, the Series of the dot product of Series and each rows of
+            other if other is a DataFrame.
+
+        Notes
+        -----
+        The Series and other has to share the same index if other is a Series
+        or a DataFrame.
+
+        Examples
+        --------
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> s = ks.Series([0, 1, 2, 3])
+        >>> other = ks.Series([-1, 2, -3, 4])
+
+        >>> s.dot(other)
+        8
+
+        >>> s @ other
+        8
+
+        >>> df = ks.DataFrame([[0, 1], [-2, 3], [4, -5], [6, 7]])
+        >>> s.dot(df)
+        0    24
+        1    14
+        Name: 0, dtype: int64
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        if repr(self.index) != repr(other.index):
+            raise ValueError("matrices are not aligned")
+
+        if isinstance(other, DataFrame):
+            idx_val_dict = {col_name: (self * other[col_name]).sum() for col_name in other}
+            result = Series(idx_val_dict)
+        elif isinstance(other, Series):
+            result = (self * other).sum()
+
+        return result
+
+    def __matmul__(self, other):
+        """
+        Matrix multiplication using binary `@` operator in Python>=3.5.
+        """
+        return self.dot(other)
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns

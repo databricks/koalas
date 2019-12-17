@@ -574,6 +574,44 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf["c"] = 1
         self.assert_eq(repr(kdf), repr(pdf))
 
+    def test_dot(self):
+        kser = ks.Series([90, 91, 85], index=[2, 4, 1])
+        pser = kser.to_pandas()
+        kser_other = ks.Series([90, 91, 85], index=[2, 4, 1])
+        pser_other = kser_other.to_pandas()
+
+        self.assert_eq(kser.dot(kser_other), pser.dot(pser_other))
+
+        kser_other = ks.Series([90, 91, 85], index=[1, 2, 4])
+        with self.assertRaisesRegex(ValueError, "matrices are not aligned"):
+            kser.dot(kser_other)
+
+        kser_other = ks.Series([90, 91, 85, 100], index=[2, 4, 1, 0])
+        with self.assertRaisesRegex(ValueError, "matrices are not aligned"):
+            kser.dot(kser_other)
+
+        # with DataFrame
+        kdf = ks.DataFrame([[0, 1], [-2, 3], [4, -5]], index=[2, 4, 1])
+        pdf = kdf.to_pandas()
+
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+
+        kdf = ks.DataFrame([[0, 1], [-2, 3], [4, -5]], index=[1, 2, 4])
+        with self.assertRaisesRegex(ValueError, "matrices are not aligned"):
+            kser.dot(kdf)
+
+        # for MultiIndex
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        pser = kser.to_pandas()
+        kser_other = ks.Series([-450, 20, 12, -30, -250, 15, -320, 100, 3], index=midx)
+        pser_other = kser_other.to_pandas()
+
+        self.assert_eq(kser.dot(kser_other), pser.dot(pser_other))
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
