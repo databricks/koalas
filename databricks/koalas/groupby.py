@@ -1453,6 +1453,7 @@ class GroupBy(object):
         window = Window.partitionBy([s._scol for s in groupkeys]) \
                        .orderBy(F.monotonically_increasing_id())
         sdf = sdf.withColumn(tmp_col, F.row_number().over(window)).filter(F.col(tmp_col) <= n)
+        sdf = sdf.select(self._kdf._internal.scols)
 
         if isinstance(self, DataFrameGroupBy):
             internal = self._kdf._internal.copy(
