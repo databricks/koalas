@@ -4200,12 +4200,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         # address temporal column to keep natural order.
         if '__natural_order__' in self._kdf.columns:
-            # if given series comes from DataFrame, just use existing `self._kdf`
-            kdf = self._kdf
+            # if given series comes from DataFrame, use `sdf` from `self._kdf`
+            sdf = self._kdf._internal._sdf
         else:
-            # else, make copy of `self._kdf` and make a new temporal column on it
-            kdf = self._kdf.copy()
-            kdf['__natural_order__'] = F.monotonically_increasing_id()
+            # else, use `sdf` from `self._internal` and add temporal column to keep natural order
+            sdf = self._internal.sdf
+            sdf = sdf.withColumn('__natural_order__', F.monotonically_increasing_id())
 
         window = Window.orderBy(
             '__natural_order__').partitionBy(*part_cols).rowsBetween(
@@ -4283,7 +4283,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if func.__name__ == "cumprod":
             scol = F.exp(scol)
 
-        internal = self._internal.copy(sdf=kdf._internal.sdf, scol=scol)
+        internal = self._internal.copy(sdf=sdf, scol=scol)
 
         return _col(DataFrame(internal))
 
