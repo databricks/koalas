@@ -4199,12 +4199,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         index_columns = self._internal.index_columns
 
         # address temporal column to keep natural order.
-        if '__natural_order__' in self._kdf.columns:
-            # if given series comes from DataFrame, use `sdf` from `self._kdf`
-            sdf = self._kdf._internal._sdf
-        else:
-            # else, use `sdf` from `self._internal` and add temporal column to keep natural order
-            sdf = self._internal.sdf
+        sdf = self._internal.sdf
+        if '__natural_order__' not in sdf.columns:
             sdf = sdf.withColumn('__natural_order__', F.monotonically_increasing_id())
 
         window = Window.orderBy(
