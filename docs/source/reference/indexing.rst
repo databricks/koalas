@@ -42,7 +42,6 @@ Modifying and computations
    Index.all
    Index.any
    Index.copy
-   Index.duplicated
    Index.is_boolean
    Index.is_categorical
    Index.is_floating

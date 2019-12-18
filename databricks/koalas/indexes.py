@@ -29,7 +29,6 @@ from pandas.io.formats.printing import pprint_thing
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
@@ -38,8 +37,8 @@ from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
-from databricks.koalas.series import Series, _col
-from databricks.koalas.utils import name_like_string, scol_for
+from databricks.koalas.series import Series
+from databricks.koalas.utils import name_like_string
 from databricks.koalas.internal import _InternalFrame
 
 
