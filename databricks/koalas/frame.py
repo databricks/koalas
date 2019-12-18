@@ -26,7 +26,7 @@ import json
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
-from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable, Dict
+from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable, Dict, Callable
 
 import numpy as np
 import pandas as pd
@@ -42,13 +42,12 @@ from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType)
-from pyspark.sql.utils import AnalysisException
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame
-from databricks.koalas.internal import _InternalFrame, IndexMap, SPARK_INDEX_NAME_FORMAT
+from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, name_like_string, scol_for, validate_axis
@@ -108,6 +107,12 @@ rectangle       5      361
 circle          1      361
 triangle        4      181
 rectangle       5      361
+
+>>> df.add(df)
+           angles  degrees
+circle          0      720
+triangle        6      360
+rectangle       8      720
 
 >>> df.radd(1)
            angles  degrees
@@ -500,7 +505,11 @@ class DataFrame(_Frame, Generic[T]):
             # DataFrame and Series
             applied = []
             for idx in self._internal.column_index:
-                applied.append(getattr(self[idx], op)(other))
+                if isinstance(other, DataFrame):
+                    argument = other[idx]
+                else:
+                    argument = other
+                applied.append(getattr(self[idx], op)(argument))
 
             sdf = self._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
@@ -7820,6 +7829,325 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return self.columns
 
+    def pct_change(self, periods=1):
+        """
+        Percentage change between the current and a prior element.
+
+        .. note:: the current implementation of this API uses Spark's Window without
+            specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        periods : int, default 1
+            Periods to shift for forming percent change.
+
+        Returns
+        -------
+        DataFrame
+
+        Examples
+        --------
+        Percentage change in French franc, Deutsche Mark, and Italian lira
+        from 1980-01-01 to 1980-03-01.
+
+        >>> df = ks.DataFrame({
+        ...     'FR': [4.0405, 4.0963, 4.3149],
+        ...     'GR': [1.7246, 1.7482, 1.8519],
+        ...     'IT': [804.74, 810.01, 860.13]},
+        ...     index=['1980-01-01', '1980-02-01', '1980-03-01'])
+        >>> df
+                        FR      GR      IT
+        1980-01-01  4.0405  1.7246  804.74
+        1980-02-01  4.0963  1.7482  810.01
+        1980-03-01  4.3149  1.8519  860.13
+
+        >>> df.pct_change()
+                          FR        GR        IT
+        1980-01-01       NaN       NaN       NaN
+        1980-02-01  0.013810  0.013684  0.006549
+        1980-03-01  0.053365  0.059318  0.061876
+
+        You can set periods to shift for forming percent change
+
+        >>> df.pct_change(2)
+                          FR        GR       IT
+        1980-01-01       NaN       NaN      NaN
+        1980-02-01       NaN       NaN      NaN
+        1980-03-01  0.067912  0.073814  0.06883
+        """
+        sdf = self._sdf
+        window = Window.orderBy(self._internal.index_columns).rowsBetween(-periods, -periods)
+
+        for column_name in self._internal.data_columns:
+            prev_row = F.lag(F.col(column_name), periods).over(window)
+            sdf = sdf.withColumn(column_name, (F.col(column_name) - prev_row) / prev_row)
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            column_scols=[scol_for(sdf, col) for col in self._internal.data_columns]
+        )
+
+        return DataFrame(internal)
+
+    # TODO: axis = 1
+    def idxmax(self, axis=0):
+        """
+        Return index of first occurrence of maximum over requested axis.
+        NA/null values are excluded.
+
+        .. note:: This API collect all rows with maximum value using `to_pandas()`
+            because we suppose the number of rows with max values are usually small in general.
+
+        Parameters
+        ----------
+        axis : 0 or 'index'
+            Can only be set to 0 at the moment.
+
+        Returns
+        -------
+        Series
+
+        See Also
+        --------
+        Series.idxmax
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+        ...                     'b': [4.0, 2.0, 3.0, 1.0],
+        ...                     'c': [300, 200, 400, 200]})
+        >>> kdf
+           a    b    c
+        0  1  4.0  300
+        1  2  2.0  200
+        2  3  3.0  400
+        3  2  1.0  200
+
+        >>> kdf.idxmax()
+        a    2
+        b    0
+        c    2
+        Name: 0, dtype: int64
+
+        For Multi-column Index
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+        ...                     'b': [4.0, 2.0, 3.0, 1.0],
+        ...                     'c': [300, 200, 400, 200]})
+        >>> kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> kdf
+           a    b    c
+           x    y    z
+        0  1  4.0  300
+        1  2  2.0  200
+        2  3  3.0  400
+        3  2  1.0  200
+
+        >>> kdf.idxmax().sort_index()
+        a  x    2
+        b  y    0
+        c  z    2
+        Name: 0, dtype: int64
+        """
+        from databricks.koalas.series import Series
+        sdf = self._sdf
+        max_cols = map(lambda x: F.max(x).alias(x), self._internal.data_columns)
+        sdf_max = sdf.select(*max_cols)
+        # `sdf_max` looks like below
+        # +------+------+------+
+        # |(a, x)|(b, y)|(c, z)|
+        # +------+------+------+
+        # |     3|   4.0|   400|
+        # +------+------+------+
+
+        conds = (F.col(column_name) == max_val
+                 for column_name, max_val in zip(sdf_max.columns, sdf_max.head()))
+        cond = reduce(lambda x, y: x | y, conds)
+
+        kdf = DataFrame(self._internal.copy(sdf=sdf.where(cond)))
+        pdf = kdf.to_pandas()
+
+        return ks.from_pandas(pdf.idxmax())
+
+    # TODO: axis = 1
+    def idxmin(self, axis=0):
+        """
+        Return index of first occurrence of minimum over requested axis.
+        NA/null values are excluded.
+
+        .. note:: This API collect all rows with minimum value using `to_pandas()`
+            because we suppose the number of rows with min values are usually small in general.
+
+        Parameters
+        ----------
+        axis : 0 or 'index'
+            Can only be set to 0 at the moment.
+
+        Returns
+        -------
+        Series
+
+        See Also
+        --------
+        Series.idxmin
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+        ...                     'b': [4.0, 2.0, 3.0, 1.0],
+        ...                     'c': [300, 200, 400, 200]})
+        >>> kdf
+           a    b    c
+        0  1  4.0  300
+        1  2  2.0  200
+        2  3  3.0  400
+        3  2  1.0  200
+
+        >>> kdf.idxmin()
+        a    0
+        b    3
+        c    1
+        Name: 0, dtype: int64
+
+        For Multi-column Index
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, 2],
+        ...                     'b': [4.0, 2.0, 3.0, 1.0],
+        ...                     'c': [300, 200, 400, 200]})
+        >>> kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> kdf
+           a    b    c
+           x    y    z
+        0  1  4.0  300
+        1  2  2.0  200
+        2  3  3.0  400
+        3  2  1.0  200
+
+        >>> kdf.idxmin().sort_index()
+        a  x    0
+        b  y    3
+        c  z    1
+        Name: 0, dtype: int64
+        """
+        from databricks.koalas.series import Series
+        sdf = self._sdf
+        min_cols = map(lambda x: F.min(x).alias(x), self._internal.data_columns)
+        sdf_min = sdf.select(*min_cols)
+
+        conds = (F.col(column_name) == min_val
+                 for column_name, min_val in zip(sdf_min.columns, sdf_min.head()))
+        cond = reduce(lambda x, y: x | y, conds)
+
+        kdf = DataFrame(self._internal.copy(sdf=sdf.where(cond)))
+        pdf = kdf.to_pandas()
+
+        return ks.from_pandas(pdf.idxmin())
+
+    def info(
+        self, verbose=None, buf=None, max_cols=None, null_counts=None
+    ):
+        """
+        Print a concise summary of a DataFrame.
+
+        This method prints information about a DataFrame including
+        the index dtype and column dtypes, non-null values and memory usage.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Whether to print the full summary.
+        buf : writable buffer, defaults to sys.stdout
+            Where to send the output. By default, the output is printed to
+            sys.stdout. Pass a writable buffer if you need to further process
+            the output.
+        max_cols : int, optional
+            When to switch from the verbose to the truncated output. If the
+            DataFrame has more than `max_cols` columns, the truncated output
+            is used.
+        null_counts : bool, optional
+            Whether to show the non-null counts.
+
+        Returns
+        -------
+        None
+            This method prints a summary of a DataFrame and returns None.
+
+        See Also
+        --------
+        DataFrame.describe: Generate descriptive statistics of DataFrame
+            columns.
+
+        Examples
+        --------
+        >>> int_values = [1, 2, 3, 4, 5]
+        >>> text_values = ['alpha', 'beta', 'gamma', 'delta', 'epsilon']
+        >>> float_values = [0.0, 0.25, 0.5, 0.75, 1.0]
+        >>> df = ks.DataFrame(
+        ...     {"int_col": int_values, "text_col": text_values, "float_col": float_values},
+        ...     columns=['int_col', 'text_col', 'float_col'])
+        >>> df
+           int_col text_col  float_col
+        0        1    alpha       0.00
+        1        2     beta       0.25
+        2        3    gamma       0.50
+        3        4    delta       0.75
+        4        5  epsilon       1.00
+
+        Prints information of all columns:
+
+        >>> df.info(verbose=True)  # doctest: +SKIP
+        <class 'databricks.koalas.frame.DataFrame'>
+        Index: 5 entries, 0 to 4
+        Data columns (total 3 columns):
+        int_col      5 non-null int64
+        text_col     5 non-null object
+        float_col    5 non-null float64
+        dtypes: float64(1), int64(1), object(1)
+
+        Prints a summary of columns count and its dtypes but not per column
+        information:
+
+        >>> df.info(verbose=False)  # doctest: +SKIP
+        <class 'databricks.koalas.frame.DataFrame'>
+        Index: 5 entries, 0 to 4
+        Columns: 3 entries, int_col to float_col
+        dtypes: float64(1), int64(1), object(1)
+
+        Pipe output of DataFrame.info to buffer instead of sys.stdout, get
+        buffer content and writes to a text file:
+
+        >>> import io
+        >>> buffer = io.StringIO()
+        >>> df.info(buf=buffer)
+        >>> s = buffer.getvalue()
+        >>> with open('%s/info.txt' % path, "w",
+        ...           encoding="utf-8") as f:
+        ...     _ = f.write(s)
+        >>> with open('%s/info.txt' % path) as f:
+        ...     f.readlines()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+        [...databricks.koalas.frame.DataFrame...,
+        'Index: 5 entries, 0 to 4\\n',
+        'Data columns (total 3 columns):\\n',
+        'int_col      5 non-null int64\\n',
+        'text_col     5 non-null object\\n',
+        'float_col    5 non-null float64\\n',
+        'dtypes: float64(1), int64(1), object(1)']
+        """
+        # To avoid pandas' existing config affects Koalas.
+        # TODO: should we have corresponding Koalas configs?
+        with pd.option_context(
+                'display.max_info_columns', sys.maxsize,
+                'display.max_info_rows', sys.maxsize):
+            try:
+                self._data = self  # hack to use pandas' info as is.
+                return pd.DataFrame.info(
+                    self, verbose=verbose, buf=buf, max_cols=max_cols,
+                    memory_usage=False, null_counts=null_counts)
+            finally:
+                del self._data
+
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
     def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000):
         """
@@ -7971,61 +8299,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         self._internal.spark_internal_df.explain(extended)
 
-    def _get_from_multiindex_column(self, key):
-        """ Select columns from multi-index columns.
-
-        :param key: the multi-index column keys represented by tuple
-        :return: DataFrame or Series
-        """
-        from databricks.koalas.series import Series
-        assert isinstance(key, tuple)
-        indexes = [(idx, idx) for idx in self._internal.column_index]
-        for k in key:
-            indexes = [(index, idx[1:]) for index, idx in indexes if idx[0] == k]
-            if len(indexes) == 0:
-                raise KeyError(k)
-        recursive = False
-        if all(len(idx) > 0 and idx[0] == '' for _, idx in indexes):
-            # If the head is '', drill down recursively.
-            recursive = True
-            for i, (col, idx) in enumerate(indexes):
-                indexes[i] = (col, tuple([str(key), *idx[1:]]))
-
-        column_index_names = None
-        if self._internal.column_index_names is not None:
-            # Manage column index names
-            level = column_index_level([idx for _, idx in indexes])
-            column_index_names = self._internal.column_index_names[-level:]
-
-        if all(len(idx) == 0 for _, idx in indexes):
-            try:
-                idxes = set(idx for idx, _ in indexes)
-                assert len(idxes) == 1
-                index = list(idxes)[0]
-                kdf_or_ser = \
-                    Series(self._internal.copy(scol=self._internal.scol_for(index),
-                                               column_index=[index]),
-                           anchor=self)
-            except AnalysisException:
-                raise KeyError(key)
-        else:
-            kdf_or_ser = DataFrame(self._internal.copy(
-                column_index=[idx for _, idx in indexes],
-                column_scols=[self._internal.scol_for(idx) for idx, _ in indexes],
-                column_index_names=column_index_names))
-
-        if recursive:
-            kdf_or_ser = kdf_or_ser._get_from_multiindex_column((str(key),))
-        return kdf_or_ser
-
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
         if key is None:
             raise KeyError("none key")
-        if isinstance(key, str):
-            return self._get_from_multiindex_column((key,))
-        if isinstance(key, tuple):
-            return self._get_from_multiindex_column(key)
+        if isinstance(key, (str, tuple, list)):
+            return self.loc[:, key]
         elif np.isscalar(key):
             raise NotImplementedError(key)
         elif isinstance(key, slice):
@@ -8033,8 +8312,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if isinstance(key, (pd.Series, np.ndarray, pd.Index)):
             raise NotImplementedError(key)
-        if isinstance(key, list):
-            return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
             return Series(self._internal.copy(scol=self._internal.scol_for(key)), anchor=self)
@@ -8165,7 +8442,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return partial(property_or_func, self)
 
         try:
-            return self._get_from_multiindex_column((key,))
+            return self.loc[:, key]
         except KeyError:
             raise AttributeError(
                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))
@@ -8179,6 +8456,46 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def __iter__(self):
         return iter(self.columns)
+
+    # NDArray Compat
+    def __array_ufunc__(self, ufunc: Callable, method: str, *inputs: Any, **kwargs: Any):
+        # TODO: is it possible to deduplicate it with '_map_series_op'?
+        if (all(isinstance(inp, DataFrame) for inp in inputs)
+                and any(inp is not inputs[0] for inp in inputs)):
+            # binary only
+            assert len(inputs) == 2
+            this = inputs[0]
+            that = inputs[1]
+            if this._internal.column_index_level != that._internal.column_index_level:
+                raise ValueError('cannot join with no overlapping index names')
+
+            # Different DataFrames
+            def apply_op(kdf, this_column_index, that_column_index):
+                for this_idx, that_idx in zip(this_column_index, that_column_index):
+                    yield (ufunc(kdf[this_idx], kdf[that_idx], **kwargs), this_idx)
+
+            return align_diff_frames(apply_op, this, that, fillna=True, how="full")
+        else:
+            # DataFrame and Series
+            applied = []
+            this = inputs[0]
+            assert all(inp is this for inp in inputs if isinstance(inp, DataFrame))
+
+            for idx in this._internal.column_index:
+                arguments = []
+                for inp in inputs:
+                    arguments.append(inp[idx] if isinstance(inp, DataFrame) else inp)
+                # both binary and unary.
+                applied.append(ufunc(*arguments, **kwargs))
+
+            sdf = this._sdf.select(
+                this._internal.index_scols + [c._scol for c in applied])
+            internal = this._internal.copy(sdf=sdf,
+                                           column_index=[c._internal.column_index[0]
+                                                         for c in applied],
+                                           column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                         for c in applied])
+            return DataFrame(internal)
 
     if sys.version_info >= (3, 7):
         def __class_getitem__(cls, params):
