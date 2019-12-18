@@ -1031,7 +1031,8 @@ class IndexOpsMixin(object):
         >>> idx.nunique(dropna=False)
         3
         """
-        return self._nunique(dropna, approx, rsd).collect()[0][0]
+        res = self._internal._sdf.select([self._nunique(dropna, approx, rsd)])
+        return res.collect()[0][0]
 
     def _nunique(self, dropna=True, approx=False, rsd=0.05):
         colname = self._internal.data_columns[0]
