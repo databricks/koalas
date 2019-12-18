@@ -588,48 +588,6 @@ class Index(IndexOpsMixin):
         kdf = DataFrame(internal)
         return Index(kdf) if type(self) == Index else MultiIndex(kdf)
 
-    def nunique(self, dropna=True):
-        """
-        Return number of unique elements in the object.
-
-        Excludes NA values by default.
-
-        Parameters
-        ----------
-        dropna : bool, default True
-            Don't include NaN in the count.
-
-        Returns
-        -------
-        int
-
-        See Also
-        --------
-        DataFrame.nunique: Method nunique for DataFrame.
-        Series.count: Count non-NA/null observations in the Series.
-
-        Examples
-        --------
-        >>> idx = ks.Index([1, 1, 2, None])
-        >>> idx
-        Float64Index([1.0, 1.0, 2.0, nan], dtype='float64')
-
-        >>> idx.nunique()
-        2
-
-        >>> idx.nunique(dropna=False)
-        3
-        """
-        index_scol = self._internal.index_scols[0]
-        sdf = self._internal._sdf
-        if dropna:
-            result = F.countDistinct(index_scol)
-        else:
-            result = (F.countDistinct(index_scol) +
-                      F.when(F.count(F.when(index_scol.isNull(), 1)
-                                     .otherwise(None)) >= 1, 1).otherwise(0))
-        return sdf.select([result]).collect()[0][0]
-
     def unique(self, level=None):
         """
         Return unique values in the index.
