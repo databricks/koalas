@@ -26,7 +26,7 @@ import json
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
-from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable, Dict
+from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable, Dict, Callable
 
 import numpy as np
 import pandas as pd
@@ -108,6 +108,12 @@ rectangle       5      361
 circle          1      361
 triangle        4      181
 rectangle       5      361
+
+>>> df.add(df)
+           angles  degrees
+circle          0      720
+triangle        6      360
+rectangle       8      720
 
 >>> df.radd(1)
            angles  degrees
@@ -500,7 +506,11 @@ class DataFrame(_Frame, Generic[T]):
             # DataFrame and Series
             applied = []
             for idx in self._internal.column_index:
-                applied.append(getattr(self[idx], op)(other))
+                if isinstance(other, DataFrame):
+                    argument = other[idx]
+                else:
+                    argument = other
+                applied.append(getattr(self[idx], op)(argument))
 
             sdf = self._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
@@ -8498,6 +8508,46 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def __iter__(self):
         return iter(self.columns)
+
+    # NDArray Compat
+    def __array_ufunc__(self, ufunc: Callable, method: str, *inputs: Any, **kwargs: Any):
+        # TODO: is it possible to deduplicate it with '_map_series_op'?
+        if (all(isinstance(inp, DataFrame) for inp in inputs)
+                and any(inp is not inputs[0] for inp in inputs)):
+            # binary only
+            assert len(inputs) == 2
+            this = inputs[0]
+            that = inputs[1]
+            if this._internal.column_index_level != that._internal.column_index_level:
+                raise ValueError('cannot join with no overlapping index names')
+
+            # Different DataFrames
+            def apply_op(kdf, this_column_index, that_column_index):
+                for this_idx, that_idx in zip(this_column_index, that_column_index):
+                    yield (ufunc(kdf[this_idx], kdf[that_idx], **kwargs), this_idx)
+
+            return align_diff_frames(apply_op, this, that, fillna=True, how="full")
+        else:
+            # DataFrame and Series
+            applied = []
+            this = inputs[0]
+            assert all(inp is this for inp in inputs if isinstance(inp, DataFrame))
+
+            for idx in this._internal.column_index:
+                arguments = []
+                for inp in inputs:
+                    arguments.append(inp[idx] if isinstance(inp, DataFrame) else inp)
+                # both binary and unary.
+                applied.append(ufunc(*arguments, **kwargs))
+
+            sdf = this._sdf.select(
+                this._internal.index_scols + [c._scol for c in applied])
+            internal = this._internal.copy(sdf=sdf,
+                                           column_index=[c._internal.column_index[0]
+                                                         for c in applied],
+                                           column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                         for c in applied])
+            return DataFrame(internal)
 
     if sys.version_info >= (3, 7):
         def __class_getitem__(cls, params):

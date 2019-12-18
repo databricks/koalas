@@ -49,6 +49,7 @@ Modifying and computations
    Index.is_interval
    Index.is_numeric
    Index.is_object
+   Index.drop_duplicates
    Index.min
    Index.max
    Index.rename
@@ -143,6 +144,7 @@ MultiIndex Modifying and computations
    :toctree: api/
 
    MultiIndex.copy
+   MultiIndex.rename
    MultiIndex.min
    MultiIndex.max
    MultiIndex.value_counts
