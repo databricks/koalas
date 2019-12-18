@@ -33,7 +33,6 @@ from databricks.koalas import Series
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
-from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.utils import default_session
 
 
