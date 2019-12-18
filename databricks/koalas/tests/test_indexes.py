@@ -405,4 +405,3 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pidx.rename(['my', 'name', 'is'])
         kidx = kidx.rename(['my', 'name', 'is'])
         self.assert_eq(pidx, kidx)
-
