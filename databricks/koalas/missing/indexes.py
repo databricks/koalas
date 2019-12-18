@@ -99,6 +99,9 @@ class _MissingPandasLikeIndex(object):
     get_values = unsupported_function('get_values', deprecated=True)
     item = unsupported_function('item', deprecated=True)
     contains = unsupported_function('contains', deprecated=True)
+    duplicated = unsupported_property(
+        'duplicated', reason="'duplicated' API returns np.ndarray and the data size is so large."
+                             "You can just use DataFrame.deduplicated instead")
 
     # Properties we won't support.
     values = common.values(unsupported_property)

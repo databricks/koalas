@@ -62,7 +62,6 @@ class _MissingPandasLikeSeries(object):
     divmod = unsupported_function('divmod')
     dot = unsupported_function('dot')
     droplevel = unsupported_function('droplevel')
-    duplicated = unsupported_function('duplicated')
     ewm = unsupported_function('ewm')
     factorize = unsupported_function('factorize')
     ffill = unsupported_function('ffill')
@@ -128,6 +127,9 @@ class _MissingPandasLikeSeries(object):
     ptp = unsupported_function('ptp', deprecated=True)
     argmax = unsupported_function('argmax', deprecated=True)
     argmin = unsupported_function('argmin', deprecated=True)
+    duplicated = unsupported_property(
+        'duplicated', reason="'duplicated' API returns np.ndarray and the data size is so large."
+                             "You can just use DataFrame.deduplicated instead")
 
     # Properties we won't support.
     values = common.values(unsupported_property)
