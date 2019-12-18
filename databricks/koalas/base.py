@@ -20,7 +20,9 @@ Base and utility classes for Koalas objects.
 
 from functools import wraps, partial
 from typing import Union, Callable, Any
+from distutils.version import LooseVersion
 
+import pyspark
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like
@@ -33,7 +35,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas import numpy_compat
 from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
-from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
+from databricks.koalas.utils import align_diff_series, scol_for, validate_axis, default_session
 from databricks.koalas.frame import DataFrame
 
 
@@ -947,15 +949,23 @@ class IndexOpsMixin(object):
         Name: koalas, dtype: int64
         """
         from databricks.koalas.series import Series, _col
+        from databricks.koalas.indexes import MultiIndex
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4") and \
+                default_session().conf.get("spark.sql.execution.arrow.enabled") == "true" and \
+                isinstance(self, MultiIndex):
+            raise RuntimeError("if you're using pyspark < 2.4, set conf "
+                               "'spark.sql.execution.arrow.enabled' to 'false' "
+                               "for using this function with MultiIndex")
         if bins is not None:
             raise NotImplementedError("value_counts currently does not support bins")
 
         if dropna:
-            sdf_dropna = self._internal._sdf.dropna()
+            sdf_dropna = self._internal._sdf.select(self._scol).dropna()
         else:
-            sdf_dropna = self._internal._sdf
+            sdf_dropna = self._internal._sdf.select(self._scol)
         index_name = SPARK_INDEX_NAME_FORMAT(0)
-        sdf = sdf_dropna.groupby(self._scol.alias(index_name)).count()
+        column_name = self._internal.data_columns[0]
+        sdf = sdf_dropna.groupby(scol_for(sdf_dropna, column_name).alias(index_name)).count()
         if sort:
             if ascending:
                 sdf = sdf.orderBy(F.col('count'))

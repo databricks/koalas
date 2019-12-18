@@ -24,6 +24,7 @@ from datetime import datetime, timedelta
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot as plt
+import pyspark
 import numpy as np
 import pandas as pd
 
@@ -33,6 +34,7 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.config import set_option, reset_option
+from databricks.koalas.utils import default_session
 
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
@@ -243,7 +245,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(ks.Series(range(100)).nunique(approx=True), 103)
         self.assertEqual(ks.Series(range(100)).nunique(approx=True, rsd=0.01), 100)
 
-    def test_value_counts(self):
+    def _test_value_counts(self):
+        # this is also containing test for Index & MultiIndex
         pser = pd.Series([1, 2, 1, 3, 3, np.nan, 1, 4], name="x")
         kser = ks.from_pandas(pser)
 
@@ -261,6 +264,15 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.value_counts(ascending=True, dropna=False),
                        pser.value_counts(ascending=True, dropna=False), almost=True)
 
+        self.assert_eq(kser.index.value_counts(normalize=True),
+                       pser.index.value_counts(normalize=True), almost=True)
+        self.assert_eq(kser.index.value_counts(ascending=True),
+                       pser.index.value_counts(ascending=True), almost=True)
+        self.assert_eq(kser.index.value_counts(normalize=True, dropna=False),
+                       pser.index.value_counts(normalize=True, dropna=False), almost=True)
+        self.assert_eq(kser.index.value_counts(ascending=True, dropna=False),
+                       pser.index.value_counts(ascending=True, dropna=False), almost=True)
+
         with self.assertRaisesRegex(NotImplementedError,
                                     "value_counts currently does not support bins"):
             kser.value_counts(bins=3)
@@ -268,6 +280,132 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser.name = 'index'
         kser.name = 'index'
         self.assert_eq(kser.value_counts(), pser.value_counts(), almost=True)
+
+        # Series from DataFrame
+        pdf = pd.DataFrame({'a': [1, 2, 3], 'b': [None, 1, None]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.a.value_counts(normalize=True),
+                       pdf.a.value_counts(normalize=True), almost=True)
+        self.assert_eq(kdf.a.value_counts(ascending=True),
+                       pdf.a.value_counts(ascending=True), almost=True)
+        self.assert_eq(kdf.a.value_counts(normalize=True, dropna=False),
+                       pdf.a.value_counts(normalize=True, dropna=False), almost=True)
+        self.assert_eq(kdf.a.value_counts(ascending=True, dropna=False),
+                       pdf.a.value_counts(ascending=True, dropna=False), almost=True)
+
+        self.assert_eq(kser.index.value_counts(normalize=True),
+                       pser.index.value_counts(normalize=True), almost=True)
+        self.assert_eq(kser.index.value_counts(ascending=True),
+                       pser.index.value_counts(ascending=True), almost=True)
+        self.assert_eq(kser.index.value_counts(normalize=True, dropna=False),
+                       pser.index.value_counts(normalize=True, dropna=False), almost=True)
+        self.assert_eq(kser.index.value_counts(ascending=True, dropna=False),
+                       pser.index.value_counts(ascending=True, dropna=False), almost=True)
+
+        # Series with NaN index
+        pser = pd.Series([1, 2, 3], index=[2, None, 5])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.value_counts(normalize=True),
+                       pser.value_counts(normalize=True), almost=True)
+        self.assert_eq(kser.value_counts(ascending=True),
+                       pser.value_counts(ascending=True), almost=True)
+        self.assert_eq(kser.value_counts(normalize=True, dropna=False),
+                       pser.value_counts(normalize=True, dropna=False), almost=True)
+        self.assert_eq(kser.value_counts(ascending=True, dropna=False),
+                       pser.value_counts(ascending=True, dropna=False), almost=True)
+
+        self.assert_eq(kser.index.value_counts(normalize=True),
+                       pser.index.value_counts(normalize=True), almost=True)
+        self.assert_eq(kser.index.value_counts(ascending=True),
+                       pser.index.value_counts(ascending=True), almost=True)
+        self.assert_eq(kser.index.value_counts(normalize=True, dropna=False),
+                       pser.index.value_counts(normalize=True, dropna=False), almost=True)
+        self.assert_eq(kser.index.value_counts(ascending=True, dropna=False),
+                       pser.index.value_counts(ascending=True, dropna=False), almost=True)
+
+        # Series with MultiIndex
+        pser.index = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.value_counts(normalize=True),
+                       pser.value_counts(normalize=True), almost=True)
+        self.assert_eq(kser.value_counts(ascending=True),
+                       pser.value_counts(ascending=True), almost=True)
+        self.assert_eq(kser.value_counts(normalize=True, dropna=False),
+                       pser.value_counts(normalize=True, dropna=False), almost=True)
+        self.assert_eq(kser.value_counts(ascending=True, dropna=False),
+                       pser.value_counts(ascending=True, dropna=False), almost=True)
+
+        self.assert_eq(kser.index.value_counts(normalize=True),
+                       pser.index.value_counts(normalize=True), almost=True)
+        self.assert_eq(kser.index.value_counts(ascending=True),
+                       pser.index.value_counts(ascending=True), almost=True)
+        self.assert_eq(kser.index.value_counts(normalize=True, dropna=False),
+                       pser.index.value_counts(normalize=True, dropna=False), almost=True)
+        self.assert_eq(kser.index.value_counts(ascending=True, dropna=False),
+                       pser.index.value_counts(ascending=True, dropna=False), almost=True)
+
+        # Series with MultiIndex some of index has NaN
+        pser.index = pd.MultiIndex.from_tuples([('x', 'a'), ('x', None), ('y', 'c')])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.value_counts(normalize=True),
+                       pser.value_counts(normalize=True), almost=True)
+        self.assert_eq(kser.value_counts(ascending=True),
+                       pser.value_counts(ascending=True), almost=True)
+        self.assert_eq(kser.value_counts(normalize=True, dropna=False),
+                       pser.value_counts(normalize=True, dropna=False), almost=True)
+        self.assert_eq(kser.value_counts(ascending=True, dropna=False),
+                       pser.value_counts(ascending=True, dropna=False), almost=True)
+
+        self.assert_eq(kser.index.value_counts(normalize=True),
+                       pser.index.value_counts(normalize=True), almost=True)
+        self.assert_eq(kser.index.value_counts(ascending=True),
+                       pser.index.value_counts(ascending=True), almost=True)
+        self.assert_eq(kser.index.value_counts(normalize=True, dropna=False),
+                       pser.index.value_counts(normalize=True, dropna=False), almost=True)
+        self.assert_eq(kser.index.value_counts(ascending=True, dropna=False),
+                       pser.index.value_counts(ascending=True, dropna=False), almost=True)
+
+        # Series with MultiIndex some of index is NaN.
+        # This test only available for pandas >= 0.24.
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            pser.index = pd.MultiIndex.from_tuples([('x', 'a'), None, ('y', 'c')])
+            kser = ks.from_pandas(pser)
+
+            self.assert_eq(kser.value_counts(normalize=True),
+                           pser.value_counts(normalize=True), almost=True)
+            self.assert_eq(kser.value_counts(ascending=True),
+                           pser.value_counts(ascending=True), almost=True)
+            self.assert_eq(kser.value_counts(normalize=True, dropna=False),
+                           pser.value_counts(normalize=True, dropna=False), almost=True)
+            self.assert_eq(kser.value_counts(ascending=True, dropna=False),
+                           pser.value_counts(ascending=True, dropna=False), almost=True)
+
+            self.assert_eq(kser.index.value_counts(normalize=True),
+                           pser.index.value_counts(normalize=True), almost=True)
+            self.assert_eq(kser.index.value_counts(ascending=True),
+                           pser.index.value_counts(ascending=True), almost=True)
+            self.assert_eq(kser.index.value_counts(normalize=True, dropna=False),
+                           pser.index.value_counts(normalize=True, dropna=False), almost=True)
+            self.assert_eq(kser.index.value_counts(ascending=True, dropna=False),
+                           pser.index.value_counts(ascending=True, dropna=False), almost=True)
+
+    def test_value_counts(self):
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4") and \
+                default_session().conf.get("spark.sql.execution.arrow.enabled") == "true":
+            default_session().conf.set("spark.sql.execution.arrow.enabled", "false")
+            try:
+                self._test_value_counts()
+            finally:
+                default_session().conf.set("spark.sql.execution.arrow.enabled", "true")
+            self.assertRaises(
+                RuntimeError,
+                lambda: ks.MultiIndex.from_tuples([('x', 'a'), ('x', 'b')]).value_counts())
+        else:
+            self._test_value_counts()
 
     def test_nsmallest(self):
         sample_lst = [1, 2, 3, 4, np.nan, 6]
