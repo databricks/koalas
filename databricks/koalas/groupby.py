@@ -1892,8 +1892,9 @@ class DataFrameGroupBy(GroupBy):
             func = "cumprod"
 
         applied = []
-        kdf = self._kdf
-
+        kdf = self._kdf.copy()
+        # add a temporal column to keep natural order.
+        kdf['__natural_order__'] = F.monotonically_increasing_id()
         for column in self._agg_columns:
             # pandas groupby.cumxxx ignores the grouping key itself.
             applied.append(getattr(column.groupby(self._groupkeys), func)())
