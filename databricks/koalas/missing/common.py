@@ -49,3 +49,7 @@ tolist = lambda f: f(
 __iter__ = lambda f: f(
     '__iter__',
     reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
+
+duplicated = lambda f: f(
+        'duplicated', reason="'duplicated' API returns np.ndarray and the data size is so large."
+                             "You can just use DataFrame.deduplicated instead")
