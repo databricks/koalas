@@ -99,13 +99,11 @@ class _MissingPandasLikeIndex(object):
     get_values = unsupported_function('get_values', deprecated=True)
     item = unsupported_function('item', deprecated=True)
     contains = unsupported_function('contains', deprecated=True)
-    duplicated = unsupported_property(
-        'duplicated', reason="'duplicated' API returns np.ndarray and the data size is so large."
-                             "You can just use DataFrame.deduplicated instead")
 
     # Properties we won't support.
     values = common.values(unsupported_property)
     array = common.array(unsupported_property)
+    duplicated = common.duplicated(unsupported_property)
 
     # Functions we won't support.
     memory_usage = common.memory_usage(unsupported_function)
@@ -199,13 +197,11 @@ class _MissingPandasLikeMultiIndex(object):
     get_values = unsupported_function('get_values', deprecated=True)
     contains = unsupported_function('contains', deprecated=True)
     item = unsupported_function('item', deprecated=True)
-    duplicated = unsupported_property(
-        'duplicated', reason="'duplicated' API returns np.ndarray and the data size is so large."
-                             "You can just use DataFrame.deduplicated instead")
 
     # Functions we won't support.
     values = common.values(unsupported_property)
     array = common.array(unsupported_property)
+    duplicated = common.duplicated(unsupported_property)
     codes = unsupported_property(
         'codes',
         reason="'codes' requires to collect all data into the driver which is against the "
