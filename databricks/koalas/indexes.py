@@ -1059,6 +1059,9 @@ class MultiIndex(Index):
     def unique(self, level=None):
         raise PandasNotImplementedError(class_name='MultiIndex', method_name='unique')
 
+    def nunique(self, dropna=True):
+        raise NotImplementedError("isna is not defined for MultiIndex")
+
     # TODO: add 'name' parameter after pd.MultiIndex.name is implemented
     def copy(self):
         """
