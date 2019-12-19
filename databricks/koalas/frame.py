@@ -47,7 +47,8 @@ from pyspark.sql.window import Window
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame
-from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
+from databricks.koalas.internal import (_InternalFrame, ROW_ID_SPARK_COLUMN_NAME,
+                                        SPARK_INDEX_NAME_FORMAT)
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, name_like_string, scol_for, validate_axis
@@ -2702,6 +2703,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 index_scols + new_data_scols + self._internal.column_scols)
         else:
             sdf = self._sdf.select(new_data_scols + self._internal.column_scols)
+            sdf = sdf.withColumn(ROW_ID_SPARK_COLUMN_NAME, F.monotonically_increasing_id())
 
             # Now, new internal Spark columns are named as same as index name.
             new_index_map = [(column, name) for column, name in new_index_map]
@@ -6736,22 +6738,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             func = "cumsum"
         elif func.__name__ == "cumprod":
             func = "cumprod"
-        self = self.copy()
-        columns = self.columns
-        # add a temporal column to keep natural order.
-        self['__natural_order__'] = F.monotonically_increasing_id()
         applied = []
-        for column in columns:
+        for column in self.columns:
             applied.append(getattr(self[column], func)(skipna))
 
         sdf = self._sdf.select(
-            self._internal.index_scols + [c._scol for c in applied])
+            self._internal.index_scols + [c._scol for c in applied] + [ROW_ID_SPARK_COLUMN_NAME])
         internal = self._internal.copy(sdf=sdf,
                                        column_index=[c._internal.column_index[0] for c in applied],
                                        column_scols=[scol_for(sdf, c._internal.data_columns[0])
                                                      for c in applied])
-        # add a temporal column to keep natural order.
-        self = self.drop('__natural_order__')
         return DataFrame(internal)
 
     # TODO: implements 'keep' parameters

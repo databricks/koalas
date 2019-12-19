@@ -30,12 +30,13 @@ from pandas.core.dtypes.common import is_datetime64tz_dtype
 
 from pyspark.sql import Window, functions as F
 from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
-from pyspark.sql.functions import PandasUDFType, pandas_udf, Column, monotonically_increasing_id
+from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import _infer_return_type
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
+from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, ROW_ID_SPARK_COLUMN_NAME,
+                                        SPARK_INDEX_NAME_FORMAT)
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
 from databricks.koalas.series import Series, _col
@@ -884,7 +885,7 @@ class GroupBy(object):
             pdf = self._kdf.head(limit)._to_internal_pandas()
             pdf = pdf.groupby(input_groupnames).apply(func)
             kdf = DataFrame(pdf)
-            return_schema = kdf._sdf.schema
+            return_schema = kdf._sdf.drop(*HIDDEN_COLUMNS).schema
 
         sdf = self._spark_group_map_apply(
             lambda pdf: pdf.groupby(input_groupnames).apply(func),
@@ -939,7 +940,7 @@ class GroupBy(object):
         if not isinstance(func, Callable):
             raise TypeError("%s object is not callable" % type(func))
 
-        data_schema = self._kdf._sdf.schema
+        data_schema = self._kdf._sdf.drop(*HIDDEN_COLUMNS).schema
         groupby_names = [s.name for s in self._groupkeys]
 
         def pandas_filter(pdf):
@@ -1026,7 +1027,7 @@ class GroupBy(object):
 
         grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(rename_output)
 
-        sdf = self._kdf._sdf
+        sdf = self._kdf._sdf.drop(*HIDDEN_COLUMNS)
         input_groupkeys = [s._scol for s in self._groupkeys]
         sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
 
@@ -1451,7 +1452,7 @@ class GroupBy(object):
         tmp_col = '__row_number__'
         sdf = self._kdf._sdf
         window = Window.partitionBy([s._scol for s in groupkeys]) \
-                       .orderBy(F.monotonically_increasing_id())
+                       .orderBy(ROW_ID_SPARK_COLUMN_NAME)
         sdf = sdf.withColumn(tmp_col, F.row_number().over(window)).filter(F.col(tmp_col) <= n)
         sdf = sdf.select(self._kdf._internal.scols)
 
@@ -1641,7 +1642,7 @@ class GroupBy(object):
             pdf = self._kdf.head(limit + 1)._to_internal_pandas()
             pdf = pdf.groupby(input_groupnames).transform(func)
             kdf = DataFrame(pdf)
-            return_schema = kdf._sdf.schema
+            return_schema = kdf._sdf.drop(*HIDDEN_COLUMNS).schema
             if len(pdf) <= limit:
                 return kdf
 
@@ -1892,9 +1893,7 @@ class DataFrameGroupBy(GroupBy):
             func = "cumprod"
 
         applied = []
-        kdf = self._kdf.copy()
-        # add a temporal column to keep natural order.
-        kdf['__natural_order__'] = F.monotonically_increasing_id()
+        kdf = self._kdf
         for column in self._agg_columns:
             # pandas groupby.cumxxx ignores the grouping key itself.
             applied.append(getattr(column.groupby(self._groupkeys), func)())
