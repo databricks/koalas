@@ -55,6 +55,7 @@ Modifying and computations
    Index.max
    Index.rename
    Index.unique
+   Index.nunique
    Index.value_counts
 
 Missing Values

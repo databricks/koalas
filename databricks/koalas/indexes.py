@@ -17,8 +17,8 @@
 """
 Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 """
-
-from functools import partial, reduce
+from distutils.version import LooseVersion
+from functools import partial
 from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
@@ -27,6 +27,7 @@ from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
     is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
 from pandas.io.formats.printing import pprint_thing
 
+import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 
@@ -35,10 +36,9 @@ from databricks.koalas.config import get_option
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
-from databricks.koalas.utils import name_like_string
+from databricks.koalas.utils import name_like_string, default_session
 from databricks.koalas.internal import _InternalFrame
 
 
@@ -1086,6 +1086,9 @@ class MultiIndex(Index):
     def unique(self, level=None):
         raise PandasNotImplementedError(class_name='MultiIndex', method_name='unique')
 
+    def nunique(self, dropna=True):
+        raise NotImplementedError("isna is not defined for MultiIndex")
+
     # TODO: add 'name' parameter after pd.MultiIndex.name is implemented
     def copy(self):
         """
@@ -1225,6 +1228,18 @@ class MultiIndex(Index):
         sdf = sdf[~scol.isin(labels)]
         return MultiIndex(DataFrame(_InternalFrame(sdf=sdf,
                                                    index_map=self._kdf._internal.index_map)))
+
+    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4") and \
+                default_session().conf.get("spark.sql.execution.arrow.enabled") == "true" and \
+                isinstance(self, MultiIndex):
+            raise RuntimeError("if you're using pyspark < 2.4, set conf "
+                               "'spark.sql.execution.arrow.enabled' to 'false' "
+                               "for using this function with MultiIndex")
+        return super(MultiIndex, self).value_counts(
+            normalize=normalize, sort=sort, ascending=ascending, bins=bins, dropna=dropna)
+
+    value_counts.__doc__ = IndexOpsMixin.value_counts.__doc__
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):

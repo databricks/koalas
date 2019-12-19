@@ -397,6 +397,20 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 "notna is not defined for MultiIndex"):
             kidx.notnull()
 
+    def test_index_nunique(self):
+        pidx = pd.Index([1, 1, 2, None])
+        kidx = ks.Index([1, 1, 2, None])
+
+        self.assert_eq(pidx.nunique(), kidx.nunique())
+        self.assert_eq(pidx.nunique(dropna=True), kidx.nunique(dropna=True))
+
+    def test_multiindex_nunique(self):
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "notna is not defined for MultiIndex"):
+            kidx.notnull()
+
     def test_multiindex_rename(self):
         pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
         kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
