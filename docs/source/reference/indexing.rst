@@ -170,3 +170,10 @@ MultiIndex Conversion
 
    MultiIndex.astype
    MultiIndex.to_numpy
+
+MultiIndex Sorting
+~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.sort_values
