@@ -4231,7 +4231,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         internal = self._internal.copy(sdf=sdf, scol=scol)
 
-        return _col(DataFrame(internal))
+        return _col(DataFrame(internal)).rename(self.name)
 
     # ----------------------------------------------------------------------
     # Accessor Methods
