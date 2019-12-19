@@ -76,6 +76,13 @@ Conversion
    Index.to_series
    Index.to_numpy
 
+Sorting
+~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.sort_values
+
 Time-specific operations
 ~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
@@ -163,3 +170,10 @@ MultiIndex Conversion
 
    MultiIndex.astype
    MultiIndex.to_numpy
+
+MultiIndex Sorting
+~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.sort_values

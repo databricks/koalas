@@ -335,6 +335,28 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
             kidx.fillna([1, 2])
 
+    def test_sort_values(self):
+        pidx = pd.Index([-10, -100, 200, 100])
+        kidx = ks.Index([-10, -100, 200, 100])
+
+        self.assert_eq(pidx.sort_values(), kidx.sort_values())
+        self.assert_eq(pidx.sort_values(ascending=False), kidx.sort_values(ascending=False))
+
+        pidx.name = 'koalas'
+        kidx.name = 'koalas'
+
+        self.assert_eq(pidx.sort_values(), kidx.sort_values())
+        self.assert_eq(pidx.sort_values(ascending=False), kidx.sort_values(ascending=False))
+
+        pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        pidx.names = ['hello', 'koalas', 'goodbye']
+        kidx.names = ['hello', 'koalas', 'goodbye']
+
+        self.assert_eq(pidx.sort_values(), kidx.sort_values())
+        self.assert_eq(pidx.sort_values(ascending=False), kidx.sort_values(ascending=False))
+
     def test_index_drop_duplicates(self):
         pidx = pd.Index([1, 1, 2])
         kidx = ks.Index([1, 1, 2])
