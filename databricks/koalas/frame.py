@@ -47,7 +47,7 @@ from pyspark.sql.window import Window
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame
-from databricks.koalas.internal import (_InternalFrame, ROW_ID_SPARK_COLUMN_NAME,
+from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, ROW_ID_SPARK_COLUMN_NAME,
                                         SPARK_INDEX_NAME_FORMAT)
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
@@ -513,7 +513,7 @@ class DataFrame(_Frame, Generic[T]):
                 applied.append(getattr(self[idx], op)(argument))
 
             sdf = self._sdf.select(
-                self._internal.index_scols + [c._scol for c in applied])
+                self._internal.index_scols + [c._scol for c in applied] + list(HIDDEN_COLUMNS))
             internal = self._internal.copy(sdf=sdf,
                                            column_index=[c._internal.column_index[0]
                                                          for c in applied],
@@ -920,7 +920,7 @@ class DataFrame(_Frame, Generic[T]):
             applied.append(self[idx].apply(func))
 
         sdf = self._sdf.select(
-            self._internal.index_scols + [c._scol for c in applied])
+            self._internal.index_scols + [c._scol for c in applied] + list(HIDDEN_COLUMNS))
         internal = self._internal.copy(sdf=sdf,
                                        column_index=[c._internal.column_index[0] for c in applied],
                                        column_scols=[scol_for(sdf, c._internal.data_columns[0])
@@ -1920,7 +1920,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 applied.append(wrapped(self[idx]).rename(idx))
 
         sdf = self._sdf.select(
-            self._internal.index_scols + [c._scol for c in applied])
+            self._internal.index_scols + [c._scol for c in applied] + list(HIDDEN_COLUMNS))
         internal = self._internal.copy(sdf=sdf,
                                        column_index=[c._internal.column_index[0] for c in applied],
                                        column_scols=[scol_for(sdf, c._internal.data_columns[0])
@@ -2093,7 +2093,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         rows = [self._internal.scols[lvl] == index
                 for lvl, index in enumerate(key, level)]
 
-        sdf = self._sdf.select(scols) \
+        sdf = self._sdf.select(scols + list(HIDDEN_COLUMNS)) \
                        .where(reduce(lambda x, y: x & y, rows))
 
         if len(key) == len(self._internal.index_scols):
@@ -2252,13 +2252,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             data_col_name = self._internal.column_name_for(column)
             output.append(
                 F.when(
-                    sdf[tmp_cond_col_name.format(column)], sdf[data_col_name]
+                    scol_for(sdf, tmp_cond_col_name.format(column)), scol_for(sdf, data_col_name)
                 ).otherwise(
-                    sdf[tmp_other_col_name.format(column)]
+                    scol_for(sdf, tmp_other_col_name.format(column))
                 ).alias(data_col_name))
 
-        index_columns = self._internal.index_columns
-        sdf = sdf.select(*index_columns, *output)
+        index_scols = self._internal.index_scols
+        sdf = sdf.select(index_scols + output + list(HIDDEN_COLUMNS))
 
         return DataFrame(self._internal.copy(
             sdf=sdf,
@@ -2700,10 +2700,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if len(index_map) > 0:
             index_scols = [scol_for(self._sdf, column) for column, _ in index_map]
             sdf = self._sdf.select(
-                index_scols + new_data_scols + self._internal.column_scols)
+                index_scols + new_data_scols + self._internal.column_scols +
+                list(HIDDEN_COLUMNS))
         else:
-            sdf = self._sdf.select(new_data_scols + self._internal.column_scols)
-            sdf = sdf.withColumn(ROW_ID_SPARK_COLUMN_NAME, F.monotonically_increasing_id())
+            sdf = self._sdf.select(
+                new_data_scols + self._internal.column_scols + list(HIDDEN_COLUMNS))
 
             # Now, new internal Spark columns are named as same as index name.
             new_index_map = [(column, name) for column, name in new_index_map]
@@ -4912,7 +4913,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = self._sdf.select(
                 self._internal.index_scols +
                 [self._internal.scol_for(idx).alias(name)
-                 for idx, name in zip(self._internal.column_index, data_columns)])
+                 for idx, name in zip(self._internal.column_index, data_columns)] +
+                list(HIDDEN_COLUMNS))
             column_scols = [scol_for(sdf, col) for col in data_columns]
             self._internal = self._internal.copy(sdf=sdf,
                                                  column_index=column_index,
@@ -4933,7 +4935,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = self._sdf.select(
                 self._internal.index_scols +
                 [self._internal.scol_for(idx).alias(name)
-                 for idx, name in zip(self._internal.column_index, data_columns)])
+                 for idx, name in zip(self._internal.column_index, data_columns)] +
+                list(HIDDEN_COLUMNS))
             column_scols = [scol_for(sdf, col) for col in data_columns]
             self._internal = self._internal.copy(sdf=sdf,
                                                  column_index=column_index,
@@ -5135,7 +5138,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 column_index.append(idx)
 
         sdf = self._sdf.select(self._internal.index_scols +
-                               [self._internal.scol_for(col) for col in columns])
+                               [self._internal.scol_for(col) for col in columns] +
+                               list(HIDDEN_COLUMNS))
         return DataFrame(self._internal.copy(
             sdf=sdf,
             column_index=column_index,
@@ -5298,7 +5302,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                               in zip(self._internal.data_columns, self._internal.column_index)
                               if idx not in drop_column_index))
             sdf = self._sdf.select(
-                self._internal.index_scols + [self._internal.scol_for(idx) for idx in idxes])
+                self._internal.index_scols + [self._internal.scol_for(idx) for idx in idxes] +
+                list(HIDDEN_COLUMNS))
             internal = self._internal.copy(
                 sdf=sdf,
                 column_index=list(idxes),
@@ -5366,7 +5371,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
         }
         by = [mapper[(asc, na_position)](scol) for scol, asc in zip(by, ascending)]
-        kdf = DataFrame(self._internal.copy(sdf=self._sdf.sort(*by)))  # type: ks.DataFrame
+        sdf = self._sdf.drop(ROW_ID_SPARK_COLUMN_NAME).sort(*by)
+        kdf = DataFrame(self._internal.copy(sdf=sdf))  # type: ks.DataFrame
         if inplace:
             self._internal = kdf._internal
             return None
@@ -5756,7 +5762,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             raise TypeError('Values should be iterable, Series, DataFrame or dict.')
 
-        sdf = self._sdf.select(_select_columns)
+        sdf = self._sdf.select(_select_columns + list(HIDDEN_COLUMNS))
         return DataFrame(self._internal.copy(sdf=sdf,
                                              column_scols=[scol_for(sdf, col)
                                                            for col in self._internal.data_columns]))
@@ -6312,7 +6318,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 update_sdf = update_sdf.withColumn(column_name, F.when(old_col.isNull(), new_col)
                                                    .otherwise(old_col))
         sdf = update_sdf.select([scol_for(update_sdf, col)
-                                 for col in self._internal.columns])
+                                 for col in self._internal.columns] +
+                                list(HIDDEN_COLUMNS))
         internal = self._internal.copy(sdf=sdf,
                                        column_scols=[scol_for(sdf, col)
                                                      for col in self._internal.data_columns])
@@ -6467,7 +6474,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             for col_name, col in self.items():
                 results.append(col.astype(dtype=dtype))
         sdf = self._sdf.select(
-            self._internal.index_scols + list(map(lambda ser: ser._scol, results)))
+            self._internal.index_scols + list(map(lambda ser: ser._scol, results)) +
+            list(HIDDEN_COLUMNS))
         return DataFrame(self._internal.copy(sdf=sdf,
                                              column_scols=[scol_for(sdf, col)
                                                            for col in self._internal.data_columns]))
@@ -6518,7 +6526,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf.select(
             self._internal.index_scols +
             [self._internal.scol_for(idx).alias(name)
-             for idx, name in zip(self._internal.column_index, data_columns)])
+             for idx, name in zip(self._internal.column_index, data_columns)] +
+            list(HIDDEN_COLUMNS))
         column_index = [tuple([prefix + i for i in idx]) for idx in self._internal.column_index]
         internal = self._internal.copy(sdf=sdf,
                                        column_index=column_index,
@@ -6571,7 +6580,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf.select(
             self._internal.index_scols +
             [self._internal.scol_for(idx).alias(name)
-             for idx, name in zip(self._internal.column_index, data_columns)])
+             for idx, name in zip(self._internal.column_index, data_columns)] +
+            list(HIDDEN_COLUMNS))
         column_index = [tuple([i + suffix for i in idx]) for idx in self._internal.column_index]
         internal = self._internal.copy(sdf=sdf,
                                        column_index=column_index,
@@ -6743,7 +6753,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             applied.append(getattr(self[column], func)(skipna))
 
         sdf = self._sdf.select(
-            self._internal.index_scols + [c._scol for c in applied] + [ROW_ID_SPARK_COLUMN_NAME])
+            self._internal.index_scols + [c._scol for c in applied] + list(HIDDEN_COLUMNS))
         internal = self._internal.copy(sdf=sdf,
                                        column_index=[c._internal.column_index[0] for c in applied],
                                        column_scols=[scol_for(sdf, c._internal.data_columns[0])
@@ -6807,8 +6817,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
 
-        sdf = self._sdf.drop_duplicates(subset=[self._internal.column_name_for(idx)
-                                                for idx in subset])
+        sdf = self._sdf.drop(*HIDDEN_COLUMNS) \
+            .drop_duplicates(subset=[self._internal.column_name_for(idx) for idx in subset])
         internal = self._internal.copy(sdf=sdf)
         if inplace:
             self._internal = internal
@@ -7007,7 +7017,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kser = ks.Series(list(index))
         labels = kser._internal._sdf.select(kser._scol.alias(index_column))
 
-        joined_df = self._sdf.join(labels, on=index_column, how="right")
+        joined_df = self._sdf.drop(ROW_ID_SPARK_COLUMN_NAME) \
+            .join(labels, on=index_column, how="right")
         internal = self._internal.copy(sdf=joined_df)
 
         return internal
@@ -7035,7 +7046,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 columns.append(name_like_string(label))
             idx.append(label)
 
-        sdf = self._sdf.select(self._internal.index_scols + scols)
+        sdf = self._sdf.select(self._internal.index_scols + scols + list(HIDDEN_COLUMNS))
 
         return self._internal.copy(sdf=sdf,
                                    column_index=idx,
@@ -7796,7 +7807,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             new_data_scols = [scol_for(internal.sdf, old_col_name).alias(new_col_name)
                               for old_col_name, new_col_name
                               in zip(internal.data_columns, new_data_columns)]
-            sdf = internal.sdf.select(*(internal.index_scols + new_data_scols))
+            sdf = internal.sdf.select(internal.index_scols + new_data_scols + list(HIDDEN_COLUMNS))
             internal = internal.copy(sdf=sdf, column_index=new_column_index,
                                      column_scols=[scol_for(sdf, col) for col in new_data_columns])
         if inplace:
@@ -7878,7 +7889,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1980-02-01       NaN       NaN      NaN
         1980-03-01  0.067912  0.073814  0.06883
         """
-        sdf = self._sdf
+        sdf = self._sdf.drop(ROW_ID_SPARK_COLUMN_NAME)
         window = Window.orderBy(self._internal.index_columns).rowsBetween(-periods, -periods)
 
         for column_name in self._internal.data_columns:
@@ -8226,7 +8237,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         percentile_cols = []
         for column in self._internal.data_columns:
-            sdf = self._sdf
             percentile_cols.append(F.expr(
                 "approx_percentile(`%s`, array(%s), %s)" % (column, args, accuracy))
                 .alias(column))

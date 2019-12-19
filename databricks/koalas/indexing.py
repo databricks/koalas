@@ -25,7 +25,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, HIDDEN_COLUMNS
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 from databricks.koalas.utils import column_index_level, name_like_string
 
@@ -521,7 +521,7 @@ class LocIndexer(_IndexerLike):
                 if cond is not None:
                     sdf = sdf.where(cond)
 
-                sdf = sdf.select(self._internal.index_scols + columns)
+                sdf = sdf.select(self._internal.index_scols + columns + list(HIDDEN_COLUMNS))
 
                 if self._internal.column_index_names is None:
                     column_index_names = None
@@ -795,7 +795,7 @@ class ILocIndexer(_IndexerLike):
                              "listlike of integers, boolean array] types, got {}".format(cols_sel))
 
         try:
-            sdf = sdf.select(self._internal.index_scols + columns)
+            sdf = sdf.select(self._internal.index_scols + columns + list(HIDDEN_COLUMNS))
             internal = _InternalFrame(sdf=sdf,
                                       index_map=self._internal.index_map,
                                       column_index=column_index,
