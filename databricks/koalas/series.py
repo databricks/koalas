@@ -39,7 +39,7 @@ from databricks.koalas.config import get_option
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame
-from databricks.koalas.internal import (_InternalFrame, ROW_ID_SPARK_COLUMN_NAME,
+from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAME,
                                         SPARK_INDEX_NAME_FORMAT)
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
@@ -3051,9 +3051,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         # desc_nulls_(last|first) is used via Py4J directly because
         # it's not supported in Spark 2.3.
         if skipna:
-            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()), ROW_ID_SPARK_COLUMN_NAME)
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()), NATURAL_ORDER_COLUMN_NAME)
         else:
-            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()), ROW_ID_SPARK_COLUMN_NAME)
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()), NATURAL_ORDER_COLUMN_NAME)
         results = sdf.select([scol] + index_scols).take(1)
         if len(results) == 0:
             raise ValueError("attempt to get idxmin of an empty sequence")
@@ -3159,9 +3159,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         # asc_nulls_(last|first)is used via Py4J directly because
         # it's not supported in Spark 2.3.
         if skipna:
-            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()), ROW_ID_SPARK_COLUMN_NAME)
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()), NATURAL_ORDER_COLUMN_NAME)
         else:
-            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()), ROW_ID_SPARK_COLUMN_NAME)
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()), NATURAL_ORDER_COLUMN_NAME)
         results = sdf.select([scol] + index_scols).take(1)
         if len(results) == 0:
             raise ValueError("attempt to get idxmin of an empty sequence")
@@ -4140,7 +4140,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         scol = self._internal.scol
 
-        window = Window.orderBy(ROW_ID_SPARK_COLUMN_NAME).rowsBetween(-periods, -periods)
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-periods, -periods)
         prev_row = F.lag(scol, periods).over(window)
 
         return self._with_new_scol((scol - prev_row) / prev_row)
@@ -4149,7 +4149,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         # This is used to cummin, cummax, cumsum, etc.
 
         window = Window.orderBy(
-            ROW_ID_SPARK_COLUMN_NAME).partitionBy(*part_cols).rowsBetween(
+            NATURAL_ORDER_COLUMN_NAME).partitionBy(*part_cols).rowsBetween(
                 Window.unboundedPreceding, Window.currentRow)
 
         if skipna:

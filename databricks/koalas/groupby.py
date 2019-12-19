@@ -35,7 +35,7 @@ from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import _infer_return_type
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, ROW_ID_SPARK_COLUMN_NAME,
+from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME,
                                         SPARK_INDEX_NAME_FORMAT)
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
@@ -1452,7 +1452,7 @@ class GroupBy(object):
         tmp_col = '__row_number__'
         sdf = self._kdf._sdf
         window = Window.partitionBy([s._scol for s in groupkeys]) \
-                       .orderBy(ROW_ID_SPARK_COLUMN_NAME)
+                       .orderBy(NATURAL_ORDER_COLUMN_NAME)
         sdf = sdf.withColumn(tmp_col, F.row_number().over(window)).filter(F.col(tmp_col) <= n)
         sdf = sdf.select(self._kdf._internal.scols)
 

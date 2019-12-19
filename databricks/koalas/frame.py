@@ -47,7 +47,7 @@ from pyspark.sql.window import Window
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame
-from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, ROW_ID_SPARK_COLUMN_NAME,
+from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME,
                                         SPARK_INDEX_NAME_FORMAT)
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
@@ -5371,7 +5371,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
         }
         by = [mapper[(asc, na_position)](scol) for scol, asc in zip(by, ascending)]
-        sdf = self._sdf.drop(ROW_ID_SPARK_COLUMN_NAME).sort(*by)
+        sdf = self._sdf.drop(NATURAL_ORDER_COLUMN_NAME).sort(*by)
         kdf = DataFrame(self._internal.copy(sdf=sdf))  # type: ks.DataFrame
         if inplace:
             self._internal = kdf._internal
@@ -7017,7 +7017,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kser = ks.Series(list(index))
         labels = kser._internal._sdf.select(kser._scol.alias(index_column))
 
-        joined_df = self._sdf.drop(ROW_ID_SPARK_COLUMN_NAME) \
+        joined_df = self._sdf.drop(NATURAL_ORDER_COLUMN_NAME) \
             .join(labels, on=index_column, how="right")
         internal = self._internal.copy(sdf=joined_df)
 
@@ -7889,7 +7889,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1980-02-01       NaN       NaN      NaN
         1980-03-01  0.067912  0.073814  0.06883
         """
-        sdf = self._sdf.drop(ROW_ID_SPARK_COLUMN_NAME)
+        sdf = self._sdf.drop(NATURAL_ORDER_COLUMN_NAME)
         window = Window.orderBy(self._internal.index_columns).rowsBetween(-periods, -periods)
 
         for column_name in self._internal.data_columns:
