@@ -804,6 +804,78 @@ class Index(IndexOpsMixin):
 
         return result
 
+    # TODO: return_indexer
+    def sort_values(self, ascending=True):
+        """
+        Return a sorted copy of the index.
+
+        .. note:: This method is not supported for pandas when index has NaN value.
+                  pandas raises unexpected TypeError, but we support treating NaN
+                  as the smallest value.
+
+        Parameters
+        ----------
+        ascending : bool, default True
+            Should the index values be sorted in an ascending order.
+
+        Returns
+        -------
+        sorted_index : ks.Index or ks.MultiIndex
+            Sorted copy of the index.
+
+        See Also
+        --------
+        Series.sort_values : Sort values of a Series.
+        DataFrame.sort_values : Sort values in a DataFrame.
+
+        Examples
+        --------
+        >>> idx = ks.Index([10, 100, 1, 1000])
+        >>> idx
+        Int64Index([10, 100, 1, 1000], dtype='int64')
+
+        Sort values in ascending order (default behavior).
+
+        >>> idx.sort_values()
+        Int64Index([1, 10, 100, 1000], dtype='int64')
+
+        Sort values in descending order.
+
+        >>> idx.sort_values(ascending=False)
+        Int64Index([1000, 100, 10, 1], dtype='int64')
+
+        Support for MultiIndex.
+
+        >>> kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('c', 'y', 2), ('b', 'z', 3)])
+        >>> kidx  # doctest: +SKIP
+        MultiIndex([('a', 'x', 1),
+                    ('c', 'y', 2),
+                    ('b', 'z', 3)],
+                   )
+
+        >>> kidx.sort_values()  # doctest: +SKIP
+        MultiIndex([('a', 'x', 1),
+                    ('b', 'z', 3),
+                    ('c', 'y', 2)],
+                   )
+
+        >>> kidx.sort_values(ascending=False)  # doctest: +SKIP
+        MultiIndex([('c', 'y', 2),
+                    ('b', 'z', 3),
+                    ('a', 'x', 1)],
+                   )
+        """
+        sdf = self._internal.sdf
+        sdf = sdf.orderBy(self._internal.index_scols, ascending=ascending)
+
+        internal = _InternalFrame(
+            sdf=sdf.select(self._internal.index_scols),
+            index_map=self._kdf._internal.index_map)
+
+        result = DataFrame(internal).index
+
+        return result
+
     def sort(self, *args, **kwargs):
         """
         Use sort_values instead.
