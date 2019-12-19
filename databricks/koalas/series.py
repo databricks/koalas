@@ -1780,56 +1780,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                                   column_index_names=self._internal.column_index_names)
         return _col(DataFrame(internal))
 
-    def nunique(self, dropna: bool = True, approx: bool = False, rsd: float = 0.05) -> int:
-        """
-        Return number of unique elements in the object.
-
-        Excludes NA values by default.
-
-        Parameters
-        ----------
-        dropna : bool, default True
-            Don’t include NaN in the count.
-        approx: bool, default False
-            If False, will use the exact algorithm and return the exact number of unique.
-            If True, it uses the HyperLogLog approximate algorithm, which is significantly faster
-            for large amount of data.
-            Note: This parameter is specific to Koalas and is not found in pandas.
-        rsd: float, default 0.05
-            Maximum estimation error allowed in the HyperLogLog algorithm.
-            Note: Just like ``approx`` this parameter is specific to Koalas.
-
-        Returns
-        -------
-        The number of unique values as an int.
-
-        Examples
-        --------
-        >>> ks.Series([1, 2, 3, np.nan]).nunique()
-        3
-
-        >>> ks.Series([1, 2, 3, np.nan]).nunique(dropna=False)
-        4
-
-        On big data, we recommend using the approximate algorithm to speed up this function.
-        The result will be very close to the exact unique count.
-
-        >>> ks.Series([1, 2, 3, np.nan]).nunique(approx=True)
-        3
-        """
-        res = self._internal._sdf.select([self._nunique(dropna, approx, rsd)])
-        return res.collect()[0][0]
-
-    def _nunique(self, dropna=True, approx=False, rsd=0.05):
-        colname = self._internal.data_columns[0]
-        count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
-        if dropna:
-            return count_fn(self._scol).alias(colname)
-        else:
-            return (count_fn(self._scol) +
-                    F.when(F.count(F.when(self._scol.isNull(), 1)
-                                   .otherwise(None)) >= 1, 1).otherwise(0)).alias(colname)
-
     def sort_values(self, ascending: bool = True, inplace: bool = False,
                     na_position: str = 'last') -> Union['Series', None]:
         """
@@ -4197,8 +4147,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
         index_columns = self._internal.index_columns
+
+        # address temporal column to keep natural order.
+        sdf = self._internal.sdf
+        if '__natural_order__' not in sdf.columns:
+            sdf = sdf.withColumn('__natural_order__', F.monotonically_increasing_id())
+
         window = Window.orderBy(
-            index_columns).partitionBy(*part_cols).rowsBetween(
+            '__natural_order__').partitionBy(*part_cols).rowsBetween(
                 Window.unboundedPreceding, Window.currentRow)
 
         if skipna:
@@ -4273,7 +4229,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if func.__name__ == "cumprod":
             scol = F.exp(scol)
 
-        return self._with_new_scol(scol).rename(self.name)
+        internal = self._internal.copy(sdf=sdf, scol=scol)
+
+        return _col(DataFrame(internal))
 
     # ----------------------------------------------------------------------
     # Accessor Methods

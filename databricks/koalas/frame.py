@@ -26,7 +26,7 @@ import json
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
-from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable, Dict
+from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable, Dict, Callable
 
 import numpy as np
 import pandas as pd
@@ -42,13 +42,12 @@ from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
                                IntegerType, LongType, NumericType, ShortType)
-from pyspark.sql.utils import AnalysisException
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame
-from databricks.koalas.internal import _InternalFrame, IndexMap, SPARK_INDEX_NAME_FORMAT
+from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, name_like_string, scol_for, validate_axis
@@ -108,6 +107,12 @@ rectangle       5      361
 circle          1      361
 triangle        4      181
 rectangle       5      361
+
+>>> df.add(df)
+           angles  degrees
+circle          0      720
+triangle        6      360
+rectangle       8      720
 
 >>> df.radd(1)
            angles  degrees
@@ -500,7 +505,11 @@ class DataFrame(_Frame, Generic[T]):
             # DataFrame and Series
             applied = []
             for idx in self._internal.column_index:
-                applied.append(getattr(self[idx], op)(other))
+                if isinstance(other, DataFrame):
+                    argument = other[idx]
+                else:
+                    argument = other
+                applied.append(getattr(self[idx], op)(argument))
 
             sdf = self._sdf.select(
                 self._internal.index_scols + [c._scol for c in applied])
@@ -6727,9 +6736,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             func = "cumsum"
         elif func.__name__ == "cumprod":
             func = "cumprod"
-
+        self = self.copy()
+        columns = self.columns
+        # add a temporal column to keep natural order.
+        self['__natural_order__'] = F.monotonically_increasing_id()
         applied = []
-        for column in self.columns:
+        for column in columns:
             applied.append(getattr(self[column], func)(skipna))
 
         sdf = self._sdf.select(
@@ -6738,6 +6750,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                        column_index=[c._internal.column_index[0] for c in applied],
                                        column_scols=[scol_for(sdf, c._internal.data_columns[0])
                                                      for c in applied])
+        # add a temporal column to keep natural order.
+        self = self.drop('__natural_order__')
         return DataFrame(internal)
 
     # TODO: implements 'keep' parameters
@@ -8290,61 +8304,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         self._internal.spark_internal_df.explain(extended)
 
-    def _get_from_multiindex_column(self, key):
-        """ Select columns from multi-index columns.
-
-        :param key: the multi-index column keys represented by tuple
-        :return: DataFrame or Series
-        """
-        from databricks.koalas.series import Series
-        assert isinstance(key, tuple)
-        indexes = [(idx, idx) for idx in self._internal.column_index]
-        for k in key:
-            indexes = [(index, idx[1:]) for index, idx in indexes if idx[0] == k]
-            if len(indexes) == 0:
-                raise KeyError(k)
-        recursive = False
-        if all(len(idx) > 0 and idx[0] == '' for _, idx in indexes):
-            # If the head is '', drill down recursively.
-            recursive = True
-            for i, (col, idx) in enumerate(indexes):
-                indexes[i] = (col, tuple([str(key), *idx[1:]]))
-
-        column_index_names = None
-        if self._internal.column_index_names is not None:
-            # Manage column index names
-            level = column_index_level([idx for _, idx in indexes])
-            column_index_names = self._internal.column_index_names[-level:]
-
-        if all(len(idx) == 0 for _, idx in indexes):
-            try:
-                idxes = set(idx for idx, _ in indexes)
-                assert len(idxes) == 1
-                index = list(idxes)[0]
-                kdf_or_ser = \
-                    Series(self._internal.copy(scol=self._internal.scol_for(index),
-                                               column_index=[index]),
-                           anchor=self)
-            except AnalysisException:
-                raise KeyError(key)
-        else:
-            kdf_or_ser = DataFrame(self._internal.copy(
-                column_index=[idx for _, idx in indexes],
-                column_scols=[self._internal.scol_for(idx) for idx, _ in indexes],
-                column_index_names=column_index_names))
-
-        if recursive:
-            kdf_or_ser = kdf_or_ser._get_from_multiindex_column((str(key),))
-        return kdf_or_ser
-
     def _pd_getitem(self, key):
         from databricks.koalas.series import Series
         if key is None:
             raise KeyError("none key")
-        if isinstance(key, str):
-            return self._get_from_multiindex_column((key,))
-        if isinstance(key, tuple):
-            return self._get_from_multiindex_column(key)
+        if isinstance(key, (str, tuple, list)):
+            return self.loc[:, key]
         elif np.isscalar(key):
             raise NotImplementedError(key)
         elif isinstance(key, slice):
@@ -8352,8 +8317,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if isinstance(key, (pd.Series, np.ndarray, pd.Index)):
             raise NotImplementedError(key)
-        if isinstance(key, list):
-            return self.loc[:, key]
         if isinstance(key, DataFrame):
             # TODO Should not implement alignment, too dangerous?
             return Series(self._internal.copy(scol=self._internal.scol_for(key)), anchor=self)
@@ -8484,7 +8447,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return partial(property_or_func, self)
 
         try:
-            return self._get_from_multiindex_column((key,))
+            return self.loc[:, key]
         except KeyError:
             raise AttributeError(
                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, key))
@@ -8498,6 +8461,46 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def __iter__(self):
         return iter(self.columns)
+
+    # NDArray Compat
+    def __array_ufunc__(self, ufunc: Callable, method: str, *inputs: Any, **kwargs: Any):
+        # TODO: is it possible to deduplicate it with '_map_series_op'?
+        if (all(isinstance(inp, DataFrame) for inp in inputs)
+                and any(inp is not inputs[0] for inp in inputs)):
+            # binary only
+            assert len(inputs) == 2
+            this = inputs[0]
+            that = inputs[1]
+            if this._internal.column_index_level != that._internal.column_index_level:
+                raise ValueError('cannot join with no overlapping index names')
+
+            # Different DataFrames
+            def apply_op(kdf, this_column_index, that_column_index):
+                for this_idx, that_idx in zip(this_column_index, that_column_index):
+                    yield (ufunc(kdf[this_idx], kdf[that_idx], **kwargs), this_idx)
+
+            return align_diff_frames(apply_op, this, that, fillna=True, how="full")
+        else:
+            # DataFrame and Series
+            applied = []
+            this = inputs[0]
+            assert all(inp is this for inp in inputs if isinstance(inp, DataFrame))
+
+            for idx in this._internal.column_index:
+                arguments = []
+                for inp in inputs:
+                    arguments.append(inp[idx] if isinstance(inp, DataFrame) else inp)
+                # both binary and unary.
+                applied.append(ufunc(*arguments, **kwargs))
+
+            sdf = this._sdf.select(
+                this._internal.index_scols + [c._scol for c in applied])
+            internal = this._internal.copy(sdf=sdf,
+                                           column_index=[c._internal.column_index[0]
+                                                         for c in applied],
+                                           column_scols=[scol_for(sdf, c._internal.data_columns[0])
+                                                         for c in applied])
+            return DataFrame(internal)
 
     if sys.version_info >= (3, 7):
         def __class_getitem__(cls, params):
