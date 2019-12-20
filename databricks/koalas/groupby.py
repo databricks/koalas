@@ -2050,7 +2050,7 @@ class SeriesGroupBy(GroupBy):
         Name: b, dtype: int64
         """
         if len(self._kdf._internal.index_names) > 1:
-            raise ValueError('idxmax do not support multi-index now')
+            raise ValueError('nsmallest do not support multi-index now')
         groupkeys = self._groupkeys
         sdf = self._kdf._sdf
         name = self._agg_columns[0]._internal.data_columns[0]
@@ -2096,7 +2096,7 @@ class SeriesGroupBy(GroupBy):
         Name: b, dtype: int64
         """
         if len(self._kdf._internal.index_names) > 1:
-            raise ValueError('idxmax do not support multi-index now')
+            raise ValueError('nlargest do not support multi-index now')
         groupkeys = self._groupkeys
         sdf = self._kdf._sdf
         name = self._agg_columns[0]._internal.data_columns[0]
