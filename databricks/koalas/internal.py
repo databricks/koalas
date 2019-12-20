@@ -514,7 +514,8 @@ class _InternalFrame(object):
             grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(default_index)
 
             sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
-            return sdf.groupBy("__spark_partition_id").apply(grouped_map_func)
+            return sdf.groupBy("__spark_partition_id").apply(grouped_map_func) \
+                .orderBy(NATURAL_ORDER_COLUMN_NAME)
         elif default_index_type == "distributed":
             scols = [scol_for(sdf, column) for column in sdf.columns]
             return sdf.select(
