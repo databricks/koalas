@@ -135,9 +135,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         for i in [0, 4, 7]:
             for almost, func in funcs:
                 self.assert_eq(getattr(kdf.groupby(kdf.b > i).a, func)().sort_index(),
-                               getattr(pdf.groupby(pdf.b > i).a, func)().sort_index(), almost=almost)
+                               getattr(pdf.groupby(pdf.b > i).a, func)().sort_index(),
+                               almost=almost)
                 self.assert_eq(getattr(kdf.groupby(kdf.b > i), func)().sort_index(),
-                               getattr(pdf.groupby(pdf.b > i), func)().sort_index(), almost=almost)
+                               getattr(pdf.groupby(pdf.b > i), func)().sort_index(),
+                               almost=almost)
 
     def test_aggregate(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2],
