@@ -39,25 +39,34 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         for as_index in [True, False]:
-            self.assert_eq(kdf.groupby('a', as_index=as_index).sum(),
-                           pdf.groupby('a', as_index=as_index).sum())
-            self.assert_eq(kdf.groupby('a', as_index=as_index).b.sum(),
-                           pdf.groupby('a', as_index=as_index).b.sum())
-            self.assert_eq(kdf.groupby('a', as_index=as_index)['b'].sum(),
-                           pdf.groupby('a', as_index=as_index)['b'].sum())
-            self.assert_eq(kdf.groupby('a', as_index=as_index)[['b', 'c']].sum(),
-                           pdf.groupby('a', as_index=as_index)[['b', 'c']].sum())
-            self.assert_eq(kdf.groupby('a', as_index=as_index)[[]].sum(),
-                           pdf.groupby('a', as_index=as_index)[[]].sum())
-            self.assert_eq(kdf.groupby('a', as_index=as_index)['c'].sum(),
-                           pdf.groupby('a', as_index=as_index)['c'].sum())
+            if as_index:
+                sort = lambda df: df.sort_index()
+            else:
+                sort = lambda df: df.sort_values('a').reset_index(drop=True)
+            self.assert_eq(sort(kdf.groupby('a', as_index=as_index).sum()),
+                           sort(pdf.groupby('a', as_index=as_index).sum()))
+            self.assert_eq(sort(kdf.groupby('a', as_index=as_index).b.sum()),
+                           sort(pdf.groupby('a', as_index=as_index).b.sum()))
+            self.assert_eq(sort(kdf.groupby('a', as_index=as_index)['b'].sum()),
+                           sort(pdf.groupby('a', as_index=as_index)['b'].sum()))
+            self.assert_eq(sort(kdf.groupby('a', as_index=as_index)[['b', 'c']].sum()),
+                           sort(pdf.groupby('a', as_index=as_index)[['b', 'c']].sum()))
+            self.assert_eq(sort(kdf.groupby('a', as_index=as_index)[[]].sum()),
+                           sort(pdf.groupby('a', as_index=as_index)[[]].sum()))
+            self.assert_eq(sort(kdf.groupby('a', as_index=as_index)['c'].sum()),
+                           sort(pdf.groupby('a', as_index=as_index)['c'].sum()))
 
-        self.assert_eq(kdf.groupby('a').a.sum(), pdf.groupby('a').a.sum())
-        self.assert_eq(kdf.groupby('a')['a'].sum(), pdf.groupby('a')['a'].sum())
-        self.assert_eq(kdf.groupby('a')[['a']].sum(), pdf.groupby('a')[['a']].sum())
-        self.assert_eq(kdf.groupby('a')[['a', 'c']].sum(), pdf.groupby('a')[['a', 'c']].sum())
+        self.assert_eq(kdf.groupby('a').a.sum().sort_index(),
+                       pdf.groupby('a').a.sum().sort_index())
+        self.assert_eq(kdf.groupby('a')['a'].sum().sort_index(),
+                       pdf.groupby('a')['a'].sum().sort_index())
+        self.assert_eq(kdf.groupby('a')[['a']].sum().sort_index(),
+                       pdf.groupby('a')[['a']].sum().sort_index())
+        self.assert_eq(kdf.groupby('a')[['a', 'c']].sum().sort_index(),
+                       pdf.groupby('a')[['a', 'c']].sum().sort_index())
 
-        self.assert_eq(kdf.a.groupby(kdf.b).sum(), pdf.a.groupby(pdf.b).sum())
+        self.assert_eq(kdf.a.groupby(kdf.b).sum().sort_index(),
+                       pdf.a.groupby(pdf.b).sum().sort_index())
 
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False).a)
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)['a'])
@@ -86,14 +95,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                            index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(kdf.groupby(('x', 'a')).sum(),
-                       pdf.groupby(('x', 'a')).sum())
-        self.assert_eq(kdf.groupby(('x', 'a'), as_index=False).sum(),
-                       pdf.groupby(('x', 'a'), as_index=False).sum())
-        self.assert_eq(kdf.groupby(('x', 'a'))[[('y', 'c')]].sum(),
-                       pdf.groupby(('x', 'a'))[[('y', 'c')]].sum())
-        self.assert_eq(kdf[('x', 'a')].groupby(kdf[('x', 'b')]).sum(),
-                       pdf[('x', 'a')].groupby(pdf[('x', 'b')]).sum())
+        self.assert_eq(kdf.groupby(('x', 'a')).sum().sort_index(),
+                       pdf.groupby(('x', 'a')).sum().sort_index())
+        self.assert_eq(kdf.groupby(('x', 'a'), as_index=False).sum()
+                       .sort_values(('x', 'a')).reset_index(drop=True),
+                       pdf.groupby(('x', 'a'), as_index=False).sum()
+                       .sort_values(('x', 'a')).reset_index(drop=True))
+        self.assert_eq(kdf.groupby(('x', 'a'))[[('y', 'c')]].sum().sort_index(),
+                       pdf.groupby(('x', 'a'))[[('y', 'c')]].sum().sort_index())
+        self.assert_eq(kdf[('x', 'a')].groupby(kdf[('x', 'b')]).sum().sort_index(),
+                       pdf[('x', 'a')].groupby(pdf[('x', 'b')]).sum().sort_index())
 
     def test_split_apply_combine_on_series(self):
         pdf = pd.DataFrame({'a': [1, 2, 6, 4, 4, 6, 4, 3, 7],
@@ -108,24 +119,25 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         funcs = [(almost, f) for almost, fs in funcs for f in fs]
         for ddkey, pdkey in [('b', 'b'), (kdf.b, pdf.b), (kdf.b + 1, pdf.b + 1)]:
             for almost, func in funcs:
-                self.assert_eq(getattr(kdf.groupby(ddkey).a, func)(),
-                               getattr(pdf.groupby(pdkey).a, func)(), almost=almost)
-                self.assert_eq(getattr(kdf.groupby(ddkey), func)(),
-                               getattr(pdf.groupby(pdkey), func)(), almost=almost)
+                self.assert_eq(getattr(kdf.groupby(ddkey).a, func)().sort_index(),
+                               getattr(pdf.groupby(pdkey).a, func)().sort_index(), almost=almost)
+                self.assert_eq(getattr(kdf.groupby(ddkey), func)().sort_index(),
+                               getattr(pdf.groupby(pdkey), func)().sort_index(), almost=almost)
 
         for ddkey, pdkey in [(kdf.b, pdf.b), (kdf.b + 1, pdf.b + 1)]:
             for almost, func in funcs:
-                self.assert_eq(getattr(kdf.a.groupby(ddkey), func)(),
-                               getattr(pdf.a.groupby(pdkey), func)(), almost=almost)
-                self.assert_eq(getattr((kdf.a + 1).groupby(ddkey), func)(),
-                               getattr((pdf.a + 1).groupby(pdkey), func)(), almost=almost)
+                self.assert_eq(getattr(kdf.a.groupby(ddkey), func)().sort_index(),
+                               getattr(pdf.a.groupby(pdkey), func)().sort_index(), almost=almost)
+                self.assert_eq(getattr((kdf.a + 1).groupby(ddkey), func)().sort_index(),
+                               getattr((pdf.a + 1).groupby(pdkey), func)().sort_index(),
+                               almost=almost)
 
         for i in [0, 4, 7]:
             for almost, func in funcs:
-                self.assert_eq(getattr(kdf.groupby(kdf.b > i).a, func)(),
-                               getattr(pdf.groupby(pdf.b > i).a, func)(), almost=almost)
-                self.assert_eq(getattr(kdf.groupby(kdf.b > i), func)(),
-                               getattr(pdf.groupby(pdf.b > i), func)(), almost=almost)
+                self.assert_eq(getattr(kdf.groupby(kdf.b > i).a, func)().sort_index(),
+                               getattr(pdf.groupby(pdf.b > i).a, func)().sort_index(), almost=almost)
+                self.assert_eq(getattr(kdf.groupby(kdf.b > i), func)().sort_index(),
+                               getattr(pdf.groupby(pdf.b > i), func)().sort_index(), almost=almost)
 
     def test_aggregate(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2],
@@ -247,18 +259,24 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         for as_index in [True, False]:
-            self.assert_eq(kdf.groupby('A', as_index=as_index).all(),
-                           pdf.groupby('A', as_index=as_index).all())
-            self.assert_eq(kdf.groupby('A', as_index=as_index).any(),
-                           pdf.groupby('A', as_index=as_index).any())
+            if as_index:
+                sort = lambda df: df.sort_index()
+            else:
+                sort = lambda df: df.sort_values('A').reset_index(drop=True)
+            self.assert_eq(sort(kdf.groupby('A', as_index=as_index).all()),
+                           sort(pdf.groupby('A', as_index=as_index).all()))
+            self.assert_eq(sort(kdf.groupby('A', as_index=as_index).any()),
+                           sort(pdf.groupby('A', as_index=as_index).any()))
 
-            self.assert_eq(kdf.groupby('A', as_index=as_index).all().B,
-                           pdf.groupby('A', as_index=as_index).all().B)
-            self.assert_eq(kdf.groupby('A', as_index=as_index).any().B,
-                           pdf.groupby('A', as_index=as_index).any().B)
+            self.assert_eq(sort(kdf.groupby('A', as_index=as_index).all()).B,
+                           sort(pdf.groupby('A', as_index=as_index).all()).B)
+            self.assert_eq(sort(kdf.groupby('A', as_index=as_index).any()).B,
+                           sort(pdf.groupby('A', as_index=as_index).any()).B)
 
-        self.assert_eq(kdf.B.groupby(kdf.A).all(), pdf.B.groupby(pdf.A).all())
-        self.assert_eq(kdf.B.groupby(kdf.A).any(), pdf.B.groupby(pdf.A).any())
+        self.assert_eq(kdf.B.groupby(kdf.A).all().sort_index(),
+                       pdf.B.groupby(pdf.A).all().sort_index())
+        self.assert_eq(kdf.B.groupby(kdf.A).any().sort_index(),
+                       pdf.B.groupby(pdf.A).any().sort_index())
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('X', 'A'), ('Y', 'B')])
@@ -266,10 +284,14 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf.columns = columns
 
         for as_index in [True, False]:
-            self.assert_eq(kdf.groupby(('X', 'A'), as_index=as_index).all(),
-                           pdf.groupby(('X', 'A'), as_index=as_index).all())
-            self.assert_eq(kdf.groupby(('X', 'A'), as_index=as_index).any(),
-                           pdf.groupby(('X', 'A'), as_index=as_index).any())
+            if as_index:
+                sort = lambda df: df.sort_index()
+            else:
+                sort = lambda df: df.sort_values(('X', 'A')).reset_index(drop=True)
+            self.assert_eq(sort(kdf.groupby(('X', 'A'), as_index=as_index).all()),
+                           sort(pdf.groupby(('X', 'A'), as_index=as_index).all()))
+            self.assert_eq(sort(kdf.groupby(('X', 'A'), as_index=as_index).any()),
+                           sort(pdf.groupby(('X', 'A'), as_index=as_index).any()))
 
     def test_raises(self):
         kdf = ks.DataFrame({'a': [1, 2, 6, 4, 4, 6, 4, 3, 7],
@@ -289,14 +311,14 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.groupby("a").agg({"b": "nunique"}),
                        pdf.groupby("a").agg({"b": "nunique"}))
-        self.assert_eq(kdf.groupby("a").nunique(),
-                       pdf.groupby("a").nunique())
-        self.assert_eq(kdf.groupby("a").nunique(dropna=False),
-                       pdf.groupby("a").nunique(dropna=False))
-        self.assert_eq(kdf.groupby("a")['b'].nunique(),
-                       pdf.groupby("a")['b'].nunique())
-        self.assert_eq(kdf.groupby("a")['b'].nunique(dropna=False),
-                       pdf.groupby("a")['b'].nunique(dropna=False))
+        self.assert_eq(kdf.groupby("a").nunique().sort_index(),
+                       pdf.groupby("a").nunique().sort_index())
+        self.assert_eq(kdf.groupby("a").nunique(dropna=False).sort_index(),
+                       pdf.groupby("a").nunique(dropna=False).sort_index())
+        self.assert_eq(kdf.groupby("a")['b'].nunique().sort_index(),
+                       pdf.groupby("a")['b'].nunique().sort_index())
+        self.assert_eq(kdf.groupby("a")['b'].nunique(dropna=False).sort_index(),
+                       pdf.groupby("a")['b'].nunique(dropna=False).sort_index())
 
         for as_index in [True, False]:
             self.assert_eq(kdf.groupby("a", as_index=as_index).agg({"b": "nunique"}),
@@ -307,10 +329,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(kdf.groupby(("x", "a")).nunique(),
-                       pdf.groupby(("x", "a")).nunique())
-        self.assert_eq(kdf.groupby(("x", "a")).nunique(dropna=False),
-                       pdf.groupby(("x", "a")).nunique(dropna=False))
+        self.assert_eq(kdf.groupby(("x", "a")).nunique().sort_index(),
+                       pdf.groupby(("x", "a")).nunique().sort_index())
+        self.assert_eq(kdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
+                       pdf.groupby(("x", "a")).nunique(dropna=False).sort_index())
 
     def test_value_counts(self):
         pdf = pd.DataFrame({'A': [1, 2, 2, 3, 3, 3],

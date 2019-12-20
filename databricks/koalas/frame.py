@@ -5445,8 +5445,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4     D     7     2
         3  None     8     4
         """
-        if isinstance(by, str):
+        if isinstance(by, (str, tuple)):
             by = [by]
+        else:
+            by = [b if isinstance(b, tuple) else (b,) for b in by]
         by = [self[colname]._scol for colname in by]
         return self._sort(by=by, ascending=ascending,
                           inplace=inplace, na_position=na_position)
