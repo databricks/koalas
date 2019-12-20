@@ -3316,7 +3316,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 for level, index in enumerate(item)]
         sdf = self._internal.sdf \
             .select(cols) \
-            .where(reduce(lambda x, y: x & y, rows))
+            .filter(reduce(lambda x, y: x & y, rows))
 
         if len(self._internal._index_map) == len(item):
             # if sdf has one column and one data, return data only without frame
@@ -3521,7 +3521,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         ser_count = self.value_counts(dropna=dropna, sort=False)
         sdf_count = ser_count._internal.sdf
         most_value = ser_count.max()
-        sdf_most_value = sdf_count.where("count == {}".format(most_value))
+        sdf_most_value = sdf_count.filter("count == {}".format(most_value))
         sdf = sdf_most_value.select(
             F.col(SPARK_INDEX_NAME_FORMAT(0)).alias('0'))
         internal = _InternalFrame(sdf=sdf)

@@ -2094,7 +2094,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 for lvl, index in enumerate(key, level)]
 
         sdf = self._sdf.select(scols + list(HIDDEN_COLUMNS)) \
-                       .where(reduce(lambda x, y: x & y, rows))
+            .drop(NATURAL_ORDER_COLUMN_NAME) \
+            .filter(reduce(lambda x, y: x & y, rows))
 
         if len(key) == len(self._internal.index_scols):
             result = _col(DataFrame(_InternalFrame(sdf=sdf)).T)
@@ -2257,7 +2258,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     scol_for(sdf, tmp_other_col_name.format(column))
                 ).alias(data_col_name))
 
-        index_scols = self._internal.index_scols
+        index_scols = kdf._internal.index_scols
         sdf = sdf.select(index_scols + output + list(HIDDEN_COLUMNS))
 
         return DataFrame(self._internal.copy(
@@ -4038,7 +4039,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 else:
                     raise TypeError('must specify how or thresh')
 
-            sdf = self._sdf.filter(pred)
+            sdf = self._sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(pred)
             internal = self._internal.copy(sdf=sdf)
             if inplace:
                 self._internal = internal
@@ -7549,7 +7550,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         axis = validate_axis(axis, none_axis=1)
 
         index_scols = self._internal.index_scols
-        sdf = self._sdf
+        sdf = self._sdf.drop(NATURAL_ORDER_COLUMN_NAME)
 
         if items is not None:
             if is_list_like(items):
@@ -7963,9 +7964,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         c  z    2
         Name: 0, dtype: int64
         """
-        from databricks.koalas.series import Series
         sdf = self._sdf
-        max_cols = map(lambda x: F.max(x).alias(x), self._internal.data_columns)
+        max_cols = map(lambda x: F.max(scol_for(sdf, x)).alias(x), self._internal.data_columns)
         sdf_max = sdf.select(*max_cols)
         # `sdf_max` looks like below
         # +------+------+------+
@@ -7974,11 +7974,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |     3|   4.0|   400|
         # +------+------+------+
 
-        conds = (F.col(column_name) == max_val
+        conds = (scol_for(sdf, column_name) == max_val
                  for column_name, max_val in zip(sdf_max.columns, sdf_max.head()))
         cond = reduce(lambda x, y: x | y, conds)
 
-        kdf = DataFrame(self._internal.copy(sdf=sdf.where(cond)))
+        kdf = DataFrame(self._internal.copy(sdf=sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)))
         pdf = kdf.to_pandas()
 
         return ks.from_pandas(pdf.idxmax())
@@ -8043,16 +8043,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         c  z    1
         Name: 0, dtype: int64
         """
-        from databricks.koalas.series import Series
         sdf = self._sdf
-        min_cols = map(lambda x: F.min(x).alias(x), self._internal.data_columns)
+        min_cols = map(lambda x: F.min(scol_for(sdf, x)).alias(x), self._internal.data_columns)
         sdf_min = sdf.select(*min_cols)
 
-        conds = (F.col(column_name) == min_val
+        conds = (scol_for(sdf, column_name) == min_val
                  for column_name, min_val in zip(sdf_min.columns, sdf_min.head()))
         cond = reduce(lambda x, y: x | y, conds)
 
-        kdf = DataFrame(self._internal.copy(sdf=sdf.where(cond)))
+        kdf = DataFrame(self._internal.copy(sdf=sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)))
         pdf = kdf.to_pandas()
 
         return ks.from_pandas(pdf.idxmin())
@@ -8330,7 +8329,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # TODO Should not implement alignment, too dangerous?
             # It is assumed to be only a filter, otherwise .loc should be used.
             bcol = key._scol.cast("boolean")
-            return DataFrame(self._internal.copy(sdf=self._sdf.filter(bcol)))
+            return DataFrame(self._internal.copy(
+                sdf=self._sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(bcol)))
         raise NotImplementedError(key)
 
     def _to_internal_pandas(self):

@@ -25,7 +25,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
-from databricks.koalas.internal import _InternalFrame, HIDDEN_COLUMNS
+from databricks.koalas.internal import _InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 from databricks.koalas.utils import column_index_level, name_like_string
 
@@ -174,7 +174,8 @@ class AtIndexer(_IndexerLike):
 
         cond = reduce(lambda x, y: x & y,
                       [scol == row for scol, row in zip(self._internal.index_scols, row_sel)])
-        pdf = self._internal.sdf.where(cond).select(self._internal.scol_for(col_sel)).toPandas()
+        pdf = self._internal.sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond) \
+            .select(self._internal.scol_for(col_sel)).toPandas()
 
         if len(pdf) < 1:
             raise KeyError(name_like_string(row_sel))
@@ -518,10 +519,9 @@ class LocIndexer(_IndexerLike):
         else:
             try:
                 sdf = self._internal._sdf
-                if cond is not None:
-                    sdf = sdf.where(cond)
-
                 sdf = sdf.select(self._internal.index_scols + columns + list(HIDDEN_COLUMNS))
+                if cond is not None:
+                    sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)
 
                 if self._internal.column_index_names is None:
                     column_index_names = None
@@ -754,13 +754,6 @@ class ILocIndexer(_IndexerLike):
 
         sdf = self._internal.sdf
         cond, limit = self._select_rows(rows_sel)
-        if cond is not None:
-            sdf = sdf.where(cond)
-        if limit is not None:
-            if limit >= 0:
-                sdf = sdf.limit(limit)
-            else:
-                sdf = sdf.limit(sdf.count() + limit)
 
         # make cols_sel a 1-tuple of string if a single string
         if isinstance(cols_sel, Series) and cols_sel._equals(self._kdf_or_kser):
@@ -796,6 +789,13 @@ class ILocIndexer(_IndexerLike):
 
         try:
             sdf = sdf.select(self._internal.index_scols + columns + list(HIDDEN_COLUMNS))
+            if cond is not None:
+                sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)
+            if limit is not None:
+                if limit >= 0:
+                    sdf = sdf.limit(limit)
+                else:
+                    sdf = sdf.limit(sdf.count() + limit)
             internal = _InternalFrame(sdf=sdf,
                                       index_map=self._internal.index_map,
                                       column_index=column_index,

@@ -33,7 +33,7 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, ILocIndexer, LocIndexer
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
 from databricks.koalas.window import Rolling, Expanding
 
@@ -1426,7 +1426,7 @@ class _Frame(object):
         cond = reduce(lambda x, y: x & y,
                       map(lambda x: x.isNotNull(), column_scols))
 
-        first_valid_row = sdf.where(cond).first()
+        first_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).first()
         first_valid_idx = tuple(first_valid_row[idx_col]
                                 for idx_col in self._internal.index_columns)
 
