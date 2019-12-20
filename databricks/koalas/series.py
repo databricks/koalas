@@ -1459,8 +1459,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 else:
                     end = Window.unboundedFollowing
 
-            window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
-                .rowsBetween(begin, end)
+            window = Window.partitionBy(*part_cols).orderBy(F.monotonically_increasing_id())\
+                .rowsBetween(begin, end)  # FIXME
             scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
         kseries = self._with_new_scol(scol).rename(column_name)
         if inplace:
@@ -2849,20 +2849,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             raise ValueError('rank do not support index now')
 
         if ascending:
-            asc_func = spark.functions.asc
+            asc_func = lambda scol: scol.asc()
         else:
-            asc_func = spark.functions.desc
-
-        index_column = self._internal.index_columns[0]
-        column_name = self._internal.data_columns[0]
+            asc_func = lambda scol: scol.desc()
 
         if method == 'first':
             window = Window.orderBy(
-                asc_func(column_name), asc_func(index_column)
+                asc_func(self._internal.scol), asc_func(F.monotonically_increasing_id())  # FIXME
             ).partitionBy(*part_cols).rowsBetween(Window.unboundedPreceding, Window.currentRow)
             scol = F.row_number().over(window)
         elif method == 'dense':
-            window = Window.orderBy(asc_func(column_name)).partitionBy(*part_cols) \
+            window = Window.orderBy(asc_func(self._internal.scol)).partitionBy(*part_cols) \
                 .rowsBetween(Window.unboundedPreceding, Window.currentRow)
             scol = F.dense_rank().over(window)
         else:
@@ -2873,10 +2870,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             elif method == 'max':
                 stat_func = F.max
             window1 = Window.orderBy(
-                asc_func(column_name)
+                asc_func(self._internal.scol)
             ).partitionBy(*part_cols).rowsBetween(Window.unboundedPreceding, Window.currentRow)
             window2 = Window.partitionBy(
-                *[column_name] + list(part_cols)
+                [self._internal.scol] + list(part_cols)
             ).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
             scol = stat_func(F.row_number().over(window1)).over(window2)
         kser = self._with_new_scol(scol).rename(self.name)
@@ -2958,8 +2955,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def _diff(self, periods, part_cols=()):
         if not isinstance(periods, int):
             raise ValueError('periods should be an int; however, got [%s]' % type(periods))
-        window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
-            .rowsBetween(-periods, -periods)
+        window = Window.partitionBy(*part_cols).orderBy(F.monotonically_increasing_id())\
+            .rowsBetween(-periods, -periods)  # FIXME
         scol = self._scol - F.lag(self._scol, periods).over(window)
         return self._with_new_scol(scol).rename(self.name)
 

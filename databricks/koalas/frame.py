@@ -3178,16 +3178,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if keep == 'first' or keep == 'last':
             if keep == 'first':
-                ord_func = spark.functions.asc
+                ord_func = lambda scol: scol.asc()
             else:
-                ord_func = spark.functions.desc
-            window = Window.partitionBy(group_cols).orderBy(ord_func(index_column)).rowsBetween(
-                Window.unboundedPreceding, Window.currentRow)
+                ord_func = lambda scol: scol.desc()
+            window = Window.partitionBy(group_cols) \
+                .orderBy(ord_func(F.monotonically_increasing_id())) \
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)  # FIXME
             sdf = sdf.withColumn(column, F.row_number().over(window) > 1)
         elif not keep:
-            window = Window.partitionBy(group_cols).orderBy(scol_for(sdf, index_column).desc())\
+            window = Window.partitionBy(group_cols) \
                 .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
-            sdf = sdf.withColumn(column, F.count(scol_for(sdf, index_column)).over(window) > 1)
+            sdf = sdf.withColumn(column, F.count('*').over(window) > 1)
         else:
             raise ValueError("'keep' only support 'first', 'last' and False")
         sdf = sdf.select(scol_for(sdf, index_column), scol_for(sdf, column))
@@ -7886,7 +7887,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1980-03-01  0.067912  0.073814  0.06883
         """
         sdf = self._sdf
-        window = Window.orderBy(self._internal.index_columns).rowsBetween(-periods, -periods)
+        window = Window.orderBy(F.monotonically_increasing_id()) \
+            .rowsBetween(-periods, -periods)  # FIXME
 
         for column_name in self._internal.data_columns:
             prev_row = F.lag(F.col(column_name), periods).over(window)
