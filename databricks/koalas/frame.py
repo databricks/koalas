@@ -5371,7 +5371,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return kdf
 
-    def sort_values(self, by: Union[str, List[str]], ascending: Union[bool, List[bool]] = True,
+    def sort_values(self, by: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]],
+                    ascending: Union[bool, List[bool]] = True,
                     inplace: bool = False, na_position: str = 'last') -> Optional['DataFrame']:
         """
         Sort by the values along either axis.
@@ -5445,8 +5446,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4     D     7     2
         3  None     8     4
         """
-        if isinstance(by, str):
-            by = [by]
+        if isinstance(by, (str, tuple)):
+            by = [by]  # type: ignore
+        else:
+            by = [b if isinstance(b, tuple) else (b,) for b in by]  # type: ignore
         by = [self[colname]._scol for colname in by]
         return self._sort(by=by, ascending=ascending,
                           inplace=inplace, na_position=na_position)

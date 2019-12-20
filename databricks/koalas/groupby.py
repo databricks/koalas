@@ -237,7 +237,7 @@ class GroupBy(object):
         >>> df = ks.DataFrame({'A': [1, 1, 2, 1, 2],
         ...                    'B': [np.nan, 2, 3, 4, 5],
         ...                    'C': [1, 2, 1, 1, 2]}, columns=['A', 'B', 'C'])
-        >>> df.groupby('A').count()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby('A').count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
             B  C
         A
         1  2  3
@@ -303,7 +303,7 @@ class GroupBy(object):
         Groupby one column and return the mean of the remaining columns in
         each group.
 
-        >>> df.groupby('A').mean()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby('A').mean().sort_index()  # doctest: +NORMALIZE_WHITESPACE
              B         C
         A
         1  3.0  1.333333
@@ -388,7 +388,7 @@ class GroupBy(object):
         8  5   None
         9  5  False
 
-        >>> df.groupby('A').all()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby('A').all().sort_index()  # doctest: +NORMALIZE_WHITESPACE
                B
         A
         1   True
@@ -430,7 +430,7 @@ class GroupBy(object):
         8  5   None
         9  5  False
 
-        >>> df.groupby('A').any()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby('A').any().sort_index()  # doctest: +NORMALIZE_WHITESPACE
                B
         A
         1   True
@@ -1693,14 +1693,14 @@ class GroupBy(object):
         4   ham       5      x
         5   ham       5      y
 
-        >>> df.groupby('id').nunique() # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby('id').nunique().sort_index() # doctest: +NORMALIZE_WHITESPACE
               id  value1  value2
         id
         egg    1       1       1
         ham    1       1       2
         spam   1       2       1
 
-        >>> df.groupby('id')['value1'].nunique() # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby('id')['value1'].nunique().sort_index() # doctest: +NORMALIZE_WHITESPACE
         id
         egg     1
         ham     1
@@ -1795,7 +1795,6 @@ class GroupBy(object):
             sdf = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
         else:
             sdf = sdf.select(*groupkey_cols).distinct()
-        sdf = sdf.sort(*groupkey_cols)
 
         internal = _InternalFrame(sdf=sdf,
                                   index_map=[(SPARK_INDEX_NAME_FORMAT(i),
