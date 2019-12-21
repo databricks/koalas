@@ -1151,7 +1151,8 @@ class GroupBy(object):
                 order_column = Column(kser._scol._jc.desc_nulls_last())
             else:
                 order_column = Column(kser._scol._jc.desc_nulls_first())
-            window = Window.partitionBy(groupkey_cols).orderBy(order_column)
+            window = Window.partitionBy(groupkey_cols) \
+                .orderBy(order_column, NATURAL_ORDER_COLUMN_NAME)
             sdf = sdf.withColumn(name,
                                  F.when(F.row_number().over(window) == 1, scol_for(sdf, index))
                                  .otherwise(None))
@@ -1221,7 +1222,8 @@ class GroupBy(object):
                 order_column = Column(kser._scol._jc.asc_nulls_last())
             else:
                 order_column = Column(kser._scol._jc.asc_nulls_first())
-            window = Window.partitionBy(groupkey_cols).orderBy(order_column)
+            window = Window.partitionBy(groupkey_cols) \
+                .orderBy(order_column, NATURAL_ORDER_COLUMN_NAME)
             sdf = sdf.withColumn(name,
                                  F.when(F.row_number().over(window) == 1, scol_for(sdf, index))
                                  .otherwise(None))
