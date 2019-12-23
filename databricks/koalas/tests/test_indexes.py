@@ -335,6 +335,23 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
             kidx.fillna([1, 2])
 
+    def test_index_drop(self):
+        pidx = pd.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, 3]).index
+        kidx = ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, 3]).index
+
+        self.assert_eq(pidx.drop(1), kidx.drop(1))
+        self.assert_eq(pidx.drop([1, 2]), kidx.drop([1, 2]))
+
+    def test_multiindex_drop(self):
+        pidx = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')],
+                                         names=['level1', 'level2'])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')],
+                                         names=['level1', 'level2'])
+        self.assert_eq(pidx.drop('a'), kidx.drop('a'))
+        self.assert_eq(pidx.drop(['a', 'b']), kidx.drop(['a', 'b']))
+        self.assert_eq(pidx.drop(['x', 'y'], level='level2'),
+                       kidx.drop(['x', 'y'], level='level2'))
+
     def test_sort_values(self):
         pidx = pd.Index([-10, -100, 200, 100])
         kidx = ks.Index([-10, -100, 200, 100])
