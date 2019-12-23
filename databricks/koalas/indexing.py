@@ -185,7 +185,60 @@ class AtIndexer(_IndexerLike):
                           or len(values) > 1) else values[0]
 
 
-class LocIndexer(_IndexerLike):
+class _LocIndexerLike(_IndexerLike):
+
+    def __getitem__(self, key):
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series
+
+        rows_sel, cols_sel = _unfold(key, self._kdf_or_kser if self._is_series else None)
+
+        cond, limit = self._select_rows(rows_sel)
+        column_index, columns, returns_series = self._select_cols(cols_sel)
+
+        if cond is None and limit is None and returns_series:
+            if self._is_series:
+                return self._kdf_or_kser._with_new_scol(columns[0])
+            else:
+                return Series(self._internal.copy(scol=columns[0], column_index=[column_index[0]]),
+                              anchor=self._kdf_or_kser)
+        else:
+            try:
+                sdf = self._internal._sdf
+                if cond is not None:
+                    sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)
+                if limit is not None:
+                    if limit >= 0:
+                        sdf = sdf.limit(limit)
+                    else:
+                        sdf = sdf.limit(sdf.count() + limit)
+
+                sdf = sdf.select(self._internal.index_scols + columns)
+
+                if self._internal.column_index_names is None:
+                    column_index_names = None
+                else:
+                    # Manage column index names
+                    level = column_index_level(column_index)
+                    column_index_names = self._internal.column_index_names[-level:]
+
+                internal = _InternalFrame(sdf=sdf,
+                                          index_map=self._internal.index_map,
+                                          column_index=column_index,
+                                          column_index_names=column_index_names)
+                kdf = DataFrame(internal)
+            except AnalysisException:
+                raise KeyError('[{}] don\'t exist in columns'
+                               .format([col._jc.toString() for col in columns]))
+
+            if returns_series:
+                return Series(kdf._internal.copy(scol=kdf._internal.column_scols[0]),
+                              anchor=kdf)
+            else:
+                return kdf
+
+
+class LocIndexer(_LocIndexerLike):
     """
     Access a group of rows and columns by label(s) or a boolean Series.
 
@@ -373,14 +426,14 @@ class LocIndexer(_IndexerLike):
 
         if isinstance(rows_sel, Series):
             assert isinstance(rows_sel.spark_type, BooleanType), rows_sel.spark_type
-            return rows_sel._scol
+            return rows_sel._scol, None
         elif isinstance(rows_sel, slice):
             assert len(self._internal.index_columns) > 0
             if rows_sel.step is not None:
                 LocIndexer._raiseNotImplemented("Cannot use step with Spark.")
             if rows_sel == slice(None):
                 # If slice is None - select everything, so nothing to do
-                return None
+                return None, None
             elif len(self._internal.index_columns) == 1:
                 start = rows_sel.start
                 stop = rows_sel.stop
@@ -394,7 +447,7 @@ class LocIndexer(_IndexerLike):
                     cond.append(index_column._scol <= F.lit(stop).cast(index_data_type))
 
                 if len(cond) > 0:
-                    return reduce(lambda x, y: x & y, cond)
+                    return reduce(lambda x, y: x & y, cond), None
             else:
                 LocIndexer._raiseNotImplemented("Cannot use slice for MultiIndex with Spark.")
         elif isinstance(rows_sel, str):
@@ -407,15 +460,15 @@ class LocIndexer(_IndexerLike):
                 LocIndexer._raiseNotImplemented(
                     "Cannot use a scalar value for row selection with Spark.")
             if len(rows_sel) == 0:
-                return F.lit(False)
+                return F.lit(False), None
             elif len(self._internal.index_columns) == 1:
                 index_column = self._kdf_or_kser.index.to_series()
                 index_data_type = index_column.spark_type
                 if len(rows_sel) == 1:
-                    return index_column._scol == F.lit(rows_sel[0]).cast(index_data_type)
+                    return index_column._scol == F.lit(rows_sel[0]).cast(index_data_type), None
                 else:
                     return index_column._scol.isin(
-                        [F.lit(r).cast(index_data_type) for r in rows_sel])
+                        [F.lit(r).cast(index_data_type) for r in rows_sel]), None
             else:
                 LocIndexer._raiseNotImplemented("Cannot select with MultiIndex with Spark.")
 
@@ -452,13 +505,8 @@ class LocIndexer(_IndexerLike):
 
         return column_index, columns, returns_series
 
-    def __getitem__(self, key):
-        from databricks.koalas.frame import DataFrame
+    def _select_cols(self, cols_sel):
         from databricks.koalas.series import Series
-
-        rows_sel, cols_sel = _unfold(key, self._kdf_or_kser if self._is_series else None)
-
-        cond = self._select_rows(rows_sel)
 
         # make cols_sel a 1-tuple of string if a single string
         if isinstance(cols_sel, Series):
@@ -470,6 +518,7 @@ class LocIndexer(_IndexerLike):
             cols_sel = None
 
         returns_series = cols_sel is not None and isinstance(cols_sel, spark.Column)
+
         if cols_sel is None:
             column_index = self._internal.column_index
             columns = self._internal.column_scols
@@ -508,42 +557,9 @@ class LocIndexer(_IndexerLike):
                         column_index.append(idx)
                         found = True
                 if not found:
-                    raise KeyError("['{}'] not in index".format(key))
+                    raise KeyError("['{}'] not in index".format(name_like_string(key)))
 
-        if cond is None and returns_series:
-            if self._is_series:
-                return self._kdf_or_kser._with_new_scol(columns[0])
-            else:
-                return Series(self._internal.copy(scol=columns[0], column_index=[column_index[0]]),
-                              anchor=self._kdf_or_kser)
-        else:
-            try:
-                sdf = self._internal._sdf
-                sdf = sdf.select(self._internal.index_scols + columns + list(HIDDEN_COLUMNS))
-                if cond is not None:
-                    sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)
-
-                if self._internal.column_index_names is None:
-                    column_index_names = None
-                else:
-                    # Manage column index names
-                    level = column_index_level(column_index)
-                    column_index_names = self._internal.column_index_names[-level:]
-
-                internal = _InternalFrame(sdf=sdf,
-                                          index_map=self._internal.index_map,
-                                          column_index=column_index,
-                                          column_index_names=column_index_names)
-                kdf = DataFrame(internal)
-            except AnalysisException:
-                raise KeyError('[{}] don\'t exist in columns'
-                               .format([col._jc.toString() for col in columns]))
-
-            if returns_series:
-                return Series(kdf._internal.copy(scol=kdf._internal.column_scols[0]),
-                              anchor=kdf)
-            else:
-                return kdf
+        return column_index, columns, returns_series
 
     def __setitem__(self, key, value):
         from databricks.koalas.frame import DataFrame
@@ -604,7 +620,7 @@ class LocIndexer(_IndexerLike):
                     self._kdf_or_kser[col_sel] = value
 
 
-class ILocIndexer(_IndexerLike):
+class ILocIndexer(_LocIndexerLike):
     """
     Purely integer-location based indexing for selection by position.
 
@@ -746,14 +762,10 @@ class ILocIndexer(_IndexerLike):
             ILocIndexer._raiseNotImplemented(".iloc requires numeric slice or conditional "
                                              "boolean Index, got {}".format(rows_sel))
 
-    def __getitem__(self, key):
-        from databricks.koalas.frame import DataFrame
+    def _select_cols(self, cols_sel):
         from databricks.koalas.series import Series
 
-        rows_sel, cols_sel = _unfold(key, self._kdf_or_kser if self._is_series else None)
-
-        sdf = self._internal.sdf
-        cond, limit = self._select_rows(rows_sel)
+        returns_series = cols_sel is not None and isinstance(cols_sel, (Series, int))
 
         # make cols_sel a 1-tuple of string if a single string
         if isinstance(cols_sel, Series) and cols_sel._equals(self._kdf_or_kser):
@@ -787,26 +799,4 @@ class ILocIndexer(_IndexerLike):
             raise ValueError("Location based indexing can only have [integer, integer slice, "
                              "listlike of integers, boolean array] types, got {}".format(cols_sel))
 
-        try:
-            sdf = sdf.select(self._internal.index_scols + columns + list(HIDDEN_COLUMNS))
-            if cond is not None:
-                sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)
-            if limit is not None:
-                if limit >= 0:
-                    sdf = sdf.limit(limit)
-                else:
-                    sdf = sdf.limit(sdf.count() + limit)
-            internal = _InternalFrame(sdf=sdf,
-                                      index_map=self._internal.index_map,
-                                      column_index=column_index,
-                                      column_index_names=self._internal.column_index_names)
-            kdf = DataFrame(internal)
-        except AnalysisException:
-            raise KeyError('[{}] don\'t exist in columns'
-                           .format([col._jc.toString() for col in columns]))
-
-        if cols_sel is not None and isinstance(cols_sel, (Series, int)):
-            from databricks.koalas.series import _col
-            return _col(kdf)
-        else:
-            return kdf
+        return column_index, columns, returns_series

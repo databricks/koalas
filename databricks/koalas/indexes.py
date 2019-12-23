@@ -646,6 +646,33 @@ class Index(IndexOpsMixin):
         sdf = self._kdf._sdf.select(self._scol.alias(self._internal.index_columns[0])).distinct()
         return DataFrame(_InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)).index
 
+    # TODO: add error parameter
+    def drop(self, labels):
+        """
+        Make new Index with passed list of labels deleted.
+
+        Parameters
+        ----------
+        labels : array-like
+
+        Returns
+        -------
+        dropped : Index
+
+        Examples
+        --------
+        >>> index = ks.Index([1, 2, 3])
+        >>> index
+        Int64Index([1, 2, 3], dtype='int64')
+
+        >>> index.drop([1])
+        Int64Index([2, 3], dtype='int64')
+        """
+        if not isinstance(labels, (tuple, list)):
+            labels = [labels]
+        sdf = self._internal.sdf[~self._internal.index_scols[0].isin(labels)]
+        return Index(DataFrame(_InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)))
+
     def _validate_index_level(self, level):
         """
         Validate index level.
@@ -1073,6 +1100,48 @@ class MultiIndex(Index):
             arrays=arrays, sortorder=sortorder, names=names
         )).index
 
+    @staticmethod
+    def from_product(iterables, sortorder=None, names=None):
+        """
+        Make a MultiIndex from the cartesian product of multiple iterables.
+
+        Parameters
+        ----------
+        iterables : list / sequence of iterables
+            Each iterable has unique labels for each level of the index.
+        sortorder : int or None
+            Level of sortedness (must be lexicographically sorted by that
+            level).
+        names : list / sequence of str, optional
+            Names for the levels in the index.
+
+        Returns
+        -------
+        index : MultiIndex
+
+        See Also
+        --------
+        MultiIndex.from_arrays : Convert list of arrays to MultiIndex.
+        MultiIndex.from_tuples : Convert list of tuples to MultiIndex.
+
+        Examples
+        --------
+        >>> numbers = [0, 1, 2]
+        >>> colors = ['green', 'purple']
+        >>> ks.MultiIndex.from_product([numbers, colors],
+        ...                            names=['number', 'color'])  # doctest: +SKIP
+        MultiIndex([(0,  'green'),
+                    (0, 'purple'),
+                    (1,  'green'),
+                    (1, 'purple'),
+                    (2,  'green'),
+                    (2, 'purple')],
+                   names=['number', 'color'])
+        """
+        return DataFrame(index=pd.MultiIndex.from_product(
+            iterables=iterables, sortorder=sortorder, names=names
+        )).index
+
     @property
     def name(self) -> str:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
@@ -1230,6 +1299,49 @@ class MultiIndex(Index):
             result.names = result_name
 
         return result
+
+    # TODO: ADD error parameter
+    def drop(self, labels, level=None):
+        """
+        Make new MultiIndex with passed list of labels deleted
+
+        Parameters
+        ----------
+        labels : array-like
+            Must be a list of tuples
+        level : int or level name, default None
+
+        Returns
+        -------
+        dropped : MultiIndex
+
+        Examples
+        --------
+        >>> index = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> index # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> index.drop(['a']) # doctest: +SKIP
+        MultiIndex([('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> index.drop(['x', 'y'], level=1) # doctest: +SKIP
+        MultiIndex([('c', 'z')],
+                   )
+        """
+        sdf = self._internal.sdf
+        index_scols = self._internal.index_scols
+        if level is None:
+            scol = index_scols[0]
+        else:
+            scol = index_scols[level] if isinstance(level, int) else sdf[level]
+        sdf = sdf[~scol.isin(labels)]
+        return MultiIndex(DataFrame(_InternalFrame(sdf=sdf,
+                                                   index_map=self._kdf._internal.index_map)))
 
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
         if LooseVersion(pyspark.__version__) < LooseVersion("2.4") and \
