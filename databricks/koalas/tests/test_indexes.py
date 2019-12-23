@@ -427,3 +427,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pidx.rename(['my', 'name', 'is'])
         kidx = kidx.rename(['my', 'name', 'is'])
         self.assert_eq(pidx, kidx)
+
+    def test_multiindex_from_product(self):
+        iterables = [[0, 1, 2], ['green', 'purple']]
+        pidx = pd.MultiIndex.from_product(iterables)
+        kidx = ks.MultiIndex.from_product(iterables)
+
+        self.assert_eq(pidx, kidx)
