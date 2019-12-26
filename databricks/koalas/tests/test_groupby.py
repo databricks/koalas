@@ -375,10 +375,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby([('X', 'A'), ('Y', 'B')]).size().sort_index())
 
     def test_diff(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 10,
-                            'b': [1, 1, 2, 3, 5, 8] * 10,
-                            'c': [1, 4, 9, 16, 25, 36] * 10},
-                           index=np.random.rand(6 * 10))
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 3,
+                            'b': [1, 1, 2, 3, 5, 8] * 3,
+                            'c': [1, 4, 9, 16, 25, 36] * 3},
+                           index=np.random.rand(6 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby("b").diff().sort_index(),
@@ -401,10 +401,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby([('x', 'a'), ('x', 'b')]).diff().sort_index())
 
     def test_rank(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 10,
-                            'b': [1, 1, 2, 3, 5, 8] * 10,
-                            'c': [1, 4, 9, 16, 25, 36] * 10},
-                           index=np.random.rand(6 * 10))
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 3,
+                            'b': [1, 1, 2, 3, 5, 8] * 3,
+                            'c': [1, 4, 9, 16, 25, 36] * 3},
+                           index=np.random.rand(6 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby("b").rank().sort_index(),
@@ -427,10 +427,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby([('x', 'a'), ('x', 'b')]).rank().sort_index())
 
     def test_cummin(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 10,
-                            'b': [1, 1, 2, 3, 5, 8] * 10,
-                            'c': [1, 4, 9, 16, 25, 36] * 10},
-                           index=np.random.rand(6 * 10))
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 3,
+                            'b': [1, 1, 2, 3, 5, 8] * 3,
+                            'c': [1, 4, 9, 16, 25, 36] * 3},
+                           index=np.random.rand(6 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby("b").cummin().sort_index(),
@@ -453,10 +453,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby([('x', 'a'), ('x', 'b')]).cummin().sort_index())
 
     def test_cummax(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 10,
-                            'b': [1, 1, 2, 3, 5, 8] * 10,
-                            'c': [1, 4, 9, 16, 25, 36] * 10},
-                           index=np.random.rand(6 * 10))
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 3,
+                            'b': [1, 1, 2, 3, 5, 8] * 3,
+                            'c': [1, 4, 9, 16, 25, 36] * 3},
+                           index=np.random.rand(6 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby("b").cummax().sort_index(),
@@ -479,10 +479,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby([('x', 'a'), ('x', 'b')]).cummax().sort_index())
 
     def test_cumsum(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 10,
-                            'b': [1, 1, 2, 3, 5, 8] * 10,
-                            'c': [1, 4, 9, 16, 25, 36] * 10},
-                           index=np.random.rand(6 * 10))
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 3,
+                            'b': [1, 1, 2, 3, 5, 8] * 3,
+                            'c': [1, 4, 9, 16, 25, 36] * 3},
+                           index=np.random.rand(6 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby("b").cumsum().sort_index(),
@@ -505,10 +505,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby([('x', 'a'), ('x', 'b')]).cumsum().sort_index())
 
     def test_cumprod(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 10,
-                            'b': [1, 1, 2, 3, 5, 8] * 10,
-                            'c': [1, 4, 9, 16, 25, 36] * 10},
-                           index=np.random.rand(6 * 10))
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 3,
+                            'b': [1, 1, 2, 3, 5, 8] * 3,
+                            'c': [1, 4, 9, 16, 25, 36] * 3},
+                           index=np.random.rand(6 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby("b").cumprod().sort_index(),
@@ -531,11 +531,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby([('x', 'a'), ('x', 'b')]).cumprod().sort_index(), almost=True)
 
     def test_nsmallest(self):
-        pdf = pd.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3] * 10,
-                            'b': [1, 2, 2, 2, 3, 3, 3, 4, 4] * 10,
-                            'c': [1, 2, 2, 2, 3, 3, 3, 4, 4] * 10,
-                            'd': [1, 2, 2, 2, 3, 3, 3, 4, 4] * 10},
-                           index=np.random.rand(9 * 10))
+        pdf = pd.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3] * 3,
+                            'b': [1, 2, 2, 2, 3, 3, 3, 4, 4] * 3,
+                            'c': [1, 2, 2, 2, 3, 3, 3, 4, 4] * 3,
+                            'd': [1, 2, 2, 2, 3, 3, 3, 4, 4] * 3},
+                           index=np.random.rand(9 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(repr(kdf.groupby(['a'])['b'].nsmallest(1).sort_values()),
@@ -546,11 +546,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.set_index(['a', 'b']).groupby(['c'])['d'].nsmallest(1)
 
     def test_nlargest(self):
-        pdf = pd.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3] * 10,
-                            'b': [1, 2, 2, 2, 3, 3, 3, 4, 4] * 10,
-                            'c': [1, 2, 2, 2, 3, 3, 3, 4, 4] * 10,
-                            'd': [1, 2, 2, 2, 3, 3, 3, 4, 4] * 10},
-                           index=np.random.rand(9 * 10))
+        pdf = pd.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3] * 3,
+                            'b': [1, 2, 2, 2, 3, 3, 3, 4, 4] * 3,
+                            'c': [1, 2, 2, 2, 3, 3, 3, 4, 4] * 3,
+                            'd': [1, 2, 2, 2, 3, 3, 3, 4, 4] * 3},
+                           index=np.random.rand(9 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(repr(kdf.groupby(['a'])['b'].nlargest(1).sort_values()),
@@ -561,11 +561,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.set_index(['a', 'b']).groupby(['c'])['d'].nlargest(1)
 
     def test_fillna(self):
-        pdf = pd.DataFrame({'A': [1, 1, 2, 2] * 10,
-                            'B': [2, 4, None, 3] * 10,
-                            'C': [None, None, None, 1] * 10,
-                            'D': [0, 1, 5, 4] * 10},
-                           index=np.random.rand(4 * 10))
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2] * 3,
+                            'B': [2, 4, None, 3] * 3,
+                            'C': [None, None, None, 1] * 3,
+                            'D': [0, 1, 5, 4] * 3},
+                           index=np.random.rand(4 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby("A").fillna(0).sort_index(),
@@ -588,11 +588,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby(("X", "A")).fillna(method='ffill').sort_index())
 
     def test_ffill(self):
-        pdf = pd.DataFrame({'A': [1, 1, 2, 2] * 10,
-                            'B': [2, 4, None, 3] * 10,
-                            'C': [None, None, None, 1] * 10,
-                            'D': [0, 1, 5, 4] * 10},
-                           index=np.random.rand(4 * 10))
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2] * 3,
+                            'B': [2, 4, None, 3] * 3,
+                            'C': [None, None, None, 1] * 3,
+                            'D': [0, 1, 5, 4] * 3},
+                           index=np.random.rand(4 * 3))
         kdf = ks.from_pandas(pdf)
 
         if LooseVersion(pd.__version__) <= LooseVersion("0.24.2"):
@@ -617,11 +617,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                            pdf.groupby(("X", "A")).ffill().sort_index())
 
     def test_bfill(self):
-        pdf = pd.DataFrame({'A': [1, 1, 2, 2] * 10,
-                            'B': [2, 4, None, 3] * 10,
-                            'C': [None, None, None, 1] * 10,
-                            'D': [0, 1, 5, 4] * 10},
-                           index=np.random.rand(4 * 10))
+        pdf = pd.DataFrame({'A': [1, 1, 2, 2] * 3,
+                            'B': [2, 4, None, 3] * 3,
+                            'C': [None, None, None, 1] * 3,
+                            'D': [0, 1, 5, 4] * 3},
+                           index=np.random.rand(4 * 3))
         kdf = ks.from_pandas(pdf)
 
         if LooseVersion(pd.__version__) <= LooseVersion("0.24.2"):
@@ -647,10 +647,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
     @unittest.skipIf(pd.__version__ < '0.24.0', "not supported before pandas 0.24.0")
     def test_shift(self):
-        pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3, 3] * 10,
-                            'b': [1, 1, 2, 2, 3, 4] * 10,
-                            'c': [1, 4, 9, 16, 25, 36] * 10},
-                           index=np.random.rand(6 * 10))
+        pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3, 3] * 3,
+                            'b': [1, 1, 2, 2, 3, 4] * 3,
+                            'c': [1, 4, 9, 16, 25, 36] * 3},
+                           index=np.random.rand(6 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby('a').shift().sort_index(),
@@ -817,10 +817,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        .filter(lambda x: any(x[('x', 'a')] == 2)).sort_index())
 
     def test_idxmax(self):
-        pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3] * 10,
-                            'b': [1, 2, 3, 4, 5] * 10,
-                            'c': [5, 4, 3, 2, 1] * 10},
-                           index=np.random.rand(5 * 10))
+        pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3] * 3,
+                            'b': [1, 2, 3, 4, 5] * 3,
+                            'c': [5, 4, 3, 2, 1] * 3},
+                           index=np.random.rand(5 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(pdf.groupby(['a']).idxmax().sort_index(),
@@ -842,10 +842,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        kdf.groupby(('x', 'a')).idxmax(skipna=False).sort_index())
 
     def test_idxmin(self):
-        pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3] * 10,
-                            'b': [1, 2, 3, 4, 5] * 10,
-                            'c': [5, 4, 3, 2, 1] * 10},
-                           index=np.random.rand(5 * 10))
+        pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3] * 3,
+                            'b': [1, 2, 3, 4, 5] * 3,
+                            'c': [5, 4, 3, 2, 1] * 3},
+                           index=np.random.rand(5 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(pdf.groupby(['a']).idxmin().sort_index(),
@@ -867,10 +867,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        kdf.groupby(('x', 'a')).idxmin(skipna=False).sort_index())
 
     def test_head(self):
-        pdf = pd.DataFrame({'a': [1, 1, 1, 1, 2, 2, 2, 3, 3, 3] * 10,
-                            'b': [2, 3, 1, 4, 6, 9, 8, 10, 7, 5] * 10,
-                            'c': [3, 5, 2, 5, 1, 2, 6, 4, 3, 6] * 10},
-                           index=np.random.rand(10 * 10))
+        pdf = pd.DataFrame({'a': [1, 1, 1, 1, 2, 2, 2, 3, 3, 3] * 3,
+                            'b': [2, 3, 1, 4, 6, 9, 8, 10, 7, 5] * 3,
+                            'c': [3, 5, 2, 5, 1, 2, 6, 4, 3, 6] * 3},
+                           index=np.random.rand(10 * 3))
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(pdf.groupby('a').head(2).sort_index(),
