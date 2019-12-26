@@ -68,7 +68,6 @@ class _MissingPandasLikeSeries(object):
     ffill = unsupported_function('ffill')
     filter = unsupported_function('filter')
     first = unsupported_function('first')
-    get = unsupported_function('get')
     infer_objects = unsupported_function('infer_objects')
     interpolate = unsupported_function('interpolate')
     items = unsupported_function('items')

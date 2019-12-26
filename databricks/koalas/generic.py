@@ -1587,6 +1587,57 @@ class _Frame(object):
         """
         return Expanding(self, min_periods=min_periods)
 
+    def get(self, key, default=None):
+        """
+        Get item from object for given key (DataFrame column, Panel slice,
+        etc.). Returns default value if not found.
+
+        Parameters
+        ----------
+        key : object
+
+        Returns
+        -------
+        value : same type as items contained in object
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']},
+        ...                   columns=['x', 'y', 'z'], index=[10, 20, 20])
+        >>> df
+            x  y  z
+        10  0  a  a
+        20  1  b  b
+        20  2  b  b
+
+        >>> df.get('x')
+        10    0
+        20    1
+        20    2
+        Name: x, dtype: int64
+
+        >>> df.get(['x', 'y'])
+            x  y
+        10  0  a
+        20  1  b
+        20  2  b
+
+        >>> df.x.get(10)
+        0
+
+        >>> df.x.get(20)
+        20    1
+        20    2
+        Name: x, dtype: int64
+
+        >>> df.x.get(15, -1)
+        -1
+        """
+        try:
+            return self[key]
+        except (KeyError, ValueError, IndexError):
+            return default
+
     @property
     def at(self):
         return AtIndexer(self)

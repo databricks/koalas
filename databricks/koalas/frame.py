@@ -5305,46 +5305,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'columns'")
 
-    def get(self, key, default=None):
-        """
-        Get item from object for given key (DataFrame column, Panel slice,
-        etc.). Returns default value if not found.
-
-        Parameters
-        ----------
-        key : object
-
-        Returns
-        -------
-        value : same type as items contained in object
-
-        Examples
-        --------
-        >>> df = ks.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']},
-        ...                   columns=['x', 'y', 'z'])
-        >>> df
-           x  y  z
-        0  0  a  a
-        1  1  b  b
-        2  2  b  b
-
-        >>> df.get('x')
-        0    0
-        1    1
-        2    2
-        Name: x, dtype: int64
-
-        >>> df.get(['x', 'y'])
-           x  y
-        0  0  a
-        1  1  b
-        2  2  b
-        """
-        try:
-            return self._pd_getitem(key)
-        except (KeyError, ValueError, IndexError):
-            return default
-
     def _sort(self, by: List[Column], ascending: Union[bool, List[bool]],
               inplace: bool, na_position: str):
         if isinstance(ascending, bool):
