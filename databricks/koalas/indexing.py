@@ -174,7 +174,8 @@ class _LocIndexerLike(_IndexerLike):
             column_index, column_scols, returns_series = self._select_cols(cols_sel)
 
             if cond is None and limit is None and returns_series:
-                return Series(self._internal.copy(scol=column_scols[0], column_index=[column_index[0]]),
+                return Series(self._internal.copy(scol=column_scols[0],
+                                                  column_index=[column_index[0]]),
                               anchor=self._kdf_or_kser)
 
         try:
