@@ -542,7 +542,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        repr(pdf.groupby(['a'])['b'].nsmallest(1).sort_values()))
         self.assert_eq(repr(kdf.groupby(['a'])['b'].nsmallest(2).sort_index()),
                        repr(pdf.groupby(['a'])['b'].nsmallest(2).sort_index()))
-        with self.assertRaisesRegex(ValueError, "idxmax do not support multi-index now"):
+        with self.assertRaisesRegex(ValueError, "nsmallest do not support multi-index now"):
             kdf.set_index(['a', 'b']).groupby(['c'])['d'].nsmallest(1)
 
     def test_nlargest(self):
@@ -557,7 +557,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        repr(pdf.groupby(['a'])['b'].nlargest(1).sort_values()))
         self.assert_eq(repr(kdf.groupby(['a'])['b'].nlargest(2).sort_index()),
                        repr(pdf.groupby(['a'])['b'].nlargest(2).sort_index()))
-        with self.assertRaisesRegex(ValueError, "idxmax do not support multi-index now"):
+        with self.assertRaisesRegex(ValueError, "nlargest do not support multi-index now"):
             kdf.set_index(['a', 'b']).groupby(['c'])['d'].nlargest(1)
 
     def test_fillna(self):

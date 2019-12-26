@@ -49,6 +49,7 @@ Modifying and computations
    Index.is_interval
    Index.is_numeric
    Index.is_object
+   Index.drop
    Index.drop_duplicates
    Index.min
    Index.max
@@ -120,6 +121,7 @@ MultiIndex Constructors
 
    MultiIndex.from_arrays
    MultiIndex.from_tuples
+   MultiIndex.from_product
 
 MultiIndex Properties
 ~~~~~~~~~~~~~~~~~~~~~
@@ -150,6 +152,7 @@ MultiIndex Modifying and computations
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.drop
    MultiIndex.copy
    MultiIndex.rename
    MultiIndex.min
