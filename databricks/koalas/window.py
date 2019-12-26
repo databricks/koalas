@@ -29,11 +29,12 @@ from databricks.koalas.utils import scol_for
 
 
 class _RollingAndExpanding(object):
-    def __init__(self, window, index_scols, min_periods):
+
+    def __init__(self, window, min_periods):
         self._window = window
         # This unbounded Window is later used to handle 'min_periods' for now.
-        self._unbounded_window = Window.orderBy(index_scols).rowsBetween(
-            Window.unboundedPreceding, Window.currentRow)
+        self._unbounded_window = Window.orderBy(F.monotonically_increasing_id()).rowsBetween(
+            Window.unboundedPreceding, Window.currentRow)  # FIXME
         self._min_periods = min_periods
 
     def _apply_as_series_or_frame(self, func):
@@ -107,6 +108,7 @@ class _RollingAndExpanding(object):
 
 
 class Rolling(_RollingAndExpanding):
+
     def __init__(self, kdf_or_kser, window, min_periods=None):
         from databricks.koalas import DataFrame, Series
 
@@ -126,11 +128,10 @@ class Rolling(_RollingAndExpanding):
         if not isinstance(kdf_or_kser, (DataFrame, Series)):
             raise TypeError(
                 "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser))
-        index_scols = kdf_or_kser._internal.index_scols
-        window = Window.orderBy(index_scols).rowsBetween(
+        window = Window.orderBy(F.monotonically_increasing_id()).rowsBetween(  # FIXME
             Window.currentRow - (self._window_val - 1), Window.currentRow)
 
-        super(Rolling, self).__init__(window, index_scols, min_periods)
+        super(Rolling, self).__init__(window, min_periods)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeRolling, item):
@@ -630,6 +631,7 @@ class Rolling(_RollingAndExpanding):
 
 
 class RollingGroupby(Rolling):
+
     def __init__(self, groupby, groupkeys, window, min_periods=None):
         from databricks.koalas.groupby import SeriesGroupBy
         from databricks.koalas.groupby import DataFrameGroupBy
@@ -1044,6 +1046,7 @@ class RollingGroupby(Rolling):
 
 
 class Expanding(_RollingAndExpanding):
+
     def __init__(self, kdf_or_kser, min_periods=1):
         from databricks.koalas import DataFrame, Series
 
@@ -1053,10 +1056,9 @@ class Expanding(_RollingAndExpanding):
         if not isinstance(kdf_or_kser, (DataFrame, Series)):
             raise TypeError(
                 "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser))
-        index_scols = kdf_or_kser._internal.index_scols
-        window = Window.orderBy(index_scols).rowsBetween(
-            Window.unboundedPreceding, Window.currentRow)
-        super(Expanding, self).__init__(window, index_scols, min_periods)
+        window = Window.orderBy(F.monotonically_increasing_id()).rowsBetween(
+            Window.unboundedPreceding, Window.currentRow)  # FIXME
+        super(Expanding, self).__init__(window, min_periods)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeExpanding, item):
@@ -1407,6 +1409,7 @@ class Expanding(_RollingAndExpanding):
 
 
 class ExpandingGroupby(Expanding):
+
     def __init__(self, groupby, groupkeys, min_periods=1):
         from databricks.koalas.groupby import SeriesGroupBy
         from databricks.koalas.groupby import DataFrameGroupBy
