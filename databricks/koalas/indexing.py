@@ -30,17 +30,6 @@ from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNo
 from databricks.koalas.utils import column_index_level, name_like_string
 
 
-def _make_col(c):
-    from databricks.koalas.series import Series
-    if isinstance(c, Series):
-        return c._scol
-    elif isinstance(c, str):
-        return F.col('`{}`'.format(c))
-    else:
-        raise SparkPandasNotImplementedError(
-            description="Can only convert a string to a column type.")
-
-
 class _IndexerLike(object):
 
     def __init__(self, kdf_or_kser):
@@ -482,16 +471,17 @@ class LocIndexer(_LocIndexerLike):
     def _select_cols(self, cols_sel):
         from databricks.koalas.series import Series
 
-        # make cols_sel a 1-tuple of string if a single string
-        if isinstance(cols_sel, Series):
-            cols_sel = _make_col(cols_sel)
-        elif isinstance(cols_sel, slice) and cols_sel != slice(None):
-            raise LocIndexer._raiseNotImplemented(
-                "Can only select columns either by name or reference or all")
-        elif isinstance(cols_sel, slice) and cols_sel == slice(None):
-            cols_sel = None
+        returns_series = False
 
-        returns_series = cols_sel is not None and isinstance(cols_sel, spark.Column)
+        if isinstance(cols_sel, slice):
+            if cols_sel == slice(None):
+                cols_sel = None
+            else:
+                raise LocIndexer._raiseNotImplemented(
+                    "Can only select columns either by name or reference or all")
+        elif isinstance(cols_sel, (Series, spark.Column)):
+            returns_series = True
+            cols_sel = [cols_sel]
 
         if cols_sel is None:
             column_index = self._internal.column_index
@@ -500,12 +490,9 @@ class LocIndexer(_LocIndexerLike):
             if isinstance(cols_sel, str):
                 cols_sel = (cols_sel,)
             return self._get_from_multiindex_column(cols_sel)
-        elif isinstance(cols_sel, spark.Column):
-            column_index = [(self._internal.sdf.select(cols_sel).columns[0],)]
-            column_scols = [cols_sel]
         elif all(isinstance(key, Series) for key in cols_sel):
             column_index = [key._internal.column_index[0] for key in cols_sel]
-            column_scols = [_make_col(key) for key in cols_sel]
+            column_scols = [key._scol for key in cols_sel]
         elif all(isinstance(key, spark.Column) for key in cols_sel):
             column_index = [(self._internal.sdf.select(col).columns[0],) for col in cols_sel]
             column_scols = cols_sel
@@ -518,16 +505,15 @@ class LocIndexer(_LocIndexerLike):
                 if any(len(key) != level for key in cols_sel):
                     raise ValueError('All the key level should be the same as column index level.')
 
-            column_to_index = list(zip(self._internal.data_columns,
-                                       self._internal.column_index))
+            index_to_column = list(zip(self._internal.column_index, self._internal.data_columns))
             column_index = []
             column_scols = []
             for key in cols_sel:
                 found = False
-                for column, idx in column_to_index:
+                for idx, column in index_to_column:
                     if idx == key or idx[0] == key:
                         column_index.append(idx)
-                        column_scols.append(_make_col(column))
+                        column_scols.append(self._internal.scol_for(column))
                         found = True
                 if not found:
                     raise KeyError("['{}'] not in index".format(name_like_string(key)))
