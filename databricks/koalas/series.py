@@ -4310,8 +4310,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             # if sdf has one column and one data, return data only without frame
             pdf = sdf.limit(2).toPandas()
             length = len(pdf)
+            if length == 0:
+                raise KeyError(name_like_string(key))
             if length == 1:
-                return pdf[self.name].iloc[0]
+                return pdf[self._internal.data_columns[0]].iloc[0]
 
             key_string = name_like_string(key)
             sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(key_string))
