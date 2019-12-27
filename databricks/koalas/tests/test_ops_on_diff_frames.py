@@ -298,16 +298,38 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             (pser1 + pser2 * pser3).sort_index(), almost=True)
 
     def test_getitem_boolean_series(self):
-        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
-        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
+        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]},
+                            index=[20, 10, 30, 0, 50])
+        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]},
+                            index=[0, 30, 10, 20, 50])
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(pdf1.A[pdf2.A > 100],
-                       kdf1.A[kdf2.A > 100].sort_index())
+        self.assert_eq(pdf1[pdf2.A > -3].sort_index(),
+                       kdf1[kdf2.A > -3].sort_index())
 
-        self.assert_eq((pdf1.A + 1)[pdf2.A > 100],
-                       (kdf1.A + 1)[kdf2.A > 100].sort_index())
+        self.assert_eq(pdf1.A[pdf2.A > -3].sort_index(),
+                       kdf1.A[kdf2.A > -3].sort_index())
+
+        self.assert_eq((pdf1.A + 1)[pdf2.A > -3].sort_index(),
+                       (kdf1.A + 1)[kdf2.A > -3].sort_index())
+
+    def test_loc_getitem_boolean_series(self):
+        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]},
+                            index=[20, 10, 30, 0, 50])
+        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]},
+                            index=[20, 10, 30, 0, 50])
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(pdf1.loc[pdf2.A > -3].sort_index(),
+                       kdf1.loc[kdf2.A > -3].sort_index())
+
+        self.assert_eq(pdf1.A.loc[pdf2.A > -3].sort_index(),
+                       kdf1.A.loc[kdf2.A > -3].sort_index())
+
+        self.assert_eq((pdf1.A + 1).loc[pdf2.A > -3].sort_index(),
+                       (kdf1.A + 1).loc[kdf2.A > -3].sort_index())
 
     def test_bitwise(self):
         pser1 = pd.Series([True, False, True, False, np.nan, np.nan, True, False, np.nan])

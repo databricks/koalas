@@ -4278,19 +4278,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def __getitem__(self, key):
         if isinstance(key, Series) and isinstance(key.spark_type, BooleanType):
-            should_try_ops_on_diff_frame = key._kdf is not self._kdf
-
-            if should_try_ops_on_diff_frame:
-                kdf = self.to_frame()
-                kdf["__temp_col__"] = key
-                sdf = kdf._sdf.filter(F.col("__temp_col__")).drop("__temp_col__")
-                return _col(ks.DataFrame(_InternalFrame(
-                    sdf=sdf,
-                    index_map=self._internal.index_map,
-                    column_index=self._internal.column_index,
-                    column_index_names=self._internal.column_index_names)))
-            else:
-                return _col(DataFrame(self._internal.copy(sdf=self._kdf._sdf.filter(key._scol))))
+            return self.loc[key]
 
         if not isinstance(key, tuple):
             key = (key,)
