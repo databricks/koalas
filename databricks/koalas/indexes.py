@@ -988,6 +988,9 @@ class Index(IndexOpsMixin):
     def __xor__(self, other):
         return self.symmetric_difference(other)
 
+    def __len__(self):
+        return self.size
+
 
 class MultiIndex(Index):
     """
