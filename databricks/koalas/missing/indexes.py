@@ -49,7 +49,6 @@ class _MissingPandasLikeIndex(object):
     delete = unsupported_function('delete')
     difference = unsupported_function('difference')
     droplevel = unsupported_function('droplevel')
-    duplicated = unsupported_function('duplicated')
     equals = unsupported_function('equals')
     factorize = unsupported_function('factorize')
     format = unsupported_function('format')
@@ -99,6 +98,7 @@ class _MissingPandasLikeIndex(object):
     # Properties we won't support.
     values = common.values(unsupported_property)
     array = common.array(unsupported_property)
+    duplicated = common.duplicated(unsupported_property)
 
     # Functions we won't support.
     memory_usage = common.memory_usage(unsupported_function)
@@ -130,7 +130,6 @@ class _MissingPandasLikeMultiIndex(object):
     delete = unsupported_function('delete')
     difference = unsupported_function('difference')
     droplevel = unsupported_function('droplevel')
-    duplicated = unsupported_function('duplicated')
     equal_levels = unsupported_function('equal_levels')
     equals = unsupported_function('equals')
     factorize = unsupported_function('factorize')
@@ -192,6 +191,7 @@ class _MissingPandasLikeMultiIndex(object):
     # Functions we won't support.
     values = common.values(unsupported_property)
     array = common.array(unsupported_property)
+    duplicated = common.duplicated(unsupported_property)
     codes = unsupported_property(
         'codes',
         reason="'codes' requires to collect all data into the driver which is against the "

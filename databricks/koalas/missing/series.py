@@ -62,7 +62,6 @@ class _MissingPandasLikeSeries(object):
     divmod = unsupported_function('divmod')
     dot = unsupported_function('dot')
     droplevel = unsupported_function('droplevel')
-    duplicated = unsupported_function('duplicated')
     ewm = unsupported_function('ewm')
     factorize = unsupported_function('factorize')
     ffill = unsupported_function('ffill')
@@ -131,6 +130,7 @@ class _MissingPandasLikeSeries(object):
     # Properties we won't support.
     values = common.values(unsupported_property)
     array = common.array(unsupported_property)
+    duplicated = common.duplicated(unsupported_property)
     real = unsupported_property(
         'real',
         reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.")
