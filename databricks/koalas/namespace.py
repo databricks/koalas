@@ -1868,9 +1868,7 @@ def merge(obj, right: 'DataFrame', how: str = 'inner',
 # TODO: values, aggfunc, margins, margins_name, dropna, normalize
 def crosstab(index, columns, rownames=None, colnames=None):
     """
-    Compute a simple cross tabulation of two factors. By default
-    computes a frequency table of the factors unless an array of values and an
-    aggregation function are passed.
+    Compute a simple cross tabulation of two factors.
 
     Parameters
     ----------
@@ -1999,7 +1997,7 @@ def crosstab(index, columns, rownames=None, colnames=None):
             columns = [columns]
 
     # since there is a high possibility duplicated index and column names,
-    # we just make tmporal names for all index & columns
+    # we just make temporal names for all index & columns
     # seems like pandas is also doing similar internally
     #
     # >>> pd.crosstab([a, a, a, a, a], [c, c, c, c])
