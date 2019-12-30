@@ -39,7 +39,8 @@ from databricks.koalas.config import get_option
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame
-from databricks.koalas.internal import IndexMap, _InternalFrame, SPARK_INDEX_NAME_FORMAT
+from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAME,
+                                        SPARK_INDEX_NAME_FORMAT)
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.ml import corr
@@ -3044,15 +3045,15 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> s.idxmax()
         3
         """
-        sdf = self._internal._sdf
+        sdf = self._internal.sdf
         scol = self._scol
         index_scols = self._internal.index_scols
         # desc_nulls_(last|first) is used via Py4J directly because
         # it's not supported in Spark 2.3.
         if skipna:
-            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()), F.monotonically_increasing_id())
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_last()), NATURAL_ORDER_COLUMN_NAME)
         else:
-            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()), F.monotonically_increasing_id())
+            sdf = sdf.orderBy(Column(scol._jc.desc_nulls_first()), NATURAL_ORDER_COLUMN_NAME)
         results = sdf.select([scol] + index_scols).take(1)
         if len(results) == 0:
             raise ValueError("attempt to get idxmin of an empty sequence")
@@ -3158,9 +3159,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         # asc_nulls_(last|first)is used via Py4J directly because
         # it's not supported in Spark 2.3.
         if skipna:
-            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()), F.monotonically_increasing_id())
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_last()), NATURAL_ORDER_COLUMN_NAME)
         else:
-            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()), F.monotonically_increasing_id())
+            sdf = sdf.orderBy(Column(scol._jc.asc_nulls_first()), NATURAL_ORDER_COLUMN_NAME)
         results = sdf.select([scol] + index_scols).take(1)
         if len(results) == 0:
             raise ValueError("attempt to get idxmin of an empty sequence")
@@ -3315,7 +3316,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 for level, index in enumerate(item)]
         sdf = self._internal.sdf \
             .select(cols) \
-            .where(reduce(lambda x, y: x & y, rows))
+            .filter(reduce(lambda x, y: x & y, rows))
 
         if len(self._internal._index_map) == len(item):
             # if sdf has one column and one data, return data only without frame
@@ -3520,7 +3521,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         ser_count = self.value_counts(dropna=dropna, sort=False)
         sdf_count = ser_count._internal.sdf
         most_value = ser_count.max()
-        sdf_most_value = sdf_count.where("count == {}".format(most_value))
+        sdf_most_value = sdf_count.filter("count == {}".format(most_value))
         sdf = sdf_most_value.select(
             F.col(SPARK_INDEX_NAME_FORMAT(0)).alias('0'))
         internal = _InternalFrame(sdf=sdf)
@@ -4139,22 +4140,16 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         scol = self._internal.scol
 
-        window = Window.orderBy(F.monotonically_increasing_id()).rowsBetween(-periods, -periods)
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-periods, -periods)
         prev_row = F.lag(scol, periods).over(window)
 
         return self._with_new_scol((scol - prev_row) / prev_row)
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
-        index_columns = self._internal.index_columns
-
-        # address temporal column to keep natural order.
-        sdf = self._internal.sdf
-        if '__natural_order__' not in sdf.columns:
-            sdf = sdf.withColumn('__natural_order__', F.monotonically_increasing_id())
 
         window = Window.orderBy(
-            '__natural_order__').partitionBy(*part_cols).rowsBetween(
+            NATURAL_ORDER_COLUMN_NAME).partitionBy(*part_cols).rowsBetween(
                 Window.unboundedPreceding, Window.currentRow)
 
         if skipna:
@@ -4229,9 +4224,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if func.__name__ == "cumprod":
             scol = F.exp(scol)
 
-        internal = self._internal.copy(sdf=sdf, scol=scol)
-
-        return _col(DataFrame(internal)).rename(self.name)
+        return self._with_new_scol(scol).rename(self.name)
 
     # ----------------------------------------------------------------------
     # Accessor Methods

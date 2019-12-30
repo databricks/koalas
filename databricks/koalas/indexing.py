@@ -25,7 +25,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 from databricks.koalas.utils import column_index_level, name_like_string
 
@@ -120,7 +120,8 @@ class AtIndexer(_IndexerLike):
 
         cond = reduce(lambda x, y: x & y,
                       [scol == row for scol, row in zip(self._internal.index_scols, row_sel)])
-        pdf = self._internal.sdf.where(cond).select(self._internal.scol_for(col_sel)).toPandas()
+        pdf = self._internal.sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond) \
+            .select(self._internal.scol_for(col_sel)).toPandas()
 
         if len(pdf) < 1:
             raise KeyError(name_like_string(row_sel))
@@ -170,7 +171,7 @@ class _LocIndexerLike(_IndexerLike):
         try:
             sdf = self._internal._sdf
             if cond is not None:
-                sdf = sdf.where(cond)
+                sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)
             if limit is not None:
                 if limit >= 0:
                     sdf = sdf.limit(limit)
