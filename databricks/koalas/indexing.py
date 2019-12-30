@@ -22,7 +22,7 @@ from functools import reduce
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType
+from pyspark.sql.types import BooleanType, StringType
 from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import _InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME
@@ -401,21 +401,35 @@ class LocIndexer(_LocIndexerLike):
             elif len(self._internal.index_columns) == 1:
                 sdf = self._kdf_or_kser._internal.sdf
                 index_column = self._kdf_or_kser.index.to_series()
+                index_data_type = index_column.spark_type
+                start = rows_sel.start
+                stop = rows_sel.stop
 
                 # get natural order from '__natural_order__' from start to stop
-                # based on index_columns to keep natural order.
-                start = sdf.select(NATURAL_ORDER_COLUMN_NAME) \
-                           .where(index_column._scol == rows_sel.start) \
-                           .first()[0]
-                stop = sdf.select(NATURAL_ORDER_COLUMN_NAME) \
-                          .where(index_column._scol == rows_sel.stop) \
-                          .first()[0]
-
+                # to keep natural order when type of rows are StringType
+                if isinstance(index_data_type, StringType):
+                    start = sdf.select(NATURAL_ORDER_COLUMN_NAME) \
+                               .where(index_column._scol == start) \
+                               .first()
+                    stop = sdf.select(NATURAL_ORDER_COLUMN_NAME) \
+                              .where(index_column._scol == stop) \
+                              .first()
+                    order_column = sdf[NATURAL_ORDER_COLUMN_NAME]
+                    if start is not None:
+                        start = start[0]
+                    else:
+                        raise KeyError(rows_sel.start)
+                    if stop is not None:
+                        stop = stop[0]
+                    else:
+                        raise KeyError(rows_sel.stop)
+                else:
+                    order_column = index_column._scol
                 cond = []
                 if start is not None:
-                    cond.append(sdf[NATURAL_ORDER_COLUMN_NAME] >= F.lit(start))
+                    cond.append(order_column >= F.lit(start))
                 if stop is not None:
-                    cond.append(sdf[NATURAL_ORDER_COLUMN_NAME] <= F.lit(stop))
+                    cond.append(order_column <= F.lit(stop))
 
                 if len(cond) > 0:
                     return reduce(lambda x, y: x & y, cond), None

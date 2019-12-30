@@ -223,6 +223,14 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kdf.loc[1000:], pdf.loc[1000:])
         self.assert_eq(kdf.loc[-2000:-1000], pdf.loc[-2000:-1000])
 
+        # KeyError test for string type index
+        kdf = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+                           index=['cobra', 'viper', 'sidewinder'],
+                           columns=['max_speed', 'shield'])
+
+        self.assertRaises(KeyError, lambda: kdf.loc['cobra':'koalas'])
+        self.assertRaises(KeyError, lambda: kdf.loc['koalas':'viper'])
+
     def test_loc_non_informative_index(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4]}, index=[10, 20, 30, 40])
         kdf = ks.from_pandas(pdf)
