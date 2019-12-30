@@ -4222,31 +4222,23 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
-        >>> from databricks.koalas.config import set_option, reset_option
-        >>> set_option("compute.ops_on_diff_frames", True)
         >>> s = ks.Series([0, 1, 2, 3])
-        >>> other = ks.Series([-1, 2, -3, 4])
 
-        >>> s.dot(other)
-        8
+        >>> s.dot(s)
+        14
 
-        >>> s @ other
-        8
-
-        >>> df = ks.DataFrame([[0, 1], [-2, 3], [4, -5], [6, 7]])
-        >>> s.dot(df)
-        0    24
-        1    14
-        Name: 0, dtype: int64
-
-        >>> reset_option("compute.ops_on_diff_frames")
+        >>> s @ s
+        14
         """
         if repr(self.index) != repr(other.index):
             raise ValueError("matrices are not aligned")
 
         if isinstance(other, DataFrame):
-            idx_val_dict = {col_name: (self * other[col_name]).sum() for col_name in other}
-            result = Series(idx_val_dict)
+            raise ValueError(
+                "Series.dot() is currently not supported with DataFrame since "
+                "it will cause expansive calculation as many as the number "
+                "of columns of DataFrame")
+
         elif isinstance(other, Series):
             result = (self * other).sum()
 

@@ -590,14 +590,11 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "matrices are not aligned"):
             kser.dot(kser_other)
 
-        # with DataFrame
+        # with DataFram is not supported for now since performance issue,
+        # now we raise ValueError with proper message instead.
         kdf = ks.DataFrame([[0, 1], [-2, 3], [4, -5]], index=[2, 4, 1])
-        pdf = kdf.to_pandas()
 
-        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
-
-        kdf = ks.DataFrame([[0, 1], [-2, 3], [4, -5]], index=[1, 2, 4])
-        with self.assertRaisesRegex(ValueError, "matrices are not aligned"):
+        with self.assertRaisesRegex(ValueError, r"Series\.dot\(\) is currently not supported*"):
             kser.dot(kdf)
 
         # for MultiIndex
