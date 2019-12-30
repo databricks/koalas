@@ -143,6 +143,11 @@ class _LocIndexerLike(_IndexerLike):
                     raise SparkPandasIndexingError('Too many indexers')
                 key = key[0]
 
+            if isinstance(key, Series) and key._kdf is not self._kdf_or_kser._kdf:
+                kdf = self._kdf_or_kser.to_frame()
+                kdf['__temp_col__'] = key
+                return type(self)(kdf[self._kdf_or_kser.name])[kdf['__temp_col__']]
+
             cond, limit = self._select_rows(key)
             if cond is None and limit is None:
                 return self._kdf_or_kser
@@ -159,6 +164,12 @@ class _LocIndexerLike(_IndexerLike):
             else:
                 rows_sel = key
                 cols_sel = None
+
+            if isinstance(rows_sel, Series) and rows_sel._kdf is not self._kdf_or_kser:
+                kdf = self._kdf_or_kser.copy()
+                kdf['__temp_col__'] = rows_sel
+                return type(self)(kdf)[kdf['__temp_col__'],
+                                       cols_sel][list(self._kdf_or_kser.columns)]
 
             cond, limit = self._select_rows(rows_sel)
             column_index, column_scols, returns_series = self._select_cols(cols_sel)
@@ -720,7 +731,7 @@ class ILocIndexer(_LocIndexerLike):
                 return None, rows_sel.stop
         else:
             ILocIndexer._raiseNotImplemented(".iloc requires numeric slice or conditional "
-                                             "boolean Index, got {}".format(rows_sel))
+                                             "boolean Index, got {}".format(type(rows_sel)))
 
     def _select_cols(self, cols_sel):
         from databricks.koalas.series import Series
