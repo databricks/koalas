@@ -54,6 +54,7 @@ Computations / Descriptive Stats
    GroupBy.fillna
    GroupBy.bfill
    GroupBy.ffill
+   GroupBy.head
    GroupBy.backfill
    GroupBy.shift
 

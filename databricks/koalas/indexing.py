@@ -19,70 +19,15 @@ A loc indexer for Koalas DataFrame/Series.
 """
 from functools import reduce
 
-import pandas as pd
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import BooleanType
 from pyspark.sql.utils import AnalysisException
 
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
-from databricks.koalas.utils import name_like_string, scol_for
-
-
-def _make_col(c):
-    from databricks.koalas.series import Series
-    if isinstance(c, Series):
-        return c._scol
-    elif isinstance(c, str):
-        return F.col('`{}`'.format(c))
-    else:
-        raise SparkPandasNotImplementedError(
-            description="Can only convert a string to a column type.")
-
-
-def _unfold(key, kseries):
-    """ Return row selection and column selection pair.
-
-    If kseries parameter is not None, the key should be row selection and the column selection will
-    be the kseries parameter.
-
-    >>> s = ks.Series([1, 2, 3], name='a')
-    >>> _unfold(slice(1, 2), s)
-    (slice(1, 2, None), 0    1
-    1    2
-    2    3
-    Name: a, dtype: int64)
-
-    >>> _unfold((slice(1, 2), slice(None)), None)
-    (slice(1, 2, None), slice(None, None, None))
-
-    >>> _unfold((slice(1, 2), s), None)
-    (slice(1, 2, None), 0    1
-    1    2
-    2    3
-    Name: a, dtype: int64)
-
-    >>> _unfold((slice(1, 2), 'col'), None)
-    (slice(1, 2, None), 'col')
-    """
-    if kseries is not None:
-        if isinstance(key, tuple):
-            if len(key) > 1:
-                raise SparkPandasIndexingError('Too many indexers')
-            key = key[0]
-        rows_sel = key
-        cols_sel = kseries
-    elif isinstance(key, tuple):
-        if len(key) != 2:
-            raise SparkPandasIndexingError("Only accepts pairs of candidates")
-        rows_sel, cols_sel = key
-    else:
-        rows_sel = key
-        cols_sel = None
-
-    return rows_sel, cols_sel
+from databricks.koalas.utils import column_index_level, name_like_string
 
 
 class _IndexerLike(object):
@@ -175,7 +120,8 @@ class AtIndexer(_IndexerLike):
 
         cond = reduce(lambda x, y: x & y,
                       [scol == row for scol, row in zip(self._internal.index_scols, row_sel)])
-        pdf = self._internal.sdf.where(cond).select(self._internal.scol_for(col_sel)).toPandas()
+        pdf = self._internal.sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond) \
+            .select(self._internal.scol_for(col_sel)).toPandas()
 
         if len(pdf) < 1:
             raise KeyError(name_like_string(row_sel))
@@ -185,7 +131,90 @@ class AtIndexer(_IndexerLike):
                           or len(values) > 1) else values[0]
 
 
-class LocIndexer(_IndexerLike):
+class _LocIndexerLike(_IndexerLike):
+
+    def __getitem__(self, key):
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series
+
+        if self._is_series:
+            if isinstance(key, tuple):
+                if len(key) > 1:
+                    raise SparkPandasIndexingError('Too many indexers')
+                key = key[0]
+
+            if isinstance(key, Series) and key._kdf is not self._kdf_or_kser._kdf:
+                kdf = self._kdf_or_kser.to_frame()
+                kdf['__temp_col__'] = key
+                return type(self)(kdf[self._kdf_or_kser.name])[kdf['__temp_col__']]
+
+            cond, limit = self._select_rows(key)
+            if cond is None and limit is None:
+                return self._kdf_or_kser
+
+            column_index = self._internal.column_index
+            column_scols = self._internal.column_scols
+            returns_series = True
+        else:
+            assert self._is_df
+            if isinstance(key, tuple):
+                if len(key) != 2:
+                    raise SparkPandasIndexingError("Only accepts pairs of candidates")
+                rows_sel, cols_sel = key
+            else:
+                rows_sel = key
+                cols_sel = None
+
+            if isinstance(rows_sel, Series) and rows_sel._kdf is not self._kdf_or_kser:
+                kdf = self._kdf_or_kser.copy()
+                kdf['__temp_col__'] = rows_sel
+                return type(self)(kdf)[kdf['__temp_col__'],
+                                       cols_sel][list(self._kdf_or_kser.columns)]
+
+            cond, limit = self._select_rows(rows_sel)
+            column_index, column_scols, returns_series = self._select_cols(cols_sel)
+
+            if cond is None and limit is None and returns_series:
+                return Series(self._internal.copy(scol=column_scols[0],
+                                                  column_index=[column_index[0]]),
+                              anchor=self._kdf_or_kser)
+
+        try:
+            sdf = self._internal._sdf
+            if cond is not None:
+                sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)
+            if limit is not None:
+                if limit >= 0:
+                    sdf = sdf.limit(limit)
+                else:
+                    sdf = sdf.limit(sdf.count() + limit)
+
+            sdf = sdf.select(self._internal.index_scols + column_scols)
+
+            if self._internal.column_index_names is None:
+                column_index_names = None
+            else:
+                # Manage column index names
+                level = column_index_level(column_index)
+                column_index_names = self._internal.column_index_names[-level:]
+
+            internal = _InternalFrame(sdf=sdf,
+                                      index_map=self._internal.index_map,
+                                      column_index=column_index,
+                                      column_index_names=column_index_names)
+            kdf = DataFrame(internal)
+        except AnalysisException:
+            raise KeyError('[{}] don\'t exist in columns'
+                           .format([col._jc.toString() for col in column_scols]))
+
+        if returns_series:
+            return Series(kdf._internal.copy(scol=kdf._internal.column_scols[0]),
+                          anchor=kdf)
+        else:
+            return kdf
+
+
+class LocIndexer(_LocIndexerLike):
     """
     Access a group of rows and columns by label(s) or a boolean Series.
 
@@ -361,31 +390,26 @@ class LocIndexer(_IndexerLike):
     9          7       8
     """
 
-    def __getitem__(self, key):
-        from databricks.koalas.frame import DataFrame
+    @staticmethod
+    def _raiseNotImplemented(description):
+        raise SparkPandasNotImplementedError(
+            description=description,
+            pandas_function=".loc[..., ...]",
+            spark_target_function="select, where")
+
+    def _select_rows(self, rows_sel):
         from databricks.koalas.series import Series
 
-        def raiseNotImplemented(description):
-            raise SparkPandasNotImplementedError(
-                description=description,
-                pandas_function=".loc[..., ...]",
-                spark_target_function="select, where")
-
-        rows_sel, cols_sel = _unfold(key, self._kdf_or_kser if self._is_series else None)
-
-        sdf = self._internal._sdf
         if isinstance(rows_sel, Series):
-            sdf_for_check_schema = sdf.select(rows_sel._scol)
-            assert isinstance(sdf_for_check_schema.schema.fields[0].dataType, BooleanType), \
-                (str(sdf_for_check_schema), sdf_for_check_schema.schema.fields[0].dataType)
-            sdf = sdf.where(rows_sel._scol)
+            assert isinstance(rows_sel.spark_type, BooleanType), rows_sel.spark_type
+            return rows_sel._scol, None
         elif isinstance(rows_sel, slice):
             assert len(self._internal.index_columns) > 0
             if rows_sel.step is not None:
-                raiseNotImplemented("Cannot use step with Spark.")
+                LocIndexer._raiseNotImplemented("Cannot use step with Spark.")
             if rows_sel == slice(None):
                 # If slice is None - select everything, so nothing to do
-                pass
+                return None, None
             elif len(self._internal.index_columns) == 1:
                 start = rows_sel.start
                 stop = rows_sel.stop
@@ -399,53 +423,91 @@ class LocIndexer(_IndexerLike):
                     cond.append(index_column._scol <= F.lit(stop).cast(index_data_type))
 
                 if len(cond) > 0:
-                    sdf = sdf.where(reduce(lambda x, y: x & y, cond))
+                    return reduce(lambda x, y: x & y, cond), None
             else:
-                raiseNotImplemented("Cannot use slice for MultiIndex with Spark.")
+                LocIndexer._raiseNotImplemented("Cannot use slice for MultiIndex with Spark.")
         elif isinstance(rows_sel, str):
-            raiseNotImplemented("Cannot use a scalar value for row selection with Spark.")
+            LocIndexer._raiseNotImplemented(
+                "Cannot use a scalar value for row selection with Spark.")
         else:
             try:
                 rows_sel = list(rows_sel)
             except TypeError:
-                raiseNotImplemented("Cannot use a scalar value for row selection with Spark.")
+                LocIndexer._raiseNotImplemented(
+                    "Cannot use a scalar value for row selection with Spark.")
             if len(rows_sel) == 0:
-                sdf = sdf.where(F.lit(False))
+                return F.lit(False), None
             elif len(self._internal.index_columns) == 1:
                 index_column = self._kdf_or_kser.index.to_series()
                 index_data_type = index_column.spark_type
                 if len(rows_sel) == 1:
-                    sdf = sdf.where(
-                        index_column._scol == F.lit(rows_sel[0]).cast(index_data_type))
+                    return index_column._scol == F.lit(rows_sel[0]).cast(index_data_type), None
                 else:
-                    sdf = sdf.where(index_column._scol.isin(
-                        [F.lit(r).cast(index_data_type) for r in rows_sel]))
+                    return index_column._scol.isin(
+                        [F.lit(r).cast(index_data_type) for r in rows_sel]), None
             else:
-                raiseNotImplemented("Cannot select with MultiIndex with Spark.")
+                LocIndexer._raiseNotImplemented("Cannot select with MultiIndex with Spark.")
 
-        # make cols_sel a 1-tuple of string if a single string
-        column_index = self._internal.column_index
-        if isinstance(cols_sel, str):
-            kdf = DataFrame(self._internal.copy(sdf=sdf))
-            return kdf._get_from_multiindex_column((cols_sel,))
-        elif isinstance(cols_sel, Series):
-            cols_sel = _make_col(cols_sel)
-        elif isinstance(cols_sel, slice) and cols_sel != slice(None):
-            raise raiseNotImplemented("Can only select columns either by name or reference or all")
-        elif isinstance(cols_sel, slice) and cols_sel == slice(None):
-            cols_sel = None
+    def _get_from_multiindex_column(self, key, indexes=None):
+        """ Select columns from multi-index columns.
+
+        :param key: the multi-index column keys represented by tuple
+        :return: DataFrame or Series
+        """
+        assert isinstance(key, tuple)
+        if indexes is None:
+            indexes = [(idx, idx) for idx in self._internal.column_index]
+        for k in key:
+            indexes = [(index, idx[1:]) for index, idx in indexes if idx[0] == k]
+            if len(indexes) == 0:
+                raise KeyError(k)
+
+        if all(len(idx) > 0 and idx[0] == '' for _, idx in indexes):
+            # If the head is '', drill down recursively.
+            indexes = [(col, tuple([str(key), *idx[1:]])) for i, (col, idx) in enumerate(indexes)]
+            return self._get_from_multiindex_column((str(key),), indexes)
+        else:
+            returns_series = all(len(idx) == 0 for _, idx in indexes)
+            if returns_series:
+                idxes = set(idx for idx, _ in indexes)
+                assert len(idxes) == 1
+                index = list(idxes)[0]
+                column_index = [index]
+                column_scols = [self._internal.scol_for(index)]
+            else:
+                column_index = [idx for _, idx in indexes]
+                column_scols = [self._internal.scol_for(idx) for idx, _ in indexes]
+
+        return column_index, column_scols, returns_series
+
+    def _select_cols(self, cols_sel):
+        from databricks.koalas.series import Series
+
+        returns_series = False
+
+        if isinstance(cols_sel, slice):
+            if cols_sel == slice(None):
+                cols_sel = None
+            else:
+                raise LocIndexer._raiseNotImplemented(
+                    "Can only select columns either by name or reference or all")
+        elif isinstance(cols_sel, (Series, spark.Column)):
+            returns_series = True
+            cols_sel = [cols_sel]
 
         if cols_sel is None:
-            columns = self._internal.column_scols
-        elif isinstance(cols_sel, spark.Column):
-            columns = [cols_sel]
-            column_index = None
+            column_index = self._internal.column_index
+            column_scols = self._internal.column_scols
+        elif isinstance(cols_sel, (str, tuple)):
+            if isinstance(cols_sel, str):
+                cols_sel = (cols_sel,)
+            return self._get_from_multiindex_column(cols_sel)
         elif all(isinstance(key, Series) for key in cols_sel):
-            columns = [_make_col(key) for key in cols_sel]
             column_index = [key._internal.column_index[0] for key in cols_sel]
+            column_scols = [key._scol for key in cols_sel]
         elif all(isinstance(key, spark.Column) for key in cols_sel):
-            columns = cols_sel
-            column_index = None
+            column_index = [(self._internal.sdf.select(col).columns[0],) for col in cols_sel]
+            column_scols = cols_sel
         elif (any(isinstance(key, str) for key in cols_sel)
               and any(isinstance(key, tuple) for key in cols_sel)):
             raise TypeError('Expected tuple, got str')
@@ -455,37 +517,20 @@ class LocIndexer(_IndexerLike):
                 if any(len(key) != level for key in cols_sel):
                     raise ValueError('All the key level should be the same as column index level.')
 
-            column_to_index = list(zip(self._internal.data_columns,
-                                       self._internal.column_index))
-
-            columns = []
+            index_to_column = list(zip(self._internal.column_index, self._internal.data_columns))
             column_index = []
+            column_scols = []
             for key in cols_sel:
                 found = False
-                for column, idx in column_to_index:
+                for idx, column in index_to_column:
                     if idx == key or idx[0] == key:
-                        columns.append(_make_col(column))
                         column_index.append(idx)
+                        column_scols.append(self._internal.scol_for(column))
                         found = True
                 if not found:
-                    raise KeyError("['{}'] not in index".format(key))
+                    raise KeyError("['{}'] not in index".format(name_like_string(key)))
 
-        try:
-            sdf = sdf.select(self._internal.index_scols + columns)
-            internal = _InternalFrame(sdf=sdf,
-                                      index_map=self._internal.index_map,
-                                      column_index=column_index,
-                                      column_index_names=self._internal.column_index_names)
-            kdf = DataFrame(internal)
-        except AnalysisException:
-            raise KeyError('[{}] don\'t exist in columns'
-                           .format([col._jc.toString() for col in columns]))
-
-        if cols_sel is not None and isinstance(cols_sel, spark.Column):
-            from databricks.koalas.series import _col
-            return _col(kdf)
-        else:
-            return kdf
+        return column_index, column_scols, returns_series
 
     def __setitem__(self, key, value):
         from databricks.koalas.frame import DataFrame
@@ -546,7 +591,7 @@ class LocIndexer(_IndexerLike):
                     self._kdf_or_kser[col_sel] = value
 
 
-class ILocIndexer(_IndexerLike):
+class ILocIndexer(_LocIndexerLike):
     """
     Purely integer-location based indexing for selection by position.
 
@@ -660,57 +705,54 @@ class ILocIndexer(_IndexerLike):
     2  1000  3000
     """
 
-    def __getitem__(self, key):
-        from databricks.koalas.frame import DataFrame
+    @staticmethod
+    def _raiseNotImplemented(description):
+        raise SparkPandasNotImplementedError(
+            description=description,
+            pandas_function=".iloc[..., ...]",
+            spark_target_function="select, where")
+
+    def _select_rows(self, rows_sel):
         from databricks.koalas.indexes import Index
-        from databricks.koalas.series import Series
 
-        def raiseNotImplemented(description):
-            raise SparkPandasNotImplementedError(
-                description=description,
-                pandas_function=".iloc[..., ...]",
-                spark_target_function="select, where")
-
-        rows_sel, cols_sel = _unfold(key, self._kdf_or_kser if self._is_series else None)
-
-        sdf = self._internal.sdf
         if isinstance(rows_sel, Index):
-            sdf_for_check_schema = sdf.select(rows_sel._scol)
-            assert isinstance(sdf_for_check_schema.schema.fields[0].dataType, BooleanType), \
-                (str(sdf_for_check_schema), sdf_for_check_schema.schema.fields[0].dataType)
-            sdf = sdf.where(rows_sel._scol)
+            assert isinstance(rows_sel.spark_type, BooleanType), rows_sel.spark_type
+            return rows_sel._scol, None
         elif isinstance(rows_sel, slice):
             if rows_sel == slice(None):
                 # If slice is None - select everything, so nothing to do
-                pass
+                return None, None
             elif (rows_sel.start is not None) or (rows_sel.step is not None):
-                raiseNotImplemented("Cannot use start or step with Spark.")
+                ILocIndexer._raiseNotImplemented("Cannot use start or step with Spark.")
             elif not isinstance(rows_sel.stop, int):
                 raise TypeError("cannot do slice indexing with these indexers [{}] of {}"
                                 .format(rows_sel.stop, type(rows_sel.stop)))
-            elif rows_sel.stop >= 0:
-                sdf = sdf.limit(rows_sel.stop)
             else:
-                sdf = sdf.limit(sdf.count() + rows_sel.stop)
+                return None, rows_sel.stop
         else:
-            raiseNotImplemented(".iloc requires numeric slice or conditional boolean Index, "
-                                "got {}".format(rows_sel))
+            ILocIndexer._raiseNotImplemented(".iloc requires numeric slice or conditional "
+                                             "boolean Index, got {}".format(type(rows_sel)))
+
+    def _select_cols(self, cols_sel):
+        from databricks.koalas.series import Series
+
+        returns_series = cols_sel is not None and isinstance(cols_sel, (Series, int))
 
         # make cols_sel a 1-tuple of string if a single string
         if isinstance(cols_sel, Series) and cols_sel._equals(self._kdf_or_kser):
-            columns = cols_sel._internal.column_scols
             column_index = cols_sel._internal.column_index
+            column_scols = cols_sel._internal.column_scols
         elif isinstance(cols_sel, int):
-            columns = [self._internal.column_scols[cols_sel]]
             column_index = [self._internal.column_index[cols_sel]]
+            column_scols = [self._internal.column_scols[cols_sel]]
         elif cols_sel is None or cols_sel == slice(None):
-            columns = self._internal.column_scols
             column_index = self._internal.column_index
+            column_scols = self._internal.column_scols
         elif isinstance(cols_sel, slice):
             if all(s is None or isinstance(s, int)
                    for s in (cols_sel.start, cols_sel.stop, cols_sel.step)):
-                columns = self._internal.column_scols[cols_sel]
                 column_index = self._internal.column_index[cols_sel]
+                column_scols = self._internal.column_scols[cols_sel]
             else:
                 not_none = cols_sel.start if cols_sel.start is not None \
                     else cols_sel.stop if cols_sel.stop is not None else cols_sel.step
@@ -720,27 +762,12 @@ class ILocIndexer(_IndexerLike):
             if all(isinstance(s, bool) for s in cols_sel):
                 cols_sel = [i for i, s in enumerate(cols_sel) if s]
             if all(isinstance(s, int) for s in cols_sel):
-                columns = [self._internal.column_scols[s] for s in cols_sel]
                 column_index = [self._internal.column_index[s] for s in cols_sel]
+                column_scols = [self._internal.column_scols[s] for s in cols_sel]
             else:
                 raise TypeError('cannot perform reduce with flexible type')
         else:
             raise ValueError("Location based indexing can only have [integer, integer slice, "
                              "listlike of integers, boolean array] types, got {}".format(cols_sel))
 
-        try:
-            sdf = sdf.select(self._internal.index_scols + columns)
-            internal = _InternalFrame(sdf=sdf,
-                                      index_map=self._internal.index_map,
-                                      column_index=column_index,
-                                      column_index_names=self._internal.column_index_names)
-            kdf = DataFrame(internal)
-        except AnalysisException:
-            raise KeyError('[{}] don\'t exist in columns'
-                           .format([col._jc.toString() for col in columns]))
-
-        if cols_sel is not None and isinstance(cols_sel, (Series, int)):
-            from databricks.koalas.series import _col
-            return _col(kdf)
-        else:
-            return kdf
+        return column_index, column_scols, returns_series
