@@ -49,10 +49,13 @@ Modifying and computations
    Index.is_interval
    Index.is_numeric
    Index.is_object
+   Index.drop
+   Index.drop_duplicates
    Index.min
    Index.max
    Index.rename
    Index.unique
+   Index.nunique
    Index.value_counts
 
 Compatibility with MultiIndex
@@ -81,6 +84,13 @@ Conversion
    Index.astype
    Index.to_series
    Index.to_numpy
+
+Sorting
+~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.sort_values
 
 Time-specific operations
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -119,6 +129,7 @@ MultiIndex Constructors
 
    MultiIndex.from_arrays
    MultiIndex.from_tuples
+   MultiIndex.from_product
 
 MultiIndex Properties
 ~~~~~~~~~~~~~~~~~~~~~
@@ -149,6 +160,7 @@ MultiIndex Modifying and computations
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.drop
    MultiIndex.copy
    MultiIndex.rename
    MultiIndex.min
@@ -169,3 +181,10 @@ MultiIndex Conversion
 
    MultiIndex.astype
    MultiIndex.to_numpy
+
+MultiIndex Sorting
+~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.sort_values

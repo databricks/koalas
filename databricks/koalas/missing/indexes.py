@@ -48,10 +48,7 @@ class _MissingPandasLikeIndex(object):
     asof_locs = unsupported_function('asof_locs')
     delete = unsupported_function('delete')
     difference = unsupported_function('difference')
-    drop = unsupported_function('drop')
-    drop_duplicates = unsupported_function('drop_duplicates')
     droplevel = unsupported_function('droplevel')
-    duplicated = unsupported_function('duplicated')
     equals = unsupported_function('equals')
     factorize = unsupported_function('factorize')
     format = unsupported_function('format')
@@ -73,7 +70,6 @@ class _MissingPandasLikeIndex(object):
     is_type_compatible = unsupported_function('is_type_compatible')
     join = unsupported_function('join')
     map = unsupported_function('map')
-    nunique = unsupported_function('nunique')
     putmask = unsupported_function('putmask')
     ravel = unsupported_function('ravel')
     reindex = unsupported_function('reindex')
@@ -82,8 +78,6 @@ class _MissingPandasLikeIndex(object):
     set_value = unsupported_function('set_value')
     slice_indexer = unsupported_function('slice_indexer')
     slice_locs = unsupported_function('slice_locs')
-    sort = unsupported_function('sort')
-    sort_values = unsupported_function('sort_values')
     sortlevel = unsupported_function('sortlevel')
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
@@ -103,6 +97,7 @@ class _MissingPandasLikeIndex(object):
     # Properties we won't support.
     values = common.values(unsupported_property)
     array = common.array(unsupported_property)
+    duplicated = common.duplicated(unsupported_property)
 
     # Functions we won't support.
     memory_usage = common.memory_usage(unsupported_function)
@@ -133,10 +128,7 @@ class _MissingPandasLikeMultiIndex(object):
     asof_locs = unsupported_function('asof_locs')
     delete = unsupported_function('delete')
     difference = unsupported_function('difference')
-    drop = unsupported_function('drop')
-    drop_duplicates = unsupported_function('drop_duplicates')
     droplevel = unsupported_function('droplevel')
-    duplicated = unsupported_function('duplicated')
     equal_levels = unsupported_function('equal_levels')
     equals = unsupported_function('equals')
     factorize = unsupported_function('factorize')
@@ -162,7 +154,6 @@ class _MissingPandasLikeMultiIndex(object):
     is_type_compatible = unsupported_function('is_type_compatible')
     join = unsupported_function('join')
     map = unsupported_function('map')
-    nunique = unsupported_function('nunique')
     putmask = unsupported_function('putmask')
     ravel = unsupported_function('ravel')
     reindex = unsupported_function('reindex')
@@ -176,8 +167,6 @@ class _MissingPandasLikeMultiIndex(object):
     set_value = unsupported_function('set_value')
     slice_indexer = unsupported_function('slice_indexer')
     slice_locs = unsupported_function('slice_locs')
-    sort = unsupported_function('sort')
-    sort_values = unsupported_function('sort_values')
     sortlevel = unsupported_function('sortlevel')
     swaplevel = unsupported_function('swaplevel')
     take = unsupported_function('take')
@@ -200,6 +189,7 @@ class _MissingPandasLikeMultiIndex(object):
     # Functions we won't support.
     values = common.values(unsupported_property)
     array = common.array(unsupported_property)
+    duplicated = common.duplicated(unsupported_property)
     codes = unsupported_property(
         'codes',
         reason="'codes' requires to collect all data into the driver which is against the "
