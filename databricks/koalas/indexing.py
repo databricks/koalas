@@ -290,13 +290,12 @@ class LocIndexer(_LocIndexerLike):
     Slice with labels for row and single label for column. As mentioned
     above, note that both the start and stop of the slice are included.
 
-    Also note that the row for 'sidewinder' is included since 'sidewinder'
-    is between 'cobra' and 'viper'.
+    Also note that the row for 'sidewinder' is not included since 'sidewinder'
+    is not between 'cobra' and 'viper'.
 
     >>> df.loc['cobra':'viper', 'max_speed']
-    cobra         1
-    viper         4
-    sidewinder    7
+    cobra    1
+    viper    4
     Name: max_speed, dtype: int64
 
     Conditional that returns a boolean Series
@@ -400,16 +399,23 @@ class LocIndexer(_LocIndexerLike):
                 # If slice is None - select everything, so nothing to do
                 return None, None
             elif len(self._internal.index_columns) == 1:
-                start = rows_sel.start
-                stop = rows_sel.stop
-
+                sdf = self._kdf_or_kser._internal.sdf
                 index_column = self._kdf_or_kser.index.to_series()
-                index_data_type = index_column.spark_type
+
+                # get natural order from '__natural_order__' from start to stop
+                # based on index_columns to keep natural order.
+                start = sdf.select(NATURAL_ORDER_COLUMN_NAME) \
+                           .where(index_column._scol == rows_sel.start) \
+                           .first()[0]
+                stop = sdf.select(NATURAL_ORDER_COLUMN_NAME) \
+                          .where(index_column._scol == rows_sel.stop) \
+                          .first()[0]
+
                 cond = []
                 if start is not None:
-                    cond.append(index_column._scol >= F.lit(start).cast(index_data_type))
+                    cond.append(sdf[NATURAL_ORDER_COLUMN_NAME] >= F.lit(start))
                 if stop is not None:
-                    cond.append(index_column._scol <= F.lit(stop).cast(index_data_type))
+                    cond.append(sdf[NATURAL_ORDER_COLUMN_NAME] <= F.lit(stop))
 
                 if len(cond) > 0:
                     return reduce(lambda x, y: x & y, cond), None
