@@ -451,3 +451,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_product(iterables)
 
         self.assert_eq(pidx, kidx)
+
+    def test_len(self):
+        pidx = pd.Index(range(10000))
+        kidx = ks.Index(range(10000))
+
+        self.assert_eq(len(pidx), len(kidx))
+
+        pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        self.assert_eq(len(pidx), len(kidx))

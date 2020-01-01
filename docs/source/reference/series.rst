@@ -53,6 +53,7 @@ Indexing, iteration
    Series.keys
    Series.pop
    Series.xs
+   Series.get
 
 Binary operator functions
 -------------------------
