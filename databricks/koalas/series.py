@@ -1460,8 +1460,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 else:
                     end = Window.unboundedFollowing
 
-            window = Window.partitionBy(*part_cols).orderBy(F.monotonically_increasing_id())\
-                .rowsBetween(begin, end)  # FIXME
+            window = Window.partitionBy(*part_cols).orderBy(NATURAL_ORDER_COLUMN_NAME) \
+                .rowsBetween(begin, end)
             scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
         kseries = self._with_new_scol(scol).rename(column_name)
         if inplace:
@@ -2856,7 +2856,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         if method == 'first':
             window = Window.orderBy(
-                asc_func(self._internal.scol), asc_func(F.monotonically_increasing_id())  # FIXME
+                asc_func(self._internal.scol), asc_func(F.col(NATURAL_ORDER_COLUMN_NAME))
             ).partitionBy(*part_cols).rowsBetween(Window.unboundedPreceding, Window.currentRow)
             scol = F.row_number().over(window)
         elif method == 'dense':
@@ -2956,8 +2956,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def _diff(self, periods, part_cols=()):
         if not isinstance(periods, int):
             raise ValueError('periods should be an int; however, got [%s]' % type(periods))
-        window = Window.partitionBy(*part_cols).orderBy(F.monotonically_increasing_id())\
-            .rowsBetween(-periods, -periods)  # FIXME
+        window = Window.partitionBy(*part_cols).orderBy(NATURAL_ORDER_COLUMN_NAME) \
+            .rowsBetween(-periods, -periods)
         scol = self._scol - F.lag(self._scol, periods).over(window)
         return self._with_new_scol(scol).rename(self.name)
 

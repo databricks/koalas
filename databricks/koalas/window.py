@@ -25,6 +25,7 @@ from databricks.koalas.missing.window import _MissingPandasLikeRolling, \
     _MissingPandasLikeExpandingGroupby
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.internal import NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.utils import scol_for
 
 
@@ -33,8 +34,8 @@ class _RollingAndExpanding(object):
     def __init__(self, window, min_periods):
         self._window = window
         # This unbounded Window is later used to handle 'min_periods' for now.
-        self._unbounded_window = Window.orderBy(F.monotonically_increasing_id()).rowsBetween(
-            Window.unboundedPreceding, Window.currentRow)  # FIXME
+        self._unbounded_window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(
+            Window.unboundedPreceding, Window.currentRow)
         self._min_periods = min_periods
 
     def _apply_as_series_or_frame(self, func):
@@ -128,7 +129,7 @@ class Rolling(_RollingAndExpanding):
         if not isinstance(kdf_or_kser, (DataFrame, Series)):
             raise TypeError(
                 "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser))
-        window = Window.orderBy(F.monotonically_increasing_id()).rowsBetween(  # FIXME
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(
             Window.currentRow - (self._window_val - 1), Window.currentRow)
 
         super(Rolling, self).__init__(window, min_periods)
@@ -1056,8 +1057,8 @@ class Expanding(_RollingAndExpanding):
         if not isinstance(kdf_or_kser, (DataFrame, Series)):
             raise TypeError(
                 "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser))
-        window = Window.orderBy(F.monotonically_increasing_id()).rowsBetween(
-            Window.unboundedPreceding, Window.currentRow)  # FIXME
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(
+            Window.unboundedPreceding, Window.currentRow)
         super(Expanding, self).__init__(window, min_periods)
 
     def __getattr__(self, item: str) -> Any:

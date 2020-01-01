@@ -3182,12 +3182,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if keep == 'first' or keep == 'last':
             if keep == 'first':
-                ord_func = lambda scol: scol.asc()
+                ord_func = spark.functions.asc
             else:
-                ord_func = lambda scol: scol.desc()
+                ord_func = spark.functions.desc
             window = Window.partitionBy(group_cols) \
-                .orderBy(ord_func(F.monotonically_increasing_id())) \
-                .rowsBetween(Window.unboundedPreceding, Window.currentRow)  # FIXME
+                .orderBy(ord_func(NATURAL_ORDER_COLUMN_NAME)) \
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
             sdf = sdf.withColumn(column, F.row_number().over(window) > 1)
         elif not keep:
             window = Window.partitionBy(group_cols) \

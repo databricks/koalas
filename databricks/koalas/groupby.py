@@ -2056,9 +2056,9 @@ class SeriesGroupBy(GroupBy):
         sdf = self._kdf._sdf
         name = self._agg_columns[0]._internal.data_columns[0]
         window = Window.partitionBy([s._scol for s in groupkeys]) \
-            .orderBy(scol_for(sdf, name), F.monotonically_increasing_id())  # FIXME
+            .orderBy(scol_for(sdf, name), NATURAL_ORDER_COLUMN_NAME)
         sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
-        internal = _InternalFrame(sdf=sdf,
+        internal = _InternalFrame(sdf=sdf.drop(NATURAL_ORDER_COLUMN_NAME),
                                   index_map=([(s._internal.data_columns[0],
                                                s._internal.column_index[0])
                                               for s in self._groupkeys]
@@ -2103,9 +2103,9 @@ class SeriesGroupBy(GroupBy):
         sdf = self._kdf._sdf
         name = self._agg_columns[0]._internal.data_columns[0]
         window = Window.partitionBy([s._scol for s in groupkeys]) \
-            .orderBy(F.col(name).desc(), F.monotonically_increasing_id())  # FIXME
+            .orderBy(F.col(name).desc(), NATURAL_ORDER_COLUMN_NAME)
         sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
-        internal = _InternalFrame(sdf=sdf,
+        internal = _InternalFrame(sdf=sdf.drop(NATURAL_ORDER_COLUMN_NAME),
                                   index_map=([(s._internal.data_columns[0],
                                                s._internal.column_index[0])
                                               for s in self._groupkeys]
