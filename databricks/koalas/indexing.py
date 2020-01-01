@@ -22,7 +22,7 @@ from functools import reduce
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, StringType
+from pyspark.sql.types import BooleanType, StringType, LongType
 from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import _InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME
@@ -417,19 +417,24 @@ class LocIndexer(_LocIndexerLike):
                     order_column = sdf[NATURAL_ORDER_COLUMN_NAME]
                     if start is not None:
                         start = start[0]
+                    elif rows_sel.start is None:
+                        pass
                     else:
                         raise KeyError(rows_sel.start)
                     if stop is not None:
                         stop = stop[0]
+                    elif rows_sel.stop is None:
+                        pass
                     else:
                         raise KeyError(rows_sel.stop)
+                    index_data_type = LongType()
                 else:
                     order_column = index_column._scol
                 cond = []
                 if start is not None:
-                    cond.append(order_column >= F.lit(start))
+                    cond.append(order_column >= F.lit(start).cast(index_data_type))
                 if stop is not None:
-                    cond.append(order_column <= F.lit(stop))
+                    cond.append(order_column <= F.lit(stop).cast(index_data_type))
 
                 if len(cond) > 0:
                     return reduce(lambda x, y: x & y, cond), None
