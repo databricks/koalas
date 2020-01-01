@@ -4181,7 +4181,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> s @ s
         14
         """
-        if repr(self.index) != repr(other.index):
+        if len(self.index) != len(other.index):
             raise ValueError("matrices are not aligned")
 
         if isinstance(other, DataFrame):
