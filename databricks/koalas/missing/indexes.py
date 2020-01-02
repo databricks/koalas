@@ -40,7 +40,6 @@ class _MissingPandasLikeIndex(object):
     flags = unsupported_property('flags', deprecated=True)
 
     # Functions
-    append = unsupported_function('append')
     argmax = unsupported_function('argmax')
     argmin = unsupported_function('argmin')
     argsort = unsupported_function('argsort')
@@ -121,7 +120,6 @@ class _MissingPandasLikeMultiIndex(object):
     flags = unsupported_property('flags', deprecated=True)
 
     # Functions
-    append = unsupported_function('append')
     argmax = unsupported_function('argmax')
     argmin = unsupported_function('argmin')
     argsort = unsupported_function('argsort')

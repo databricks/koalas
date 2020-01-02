@@ -462,3 +462,23 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
 
         self.assert_eq(len(pidx), len(kidx))
+
+    def test_append(self):
+        # Index
+        pidx = pd.Index(range(10000))
+        kidx = ks.Index(range(10000))
+
+        self.assert_eq(pidx.append(pidx), kidx.append(kidx))
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        kmidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        self.assert_eq(pmidx.append(pmidx), kmidx.append(kmidx))
+
+        # Index & MultiIndex currently is not supported
+        expected_error_message = r"append\(\) between Index & MultiIndex currently is not supported"
+        with self.assertRaisesRegex(NotImplementedError, expected_error_message):
+            kidx.append(kmidx)
+        with self.assertRaisesRegex(NotImplementedError, expected_error_message):
+            kmidx.append(kidx)

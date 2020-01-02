@@ -958,6 +958,56 @@ class Index(IndexOpsMixin):
 
         return result if len(result) > 1 else result[0]
 
+    def append(self, other):
+        """
+        Append a collection of Index options together.
+
+        Parameters
+        ----------
+        other : Index
+
+        Returns
+        -------
+        appended : Index
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10, 5, 0, 5, 10, 5, 0, 10])
+        >>> kidx
+        Int64Index([10, 5, 0, 5, 10, 5, 0, 10], dtype='int64')
+
+        >>> kidx.append(kidx)
+        Int64Index([10, 5, 0, 5, 10, 5, 0, 10, 10, 5, 0, 5, 10, 5, 0, 10], dtype='int64')
+
+        Support for MiltiIndex
+
+        >>> kidx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y')])
+        >>> kidx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   )
+
+        >>> kidx.append(kidx)  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('a', 'x'),
+                    ('b', 'y')],
+                   )
+        """
+        if type(self) is not type(other):
+            raise NotImplementedError(
+                "append() between Index & MultiIndex currently is not supported")
+
+        sdf_self = self._internal.sdf
+        sdf_other = other._internal.sdf
+        sdf_appended = sdf_self.union(sdf_other)
+
+        internal = _InternalFrame(
+            sdf_appended.select(self._internal.index_scols),
+            index_map=self._internal.index_map)
+
+        return DataFrame(internal).index
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)

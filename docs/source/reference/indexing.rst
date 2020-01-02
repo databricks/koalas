@@ -96,6 +96,7 @@ Combining / joining / set operations
 .. autosummary::
    :toctree: api/
 
+   Index.append
    Index.symmetric_difference
 
 Selecting
@@ -164,6 +165,7 @@ MultiIndex Combining / joining / set operations
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.append
    MultiIndex.symmetric_difference
 
 MultiIndex Conversion
