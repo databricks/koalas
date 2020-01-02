@@ -462,3 +462,24 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
 
         self.assert_eq(len(pidx), len(kidx))
+
+    def test_delete(self):
+        pidx = pd.Index([10, 9, 8, 7, 6, 7, 8, 9, 10])
+        kidx = ks.Index([10, 9, 8, 7, 6, 7, 8, 9, 10])
+
+        self.assert_eq(pidx.delete(5), kidx.delete(5))
+        self.assert_eq(pidx.delete(-5), kidx.delete(-5))
+        self.assert_eq(pidx.delete([0, 10000]), kidx.delete([0, 10000]))
+        self.assert_eq(pidx.delete([10000, 20000]), kidx.delete([10000, 20000]))
+
+        with self.assertRaisesRegex(
+                IndexError,
+                "index 10 is out of bounds for axis 0 with size 9"):
+            kidx.delete(10)
+
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "currently doesn't support for MultiIndex"):
+            kidx.delete(0)

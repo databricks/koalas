@@ -18,7 +18,7 @@
 Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 """
 from distutils.version import LooseVersion
-from functools import partial
+from functools import partial, reduce
 from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
@@ -39,7 +39,7 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
 from databricks.koalas.utils import name_like_string, default_session
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 
 
 class Index(IndexOpsMixin):
@@ -957,6 +957,90 @@ class Index(IndexOpsMixin):
         result = tuple(max_row[0])
 
         return result if len(result) > 1 else result[0]
+
+    def delete(self, loc):
+        """
+        Make new Index with passed location(-s) deleted.
+
+        Returns
+        -------
+        new_index : Index
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10, 10, 9, 8, 4, 2, 4, 4, 2, 2, 10, 10])
+        >>> kidx
+        Int64Index([10, 10, 9, 8, 4, 2, 4, 4, 2, 2, 10, 10], dtype='int64')
+
+        >>> kidx.delete(0)
+        Int64Index([10, 9, 8, 4, 2, 4, 4, 2, 2, 10, 10], dtype='int64')
+
+        >>> kidx.delete([0, 1, 2, 3, 10, 11])
+        Int64Index([4, 2, 4, 4, 2, 2], dtype='int64')
+        """
+        if isinstance(self, MultiIndex):
+            raise NotImplementedError("currently doesn't support for MultiIndex")
+        if not is_list_like(loc):
+            if not isinstance(self, str) and abs(loc) >= len(self):
+                raise IndexError(
+                    "index {} is out of bounds for axis 0 with size {}"
+                    .format(loc, len(self)))
+            loc = [loc]
+        loc = [int(item) for item in loc]
+        loc = [item if item >= 0 else len(self) + item for item in loc]
+
+        sdf = self._internal.sdf
+        sdf = sdf.select(self.to_series()._scol.alias('__index_value__'))
+        # sdf here looks like below
+        # +---------------+
+        # |__index_value__|
+        # +---------------+
+        # |             10|
+        # |             10|
+        # |              9|
+        # |              8|
+        # |              4|
+        # |              2|
+        # |              4|
+        # |              4|
+        # |              2|
+        # |              2|
+        # |             10|
+        # |             10|
+        # +---------------+
+
+        sdf = _InternalFrame.attach_default_index(
+            sdf, default_index_type='distributed-sequence')
+        # sdf here looks like below
+        # +-----------------+---------------+
+        # |__index_level_0__|__index_value__|
+        # +-----------------+---------------+
+        # |                1|             10|
+        # |                6|              4|
+        # |                3|              8|
+        # |                5|              2|
+        # |                9|              2|
+        # |                4|              4|
+        # |                8|              2|
+        # |                7|              4|
+        # |               10|             10|
+        # |               11|             10|
+        # |                2|              9|
+        # |                0|             10|
+        # +-----------------+---------------+
+
+        conds = [F.col(SPARK_INDEX_NAME_FORMAT(0)) != idx_loc for idx_loc in loc]
+        cond = reduce(lambda x, y: x & y, conds)
+
+        # delete rows which are matched with given `loc`
+        sdf = sdf.where(cond)
+        sdf = sdf.sort(SPARK_INDEX_NAME_FORMAT(0))
+
+        internal = _InternalFrame(
+            sdf=sdf.select('__index_value__'),
+            index_map=[('__index_value__', None)])
+
+        return DataFrame(internal).index
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):

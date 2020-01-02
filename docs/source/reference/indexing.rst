@@ -42,6 +42,7 @@ Modifying and computations
    Index.all
    Index.any
    Index.copy
+   Index.delete
    Index.is_boolean
    Index.is_categorical
    Index.is_floating
@@ -154,6 +155,7 @@ MultiIndex Modifying and computations
 
    MultiIndex.drop
    MultiIndex.copy
+   MultiIndex.delete
    MultiIndex.rename
    MultiIndex.min
    MultiIndex.max
