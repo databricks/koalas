@@ -996,7 +996,7 @@ class Index(IndexOpsMixin):
         # |              3|
         # |            100|
         # +---------------+
-        
+
         sdf = _InternalFrame.attach_default_index(
             sdf, default_index_type='distributed-sequence')
         # sdf here looks like below
