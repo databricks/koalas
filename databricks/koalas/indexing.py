@@ -408,24 +408,21 @@ class LocIndexer(_LocIndexerLike):
                 # get natural order from '__natural_order__' from start to stop
                 # to keep natural order when type of rows are StringType
                 if isinstance(index_data_type, StringType):
-                    start = sdf.select(NATURAL_ORDER_COLUMN_NAME) \
-                               .where(index_column._scol == start) \
-                               .first()
-                    stop = sdf.select(NATURAL_ORDER_COLUMN_NAME) \
-                              .where(index_column._scol == stop) \
-                              .first()
+                    start_and_stop = (
+                        sdf.select(index_column._scol, NATURAL_ORDER_COLUMN_NAME)
+                           .where((index_column._scol == start) | (index_column._scol == stop))
+                           .collect())
+
+                    start = [row[1] for row in start_and_stop if row[0] == start]
+                    start = start[0] if len(start) > 0 else None
+
+                    stop = [row[1] for row in start_and_stop if row[0] == stop]
+                    stop = stop[0] if len(stop) > 0 else None
+
                     order_column = sdf[NATURAL_ORDER_COLUMN_NAME]
-                    if start is not None:
-                        start = start[0]
-                    elif rows_sel.start is None:
-                        pass
-                    else:
+                    if start is None and rows_sel.start is not None:
                         raise KeyError(rows_sel.start)
-                    if stop is not None:
-                        stop = stop[0]
-                    elif rows_sel.stop is None:
-                        pass
-                    else:
+                    if stop is None and rows_sel.stop is not None:
                         raise KeyError(rows_sel.stop)
                     index_data_type = LongType()
                 else:
