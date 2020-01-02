@@ -41,7 +41,6 @@ class _MissingPandasLikeIndex(object):
 
     # Functions
     append = unsupported_function('append')
-    argmin = unsupported_function('argmin')
     argsort = unsupported_function('argsort')
     asof = unsupported_function('asof')
     asof_locs = unsupported_function('asof_locs')
@@ -121,7 +120,6 @@ class _MissingPandasLikeMultiIndex(object):
 
     # Functions
     append = unsupported_function('append')
-    argmin = unsupported_function('argmin')
     argsort = unsupported_function('argsort')
     asof = unsupported_function('asof')
     asof_locs = unsupported_function('asof_locs')
