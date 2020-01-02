@@ -334,3 +334,131 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
             kidx.fillna([1, 2])
+
+    def test_index_drop(self):
+        pidx = pd.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, 3]).index
+        kidx = ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, 3]).index
+
+        self.assert_eq(pidx.drop(1), kidx.drop(1))
+        self.assert_eq(pidx.drop([1, 2]), kidx.drop([1, 2]))
+
+    def test_multiindex_drop(self):
+        pidx = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')],
+                                         names=['level1', 'level2'])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')],
+                                         names=['level1', 'level2'])
+        self.assert_eq(pidx.drop('a'), kidx.drop('a'))
+        self.assert_eq(pidx.drop(['a', 'b']), kidx.drop(['a', 'b']))
+        self.assert_eq(pidx.drop(['x', 'y'], level='level2'),
+                       kidx.drop(['x', 'y'], level='level2'))
+
+    def test_sort_values(self):
+        pidx = pd.Index([-10, -100, 200, 100])
+        kidx = ks.Index([-10, -100, 200, 100])
+
+        self.assert_eq(pidx.sort_values(), kidx.sort_values())
+        self.assert_eq(pidx.sort_values(ascending=False), kidx.sort_values(ascending=False))
+
+        pidx.name = 'koalas'
+        kidx.name = 'koalas'
+
+        self.assert_eq(pidx.sort_values(), kidx.sort_values())
+        self.assert_eq(pidx.sort_values(ascending=False), kidx.sort_values(ascending=False))
+
+        pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        pidx.names = ['hello', 'koalas', 'goodbye']
+        kidx.names = ['hello', 'koalas', 'goodbye']
+
+        self.assert_eq(pidx.sort_values(), kidx.sort_values())
+        self.assert_eq(pidx.sort_values(ascending=False), kidx.sort_values(ascending=False))
+
+    def test_index_drop_duplicates(self):
+        pidx = pd.Index([1, 1, 2])
+        kidx = ks.Index([1, 1, 2])
+        self.assert_eq(pidx.drop_duplicates(), kidx.drop_duplicates())
+
+        pidx = pd.MultiIndex.from_tuples([(1, 1), (1, 1), (2, 2)], names=['level1', 'level2'])
+        kidx = ks.MultiIndex.from_tuples([(1, 1), (1, 1), (2, 2)], names=['level1', 'level2'])
+        self.assert_eq(pidx.drop_duplicates(), kidx.drop_duplicates())
+
+    def test_index_sort(self):
+        idx = ks.Index([1, 2, 3, 4, 5])
+        midx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
+
+        with self.assertRaisesRegex(
+                TypeError,
+                "cannot sort an Index object in-place, use sort_values instead"):
+            idx.sort()
+        with self.assertRaisesRegex(
+                TypeError,
+                "cannot sort an Index object in-place, use sort_values instead"):
+            midx.sort()
+
+    def test_multiindex_isna(self):
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "isna is not defined for MultiIndex"):
+            kidx.isna()
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "isna is not defined for MultiIndex"):
+            kidx.isnull()
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "notna is not defined for MultiIndex"):
+            kidx.notna()
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "notna is not defined for MultiIndex"):
+            kidx.notnull()
+
+    def test_index_nunique(self):
+        pidx = pd.Index([1, 1, 2, None])
+        kidx = ks.Index([1, 1, 2, None])
+
+        self.assert_eq(pidx.nunique(), kidx.nunique())
+        self.assert_eq(pidx.nunique(dropna=True), kidx.nunique(dropna=True))
+
+    def test_multiindex_nunique(self):
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                "notna is not defined for MultiIndex"):
+            kidx.notnull()
+
+    def test_multiindex_rename(self):
+        pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        pidx = pidx.rename(list('ABC'))
+        kidx = kidx.rename(list('ABC'))
+        self.assert_eq(pidx, kidx)
+
+        pidx = pidx.rename(['my', 'name', 'is'])
+        kidx = kidx.rename(['my', 'name', 'is'])
+        self.assert_eq(pidx, kidx)
+
+    def test_multiindex_from_product(self):
+        iterables = [[0, 1, 2], ['green', 'purple']]
+        pidx = pd.MultiIndex.from_product(iterables)
+        kidx = ks.MultiIndex.from_product(iterables)
+
+        self.assert_eq(pidx, kidx)
+
+    def test_len(self):
+        pidx = pd.Index(range(10000))
+        kidx = ks.Index(range(10000))
+
+        self.assert_eq(len(pidx), len(kidx))
+
+        pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        self.assert_eq(len(pidx), len(kidx))

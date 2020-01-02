@@ -18,7 +18,7 @@
 Base and utility classes for Koalas objects.
 """
 
-from functools import wraps
+from functools import wraps, partial
 from typing import Union, Callable, Any
 
 import numpy as np
@@ -558,6 +558,9 @@ class IndexOpsMixin(object):
         >>> ser.rename("a").to_frame().set_index("a").index.isna()
         Index([False, False, True], dtype='object', name='a')
         """
+        from databricks.koalas.indexes import MultiIndex
+        if isinstance(self, MultiIndex):
+            raise NotImplementedError("isna is not defined for MultiIndex")
         if isinstance(self.spark_type, (FloatType, DoubleType)):
             return self._with_new_scol(self._scol.isNull() | F.isnan(self._scol)).rename(self.name)
         else:
@@ -599,6 +602,9 @@ class IndexOpsMixin(object):
         >>> ser.rename("a").to_frame().set_index("a").index.notna()
         Index([True, True, False], dtype='object', name='a')
         """
+        from databricks.koalas.indexes import MultiIndex
+        if isinstance(self, MultiIndex):
+            raise NotImplementedError("notna is not defined for MultiIndex")
         return (~self.isnull()).rename(self.name)
 
     notna = notnull
@@ -940,16 +946,18 @@ class IndexOpsMixin(object):
         3    1
         Name: koalas, dtype: int64
         """
-        from databricks.koalas.series import Series, _col
+        from databricks.koalas.series import _col
+
         if bins is not None:
             raise NotImplementedError("value_counts currently does not support bins")
 
         if dropna:
-            sdf_dropna = self._internal._sdf.dropna()
+            sdf_dropna = self._internal._sdf.select(self._scol).dropna()
         else:
-            sdf_dropna = self._internal._sdf
+            sdf_dropna = self._internal._sdf.select(self._scol)
         index_name = SPARK_INDEX_NAME_FORMAT(0)
-        sdf = sdf_dropna.groupby(self._scol.alias(index_name)).count()
+        column_name = self._internal.data_columns[0]
+        sdf = sdf_dropna.groupby(scol_for(sdf_dropna, column_name).alias(index_name)).count()
         if sort:
             if ascending:
                 sdf = sdf.orderBy(F.col('count'))
@@ -973,3 +981,67 @@ class IndexOpsMixin(object):
                                       column_index_names=self._internal.column_index_names)
 
         return _col(DataFrame(internal))
+
+    def nunique(self, dropna: bool = True, approx: bool = False, rsd: float = 0.05) -> int:
+        """
+        Return number of unique elements in the object.
+        Excludes NA values by default.
+
+        Parameters
+        ----------
+        dropna : bool, default True
+            Don’t include NaN in the count.
+        approx: bool, default False
+            If False, will use the exact algorithm and return the exact number of unique.
+            If True, it uses the HyperLogLog approximate algorithm, which is significantly faster
+            for large amount of data.
+            Note: This parameter is specific to Koalas and is not found in pandas.
+        rsd: float, default 0.05
+            Maximum estimation error allowed in the HyperLogLog algorithm.
+            Note: Just like ``approx`` this parameter is specific to Koalas.
+
+        Returns
+        -------
+        int
+
+        See Also
+        --------
+        DataFrame.nunique: Method nunique for DataFrame.
+        Series.count: Count non-NA/null observations in the Series.
+
+        Examples
+        --------
+        >>> ks.Series([1, 2, 3, np.nan]).nunique()
+        3
+
+        >>> ks.Series([1, 2, 3, np.nan]).nunique(dropna=False)
+        4
+
+        On big data, we recommend using the approximate algorithm to speed up this function.
+        The result will be very close to the exact unique count.
+
+        >>> ks.Series([1, 2, 3, np.nan]).nunique(approx=True)
+        3
+
+        >>> idx = ks.Index([1, 1, 2, None])
+        >>> idx
+        Float64Index([1.0, 1.0, 2.0, nan], dtype='float64')
+
+        >>> idx.nunique()
+        2
+
+        >>> idx.nunique(dropna=False)
+        3
+        """
+        res = self._internal._sdf.select([self._nunique(dropna, approx, rsd)])
+        return res.collect()[0][0]
+
+    def _nunique(self, dropna=True, approx=False, rsd=0.05):
+        colname = self._internal.data_columns[0]
+        count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
+        if dropna:
+            return count_fn(self._scol).alias(colname)
+        else:
+            return (count_fn(self._scol) +
+                    F.when(F.count(F.when(self._scol.isNull(), 1)
+                                   .otherwise(None)) >= 1, 1).otherwise(0)).alias(colname)

@@ -11,7 +11,7 @@ in Koalas as well. Leverage and combine those cutting-edge features with Koalas.
 Existing Spark context and Spark sessions are used out of the box in Koalas. If you already have your own
 configured Spark context or sessions running, Koalas uses them.
 
-If there is no Spark context or session running in your environment (e.g., ordinary Python interpretor),
+If there is no Spark context or session running in your environment (e.g., ordinary Python interpreter),
 such configurations can be set to ``SparkContext`` and/or ``SparkSession``.
 Once Spark context and/or session is created, Koalas can use this context and/or session automatically.
 For example, if you want to configure the executor memory in Spark, you can do as below:

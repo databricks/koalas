@@ -17,8 +17,8 @@
 """
 Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 """
-
-from functools import partial, reduce
+from distutils.version import LooseVersion
+from functools import partial
 from typing import Any, List, Optional, Tuple, Union
 
 import pandas as pd
@@ -27,6 +27,7 @@ from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
     is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
 from pandas.io.formats.printing import pprint_thing
 
+import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 
@@ -35,10 +36,9 @@ from databricks.koalas.config import get_option
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
-from databricks.koalas.utils import name_like_string
+from databricks.koalas.utils import name_like_string, default_session
 from databricks.koalas.internal import _InternalFrame
 
 
@@ -340,7 +340,7 @@ class Index(IndexOpsMixin):
 
     def rename(self, name: Union[str, Tuple[str, ...]], inplace: bool = False):
         """
-        Alter Index name.
+        Alter Index or MultiIndex name.
         Able to set new names without level. Defaults to returning new index.
 
         Parameters
@@ -348,11 +348,11 @@ class Index(IndexOpsMixin):
         name : label or list of labels
             Name(s) to set.
         inplace : boolean, default False
-            Modifies the object directly, instead of creating a new Index.
+            Modifies the object directly, instead of creating a new Index or MultiIndex.
 
         Returns
         -------
-        Index
+        Index or MultiIndex
             The same type as the caller or None if inplace is True.
 
         Examples
@@ -375,19 +375,28 @@ class Index(IndexOpsMixin):
         e
         A  A
         C  B
+
+        Support for MultiIndex
+
+        >>> kidx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y')])
+        >>> kidx.names = ['hello', 'koalas']
+        >>> kidx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   names=['hello', 'koalas'])
+
+        >>> kidx.rename(['aloha', 'databricks'])  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   names=['aloha', 'databricks'])
         """
-        index_columns = self._kdf._internal.index_columns
-        assert len(index_columns) == 1
-
-        if isinstance(name, str):
-            name = (name,)
-        internal = self._kdf._internal.copy(index_map=[(index_columns[0], name)])
-
-        if inplace:
-            self._kdf._internal = internal
-            return self
+        if not inplace:
+            self = self.copy()
+        if isinstance(self, MultiIndex):
+            self.names = name  # type: ignore
         else:
-            return Index(DataFrame(internal), scol=self._scol)
+            self.name = name
+        return self
 
     # TODO: add downcast parameter for fillna function
     def fillna(self, value):
@@ -417,6 +426,34 @@ class Index(IndexOpsMixin):
             raise TypeError("Unsupported type %s" % type(value))
         sdf = self._internal.sdf.fillna(value)
         result = DataFrame(self._kdf._internal.copy(sdf=sdf)).index
+        return result
+
+    # TODO: ADD keep parameter
+    def drop_duplicates(self):
+        """
+        Return Index with duplicate values removed.
+
+        Returns
+        -------
+        deduplicated : Index
+
+        See Also
+        --------
+        Series.drop_duplicates : Equivalent method on Series.
+        DataFrame.drop_duplicates : Equivalent method on DataFrame.
+
+        Examples
+        --------
+        Generate an pandas.Index with duplicate values.
+
+        >>> idx = ks.Index(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'])
+
+        >>> idx.drop_duplicates() # doctest: +SKIP
+        Index(['lama', 'cow', 'beetle', 'hippo'], dtype='object')
+        """
+        sdf = self._internal.sdf.select(self._internal.index_scols).drop_duplicates()
+        internal = _InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)
+        result = DataFrame(internal).index
         return result
 
     def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
@@ -609,6 +646,33 @@ class Index(IndexOpsMixin):
         sdf = self._kdf._sdf.select(self._scol.alias(self._internal.index_columns[0])).distinct()
         return DataFrame(_InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)).index
 
+    # TODO: add error parameter
+    def drop(self, labels):
+        """
+        Make new Index with passed list of labels deleted.
+
+        Parameters
+        ----------
+        labels : array-like
+
+        Returns
+        -------
+        dropped : Index
+
+        Examples
+        --------
+        >>> index = ks.Index([1, 2, 3])
+        >>> index
+        Int64Index([1, 2, 3], dtype='int64')
+
+        >>> index.drop([1])
+        Int64Index([2, 3], dtype='int64')
+        """
+        if not isinstance(labels, (tuple, list)):
+            labels = [labels]
+        sdf = self._internal.sdf[~self._internal.index_scols[0].isin(labels)]
+        return Index(DataFrame(_InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)))
+
     def _validate_index_level(self, level):
         """
         Validate index level.
@@ -740,6 +804,86 @@ class Index(IndexOpsMixin):
 
         return result
 
+    # TODO: return_indexer
+    def sort_values(self, ascending=True):
+        """
+        Return a sorted copy of the index.
+
+        .. note:: This method is not supported for pandas when index has NaN value.
+                  pandas raises unexpected TypeError, but we support treating NaN
+                  as the smallest value.
+
+        Parameters
+        ----------
+        ascending : bool, default True
+            Should the index values be sorted in an ascending order.
+
+        Returns
+        -------
+        sorted_index : ks.Index or ks.MultiIndex
+            Sorted copy of the index.
+
+        See Also
+        --------
+        Series.sort_values : Sort values of a Series.
+        DataFrame.sort_values : Sort values in a DataFrame.
+
+        Examples
+        --------
+        >>> idx = ks.Index([10, 100, 1, 1000])
+        >>> idx
+        Int64Index([10, 100, 1, 1000], dtype='int64')
+
+        Sort values in ascending order (default behavior).
+
+        >>> idx.sort_values()
+        Int64Index([1, 10, 100, 1000], dtype='int64')
+
+        Sort values in descending order.
+
+        >>> idx.sort_values(ascending=False)
+        Int64Index([1000, 100, 10, 1], dtype='int64')
+
+        Support for MultiIndex.
+
+        >>> kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('c', 'y', 2), ('b', 'z', 3)])
+        >>> kidx  # doctest: +SKIP
+        MultiIndex([('a', 'x', 1),
+                    ('c', 'y', 2),
+                    ('b', 'z', 3)],
+                   )
+
+        >>> kidx.sort_values()  # doctest: +SKIP
+        MultiIndex([('a', 'x', 1),
+                    ('b', 'z', 3),
+                    ('c', 'y', 2)],
+                   )
+
+        >>> kidx.sort_values(ascending=False)  # doctest: +SKIP
+        MultiIndex([('c', 'y', 2),
+                    ('b', 'z', 3),
+                    ('a', 'x', 1)],
+                   )
+        """
+        sdf = self._internal.sdf
+        sdf = sdf.orderBy(self._internal.index_scols, ascending=ascending)
+
+        internal = _InternalFrame(
+            sdf=sdf.select(self._internal.index_scols),
+            index_map=self._kdf._internal.index_map)
+
+        result = DataFrame(internal).index
+
+        return result
+
+    def sort(self, *args, **kwargs):
+        """
+        Use sort_values instead.
+        """
+        raise TypeError(
+            "cannot sort an Index object in-place, use sort_values instead"
+        )
+
     def min(self):
         """
         Return the minimum value of the Index.
@@ -843,6 +987,9 @@ class Index(IndexOpsMixin):
 
     def __xor__(self, other):
         return self.symmetric_difference(other)
+
+    def __len__(self):
+        return self.size
 
 
 class MultiIndex(Index):
@@ -956,6 +1103,48 @@ class MultiIndex(Index):
             arrays=arrays, sortorder=sortorder, names=names
         )).index
 
+    @staticmethod
+    def from_product(iterables, sortorder=None, names=None):
+        """
+        Make a MultiIndex from the cartesian product of multiple iterables.
+
+        Parameters
+        ----------
+        iterables : list / sequence of iterables
+            Each iterable has unique labels for each level of the index.
+        sortorder : int or None
+            Level of sortedness (must be lexicographically sorted by that
+            level).
+        names : list / sequence of str, optional
+            Names for the levels in the index.
+
+        Returns
+        -------
+        index : MultiIndex
+
+        See Also
+        --------
+        MultiIndex.from_arrays : Convert list of arrays to MultiIndex.
+        MultiIndex.from_tuples : Convert list of tuples to MultiIndex.
+
+        Examples
+        --------
+        >>> numbers = [0, 1, 2]
+        >>> colors = ['green', 'purple']
+        >>> ks.MultiIndex.from_product([numbers, colors],
+        ...                            names=['number', 'color'])  # doctest: +SKIP
+        MultiIndex([(0,  'green'),
+                    (0, 'purple'),
+                    (1,  'green'),
+                    (1, 'purple'),
+                    (2,  'green'),
+                    (2, 'purple')],
+                   names=['number', 'color'])
+        """
+        return DataFrame(index=pd.MultiIndex.from_product(
+            iterables=iterables, sortorder=sortorder, names=names
+        )).index
+
     @property
     def name(self) -> str:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
@@ -1013,6 +1202,9 @@ class MultiIndex(Index):
 
     def unique(self, level=None):
         raise PandasNotImplementedError(class_name='MultiIndex', method_name='unique')
+
+    def nunique(self, dropna=True):
+        raise NotImplementedError("isna is not defined for MultiIndex")
 
     # TODO: add 'name' parameter after pd.MultiIndex.name is implemented
     def copy(self):
@@ -1111,6 +1303,61 @@ class MultiIndex(Index):
 
         return result
 
+    # TODO: ADD error parameter
+    def drop(self, labels, level=None):
+        """
+        Make new MultiIndex with passed list of labels deleted
+
+        Parameters
+        ----------
+        labels : array-like
+            Must be a list of tuples
+        level : int or level name, default None
+
+        Returns
+        -------
+        dropped : MultiIndex
+
+        Examples
+        --------
+        >>> index = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> index # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> index.drop(['a']) # doctest: +SKIP
+        MultiIndex([('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> index.drop(['x', 'y'], level=1) # doctest: +SKIP
+        MultiIndex([('c', 'z')],
+                   )
+        """
+        sdf = self._internal.sdf
+        index_scols = self._internal.index_scols
+        if level is None:
+            scol = index_scols[0]
+        else:
+            scol = index_scols[level] if isinstance(level, int) else sdf[level]
+        sdf = sdf[~scol.isin(labels)]
+        return MultiIndex(DataFrame(_InternalFrame(sdf=sdf,
+                                                   index_map=self._kdf._internal.index_map)))
+
+    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4") and \
+                default_session().conf.get("spark.sql.execution.arrow.enabled") == "true" and \
+                isinstance(self, MultiIndex):
+            raise RuntimeError("if you're using pyspark < 2.4, set conf "
+                               "'spark.sql.execution.arrow.enabled' to 'false' "
+                               "for using this function with MultiIndex")
+        return super(MultiIndex, self).value_counts(
+            normalize=normalize, sort=sort, ascending=ascending, bins=bins, dropna=dropna)
+
+    value_counts.__doc__ = IndexOpsMixin.value_counts.__doc__
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):
             property_or_func = getattr(_MissingPandasLikeMultiIndex, item)
@@ -1119,9 +1366,6 @@ class MultiIndex(Index):
             else:
                 return partial(property_or_func, self)
         raise AttributeError("'MultiIndex' object has no attribute '{}'".format(item))
-
-    def rename(self, name, inplace=False):
-        raise NotImplementedError()
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")

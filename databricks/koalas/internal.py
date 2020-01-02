@@ -42,6 +42,10 @@ SPARK_INDEX_NAME_FORMAT = "__index_level_{}__".format
 # A pattern to check if the name of a Spark column is a Koalas index name or not.
 SPARK_INDEX_NAME_PATTERN = re.compile(r"__index_level_[0-9]+__")
 
+NATURAL_ORDER_COLUMN_NAME = '__natural_order__'
+
+HIDDEN_COLUMNS = set([NATURAL_ORDER_COLUMN_NAME])
+
 IndexMap = Tuple[str, Optional[Tuple[str, ...]]]
 
 
@@ -109,15 +113,15 @@ class _InternalFrame(object):
     * `pandas_df` represents pandas DataFrame derived by the metadata
 
     >>> internal = kdf._internal
-    >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE
-    +-----------------+---+---+---+---+---+
-    |__index_level_0__|  A|  B|  C|  D|  E|
-    +-----------------+---+---+---+---+---+
-    |                0|  1|  5|  9| 13| 17|
-    |                1|  2|  6| 10| 14| 18|
-    |                2|  3|  7| 11| 15| 19|
-    |                3|  4|  8| 12| 16| 20|
-    +-----------------+---+---+---+---+---+
+    >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+    +-----------------+---+---+---+---+---+-----------------+
+    |__index_level_0__|  A|  B|  C|  D|  E|__natural_order__|
+    +-----------------+---+---+---+---+---+-----------------+
+    |                0|  1|  5|  9| 13| 17|...|
+    |                1|  2|  6| 10| 14| 18|...|
+    |                2|  3|  7| 11| 15| 19|...|
+    |                3|  4|  8| 12| 16| 20|...|
+    +-----------------+---+---+---+---+---+-----------------+
     >>> internal.data_columns
     ['A', 'B', 'C', 'D', 'E']
     >>> internal.index_columns
@@ -175,15 +179,15 @@ class _InternalFrame(object):
     +---+---+---+---+---+
 
     >>> internal = kdf1._internal
-    >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE
-    +-----------------+---+---+---+---+---+
-    |__index_level_0__|  A|  B|  C|  D|  E|
-    +-----------------+---+---+---+---+---+
-    |                0|  1|  5|  9| 13| 17|
-    |                1|  2|  6| 10| 14| 18|
-    |                2|  3|  7| 11| 15| 19|
-    |                3|  4|  8| 12| 16| 20|
-    +-----------------+---+---+---+---+---+
+    >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+    +-----------------+---+---+---+---+---+-----------------+
+    |__index_level_0__|  A|  B|  C|  D|  E|__natural_order__|
+    +-----------------+---+---+---+---+---+-----------------+
+    |                0|  1|  5|  9| 13| 17|...|
+    |                1|  2|  6| 10| 14| 18|...|
+    |                2|  3|  7| 11| 15| 19|...|
+    |                3|  4|  8| 12| 16| 20|...|
+    +-----------------+---+---+---+---+---+-----------------+
     >>> internal.data_columns
     ['B', 'C', 'D', 'E']
     >>> internal.index_columns
@@ -257,15 +261,15 @@ class _InternalFrame(object):
     +-----------------+---+---+---+---+---+
 
     >>> internal = kdf2._internal
-    >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE
-    +-----------------+---+---+---+---+---+
-    |__index_level_0__|  A|  B|  C|  D|  E|
-    +-----------------+---+---+---+---+---+
-    |                0|  1|  5|  9| 13| 17|
-    |                1|  2|  6| 10| 14| 18|
-    |                2|  3|  7| 11| 15| 19|
-    |                3|  4|  8| 12| 16| 20|
-    +-----------------+---+---+---+---+---+
+    >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+    +-----------------+---+---+---+---+---+-----------------+
+    |__index_level_0__|  A|  B|  C|  D|  E|__natural_order__|
+    +-----------------+---+---+---+---+---+-----------------+
+    |                0|  1|  5|  9| 13| 17|...|
+    |                1|  2|  6| 10| 14| 18|...|
+    |                2|  3|  7| 11| 15| 19|...|
+    |                3|  4|  8| 12| 16| 20|...|
+    +-----------------+---+---+---+---+---+-----------------+
     >>> internal.data_columns
     ['B', 'C', 'D', 'E']
     >>> internal.index_columns
@@ -313,16 +317,16 @@ class _InternalFrame(object):
     4  17  18  19  20
 
     >>> internal = kdf3._internal
-    >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE
-    +-----------------+------+------+------+------+
-    |__index_level_0__|(X, A)|(X, B)|(Y, C)|(Y, D)|
-    +-----------------+------+------+------+------+
-    |                0|     1|     2|     3|     4|
-    |                1|     5|     6|     7|     8|
-    |                2|     9|    10|    11|    12|
-    |                3|    13|    14|    15|    16|
-    |                4|    17|    18|    19|    20|
-    +-----------------+------+------+------+------+
+    >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+    +-----------------+------+------+------+------+-----------------+
+    |__index_level_0__|(X, A)|(X, B)|(Y, C)|(Y, D)|__natural_order__|
+    +-----------------+------+------+------+------+-----------------+
+    |                0|     1|     2|     3|     4|...|
+    |                1|     5|     6|     7|     8|...|
+    |                2|     9|    10|    11|    12|...|
+    |                3|    13|    14|    15|    16|...|
+    |                4|    17|    18|    19|    20|...|
+    +-----------------+------+------+------+------+-----------------+
     >>> internal.data_columns
     ['(X, A)', '(X, B)', '(Y, C)', '(Y, D)']
     >>> internal.column_index
@@ -340,15 +344,15 @@ class _InternalFrame(object):
     Name: B, dtype: int64
 
     >>> internal = kseries._internal
-    >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE
-    +-----------------+---+---+---+---+---+
-    |__index_level_0__|  A|  B|  C|  D|  E|
-    +-----------------+---+---+---+---+---+
-    |                0|  1|  5|  9| 13| 17|
-    |                1|  2|  6| 10| 14| 18|
-    |                2|  3|  7| 11| 15| 19|
-    |                3|  4|  8| 12| 16| 20|
-    +-----------------+---+---+---+---+---+
+    >>> internal.sdf.show()  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+    +-----------------+---+---+---+---+---+-----------------+
+    |__index_level_0__|  A|  B|  C|  D|  E|__natural_order__|
+    +-----------------+---+---+---+---+---+-----------------+
+    |                0|  1|  5|  9| 13| 17|...|
+    |                1|  2|  6| 10| 14| 18|...|
+    |                2|  3|  7| 11| 15| 19|...|
+    |                3|  4|  8| 12| 16| 20|...|
+    +-----------------+---+---+---+---+---+-----------------+
     >>> internal.scol
     Column<b'B'>
     >>> internal.data_columns
@@ -402,6 +406,10 @@ class _InternalFrame(object):
         :param scol: Spark Column to be managed.
         """
         assert isinstance(sdf, spark.DataFrame)
+
+        if NATURAL_ORDER_COLUMN_NAME not in sdf.columns:
+            sdf = sdf.withColumn(NATURAL_ORDER_COLUMN_NAME, F.monotonically_increasing_id())
+
         if index_map is None:
             # Here is when Koalas DataFrame is created directly from Spark DataFrame.
             assert not any(SPARK_INDEX_NAME_PATTERN.match(name) for name in sdf.schema.names), \
@@ -429,7 +437,7 @@ class _InternalFrame(object):
         elif column_scols is None:
             index_columns = set(index_column for index_column, _ in self._index_map)
             self._column_scols = [scol_for(sdf, col) for col in sdf.columns
-                                  if col not in index_columns]
+                                  if col not in index_columns and col not in HIDDEN_COLUMNS]
         else:
             self._column_scols = column_scols
 
@@ -469,7 +477,7 @@ class _InternalFrame(object):
             default_index_type = get_option("compute.default_index_type")
         if default_index_type == "sequence":
             sequential_index = F.row_number().over(
-                Window.orderBy(F.monotonically_increasing_id().asc())) - 1
+                Window.orderBy(NATURAL_ORDER_COLUMN_NAME)) - 1
             scols = [scol_for(sdf, column) for column in sdf.columns]
             return sdf.select(sequential_index.alias(SPARK_INDEX_NAME_FORMAT(0)), *scols)
         elif default_index_type == "distributed-sequence":
@@ -494,6 +502,10 @@ class _InternalFrame(object):
             # zip it with partition key.
             sums = dict(zip(map(lambda count: count[0], sorted_counts), cumulative_counts))
 
+            return_schema = StructType(
+                [StructField(SPARK_INDEX_NAME_FORMAT(0), LongType())] + list(sdf.schema))
+            columns = [f.name for f in return_schema]
+
             # 3. Group by partition id and assign each range.
             return_schema = StructType(
                 [StructField(SPARK_INDEX_NAME_FORMAT(0), LongType())] + list(sdf.schema))
@@ -503,7 +515,7 @@ class _InternalFrame(object):
                 offset = len(pdf)
                 pdf[SPARK_INDEX_NAME_FORMAT(0)] = list(range(
                     current_partition_max - offset, current_partition_max))
-                return pdf.drop(columns=["__spark_partition_id"])[return_schema.names]
+                return pdf[columns]
 
             grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(default_index)
 

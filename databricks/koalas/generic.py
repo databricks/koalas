@@ -33,7 +33,7 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, ILocIndexer, LocIndexer
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
 from databricks.koalas.window import Rolling, Expanding
 
@@ -1426,7 +1426,7 @@ class _Frame(object):
         cond = reduce(lambda x, y: x & y,
                       map(lambda x: x.isNotNull(), column_scols))
 
-        first_valid_row = sdf.where(cond).first()
+        first_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).first()
         first_valid_idx = tuple(first_valid_row[idx_col]
                                 for idx_col in self._internal.index_columns)
 
@@ -1586,6 +1586,57 @@ class _Frame(object):
         a Window sub-classed for the particular operation
         """
         return Expanding(self, min_periods=min_periods)
+
+    def get(self, key, default=None):
+        """
+        Get item from object for given key (DataFrame column, Panel slice,
+        etc.). Returns default value if not found.
+
+        Parameters
+        ----------
+        key : object
+
+        Returns
+        -------
+        value : same type as items contained in object
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']},
+        ...                   columns=['x', 'y', 'z'], index=[10, 20, 20])
+        >>> df
+            x  y  z
+        10  0  a  a
+        20  1  b  b
+        20  2  b  b
+
+        >>> df.get('x')
+        10    0
+        20    1
+        20    2
+        Name: x, dtype: int64
+
+        >>> df.get(['x', 'y'])
+            x  y
+        10  0  a
+        20  1  b
+        20  2  b
+
+        >>> df.x.get(10)
+        0
+
+        >>> df.x.get(20)
+        20    1
+        20    2
+        Name: x, dtype: int64
+
+        >>> df.x.get(15, -1)
+        -1
+        """
+        try:
+            return self[key]
+        except (KeyError, ValueError, IndexError):
+            return default
 
     @property
     def at(self):
