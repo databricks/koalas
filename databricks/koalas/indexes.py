@@ -38,8 +38,8 @@ from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
-from databricks.koalas.utils import name_like_string, default_session
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.utils import name_like_string, default_session, scol_for
+from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 
 
 class Index(IndexOpsMixin):
@@ -958,6 +958,105 @@ class Index(IndexOpsMixin):
 
         return result if len(result) > 1 else result[0]
 
+    def argmax(self):
+        """
+        Return a maximum argument indexer.
+
+        Parameters
+        ----------
+        skipna : bool, default True
+
+        Returns
+        -------
+        maximum argument indexer
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10, 9, 8, 7, 100, 5, 4, 3, 100, 3])
+        >>> kidx
+        Int64Index([10, 9, 8, 7, 100, 5, 4, 3, 100, 3], dtype='int64')
+
+        >>> kidx.argmax()
+        4
+        """
+        max_idx = self.max()
+        sdf = self._internal.sdf
+        sdf = sdf.select(self.to_series()._scol.alias('__index_value__'))
+        # sdf here looks like below
+        # +---------------+
+        # |__index_value__|
+        # +---------------+
+        # |             10|
+        # |              9|
+        # |              8|
+        # |              7|
+        # |            100|
+        # |              5|
+        # |              4|
+        # |              3|
+        # |            100|
+        # +---------------+
+        
+        sdf = _InternalFrame.attach_default_index(
+            sdf, default_index_type='distributed-sequence')
+        # sdf here looks like below
+        # +-----------------+---------------+
+        # |__index_level_0__|__index_value__|
+        # +-----------------+---------------+
+        # |                0|             10|
+        # |                4|            100|
+        # |                2|              8|
+        # |                3|              7|
+        # |                6|              4|
+        # |                5|              5|
+        # |                7|              3|
+        # |                8|            100|
+        # |                1|              9|
+        # +-----------------+---------------+
+
+        sdf = sdf.where(scol_for(sdf, '__index_value__') == max_idx)
+        # sdf here looks like below
+        # +-----------------+---------------+
+        # |__index_level_0__|__index_value__|
+        # +-----------------+---------------+
+        # |                4|            100|
+        # |                8|            100|
+        # +-----------------+---------------+
+        # if sdf here has multiple rows like above, the smallest index is selected
+
+        return sdf.select(F.min(scol_for(sdf, SPARK_INDEX_NAME_FORMAT(0)))).first()[0]
+
+    def argmin(self):
+        """
+        Return a minimum argument indexer.
+
+        Parameters
+        ----------
+        skipna : bool, default True
+
+        Returns
+        -------
+        minimum argument indexer
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10, 9, 8, 7, 100, 5, 4, 3, 100, 3])
+        >>> kidx
+        Int64Index([10, 9, 8, 7, 100, 5, 4, 3, 100, 3], dtype='int64')
+
+        >>> kidx.argmin()
+        7
+        """
+        min_idx = self.min()
+        sdf = self._internal.sdf
+        sdf = sdf.select(self.to_series()._scol.alias('__index_value__'))
+        sdf = _InternalFrame.attach_default_index(
+            sdf, default_index_type='distributed-sequence')
+
+        sdf = sdf.where(scol_for(sdf, '__index_value__') == min_idx)
+
+        return sdf.select(F.min(scol_for(sdf, SPARK_INDEX_NAME_FORMAT(0)))).first()[0]
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)
@@ -1357,6 +1456,12 @@ class MultiIndex(Index):
             normalize=normalize, sort=sort, ascending=ascending, bins=bins, dropna=dropna)
 
     value_counts.__doc__ = IndexOpsMixin.value_counts.__doc__
+
+    def argmax(self):
+        raise TypeError("reduction operation 'argmax' not allowed for this dtype")
+
+    def argmin(self):
+        raise TypeError("reduction operation 'argmin' not allowed for this dtype")
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):
