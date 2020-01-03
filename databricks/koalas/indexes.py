@@ -925,6 +925,9 @@ class Index(IndexOpsMixin):
         """
         Return the maximum value of the Index.
 
+        .. note:: this API can be pretty expensive since it is based on
+             a global sequence internally.
+
         Returns
         -------
         scalar
@@ -990,24 +993,7 @@ class Index(IndexOpsMixin):
         loc = [item if item >= 0 else len(self) + item for item in loc]
 
         sdf = self._internal.sdf
-        sdf = sdf.select(self.to_series()._scol.alias('__index_value__'))
-        # sdf here looks like below
-        # +---------------+
-        # |__index_value__|
-        # +---------------+
-        # |             10|
-        # |             10|
-        # |              9|
-        # |              8|
-        # |              4|
-        # |              2|
-        # |              4|
-        # |              4|
-        # |              2|
-        # |              2|
-        # |             10|
-        # |             10|
-        # +---------------+
+        sdf = sdf.select(self._scol.alias('__index_value__'))
 
         sdf = _InternalFrame.attach_default_index(
             sdf, default_index_type='distributed-sequence')
