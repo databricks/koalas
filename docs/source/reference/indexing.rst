@@ -60,6 +60,14 @@ Modifying and computations
    Index.nunique
    Index.value_counts
 
+Compatibility with MultiIndex
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: api/
+
+   Index.set_names
+
 Missing Values
 ~~~~~~~~~~~~~~
 .. autosummary::
