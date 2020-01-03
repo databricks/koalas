@@ -507,9 +507,6 @@ class _InternalFrame(object):
             columns = [f.name for f in return_schema]
 
             # 3. Group by partition id and assign each range.
-            return_schema = StructType(
-                [StructField(SPARK_INDEX_NAME_FORMAT(0), LongType())] + list(sdf.schema))
-
             def default_index(pdf):
                 current_partition_max = sums[pdf["__spark_partition_id"].iloc[0]]
                 offset = len(pdf)
