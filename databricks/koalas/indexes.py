@@ -981,21 +981,7 @@ class Index(IndexOpsMixin):
         """
         max_idx = self.max()
         sdf = self._internal.sdf
-        sdf = sdf.select(self.to_series()._scol.alias('__index_value__'))
-        # sdf here looks like below
-        # +---------------+
-        # |__index_value__|
-        # +---------------+
-        # |             10|
-        # |              9|
-        # |              8|
-        # |              7|
-        # |            100|
-        # |              5|
-        # |              4|
-        # |              3|
-        # |            100|
-        # +---------------+
+        sdf = sdf.select(self._scol.alias('__index_value__'))
 
         sdf = _InternalFrame.attach_default_index(
             sdf, default_index_type='distributed-sequence')
