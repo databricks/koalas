@@ -995,8 +995,13 @@ class Index(IndexOpsMixin):
         loc = [int(item) for item in loc]
         loc = [item if item >= 0 else len(self) + item for item in loc]
 
+        # we need below temporal column 'index_value_columns'
+        # since '_InternalFrame.attach_default_index' will be failed
+        # when if self._scol has name of '__index_level_0__'
+        index_value_column = '__index_value__'
+
         sdf = self._internal.sdf
-        sdf = sdf.select(self._scol.alias('__index_value__'))
+        sdf = sdf.select(self._scol.alias(index_value_column))
 
         sdf = _InternalFrame.attach_default_index(
             sdf, default_index_type='distributed-sequence')
@@ -1026,8 +1031,8 @@ class Index(IndexOpsMixin):
         sdf = sdf.sort(SPARK_INDEX_NAME_FORMAT(0))
 
         internal = _InternalFrame(
-            sdf=sdf.select('__index_value__'),
-            index_map=[('__index_value__', None)])
+            sdf=sdf.select(index_value_column),
+            index_map=[(index_value_column, None)])
 
         return DataFrame(internal).index
 
