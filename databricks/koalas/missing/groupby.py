@@ -50,7 +50,6 @@ class _MissingPandasLikeDataFrameGroupBy(object):
     # Functions
     boxplot = unsupported_function('boxplot')
     cumcount = unsupported_function('cumcount')
-    describe = unsupported_function('describe')
     get_group = unsupported_function('get_group')
     median = unsupported_function('median')
     ngroup = unsupported_function('ngroup')

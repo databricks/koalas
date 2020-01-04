@@ -210,6 +210,12 @@ class GroupBy(object):
                 if aggfunc == "nunique":
                     reordered.append(
                         F.expr('count(DISTINCT `{0}`) as `{1}`'.format(name, data_col)))
+
+                # Implement "quartiles" aggregate function for ``describe``.
+                elif aggfunc == "quartiles":
+                    reordered.append(
+                        F.expr('percentile_approx(`{0}`, array(0.25, 0.5, 0.75)) as `{1}`'.format(name, data_col)))
+
                 else:
                     reordered.append(F.expr('{1}(`{0}`) as `{2}`'.format(name, aggfunc, data_col)))
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
@@ -223,6 +229,23 @@ class GroupBy(object):
                               column_index=column_index,
                               column_scols=[scol_for(sdf, col) for col in data_columns],
                               index_map=index_map)
+
+    def describe(self):
+        kdf = self.agg(["count", "mean", "std", "min", "quartiles", "max"]).reset_index()
+
+        # Split "quartiles" columns into first, second, and third quartiles.
+        for label, content in kdf.iteritems():
+            if label[1] == "quartiles":
+                exploded = ks.DataFrame(content.tolist())
+                exploded.columns = [(label[0], "25%"), (label[0], "50%"), (label[0], "75%")]
+                kdf = kdf.drop(label).join(exploded)
+
+        # Reindex the DataFrame to reflect initial grouping and agg columns.
+        input_groupnames = [s.name for s in self._groupkeys]
+        kdf.set_index([(key, "") for key in input_groupnames], inplace=True)
+        kdf.index.names = input_groupnames
+
+        return kdf
 
     def count(self):
         """
