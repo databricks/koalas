@@ -1883,7 +1883,7 @@ class DataFrameGroupBy(GroupBy):
         return DataFrame(internal)
 
     def _cum(self, func):
-        # This is used for cummin, cummax, cumxum, etc.
+        # This is used for cummin, cummax, cumsum, etc.
         if func == F.min:
             func = "cummin"
         elif func == F.max:
