@@ -209,9 +209,9 @@ class iAtIndexer(_IndexerLike):
         if len(self._internal.index_map) == 1:
             if is_list_like(row_sel):
                 raise ValueError(
-                    'iAt based indexing on a single index can only have a single value')
+                    'iat based indexing on a single index can only have a single value')
         if not isinstance(col_sel, int):
-            raise ValueError('iAt based indexing on multi-index can only have integer values')
+            raise ValueError('iat based indexing on multi-index can only have integer values')
         if isinstance(col_sel, int):
             if col_sel > len(self._internal.data_columns):
                 raise KeyError(name_like_string(col_sel))
