@@ -134,8 +134,8 @@ class GroupBy(object):
         2    3    4 -0.562  1.267
 
         To control the output names with different aggregations per column, Koalas
-        also supports 'named aggregation' or nested renaming in .agg. And it can be
-        used when applying multiple aggragation functions to specific columns.
+        also supports 'named aggregation' or nested renaming in .agg. It can also be
+        used when applying multiple aggregation functions to specific columns.
 
         >>> aggregated = df.groupby('A').agg(b_max=ks.NamedAgg(column='B', aggfunc='max'))
         >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
@@ -1883,7 +1883,7 @@ class DataFrameGroupBy(GroupBy):
         return DataFrame(internal)
 
     def _cum(self, func):
-        # This is used for cummin, cummax, cumxum, etc.
+        # This is used for cummin, cummax, cumsum, etc.
         if func == F.min:
             func = "cummin"
         elif func == F.max:
