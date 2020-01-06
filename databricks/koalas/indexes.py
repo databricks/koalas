@@ -39,7 +39,7 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
 from databricks.koalas.utils import name_like_string, default_session
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
 
 
 class Index(IndexOpsMixin):
@@ -1004,7 +1004,7 @@ class Index(IndexOpsMixin):
 
         internal = _InternalFrame(
             sdf_appended.select(self._internal.index_scols),
-            index_map=self._internal.index_map)
+            index_map=[(idx_col, None) for idx_col in self._internal.index_columns])
 
         return DataFrame(internal).index
 

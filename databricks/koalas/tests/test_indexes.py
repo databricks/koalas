@@ -468,13 +468,51 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pd.Index(range(10000))
         kidx = ks.Index(range(10000))
 
-        self.assert_eq(pidx.append(pidx), kidx.append(kidx))
+        self.assert_eq(
+            pidx.append(pidx),
+            kidx.append(kidx))
+
+        # Index with name
+        pidx1 = pd.Index(range(10000), name='a')
+        pidx2 = pd.Index(range(10000), name='b')
+        kidx1 = ks.Index(range(10000), name='a')
+        kidx2 = ks.Index(range(10000), name='b')
+
+        self.assert_eq(
+            pidx1.append(pidx2),
+            kidx1.append(kidx2))
+
+        self.assert_eq(
+            pidx2.append(pidx1),
+            kidx2.append(kidx1))
 
         # MultiIndex
         pmidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
         kmidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
 
         self.assert_eq(pmidx.append(pmidx), kmidx.append(kmidx))
+
+        # MultiIndex with names
+        pmidx1 = pd.MultiIndex.from_tuples(
+            [('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)],
+            names=['x', 'y', 'z'])
+        pmidx2 = pd.MultiIndex.from_tuples(
+            [('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)],
+            names=['p', 'q', 'r'])
+        kmidx1 = ks.MultiIndex.from_tuples(
+            [('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)],
+            names=['x', 'y', 'z'])
+        kmidx2 = ks.MultiIndex.from_tuples(
+            [('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)],
+            names=['p', 'q', 'r'])
+
+        self.assert_eq(
+            pmidx1.append(pmidx2),
+            kmidx1.append(kmidx2))
+
+        self.assert_eq(
+            pmidx2.append(pmidx1),
+            kmidx2.append(kmidx1))
 
         # Index & MultiIndex currently is not supported
         expected_error_message = r"append\(\) between Index & MultiIndex currently is not supported"
