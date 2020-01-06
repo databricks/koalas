@@ -39,7 +39,7 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
 from databricks.koalas.utils import name_like_string, default_session, scol_for
-from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
+from databricks.koalas.internal import _InternalFrame
 
 
 class Index(IndexOpsMixin):
@@ -982,7 +982,6 @@ class Index(IndexOpsMixin):
         >>> kidx.argmax()
         4
         """
-        max_idx = self.max()
         sdf = self._internal.sdf
         sdf = sdf.select(self._scol.alias('__index_value__'))
 
@@ -1003,17 +1002,9 @@ class Index(IndexOpsMixin):
         # |                1|              9|
         # +-----------------+---------------+
 
-        sdf = sdf.where(scol_for(sdf, '__index_value__') == max_idx)
-        # sdf here looks like below
-        # +-----------------+---------------+
-        # |__index_level_0__|__index_value__|
-        # +-----------------+---------------+
-        # |                4|            100|
-        # |                8|            100|
-        # +-----------------+---------------+
-        # if sdf here has multiple rows like above, the smallest index is selected
-
-        return sdf.select(F.min(scol_for(sdf, SPARK_INDEX_NAME_FORMAT(0)))).first()[0]
+        return sdf.orderBy(
+            F.col('__index_value__').desc(),
+            F.col('__index_level_0__').asc()).first()[0]
 
     def argmin(self):
         """
@@ -1036,15 +1027,14 @@ class Index(IndexOpsMixin):
         >>> kidx.argmin()
         7
         """
-        min_idx = self.min()
         sdf = self._internal.sdf
         sdf = sdf.select(self.to_series()._scol.alias('__index_value__'))
         sdf = _InternalFrame.attach_default_index(
             sdf, default_index_type='distributed-sequence')
 
-        sdf = sdf.where(scol_for(sdf, '__index_value__') == min_idx)
-
-        return sdf.select(F.min(scol_for(sdf, SPARK_INDEX_NAME_FORMAT(0)))).first()[0]
+        return sdf.orderBy(
+            F.col('__index_value__').asc(),
+            F.col('__index_level_0__').asc()).first()[0]
 
     def set_names(self, names, level=None, inplace=False):
         """
