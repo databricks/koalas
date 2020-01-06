@@ -445,6 +445,42 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = kidx.rename(['my', 'name', 'is'])
         self.assert_eq(pidx, kidx)
 
+    def test_multiindex_set_names(self):
+        pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        pidx = pidx.set_names(['set', 'new', 'names'])
+        kidx = kidx.set_names(['set', 'new', 'names'])
+        self.assert_eq(pidx, kidx)
+
+        pidx.set_names(['set', 'new', 'names'], inplace=True)
+        kidx.set_names(['set', 'new', 'names'], inplace=True)
+        self.assert_eq(pidx, kidx)
+
+        pidx = pidx.set_names('first', level=0)
+        kidx = kidx.set_names('first', level=0)
+        self.assert_eq(pidx, kidx)
+
+        pidx = pidx.set_names('second', level=1)
+        kidx = kidx.set_names('second', level=1)
+        self.assert_eq(pidx, kidx)
+
+        pidx = pidx.set_names('third', level=2)
+        kidx = kidx.set_names('third', level=2)
+        self.assert_eq(pidx, kidx)
+
+        pidx.set_names('first', level=0, inplace=True)
+        kidx.set_names('first', level=0, inplace=True)
+        self.assert_eq(pidx, kidx)
+
+        pidx.set_names('second', level=1, inplace=True)
+        kidx.set_names('second', level=1, inplace=True)
+        self.assert_eq(pidx, kidx)
+
+        pidx.set_names('third', level=2, inplace=True)
+        kidx.set_names('third', level=2, inplace=True)
+        self.assert_eq(pidx, kidx)
+
     def test_multiindex_from_product(self):
         iterables = [[0, 1, 2], ['green', 'purple']]
         pidx = pd.MultiIndex.from_product(iterables)
