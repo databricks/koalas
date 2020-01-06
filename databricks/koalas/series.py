@@ -4308,7 +4308,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return _col(DataFrame(internal))
 
     def __getattr__(self, item: str_type) -> Any:
-        if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
+        if item.startswith("__"):
             raise AttributeError(item)
         if hasattr(_MissingPandasLikeSeries, item):
             property_or_func = getattr(_MissingPandasLikeSeries, item)
@@ -4319,7 +4319,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return self.getField(item)
 
     def __str__(self):
-        return self._pandas_orig_repr()
+        # TODO: figure out how to reuse the original one.
+        return 'Column<%s>' % self._scol._jc.toString().encode('utf8')
 
     def _to_internal_pandas(self):
         """
@@ -4358,10 +4359,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def __iter__(self):
         return _MissingPandasLikeSeries.__iter__(self)
-
-    def _pandas_orig_repr(self):
-        # TODO: figure out how to reuse the original one.
-        return 'Column<%s>' % self._scol._jc.toString().encode('utf8')
 
     def _equals(self, other: 'Series') -> bool:
         return self._scol._jc.equals(other._scol._jc)

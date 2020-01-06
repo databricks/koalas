@@ -8391,7 +8391,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self._internal = kdf._internal
 
     def __getattr__(self, key: str) -> Any:
-        if key.startswith("__") or key.startswith("_pandas_") or key.startswith("_spark_"):
+        if key.startswith("__"):
             raise AttributeError(key)
         if hasattr(_MissingPandasLikeDataFrame, key):
             property_or_func = getattr(_MissingPandasLikeDataFrame, key)
