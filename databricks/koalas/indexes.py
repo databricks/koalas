@@ -1049,6 +1049,10 @@ class Index(IndexOpsMixin):
 
         >>> idx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y')])
         >>> idx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   )
+
         >>> idx.set_names(['kind', 'year'], inplace=True)
         >>> idx  # doctest: +SKIP
         MultiIndex([('a', 'x'),
