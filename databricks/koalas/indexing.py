@@ -404,29 +404,33 @@ class LocIndexer(_LocIndexerLike):
                 index_data_type = index_column.spark_type
                 start = rows_sel.start
                 stop = rows_sel.stop
+                order_column = sdf[NATURAL_ORDER_COLUMN_NAME]
 
                 # get natural order from '__natural_order__' from start to stop
-                # to keep natural order when type of rows are StringType
+                # to keep natural order.
+                start_and_stop = (
+                    sdf.select(index_column._scol, NATURAL_ORDER_COLUMN_NAME)
+                       .where((index_column._scol == start) | (index_column._scol == stop))
+                       .collect())
+
+                start = [row[1] for row in start_and_stop if row[0] == start]
+                start = start[0] if len(start) > 0 else None
+
+                stop = [row[1] for row in start_and_stop if row[0] == stop]
+                stop = stop[0] if len(stop) > 0 else None
+
                 if isinstance(index_data_type, StringType):
-                    start_and_stop = (
-                        sdf.select(index_column._scol, NATURAL_ORDER_COLUMN_NAME)
-                           .where((index_column._scol == start) | (index_column._scol == stop))
-                           .collect())
-
-                    start = [row[1] for row in start_and_stop if row[0] == start]
-                    start = start[0] if len(start) > 0 else None
-
-                    stop = [row[1] for row in start_and_stop if row[0] == stop]
-                    stop = stop[0] if len(stop) > 0 else None
-
-                    order_column = sdf[NATURAL_ORDER_COLUMN_NAME]
+                    index_data_type = LongType()
                     if start is None and rows_sel.start is not None:
                         raise KeyError(rows_sel.start)
                     if stop is None and rows_sel.stop is not None:
                         raise KeyError(rows_sel.stop)
-                    index_data_type = LongType()
                 else:
-                    order_column = index_column._scol
+                    if start is None and stop is None:
+                        start = rows_sel.start
+                        stop = rows_sel.stop
+                        order_column = index_column._scol
+
                 cond = []
                 if start is not None:
                     cond.append(order_column >= F.lit(start).cast(index_data_type))
