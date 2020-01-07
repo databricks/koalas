@@ -1001,8 +1001,8 @@ class Index(IndexOpsMixin):
             raise NotImplementedError(
                 "append() between Index & MultiIndex currently is not supported")
 
-        sdf_self = self._internal.sdf
-        sdf_other = other._internal.sdf
+        sdf_self = self._internal.sdf.select(self._internal.index_scols)
+        sdf_other = other._internal.sdf.select(other._internal.index_scols)
         sdf_appended = sdf_self.union(sdf_other)
 
         # names should be kept when MultiIndex, but Index wouldn't keep its name.
