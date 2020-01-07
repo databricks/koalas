@@ -222,7 +222,6 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assert_eq(kdf.loc[1000:], pdf.loc[1000:])
         self.assert_eq(kdf.loc[-2000:-1000], pdf.loc[-2000:-1000])
-        self.assert_eq(kdf.loc[-2000:-1000], pdf.loc[-2000:-1000])
 
         # test when index and column have different type
         kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[3, 2, 1])
