@@ -22,6 +22,7 @@ import sys
 import inspect
 from collections import Callable, OrderedDict, namedtuple
 from functools import partial
+from itertools import product
 from typing import Any, List, Tuple, Union
 
 import numpy as np
@@ -245,7 +246,10 @@ class GroupBy(object):
         kdf.set_index([(key, "") for key in input_groupnames], inplace=True)
         kdf.index.names = input_groupnames
 
-        return kdf
+        # Reorder columns lexicographically by agg column followed by stats.
+        agg_cols = (col.name for col in self._agg_columns)
+        stats = ["count", "mean", "std", "min", "25%", "50%", "75%", "max"]
+        return kdf[list(product(agg_cols, stats))]
 
     def count(self):
         """
