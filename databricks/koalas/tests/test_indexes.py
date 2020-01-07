@@ -550,6 +550,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             pmidx2.append(pmidx1),
             kmidx2.append(kmidx1))
 
+        self.assert_eq(
+            pmidx1.append(pmidx2).names,
+            kmidx1.append(kmidx2).names)
+
+        self.assert_eq(
+            pmidx1.append(pmidx2).names,
+            kmidx1.append(kmidx2).names)
+
         # Index & MultiIndex currently is not supported
         expected_error_message = r"append\(\) between Index & MultiIndex currently is not supported"
         with self.assertRaisesRegex(NotImplementedError, expected_error_message):
