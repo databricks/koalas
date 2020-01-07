@@ -290,9 +290,6 @@ class LocIndexer(_LocIndexerLike):
     Slice with labels for row and single label for column. As mentioned
     above, note that both the start and stop of the slice are included.
 
-    Also note that the row for 'sidewinder' is not included since 'sidewinder'
-    is not between 'cobra' and 'viper'.
-
     >>> df.loc['cobra':'viper', 'max_speed']
     cobra    1
     viper    4
