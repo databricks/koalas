@@ -179,20 +179,6 @@ class iAtIndexer(_IndexerLike):
             'unexpected argument type: {}'.format(type(kdf_or_kser))
         self._kdf_or_kser = kdf_or_kser
 
-    @property
-    def _is_df(self):
-        from databricks.koalas.frame import DataFrame
-        return isinstance(self._kdf_or_kser, DataFrame)
-
-    @property
-    def _is_series(self):
-        from databricks.koalas.series import Series
-        return isinstance(self._kdf_or_kser, Series)
-
-    @property
-    def _internal(self):
-        return self._kdf_or_kser._internal
-
     def __getitem__(self, key):
         if self._is_df:
             if not isinstance(key, tuple) or len(key) != 2:
