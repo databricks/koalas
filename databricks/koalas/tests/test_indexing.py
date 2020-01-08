@@ -223,12 +223,6 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kdf.loc[1000:], pdf.loc[1000:])
         self.assert_eq(kdf.loc[-2000:-1000], pdf.loc[-2000:-1000])
 
-        # test when index and column have different type
-        kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[3, 2, 1])
-        pdf = kdf.to_pandas()
-
-        self.assert_eq(kdf.loc[3:2], pdf.loc[3:2])
-
         # KeyError when index is not monotonic increasing or decreasing
         # and specified values don't exist in index
         kdf = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
