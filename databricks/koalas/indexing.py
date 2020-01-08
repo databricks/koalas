@@ -415,7 +415,7 @@ class LocIndexer(_LocIndexerLike):
                 start = start[0] if len(start) > 0 else None
 
                 stop = [row[1] for row in start_and_stop if row[0] == stop]
-                stop = stop[0] if len(stop) > 0 else None
+                stop = stop[-1] if len(stop) > 0 else None
 
                 # if index order is not monotonic increasing or decreasing
                 # and specified values don't exist in index, raise KeyError
@@ -432,13 +432,13 @@ class LocIndexer(_LocIndexerLike):
                         stop = rows_sel.stop
                         stop_order_column = index_column._scol
 
-                # we don't use StringType since we're using `__natural_order__` for comparing
-                if isinstance(index_data_type, StringType):
-                    index_data_type = LongType()
-
                 # if start and stop are same, just get all start(or stop) values
                 if start == stop:
                     return index_column._scol == F.lit(rows_sel.start).cast(index_data_type), None
+
+                # we don't use StringType since we're using `__natural_order__` for comparing
+                if isinstance(index_data_type, StringType):
+                    index_data_type = LongType()
 
                 cond = []
                 if start is not None:

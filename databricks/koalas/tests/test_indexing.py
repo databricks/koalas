@@ -223,6 +223,14 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kdf.loc[1000:], pdf.loc[1000:])
         self.assert_eq(kdf.loc[-2000:-1000], pdf.loc[-2000:-1000])
 
+        # duplicated index test
+        pdf = pd.DataFrame(
+            [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            index=[0, 1, 1, 2, 2, 2, 3, 4, 5])
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(repr(kdf.loc[:2]), repr(pdf.loc[:2]))
+
         # KeyError when index is not monotonic increasing or decreasing
         # and specified values don't exist in index
         kdf = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
