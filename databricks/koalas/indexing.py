@@ -420,7 +420,7 @@ class LocIndexer(_LocIndexerLike):
                 # if index order is not monotonic increasing or decreasing
                 # and specified values don't exist in index, raise KeyError
                 if start is None and rows_sel.start is not None:
-                    if not (index.is_monotonic_decreasing or index.is_monotonic_increasing):
+                    if not (index.is_monotonic_increasing or index.is_monotonic_decreasing):
                         raise KeyError(rows_sel.start)
                     else:
                         start = rows_sel.start
