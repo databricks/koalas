@@ -27,15 +27,27 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
                             'month': [2, 3],
                             'day': [4, 5]})
         kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf, pdf)
+
+        pser = pdf.year
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser, pser)
+
         pidx = pdf.index
-        kidx = kdf.index
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx, pidx)
+
+        pmidx = pdf.set_index('year', append=True).index
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(kmidx, pmidx)
 
         expected_error_message = 'Unknown data type: {}'.format(type(kidx))
         with self.assertRaisesRegex(ValueError, expected_error_message):
             ks.from_pandas(kidx)
-        expected_error_message = 'Unknown data type: {}'.format(type(pidx))
-        with self.assertRaisesRegex(ValueError, expected_error_message):
-            ks.from_pandas(pidx)
 
     def test_to_datetime(self):
         pdf = pd.DataFrame({'year': [2015, 2016],

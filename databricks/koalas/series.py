@@ -37,6 +37,7 @@ from pyspark.sql.window import Window
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
 from databricks.koalas.base import IndexOpsMixin
+from databricks.koalas.exceptions import SparkPandasIndexingError
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAME,
@@ -1460,7 +1461,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 else:
                     end = Window.unboundedFollowing
 
-            window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
+            window = Window.partitionBy(*part_cols).orderBy(NATURAL_ORDER_COLUMN_NAME) \
                 .rowsBetween(begin, end)
             scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
         kseries = self._with_new_scol(scol).rename(column_name)
@@ -2850,20 +2851,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             raise ValueError('rank do not support index now')
 
         if ascending:
-            asc_func = spark.functions.asc
+            asc_func = lambda scol: scol.asc()
         else:
-            asc_func = spark.functions.desc
-
-        index_column = self._internal.index_columns[0]
-        column_name = self._internal.data_columns[0]
+            asc_func = lambda scol: scol.desc()
 
         if method == 'first':
             window = Window.orderBy(
-                asc_func(column_name), asc_func(index_column)
+                asc_func(self._internal.scol), asc_func(F.col(NATURAL_ORDER_COLUMN_NAME))
             ).partitionBy(*part_cols).rowsBetween(Window.unboundedPreceding, Window.currentRow)
             scol = F.row_number().over(window)
         elif method == 'dense':
-            window = Window.orderBy(asc_func(column_name)).partitionBy(*part_cols) \
+            window = Window.orderBy(asc_func(self._internal.scol)).partitionBy(*part_cols) \
                 .rowsBetween(Window.unboundedPreceding, Window.currentRow)
             scol = F.dense_rank().over(window)
         else:
@@ -2874,10 +2872,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             elif method == 'max':
                 stat_func = F.max
             window1 = Window.orderBy(
-                asc_func(column_name)
+                asc_func(self._internal.scol)
             ).partitionBy(*part_cols).rowsBetween(Window.unboundedPreceding, Window.currentRow)
             window2 = Window.partitionBy(
-                *[column_name] + list(part_cols)
+                [self._internal.scol] + list(part_cols)
             ).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
             scol = stat_func(F.row_number().over(window1)).over(window2)
         kser = self._with_new_scol(scol).rename(self.name)
@@ -2959,7 +2957,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     def _diff(self, periods, part_cols=()):
         if not isinstance(periods, int):
             raise ValueError('periods should be an int; however, got [%s]' % type(periods))
-        window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
+        window = Window.partitionBy(*part_cols).orderBy(NATURAL_ORDER_COLUMN_NAME) \
             .rowsBetween(-periods, -periods)
         scol = self._scol - F.lag(self._scol, periods).over(window)
         return self._with_new_scol(scol).rename(self.name)
@@ -3441,10 +3439,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             if before > after:
                 raise ValueError("Truncate: %s must be after %s" % (after, before))
 
-        if indexes_increasing:
-            result = _col(self.to_frame()[before:after])
-        else:
-            result = _col(self.to_frame()[after:before])
+        result = _col(self.to_frame()[before:after])
 
         return result.copy() if copy else result
 
@@ -4270,45 +4265,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        if isinstance(key, Series) and isinstance(key.spark_type, BooleanType):
+        try:
             return self.loc[key]
-
-        if not isinstance(key, tuple):
-            key = (key,)
-        if len(self._internal._index_map) < len(key):
+        except SparkPandasIndexingError:
             raise KeyError("Key length ({}) exceeds index depth ({})"
                            .format(len(key), len(self._internal.index_map)))
 
-        cols = (self._internal.index_scols[len(key):] +
-                [self._internal.scol_for(self._internal.column_index[0])])
-        rows = [self._internal.scols[level] == index
-                for level, index in enumerate(key)]
-        sdf = self._internal.sdf \
-            .select(cols) \
-            .where(reduce(lambda x, y: x & y, rows))
-
-        if len(self._internal._index_map) == len(key):
-            # if sdf has one column and one data, return data only without frame
-            pdf = sdf.limit(2).toPandas()
-            length = len(pdf)
-            if length == 0:
-                raise KeyError(name_like_string(key))
-            if length == 1:
-                return pdf[self._internal.data_columns[0]].iloc[0]
-
-            key_string = name_like_string(key)
-            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(key_string))
-            internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
-            return _col(DataFrame(internal))
-
-        internal = self._internal.copy(
-            sdf=sdf,
-            index_map=self._internal._index_map[len(key):])
-
-        return _col(DataFrame(internal))
-
     def __getattr__(self, item: str_type) -> Any:
-        if item.startswith("__") or item.startswith("_pandas_") or item.startswith("_spark_"):
+        if item.startswith("__"):
             raise AttributeError(item)
         if hasattr(_MissingPandasLikeSeries, item):
             property_or_func = getattr(_MissingPandasLikeSeries, item)
@@ -4319,7 +4283,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return self.getField(item)
 
     def __str__(self):
-        return self._pandas_orig_repr()
+        # TODO: figure out how to reuse the original one.
+        return 'Column<%s>' % self._scol._jc.toString().encode('utf8')
 
     def _to_internal_pandas(self):
         """
@@ -4358,10 +4323,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def __iter__(self):
         return _MissingPandasLikeSeries.__iter__(self)
-
-    def _pandas_orig_repr(self):
-        # TODO: figure out how to reuse the original one.
-        return 'Column<%s>' % self._scol._jc.toString().encode('utf8')
 
     def _equals(self, other: 'Series') -> bool:
         return self._scol._jc.equals(other._scol._jc)

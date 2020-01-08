@@ -134,8 +134,8 @@ class GroupBy(object):
         2    3    4 -0.562  1.267
 
         To control the output names with different aggregations per column, Koalas
-        also supports 'named aggregation' or nested renaming in .agg. And it can be
-        used when applying multiple aggragation functions to specific columns.
+        also supports 'named aggregation' or nested renaming in .agg. It can also be
+        used when applying multiple aggregation functions to specific columns.
 
         >>> aggregated = df.groupby('A').agg(b_max=ks.NamedAgg(column='B', aggfunc='max'))
         >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
@@ -1883,7 +1883,7 @@ class DataFrameGroupBy(GroupBy):
         return DataFrame(internal)
 
     def _cum(self, func):
-        # This is used for cummin, cummax, cumxum, etc.
+        # This is used for cummin, cummax, cumsum, etc.
         if func == F.min:
             func = "cummin"
         elif func == F.max:
@@ -2055,9 +2055,10 @@ class SeriesGroupBy(GroupBy):
         groupkeys = self._groupkeys
         sdf = self._kdf._sdf
         name = self._agg_columns[0]._internal.data_columns[0]
-        window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name))
+        window = Window.partitionBy([s._scol for s in groupkeys]) \
+            .orderBy(scol_for(sdf, name), NATURAL_ORDER_COLUMN_NAME)
         sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
-        internal = _InternalFrame(sdf=sdf,
+        internal = _InternalFrame(sdf=sdf.drop(NATURAL_ORDER_COLUMN_NAME),
                                   index_map=([(s._internal.data_columns[0],
                                                s._internal.column_index[0])
                                               for s in self._groupkeys]
@@ -2101,9 +2102,10 @@ class SeriesGroupBy(GroupBy):
         groupkeys = self._groupkeys
         sdf = self._kdf._sdf
         name = self._agg_columns[0]._internal.data_columns[0]
-        window = Window.partitionBy([s._scol for s in groupkeys]).orderBy(F.col(name).desc())
+        window = Window.partitionBy([s._scol for s in groupkeys]) \
+            .orderBy(F.col(name).desc(), NATURAL_ORDER_COLUMN_NAME)
         sdf = sdf.withColumn('rank', F.row_number().over(window)).filter(F.col('rank') <= n)
-        internal = _InternalFrame(sdf=sdf,
+        internal = _InternalFrame(sdf=sdf.drop(NATURAL_ORDER_COLUMN_NAME),
                                   index_map=([(s._internal.data_columns[0],
                                                s._internal.column_index[0])
                                               for s in self._groupkeys]
