@@ -1019,7 +1019,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.truncate(5, 2)
 
     def test_getitem(self):
-        pser = pd.Series([10, 20, 15, 30, 45], ['A', 'A', 'B', 'C', 'D'], name='0')
+        pser = pd.Series([10, 20, 15, 30, 45], ['A', 'A', 'B', 'C', 'D'])
         kser = ks.Series(pser)
 
         self.assert_eq(kser['A'], pser['A'])
