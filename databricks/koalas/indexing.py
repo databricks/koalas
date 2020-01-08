@@ -22,7 +22,7 @@ from functools import reduce
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, StringType, LongType
+from pyspark.sql.types import BooleanType, LongType
 from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
