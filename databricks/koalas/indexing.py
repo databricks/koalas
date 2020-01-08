@@ -280,7 +280,7 @@ class LocIndexer(_LocIndexerLike):
     viper               4       5
     sidewinder          7       8
 
-    A single label for row selection is not allowed.
+    Single label. Note this returns the row as a Series.
 
     >>> df.loc['viper']
     max_speed    4
@@ -300,7 +300,7 @@ class LocIndexer(_LocIndexerLike):
     viper               4       5
     sidewinder          7       8
 
-    Single label for column
+    Single label for column.
 
     >>> df.loc['cobra', 'shield']
     2
