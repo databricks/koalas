@@ -8310,7 +8310,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
-        pdf = pdf[:max_display_count]
+        pdf = pdf.iloc[:max_display_count]
         if pdf_length > max_display_count:
             repr_html = pdf.to_html(show_dimensions=True, notebook=True, bold_rows=bold_rows)
             match = REPR_HTML_PATTERN.search(repr_html)
