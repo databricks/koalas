@@ -231,6 +231,12 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assert_eq(repr(kdf.loc[:2]), repr(pdf.loc[:2]))
 
+        # test when type of key is string and given value is not included in key
+        pdf = pd.DataFrame([1, 2, 3], index=['a', 'b', 'd']).loc['a':'z']
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(repr(kdf.loc['a':'z']), repr(pdf.loc['a':'z']))
+
         # KeyError when index is not monotonic increasing or decreasing
         # and specified values don't exist in index
         kdf = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
