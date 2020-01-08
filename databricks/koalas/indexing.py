@@ -233,7 +233,6 @@ class LocIndexer(_LocIndexerLike):
 
     .. note:: Note that contrary to usual python slices, **both** the
         start and the stop are included, and the step of the slice is not allowed.
-        In addition, with a slice, Koalas works as a filter between the range.
 
     .. note:: With a list or array of labels for row selection,
         Koalas behaves as a filter without reordering by the labels.
