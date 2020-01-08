@@ -396,11 +396,13 @@ class LocIndexer(_LocIndexerLike):
                 return None, None
             elif len(self._internal.index_columns) == 1:
                 sdf = self._kdf_or_kser._internal.sdf
-                index_column = self._kdf_or_kser.index.to_series()
+                index = self._kdf_or_kser.index
+                index_column = index.to_series()
                 index_data_type = index_column.spark_type
                 start = rows_sel.start
                 stop = rows_sel.stop
-                order_column = sdf[NATURAL_ORDER_COLUMN_NAME]
+                start_order_column = sdf[NATURAL_ORDER_COLUMN_NAME]
+                stop_order_column = sdf[NATURAL_ORDER_COLUMN_NAME]
 
                 # get natural order from '__natural_order__' from start to stop
                 # to keep natural order.
@@ -415,23 +417,34 @@ class LocIndexer(_LocIndexerLike):
                 stop = [row[1] for row in start_and_stop if row[0] == stop]
                 stop = stop[0] if len(stop) > 0 else None
 
-                if isinstance(index_data_type, StringType):
-                    index_data_type = LongType()
-                    if start is None and rows_sel.start is not None:
+                # if index order is not monotonic increasing or decreasing
+                # and specified values don't exist in index, raise KeyError
+                if start is None and rows_sel.start is not None:
+                    if not (index.is_monotonic_decreasing or index.is_monotonic_increasing):
                         raise KeyError(rows_sel.start)
-                    if stop is None and rows_sel.stop is not None:
-                        raise KeyError(rows_sel.stop)
-                else:
-                    if start is None and stop is None:
+                    else:
                         start = rows_sel.start
+                        start_order_column = index_column._scol
+                if stop is None and rows_sel.stop is not None:
+                    if not (index.is_monotonic_decreasing or index.is_monotonic_increasing):
+                        raise KeyError(rows_sel.stop)
+                    else:
                         stop = rows_sel.stop
-                        order_column = index_column._scol
+                        stop_order_column = index_column._scol
+
+                # we don't use StringType since we're using `__natural_order__` for comparing
+                if index_data_type is StringType:
+                    index_data_type = LongType()
+
+                # if start and stop are same, just get all start(or stop) values
+                if start == stop:
+                    return index_column._scol == F.lit(rows_sel.start).cast(index_data_type), None
 
                 cond = []
                 if start is not None:
-                    cond.append(order_column >= F.lit(start).cast(index_data_type))
+                    cond.append(start_order_column >= F.lit(start).cast(index_data_type))
                 if stop is not None:
-                    cond.append(order_column <= F.lit(stop).cast(index_data_type))
+                    cond.append(stop_order_column <= F.lit(stop).cast(index_data_type))
 
                 if len(cond) > 0:
                     return reduce(lambda x, y: x & y, cond), None

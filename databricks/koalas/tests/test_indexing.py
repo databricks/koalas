@@ -229,13 +229,19 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assert_eq(kdf.loc[3:2], pdf.loc[3:2])
 
-        # KeyError test for string type index
+        # KeyError when index is not monotonic increasing or decreasing
+        # and specified values don't exist in index
         kdf = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
-                           index=['cobra', 'viper', 'sidewinder'],
-                           columns=['max_speed', 'shield'])
+                           index=['cobra', 'viper', 'sidewinder'])
 
         self.assertRaises(KeyError, lambda: kdf.loc['cobra':'koalas'])
         self.assertRaises(KeyError, lambda: kdf.loc['koalas':'viper'])
+
+        kdf = ks.DataFrame([[1, 2], [4, 5], [7, 8]],
+                           index=[10, 30, 20])
+
+        self.assertRaises(KeyError, lambda: kdf.loc[0:30])
+        self.assertRaises(KeyError, lambda: kdf.loc[10:100])
 
     def test_loc_non_informative_index(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4]}, index=[10, 20, 30, 40])
