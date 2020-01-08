@@ -37,6 +37,7 @@ from pyspark.sql.window import Window
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
 from databricks.koalas.base import IndexOpsMixin
+from databricks.koalas.exceptions import SparkPandasIndexingError
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAME,
@@ -4267,42 +4268,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return len(self.to_dataframe())
 
     def __getitem__(self, key):
-        if isinstance(key, Series) and isinstance(key.spark_type, BooleanType):
+        try:
             return self.loc[key]
-
-        if not isinstance(key, tuple):
-            key = (key,)
-        if len(self._internal._index_map) < len(key):
+        except SparkPandasIndexingError:
             raise KeyError("Key length ({}) exceeds index depth ({})"
                            .format(len(key), len(self._internal.index_map)))
-
-        cols = (self._internal.index_scols[len(key):] +
-                [self._internal.scol_for(self._internal.column_index[0])])
-        rows = [self._internal.scols[level] == index
-                for level, index in enumerate(key)]
-        sdf = self._internal.sdf \
-            .select(cols) \
-            .where(reduce(lambda x, y: x & y, rows))
-
-        if len(self._internal._index_map) == len(key):
-            # if sdf has one column and one data, return data only without frame
-            pdf = sdf.limit(2).toPandas()
-            length = len(pdf)
-            if length == 0:
-                raise KeyError(name_like_string(key))
-            if length == 1:
-                return pdf[self._internal.data_columns[0]].iloc[0]
-
-            key_string = name_like_string(key)
-            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(key_string))
-            internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
-            return _col(DataFrame(internal))
-
-        internal = self._internal.copy(
-            sdf=sdf,
-            index_map=self._internal._index_map[len(key):])
-
-        return _col(DataFrame(internal))
 
     def __getattr__(self, item: str_type) -> Any:
         if item.startswith("__"):

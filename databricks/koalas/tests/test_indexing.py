@@ -223,6 +223,14 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kdf.loc[1000:], pdf.loc[1000:])
         self.assert_eq(kdf.loc[-2000:-1000], pdf.loc[-2000:-1000])
 
+        self.assert_eq(kdf.loc[5], pdf.loc[5])
+        self.assert_eq(kdf.loc[9], pdf.loc[9])
+        self.assert_eq(kdf.a.loc[5], pdf.a.loc[5])
+        self.assert_eq(kdf.a.loc[9], pdf.a.loc[9])
+
+        self.assertRaises(KeyError, lambda: kdf.loc[10])
+        self.assertRaises(KeyError, lambda: kdf.a.loc[10])
+
     def test_loc_non_informative_index(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4]}, index=[10, 20, 30, 40])
         kdf = ks.from_pandas(pdf)
@@ -256,10 +264,17 @@ class IndexingTest(ReusedSQLTestCase):
         pdf = self.pdf
         pdf = pdf.set_index('b', append=True)
 
-        self.assert_eq(kdf[['a']], pdf[['a']])
-
         self.assert_eq(kdf.loc[:], pdf.loc[:])
         self.assertRaises(NotImplementedError, lambda: kdf.loc[5:5])
+
+        self.assert_eq(kdf.loc[5], pdf.loc[5])
+        self.assert_eq(kdf.loc[9], pdf.loc[9])
+        # TODO: self.assert_eq(kdf.loc[(5, 3)], pdf.loc[(5, 3)])
+        # TODO: self.assert_eq(kdf.loc[(9, 0)], pdf.loc[(9, 0)])
+        self.assert_eq(kdf.a.loc[5], pdf.a.loc[5])
+        self.assert_eq(kdf.a.loc[9], pdf.a.loc[9])
+        self.assertTrue((kdf.a.loc[(5, 3)] == pdf.a.loc[(5, 3)]).all())
+        self.assert_eq(kdf.a.loc[(9, 0)], pdf.a.loc[(9, 0)])
 
     def test_loc2d_multiindex(self):
         kdf = self.kdf
@@ -296,6 +311,11 @@ class IndexingTest(ReusedSQLTestCase):
         self.assertRaises(SparkPandasIndexingError, lambda: kdf.a.loc[3, 3])
         self.assertRaises(SparkPandasIndexingError, lambda: kdf.a.loc[3:, 3])
         self.assertRaises(SparkPandasIndexingError, lambda: kdf.a.loc[kdf.a % 2 == 0, 3])
+
+        self.assert_eq(kdf.loc[5, 'a'], pdf.loc[5, 'a'])
+        self.assert_eq(kdf.loc[9, 'a'], pdf.loc[9, 'a'])
+        self.assert_eq(kdf.loc[5, ['a']], pdf.loc[5, ['a']])
+        self.assert_eq(kdf.loc[9, ['a']], pdf.loc[9, ['a']])
 
     def test_loc2d_multiindex_columns(self):
         arrays = [np.array(['bar', 'bar', 'baz', 'baz']),
