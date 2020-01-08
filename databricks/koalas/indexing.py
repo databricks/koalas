@@ -426,14 +426,14 @@ class LocIndexer(_LocIndexerLike):
                         start = rows_sel.start
                         start_order_column = index_column._scol
                 if stop is None and rows_sel.stop is not None:
-                    if not (index.is_monotonic_decreasing or index.is_monotonic_increasing):
+                    if not (index.is_monotonic_increasing or index.is_monotonic_decreasing):
                         raise KeyError(rows_sel.stop)
                     else:
                         stop = rows_sel.stop
                         stop_order_column = index_column._scol
 
                 # we don't use StringType since we're using `__natural_order__` for comparing
-                if index_data_type is StringType:
+                if isinstance(index_data_type, StringType):
                     index_data_type = LongType()
 
                 # if start and stop are same, just get all start(or stop) values
