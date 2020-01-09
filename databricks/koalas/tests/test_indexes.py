@@ -519,3 +519,29 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 NotImplementedError,
                 "currently doesn't support for MultiIndex"):
             kidx.delete(0)
+
+    def test_argmin(self):
+        pidx = pd.Index([100, 50, 10, 20, 30, 60, 0, 50, 0, 100, 100, 100, 20, 0, 0])
+        kidx = ks.Index([100, 50, 10, 20, 30, 60, 0, 50, 0, 100, 100, 100, 20, 0, 0])
+
+        self.assert_eq(pidx.argmin(), kidx.argmin())
+
+        # MultiIndex
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        with self.assertRaisesRegex(
+                TypeError,
+                "reduction operation 'argmin' not allowed for this dtype"):
+            kidx.argmin()
+
+    def test_argmax(self):
+        pidx = pd.Index([100, 50, 10, 20, 30, 60, 0, 50, 0, 100, 100, 100, 20, 0, 0])
+        kidx = ks.Index([100, 50, 10, 20, 30, 60, 0, 50, 0, 100, 100, 100, 20, 0, 0])
+
+        self.assert_eq(pidx.argmax(), kidx.argmax())
+
+        # MultiIndex
+        kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        with self.assertRaisesRegex(
+                TypeError,
+                "reduction operation 'argmax' not allowed for this dtype"):
+            kidx.argmax()
