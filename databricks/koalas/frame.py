@@ -1831,8 +1831,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
              Koalas uses return type hint and does not try to infer the type.
 
-        .. note:: the series within ``func`` is actually a pandas series, and
-            the length of each series is not guaranteed.
+        .. note:: the series within ``func`` is actually multiple pandas series as the
+            segments of the whole Koalas series; therefore, the length of each series
+            is not guaranteed. As an example, an aggregation against each series
+            does work as a global aggregation but an aggregation of each segment. See
+            below:
+
+            >>> def func(x) -> ks.Series[np.int32]:
+            ...     return x + sum(x)
 
         Parameters
         ----------
