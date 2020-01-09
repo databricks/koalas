@@ -29,6 +29,10 @@ import pyarrow as pa
 from pyspark.sql import Column
 from pyspark.sql.functions import pandas_udf
 import pyspark.sql.types as types
+try:
+    from pyspark.sql.types import to_arrow_type, from_arrow_type
+except ImportError:
+    from pyspark.sql.pandas.types import to_arrow_type, from_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 
@@ -150,7 +154,7 @@ def spark_type_to_pandas_dtype(spark_type):
     if isinstance(spark_type, types.TimestampType):
         return np.dtype('datetime64[ns]')
     else:
-        return np.dtype(types.to_arrow_type(spark_type).to_pandas_dtype())
+        return np.dtype(to_arrow_type(spark_type).to_pandas_dtype())
 
 
 def as_python_type(spark_tpe):
@@ -167,11 +171,11 @@ def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
     if dt == np.dtype('object'):
         if len(s) == 0 or s.isnull().all():
             raise ValueError("can not infer schema from empty or null dataset")
-        return types.from_arrow_type(pa.Array.from_pandas(s).type)
+        return from_arrow_type(pa.Array.from_pandas(s).type)
     elif is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
         return types.TimestampType()
     else:
-        return types.from_arrow_type(pa.from_numpy_dtype(dt))
+        return from_arrow_type(pa.from_numpy_dtype(dt))
 
 
 def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) -> 'ks.Series':
