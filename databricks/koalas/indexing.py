@@ -22,7 +22,7 @@ from functools import reduce
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, StringType, LongType
+from pyspark.sql.types import BooleanType, LongType
 from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
@@ -431,7 +431,7 @@ class LocIndexer(_LocIndexerLike):
                 # If slice is None - select everything, so nothing to do
                 return None, None, None
             elif len(self._internal.index_columns) == 1:
-                sdf = self._kdf_or_kser._internal.sdf
+                sdf = self._internal.sdf
                 index = self._kdf_or_kser.index
                 index_column = index.to_series()
                 index_data_type = index_column.spark_type
@@ -459,20 +459,27 @@ class LocIndexer(_LocIndexerLike):
 
                 # if index order is not monotonic increasing or decreasing
                 # and specified values don't exist in index, raise KeyError
-                if start is None and rows_sel.start is not None:
-                    if not (index.is_monotonic_increasing or index.is_monotonic_decreasing):
-                        raise KeyError(rows_sel.start)
-                    else:
-                        start = rows_sel.start
-                        start_order_column = index_column._scol
-                        start_order_column_type = index_data_type
-                if stop is None and rows_sel.stop is not None:
-                    if not (index.is_monotonic_increasing or index.is_monotonic_decreasing):
-                        raise KeyError(rows_sel.stop)
-                    else:
-                        stop = rows_sel.stop
-                        stop_order_column = index_column._scol
-                        stop_order_column_type = index_data_type
+                if ((start is None and rows_sel.start is not None)
+                        or (stop is None and rows_sel.stop is not None)):
+                    is_monotonic = sdf.select(
+                        index_column._is_monotonic()._scol.alias('__increasing__'),
+                        index_column._is_monotonic_decreasing()._scol.alias('__decreasing__')) \
+                        .select(F.min(F.coalesce('__increasing__', F.lit(True)))
+                                | F.min(F.coalesce('__decreasing__', F.lit(True)))).first()[0]
+                    if start is None and rows_sel.start is not None:
+                        if is_monotonic is False:
+                            raise KeyError(rows_sel.start)
+                        else:
+                            start = rows_sel.start
+                            start_order_column = index_column._scol
+                            start_order_column_type = index_data_type
+                    if stop is None and rows_sel.stop is not None:
+                        if is_monotonic is False:
+                            raise KeyError(rows_sel.stop)
+                        else:
+                            stop = rows_sel.stop
+                            stop_order_column = index_column._scol
+                            stop_order_column_type = index_data_type
 
                 # if start and stop are same, just get all start(or stop) values
                 if start == stop:
