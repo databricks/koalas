@@ -28,7 +28,11 @@ from pyspark import sql as spark
 from pyspark._globals import _NoValue, _NoValueType
 from pyspark.sql import functions as F, Window
 from pyspark.sql.functions import PandasUDFType, pandas_udf
-from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type, LongType
+from pyspark.sql.types import DataType, StructField, StructType, LongType
+try:
+    from pyspark.sql.types import to_arrow_type
+except ImportError:
+    from pyspark.sql.pandas.types import to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
