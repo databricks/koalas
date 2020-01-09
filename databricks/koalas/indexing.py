@@ -562,7 +562,6 @@ class LocIndexer(_LocIndexerLike):
             else:
                 LocIndexer._raiseNotImplemented("Cannot select with MultiIndex with Spark.")
         else:
-            # TODO: 아마 여기가 rows_sel이 slice가 아닐때의 처리인듯?
             if not isinstance(rows_sel, tuple):
                 rows_sel = (rows_sel,)
             if len(rows_sel) > len(self._internal.index_map):
