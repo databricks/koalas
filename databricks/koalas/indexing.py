@@ -487,7 +487,64 @@ class LocIndexer(_LocIndexerLike):
                 if len(cond) > 0:
                     return reduce(lambda x, y: x & y, cond), None, None
             else:
-                LocIndexer._raiseNotImplemented("Cannot use slice for MultiIndex with Spark.")
+                # for MultiIndex
+                sdf = self._internal.sdf
+                index = self._kdf_or_kser.index
+                index_scols = [index.to_series()._scol]
+                start = rows_sel.start
+                stop = rows_sel.stop
+
+                # if start or stop is not type of tuple, we have to find that value from
+                # the first index scol like '__index_level_0__', not structed scols
+                if not (isinstance(start, tuple) and isinstance(stop, tuple)):
+                    index_scols.append(self._internal.index_scols[0])
+                else:
+                    index_scols.append(None)
+
+                # convert start or stop from ('a', 'b') to '[a, b]'
+                # or integer to string (e.g. 5 -> '5')
+                # for comparing with string-casted StructType
+                if isinstance(start, tuple):
+                    start = '[' + ', '.join(start) + ']'
+                elif isinstance(start, int):
+                    start = str(start)
+                if isinstance(stop, tuple):
+                    stop = '[' + ', '.join(stop) + ']'
+                elif isinstance(stop, int):
+                    stop = str(stop)
+
+                index_scols = [index_scol.cast('string')
+                               if index_scol is not None else F.lit(None)
+                               for index_scol in index_scols]
+                start_cond = [index_scol == F.lit(start) for index_scol in index_scols]
+                stop_cond = [index_scol == F.lit(stop) for index_scol in index_scols]
+                start_and_stop_cond = reduce(lambda x, y: x | y, start_cond + stop_cond)
+
+                start_and_stop = (
+                    sdf.select(*index_scols, NATURAL_ORDER_COLUMN_NAME)
+                       .where(start_and_stop_cond)
+                       .collect())
+                # start_and_stop here looks like below (key = slice(('x', 'b'), ('y', 'c'), None))
+                # [Row(CAST(named_struct(__index_level_0__, __index_level_0__, __index_level_1__,
+                # __index_level_1__) AS STRING)='[x, b]', NULL=None, __natural_order__=34359738368),
+                # Row(CAST(named_struct(__index_level_0__, __index_level_0__, __index_level_1__,
+                # __index_level_1__) AS STRING)='[y, c]', NULL=None, __natural_order__=60129542144)]
+
+                start = [row[2] for row in start_and_stop
+                         if (row[0] == start) or (row[1] == start)]
+                stop = [row[2] for row in start_and_stop
+                        if (row[0] == stop) or (row[1] == stop)]
+                start = start[0] if len(start) > 0 else None
+                stop = stop[-1] if len(stop) > 0 else None
+
+                cond = []
+                if start is not None:
+                    cond.append(F.col(NATURAL_ORDER_COLUMN_NAME) >= F.lit(start).cast(LongType()))
+                if stop is not None:
+                    cond.append(F.col(NATURAL_ORDER_COLUMN_NAME) <= F.lit(stop).cast(LongType()))
+
+                return reduce(lambda x, y: x & y, cond), None, None
+
         elif is_list_like(rows_sel) and not isinstance(rows_sel, tuple):
             rows_sel = list(rows_sel)
             if len(rows_sel) == 0:
@@ -505,6 +562,7 @@ class LocIndexer(_LocIndexerLike):
             else:
                 LocIndexer._raiseNotImplemented("Cannot select with MultiIndex with Spark.")
         else:
+            # TODO: 아마 여기가 rows_sel이 slice가 아닐때의 처리인듯?
             if not isinstance(rows_sel, tuple):
                 rows_sel = (rows_sel,)
             if len(rows_sel) > len(self._internal.index_map):

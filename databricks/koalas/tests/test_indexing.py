@@ -313,7 +313,7 @@ class IndexingTest(ReusedSQLTestCase):
         pdf = pdf.set_index('b', append=True)
 
         self.assert_eq(kdf.loc[:], pdf.loc[:])
-        self.assertRaises(NotImplementedError, lambda: kdf.loc[5:5])
+        self.assert_eq(kdf.loc[5:5], pdf.loc[5:5])
 
         self.assert_eq(kdf.loc[5], pdf.loc[5])
         self.assert_eq(kdf.loc[9], pdf.loc[9])
@@ -324,6 +324,40 @@ class IndexingTest(ReusedSQLTestCase):
         self.assertTrue((kdf.a.loc[(5, 3)] == pdf.a.loc[(5, 3)]).all())
         self.assert_eq(kdf.a.loc[(9, 0)], pdf.a.loc[(9, 0)])
 
+        # MultiIndex with slice as `row_sel`
+        data = [('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd'), ('z', 'e')]
+        pser = pd.Series([1, 2, 3, 4, 5],
+                         index=pd.MultiIndex.from_tuples(data))
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(
+            pser.loc['y':],
+            kser.loc['y':])
+
+        self.assert_eq(
+            pser.loc[:'y'],
+            kser.loc[:'y'])
+
+        self.assert_eq(
+            pser.loc[('x', 'b'):],
+            kser.loc[('x', 'b'):])
+
+        self.assert_eq(
+            pser.loc[:('y', 'c')],
+            kser.loc[:('y', 'c')])
+
+        self.assert_eq(
+            pser.loc[('x', 'b'):('y', 'c')],
+            kser.loc[('x', 'b'):('y', 'c')])
+
+        self.assert_eq(
+            pser.loc['x':('y', 'c')],
+            kser.loc['x':('y', 'c')])
+
+        self.assert_eq(
+            pser.loc[('x', 'b'):'y'],
+            kser.loc[('x', 'b'):'y'])
+
     def test_loc2d_multiindex(self):
         kdf = self.kdf
         kdf = kdf.set_index('b', append=True)
@@ -332,7 +366,7 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assert_eq(kdf.loc[:, :], pdf.loc[:, :])
         self.assert_eq(kdf.loc[:, 'a'], pdf.loc[:, 'a'])
-        self.assertRaises(NotImplementedError, lambda: kdf.loc[5:5, 'a'])
+        self.assert_eq(kdf.loc[5:5, 'a'], pdf.loc[5:5, 'a'])
 
     def test_loc2d(self):
         kdf = self.kdf
