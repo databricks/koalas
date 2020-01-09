@@ -351,13 +351,49 @@ class IndexOpsMixin(object):
 
         >>> ser.index.is_monotonic
         True
+
+        MultiIndex
+
+        >>> midx = ks.MultiIndex.from_tuples(
+        ... [('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd'), ('z', 'e')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c'),
+                    ('y', 'd'),
+                    ('z', 'e')],
+                   )
+        >>> midx.is_monotonic
+        True
+
+        >>> midx = ks.MultiIndex.from_tuples(
+        ... [('z', 'a'), ('z', 'b'), ('y', 'c'), ('y', 'd'), ('x', 'e')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('z', 'a'),
+                    ('z', 'b'),
+                    ('y', 'c'),
+                    ('y', 'd'),
+                    ('x', 'e')],
+                   )
+        >>> midx.is_monotonic
+        False
         """
         return self._is_monotonic().all()
 
     def _is_monotonic(self):
+        from databricks.koalas.series import _col
+        from databricks.koalas.indexes import MultiIndex
+
         col = self._scol
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull())
+        cond = (col >= F.lag(col, 1).over(window)) & col.isNotNull()
+        if isinstance(self, MultiIndex):
+            internal = _InternalFrame(
+                sdf=self._internal.sdf.select(cond))
+            result = _col(DataFrame(internal))
+        else:
+            result = self._with_new_scol(cond)
+        return result
 
     is_monotonic_increasing = is_monotonic
 
@@ -405,13 +441,50 @@ class IndexOpsMixin(object):
 
         >>> ser.index.is_monotonic_decreasing
         False
+
+        MultiIndex
+
+        >>> midx = ks.MultiIndex.from_tuples(
+        ... [('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd'), ('z', 'e')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c'),
+                    ('y', 'd'),
+                    ('z', 'e')],
+                   )
+        >>> midx.is_monotonic_decreasing
+        False
+
+        >>> midx = ks.MultiIndex.from_tuples(
+        ... [('z', 'e'), ('z', 'd'), ('y', 'c'), ('y', 'b'), ('x', 'a')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('z', 'a'),
+                    ('z', 'b'),
+                    ('y', 'c'),
+                    ('y', 'd'),
+                    ('x', 'e')],
+                   )
+        >>> midx.is_monotonic_decreasing
+        True
         """
         return self._is_monotonic_decreasing().all()
 
     def _is_monotonic_decreasing(self):
+        from databricks.koalas.series import _col
+        from databricks.koalas.indexes import MultiIndex
+
         col = self._scol
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull())
+        cond = (col <= F.lag(col, 1).over(window)) & col.isNotNull()
+        if isinstance(self, MultiIndex):
+            internal = _InternalFrame(
+                sdf=self._internal.sdf.select(cond))
+            result = _col(DataFrame(internal))
+        else:
+            result = self._with_new_scol(cond)
+        return result
+        col = self._scol
 
     @property
     def ndim(self):
