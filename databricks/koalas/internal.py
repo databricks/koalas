@@ -388,7 +388,7 @@ class _InternalFrame(object):
     """
 
     def __init__(self, sdf: spark.DataFrame,
-                 index_map: Optional[List[IndexMap]] = None,
+                 index_map: Optional[List[IndexMap]],
                  column_index: Optional[List[Tuple[str, ...]]] = None,
                  column_scols: Optional[List[spark.Column]] = None,
                  column_index_names: Optional[List[str]] = None,
@@ -424,7 +424,6 @@ class _InternalFrame(object):
             index_map = [(SPARK_INDEX_NAME_FORMAT(0), None)]
             sdf = _InternalFrame.attach_default_index(sdf)
 
-        assert index_map is not None
         assert all(isinstance(index_field, str)
                    and (index_name is None or (isinstance(index_name, tuple)
                                                and all(isinstance(name, str)

@@ -899,7 +899,7 @@ class GroupBy(object):
                                                         for col in kdf._internal.data_columns])
         else:
             # Otherwise, it loses index.
-            internal = _InternalFrame(sdf=sdf)
+            internal = _InternalFrame(sdf=sdf, index_map=None)
         return DataFrame(internal)
 
     # TODO: implement 'dropna' parameter
@@ -1663,7 +1663,7 @@ class GroupBy(object):
             sdf = self._spark_group_map_apply(
                 pandas_transform, return_schema, retain_index=False)
             # Otherwise, it loses index.
-            internal = _InternalFrame(sdf=sdf)
+            internal = _InternalFrame(sdf=sdf, index_map=None)
 
         return DataFrame(internal)
 
