@@ -22,7 +22,7 @@ from functools import reduce
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, StringType, LongType
+from pyspark.sql.types import BooleanType, LongType
 from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME,
@@ -515,20 +515,19 @@ class LocIndexer(_LocIndexerLike):
                 # If slice is None - select everything, so nothing to do
                 return None, None, None
             elif len(self._internal.index_columns) == 1:
-                sdf = self._kdf_or_kser._internal.sdf
+                sdf = self._internal.sdf
                 index = self._kdf_or_kser.index
                 index_column = index.to_series()
                 index_data_type = index_column.spark_type
                 start = rows_sel.start
                 stop = rows_sel.stop
-                start_order_column = sdf[NATURAL_ORDER_COLUMN_NAME]
-                stop_order_column = sdf[NATURAL_ORDER_COLUMN_NAME]
 
                 # get natural order from '__natural_order__' from start to stop
                 # to keep natural order.
                 start_and_stop = (
                     sdf.select(index_column._scol, NATURAL_ORDER_COLUMN_NAME)
-                       .where((index_column._scol == start) | (index_column._scol == stop))
+                       .where((index_column._scol == F.lit(start).cast(index_data_type))
+                              | (index_column._scol == F.lit(stop).cast(index_data_type)))
                        .collect())
 
                 start = [row[1] for row in start_and_stop if row[0] == start]
@@ -537,37 +536,37 @@ class LocIndexer(_LocIndexerLike):
                 stop = [row[1] for row in start_and_stop if row[0] == stop]
                 stop = stop[-1] if len(stop) > 0 else None
 
-                # Assume we use the natural order by default.
-                start_order_column_type = LongType()
-                stop_order_column_type = LongType()
+                cond = []
+                if start is not None:
+                    cond.append(F.col(NATURAL_ORDER_COLUMN_NAME) >= F.lit(start).cast(LongType()))
+                if stop is not None:
+                    cond.append(F.col(NATURAL_ORDER_COLUMN_NAME) <= F.lit(stop).cast(LongType()))
 
                 # if index order is not monotonic increasing or decreasing
                 # and specified values don't exist in index, raise KeyError
-                if start is None and rows_sel.start is not None:
-                    if not (index.is_monotonic_increasing or index.is_monotonic_decreasing):
-                        raise KeyError(rows_sel.start)
-                    else:
+                if ((start is None and rows_sel.start is not None)
+                        or (stop is None and rows_sel.stop is not None)):
+                    inc, dec = sdf.select(
+                        index_column._is_monotonic()._scol.alias('__increasing__'),
+                        index_column._is_monotonic_decreasing()._scol.alias('__decreasing__')) \
+                        .select(F.min(F.coalesce('__increasing__', F.lit(True))),
+                                F.min(F.coalesce('__decreasing__', F.lit(True)))).first()
+                    if start is None and rows_sel.start is not None:
                         start = rows_sel.start
-                        start_order_column = index_column._scol
-                        start_order_column_type = index_data_type
-                if stop is None and rows_sel.stop is not None:
-                    if not (index.is_monotonic_increasing or index.is_monotonic_decreasing):
-                        raise KeyError(rows_sel.stop)
-                    else:
+                        if inc is not False:
+                            cond.append(index_column._scol >= F.lit(start).cast(index_data_type))
+                        elif dec is not False:
+                            cond.append(index_column._scol <= F.lit(start).cast(index_data_type))
+                        else:
+                            raise KeyError(rows_sel.start)
+                    if stop is None and rows_sel.stop is not None:
                         stop = rows_sel.stop
-                        stop_order_column = index_column._scol
-                        stop_order_column_type = index_data_type
-
-                # if start and stop are same, just get all start(or stop) values
-                if start == stop:
-                    return (index_column._scol == F.lit(rows_sel.start).cast(index_data_type),
-                            None, None)
-
-                cond = []
-                if start is not None:
-                    cond.append(start_order_column >= F.lit(start).cast(start_order_column_type))
-                if stop is not None:
-                    cond.append(stop_order_column <= F.lit(stop).cast(stop_order_column_type))
+                        if inc is not False:
+                            cond.append(index_column._scol <= F.lit(stop).cast(index_data_type))
+                        elif dec is not False:
+                            cond.append(index_column._scol >= F.lit(stop).cast(index_data_type))
+                        else:
+                            raise KeyError(rows_sel.stop)
 
                 if len(cond) > 0:
                     return reduce(lambda x, y: x & y, cond), None, None

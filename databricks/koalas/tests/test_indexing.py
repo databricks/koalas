@@ -298,19 +298,39 @@ class IndexingTest(ReusedSQLTestCase):
         self.assertRaises(KeyError, lambda: kdf.loc[10])
         self.assertRaises(KeyError, lambda: kdf.a.loc[10])
 
-        # duplicated index test
+        # monotonically increasing index test
         pdf = pd.DataFrame(
-            [1, 2, 3, 4, 5, 6, 7, 8, 9],
-            index=[0, 1, 1, 2, 2, 2, 3, 4, 5])
+            {'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]},
+            index=[0, 1, 1, 2, 2, 2, 4, 5, 6])
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(repr(kdf.loc[:2]), repr(pdf.loc[:2]))
+        self.assert_eq(kdf.loc[:2], pdf.loc[:2])
+        self.assert_eq(kdf.loc[:3], pdf.loc[:3])
+        self.assert_eq(kdf.loc[3:], pdf.loc[3:])
+        self.assert_eq(kdf.loc[4:], pdf.loc[4:])
+        self.assert_eq(kdf.loc[3:2], pdf.loc[3:2])
+        self.assert_eq(kdf.loc[-1:2], pdf.loc[-1:2])
+        self.assert_eq(kdf.loc[3:10], pdf.loc[3:10])
+
+        # monotonically decreasing index test
+        pdf = pd.DataFrame(
+            {'a': [1, 2, 3, 4, 5, 6, 7, 8, 9]},
+            index=[6, 5, 5, 4, 4, 4, 2, 1, 0])
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.loc[:4], pdf.loc[:4])
+        self.assert_eq(kdf.loc[:3], pdf.loc[:3])
+        self.assert_eq(kdf.loc[3:], pdf.loc[3:])
+        self.assert_eq(kdf.loc[2:], pdf.loc[2:])
+        self.assert_eq(kdf.loc[2:3], pdf.loc[2:3])
+        self.assert_eq(kdf.loc[2:-1], pdf.loc[2:-1])
+        self.assert_eq(kdf.loc[10:3], pdf.loc[10:3])
 
         # test when type of key is string and given value is not included in key
-        pdf = pd.DataFrame([1, 2, 3], index=['a', 'b', 'd']).loc['a':'z']
+        pdf = pd.DataFrame({'a': [1, 2, 3]}, index=['a', 'b', 'd'])
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(repr(kdf.loc['a':'z']), repr(pdf.loc['a':'z']))
+        self.assert_eq(kdf.loc['a':'z'], pdf.loc['a':'z'])
 
         # KeyError when index is not monotonic increasing or decreasing
         # and specified values don't exist in index
