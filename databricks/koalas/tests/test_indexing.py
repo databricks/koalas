@@ -626,6 +626,7 @@ class IndexingTest(ReusedSQLTestCase):
         pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})
         kdf = ks.from_pandas(pdf)
 
+        self.assert_eq(kdf.iloc[0, 0], pdf.iloc[0, 0])
         for indexer in [0,
                         [0],
                         [0, 1],
@@ -659,6 +660,7 @@ class IndexingTest(ReusedSQLTestCase):
         pseries = pd.Series([1, 2, 3])
         kseries = ks.from_pandas(pseries)
 
+        self.assert_eq(kseries.iloc[0], pseries.iloc[0])
         self.assert_eq(kseries.iloc[:], pseries.iloc[:])
         self.assert_eq(kseries.iloc[:1], pseries.iloc[:1])
         self.assert_eq(kseries.iloc[:-1], pseries.iloc[:-1])

@@ -226,6 +226,10 @@ class _LocIndexerLike(_IndexerLike):
                 kdf = self._kdf_or_kser.to_frame()
                 kdf['__temp_col__'] = key
                 return type(self)(kdf[self._kdf_or_kser.name])[kdf['__temp_col__']]
+            elif isinstance(key, int) and isinstance(self, ILocIndexer):
+                # if type of item in given `key` for ILocIndexer is integer,
+                # directly use `iat` since they work the same
+                return self._kdf_or_kser.iat[key]
 
             cond, limit, remaining_index = self._select_rows(key)
             if cond is None and limit is None:
@@ -239,6 +243,10 @@ class _LocIndexerLike(_IndexerLike):
             if isinstance(key, tuple):
                 if len(key) != 2:
                     raise SparkPandasIndexingError("Only accepts pairs of candidates")
+                elif all((isinstance(item, int) for item in key)) and isinstance(self, ILocIndexer):
+                    # if all type of item in given `key` for ILocIndexer are integer,
+                    # directly use `iat` since they work the same
+                    return self._kdf_or_kser.iat[key]
                 rows_sel, cols_sel = key
             else:
                 rows_sel = key
