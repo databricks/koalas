@@ -215,7 +215,8 @@ class GroupBy(object):
                 # Implement "quartiles" aggregate function for ``describe``.
                 elif aggfunc == "quartiles":
                     reordered.append(
-                        F.expr('percentile_approx(`{0}`, array(0.25, 0.5, 0.75)) as `{1}`'.format(name, data_col)))
+                        F.expr('percentile_approx(`{0}`, array(0.25, 0.5, 0.75)) as `{1}`'.format(
+                            name, data_col)))
 
                 else:
                     reordered.append(F.expr('{1}(`{0}`) as `{2}`'.format(name, aggfunc, data_col)))
