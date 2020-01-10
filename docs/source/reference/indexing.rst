@@ -41,6 +41,8 @@ Modifying and computations
 
    Index.all
    Index.any
+   Index.argmin
+   Index.argmax
    Index.copy
    Index.is_boolean
    Index.is_categorical

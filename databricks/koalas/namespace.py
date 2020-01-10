@@ -68,6 +68,8 @@ def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'Da
         return Series(pobj)
     elif isinstance(pobj, pd.DataFrame):
         return DataFrame(pobj)
+    elif isinstance(pobj, pd.Index):
+        return DataFrame(pd.DataFrame(index=pobj)).index
     else:
         raise ValueError("Unknown data type: {}".format(type(pobj)))
 

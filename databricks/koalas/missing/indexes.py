@@ -40,8 +40,6 @@ class _MissingPandasLikeIndex(object):
     flags = unsupported_property('flags', deprecated=True)
 
     # Functions
-    argmax = unsupported_function('argmax')
-    argmin = unsupported_function('argmin')
     argsort = unsupported_function('argsort')
     asof = unsupported_function('asof')
     asof_locs = unsupported_function('asof_locs')
@@ -119,8 +117,6 @@ class _MissingPandasLikeMultiIndex(object):
     flags = unsupported_property('flags', deprecated=True)
 
     # Functions
-    argmax = unsupported_function('argmax')
-    argmin = unsupported_function('argmin')
     argsort = unsupported_function('argsort')
     asof = unsupported_function('asof')
     asof_locs = unsupported_function('asof_locs')

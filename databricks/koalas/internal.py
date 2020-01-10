@@ -28,7 +28,11 @@ from pyspark import sql as spark
 from pyspark._globals import _NoValue, _NoValueType
 from pyspark.sql import functions as F, Window
 from pyspark.sql.functions import PandasUDFType, pandas_udf
-from pyspark.sql.types import DataType, StructField, StructType, to_arrow_type, LongType
+from pyspark.sql.types import DataType, StructField, StructType, LongType
+try:
+    from pyspark.sql.types import to_arrow_type
+except ImportError:
+    from pyspark.sql.pandas.types import to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
@@ -467,13 +471,14 @@ class _InternalFrame(object):
             self._column_index_names = column_index_names
 
     @staticmethod
-    def attach_default_index(sdf):
+    def attach_default_index(sdf, default_index_type=None):
         """
         This method attaches a default index to Spark DataFrame. Spark does not have the index
         notion so corresponding column should be generated.
         There are several types of default index can be configured by `compute.default_index_type`.
         """
-        default_index_type = get_option("compute.default_index_type")
+        if default_index_type is None:
+            default_index_type = get_option("compute.default_index_type")
         if default_index_type == "sequence":
             sequential_index = F.row_number().over(
                 Window.orderBy(NATURAL_ORDER_COLUMN_NAME)) - 1
