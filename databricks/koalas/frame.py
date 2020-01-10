@@ -1831,8 +1831,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
              Koalas uses return type hint and does not try to infer the type.
 
-        .. note:: the series within ``func`` is actually a pandas series, and
-            the length of each series is not guaranteed.
+        .. note:: the series within ``func`` is actually multiple pandas series as the
+            segments of the whole Koalas series; therefore, the length of each series
+            is not guaranteed. As an example, an aggregation against each series
+            does work as a global aggregation but an aggregation of each segment. See
+            below:
+
+            >>> def func(x) -> ks.Series[np.int32]:
+            ...     return x + sum(x)
 
         Parameters
         ----------
@@ -3185,13 +3191,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 ord_func = spark.functions.asc
             else:
                 ord_func = spark.functions.desc
-            window = Window.partitionBy(group_cols).orderBy(ord_func(index_column)).rowsBetween(
-                Window.unboundedPreceding, Window.currentRow)
+            window = Window.partitionBy(group_cols) \
+                .orderBy(ord_func(NATURAL_ORDER_COLUMN_NAME)) \
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
             sdf = sdf.withColumn(column, F.row_number().over(window) > 1)
         elif not keep:
-            window = Window.partitionBy(group_cols).orderBy(scol_for(sdf, index_column).desc())\
+            window = Window.partitionBy(group_cols) \
                 .rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
-            sdf = sdf.withColumn(column, F.count(scol_for(sdf, index_column)).over(window) > 1)
+            sdf = sdf.withColumn(column, F.count('*').over(window) > 1)
         else:
             raise ValueError("'keep' only support 'first', 'last' and False")
         sdf = sdf.select(scol_for(sdf, index_column), scol_for(sdf, column))
@@ -6371,12 +6378,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def astype(self, dtype) -> 'DataFrame':
         """
-        Cast a pandas object to a specified dtype ``dtype``.
+        Cast a Koalas object to a specified dtype ``dtype``.
 
         Parameters
         ----------
         dtype : data type, or dict of column name -> data type
-            Use a numpy.dtype or Python type to cast entire pandas object to
+            Use a numpy.dtype or Python type to cast entire Koalas object to
             the same type. Alternatively, use {col: dtype, ...}, where col is a
             column label and dtype is a numpy.dtype or Python type to cast one
             or more of the DataFrame's columns to column-specific types.
@@ -7853,8 +7860,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1980-02-01       NaN       NaN      NaN
         1980-03-01  0.067912  0.073814  0.06883
         """
-        sdf = self._sdf.drop(NATURAL_ORDER_COLUMN_NAME)
-        window = Window.orderBy(self._internal.index_columns).rowsBetween(-periods, -periods)
+        sdf = self._sdf
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-periods, -periods)
 
         for column_name in self._internal.data_columns:
             prev_row = F.lag(F.col(column_name), periods).over(window)
@@ -8309,7 +8316,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         pdf = self.head(max_display_count + 1)._to_internal_pandas()
         pdf_length = len(pdf)
-        pdf = pdf[:max_display_count]
+        pdf = pdf.iloc[:max_display_count]
         if pdf_length > max_display_count:
             repr_html = pdf.to_html(show_dimensions=True, notebook=True, bold_rows=bold_rows)
             match = REPR_HTML_PATTERN.search(repr_html)
@@ -8391,7 +8398,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self._internal = kdf._internal
 
     def __getattr__(self, key: str) -> Any:
-        if key.startswith("__") or key.startswith("_pandas_") or key.startswith("_spark_"):
+        if key.startswith("__"):
             raise AttributeError(key)
         if hasattr(_MissingPandasLikeDataFrame, key):
             property_or_func = getattr(_MissingPandasLikeDataFrame, key)

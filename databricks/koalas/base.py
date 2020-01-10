@@ -27,11 +27,11 @@ from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
 from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType
-from pyspark.sql.functions import monotonically_increasing_id
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas import numpy_compat
-from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
+from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAME,
+                                        SPARK_INDEX_NAME_FORMAT)
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
@@ -352,9 +352,12 @@ class IndexOpsMixin(object):
         >>> ser.index.is_monotonic
         True
         """
+        return self._is_monotonic().all()
+
+    def _is_monotonic(self):
         col = self._scol
-        window = Window.orderBy(monotonically_increasing_id()).rowsBetween(-1, -1)
-        return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull()).all()
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
+        return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull())
 
     is_monotonic_increasing = is_monotonic
 
@@ -403,9 +406,12 @@ class IndexOpsMixin(object):
         >>> ser.index.is_monotonic_decreasing
         False
         """
+        return self._is_monotonic_decreasing().all()
+
+    def _is_monotonic_decreasing(self):
         col = self._scol
-        window = Window.orderBy(monotonically_increasing_id()).rowsBetween(-1, -1)
-        return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull()).all()
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
+        return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull())
 
     @property
     def ndim(self):
@@ -790,7 +796,7 @@ class IndexOpsMixin(object):
             raise ValueError('periods should be an int; however, got [%s]' % type(periods))
 
         col = self._scol
-        window = Window.partitionBy(*part_cols).orderBy(self._internal.index_scols)\
+        window = Window.partitionBy(*part_cols).orderBy(NATURAL_ORDER_COLUMN_NAME) \
             .rowsBetween(-periods, -periods)
         lag_col = F.lag(col, periods).over(window)
         col = F.when(lag_col.isNull() | F.isnan(lag_col), fill_value).otherwise(lag_col)
