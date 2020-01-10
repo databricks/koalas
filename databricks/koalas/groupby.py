@@ -232,29 +232,6 @@ class GroupBy(object):
                               column_scols=[scol_for(sdf, col) for col in data_columns],
                               index_map=index_map)
 
-    def describe(self):
-        kdf = self.agg(["count", "mean", "std", "min", "quartiles", "max"]).reset_index()
-
-        # Split "quartiles" columns into first, second, and third quartiles.
-        for label, content in kdf.iteritems():
-            if label[1] == "quartiles":
-                exploded = ks.DataFrame(content.tolist())
-                exploded.columns = [(label[0], "25%"), (label[0], "50%"), (label[0], "75%")]
-                kdf = kdf.drop(label).join(exploded)
-
-        # Reindex the DataFrame to reflect initial grouping and agg columns.
-        input_groupnames = [s.name for s in self._groupkeys]
-        kdf.set_index([(key, "") for key in input_groupnames], inplace=True)
-        kdf.index.names = input_groupnames
-
-        # Reorder columns lexicographically by agg column followed by stats.
-        agg_cols = (col.name for col in self._agg_columns)
-        stats = ["count", "mean", "std", "min", "25%", "50%", "75%", "max"]
-        kdf = kdf[list(product(agg_cols, stats))]
-
-        # Cast columns to ``"float64"`` to match `pandas.DataFrame.groupby`.
-        return kdf.astype("float64")
-
     def count(self):
         """
         Compute count of group, excluding missing values.
@@ -1966,6 +1943,29 @@ class DataFrameGroupBy(GroupBy):
                                       column_scols=[scol_for(sdf, c._internal.data_columns[0])
                                                     for c in applied])
         return DataFrame(internal)
+
+    def describe(self):
+        kdf = self.agg(["count", "mean", "std", "min", "quartiles", "max"]).reset_index()
+
+        # Split "quartiles" columns into first, second, and third quartiles.
+        for label, content in kdf.iteritems():
+            if label[1] == "quartiles":
+                exploded = ks.DataFrame(content.tolist())
+                exploded.columns = [(label[0], "25%"), (label[0], "50%"), (label[0], "75%")]
+                kdf = kdf.drop(label).join(exploded)
+
+        # Reindex the DataFrame to reflect initial grouping and agg columns.
+        input_groupnames = [s.name for s in self._groupkeys]
+        kdf.set_index([(key, "") for key in input_groupnames], inplace=True)
+        kdf.index.names = input_groupnames
+
+        # Reorder columns lexicographically by agg column followed by stats.
+        agg_cols = (col.name for col in self._agg_columns)
+        stats = ["count", "mean", "std", "min", "25%", "50%", "75%", "max"]
+        kdf = kdf[list(product(agg_cols, stats))]
+
+        # Cast columns to ``"float64"`` to match `pandas.DataFrame.groupby`.
+        return kdf.astype("float64")
 
 
 class SeriesGroupBy(GroupBy):
