@@ -249,7 +249,11 @@ class GroupBy(object):
         # Reorder columns lexicographically by agg column followed by stats.
         agg_cols = (col.name for col in self._agg_columns)
         stats = ["count", "mean", "std", "min", "25%", "50%", "75%", "max"]
-        return kdf[list(product(agg_cols, stats))]
+        order = list(product(agg_cols, stats))
+        kdf = kdf[order]
+
+        # Cast columns to ``"float64"`` to match `pandas.DataFrame.groupby`.
+        return kdf.astype({col: "float64" for col in order})
 
     def count(self):
         """

@@ -17,6 +17,8 @@
 import unittest
 import inspect
 from distutils.version import LooseVersion
+from itertools import product
+
 import pandas as pd
 
 from databricks import koalas as ks
@@ -254,6 +256,19 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                .sort_index()
         )
         self.assert_eq(agg_kdf, agg_pdf)
+
+    def test_describe(self):
+        pdf = pd.DataFrame({"a": [1, 1, 3], "b": [4, 5, 6], "c": [7, 8, 9]})
+        kdf = ks.from_pandas(pdf)
+
+        describe_pdf = pdf.groupby("a").describe().sort_index()
+        describe_kdf = kdf.groupby("a").describe().sort_index()
+
+        # Check that non-percentile columns are equal.
+        agg_cols = (col.name for col in kdf.groupby("a")._agg_columns)
+        formatted_percentiles = ["25%", "50%", "75%"]
+        self.assert_eq(describe_kdf.drop(list(product(agg_cols, formatted_percentiles))),
+                       describe_pdf.drop(columns=formatted_percentiles, level=1))
 
     def test_all_any(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
