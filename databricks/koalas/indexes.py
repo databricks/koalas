@@ -39,7 +39,8 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series, _col
 from databricks.koalas.utils import name_like_string, default_session, scol_for
-from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAME,
+                                        SPARK_INDEX_NAME_FORMAT)
 
 
 class Index(IndexOpsMixin):
@@ -1312,109 +1313,25 @@ class MultiIndex(Index):
         result = internal._sdf.agg(*(F.countDistinct(c) for c in internal.index_scols)).collect()[0]
         return tuple(result)
 
-    @property
-    def is_monotonic(self):
-        """
-        Return boolean if values in the object are monotonically increasing.
-
-        .. note:: the current implementation of is_monotonic_increasing uses Spark's
-            Window without specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
-
-        Returns
-        -------
-        is_monotonic : boolean
-
-        Examples
-        --------
-        >>> midx = ks.MultiIndex.from_tuples(
-        ... [('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd'), ('z', 'e')])
-        >>> midx  # doctest: +SKIP
-        MultiIndex([('x', 'a'),
-                    ('x', 'b'),
-                    ('y', 'c'),
-                    ('y', 'd'),
-                    ('z', 'e')],
-                   )
-        >>> midx.is_monotonic
-        True
-
-        >>> midx = ks.MultiIndex.from_tuples(
-        ... [('z', 'a'), ('z', 'b'), ('y', 'c'), ('y', 'd'), ('x', 'e')])
-        >>> midx  # doctest: +SKIP
-        MultiIndex([('z', 'a'),
-                    ('z', 'b'),
-                    ('y', 'c'),
-                    ('y', 'd'),
-                    ('x', 'e')],
-                   )
-        >>> midx.is_monotonic
-        False
-        """
-        return self._is_monotonic().all()
-
     def _is_monotonic(self):
-        col = self._scol
+        col = self._internal.index_scols[0]
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
         cond = (col >= F.lag(col, 1).over(window)) & col.isNotNull()
 
         internal = _InternalFrame(
-            sdf=self._internal.sdf.select(cond))
+            sdf=self._internal.sdf.select(cond),
+            index_map=None)
 
         return _col(DataFrame(internal))
 
-    is_monotonic_increasing = is_monotonic
-
-    @property
-    def is_monotonic_decreasing(self):
-        """
-        Return boolean if values in the object are monotonically decreasing.
-
-        .. note:: the current implementation of is_monotonic_decreasing uses Spark's
-            Window without specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
-
-        Returns
-        -------
-        is_monotonic : boolean
-
-        Examples
-        --------
-        >>> midx = ks.MultiIndex.from_tuples(
-        ... [('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd'), ('z', 'e')])
-        >>> midx  # doctest: +SKIP
-        MultiIndex([('x', 'a'),
-                    ('x', 'b'),
-                    ('y', 'c'),
-                    ('y', 'd'),
-                    ('z', 'e')],
-                   )
-        >>> midx.is_monotonic_decreasing
-        False
-
-        >>> midx = ks.MultiIndex.from_tuples(
-        ... [('z', 'e'), ('z', 'd'), ('y', 'c'), ('y', 'b'), ('x', 'a')])
-        >>> midx  # doctest: +SKIP
-        MultiIndex([('z', 'a'),
-                    ('z', 'b'),
-                    ('y', 'c'),
-                    ('y', 'd'),
-                    ('x', 'e')],
-                   )
-        >>> midx.is_monotonic_decreasing
-        True
-        """
-        return self._is_monotonic_decreasing().all()
-
     def _is_monotonic_decreasing(self):
-        col = self._scol
+        col = self._internal.index_scols[0]
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
         cond = (col <= F.lag(col, 1).over(window)) & col.isNotNull()
 
         internal = _InternalFrame(
-            sdf=self._internal.sdf.select(cond))
+            sdf=self._internal.sdf.select(cond),
+            index_map=None)
 
         return _col(DataFrame(internal))
 
