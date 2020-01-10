@@ -97,18 +97,25 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
         self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
-        self.assert_eq(repr(kidx.to_frame(name='x')), repr(pidx.to_frame(name='x')))
-        self.assert_eq(repr(kidx.to_frame(index=False, name='x')),
-                       repr(pidx.to_frame(index=False, name='x')))
+
+        if LooseVersion(pd.__version__) >= LooseVersion('0.24'):
+            # The `name` argument is added in pandas 0.24.
+            self.assert_eq(repr(kidx.to_frame(name='x')), repr(pidx.to_frame(name='x')))
+            self.assert_eq(repr(kidx.to_frame(index=False, name='x')),
+                           repr(pidx.to_frame(index=False, name='x')))
 
         pidx = self.pdf.set_index('b', append=True).index
         kidx = self.kdf.set_index('b', append=True).index
 
         self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
         self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
-        self.assert_eq(repr(kidx.to_frame(name=['x', 'y'])), repr(pidx.to_frame(name=['x', 'y'])))
-        self.assert_eq(repr(kidx.to_frame(index=False, name=['x', 'y'])),
-                       repr(pidx.to_frame(index=False, name=['x', 'y'])))
+
+        if LooseVersion(pd.__version__) >= LooseVersion('0.24'):
+            # The `name` argument is added in pandas 0.24.
+            self.assert_eq(repr(kidx.to_frame(name=['x', 'y'])),
+                           repr(pidx.to_frame(name=['x', 'y'])))
+            self.assert_eq(repr(kidx.to_frame(index=False, name=['x', 'y'])),
+                           repr(pidx.to_frame(index=False, name=['x', 'y'])))
 
     def test_index_names(self):
         kdf = self.kdf
