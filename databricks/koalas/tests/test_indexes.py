@@ -74,6 +74,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = self.kdf.index
 
         self.assert_eq(kidx.to_series(), pidx.to_series())
+        self.assert_eq((kidx + 1).to_series(), (pidx + 1).to_series())
         self.assert_eq(kidx.to_series(name='a'), pidx.to_series(name='a'))
 
         pidx = self.pdf.set_index('b', append=True).index
@@ -87,6 +88,25 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         else:
             self.assert_eq(kidx.to_series(), pidx.to_series())
             self.assert_eq(kidx.to_series(name='a'), pidx.to_series(name='a'))
+
+    def test_to_frame(self):
+        pidx = self.pdf.index
+        kidx = self.kdf.index
+
+        self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
+        self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
+        self.assert_eq(repr(kidx.to_frame(name='x')), repr(pidx.to_frame(name='x')))
+        self.assert_eq(repr(kidx.to_frame(index=False, name='x')),
+                       repr(pidx.to_frame(index=False, name='x')))
+
+        pidx = self.pdf.set_index('b', append=True).index
+        kidx = self.kdf.set_index('b', append=True).index
+
+        self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
+        self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
+        self.assert_eq(repr(kidx.to_frame(name=['x', 'y'])), repr(pidx.to_frame(name=['x', 'y'])))
+        self.assert_eq(repr(kidx.to_frame(index=False, name=['x', 'y'])),
+                       repr(pidx.to_frame(index=False, name=['x', 'y'])))
 
     def test_index_names(self):
         kdf = self.kdf

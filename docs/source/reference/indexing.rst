@@ -85,6 +85,7 @@ Conversion
 
    Index.astype
    Index.to_series
+   Index.to_frame
    Index.to_numpy
 
 Sorting
@@ -182,6 +183,8 @@ MultiIndex Conversion
    :toctree: api/
 
    MultiIndex.astype
+   MultiIndex.to_series
+   MultiIndex.to_frame
    MultiIndex.to_numpy
 
 MultiIndex Sorting
