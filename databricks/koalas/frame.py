@@ -6378,12 +6378,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def astype(self, dtype) -> 'DataFrame':
         """
-        Cast a pandas object to a specified dtype ``dtype``.
+        Cast a Koalas object to a specified dtype ``dtype``.
 
         Parameters
         ----------
         dtype : data type, or dict of column name -> data type
-            Use a numpy.dtype or Python type to cast entire pandas object to
+            Use a numpy.dtype or Python type to cast entire Koalas object to
             the same type. Alternatively, use {col: dtype, ...}, where col is a
             column label and dtype is a numpy.dtype or Python type to cast one
             or more of the DataFrame's columns to column-specific types.
