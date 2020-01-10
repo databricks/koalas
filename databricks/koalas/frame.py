@@ -360,7 +360,7 @@ class DataFrame(_Frame, Generic[T]):
             assert columns is None
             assert dtype is None
             assert not copy
-            super(DataFrame, self).__init__(_InternalFrame(data))
+            super(DataFrame, self).__init__(_InternalFrame(sdf=data, index_map=None))
         elif isinstance(data, ks.Series):
             assert index is None
             assert columns is None
@@ -2104,7 +2104,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             .filter(reduce(lambda x, y: x & y, rows))
 
         if len(key) == len(self._internal.index_scols):
-            result = _col(DataFrame(_InternalFrame(sdf=sdf)).T)
+            result = _col(DataFrame(_InternalFrame(sdf=sdf, index_map=None)).T)
             result.name = key
         else:
             internal = self._internal.copy(

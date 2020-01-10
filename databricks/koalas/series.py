@@ -1777,6 +1777,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         sdf = self._internal.sdf.select(self._scol).distinct()
         internal = _InternalFrame(sdf=sdf,
+                                  index_map=None,
                                   column_index=[self._internal.column_index[0]],
                                   column_scols=[scol_for(sdf, self._internal.data_columns[0])],
                                   column_index_names=self._internal.column_index_names)
@@ -3519,7 +3520,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf_most_value = sdf_count.filter("count == {}".format(most_value))
         sdf = sdf_most_value.select(
             F.col(SPARK_INDEX_NAME_FORMAT(0)).alias('0'))
-        internal = _InternalFrame(sdf=sdf)
+        internal = _InternalFrame(sdf=sdf, index_map=None)
 
         result = _col(DataFrame(internal))
         result.name = self.name
