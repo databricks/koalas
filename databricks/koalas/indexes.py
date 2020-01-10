@@ -1168,6 +1168,9 @@ class MultiIndex(Index):
                                       column_index_names=None)
         IndexOpsMixin.__init__(self, internal, kdf)
 
+    def _with_new_scol(self, scol: spark.Column):
+        raise NotImplementedError('Not supported for type MultiIndex')
+
     def any(self, *args, **kwargs):
         raise TypeError("cannot perform any with this index type: MultiIndex")
 
