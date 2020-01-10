@@ -37,7 +37,7 @@ from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
-from databricks.koalas.series import Series, _col
+from databricks.koalas.series import Series
 from databricks.koalas.utils import name_like_string, default_session, scol_for
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 
@@ -486,7 +486,15 @@ class Index(IndexOpsMixin):
         d    d
         Name: 0, dtype: object
         """
-        return _col(self.to_frame(name=name))
+        kdf = self._kdf
+        scol = self._scol
+        if name is not None:
+            scol = scol.alias(name_like_string(name))
+        column_index = [None] if len(kdf._internal.index_map) > 1 else kdf._internal.index_names
+        return Series(kdf._internal.copy(scol=scol,
+                                         column_index=column_index,
+                                         column_index_names=None),
+                      anchor=kdf)
 
     def to_frame(self, index=True, name=None) -> DataFrame:
         """
@@ -1091,7 +1099,7 @@ class Index(IndexOpsMixin):
         7
         """
         sdf = self._internal.sdf
-        sdf = sdf.select(self.to_series()._scol.alias('__index_value__'))
+        sdf = sdf.select(self._scol.alias('__index_value__'))
         sdf = _InternalFrame.attach_default_index(
             sdf, default_index_type='distributed-sequence')
 
@@ -1374,18 +1382,6 @@ class MultiIndex(Index):
         internal = self._internal
         result = internal._sdf.agg(*(F.countDistinct(c) for c in internal.index_scols)).collect()[0]
         return tuple(result)
-
-    def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
-        kdf = self._kdf
-        scol = self._scol
-        if name is not None:
-            scol = scol.alias(name_like_string(name))
-        return Series(kdf._internal.copy(scol=scol,
-                                         column_index=[None],
-                                         column_index_names=None),
-                      anchor=kdf)
-
-    to_series.__doc__ = Index.to_series.__doc__
 
     def to_frame(self, index=True, name=None) -> DataFrame:
         """
