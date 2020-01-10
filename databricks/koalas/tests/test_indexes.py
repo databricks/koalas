@@ -666,3 +666,63 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kmidx.is_monotonic_decreasing,
             pmidx.is_monotonic_decreasing)
+
+        kmidx = ks.MultiIndex.from_tuples(
+            [('a', -500), ('b', -400), ('c', -300), ('d', -200), ('e', -100)])
+        pmidx = kmidx.to_pandas()
+        self.assert_eq(
+            kmidx.is_monotonic_increasing,
+            pmidx.is_monotonic_increasing)
+        self.assert_eq(
+            kmidx.is_monotonic_decreasing,
+            pmidx.is_monotonic_decreasing)
+
+        kmidx = ks.MultiIndex.from_tuples(
+            [('e', -500), ('d', -400), ('c', -300), ('b', -200), ('a', -100)])
+        pmidx = kmidx.to_pandas()
+        self.assert_eq(
+            kmidx.is_monotonic_increasing,
+            pmidx.is_monotonic_increasing)
+        self.assert_eq(
+            kmidx.is_monotonic_decreasing,
+            pmidx.is_monotonic_decreasing)
+
+        kmidx = ks.MultiIndex.from_tuples(
+            [(-5, 'a'), (-4, 'b'), (-3, 'c'), (-2, 'd'), (-1, 'e')])
+        pmidx = kmidx.to_pandas()
+        self.assert_eq(
+            kmidx.is_monotonic_increasing,
+            pmidx.is_monotonic_increasing)
+        self.assert_eq(
+            kmidx.is_monotonic_decreasing,
+            pmidx.is_monotonic_decreasing)
+
+        kmidx = ks.MultiIndex.from_tuples(
+            [(-5, 'e'), (-4, 'd'), (-3, 'c'), (-2, 'b'), (-1, 'a')])
+        pmidx = kmidx.to_pandas()
+        self.assert_eq(
+            kmidx.is_monotonic_increasing,
+            pmidx.is_monotonic_increasing)
+        self.assert_eq(
+            kmidx.is_monotonic_decreasing,
+            pmidx.is_monotonic_decreasing)
+
+        kmidx = ks.MultiIndex.from_tuples(
+            [(-5, 'e'), (-3, 'd'), (-2, 'c'), (-4, 'b'), (-1, 'a')])
+        pmidx = kmidx.to_pandas()
+        self.assert_eq(
+            kmidx.is_monotonic_increasing,
+            pmidx.is_monotonic_increasing)
+        self.assert_eq(
+            kmidx.is_monotonic_decreasing,
+            pmidx.is_monotonic_decreasing)
+
+        kmidx = ks.MultiIndex.from_tuples(
+            [(-5, 'e'), (-4, 'c'), (-3, 'b'), (-2, 'd'), (-1, 'a')])
+        pmidx = kmidx.to_pandas()
+        self.assert_eq(
+            kmidx.is_monotonic_increasing,
+            pmidx.is_monotonic_increasing)
+        self.assert_eq(
+            kmidx.is_monotonic_decreasing,
+            pmidx.is_monotonic_decreasing)
