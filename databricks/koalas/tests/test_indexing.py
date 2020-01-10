@@ -375,6 +375,35 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kdf.loc['B':'B', 'bar'], pdf.loc['B':'B', 'bar'])
         self.assert_eq(kdf.loc['B':'B', ['bar']], pdf.loc['B':'B', ['bar']])
 
+        # slice as `col_sel`
+        self.assert_eq(
+            kdf.loc[:, 'bar':],
+            pdf.loc[:, 'bar':])
+
+        self.assert_eq(
+            kdf.loc[:, :'baz'],
+            pdf.loc[:, :'baz'])
+
+        self.assert_eq(
+            kdf.loc[:, ('bar', 'two'):],
+            pdf.loc[:, ('bar', 'two'):])
+
+        self.assert_eq(
+            kdf.loc[:, :('baz', 'one')],
+            pdf.loc[:, :('baz', 'one')])
+
+        self.assert_eq(
+            kdf.loc[:, ('bar', 'two'):('baz', 'one')],
+            pdf.loc[:, ('bar', 'two'):('baz', 'one')])
+
+        self.assert_eq(
+            kdf.loc[:, 'bar':('baz', 'one')],
+            pdf.loc[:, 'bar':('baz', 'one')])
+
+        self.assert_eq(
+            kdf.loc[:, ('bar', 'two'):'baz'],
+            pdf.loc[:, ('bar', 'two'):'baz'])
+
     def test_loc2d_with_known_divisions(self):
         pdf = pd.DataFrame(np.random.randn(20, 5),
                            index=list('abcdefghijklmnopqrst'),
