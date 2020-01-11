@@ -1322,7 +1322,7 @@ class MultiIndex(Index):
             Window without specifying partition specification. This leads to move all data into
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
-            and it cause spark job as many as nlevels of the MultiIndex when the result is True)
+            and it cause spark job as many as nlevels of the MultiIndex when the result is True
 
         Returns
         -------
@@ -1430,7 +1430,7 @@ class MultiIndex(Index):
             Window without specifying partition specification. This leads to move all data into
             single partition in single machine and could cause serious
             performance degradation. Avoid this method against very large dataset.
-            and it cause spark job as many as nlevels of the MultiIndex when the result is True)
+            and it cause spark job as many as nlevels of the MultiIndex when the result is True
 
         Returns
         -------
