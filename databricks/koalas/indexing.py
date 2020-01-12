@@ -520,65 +520,70 @@ class LocIndexer(_LocIndexerLike):
         :param key: the multi-index column keys represented by tuple
         :return: DataFrame or Series
         """
-        if isinstance(key, tuple):
-            if indexes is None:
-                indexes = [(idx, idx) for idx in self._internal.column_index]
-            for k in key:
-                indexes = [(index, idx[1:]) for index, idx in indexes if idx[0] == k]
-                if len(indexes) == 0:
-                    raise KeyError(k)
+        if indexes is None:
+            indexes = [(idx, idx) for idx in self._internal.column_index]
+        for k in key:
+            indexes = [(index, idx[1:]) for index, idx in indexes if idx[0] == k]
+            if len(indexes) == 0:
+                raise KeyError(k)
 
-            if all(len(idx) > 0 and idx[0] == '' for _, idx in indexes):
-                # If the head is '', drill down recursively.
-                indexes = [(col, tuple([str(key), *idx[1:]]))
-                           for i, (col, idx) in enumerate(indexes)]
-                return self._get_from_multiindex_column((str(key),), indexes)
+        if all(len(idx) > 0 and idx[0] == '' for _, idx in indexes):
+            # If the head is '', drill down recursively.
+            indexes = [(col, tuple([str(key), *idx[1:]]))
+                       for i, (col, idx) in enumerate(indexes)]
+            return self._get_from_multiindex_column((str(key),), indexes)
+        else:
+            returns_series = all(len(idx) == 0 for _, idx in indexes)
+            if returns_series:
+                idxes = set(idx for idx, _ in indexes)
+                assert len(idxes) == 1
+                index = list(idxes)[0]
+                column_index = [index]
+                column_scols = [self._internal.scol_for(index)]
             else:
-                returns_series = all(len(idx) == 0 for _, idx in indexes)
-                if returns_series:
-                    idxes = set(idx for idx, _ in indexes)
-                    assert len(idxes) == 1
-                    index = list(idxes)[0]
-                    column_index = [index]
-                    column_scols = [self._internal.scol_for(index)]
-                else:
-                    column_index = [idx for _, idx in indexes]
-                    column_scols = [self._internal.scol_for(idx) for idx, _ in indexes]
+                column_index = [idx for _, idx in indexes]
+                column_scols = [self._internal.scol_for(idx) for idx, _ in indexes]
 
-            return column_index, column_scols, returns_series
-        elif isinstance(key, slice):
-            column_index = self._internal.column_index.copy()
-            first_column_index = ([tuple(idx[0]) for idx in column_index])
-            start = key.start
-            stop = key.stop
+        return column_index, column_scols, returns_series
 
-            if not isinstance(start, (tuple, type(None))):
-                start = tuple(start)
-            if not isinstance(stop, (tuple, type(None))):
-                stop = tuple(stop)
+    def _get_from_slice(self, col_sel):
+        """ Select columns from slice between start and stop.
 
-            if start in column_index:
-                start_index = column_index.index(start)
-            elif start in first_column_index:
-                start_index = first_column_index.index(start)
-            elif isinstance(key.start, type(None)):
-                start_index = 0
+        :param col_sel: the column range want to select represented by slice
+        :return: the column_index & column_scols corresponding to given range
+        """
+        column_index = self._internal.column_index.copy()
+        first_column_index = ([tuple(idx[0]) for idx in column_index])
+        start = col_sel.start
+        stop = col_sel.stop
 
-            if stop in column_index:
-                stop_index = column_index.index(stop)
-            elif stop in first_column_index:
-                # if given `stop` is first_column_index, (e.g. 'a', not ('a', 'x'))
-                # should count whole columns belongs to it.
-                count = first_column_index.count(stop)
-                ext_len = count - 1
-                stop_index = first_column_index.index(stop) + ext_len
-            elif isinstance(key.stop, type(None)):
-                stop_index = len(column_index)
+        if not isinstance(start, (tuple, type(None))):
+            start = tuple(start)
+        if not isinstance(stop, (tuple, type(None))):
+            stop = tuple(stop)
 
-            column_index = column_index[start_index:stop_index + 1]
-            column_scols = [self._internal.scol_for(idx) for idx in column_index]
+        if start in column_index:
+            start_index = column_index.index(start)
+        elif start in first_column_index:
+            start_index = first_column_index.index(start)
+        elif isinstance(col_sel.start, type(None)):
+            start_index = 0
 
-            return column_index, column_scols, False
+        if stop in column_index:
+            stop_index = column_index.index(stop)
+        elif stop in first_column_index:
+            # if given `stop` is first_column_index, (e.g. 'a', not ('a', 'x'))
+            # should count whole columns belongs to it.
+            count = first_column_index.count(stop)
+            ext_len = count - 1
+            stop_index = first_column_index.index(stop) + ext_len
+        elif isinstance(col_sel.stop, type(None)):
+            stop_index = len(column_index)
+
+        column_index = column_index[start_index:stop_index + 1]
+        column_scols = [self._internal.scol_for(idx) for idx in column_index]
+
+        return column_index, column_scols, False
 
     def _select_cols(self, cols_sel):
         from databricks.koalas.series import Series
@@ -589,7 +594,7 @@ class LocIndexer(_LocIndexerLike):
             if cols_sel == slice(None):
                 cols_sel = None
             else:
-                return self._get_from_multiindex_column(cols_sel)
+                return self._get_from_slice(cols_sel)
 
         elif isinstance(cols_sel, (Series, spark.Column)):
             returns_series = True
