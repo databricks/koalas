@@ -1012,7 +1012,7 @@ class Index(IndexOpsMixin):
             index_map = [(idx_col, None) for idx_col in self._internal.index_columns]
 
         internal = _InternalFrame(
-            sdf=sdf_appended.select(self._internal.index_scols),
+            sdf=sdf_appended,
             index_map=index_map)
 
         return DataFrame(internal).index
