@@ -23,6 +23,7 @@ import inspect
 from collections import Callable, OrderedDict, namedtuple
 from functools import partial
 from itertools import product
+from operator import itemgetter
 from typing import Any, List, Tuple, Union
 
 import numpy as np
@@ -34,6 +35,7 @@ from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, S
 from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.base import _column_op
 from databricks.koalas.typedef import _infer_return_type
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME,
@@ -1946,12 +1948,17 @@ class DataFrameGroupBy(GroupBy):
 
     def describe(self):
         kdf = self.agg(["count", "mean", "std", "min", "quartiles", "max"]).reset_index()
+        formatted_percentiles = ["25%", "50%", "75%"]
 
         # Split "quartiles" columns into first, second, and third quartiles.
         for label, content in kdf.iteritems():
             if label[1] == "quartiles":
-                exploded = ks.DataFrame(content.tolist())
-                exploded.columns = [(label[0], "25%"), (label[0], "50%"), (label[0], "75%")]
+                exploded = ks.DataFrame(
+                    {
+                        (label[0], x): _column_op(itemgetter(i))(content).to_numpy()
+                        for i, x in enumerate(formatted_percentiles)
+                    }
+                )
                 kdf = kdf.drop(label).join(exploded)
 
         # Reindex the DataFrame to reflect initial grouping and agg columns.
@@ -1961,7 +1968,7 @@ class DataFrameGroupBy(GroupBy):
 
         # Reorder columns lexicographically by agg column followed by stats.
         agg_cols = (col.name for col in self._agg_columns)
-        stats = ["count", "mean", "std", "min", "25%", "50%", "75%", "max"]
+        stats = ["count", "mean", "std", "min"] + formatted_percentiles + ["max"]
         kdf = kdf[list(product(agg_cols, stats))]
 
         # Cast columns to ``"float64"`` to match `pandas.DataFrame.groupby`.
