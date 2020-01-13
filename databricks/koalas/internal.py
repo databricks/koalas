@@ -742,9 +742,10 @@ class _InternalFrame(object):
                 index_map = [(SPARK_INDEX_NAME_FORMAT(i), None)
                              for i in range(len(index.levels))]
             else:
-                index_map = [(SPARK_INDEX_NAME_FORMAT(i) if name is None else name,
-                              name if name is None or isinstance(name, tuple) else (name,))
-                             for i, name in enumerate(index.names)]
+                index_map = [
+                    (SPARK_INDEX_NAME_FORMAT(i) if name is None else name_like_string(name),
+                     name if name is None or isinstance(name, tuple) else (name,))
+                    for i, name in enumerate(index.names)]
         else:
             name = index.name
             index_map = [(name_like_string(name)
