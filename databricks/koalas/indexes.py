@@ -39,7 +39,7 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series
 from databricks.koalas.utils import name_like_string, default_session, scol_for
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 
 
 class Index(IndexOpsMixin):
@@ -495,6 +495,77 @@ class Index(IndexOpsMixin):
                                          column_index=column_index,
                                          column_index_names=None),
                       anchor=kdf)
+
+    def to_frame(self, index=True, name=None) -> DataFrame:
+        """
+        Create a DataFrame with a column containing the Index.
+
+        Parameters
+        ----------
+        index : boolean, default True
+            Set the index of the returned DataFrame as the original Index.
+        name : object, default None
+            The passed name should substitute for the index name (if it has
+            one).
+
+        Returns
+        -------
+        DataFrame
+            DataFrame containing the original Index data.
+
+        See Also
+        --------
+        Index.to_series : Convert an Index to a Series.
+        Series.to_frame : Convert Series to DataFrame.
+
+        Examples
+        --------
+        >>> idx = ks.Index(['Ant', 'Bear', 'Cow'], name='animal')
+        >>> idx.to_frame()  # doctest: +NORMALIZE_WHITESPACE
+               animal
+        animal
+        Ant       Ant
+        Bear     Bear
+        Cow       Cow
+
+        By default, the original Index is reused. To enforce a new Index:
+
+        >>> idx.to_frame(index=False)
+          animal
+        0    Ant
+        1   Bear
+        2    Cow
+
+        To override the name of the resulting column, specify `name`:
+
+        >>> idx.to_frame(name='zoo')  # doctest: +NORMALIZE_WHITESPACE
+                 zoo
+        animal
+        Ant      Ant
+        Bear    Bear
+        Cow      Cow
+        """
+        if name is None:
+            if self._internal.index_names[0] is None:
+                name = ('0',)
+            else:
+                name = self._internal.index_names[0]
+        elif isinstance(name, str):
+                name = (name,)
+        scol = self._scol.alias(name_like_string(name))
+
+        sdf = self._internal.sdf.select(scol, NATURAL_ORDER_COLUMN_NAME)
+
+        if index:
+            index_map = [(name_like_string(name), self._internal.index_names[0])]
+        else:
+            index_map = None  # type: ignore
+
+        internal = _InternalFrame(sdf=sdf,
+                                  index_map=index_map,
+                                  column_index=[name],
+                                  column_scols=[scol_for(sdf, name_like_string(name))])
+        return DataFrame(internal)
 
     def is_boolean(self):
         """
@@ -1028,7 +1099,7 @@ class Index(IndexOpsMixin):
         7
         """
         sdf = self._internal.sdf
-        sdf = sdf.select(self.to_series()._scol.alias('__index_value__'))
+        sdf = sdf.select(self._scol.alias('__index_value__'))
         sdf = _InternalFrame.attach_default_index(
             sdf, default_index_type='distributed-sequence')
 
@@ -1314,6 +1385,92 @@ class MultiIndex(Index):
         internal = self._internal
         result = internal._sdf.agg(*(F.countDistinct(c) for c in internal.index_scols)).collect()[0]
         return tuple(result)
+
+    def to_frame(self, index=True, name=None) -> DataFrame:
+        """
+        Create a DataFrame with the levels of the MultiIndex as columns.
+        Column ordering is determined by the DataFrame constructor with data as
+        a dict.
+
+        Parameters
+        ----------
+        index : boolean, default True
+            Set the index of the returned DataFrame as the original MultiIndex.
+        name : list / sequence of strings, optional
+            The passed names should substitute index level names.
+
+        Returns
+        -------
+        DataFrame : a DataFrame containing the original MultiIndex data.
+
+        See Also
+        --------
+        DataFrame
+
+        Examples
+        --------
+        >>> tuples = [(1, 'red'), (1, 'blue'),
+        ...           (2, 'red'), (2, 'blue')]
+        >>> idx = ks.MultiIndex.from_tuples(tuples, names=('number', 'color'))
+        >>> idx  # doctest: +SKIP
+        MultiIndex([(1,  'red'),
+                    (1, 'blue'),
+                    (2,  'red'),
+                    (2, 'blue')],
+                   names=['number', 'color'])
+        >>> idx.to_frame()  # doctest: +NORMALIZE_WHITESPACE
+                      number color
+        number color
+        1      red         1   red
+               blue        1  blue
+        2      red         2   red
+               blue        2  blue
+
+        By default, the original Index is reused. To enforce a new Index:
+
+        >>> idx.to_frame(index=False)
+           number color
+        0       1   red
+        1       1  blue
+        2       2   red
+        3       2  blue
+
+        To override the name of the resulting column, specify `name`:
+
+        >>> idx.to_frame(name=['n', 'c'])  # doctest: +NORMALIZE_WHITESPACE
+                      n     c
+        number color
+        1      red    1   red
+               blue   1  blue
+        2      red    2   red
+               blue   2  blue
+        """
+        if name is None:
+            name = [name if name is not None else (str(i),)
+                    for i, name in enumerate(self._internal.index_names)]
+        elif is_list_like(name):
+            if len(name) != len(self._internal.index_map):
+                raise ValueError("'name' should have same length as number of levels on index.")
+            name = [n if isinstance(n, tuple) else (n,) for n in name]
+        else:
+            raise TypeError("'name' must be a list / sequence of column names.")
+
+        sdf = self._internal.sdf.select([scol.alias(name_like_string(idx))
+                                         for scol, idx in zip(self._internal.index_scols, name)]
+                                        + [NATURAL_ORDER_COLUMN_NAME])
+
+        if index:
+            index_map = [(name_like_string(idx), n)
+                         for idx, n in zip(name, self._internal.index_names)]
+        else:
+            index_map = None  # type: ignore
+
+        internal = _InternalFrame(sdf=sdf,
+                                  index_map=index_map,
+                                  column_index=name,
+                                  column_scols=[scol_for(sdf, name_like_string(idx))
+                                                for idx in name])
+        return DataFrame(internal)
 
     def to_pandas(self) -> pd.MultiIndex:
         """
