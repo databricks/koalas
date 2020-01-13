@@ -406,3 +406,21 @@ def validate_axis(axis=0, none_axis=0):
         raise ValueError('No axis named {0}'.format(axis))
     # convert to numeric axis
     return {None: none_axis, 'index': 0, 'columns': 1}.get(axis, axis)
+
+
+def compare_null_first(left, right, comp):
+    return ((left.isNotNull() & right.isNotNull() & comp(left, right))
+            | (left.isNull() & right.isNotNull()))
+
+
+def compare_null_last(left, right, comp):
+    return ((left.isNotNull() & right.isNotNull() & comp(left, right))
+            | (left.isNotNull() & right.isNull()))
+
+
+def compare_disallow_null(left, right, comp):
+    return left.isNotNull() & right.isNotNull() & comp(left, right)
+
+
+def compare_allow_null(left, right, comp):
+    return left.isNull() | right.isNull() | comp(left, right)
