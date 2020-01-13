@@ -1032,6 +1032,62 @@ class Index(IndexOpsMixin):
 
         return result if len(result) > 1 else result[0]
 
+    def append(self, other):
+        """
+        Append a collection of Index options together.
+
+        Parameters
+        ----------
+        other : Index
+
+        Returns
+        -------
+        appended : Index
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10, 5, 0, 5, 10, 5, 0, 10])
+        >>> kidx
+        Int64Index([10, 5, 0, 5, 10, 5, 0, 10], dtype='int64')
+
+        >>> kidx.append(kidx)
+        Int64Index([10, 5, 0, 5, 10, 5, 0, 10, 10, 5, 0, 5, 10, 5, 0, 10], dtype='int64')
+
+        Support for MiltiIndex
+
+        >>> kidx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y')])
+        >>> kidx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   )
+
+        >>> kidx.append(kidx)  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('a', 'x'),
+                    ('b', 'y')],
+                   )
+        """
+        if type(self) is not type(other):
+            raise NotImplementedError(
+                "append() between Index & MultiIndex currently is not supported")
+
+        sdf_self = self._internal.sdf.select(self._internal.index_scols)
+        sdf_other = other._internal.sdf.select(other._internal.index_scols)
+        sdf_appended = sdf_self.union(sdf_other)
+
+        # names should be kept when MultiIndex, but Index wouldn't keep its name.
+        if isinstance(self, MultiIndex):
+            index_map = self._internal.index_map
+        else:
+            index_map = [(idx_col, None) for idx_col in self._internal.index_columns]
+
+        internal = _InternalFrame(
+            sdf=sdf_appended,
+            index_map=index_map)
+
+        return DataFrame(internal).index
+
     def argmax(self):
         """
         Return a maximum argument indexer.
