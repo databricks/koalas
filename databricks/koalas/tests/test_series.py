@@ -469,6 +469,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq((kser % 2 == 0).any(), (pser % 2 == 0).any())
 
+    def test_reset_index_with_default_index_types(self):
+        pser = pd.Series([1, 2, 3], name='0', index=np.random.rand(3))
+        kser = ks.from_pandas(pser)
+
+        with ks.option_context('compute.default_index_type', 'sequence'):
+            self.assert_eq(kser.reset_index(), pser.reset_index())
+
+        with ks.option_context('compute.default_index_type', 'distributed-sequence'):
+            # the order might be changed.
+            self.assert_eq(kser.reset_index().sort_index(),
+                           pser.reset_index())
+
+        with ks.option_context('compute.default_index_type', 'distributed'):
+            # the index is different.
+            self.assert_eq(kser.reset_index().to_pandas().reset_index(drop=True),
+                           pser.reset_index())
+
     def test_sort_values(self):
         pser = pd.Series([1, 2, 3, 4, 5, None, 7], name='0')
         kser = ks.from_pandas(pser)

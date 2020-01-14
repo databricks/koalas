@@ -2722,13 +2722,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if drop:
             new_index_map = []
 
-        internal = self._internal.copy(
-            sdf=sdf,
-            index_map=index_map,
-            column_index=None,
-            column_scols=([scol_for(sdf, name_like_string(name)) for _, name in new_index_map]
-                          + self._internal.column_scols))
-
         if self._internal.column_index_level > 1:
             column_depth = len(self._internal.column_index[0])
             if col_level >= column_depth:
@@ -2736,22 +2729,25 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                  .format(column_depth, col_level + 1))
             if any(col_level + len(name) > column_depth for _, name in new_index_map):
                 raise ValueError('Item must have length equal to number of levels.')
-            columns = pd.MultiIndex.from_tuples(
-                [tuple(([col_fill] * col_level)
-                       + list(name)
-                       + ([col_fill] * (column_depth - (len(name) + col_level))))
-                 for _, name in new_index_map]
-                + self._internal.column_index)
+            column_index = ([tuple(([col_fill] * col_level)
+                                   + list(name)
+                                   + ([col_fill] * (column_depth - (len(name) + col_level))))
+                             for _, name in new_index_map]
+                            + self._internal.column_index)
         else:
-            columns = [name for _, name in new_index_map] + self._internal.column_index
+            column_index = [name for _, name in new_index_map] + self._internal.column_index
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            index_map=index_map,
+            column_index=column_index,
+            column_scols=([scol_for(sdf, name_like_string(name)) for _, name in new_index_map]
+                          + [scol_for(sdf, col) for col in self._internal.data_columns]))
 
         if inplace:
             self._internal = internal
-            self.columns = columns
         else:
-            kdf = DataFrame(internal)
-            kdf.columns = columns
-            return kdf
+            return DataFrame(internal)
 
     def isnull(self):
         """
