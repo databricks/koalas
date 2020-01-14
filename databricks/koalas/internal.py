@@ -58,12 +58,6 @@ class _InternalFrame(object):
     The internal immutable DataFrame which manages Spark DataFrame and column names and index
     information.
 
-    :ivar _sdf: Spark DataFrame
-    :ivar _index_map: list of pair holding the Spark field names for indexes,
-                       and the index name to be seen in Koalas DataFrame.
-    :ivar _scol: Spark Column
-    :ivar _data_columns: list of the Spark field names to be seen as columns in Koalas DataFrame.
-
     .. note:: this is an internal class. It is not supposed to be exposed to users and users
         should not directly access to it.
 
@@ -408,6 +402,51 @@ class _InternalFrame(object):
                               argument is ignored, otherwise if this is None, calculated from sdf.
         :param column_index_names: Names for each of the index levels.
         :param scol: Spark Column to be managed.
+
+        See the examples below to refer what each parameter means.
+
+        >>> column_index = pd.MultiIndex.from_tuples(
+        ...     [('a', 'x'), ('a', 'y'), ('b', 'z')], names=["column_index_a", "column_index_b"])
+        >>> row_index = pd.MultiIndex.from_tuples(
+        ...     [('foo', 'bar'), ('foo', 'bar'), ('zoo', 'bar')],
+        ...     names=["row_index_a", "row_index_b"])
+        >>> kdf = ks.DataFrame(
+        ...     [[1, 2, 3], [4, 5, 6], [7, 8, 9]], index=row_index, columns=column_index)
+        >>> kdf.set_index(('a', 'x'), append=True, inplace=True)
+        >>> kdf  # doctest: +NORMALIZE_WHITESPACE
+        column_index_a                  a  b
+        column_index_b                  y  z
+        row_index_a row_index_b (a, x)
+        foo         bar         1       2  3
+                                4       5  6
+        zoo         bar         7       8  9
+
+        >>> internal = kdf[('a', 'y')]._internal
+
+        >>> internal._sdf.show()  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+        +-----------+-----------+------+------+------+...
+        |row_index_a|row_index_b|(a, x)|(a, y)|(b, z)|...
+        +-----------+-----------+------+------+------+...
+        |        foo|        bar|     1|     2|     3|...
+        |        foo|        bar|     4|     5|     6|...
+        |        zoo|        bar|     7|     8|     9|...
+        +-----------+-----------+------+------+------+...
+
+        >>> internal._index_map  # doctest: +NORMALIZE_WHITESPACE
+        [('row_index_a', ('row_index_a',)), ('row_index_b', ('row_index_b',)),
+         ('(a, x)', ('a', 'x'))]
+
+        >>> internal._column_index
+        [('a', 'y')]
+
+        >>> internal._column_scols
+        [Column<b'(a, y)'>]
+
+        >>> list(internal._column_index_names)
+        ['column_index_a', 'column_index_b']
+
+        >>> internal._scol
+        Column<b'(a, y)'>
         """
         assert isinstance(sdf, spark.DataFrame)
 
