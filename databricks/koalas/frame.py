@@ -6384,7 +6384,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  3.0  3
 
         """
-        results = []
+        applied = []
         if is_dict_like(dtype):
             for col_name in dtype.keys():
                 if col_name not in self.columns:
@@ -6392,14 +6392,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                    'key in a dtype mappings argument.')
             for col_name, col in self.items():
                 if col_name in dtype:
-                    results.append(col.astype(dtype=dtype[col_name]))
+                    applied.append(col.astype(dtype=dtype[col_name]))
                 else:
-                    results.append(col)
+                    applied.append(col)
         else:
             for col_name, col in self.items():
-                results.append(col.astype(dtype=dtype))
-        column_scols = list(map(lambda ser: ser._scol, results))
-        return DataFrame(self._internal.with_new_columns(column_scols))
+                applied.append(col.astype(dtype=dtype))
+        return DataFrame(self._internal.with_new_columns(applied))
 
     def add_prefix(self, prefix):
         """
