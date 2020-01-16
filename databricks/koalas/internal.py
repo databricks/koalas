@@ -450,9 +450,6 @@ class _InternalFrame(object):
         """
         assert isinstance(sdf, spark.DataFrame)
 
-        if NATURAL_ORDER_COLUMN_NAME not in sdf.columns:
-            sdf = sdf.withColumn(NATURAL_ORDER_COLUMN_NAME, F.monotonically_increasing_id())
-
         if index_map is None:
             # Here is when Koalas DataFrame is created directly from Spark DataFrame.
             assert not any(SPARK_INDEX_NAME_PATTERN.match(name) for name in sdf.schema.names), \
@@ -462,6 +459,9 @@ class _InternalFrame(object):
             # Create default index.
             index_map = [(SPARK_INDEX_NAME_FORMAT(0), None)]
             sdf = _InternalFrame.attach_default_index(sdf)
+
+        if NATURAL_ORDER_COLUMN_NAME not in sdf.columns:
+            sdf = sdf.withColumn(NATURAL_ORDER_COLUMN_NAME, F.monotonically_increasing_id())
 
         assert all(isinstance(index_field, str)
                    and (index_name is None or (isinstance(index_name, tuple)
@@ -517,10 +517,10 @@ class _InternalFrame(object):
         """
         if default_index_type is None:
             default_index_type = get_option("compute.default_index_type")
+        scols = [scol_for(sdf, column) for column in sdf.columns]
         if default_index_type == "sequence":
             sequential_index = F.row_number().over(
-                Window.orderBy(NATURAL_ORDER_COLUMN_NAME)) - 1
-            scols = [scol_for(sdf, column) for column in sdf.columns]
+                Window.orderBy(F.monotonically_increasing_id())) - 1
             return sdf.select(sequential_index.alias(SPARK_INDEX_NAME_FORMAT(0)), *scols)
         elif default_index_type == "distributed-sequence":
             # 1. Calculates counts per each partition ID. `counts` here is, for instance,
@@ -530,8 +530,9 @@ class _InternalFrame(object):
             #         3: 83,
             #         ...
             #     }
+            sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
             counts = map(lambda x: (x["key"], x["count"]),
-                         sdf.groupby(F.spark_partition_id().alias("key")).count().collect())
+                         sdf.groupby(sdf['__spark_partition_id'].alias("key")).count().collect())
 
             # 2. Calculates cumulative sum in an order of partition id.
             #     Note that it does not matter if partition id guarantees its order or not.
@@ -540,28 +541,27 @@ class _InternalFrame(object):
             # sort by partition key.
             sorted_counts = sorted(counts, key=lambda x: x[0])
             # get cumulative sum in an order of partition key.
-            cumulative_counts = accumulate(map(lambda count: count[1], sorted_counts))
+            cumulative_counts = [0] + list(accumulate(map(lambda count: count[1], sorted_counts)))
             # zip it with partition key.
             sums = dict(zip(map(lambda count: count[0], sorted_counts), cumulative_counts))
 
-            return_schema = StructType(
-                [StructField(SPARK_INDEX_NAME_FORMAT(0), LongType())] + list(sdf.schema))
-            columns = [f.name for f in return_schema]
+            # 3. Attach offset for each partition.
+            @pandas_udf(LongType(), PandasUDFType.SCALAR)
+            def offset(id):
+                current_partition_offset = sums[id.iloc[0]]
+                return pd.Series(current_partition_offset).repeat(len(id))
 
-            # 3. Group by partition id and assign each range.
-            def default_index(pdf):
-                current_partition_max = sums[pdf["__spark_partition_id"].iloc[0]]
-                offset = len(pdf)
-                pdf[SPARK_INDEX_NAME_FORMAT(0)] = list(range(
-                    current_partition_max - offset, current_partition_max))
-                return pdf[columns]
+            sdf = sdf.withColumn('__offset__', offset('__spark_partition_id'))
 
-            grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(default_index)
+            # 4. Calculate row_number in each partition.
+            w = Window.partitionBy('__spark_partition_id').orderBy(F.monotonically_increasing_id())
+            row_number = F.row_number().over(w)
+            sdf = sdf.withColumn('__row_number__', row_number)
 
-            sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
-            return sdf.groupBy("__spark_partition_id").apply(grouped_map_func)
+            # 5. Calcuate the index.
+            return sdf.select(
+                F.expr('__offset__ + __row_number__ - 1').alias(SPARK_INDEX_NAME_FORMAT(0)), *scols)
         elif default_index_type == "distributed":
-            scols = [scol_for(sdf, column) for column in sdf.columns]
             return sdf.select(
                 F.monotonically_increasing_id().alias(SPARK_INDEX_NAME_FORMAT(0)), *scols)
         else:
