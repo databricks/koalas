@@ -3821,8 +3821,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return DataFrame(pd.DataFrame.from_records(data, index, exclude, columns, coerce_float,
                                                    nrows))
 
-    def to_records(self, index=True, convert_datetime64=None,
-                   column_dtypes=None, index_dtypes=None):
+    def to_records(self, index=True, column_dtypes=None, index_dtypes=None):
         """
         Convert DataFrame to a NumPy record array.
 
@@ -3837,9 +3836,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index : bool, default True
             Include index in resulting record array, stored in 'index'
             field or using the index label, if set.
-        convert_datetime64 : bool, default None
-            Whether to convert the index to datetime.datetime if it is a
-            DatetimeIndex.
         column_dtypes : str, type, dict, default None
             If a string or type, the data type to store all columns. If
             a dictionary, a mapping of column names and indices (zero-indexed)

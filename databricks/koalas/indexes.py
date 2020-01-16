@@ -1658,13 +1658,13 @@ class MultiIndex(Index):
         return result
 
     # TODO: ADD error parameter
-    def drop(self, labels, level=None):
+    def drop(self, codes, level=None):
         """
         Make new MultiIndex with passed list of labels deleted
 
         Parameters
         ----------
-        labels : array-like
+        codes : array-like
             Must be a list of tuples
         level : int or level name, default None
 
