@@ -1696,7 +1696,7 @@ class MultiIndex(Index):
             scol = index_scols[0]
         else:
             scol = index_scols[level] if isinstance(level, int) else sdf[level]
-        sdf = sdf[~scol.isin(labels)]
+        sdf = sdf[~scol.isin(codes)]
         return MultiIndex(DataFrame(_InternalFrame(sdf=sdf,
                                                    index_map=self._kdf._internal.index_map)))
 
