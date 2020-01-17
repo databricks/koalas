@@ -27,7 +27,7 @@ from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
-from databricks.koalas.utils import column_index_level, name_like_string
+from databricks.koalas.utils import arrow_enabled, column_index_level, name_like_string
 
 
 class _IndexerLike(object):
@@ -120,8 +120,9 @@ class AtIndexer(_IndexerLike):
 
         cond = reduce(lambda x, y: x & y,
                       [scol == row for scol, row in zip(self._internal.index_scols, row_sel)])
-        pdf = self._internal.sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond) \
-            .select(self._internal.scol_for(col_sel)).toPandas()
+        sdf = self._internal.sdf.filter(cond).select(self._internal.scol_for(col_sel))
+        with arrow_enabled():
+            pdf = sdf.toPandas()
 
         if len(pdf) < 1:
             raise KeyError(name_like_string(row_sel))

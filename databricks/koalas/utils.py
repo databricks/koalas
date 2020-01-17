@@ -19,6 +19,7 @@ Commonly used utils in Koalas.
 
 import functools
 from collections import OrderedDict
+from contextlib import contextmanager
 from distutils.version import LooseVersion
 from typing import Callable, Dict, List, Tuple, Union
 
@@ -286,6 +287,28 @@ def default_session(conf=None):
     for key, value in conf.items():
         builder = builder.config(key, value)
     return builder.getOrCreate()
+
+
+@contextmanager
+def arrow_enabled():
+    """
+    Context manager to temporarily enable arrow execution in the `with` statement context.
+    """
+    session = default_session()
+    try:
+        conf = 'spark.sql.execution.arrow.pyspark.enabled'
+        orig = session.conf.get(conf, None)
+    except Exception:
+        conf = 'spark.sql.execution.arrow.enabled'
+        orig = session.conf.get(conf, None)
+    try:
+        session.conf.set(conf, True)
+        yield
+    finally:
+        if orig is None:
+            session.conf.unset(conf)
+        else:
+            session.conf.set(conf, orig)
 
 
 def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],

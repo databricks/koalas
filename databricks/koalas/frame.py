@@ -51,7 +51,8 @@ from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, NATURAL_
                                         SPARK_INDEX_NAME_FORMAT)
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.utils import column_index_level, name_like_string, scol_for, validate_axis
+from databricks.koalas.utils import (arrow_enabled, column_index_level, name_like_string, scol_for,
+                                     validate_axis)
 from databricks.koalas.typedef import _infer_return_type, as_spark_type, as_python_type
 from databricks.koalas.plot import KoalasFramePlotMethods
 from databricks.koalas.config import get_option
@@ -452,7 +453,8 @@ class DataFrame(_Frame, Generic[T]):
                     exprs.append(col_sdf.alias(name_like_string(idx)))
 
             sdf = self._sdf.select(*exprs)
-            pdf = sdf.toPandas()
+            with arrow_enabled():
+                pdf = sdf.toPandas()
 
             if self._internal.column_index_level > 1:
                 pdf.columns = pd.MultiIndex.from_tuples(self._internal.column_index)
@@ -3011,8 +3013,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         axis = validate_axis(axis)
         if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
-        res = self._sdf.select([self[idx]._nunique(dropna, approx, rsd)
-                                for idx in self._internal.column_index]).toPandas()
+        sdf = self._sdf.select([self[idx]._nunique(dropna, approx, rsd)
+                                for idx in self._internal.column_index])
+        with arrow_enabled():
+            res = sdf.toPandas()
         if self._internal.column_index_level == 1:
             res.columns = [idx[0] for idx in self._internal.column_index]
         else:
@@ -8259,7 +8263,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'id': range(10)})
         >>> df.explain()
         == Physical Plan ==
-        Scan ExistingRDD[__index_level_0__#...,id#...]
+        Scan ExistingRDD arrow[__index_level_0__#...,id#...]
 
         >>> df.explain(True)
         == Parsed Logical Plan ==
@@ -8269,7 +8273,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         == Optimized Logical Plan ==
         ...
         == Physical Plan ==
-        Scan ExistingRDD[__index_level_0__#...,id#...]
+        Scan ExistingRDD arrow[__index_level_0__#...,id#...]
         """
         self._internal.spark_internal_df.explain(extended)
 

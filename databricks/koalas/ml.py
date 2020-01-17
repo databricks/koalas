@@ -23,6 +23,8 @@ import pyspark
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.stat import Correlation
 
+from databricks.koalas.utils import arrow_enabled
+
 
 if TYPE_CHECKING:
     import databricks.koalas as ks
@@ -51,7 +53,8 @@ def corr(kdf: 'ks.DataFrame', method: str = 'pearson') -> pd.DataFrame:
     assert method in ('pearson', 'spearman')
     ndf, fields = to_numeric_df(kdf)
     corr = Correlation.corr(ndf, CORRELATION_OUTPUT_COLUMN, method)
-    pcorr = corr.toPandas()
+    with arrow_enabled():
+        pcorr = corr.toPandas()
     arr = pcorr.iloc[0, 0].toArray()
     arr = pd.DataFrame(arr)
     arr.columns = fields

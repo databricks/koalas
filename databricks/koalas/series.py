@@ -45,8 +45,8 @@ from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAM
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.ml import corr
-from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
-                                     combine_frames, name_like_string, validate_axis)
+from databricks.koalas.utils import (arrow_enabled, validate_arguments_and_invoke_function,
+                                     scol_for, combine_frames, name_like_string, validate_axis)
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
@@ -3319,7 +3319,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         if len(self._internal._index_map) == len(item):
             # if sdf has one column and one data, return data only without frame
-            pdf = sdf.limit(2).toPandas()
+            with arrow_enabled():
+                pdf = sdf.limit(2).toPandas()
             length = len(pdf)
             if length == 1:
                 self._internal = self.drop(item)._internal
@@ -4075,7 +4076,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         if len(self._internal._index_map) == len(key):
             # if sdf has one column and one data, return data only without frame
-            pdf = sdf.limit(2).toPandas()
+            with arrow_enabled():
+                pdf = sdf.limit(2).toPandas()
             length = len(pdf)
             if length == 1:
                 return pdf[self.name].iloc[0]

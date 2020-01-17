@@ -29,6 +29,7 @@ from pyspark.sql import functions as F
 
 from databricks.koalas.missing import _unsupported_function
 from databricks.koalas.config import get_option
+from databricks.koalas.utils import arrow_enabled
 
 
 if LooseVersion(pd.__version__) < LooseVersion('0.25'):
@@ -323,12 +324,14 @@ class KoalasBoxPlot(BoxPlot):
     @staticmethod
     def _compute_stats(data, colname, whis, precision):
         # Computes mean, median, Q1 and Q3 with approx_percentile and precision
-        pdf = (data._kdf._sdf
+        sdf = (data._kdf._sdf
                .agg(*[F.expr('approx_percentile({}, {}, {})'.format(colname, q,
                                                                     1. / precision))
                       .alias('{}_{}%'.format(colname, int(q * 100)))
                       for q in [.25, .50, .75]],
-                    F.mean(colname).alias('{}_mean'.format(colname))).toPandas())
+                    F.mean(colname).alias('{}_mean'.format(colname))))
+        with arrow_enabled():
+            pdf = sdf.toPandas()
 
         # Computes IQR and Tukey's fences
         iqr = '{}_iqr'.format(colname)
@@ -360,11 +363,12 @@ class KoalasBoxPlot(BoxPlot):
     @staticmethod
     def _calc_whiskers(colname, outliers):
         # Computes min and max values of non-outliers - the whiskers
-        minmax = (outliers
-                  .filter('not __{}_outlier'.format(colname))
-                  .agg(F.min(colname).alias('min'),
-                       F.max(colname).alias('max'))
-                  .toPandas())
+        sdf = (outliers
+               .filter('not __{}_outlier'.format(colname))
+               .agg(F.min(colname).alias('min'),
+                    F.max(colname).alias('max')))
+        with arrow_enabled():
+            minmax = sdf.toPandas()
         return minmax.iloc[0][['min', 'max']].values
 
     @staticmethod
@@ -373,11 +377,12 @@ class KoalasBoxPlot(BoxPlot):
         fliers_df = outliers.filter('__{}_outlier'.format(colname))
 
         # If shows fliers, takes the top 1k with highest absolute values
-        fliers = (fliers_df
-                  .select(F.abs(F.col('`{}`'.format(colname))).alias(colname))
-                  .orderBy(F.desc('`{}`'.format(colname)))
-                  .limit(1001)
-                  .toPandas()[colname].values)
+        sdf = (fliers_df
+               .select(F.abs(F.col('`{}`'.format(colname))).alias(colname))
+               .orderBy(F.desc('`{}`'.format(colname)))
+               .limit(1001))
+        with arrow_enabled():
+            fliers = sdf.toPandas()[colname].values
 
         return fliers
 
@@ -490,13 +495,13 @@ class KoalasHistPlot(HistPlot):
                                 outputCol=bucket_name,
                                 handleInvalid="skip")
         # after bucketing values, groups and counts them
-        result = (bucketizer
-                  .transform(sdf)
-                  .select(bucket_name)
-                  .groupby(bucket_name)
-                  .agg(F.count('*').alias('count'))
-                  .toPandas()
-                  .sort_values(by=bucket_name))
+        sdf = (bucketizer
+               .transform(sdf)
+               .select(bucket_name)
+               .groupby(bucket_name)
+               .agg(F.count('*').alias('count')))
+        with arrow_enabled():
+            result = sdf.toPandas().sort_values(by=bucket_name)
 
         # generates a pandas DF with one row for each bin
         # we need this as some of the bins may be empty

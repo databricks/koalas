@@ -37,8 +37,8 @@ except ImportError:
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
 from databricks.koalas.typedef import infer_pd_series_spark_type, spark_type_to_pandas_dtype
-from databricks.koalas.utils import (column_index_level, default_session, lazy_property,
-                                     name_like_string, scol_for)
+from databricks.koalas.utils import (arrow_enabled, column_index_level, default_session,
+                                     lazy_property, name_like_string, scol_for)
 
 
 # A function to turn given numbers to Spark columns that represent Koalas index.
@@ -697,7 +697,8 @@ class _InternalFrame(object):
     def pandas_df(self):
         """ Return as pandas DataFrame. """
         sdf = self.spark_internal_df
-        pdf = sdf.toPandas()
+        with arrow_enabled():
+            pdf = sdf.toPandas()
         if len(pdf) == 0 and len(sdf.schema) > 0:
             pdf = pdf.astype({field.name: spark_type_to_pandas_dtype(field.dataType)
                               for field in sdf.schema})
@@ -803,7 +804,9 @@ class _InternalFrame(object):
             if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
                 continue
             reset_index[name] = col.replace({np.nan: None})
-        sdf = default_session().createDataFrame(reset_index, schema=schema)
+
+        with arrow_enabled():
+            sdf = default_session().createDataFrame(reset_index, schema=schema)
         return _InternalFrame(sdf=sdf,
                               index_map=index_map,
                               column_index=column_index,
