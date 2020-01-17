@@ -295,20 +295,24 @@ def arrow_enabled():
     Context manager to temporarily enable arrow execution in the `with` statement context.
     """
     session = default_session()
-    try:
+    if LooseVersion(pyspark.__version__) >= LooseVersion('3.0'):
         conf = 'spark.sql.execution.arrow.pyspark.enabled'
-        orig = session.conf.get(conf, None)
-    except Exception:
+    elif LooseVersion(pyspark.__version__) >= LooseVersion('2.4'):
         conf = 'spark.sql.execution.arrow.enabled'
-        orig = session.conf.get(conf, None)
+    else:
+        # Don't care for Spark<2.4 since it doesn't fallback to non-arrow mode.
+        conf = None
     try:
-        session.conf.set(conf, True)
+        if conf is not None:
+            orig = session.conf.get(conf, None)
+            session.conf.set(conf, True)
         yield
     finally:
-        if orig is None:
-            session.conf.unset(conf)
-        else:
-            session.conf.set(conf, orig)
+        if conf is not None:
+            if orig is None:
+                session.conf.unset(conf)
+            else:
+                session.conf.set(conf, orig)
 
 
 def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],
