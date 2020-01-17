@@ -7931,8 +7931,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Name: 0, dtype: int64
         """
         sdf = self._sdf
-        max_cols = map(lambda x: F.max(scol_for(sdf, x)).alias(x), self._internal.data_columns)
-        sdf_max = sdf.select(*max_cols)
+        max_cols = map(lambda scol: F.max(scol), self._internal.column_scols)
+        sdf_max = sdf.select(*max_cols).head()
         # `sdf_max` looks like below
         # +------+------+------+
         # |(a, x)|(b, y)|(c, z)|
@@ -7940,8 +7940,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |     3|   4.0|   400|
         # +------+------+------+
 
-        conds = (scol_for(sdf, column_name) == max_val
-                 for column_name, max_val in zip(sdf_max.columns, sdf_max.head()))
+        conds = (scol == max_val for scol, max_val in zip(self._internal.column_scols, sdf_max))
         cond = reduce(lambda x, y: x | y, conds)
 
         kdf = DataFrame(self._internal.copy(sdf=sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)))
@@ -8010,11 +8009,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Name: 0, dtype: int64
         """
         sdf = self._sdf
-        min_cols = map(lambda x: F.min(scol_for(sdf, x)).alias(x), self._internal.data_columns)
-        sdf_min = sdf.select(*min_cols)
+        min_cols = map(lambda scol: F.min(scol), self._internal.column_scols)
+        sdf_min = sdf.select(*min_cols).head()
 
-        conds = (scol_for(sdf, column_name) == min_val
-                 for column_name, min_val in zip(sdf_min.columns, sdf_min.head()))
+        conds = (scol == min_val for scol, min_val in zip(self._internal.column_scols, sdf_min))
         cond = reduce(lambda x, y: x | y, conds)
 
         kdf = DataFrame(self._internal.copy(sdf=sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)))
