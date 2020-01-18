@@ -1946,7 +1946,58 @@ class DataFrameGroupBy(GroupBy):
                                                     for c in applied])
         return DataFrame(internal)
 
+    # TODO: Implement 'percentiles', 'include', and 'exclude' arguments.
+    # TODO: Add ``DataFrame.select_dtypes`` to See Also when 'include'
+    #   and 'exclude' arguments are implemented.
     def describe(self):
+        """
+        Generate descriptive statistics that summarize the central tendency,
+        dispersion and shape of a dataset's distribution, excluding
+        ``NaN`` values.
+
+        Analyzes both numeric and object series, as well
+        as ``DataFrame`` column sets of mixed data types. The output
+        will vary depending on what is provided. Refer to the notes
+        below for more detail.
+
+        .. note:: Unlike pandas, the percentiles in Koalas are based upon
+            approximate percentile computation because computing percentiles
+            across a large dataset is extremely expensive.
+
+        Returns
+        -------
+        DataFrame
+            Summary statistics of the DataFrame provided.
+
+        See Also
+        --------
+        DataFrame.count
+        DataFrame.max
+        DataFrame.min
+        DataFrame.mean
+        DataFrame.std
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
+        >>> df
+           a  b  c
+        0  1  4  7
+        1  1  5  8
+        2  3  6  9
+
+        Describing a ``DataFrame``. By default only numeric fields
+        are returned.
+
+        >>> described = df.groupby('a').describe()
+        >>> described  # doctest: +NORMALIZE_WHITESPACE
+              b                                        c
+          count mean       std min 25% 50% 75% max count mean       std min 25% 50% 75% max
+        a
+        1   2.0  4.5  0.707107 4.0 4.0 4.0 5.0 5.0   2.0  7.5  0.707107 7.0 7.0 7.0 8.0 8.0
+        3   1.0  6.0       NaN 6.0 6.0 4.0 6.0 6.0   1.0  9.0       NaN 9.0 9.0 9.0 9.0 9.0
+
+        """
         kdf = self.agg(["count", "mean", "std", "min", "quartiles", "max"]).reset_index()
         formatted_percentiles = ["25%", "50%", "75%"]
 
