@@ -8260,8 +8260,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame({'id': range(10)})  # doctest: +SKIP
-        >>> df.explain()
+        >>> df = ks.DataFrame({'id': range(10)})
+        >>> df.explain()  # doctest: +SKIP
         == Physical Plan ==
         Scan ExistingRDD arrow[__index_level_0__#...,id#...]
 
