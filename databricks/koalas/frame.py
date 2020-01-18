@@ -8260,12 +8260,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame({'id': range(10)})
+        >>> df = ks.DataFrame({'id': range(10)})  # doctest: +SKIP
         >>> df.explain()
         == Physical Plan ==
         Scan ExistingRDD arrow[__index_level_0__#...,id#...]
 
-        >>> df.explain(True)
+        >>> df.explain(True)  # doctest: +SKIP
         == Parsed Logical Plan ==
         ...
         == Analyzed Logical Plan ==
