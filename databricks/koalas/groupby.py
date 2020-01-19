@@ -1994,7 +1994,7 @@ class DataFrameGroupBy(GroupBy):
           count mean       std min 25% 50% 75% max count mean       std min 25% 50% 75% max
         a
         1   2.0  4.5  0.707107 4.0 4.0 4.0 5.0 5.0   2.0  7.5  0.707107 7.0 7.0 7.0 8.0 8.0
-        3   1.0  6.0       NaN 6.0 6.0 4.0 6.0 6.0   1.0  9.0       NaN 9.0 9.0 9.0 9.0 9.0
+        3   1.0  6.0       NaN 6.0 6.0 6.0 6.0 6.0   1.0  9.0       NaN 9.0 9.0 9.0 9.0 9.0
 
         """
         kdf = self.agg(["count", "mean", "std", "min", "quartiles", "max"]).reset_index()
