@@ -520,6 +520,7 @@ class LocIndexer(_LocIndexerLike):
         :param key: the multi-index column keys represented by tuple
         :return: DataFrame or Series
         """
+        assert isinstance(key, tuple)
         if indexes is None:
             indexes = [(idx, idx) for idx in self._internal.column_index]
         for k in key:
@@ -529,8 +530,7 @@ class LocIndexer(_LocIndexerLike):
 
         if all(len(idx) > 0 and idx[0] == '' for _, idx in indexes):
             # If the head is '', drill down recursively.
-            indexes = [(col, tuple([str(key), *idx[1:]]))
-                       for i, (col, idx) in enumerate(indexes)]
+            indexes = [(col, tuple([str(key), *idx[1:]])) for i, (col, idx) in enumerate(indexes)]
             return self._get_from_multiindex_column((str(key),), indexes)
         else:
             returns_series = all(len(idx) == 0 for _, idx in indexes)
