@@ -30,6 +30,7 @@ from pandas.io.formats.printing import pprint_thing
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
+from pyspark.sql.types import BooleanType, NumericType, StringType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
@@ -38,9 +39,9 @@ from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series, _col
-from databricks.koalas.utils import name_like_string, default_session, scol_for
-from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAME,
-                                        SPARK_INDEX_NAME_FORMAT)
+from databricks.koalas.utils import (compare_allow_null, compare_disallow_null, compare_null_first,
+                                     compare_null_last, default_session, name_like_string)
+from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 
 
 class Index(IndexOpsMixin):
@@ -1313,205 +1314,61 @@ class MultiIndex(Index):
         result = internal._sdf.agg(*(F.countDistinct(c) for c in internal.index_scols)).collect()[0]
         return tuple(result)
 
-    @property
-    def is_monotonic(self):
-        """
-        Return boolean if values in the object are monotonically increasing.
+    def _is_monotonic(self):
+        col = self._scol
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
+        prev = F.lag(col, 1).over(window)
 
-        .. note:: the current implementation of is_monotonic_increasing uses Spark's
-            Window without specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
-            and it cause spark job as many as nlevels of the MultiIndex when the result is True
+        cond = F.lit(True)
+        for field in self.spark_type[::-1]:
+            left = col.getField(field.name)
+            right = prev.getField(field.name)
+            if isinstance(field.dataType, StringType):
+                compare = compare_disallow_null
+            elif isinstance(field.dataType, BooleanType):
+                compare = compare_allow_null
+            elif isinstance(field.dataType, NumericType):
+                compare = compare_null_first
+            else:
+                compare = compare_null_last
+            cond = F.when(left.eqNullSafe(right), cond) \
+                .otherwise(compare(left, right, spark.Column.__gt__))
 
-        Returns
-        -------
-        is_monotonic : boolean
-
-        Examples
-        --------
-        >>> midx = ks.MultiIndex.from_tuples(
-        ... [('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd'), ('z', 'e')])
-        >>> midx  # doctest: +SKIP
-        MultiIndex([('x', 'a'),
-                    ('x', 'b'),
-                    ('y', 'c'),
-                    ('y', 'd'),
-                    ('z', 'e')],
-                   )
-        >>> midx.is_monotonic
-        True
-
-        >>> midx = ks.MultiIndex.from_tuples(
-        ... [('z', 'a'), ('z', 'b'), ('y', 'c'), ('y', 'd'), ('x', 'e')])
-        >>> midx  # doctest: +SKIP
-        MultiIndex([('z', 'a'),
-                    ('z', 'b'),
-                    ('y', 'c'),
-                    ('y', 'd'),
-                    ('x', 'e')],
-                   )
-        >>> midx.is_monotonic
-        False
-        """
-        index_scols = self._internal.index_scols
-        index_name = SPARK_INDEX_NAME_FORMAT(0)
-        sdf = self._internal.sdf
-
-        col = index_scols[0]
-        window = (Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1))
-
-        if sdf.dtypes[0][1] in ['bigint', 'double']:
-            # `None` is treated as the largest value when the column has numeric type.
-            cond = col >= F.lag(F.when(col.isNotNull(), col).otherwise(np.inf), 1).over(window)
-        else:
-            # kidx1 = ks.MultiIndex.from_tuples([('x', 'd'), ('y', None), ('y', 'c'), ('z', 'a')])
-            # kidx2 = ks.MultiIndex.from_tuples([('x', 'd'), ('y', 'b'), ('y', None), ('z', 'a')])
-            # kidx3 = ks.MultiIndex.from_tuples([('x', 'd'), ('y', None), ('y', None), ('z', 'a')])
-
-            # `is_monotonic_increasing` for `kidx1`, `kidx2` returns `False` since `None` is ignored
-            # for string type basically, but `kidx3` returns `True` since pandas returns `True`
-            # if all values belong to same index partition('y', this example) are `None`.
-            # so, below lines to handle above cases.
-            cond = ((col >= F.lag(col, 1).over(window)) &
-                    F.when(col.isNull(), F.lag(col, 1).over(window).isNull())
-                     .otherwise(F.lag(col, 1, True).over(window).isNotNull()))
+        cond = prev.isNull() | cond
 
         internal = _InternalFrame(
-            sdf=sdf.select(cond.alias(index_name)),
-            index_map=[(index_name, None)])
+            sdf=self._internal.sdf.select(self._internal.index_scols + [cond]),
+            index_map=self._internal.index_map)
 
-        # first of all, make sure if the first index is monotonic increasing
-        # if first index is not monotonic increasing, return False
-        if not DataFrame(internal).index.all():
-            return False
+        return _col(DataFrame(internal))
 
-        def _is_nlevel_monotonic(level):
-            """
-            Return if given level of index is monotonic.
-            (`level` should be > 0)
-            """
-            col = index_scols[level]
-            col_prev = index_scols[level - 1]
+    def _is_monotonic_decreasing(self):
+        col = self._scol
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
+        prev = F.lag(col, 1).over(window)
 
-            # each level of index should compare their values based on grouped previous index.
-            window = (Window.orderBy(NATURAL_ORDER_COLUMN_NAME)
-                            .partitionBy(col_prev)
-                            .rowsBetween(-1, -1))
-
-            if sdf.dtypes[level][1] in ['bigint', 'double']:
-                cond = col >= F.lag(F.when(col.isNotNull(), col).otherwise(np.inf), 1).over(window)
+        cond = F.lit(True)
+        for field in self.spark_type[::-1]:
+            left = col.getField(field.name)
+            right = prev.getField(field.name)
+            if isinstance(field.dataType, StringType):
+                compare = compare_disallow_null
+            elif isinstance(field.dataType, BooleanType):
+                compare = compare_allow_null
+            elif isinstance(field.dataType, NumericType):
+                compare = compare_null_last
             else:
-                cond = ((col >= F.lag(col, 1).over(window)) &
-                        F.when(col.isNull(), F.lag(col, 1).over(window).isNull())
-                         .otherwise(F.lag(col, 1, True).over(window).isNotNull()))
+                compare = compare_null_first
+            cond = F.when(left.eqNullSafe(right), cond) \
+                .otherwise(compare(left, right, spark.Column.__lt__))
 
-            internal = _InternalFrame(
-                sdf=sdf.select(cond.alias(index_name)),
-                index_map=[(index_name, None)])
-            return DataFrame(internal).index.all()
-
-        # we already checked the first index (level = 0) above,
-        # so, start checking from level 1.
-        for nlevel in range(self.nlevels)[1:]:
-            if not _is_nlevel_monotonic(nlevel):
-                return False
-
-        return True
-
-    is_monotonic_increasing = is_monotonic
-
-    @property
-    def is_monotonic_decreasing(self):
-        """
-        Return boolean if values in the object are monotonically increasing.
-
-        .. note:: the current implementation of is_monotonic_increasing uses Spark's
-            Window without specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
-            and it cause spark job as many as nlevels of the MultiIndex when the result is True
-
-        Returns
-        -------
-        is_monotonic : boolean
-
-        Examples
-        --------
-        >>> midx = ks.MultiIndex.from_tuples(
-        ... [('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd'), ('z', 'e')])
-        >>> midx  # doctest: +SKIP
-        MultiIndex([('x', 'a'),
-                    ('x', 'b'),
-                    ('y', 'c'),
-                    ('y', 'd'),
-                    ('z', 'e')],
-                   )
-        >>> midx.is_monotonic_decreasing
-        False
-
-        >>> midx = ks.MultiIndex.from_tuples(
-        ... [('z', 'e'), ('z', 'd'), ('y', 'c'), ('y', 'b'), ('x', 'a')])
-        >>> midx  # doctest: +SKIP
-        MultiIndex([('z', 'a'),
-                    ('z', 'b'),
-                    ('y', 'c'),
-                    ('y', 'd'),
-                    ('x', 'e')],
-                   )
-        >>> midx.is_monotonic_decreasing
-        True
-        """
-        index_scols = self._internal.index_scols
-        index_name = SPARK_INDEX_NAME_FORMAT(0)
-        sdf = self._internal.sdf
-
-        col = index_scols[0]
-        window = (Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1))
-
-        if sdf.dtypes[0][1] in ['bigint', 'double']:
-            cond = col <= F.lag(F.when(col.isNotNull(), col).otherwise(np.inf), 1).over(window)
-        else:
-            cond = ((col <= F.lag(col, 1).over(window)) &
-                    F.when(col.isNull(), F.lag(col, 1).over(window).isNull())
-                     .otherwise(F.lag(col, 1, True).over(window).isNotNull()))
+        cond = prev.isNull() | cond
 
         internal = _InternalFrame(
-            sdf=sdf.select(cond.alias(index_name)),
-            index_map=[(index_name, None)])
+            sdf=self._internal.sdf.select(self._internal.index_scols + [cond]),
+            index_map=self._internal.index_map)
 
-        if not DataFrame(internal).index.all():
-            return False
-
-        def _is_nlevel_monotonic_decreasing(level):
-            """
-            Return if given level of index is monotonic decerasing.
-            (level should be > 0)
-            """
-            col = index_scols[level]
-            col_prev = index_scols[level - 1]
-
-            window = (Window.orderBy(NATURAL_ORDER_COLUMN_NAME)
-                            .partitionBy(col_prev)
-                            .rowsBetween(-1, -1))
-
-            if sdf.dtypes[level][1] in ['bigint', 'double']:
-                cond = col <= F.lag(F.when(col.isNotNull(), col).otherwise(np.inf), 1).over(window)
-            else:
-                cond = ((col <= F.lag(col, 1).over(window)) &
-                        F.when(col.isNull(), F.lag(col, 1).over(window).isNull())
-                         .otherwise(F.lag(col, 1, True).over(window).isNotNull()))
-
-            internal = _InternalFrame(
-                sdf=sdf.select(cond.alias(index_name)),
-                index_map=[(index_name, None)])
-            return DataFrame(internal).index.all()
-
-        for nlevel in range(self.nlevels)[1:]:
-            if not _is_nlevel_monotonic_decreasing(nlevel):
-                return False
-
-        return True
+        return _col(DataFrame(internal))
 
     def to_pandas(self) -> pd.MultiIndex:
         """
