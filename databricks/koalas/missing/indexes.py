@@ -40,7 +40,6 @@ class _MissingPandasLikeIndex(object):
     flags = unsupported_property('flags', deprecated=True)
 
     # Functions
-    append = unsupported_function('append')
     argsort = unsupported_function('argsort')
     asof = unsupported_function('asof')
     asof_locs = unsupported_function('asof_locs')
@@ -79,7 +78,6 @@ class _MissingPandasLikeIndex(object):
     sortlevel = unsupported_function('sortlevel')
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
-    to_frame = unsupported_function('to_frame')
     to_native_types = unsupported_function('to_native_types')
     union = unsupported_function('union')
     view = unsupported_function('view')
@@ -118,7 +116,6 @@ class _MissingPandasLikeMultiIndex(object):
     flags = unsupported_property('flags', deprecated=True)
 
     # Functions
-    append = unsupported_function('append')
     argsort = unsupported_function('argsort')
     asof = unsupported_function('asof')
     asof_locs = unsupported_function('asof_locs')
@@ -167,7 +164,6 @@ class _MissingPandasLikeMultiIndex(object):
     swaplevel = unsupported_function('swaplevel')
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
-    to_frame = unsupported_function('to_frame')
     to_native_types = unsupported_function('to_native_types')
     truncate = unsupported_function('truncate')
     union = unsupported_function('union')

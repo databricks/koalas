@@ -360,7 +360,7 @@ class DataFrame(_Frame, Generic[T]):
             assert columns is None
             assert dtype is None
             assert not copy
-            super(DataFrame, self).__init__(_InternalFrame(data))
+            super(DataFrame, self).__init__(_InternalFrame(sdf=data, index_map=None))
         elif isinstance(data, ks.Series):
             assert index is None
             assert columns is None
@@ -2104,7 +2104,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             .filter(reduce(lambda x, y: x & y, rows))
 
         if len(key) == len(self._internal.index_scols):
-            result = _col(DataFrame(_InternalFrame(sdf=sdf)).T)
+            result = _col(DataFrame(_InternalFrame(sdf=sdf, index_map=None)).T)
             result.name = key
         else:
             internal = self._internal.copy(
@@ -2722,13 +2722,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if drop:
             new_index_map = []
 
-        internal = self._internal.copy(
-            sdf=sdf,
-            index_map=index_map,
-            column_index=None,
-            column_scols=([scol_for(sdf, name_like_string(name)) for _, name in new_index_map]
-                          + self._internal.column_scols))
-
         if self._internal.column_index_level > 1:
             column_depth = len(self._internal.column_index[0])
             if col_level >= column_depth:
@@ -2736,22 +2729,25 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                  .format(column_depth, col_level + 1))
             if any(col_level + len(name) > column_depth for _, name in new_index_map):
                 raise ValueError('Item must have length equal to number of levels.')
-            columns = pd.MultiIndex.from_tuples(
-                [tuple(([col_fill] * col_level)
-                       + list(name)
-                       + ([col_fill] * (column_depth - (len(name) + col_level))))
-                 for _, name in new_index_map]
-                + self._internal.column_index)
+            column_index = ([tuple(([col_fill] * col_level)
+                                   + list(name)
+                                   + ([col_fill] * (column_depth - (len(name) + col_level))))
+                             for _, name in new_index_map]
+                            + self._internal.column_index)
         else:
-            columns = [name for _, name in new_index_map] + self._internal.column_index
+            column_index = [name for _, name in new_index_map] + self._internal.column_index
+
+        internal = self._internal.copy(
+            sdf=sdf,
+            index_map=index_map,
+            column_index=column_index,
+            column_scols=([scol_for(sdf, name_like_string(name)) for _, name in new_index_map]
+                          + [scol_for(sdf, col) for col in self._internal.data_columns]))
 
         if inplace:
             self._internal = internal
-            self.columns = columns
         else:
-            kdf = DataFrame(internal)
-            kdf.columns = columns
-            return kdf
+            return DataFrame(internal)
 
     def isnull(self):
         """
@@ -7935,8 +7931,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Name: 0, dtype: int64
         """
         sdf = self._sdf
-        max_cols = map(lambda x: F.max(scol_for(sdf, x)).alias(x), self._internal.data_columns)
-        sdf_max = sdf.select(*max_cols)
+        max_cols = map(lambda scol: F.max(scol), self._internal.column_scols)
+        sdf_max = sdf.select(*max_cols).head()
         # `sdf_max` looks like below
         # +------+------+------+
         # |(a, x)|(b, y)|(c, z)|
@@ -7944,8 +7940,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |     3|   4.0|   400|
         # +------+------+------+
 
-        conds = (scol_for(sdf, column_name) == max_val
-                 for column_name, max_val in zip(sdf_max.columns, sdf_max.head()))
+        conds = (scol == max_val for scol, max_val in zip(self._internal.column_scols, sdf_max))
         cond = reduce(lambda x, y: x | y, conds)
 
         kdf = DataFrame(self._internal.copy(sdf=sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)))
@@ -8014,11 +8009,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Name: 0, dtype: int64
         """
         sdf = self._sdf
-        min_cols = map(lambda x: F.min(scol_for(sdf, x)).alias(x), self._internal.data_columns)
-        sdf_min = sdf.select(*min_cols)
+        min_cols = map(lambda scol: F.min(scol), self._internal.column_scols)
+        sdf_min = sdf.select(*min_cols).head()
 
-        conds = (scol_for(sdf, column_name) == min_val
-                 for column_name, min_val in zip(sdf_min.columns, sdf_min.head()))
+        conds = (scol == min_val for scol, min_val in zip(self._internal.column_scols, sdf_min))
         cond = reduce(lambda x, y: x | y, conds)
 
         kdf = DataFrame(self._internal.copy(sdf=sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)))

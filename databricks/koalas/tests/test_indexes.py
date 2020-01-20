@@ -76,6 +76,9 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx.to_series(), pidx.to_series())
         self.assert_eq(kidx.to_series(name='a'), pidx.to_series(name='a'))
 
+        # FIXME: the index values are not addressed the change. (#1190)
+        # self.assert_eq((kidx + 1).to_series(), (pidx + 1).to_series())
+
         pidx = self.pdf.set_index('b', append=True).index
         kidx = self.kdf.set_index('b', append=True).index
 
@@ -87,6 +90,32 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         else:
             self.assert_eq(kidx.to_series(), pidx.to_series())
             self.assert_eq(kidx.to_series(name='a'), pidx.to_series(name='a'))
+
+    def test_to_frame(self):
+        pidx = self.pdf.index
+        kidx = self.kdf.index
+
+        self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
+        self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
+
+        if LooseVersion(pd.__version__) >= LooseVersion('0.24'):
+            # The `name` argument is added in pandas 0.24.
+            self.assert_eq(repr(kidx.to_frame(name='x')), repr(pidx.to_frame(name='x')))
+            self.assert_eq(repr(kidx.to_frame(index=False, name='x')),
+                           repr(pidx.to_frame(index=False, name='x')))
+
+        pidx = self.pdf.set_index('b', append=True).index
+        kidx = self.kdf.set_index('b', append=True).index
+
+        self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
+        self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
+
+        if LooseVersion(pd.__version__) >= LooseVersion('0.24'):
+            # The `name` argument is added in pandas 0.24.
+            self.assert_eq(repr(kidx.to_frame(name=['x', 'y'])),
+                           repr(pidx.to_frame(name=['x', 'y'])))
+            self.assert_eq(repr(kidx.to_frame(index=False, name=['x', 'y'])),
+                           repr(pidx.to_frame(index=False, name=['x', 'y'])))
 
     def test_index_names(self):
         kdf = self.kdf
@@ -488,6 +517,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pidx, kidx)
 
+    def test_multiindex_tuple_column_name(self):
+        column_index = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')])
+        pdf = pd.DataFrame([[1, 2, 3], [4, 5, 6], [7, 8, 9]], columns=column_index)
+        pdf.set_index(('a', 'x'), append=True, inplace=True)
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf, kdf)
+
     def test_len(self):
         pidx = pd.Index(range(10000))
         kidx = ks.Index(range(10000))
@@ -498,6 +534,122 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
 
         self.assert_eq(len(pidx), len(kidx))
+
+    def test_append(self):
+        # Index
+        pidx = pd.Index(range(10000))
+        kidx = ks.Index(range(10000))
+
+        self.assert_eq(
+            pidx.append(pidx),
+            kidx.append(kidx))
+
+        # Index with name
+        pidx1 = pd.Index(range(10000), name='a')
+        pidx2 = pd.Index(range(10000), name='b')
+        kidx1 = ks.Index(range(10000), name='a')
+        kidx2 = ks.Index(range(10000), name='b')
+
+        self.assert_eq(
+            pidx1.append(pidx2),
+            kidx1.append(kidx2))
+
+        self.assert_eq(
+            pidx2.append(pidx1),
+            kidx2.append(kidx1))
+
+        # Index from DataFrame
+        pdf1 = pd.DataFrame({
+            'a': [1, 2, 3],
+            'b': [4, 5, 6]},
+            index=['a', 'b', 'c'])
+        pdf2 = pd.DataFrame({
+            'a': [7, 8, 9],
+            'd': [10, 11, 12]},
+            index=['x', 'y', 'z'])
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        pidx1 = pdf1.set_index('a').index
+        pidx2 = pdf2.set_index('d').index
+        kidx1 = kdf1.set_index('a').index
+        kidx2 = kdf2.set_index('d').index
+
+        self.assert_eq(
+            pidx1.append(pidx2),
+            kidx1.append(kidx2))
+
+        self.assert_eq(
+            pidx2.append(pidx1),
+            kidx2.append(kidx1))
+
+        # Index from DataFrame with MultiIndex columns
+        pdf1 = pd.DataFrame({
+            'a': [1, 2, 3],
+            'b': [4, 5, 6]})
+        pdf2 = pd.DataFrame({
+            'a': [7, 8, 9],
+            'd': [10, 11, 12]})
+        pdf1.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y')])
+        pdf2.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('d', 'y')])
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        pidx1 = pdf1.set_index(('a', 'x')).index
+        pidx2 = pdf2.set_index(('d', 'y')).index
+        kidx1 = kdf1.set_index(('a', 'x')).index
+        kidx2 = kdf2.set_index(('d', 'y')).index
+
+        self.assert_eq(
+            pidx1.append(pidx2),
+            kidx1.append(kidx2))
+
+        self.assert_eq(
+            pidx2.append(pidx1),
+            kidx2.append(kidx1))
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        kmidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+
+        self.assert_eq(pmidx.append(pmidx), kmidx.append(kmidx))
+
+        # MultiIndex with names
+        pmidx1 = pd.MultiIndex.from_tuples(
+            [('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)],
+            names=['x', 'y', 'z'])
+        pmidx2 = pd.MultiIndex.from_tuples(
+            [('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)],
+            names=['p', 'q', 'r'])
+        kmidx1 = ks.MultiIndex.from_tuples(
+            [('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)],
+            names=['x', 'y', 'z'])
+        kmidx2 = ks.MultiIndex.from_tuples(
+            [('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)],
+            names=['p', 'q', 'r'])
+
+        self.assert_eq(
+            pmidx1.append(pmidx2),
+            kmidx1.append(kmidx2))
+
+        self.assert_eq(
+            pmidx2.append(pmidx1),
+            kmidx2.append(kmidx1))
+
+        self.assert_eq(
+            pmidx1.append(pmidx2).names,
+            kmidx1.append(kmidx2).names)
+
+        self.assert_eq(
+            pmidx1.append(pmidx2).names,
+            kmidx1.append(kmidx2).names)
+
+        # Index & MultiIndex currently is not supported
+        expected_error_message = r"append\(\) between Index & MultiIndex currently is not supported"
+        with self.assertRaisesRegex(NotImplementedError, expected_error_message):
+            kidx.append(kmidx)
+        with self.assertRaisesRegex(NotImplementedError, expected_error_message):
+            kmidx.append(kidx)
 
     def test_argmin(self):
         pidx = pd.Index([100, 50, 10, 20, 30, 60, 0, 50, 0, 100, 100, 100, 20, 0, 0])

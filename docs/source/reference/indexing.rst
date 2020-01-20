@@ -85,6 +85,7 @@ Conversion
 
    Index.astype
    Index.to_series
+   Index.to_frame
    Index.to_numpy
 
 Sorting
@@ -106,6 +107,7 @@ Combining / joining / set operations
 .. autosummary::
    :toctree: api/
 
+   Index.append
    Index.symmetric_difference
 
 Selecting
@@ -174,6 +176,7 @@ MultiIndex Combining / joining / set operations
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.append
    MultiIndex.symmetric_difference
 
 MultiIndex Conversion
@@ -182,6 +185,8 @@ MultiIndex Conversion
    :toctree: api/
 
    MultiIndex.astype
+   MultiIndex.to_series
+   MultiIndex.to_frame
    MultiIndex.to_numpy
 
 MultiIndex Sorting
