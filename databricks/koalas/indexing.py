@@ -172,13 +172,6 @@ class iAtIndexer(_IndexerLike):
     >>> kser.iat[1]
     2
     """
-    def __init__(self, kdf_or_kser):
-        from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series
-        assert isinstance(kdf_or_kser, (DataFrame, Series)), \
-            'unexpected argument type: {}'.format(type(kdf_or_kser))
-        self._kdf_or_kser = kdf_or_kser
-
     def __getitem__(self, key):
         if self._is_df:
             if not isinstance(key, tuple) or len(key) != 2:
@@ -195,7 +188,7 @@ class iAtIndexer(_IndexerLike):
         if len(self._internal.index_map) == 1:
             if is_list_like(row_sel):
                 raise ValueError(
-                    'iat based indexing on a single index can only have a single value')
+                    'iAt based indexing can only have integer indexers')
         if not isinstance(col_sel, int):
             raise ValueError('iat based indexing on multi-index can only have integer values')
         if isinstance(col_sel, int):
