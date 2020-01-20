@@ -158,6 +158,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(pdf_k, kdf_k)
             self.assert_eq(pdf_v, kdf_v)
 
+    def test_reset_index_with_default_index_types(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]},
+                           index=np.random.rand(3))
+        kdf = ks.from_pandas(pdf)
+
+        with ks.option_context('compute.default_index_type', 'sequence'):
+            self.assert_eq(kdf.reset_index(), pdf.reset_index())
+
+        with ks.option_context('compute.default_index_type', 'distributed-sequence'):
+            # the order might be changed.
+            self.assert_eq(kdf.reset_index().sort_index(),
+                           pdf.reset_index())
+
+        with ks.option_context('compute.default_index_type', 'distributed'):
+            # the index is different.
+            self.assert_eq(kdf.reset_index().to_pandas().reset_index(drop=True),
+                           pdf.reset_index())
+
     def test_reset_index_with_multiindex_columns(self):
         index = pd.MultiIndex.from_tuples([('bird', 'falcon'),
                                            ('bird', 'parrot'),

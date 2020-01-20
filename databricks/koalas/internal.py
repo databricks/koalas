@@ -58,12 +58,6 @@ class _InternalFrame(object):
     The internal immutable DataFrame which manages Spark DataFrame and column names and index
     information.
 
-    :ivar _sdf: Spark DataFrame
-    :ivar _index_map: list of pair holding the Spark field names for indexes,
-                       and the index name to be seen in Koalas DataFrame.
-    :ivar _scol: Spark Column
-    :ivar _data_columns: list of the Spark field names to be seen as columns in Koalas DataFrame.
-
     .. note:: this is an internal class. It is not supposed to be exposed to users and users
         should not directly access to it.
 
@@ -388,7 +382,7 @@ class _InternalFrame(object):
     """
 
     def __init__(self, sdf: spark.DataFrame,
-                 index_map: Optional[List[IndexMap]] = None,
+                 index_map: Optional[List[IndexMap]],
                  column_index: Optional[List[Tuple[str, ...]]] = None,
                  column_scols: Optional[List[spark.Column]] = None,
                  column_index_names: Optional[List[str]] = None,
@@ -408,11 +402,53 @@ class _InternalFrame(object):
                               argument is ignored, otherwise if this is None, calculated from sdf.
         :param column_index_names: Names for each of the index levels.
         :param scol: Spark Column to be managed.
+
+        See the examples below to refer what each parameter means.
+
+        >>> column_index = pd.MultiIndex.from_tuples(
+        ...     [('a', 'x'), ('a', 'y'), ('b', 'z')], names=["column_index_a", "column_index_b"])
+        >>> row_index = pd.MultiIndex.from_tuples(
+        ...     [('foo', 'bar'), ('foo', 'bar'), ('zoo', 'bar')],
+        ...     names=["row_index_a", "row_index_b"])
+        >>> kdf = ks.DataFrame(
+        ...     [[1, 2, 3], [4, 5, 6], [7, 8, 9]], index=row_index, columns=column_index)
+        >>> kdf.set_index(('a', 'x'), append=True, inplace=True)
+        >>> kdf  # doctest: +NORMALIZE_WHITESPACE
+        column_index_a                  a  b
+        column_index_b                  y  z
+        row_index_a row_index_b (a, x)
+        foo         bar         1       2  3
+                                4       5  6
+        zoo         bar         7       8  9
+
+        >>> internal = kdf[('a', 'y')]._internal
+
+        >>> internal._sdf.show()  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+        +-----------+-----------+------+------+------+...
+        |row_index_a|row_index_b|(a, x)|(a, y)|(b, z)|...
+        +-----------+-----------+------+------+------+...
+        |        foo|        bar|     1|     2|     3|...
+        |        foo|        bar|     4|     5|     6|...
+        |        zoo|        bar|     7|     8|     9|...
+        +-----------+-----------+------+------+------+...
+
+        >>> internal._index_map  # doctest: +NORMALIZE_WHITESPACE
+        [('row_index_a', ('row_index_a',)), ('row_index_b', ('row_index_b',)),
+         ('(a, x)', ('a', 'x'))]
+
+        >>> internal._column_index
+        [('a', 'y')]
+
+        >>> internal._column_scols
+        [Column<b'(a, y)'>]
+
+        >>> list(internal._column_index_names)
+        ['column_index_a', 'column_index_b']
+
+        >>> internal._scol
+        Column<b'(a, y)'>
         """
         assert isinstance(sdf, spark.DataFrame)
-
-        if NATURAL_ORDER_COLUMN_NAME not in sdf.columns:
-            sdf = sdf.withColumn(NATURAL_ORDER_COLUMN_NAME, F.monotonically_increasing_id())
 
         if index_map is None:
             # Here is when Koalas DataFrame is created directly from Spark DataFrame.
@@ -424,7 +460,9 @@ class _InternalFrame(object):
             index_map = [(SPARK_INDEX_NAME_FORMAT(0), None)]
             sdf = _InternalFrame.attach_default_index(sdf)
 
-        assert index_map is not None
+        if NATURAL_ORDER_COLUMN_NAME not in sdf.columns:
+            sdf = sdf.withColumn(NATURAL_ORDER_COLUMN_NAME, F.monotonically_increasing_id())
+
         assert all(isinstance(index_field, str)
                    and (index_name is None or (isinstance(index_name, tuple)
                                                and all(isinstance(name, str)
@@ -479,10 +517,10 @@ class _InternalFrame(object):
         """
         if default_index_type is None:
             default_index_type = get_option("compute.default_index_type")
+        scols = [scol_for(sdf, column) for column in sdf.columns]
         if default_index_type == "sequence":
             sequential_index = F.row_number().over(
-                Window.orderBy(NATURAL_ORDER_COLUMN_NAME)) - 1
-            scols = [scol_for(sdf, column) for column in sdf.columns]
+                Window.orderBy(F.monotonically_increasing_id())) - 1
             return sdf.select(sequential_index.alias(SPARK_INDEX_NAME_FORMAT(0)), *scols)
         elif default_index_type == "distributed-sequence":
             # 1. Calculates counts per each partition ID. `counts` here is, for instance,
@@ -492,8 +530,9 @@ class _InternalFrame(object):
             #         3: 83,
             #         ...
             #     }
+            sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
             counts = map(lambda x: (x["key"], x["count"]),
-                         sdf.groupby(F.spark_partition_id().alias("key")).count().collect())
+                         sdf.groupby(sdf['__spark_partition_id'].alias("key")).count().collect())
 
             # 2. Calculates cumulative sum in an order of partition id.
             #     Note that it does not matter if partition id guarantees its order or not.
@@ -502,28 +541,27 @@ class _InternalFrame(object):
             # sort by partition key.
             sorted_counts = sorted(counts, key=lambda x: x[0])
             # get cumulative sum in an order of partition key.
-            cumulative_counts = accumulate(map(lambda count: count[1], sorted_counts))
+            cumulative_counts = [0] + list(accumulate(map(lambda count: count[1], sorted_counts)))
             # zip it with partition key.
             sums = dict(zip(map(lambda count: count[0], sorted_counts), cumulative_counts))
 
-            return_schema = StructType(
-                [StructField(SPARK_INDEX_NAME_FORMAT(0), LongType())] + list(sdf.schema))
-            columns = [f.name for f in return_schema]
+            # 3. Attach offset for each partition.
+            @pandas_udf(LongType(), PandasUDFType.SCALAR)
+            def offset(id):
+                current_partition_offset = sums[id.iloc[0]]
+                return pd.Series(current_partition_offset).repeat(len(id))
 
-            # 3. Group by partition id and assign each range.
-            def default_index(pdf):
-                current_partition_max = sums[pdf["__spark_partition_id"].iloc[0]]
-                offset = len(pdf)
-                pdf[SPARK_INDEX_NAME_FORMAT(0)] = list(range(
-                    current_partition_max - offset, current_partition_max))
-                return pdf[columns]
+            sdf = sdf.withColumn('__offset__', offset('__spark_partition_id'))
 
-            grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(default_index)
+            # 4. Calculate row_number in each partition.
+            w = Window.partitionBy('__spark_partition_id').orderBy(F.monotonically_increasing_id())
+            row_number = F.row_number().over(w)
+            sdf = sdf.withColumn('__row_number__', row_number)
 
-            sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
-            return sdf.groupBy("__spark_partition_id").apply(grouped_map_func)
+            # 5. Calcuate the index.
+            return sdf.select(
+                F.expr('__offset__ + __row_number__ - 1').alias(SPARK_INDEX_NAME_FORMAT(0)), *scols)
         elif default_index_type == "distributed":
-            scols = [scol_for(sdf, column) for column in sdf.columns]
             return sdf.select(
                 F.monotonically_increasing_id().alias(SPARK_INDEX_NAME_FORMAT(0)), *scols)
         else:
@@ -743,9 +781,10 @@ class _InternalFrame(object):
                 index_map = [(SPARK_INDEX_NAME_FORMAT(i), None)
                              for i in range(len(index.levels))]
             else:
-                index_map = [(SPARK_INDEX_NAME_FORMAT(i) if name is None else name,
-                              name if name is None or isinstance(name, tuple) else (name,))
-                             for i, name in enumerate(index.names)]
+                index_map = [
+                    (SPARK_INDEX_NAME_FORMAT(i) if name is None else name_like_string(name),
+                     name if name is None or isinstance(name, tuple) else (name,))
+                    for i, name in enumerate(index.names)]
         else:
             name = index.name
             index_map = [(name_like_string(name)
