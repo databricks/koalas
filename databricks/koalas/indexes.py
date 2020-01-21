@@ -547,11 +547,12 @@ class Index(IndexOpsMixin):
         Bear    Bear
         Cow      Cow
         """
+        index_name = self.names[0]
         if name is None:
-            if self._internal.index_names[0] is None:
+            if index_name is None:
                 name = ('0',)
             else:
-                name = self._internal.index_names[0]
+                name = (index_name,)
         elif isinstance(name, str):
                 name = (name,)
         scol = self._scol.alias(name_like_string(name))
@@ -559,7 +560,10 @@ class Index(IndexOpsMixin):
         sdf = self._internal.sdf.select(scol, NATURAL_ORDER_COLUMN_NAME)
 
         if index:
-            index_map = [(name_like_string(name), self._internal.index_names[0])]
+            if index_name is not None:
+                index_map = [(name_like_string(name), (index_name,))]
+            else:
+                index_map = [(name_like_string(name), None)]
         else:
             index_map = None  # type: ignore
 
