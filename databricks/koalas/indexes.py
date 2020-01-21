@@ -30,7 +30,7 @@ from pandas.io.formats.printing import pprint_thing
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
-from pyspark.sql.types import BooleanType, NumericType, StringType
+from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
@@ -1257,7 +1257,7 @@ class Index(IndexOpsMixin):
         >>> idx.is_all_dates
         False
         """
-        return True if repr(self).startswith("DatetimeIndex") else False
+        return True if isinstance(self.spark_type, TimestampType) else False
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
