@@ -28,7 +28,7 @@ from pyspark import sql as spark
 from pyspark._globals import _NoValue, _NoValueType
 from pyspark.sql import functions as F, Window
 from pyspark.sql.functions import PandasUDFType, pandas_udf
-from pyspark.sql.types import DataType, StructField, StructType, LongType
+from pyspark.sql.types import BooleanType, DataType, StructField, StructType, LongType
 try:
     from pyspark.sql.types import to_arrow_type
 except ImportError:
@@ -725,6 +725,61 @@ class _InternalFrame(object):
             pdf.index.names = [name if name is None or len(name) > 1 else name[0]
                                for name in index_names]
         return pdf
+
+    def with_new_columns(self, scols_or_ksers: List[Union[spark.Column, 'ks.Series']],
+                         column_index: Optional[List[Tuple[str, ...]]] = None) -> '_InternalFrame':
+        """ Copy the immutable DataFrame with the updates by the specified Spark Columns or Series.
+
+        :param scols_or_ksers: the new Spark Columns or Series.
+        :param column_index: the new column index.
+            If None, the its column_index is used when the corresponding `scols_or_ksers` is Series,
+            otherwise the original one is used.
+        :return: the copied immutable DataFrame.
+        """
+        from databricks.koalas.series import Series
+
+        column_scols = []
+        for scol_or_kser in scols_or_ksers:
+            if isinstance(scol_or_kser, Series):
+                column_scols.append(scol_or_kser._internal.scol)
+            else:
+                column_scols.append(scol_or_kser)
+        sdf = self._sdf.select(self.index_scols + column_scols + list(HIDDEN_COLUMNS))
+
+        if column_index is None:
+            assert len(scols_or_ksers) == len(self.column_index), \
+                (len(scols_or_ksers), len(self.column_index))
+            column_index = []
+            for scol_or_kser, idx in zip(scols_or_ksers, self.column_index):
+                if isinstance(scol_or_kser, Series):
+                    column_index.append(scol_or_kser._internal.column_index[0])
+                else:
+                    column_index.append(idx)
+        else:
+            assert len(scols_or_ksers) == len(column_index), \
+                (len(scols_or_ksers), len(column_index))
+
+        return self.copy(
+            sdf=sdf,
+            column_index=column_index,
+            column_scols=[scol_for(sdf, col)
+                          for col in sdf.columns[len(self.index_scols):-len(HIDDEN_COLUMNS)]])
+
+    def with_filter(self, pred: Union[spark.Column, 'ks.Series']):
+        """ Copy the immutable DataFrame with the updates by the predicate.
+
+        :param pred: the predicate to filter.
+        :return: the copied immutable DataFrame.
+        """
+        from databricks.koalas.series import Series
+        if isinstance(pred, Series):
+            assert isinstance(pred.spark_type, BooleanType), pred.spark_type
+            pred = pred._scol
+        else:
+            spark_type = self._sdf.select(pred).schema[0].dataType
+            assert isinstance(spark_type, BooleanType), spark_type
+
+        return self.copy(sdf=self._sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(pred))
 
     def copy(self, sdf: Union[spark.DataFrame, _NoValueType] = _NoValue,
              index_map: Union[List[IndexMap], _NoValueType] = _NoValue,
