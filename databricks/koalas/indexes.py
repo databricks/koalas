@@ -29,7 +29,8 @@ from pandas.io.formats.printing import pprint_thing
 
 import pyspark
 from pyspark import sql as spark
-from pyspark.sql import functions as F
+from pyspark.sql import functions as F, Window
+from pyspark.sql.types import BooleanType, NumericType, StringType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
@@ -37,8 +38,9 @@ from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
-from databricks.koalas.series import Series
-from databricks.koalas.utils import name_like_string, default_session, scol_for
+from databricks.koalas.series import Series, _col
+from databricks.koalas.utils import (compare_allow_null, compare_disallow_null, compare_null_first,
+                                     compare_null_last, default_session, name_like_string, scol_for)
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 
 
@@ -1441,6 +1443,62 @@ class MultiIndex(Index):
         internal = self._internal
         result = internal._sdf.agg(*(F.countDistinct(c) for c in internal.index_scols)).collect()[0]
         return tuple(result)
+
+    def _is_monotonic(self):
+        col = self._scol
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
+        prev = F.lag(col, 1).over(window)
+
+        cond = F.lit(True)
+        for field in self.spark_type[::-1]:
+            left = col.getField(field.name)
+            right = prev.getField(field.name)
+            if isinstance(field.dataType, StringType):
+                compare = compare_disallow_null
+            elif isinstance(field.dataType, BooleanType):
+                compare = compare_allow_null
+            elif isinstance(field.dataType, NumericType):
+                compare = compare_null_first
+            else:
+                compare = compare_null_last
+            cond = F.when(left.eqNullSafe(right), cond) \
+                .otherwise(compare(left, right, spark.Column.__gt__))
+
+        cond = prev.isNull() | cond
+
+        internal = _InternalFrame(
+            sdf=self._internal.sdf.select(self._internal.index_scols + [cond]),
+            index_map=self._internal.index_map)
+
+        return _col(DataFrame(internal))
+
+    def _is_monotonic_decreasing(self):
+        col = self._scol
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
+        prev = F.lag(col, 1).over(window)
+
+        cond = F.lit(True)
+        for field in self.spark_type[::-1]:
+            left = col.getField(field.name)
+            right = prev.getField(field.name)
+            if isinstance(field.dataType, StringType):
+                compare = compare_disallow_null
+            elif isinstance(field.dataType, BooleanType):
+                compare = compare_allow_null
+            elif isinstance(field.dataType, NumericType):
+                compare = compare_null_last
+            else:
+                compare = compare_null_first
+            cond = F.when(left.eqNullSafe(right), cond) \
+                .otherwise(compare(left, right, spark.Column.__lt__))
+
+        cond = prev.isNull() | cond
+
+        internal = _InternalFrame(
+            sdf=self._internal.sdf.select(self._internal.index_scols + [cond]),
+            index_map=self._internal.index_map)
+
+        return _col(DataFrame(internal))
 
     def to_frame(self, index=True, name=None) -> DataFrame:
         """
