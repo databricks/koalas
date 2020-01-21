@@ -727,7 +727,8 @@ class _InternalFrame(object):
         return pdf
 
     def with_new_columns(self, scols_or_ksers: List[Union[spark.Column, 'ks.Series']],
-                         column_index: Optional[List[Tuple[str, ...]]] = None) -> '_InternalFrame':
+                         column_index: Optional[List[Tuple[str, ...]]] = None,
+                         keep_order: bool = True) -> '_InternalFrame':
         """ Copy the immutable DataFrame with the updates by the specified Spark Columns or Series.
 
         :param scols_or_ksers: the new Spark Columns or Series.
@@ -738,32 +739,41 @@ class _InternalFrame(object):
         """
         from databricks.koalas.series import Series
 
-        column_scols = []
-        for scol_or_kser in scols_or_ksers:
-            if isinstance(scol_or_kser, Series):
-                column_scols.append(scol_or_kser._internal.scol)
-            else:
-                column_scols.append(scol_or_kser)
-        sdf = self._sdf.select(self.index_scols + column_scols + list(HIDDEN_COLUMNS))
-
         if column_index is None:
-            assert len(scols_or_ksers) == len(self.column_index), \
-                (len(scols_or_ksers), len(self.column_index))
-            column_index = []
-            for scol_or_kser, idx in zip(scols_or_ksers, self.column_index):
-                if isinstance(scol_or_kser, Series):
-                    column_index.append(scol_or_kser._internal.column_index[0])
-                else:
-                    column_index.append(idx)
+            if all(isinstance(scol_or_kser, Series) for scol_or_kser in scols_or_ksers):
+                column_index = [kser._internal.column_index[0] for kser in scols_or_ksers]
+            else:
+                assert len(scols_or_ksers) == len(self.column_index), \
+                    (len(scols_or_ksers), len(self.column_index))
+                column_index = []
+                for scol_or_kser, idx in zip(scols_or_ksers, self.column_index):
+                    if isinstance(scol_or_kser, Series):
+                        column_index.append(scol_or_kser._internal.column_index[0])
+                    else:
+                        column_index.append(idx)
         else:
             assert len(scols_or_ksers) == len(column_index), \
                 (len(scols_or_ksers), len(column_index))
 
+        column_scols = []
+        for scol_or_kser, idx in zip(scols_or_ksers, column_index):
+            if isinstance(scol_or_kser, Series):
+                scol = scol_or_kser._internal.scol
+            else:
+                scol = scol_or_kser
+            column_scols.append(scol.alias(name_like_string(idx)))
+
+        hidden_columns = []
+        if keep_order:
+            hidden_columns.append(NATURAL_ORDER_COLUMN_NAME)
+
+        sdf = self._sdf.select(self.index_scols + column_scols + hidden_columns)
+
         return self.copy(
             sdf=sdf,
             column_index=column_index,
-            column_scols=[scol_for(sdf, col)
-                          for col in sdf.columns[len(self.index_scols):-len(HIDDEN_COLUMNS)]])
+            column_scols=[scol_for(sdf, name_like_string(idx)) for idx in column_index],
+            scol=None)
 
     def with_filter(self, pred: Union[spark.Column, 'ks.Series']):
         """ Copy the immutable DataFrame with the updates by the predicate.
