@@ -761,7 +761,7 @@ class _InternalFrame(object):
                 scol = scol_or_kser._internal.scol
             else:
                 scol = scol_or_kser
-            column_scols.append(scol.alias(name_like_string(idx)))
+            column_scols.append(scol.alias(name_like_string(idx)))  # type: ignore
 
         hidden_columns = []
         if keep_order:
