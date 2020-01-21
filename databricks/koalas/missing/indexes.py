@@ -104,9 +104,6 @@ class _MissingPandasLikeIndex(object):
 
 class _MissingPandasLikeMultiIndex(object):
 
-    # Properties
-    is_all_dates = unsupported_property('is_all_dates')
-
     # Deprecated properties
     strides = unsupported_property('strides', deprecated=True)
     data = unsupported_property('data', deprecated=True)
