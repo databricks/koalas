@@ -567,7 +567,7 @@ class Index(IndexOpsMixin):
         else:
             index_map = None  # type: ignore
 
-        internal = _InternalFrame(sdf=sdf,
+        internal = _InternalFrame(sdf=sdf,  # type: ignore
                                   index_map=index_map,
                                   column_index=[name],
                                   column_scols=[scol_for(sdf, name_like_string(name))])
