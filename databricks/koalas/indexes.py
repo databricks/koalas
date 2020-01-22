@@ -1257,7 +1257,7 @@ class Index(IndexOpsMixin):
         >>> idx.is_all_dates
         False
         """
-        return True if isinstance(self.spark_type, TimestampType) else False
+        return isinstance(self.spark_type, TimestampType)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
