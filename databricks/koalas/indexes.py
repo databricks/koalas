@@ -309,19 +309,13 @@ class Index(IndexOpsMixin):
     def names(self) -> List[Union[str, Tuple[str, ...]]]:
         """Return names of the Index."""
         return [name if name is None or len(name) > 1 else name[0]
-                for name in self._kdf._internal.index_names]
+                for name in self._internal.index_names]
 
     @names.setter
     def names(self, names: List[Union[str, Tuple[str, ...]]]) -> None:
         if not is_list_like(names):
             raise ValueError('Names must be a list-like')
-        internal = self._kdf._internal
-        if len(internal.index_map) != len(names):
-            raise ValueError('Length of new names must be {}, got {}'
-                             .format(len(internal.index_map), len(names)))
-
-        names = [name if isinstance(name, (tuple, type(None))) else (name,) for name in names]
-        self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
+        self.rename(names, inplace=True)
 
     @property
     def nlevels(self) -> int:
@@ -340,7 +334,8 @@ class Index(IndexOpsMixin):
         """
         return len(self._kdf._internal.index_columns)
 
-    def rename(self, name: Union[str, Tuple[str, ...]], inplace: bool = False):
+    def rename(self, name: Union[str, Tuple[str, ...], List[Union[str, Tuple[str, ...]]]],
+               inplace: bool = False):
         """
         Alter Index or MultiIndex name.
         Able to set new names without level. Defaults to returning new index.
@@ -393,15 +388,30 @@ class Index(IndexOpsMixin):
                     ('b', 'y')],
                    names=['aloha', 'databricks'])
         """
-        if not inplace:
-            self = self.copy()
-        if isinstance(self, MultiIndex):
-            self.names = name  # type: ignore
+        if isinstance(name, str):
+            names = [(name,)]  # type: List[Optional[Tuple[str, ...]]]
+        elif isinstance(name, tuple):
+            names = [name]
         else:
-            self.name = name
-        # return only when `inplace` is `False`
-        if not inplace:
-            return self
+            names = [n if n is None or isinstance(n, tuple) else (n,) for n in name]
+
+        if inplace:
+            kdf = self._kdf
+        else:
+            kdf = self._kdf.copy()
+
+        if len(kdf._internal.index_map) != len(names):
+            raise ValueError('Length of new names must be {}, got {}'
+                             .format(len(kdf._internal.index_map), len(names)))
+
+        kdf._internal = kdf._internal.copy(index_map=list(zip(kdf._internal.index_columns, names)))
+
+        idx = kdf.index
+        idx._internal._scol = self._scol
+        if inplace:
+            self._internal = idx._internal
+        else:
+            return idx
 
     # TODO: add downcast parameter for fillna function
     def fillna(self, value):
@@ -946,11 +956,8 @@ class Index(IndexOpsMixin):
 
         internal = _InternalFrame(
             sdf=sdf.select(self._internal.index_scols),
-            index_map=self._kdf._internal.index_map)
-
-        result = DataFrame(internal).index
-
-        return result
+            index_map=self._internal.index_map)
+        return DataFrame(internal).index
 
     def sort(self, *args, **kwargs):
         """

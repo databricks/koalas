@@ -93,6 +93,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
         self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
 
+        pidx.name = 'a'
+        kidx.name = 'a'
+
+        self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
+        self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
+
         if LooseVersion(pd.__version__) >= LooseVersion('0.24'):
             # The `name` argument is added in pandas 0.24.
             self.assert_eq(repr(kidx.to_frame(name='x')), repr(pidx.to_frame(name='x')))
