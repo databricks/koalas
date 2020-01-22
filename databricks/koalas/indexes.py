@@ -30,7 +30,7 @@ from pandas.io.formats.printing import pprint_thing
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
-from pyspark.sql.types import BooleanType, NumericType, StringType
+from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
@@ -1225,6 +1225,40 @@ class Index(IndexOpsMixin):
                 names = self_names
         return self.rename(name=names, inplace=inplace)
 
+    @property
+    def is_all_dates(self):
+        """
+        Return if all data types of the index are datetime.
+        remember that since Koalas does not support multiple data types in an index,
+        so it returns True if any type of data is datetime.
+
+        Examples
+        --------
+        >>> from datetime import datetime
+
+        >>> idx = ks.Index([datetime(2019, 1, 1, 0, 0, 0), datetime(2019, 2, 3, 0, 0, 0)])
+        >>> idx
+        DatetimeIndex(['2019-01-01', '2019-02-03'], dtype='datetime64[ns]', freq=None)
+
+        >>> idx.is_all_dates
+        True
+
+        >>> idx = ks.Index([datetime(2019, 1, 1, 0, 0, 0), None])
+        >>> idx
+        DatetimeIndex(['2019-01-01', 'NaT'], dtype='datetime64[ns]', freq=None)
+
+        >>> idx.is_all_dates
+        True
+
+        >>> idx = ks.Index([0, 1, 2])
+        >>> idx
+        Int64Index([0, 1, 2], dtype='int64')
+
+        >>> idx.is_all_dates
+        False
+        """
+        return isinstance(self.spark_type, TimestampType)
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)
@@ -1775,6 +1809,28 @@ class MultiIndex(Index):
 
     def argmin(self):
         raise TypeError("reduction operation 'argmin' not allowed for this dtype")
+
+    @property
+    def is_all_dates(self):
+        """
+        is_all_dates always returns False for MultiIndex
+
+        Examples
+        --------
+        >>> from datetime import datetime
+
+        >>> idx = ks.MultiIndex.from_tuples(
+        ...     [(datetime(2019, 1, 1, 0, 0, 0), datetime(2019, 1, 1, 0, 0, 0)),
+        ...      (datetime(2019, 1, 1, 0, 0, 0), datetime(2019, 1, 1, 0, 0, 0))])
+        >>> idx  # doctest: +SKIP
+        MultiIndex([('2019-01-01', '2019-01-01'),
+                    ('2019-01-01', '2019-01-01')],
+                   )
+
+        >>> idx.is_all_dates
+        False
+        """
+        return False
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):
