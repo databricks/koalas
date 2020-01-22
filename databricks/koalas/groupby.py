@@ -35,7 +35,6 @@ from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, S
 from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.base import _column_op
 from databricks.koalas.typedef import _infer_return_type
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME,
@@ -1925,33 +1924,85 @@ class DataFrameGroupBy(GroupBy):
         internal = kdf._internal.with_new_columns(applied, keep_order=False)
         return DataFrame(internal)
 
+    # TODO: Implement 'percentiles', 'include', and 'exclude' arguments.
+    # TODO: Add ``DataFrame.select_dtypes`` to See Also when 'include'
+    #   and 'exclude' arguments are implemented.
     def describe(self):
+        """
+        Generate descriptive statistics that summarize the central tendency,
+        dispersion and shape of a dataset's distribution, excluding
+        ``NaN`` values.
+
+        Analyzes both numeric and object series, as well
+        as ``DataFrame`` column sets of mixed data types. The output
+        will vary depending on what is provided. Refer to the notes
+        below for more detail.
+
+        .. note:: Unlike pandas, the percentiles in Koalas are based upon
+            approximate percentile computation because computing percentiles
+            across a large dataset is extremely expensive.
+
+        Returns
+        -------
+        DataFrame
+            Summary statistics of the DataFrame provided.
+
+        See Also
+        --------
+        DataFrame.count
+        DataFrame.max
+        DataFrame.min
+        DataFrame.mean
+        DataFrame.std
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
+        >>> df
+           a  b  c
+        0  1  4  7
+        1  1  5  8
+        2  3  6  9
+
+        Describing a ``DataFrame``. By default only numeric fields
+        are returned.
+
+        >>> described = df.groupby('a').describe()
+        >>> described  # doctest: +NORMALIZE_WHITESPACE
+              b                                        c
+          count mean       std min 25% 50% 75% max count mean       std min 25% 50% 75% max
+        a
+        1   2.0  4.5  0.707107 4.0 4.0 4.0 5.0 5.0   2.0  7.5  0.707107 7.0 7.0 7.0 8.0 8.0
+        3   1.0  6.0       NaN 6.0 6.0 6.0 6.0 6.0   1.0  9.0       NaN 9.0 9.0 9.0 9.0 9.0
+
+        """
         kdf = self.agg(["count", "mean", "std", "min", "quartiles", "max"]).reset_index()
+        sdf = kdf._sdf
+        agg_cols = [col.name for col in self._agg_columns]
         formatted_percentiles = ["25%", "50%", "75%"]
 
         # Split "quartiles" columns into first, second, and third quartiles.
-        for label, content in kdf.iteritems():
-            if label[1] == "quartiles":
-                exploded = ks.DataFrame(
-                    {
-                        (label[0], x): _column_op(itemgetter(i))(content).to_numpy()
-                        for i, x in enumerate(formatted_percentiles)
-                    }
-                )
-                kdf = kdf.drop(label).join(exploded)
-
-        # Reindex the DataFrame to reflect initial grouping and agg columns.
-        input_groupnames = [s.name for s in self._groupkeys]
-        kdf.set_index([(key, "") for key in input_groupnames], inplace=True)
-        kdf.index.names = input_groupnames
+        for col in agg_cols:
+            quartiles_col = str((col, "quartiles"))
+            for i, percentile in enumerate(formatted_percentiles):
+                sdf = sdf.withColumn(str((col, percentile)), F.col(quartiles_col)[i])
+            sdf = sdf.drop(quartiles_col)
 
         # Reorder columns lexicographically by agg column followed by stats.
-        agg_cols = (col.name for col in self._agg_columns)
         stats = ["count", "mean", "std", "min"] + formatted_percentiles + ["max"]
-        kdf = kdf[list(product(agg_cols, stats))]
+        column_index = list(product(agg_cols, stats))
+        data_columns = map(str, column_index)
+
+        # Reindex the DataFrame to reflect initial grouping and agg columns.
+        internal = _InternalFrame(sdf=sdf,
+                                  index_map=([(s._internal.data_columns[0],
+                                               s._internal.column_index[0])
+                                              for s in self._groupkeys]),
+                                  column_index=column_index,
+                                  column_scols=[scol_for(sdf, col) for col in data_columns])
 
         # Cast columns to ``"float64"`` to match `pandas.DataFrame.groupby`.
-        return kdf.astype("float64")
+        return DataFrame(internal).astype("float64")
 
 
 class SeriesGroupBy(GroupBy):
