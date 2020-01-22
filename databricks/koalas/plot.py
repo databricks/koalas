@@ -325,7 +325,7 @@ class KoalasBoxPlot(BoxPlot):
         # Computes mean, median, Q1 and Q3 with approx_percentile and precision
         pdf = (data._kdf._sdf
                .agg(*[F.expr('approx_percentile({}, {}, {})'.format(colname, q,
-                                                                    1. / precision))
+                                                                    int(1. / precision)))
                       .alias('{}_{}%'.format(colname, int(q * 100)))
                       for q in [.25, .50, .75]],
                     F.mean(colname).alias('{}_mean'.format(colname))).toPandas())

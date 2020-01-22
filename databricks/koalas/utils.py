@@ -285,6 +285,9 @@ def default_session(conf=None):
     builder = spark.SparkSession.builder.appName("Koalas")
     for key, value in conf.items():
         builder = builder.config(key, value)
+    # Currently, Koalas is dependent on such join due to 'compute.ops_on_diff_frames'
+    # configuration. This is needed with Spark 3.0+.
+    builder.config("spark.sql.analyzer.failAmbiguousSelfJoin.enabled", False)
     return builder.getOrCreate()
 
 
