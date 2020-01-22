@@ -3278,7 +3278,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return _CachedDataFrame(self._internal)
 
-    def to_table(self, name: str, format: Optional[str] = None, mode: str = 'error',
+    def to_table(self, name: str, format: Optional[str] = None, mode: str = 'overwrite',
                  partition_cols: Union[str, List[str], None] = None,
                  **options):
         """
@@ -3297,8 +3297,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             - 'json'
             - 'csv'
 
-        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
-            Specifies the behavior of the save operation when the table exists already.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default
+            'overwrite'. Specifies the behavior of the save operation when the table exists
+            already.
 
             - 'append': Append the new data to existing data.
             - 'overwrite': Overwrite existing data.
@@ -3333,7 +3334,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self.to_spark().write.saveAsTable(name=name, format=format, mode=mode,
                                           partitionBy=partition_cols, **options)
 
-    def to_delta(self, path: str, mode: str = 'error',
+    def to_delta(self, path: str, mode: str = 'overwrite',
                  partition_cols: Union[str, List[str], None] = None, **options):
         """
         Write the DataFrame out as a Delta Lake table.
@@ -3342,8 +3343,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ----------
         path : str, required
             Path to write to.
-        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
-            Specifies the behavior of the save operation when the destination exists already.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default
+            'overwrite'. Specifies the behavior of the save operation when the destination
+            exists already.
 
             - 'append': Append the new data to existing data.
             - 'overwrite': Overwrite existing data.
@@ -3391,7 +3393,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self.to_spark_io(
             path=path, mode=mode, format="delta", partition_cols=partition_cols, **options)
 
-    def to_parquet(self, path: str, mode: str = 'error',
+    def to_parquet(self, path: str, mode: str = 'overwrite',
                    partition_cols: Union[str, List[str], None] = None,
                    compression: Optional[str] = None):
         """
@@ -3401,8 +3403,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ----------
         path : str, required
             Path to write to.
-        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
-            Specifies the behavior of the save operation when the destination exists already.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'},
+            default 'overwrite'. Specifies the behavior of the save operation when the
+            destination exists already.
 
             - 'append': Append the new data to existing data.
             - 'overwrite': Overwrite existing data.
@@ -3445,7 +3448,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             path=path, mode=mode, partitionBy=partition_cols, compression=compression)
 
     def to_spark_io(self, path: Optional[str] = None, format: Optional[str] = None,
-                    mode: str = 'error', partition_cols: Union[str, List[str], None] = None,
+                    mode: str = 'overwrite', partition_cols: Union[str, List[str], None] = None,
                     **options):
         """Write the DataFrame out to a Spark data source.
 
@@ -3461,8 +3464,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             - 'orc'
             - 'json'
             - 'csv'
-        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default 'error'.
-            Specifies the behavior of the save operation when data already.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default
+            'overwrite'. Specifies the behavior of the save operation when data already.
 
             - 'append': Append the new data to existing data.
             - 'overwrite': Overwrite existing data.
