@@ -1494,8 +1494,18 @@ class MultiIndex(Index):
                     (2, 'b')],
                    names=['number', 'word'])
         """
+        for index in (i, j):
+            if not isinstance(index, int) and index not in self.names:
+                raise KeyError('Level %s not found' % index)
+
         i = i if isinstance(i, int) else self.names.index(i)
         j = j if isinstance(j, int) else self.names.index(j)
+
+        for index in (i, j):
+            if index >= len(self.names) or index < -len(self.names):
+                raise IndexError("Too many levels: Index has only %s levels, "
+                                 "%s is not a valid level number" % (len(self.names), index))
+
         index_map = self._internal.index_map.copy()
         index_map[i], index_map[j], = index_map[j], index_map[i]
         result = DataFrame(self._kdf._internal.copy(index_map=index_map)).index

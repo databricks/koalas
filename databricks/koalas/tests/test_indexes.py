@@ -369,6 +369,15 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
         self.assert_eq(pidx.swaplevel('word', 1), kidx.swaplevel('word', 1))
 
+        with self.assertRaisesRegex(IndexError, "Too many levels: Index"):
+            kidx.swaplevel(-3, 'word')
+        with self.assertRaisesRegex(IndexError, "Too many levels: Index"):
+            kidx.swaplevel(0, 2)
+        with self.assertRaisesRegex(IndexError, "Too many levels: Index"):
+            kidx.swaplevel(0, -3)
+        with self.assertRaisesRegex(KeyError, "Level work not found"):
+            kidx.swaplevel(0, 'work')
+
     def test_index_fillna(self):
         pidx = pd.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index
         kidx = ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index
