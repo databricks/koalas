@@ -354,6 +354,21 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pidx, kidx)
 
+    def test_multiindex_swaplevel(self):
+        pidx = pd.MultiIndex.from_arrays([['a', 'b'], [1, 2]])
+        kidx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]])
+        self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
+
+        pidx = pd.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', 'number'])
+        kidx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', 'number'])
+        self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
+
+        pidx = pd.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', None])
+        kidx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names=['word', None])
+        self.assert_eq(pidx.swaplevel(-2, -1), kidx.swaplevel(-2, -1))
+        self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
+        self.assert_eq(pidx.swaplevel('word', 1), kidx.swaplevel('word', 1))
+
     def test_index_fillna(self):
         pidx = pd.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index
         kidx = ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 2, None]).index

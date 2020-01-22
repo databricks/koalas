@@ -1457,6 +1457,50 @@ class MultiIndex(Index):
     def name(self, name: str) -> None:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
 
+    def swaplevel(self, i=-2, j=-1):
+        """
+        Swap level i with level j.
+        Calling this method does not change the ordering of the values.
+
+        Parameters
+        ----------
+        i : int, str, default -2
+            First level of index to be swapped. Can pass level name as string.
+            Type of parameters can be mixed.
+        j : int, str, default -1
+            Second level of index to be swapped. Can pass level name as string.
+            Type of parameters can be mixed.
+
+        Returns
+        -------
+        MultiIndex
+            A new MultiIndex.
+
+        Examples
+        --------
+        >>> midx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names = ['word', 'number'])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 1),
+                    ('b', 2)],
+                   names=['word', 'number'])
+
+        >>> midx.swaplevel(0, 1)  # doctest: +SKIP
+        MultiIndex([(1, 'a'),
+                    (2, 'b')],
+                   names=['number', 'word'])
+
+        >>> midx.swaplevel('number', 'word')  # doctest: +SKIP
+        MultiIndex([(1, 'a'),
+                    (2, 'b')],
+                   names=['number', 'word'])
+        """
+        i = i if isinstance(i, int) else self.names.index(i)
+        j = j if isinstance(j, int) else self.names.index(j)
+        index_map = self._internal.index_map.copy()
+        index_map[i], index_map[j], = index_map[j], index_map[i]
+        result = DataFrame(self._kdf._internal.copy(index_map=index_map)).index
+        return result
+
     @property
     def levshape(self):
         """

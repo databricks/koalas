@@ -153,6 +153,13 @@ MultiIndex Properties
    MultiIndex.nlevels
    MultiIndex.levshape
 
+MultiIndex components
+~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.swaplevel
+
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
