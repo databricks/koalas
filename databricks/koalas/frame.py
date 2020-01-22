@@ -8176,7 +8176,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'id': range(10)})
         >>> df.explain()
         == Physical Plan ==
-        Scan ExistingRDD[__index_level_0__#...,id#...]
+        ...
 
         >>> df.explain(True)
         == Parsed Logical Plan ==
@@ -8186,7 +8186,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         == Optimized Logical Plan ==
         ...
         == Physical Plan ==
-        Scan ExistingRDD[__index_level_0__#...,id#...]
+        ...
         """
         self._internal.spark_internal_df.explain(extended)
 

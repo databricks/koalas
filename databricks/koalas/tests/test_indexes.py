@@ -82,12 +82,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = self.pdf.set_index('b', append=True).index
         kidx = self.kdf.set_index('b', append=True).index
 
-        if LooseVersion(pyspark.__version__) < LooseVersion('2.4'):
-            # PySpark < 2.4 does not support struct type with arrow enabled.
-            with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
-                self.assert_eq(kidx.to_series(), pidx.to_series())
-                self.assert_eq(kidx.to_series(name='a'), pidx.to_series(name='a'))
-        else:
+        with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
             self.assert_eq(kidx.to_series(), pidx.to_series())
             self.assert_eq(kidx.to_series(name='a'), pidx.to_series(name='a'))
 
