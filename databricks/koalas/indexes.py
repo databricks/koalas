@@ -388,21 +388,12 @@ class Index(IndexOpsMixin):
                     ('b', 'y')],
                    names=['aloha', 'databricks'])
         """
-        if isinstance(name, str):
-            names = [(name,)]  # type: List[Optional[Tuple[str, ...]]]
-        elif isinstance(name, tuple):
-            names = [name]
-        else:
-            names = [n if n is None or isinstance(n, tuple) else (n,) for n in name]
+        names = self._verify_for_rename(name)
 
         if inplace:
             kdf = self._kdf
         else:
             kdf = self._kdf.copy()
-
-        if len(kdf._internal.index_map) != len(names):
-            raise ValueError('Length of new names must be {}, got {}'
-                             .format(len(kdf._internal.index_map), len(names)))
 
         kdf._internal = kdf._internal.copy(index_map=list(zip(kdf._internal.index_columns, names)))
 
@@ -412,6 +403,14 @@ class Index(IndexOpsMixin):
             self._internal = idx._internal
         else:
             return idx
+
+    def _verify_for_rename(self, name):
+        if name is None or isinstance(name, tuple):
+            return [name]
+        elif isinstance(name, str):
+            return [(name,)]
+        else:
+            raise TypeError('name must be a hashable type')
 
     # TODO: add downcast parameter for fillna function
     def fillna(self, value):
@@ -1463,6 +1462,15 @@ class MultiIndex(Index):
     @name.setter
     def name(self, name: str) -> None:
         raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
+
+    def _verify_for_rename(self, name):
+        if is_list_like(name):
+            if len(self._internal.index_map) != len(name):
+                raise ValueError('Length of new names must be {}, got {}'
+                                 .format(len(self._internal.index_map), len(name)))
+            return [n if n is None or isinstance(n, tuple) else (n,) for n in name]
+        else:
+            raise TypeError('Must pass list-like as `names`.')
 
     def swaplevel(self, i=-2, j=-1):
         """

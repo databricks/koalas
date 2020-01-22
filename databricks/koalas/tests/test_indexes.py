@@ -180,6 +180,52 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaises(PandasNotImplementedError):
             kidx.name = 'renamed'
 
+    def test_index_rename(self):
+        pdf = pd.DataFrame(np.random.randn(10, 5),
+                           index=pd.Index([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], name='x'))
+        kdf = ks.from_pandas(pdf)
+
+        pidx = pdf.index
+        kidx = kdf.index
+
+        self.assert_eq(kidx.rename('y'), pidx.rename('y'))
+        self.assert_eq(kdf.index.names, pdf.index.names)
+
+        kidx.rename('z', inplace=True)
+        pidx.rename('z', inplace=True)
+
+        self.assert_eq(kidx, pidx)
+        self.assert_eq(kdf.index.names, pdf.index.names)
+
+        self.assert_eq(kidx.rename(None), pidx.rename(None))
+        self.assert_eq(kdf.index.names, pdf.index.names)
+
+        self.assertRaises(TypeError, lambda: kidx.rename([None]))
+
+    def test_multi_index_rename(self):
+        arrays = [[1, 1, 2, 2], ['red', 'blue', 'red', 'blue']]
+        idx = pd.MultiIndex.from_arrays(arrays, names=('number', 'color'))
+        pdf = pd.DataFrame(np.random.randn(4, 5), idx)
+        kdf = ks.from_pandas(pdf)
+
+        pmidx = pdf.index
+        kmidx = kdf.index
+
+        self.assert_eq(kmidx.rename(['n', 'c']), pmidx.rename(['n', 'c']))
+        self.assert_eq(kdf.index.names, pdf.index.names)
+
+        kmidx.rename(['num', 'col'], inplace=True)
+        pmidx.rename(['num', 'col'], inplace=True)
+
+        self.assert_eq(kmidx, pmidx)
+        self.assert_eq(kdf.index.names, pdf.index.names)
+
+        self.assert_eq(kmidx.rename([None, None]), pmidx.rename([None, None]))
+        self.assert_eq(kdf.index.names, pdf.index.names)
+
+        self.assertRaises(TypeError, lambda: kmidx.rename('number'))
+        self.assertRaises(ValueError, lambda: kmidx.rename(['number']))
+
     def test_multi_index_levshape(self):
         pidx = pd.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
         kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2)])
