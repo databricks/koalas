@@ -162,12 +162,7 @@ class Rolling(_RollingAndExpanding):
                     getattr(kdf[column].rolling(self._window_val,
                             self._min_periods), func.__name__)())
 
-            sdf = kdf._sdf.select(
-                kdf._internal.index_scols + [c._scol for c in applied])
-            internal = kdf._internal.copy(
-                sdf=sdf,
-                column_index=[c._internal.column_index[0] for c in applied],
-                column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied])
+            internal = kdf._internal.with_new_columns(applied)
             return DataFrame(internal)
 
     def count(self):
@@ -701,11 +696,10 @@ class RollingGroupby(Rolling):
                 (SPARK_INDEX_NAME_FORMAT(len(new_index_map)),
                  groupkey._internal.column_index[0]))
 
-        for new_index_scol, index_map in zip(kdf._internal.index_scols, kdf._internal.index_map):
+        for new_index_scol, index_name in zip(kdf._internal.index_scols, kdf._internal.index_names):
             new_index_scols.append(
                 new_index_scol.alias(SPARK_INDEX_NAME_FORMAT(len(new_index_scols))))
-            _, name = index_map
-            new_index_map.append((SPARK_INDEX_NAME_FORMAT(len(new_index_map)), name))
+            new_index_map.append((SPARK_INDEX_NAME_FORMAT(len(new_index_map)), index_name))
 
         applied = []
         for column in kdf.columns:
@@ -1093,12 +1087,7 @@ class Expanding(_RollingAndExpanding):
                 applied.append(
                     getattr(kdf[column].expanding(self._min_periods), func.__name__)())
 
-            sdf = kdf._sdf.select(
-                kdf._internal.index_scols + [c._scol for c in applied])
-            internal = kdf._internal.copy(
-                sdf=sdf,
-                column_index=[c._internal.column_index[0] for c in applied],
-                column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied])
+            internal = kdf._internal.with_new_columns(applied)
             return DataFrame(internal)
 
     def count(self):

@@ -1707,8 +1707,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                         return self
                 drop_index_scols.append(reduce(lambda x, y: x & y, index_scols))
 
-            sdf = self._internal.sdf.where(~reduce(lambda x, y: x | y, drop_index_scols))
-            return _col(DataFrame(self._internal.copy(sdf=sdf)))
+            cond = ~reduce(lambda x, y: x | y, drop_index_scols)
+            return _col(DataFrame(self._internal.with_filter(cond)))
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'index'")
 
@@ -2017,7 +2017,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         internal = kdf._internal
         sdf = internal.sdf
         sdf = sdf.select([F.concat(F.lit(prefix),
-                                   scol_for(sdf, index_column)).alias(index_column)
+                                   internal.scol_for(index_column)).alias(index_column)
                           for index_column in internal.index_columns] + internal.column_scols)
         kdf._internal = internal.copy(sdf=sdf)
         return _col(kdf)
@@ -2066,7 +2066,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         kdf = self.to_dataframe()
         internal = kdf._internal
         sdf = internal.sdf
-        sdf = sdf.select([F.concat(scol_for(sdf, index_column),
+        sdf = sdf.select([F.concat(internal.scol_for(index_column),
                                    F.lit(suffix)).alias(index_column)
                           for index_column in internal.index_columns] + internal.column_scols)
         kdf._internal = internal.copy(sdf=sdf)
@@ -2607,15 +2607,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             for f in func:
                 applied.append(self.apply(f, args=args, **kwargs).rename(f.__name__))
 
-            sdf = self._internal._sdf.select(
-                self._internal.index_scols + [c._scol for c in applied])
-
-            internal = self.to_dataframe()._internal.copy(
-                sdf=sdf,
-                column_index=[c._internal.column_index[0] for c in applied],
-                column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied],
-                column_index_names=None)
-
+            internal = self._internal.with_new_columns(applied)
             return DataFrame(internal)
         else:
             return self.apply(func, args=args, **kwargs)
