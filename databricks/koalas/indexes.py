@@ -225,21 +225,64 @@ class Index(IndexOpsMixin):
         self_name = self.names if isinstance(self, MultiIndex) else self.name
         other_name = other.names if isinstance(other, MultiIndex) else other.name
 
-        def compare_values():
-            # TODO: avoid using default index?
-            with option_context("compute.default_index_type", "distributed-sequence"):
-                # Directly using Series from both self and other seems causing
-                # some exceptions when 'compute.ops_on_diff_frames' is enabled.
-                # Working around for now via using frame.
-                return (
-                    self.to_series().rename("self").to_frame().reset_index()['self'] ==
-                    other.to_series().rename("other").to_frame().reset_index()['other']).all()
-
         return (
-            self is not other and
-            type(self) == type(other) and
+            type(self) == type(other) and  # to support non-index comparison by short-circuiting.
             self_name == other_name and
-            compare_values())
+            self.equals(other))
+
+    def equals(self, other):
+        """
+        Determine if two Index objects contain the same elements.
+
+        Returns
+        -------
+        bool
+            True if "other" is an Index and it has the same elements as calling
+            index; False otherwise.
+
+        Examples
+        --------
+
+        >>> from databricks.koalas.config import option_context
+        >>> idx = ks.Index(['a', 'b', 'c'])
+        >>> idx.name = "name"
+        >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> midx.names = ("nameA", "nameB")
+
+        For Index
+
+        >>> idx.equals(idx)
+        False
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     idx.equals(ks.Index(['a', 'b', 'c']))
+        True
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     idx.equals(ks.Index(['b', 'b', 'a']))
+        False
+        >>> idx.equals(midx)
+        False
+
+        For MultiIndex
+
+        >>> midx.equals(midx)
+        False
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     midx.equals(ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')]))
+        True
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     midx.equals(ks.MultiIndex.from_tuples([('c', 'z'), ('b', 'y'), ('a', 'x')]))
+        False
+        >>> midx.equals(idx)
+        False
+        """
+        # TODO: avoid using default index?
+        with option_context("compute.default_index_type", "distributed-sequence"):
+            # Directly using Series from both self and other seems causing
+            # some exceptions when 'compute.ops_on_diff_frames' is enabled.
+            # Working around for now via using frame.
+            return self is not other and type(self) == type(other) and (
+                self.to_series().rename("self").to_frame().reset_index()['self'] ==
+                other.to_series().rename("other").to_frame().reset_index()['other']).all()
 
     def transpose(self):
         """
