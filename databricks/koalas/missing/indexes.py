@@ -46,7 +46,6 @@ class _MissingPandasLikeIndex(object):
     delete = unsupported_function('delete')
     difference = unsupported_function('difference')
     droplevel = unsupported_function('droplevel')
-    equals = unsupported_function('equals')
     factorize = unsupported_function('factorize')
     format = unsupported_function('format')
     get_indexer = unsupported_function('get_indexer')
