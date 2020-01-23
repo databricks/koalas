@@ -409,6 +409,11 @@ class Index(IndexOpsMixin):
             return [name]
         elif isinstance(name, str):
             return [(name,)]
+        elif is_list_like(name):
+            if len(self._internal.index_map) != len(name):
+                raise ValueError('Length of new names must be {}, got {}'
+                                 .format(len(self._internal.index_map), len(name)))
+            return [n if n is None or isinstance(n, tuple) else (n,) for n in name]
         else:
             raise TypeError('name must be a hashable type')
 
