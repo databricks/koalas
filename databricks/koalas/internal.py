@@ -18,7 +18,7 @@
 An internal immutable DataFrame with some metadata to manage indexes.
 """
 import re
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from itertools import accumulate
 
 import numpy as np
@@ -35,6 +35,9 @@ except ImportError:
     from pyspark.sql.pandas.types import to_arrow_type
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+if TYPE_CHECKING:
+    # This is required in old Python 3.5 to prevent circular reference.
+    from databricks.koalas.series import Series
 from databricks.koalas.config import get_option
 from databricks.koalas.typedef import infer_pd_series_spark_type, spark_type_to_pandas_dtype
 from databricks.koalas.utils import (column_index_level, default_session, lazy_property,
@@ -726,7 +729,7 @@ class _InternalFrame(object):
                                for name in index_names]
         return pdf
 
-    def with_new_columns(self, scols_or_ksers: List[Union[spark.Column, 'ks.Series']],
+    def with_new_columns(self, scols_or_ksers: List[Union[spark.Column, 'Series']],
                          column_index: Optional[List[Tuple[str, ...]]] = None,
                          keep_order: bool = True) -> '_InternalFrame':
         """ Copy the immutable DataFrame with the updates by the specified Spark Columns or Series.
@@ -775,7 +778,7 @@ class _InternalFrame(object):
             column_scols=[scol_for(sdf, name_like_string(idx)) for idx in column_index],
             scol=None)
 
-    def with_filter(self, pred: Union[spark.Column, 'ks.Series']):
+    def with_filter(self, pred: Union[spark.Column, 'Series']):
         """ Copy the immutable DataFrame with the updates by the predicate.
 
         :param pred: the predicate to filter.
