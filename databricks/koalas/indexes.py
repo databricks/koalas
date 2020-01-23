@@ -199,7 +199,7 @@ class Index(IndexOpsMixin):
         For Index
 
         >>> idx.identical(idx)
-        False
+        True
         >>> with option_context('compute.ops_on_diff_frames', True):
         ...     idx.identical(ks.Index(['a', 'b', 'c']))
         True
@@ -212,7 +212,7 @@ class Index(IndexOpsMixin):
         For MultiIndex
 
         >>> midx.identical(midx)
-        False
+        True
         >>> with option_context('compute.ops_on_diff_frames', True):
         ...     midx.identical(ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')]))
         True
@@ -225,7 +225,7 @@ class Index(IndexOpsMixin):
         self_name = self.names if isinstance(self, MultiIndex) else self.name
         other_name = other.names if isinstance(other, MultiIndex) else other.name
 
-        return (
+        return (self is other) or (
             type(self) == type(other) and  # to support non-index comparison by short-circuiting.
             self_name == other_name and
             self.equals(other))
@@ -252,7 +252,7 @@ class Index(IndexOpsMixin):
         For Index
 
         >>> idx.equals(idx)
-        False
+        True
         >>> with option_context('compute.ops_on_diff_frames', True):
         ...     idx.equals(ks.Index(['a', 'b', 'c']))
         True
@@ -265,7 +265,7 @@ class Index(IndexOpsMixin):
         For MultiIndex
 
         >>> midx.equals(midx)
-        False
+        True
         >>> with option_context('compute.ops_on_diff_frames', True):
         ...     midx.equals(ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')]))
         True
@@ -280,9 +280,10 @@ class Index(IndexOpsMixin):
             # Directly using Series from both self and other seems causing
             # some exceptions when 'compute.ops_on_diff_frames' is enabled.
             # Working around for now via using frame.
-            return self is not other and type(self) == type(other) and (
-                self.to_series().rename("self").to_frame().reset_index()['self'] ==
-                other.to_series().rename("other").to_frame().reset_index()['other']).all()
+            return (self is other) or (
+                type(self) == type(other) and
+                (self.to_series().rename("self").to_frame().reset_index()['self'] ==
+                 other.to_series().rename("other").to_frame().reset_index()['other']).all())
 
     def transpose(self):
         """
