@@ -31,7 +31,8 @@ from pandas._libs.parsers import is_datetime64_dtype
 from pandas.core.dtypes.common import is_datetime64tz_dtype
 
 from pyspark.sql import Window, functions as F
-from pyspark.sql.types import FloatType, DoubleType, NumericType, StructField, StructType
+from pyspark.sql.types import (FloatType, DoubleType, NumericType, StructField, StructType,
+                               StringType)
 from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -1976,6 +1977,11 @@ class DataFrameGroupBy(GroupBy):
         3   1.0  6.0       NaN 6.0 6.0 6.0 6.0 6.0   1.0  9.0       NaN 9.0 9.0 9.0 9.0 9.0
 
         """
+        for col in self._agg_columns:
+            if isinstance(col.spark_type, StringType):
+                raise NotImplementedError(
+                    "DataFrameGroupBy.describe() doesn't support for string type for now")
+
         kdf = self.agg(["count", "mean", "std", "min", "quartiles", "max"]).reset_index()
         sdf = kdf._sdf
         agg_cols = [col.name for col in self._agg_columns]
