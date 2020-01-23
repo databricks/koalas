@@ -25,9 +25,10 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import BooleanType, LongType
 from pyspark.sql.utils import AnalysisException
 
-from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME,
+                                        SPARK_INDEX_NAME_FORMAT)
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
-from databricks.koalas.utils import column_index_level, name_like_string
+from databricks.koalas.utils import column_index_level, name_like_string, scol_for
 
 
 class _IndexerLike(object):
@@ -131,6 +132,82 @@ class AtIndexer(_IndexerLike):
                           or len(values) > 1) else values[0]
 
 
+class iAtIndexer(_IndexerLike):
+    """
+    Access a single value for a row/column pair by integer position.
+
+    Similar to ``iloc``, in that both provide integer-based lookups. Use
+    ``iat`` if you only need to get or set a single value in a DataFrame
+    or Series.
+
+    Raises
+    ------
+    KeyError
+        When label does not exist in DataFrame
+
+    Examples
+    --------
+    >>> df = ks.DataFrame([[0, 2, 3], [0, 4, 1], [10, 20, 30]],
+    ...                   columns=['A', 'B', 'C'])
+    >>> df
+        A   B   C
+    0   0   2   3
+    1   0   4   1
+    2  10  20  30
+
+    Get value at specified row/column pair
+
+    >>> df.iat[1, 2]
+    1
+
+    Get value within a series
+
+    >>> kser = ks.Series([1, 2, 3], index=[10, 20, 30])
+    >>> kser
+    10    1
+    20    2
+    30    3
+    Name: 0, dtype: int64
+
+    >>> kser.iat[1]
+    2
+    """
+    def __getitem__(self, key):
+        if self._is_df:
+            if not isinstance(key, tuple) or len(key) != 2:
+                raise TypeError(
+                    "Use DataFrame.iat like .iat[row_integer_position, column_integer_position]")
+            row_sel, col_sel = key
+        else:
+            assert self._is_series, type(self._kdf_or_kser)
+            if not isinstance(key, int) and len(key) != 1:
+                raise TypeError("Use Series.iat like .iat[row_integer_position]")
+            row_sel = key
+            col_sel = 0
+
+        if len(self._internal.index_map) == 1:
+            if is_list_like(row_sel):
+                raise ValueError(
+                    'iAt based indexing can only have integer indexers')
+        if not isinstance(col_sel, int):
+            raise ValueError('iat based indexing on multi-index can only have integer values')
+        if isinstance(col_sel, int):
+            if col_sel > len(self._internal.data_columns):
+                raise KeyError(name_like_string(col_sel))
+            col_sel = (self._internal.data_columns[col_sel],)
+
+        sdf = self._internal.sdf.select(self._internal.data_columns)
+
+        sdf = _InternalFrame.attach_default_index(sdf, default_index_type="distributed-sequence")
+        cond = F.col(SPARK_INDEX_NAME_FORMAT(0)) == row_sel
+        pdf = sdf.where(cond).select(*col_sel).toPandas()
+
+        if len(pdf) < 1:
+            raise KeyError(name_like_string(row_sel))
+
+        return pdf.iloc[0, 0]
+
+
 class _LocIndexerLike(_IndexerLike):
 
     def __getitem__(self, key):
@@ -142,6 +219,10 @@ class _LocIndexerLike(_IndexerLike):
                 kdf = self._kdf_or_kser.to_frame()
                 kdf['__temp_col__'] = key
                 return type(self)(kdf[self._kdf_or_kser.name])[kdf['__temp_col__']]
+            elif isinstance(key, int) and isinstance(self, ILocIndexer):
+                # if type of item in given `key` for ILocIndexer is integer,
+                # directly use `iat` since they work the same
+                return self._kdf_or_kser.iat[key]
 
             cond, limit, remaining_index = self._select_rows(key)
             if cond is None and limit is None:
@@ -155,6 +236,10 @@ class _LocIndexerLike(_IndexerLike):
             if isinstance(key, tuple):
                 if len(key) != 2:
                     raise SparkPandasIndexingError("Only accepts pairs of candidates")
+                elif all((isinstance(item, int) for item in key)) and isinstance(self, ILocIndexer):
+                    # if all type of item in given `key` for ILocIndexer are integer,
+                    # directly use `iat` since they work the same
+                    return self._kdf_or_kser.iat[key]
                 rows_sel, cols_sel = key
             else:
                 rows_sel = key
