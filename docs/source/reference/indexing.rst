@@ -45,6 +45,7 @@ Modifying and computations
    Index.argmin
    Index.argmax
    Index.copy
+   Index.equals
    Index.identical
    Index.is_boolean
    Index.is_categorical
@@ -174,6 +175,7 @@ MultiIndex Modifying and computations
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.equals
    MultiIndex.identical
    MultiIndex.drop
    MultiIndex.copy

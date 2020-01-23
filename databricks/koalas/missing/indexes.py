@@ -119,7 +119,6 @@ class _MissingPandasLikeMultiIndex(object):
     difference = unsupported_function('difference')
     droplevel = unsupported_function('droplevel')
     equal_levels = unsupported_function('equal_levels')
-    equals = unsupported_function('equals')
     factorize = unsupported_function('factorize')
     format = unsupported_function('format')
     get_indexer = unsupported_function('get_indexer')
