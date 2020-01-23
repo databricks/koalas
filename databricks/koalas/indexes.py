@@ -33,7 +33,7 @@ from pyspark.sql import functions as F, Window
 from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.config import get_option
+from databricks.koalas.config import get_option, option_context
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
@@ -177,6 +177,69 @@ class Index(IndexOpsMixin):
         (3,)
         """
         return len(self._kdf),
+
+    def identical(self, other):
+        """
+        Similar to equals, but check that other comparable attributes are
+        also equal.
+
+        Returns
+        -------
+        bool
+            If two Index objects have equal elements and same type True,
+            otherwise False.
+
+        Examples
+        --------
+
+        >>> from databricks.koalas.config import option_context
+        >>> idx = ks.Index(['a', 'b', 'c'])
+        >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+
+        For Index
+
+        >>> idx.identical(idx)
+        False
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     idx.identical(ks.Index(['a', 'b', 'c']))
+        True
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     idx.identical(ks.Index(['b', 'b', 'a']))
+        False
+        >>> idx.identical(midx)
+        False
+
+        For MultiIndex
+
+        >>> midx.identical(midx)
+        False
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     midx.identical(ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')]))
+        True
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     midx.identical(ks.MultiIndex.from_tuples([('c', 'z'), ('b', 'y'), ('a', 'x')]))
+        False
+        >>> midx.identical(idx)
+        False
+        """
+        self_name = self.names if isinstance(self, MultiIndex) else self.name
+        other_name = other.names if isinstance(other, MultiIndex) else other.name
+
+        def compare_values():
+            # TODO: avoid using default index?
+            with option_context("compute.default_index_type", "distributed-sequence"):
+                # Directly using Series from both self and other seems causing
+                # some exceptions when 'compute.ops_on_diff_frames' is enabled.
+                # Working around for now via using frame.
+                return (
+                    self.to_series().rename("self").to_frame().reset_index()['self'] ==
+                    other.to_series().rename("other").to_frame().reset_index()['other']).all()
+
+        return (
+            self is not other and
+            type(self) == type(other) and
+            self_name == other_name and
+            compare_values())
 
     def transpose(self):
         """
