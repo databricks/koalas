@@ -2696,8 +2696,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # Now, new internal Spark columns are named as same as index name.
             new_index_map = [(column, name) for column, name in new_index_map]
 
-            index_map = [(SPARK_INDEX_NAME_FORMAT(0), None)]
-            sdf = _InternalFrame.attach_default_index(sdf)
+            sdf, index_column = _InternalFrame.attach_default_index(sdf)
+            index_map = [(index_column, None)]
 
         if drop:
             new_index_map = []

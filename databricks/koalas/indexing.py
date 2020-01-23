@@ -198,8 +198,9 @@ class iAtIndexer(_IndexerLike):
 
         sdf = self._internal.sdf.select(self._internal.data_columns)
 
-        sdf = _InternalFrame.attach_default_index(sdf, default_index_type="distributed-sequence")
-        cond = F.col(SPARK_INDEX_NAME_FORMAT(0)) == row_sel
+        sdf, index_column = \
+            _InternalFrame.attach_default_index(sdf, default_index_type="distributed-sequence")
+        cond = F.col(index_column) == row_sel
         pdf = sdf.where(cond).select(*col_sel).toPandas()
 
         if len(pdf) < 1:

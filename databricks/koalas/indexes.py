@@ -1220,7 +1220,7 @@ class Index(IndexOpsMixin):
         sdf = self._internal.sdf
         sdf = sdf.select(self._scol.alias('__index_value__'))
 
-        sdf = _InternalFrame.attach_default_index(
+        sdf, index_column = _InternalFrame.attach_default_index(
             sdf, default_index_type='distributed-sequence')
         # sdf here looks like below
         # +-----------------+---------------+
@@ -1239,7 +1239,7 @@ class Index(IndexOpsMixin):
 
         return sdf.orderBy(
             F.col('__index_value__').desc(),
-            F.col('__index_level_0__').asc()).first()[0]
+            F.col(index_column).asc()).first()[0]
 
     def argmin(self):
         """
@@ -1264,12 +1264,12 @@ class Index(IndexOpsMixin):
         """
         sdf = self._internal.sdf
         sdf = sdf.select(self._scol.alias('__index_value__'))
-        sdf = _InternalFrame.attach_default_index(
+        sdf, index_column = _InternalFrame.attach_default_index(
             sdf, default_index_type='distributed-sequence')
 
         return sdf.orderBy(
             F.col('__index_value__').asc(),
-            F.col('__index_level_0__').asc()).first()[0]
+            F.col(index_column).asc()).first()[0]
 
     def set_names(self, names, level=None, inplace=False):
         """

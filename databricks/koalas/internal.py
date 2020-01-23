@@ -454,14 +454,13 @@ class _InternalFrame(object):
         assert isinstance(sdf, spark.DataFrame)
 
         if index_map is None:
-            # Here is when Koalas DataFrame is created directly from Spark DataFrame.
-            assert not any(SPARK_INDEX_NAME_PATTERN.match(name) for name in sdf.schema.names), \
+            assert not any(SPARK_INDEX_NAME_PATTERN.match(name) for name in sdf.columns), \
                 "Index columns should not appear in columns of the Spark DataFrame. Avoid " \
-                "index colum names [%s]." % SPARK_INDEX_NAME_PATTERN
+                "index column names [%s]." % SPARK_INDEX_NAME_PATTERN
 
             # Create default index.
-            index_map = [(SPARK_INDEX_NAME_FORMAT(0), None)]
-            sdf = _InternalFrame.attach_default_index(sdf)
+            sdf, index_column = _InternalFrame.attach_default_index(sdf)
+            index_map = [(index_column, None)]
 
         if NATURAL_ORDER_COLUMN_NAME not in sdf.columns:
             sdf = sdf.withColumn(NATURAL_ORDER_COLUMN_NAME, F.monotonically_increasing_id())
@@ -520,11 +519,19 @@ class _InternalFrame(object):
         """
         if default_index_type is None:
             default_index_type = get_option("compute.default_index_type")
+
+        i = 0
+        while True:
+            index_column = SPARK_INDEX_NAME_FORMAT(i)
+            if index_column not in sdf.columns:
+                break
+            i += 1
+
         scols = [scol_for(sdf, column) for column in sdf.columns]
         if default_index_type == "sequence":
             sequential_index = F.row_number().over(
                 Window.orderBy(F.monotonically_increasing_id())) - 1
-            return sdf.select(sequential_index.alias(SPARK_INDEX_NAME_FORMAT(0)), *scols)
+            return sdf.select(sequential_index.alias(index_column), *scols), index_column
         elif default_index_type == "distributed-sequence":
             # 1. Calculates counts per each partition ID. `counts` here is, for instance,
             #     {
@@ -563,10 +570,10 @@ class _InternalFrame(object):
 
             # 5. Calcuate the index.
             return sdf.select(
-                F.expr('__offset__ + __row_number__ - 1').alias(SPARK_INDEX_NAME_FORMAT(0)), *scols)
+                F.expr('__offset__ + __row_number__ - 1').alias(index_column), *scols), index_column
         elif default_index_type == "distributed":
             return sdf.select(
-                F.monotonically_increasing_id().alias(SPARK_INDEX_NAME_FORMAT(0)), *scols)
+                F.monotonically_increasing_id().alias(index_column), *scols), index_column
         else:
             raise ValueError("'compute.default_index_type' should be one of 'sequence',"
                              " 'distributed-sequence' and 'distributed'")
