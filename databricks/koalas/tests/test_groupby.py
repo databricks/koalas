@@ -264,7 +264,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         datas.append({"a": [1, 1, 3], "b": [4, 5, 6], "c": [7, 8, 9]})
         datas.append({"a": [-1, -1, -3], "b": [-4, -5, -6], "c": [-7, -8, -9]})
         datas.append({"a": [0, 0, 0], "b": [0, 0, 0], "c": [0, 8, 0]})
-        # it is okay string type column as a group key
+        # it is okay if string type column as a group key
         datas.append({"a": ['a', 'a', 'c'], "b": [4, 5, 6], "c": [7, 8, 9]})
 
         for data in datas:
