@@ -8177,11 +8177,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Examples
         --------
         >>> df = ks.DataFrame({'id': range(10)})
-        >>> df.explain()
+        >>> df.explain()  # doctest: +ELLIPSIS
         == Physical Plan ==
         ...
 
-        >>> df.explain(True)
+        >>> df.explain(True)  # doctest: +ELLIPSIS
         == Parsed Logical Plan ==
         ...
         == Analyzed Logical Plan ==
