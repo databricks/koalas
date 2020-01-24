@@ -41,7 +41,7 @@ from databricks.koalas.exceptions import SparkPandasIndexingError
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAME,
-                                        SPARK_INDEX_NAME_FORMAT)
+                                        SPARK_DEFAULT_INDEX_NAME)
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.ml import corr
@@ -2721,7 +2721,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 "approx_percentile(`%s`, array(%s), %s)" % (self.name, args, accuracy))
             sdf = sdf.select(percentile_col.alias("percentiles"))
 
-            internal_index_column = SPARK_INDEX_NAME_FORMAT(0)
+            internal_index_column = SPARK_DEFAULT_INDEX_NAME
             value_column = "value"
             cols = []
             for i, quantile in enumerate(quantiles):
@@ -3319,8 +3319,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
             self._internal = self.drop(item)._internal
             item_string = name_like_string(item)
-            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(str(item_string)))
-            internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
+            sdf = sdf.withColumn(SPARK_DEFAULT_INDEX_NAME, F.lit(str(item_string)))
+            internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_DEFAULT_INDEX_NAME, None)])
             return _col(DataFrame(internal))
 
         internal = self._internal.copy(
@@ -3510,8 +3510,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf_count = ser_count._internal.sdf
         most_value = ser_count.max()
         sdf_most_value = sdf_count.filter("count == {}".format(most_value))
-        sdf = sdf_most_value.select(
-            F.col(SPARK_INDEX_NAME_FORMAT(0)).alias('0'))
+        sdf = sdf_most_value.select(F.col(SPARK_DEFAULT_INDEX_NAME).alias('0'))
         internal = _InternalFrame(sdf=sdf, index_map=None)
 
         result = _col(DataFrame(internal))

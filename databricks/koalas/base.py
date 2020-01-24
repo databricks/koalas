@@ -31,7 +31,7 @@ from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, Times
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas import numpy_compat
 from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAME,
-                                        SPARK_INDEX_NAME_FORMAT)
+                                        SPARK_DEFAULT_INDEX_NAME)
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
@@ -1013,7 +1013,7 @@ class IndexOpsMixin(object):
             sdf_dropna = self._internal._sdf.select(self._scol).dropna()
         else:
             sdf_dropna = self._internal._sdf.select(self._scol)
-        index_name = SPARK_INDEX_NAME_FORMAT(0)
+        index_name = SPARK_DEFAULT_INDEX_NAME
         column_name = self._internal.data_columns[0]
         sdf = sdf_dropna.groupby(scol_for(sdf_dropna, column_name).alias(index_name)).count()
         if sort:

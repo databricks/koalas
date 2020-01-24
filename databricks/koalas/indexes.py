@@ -1218,11 +1218,10 @@ class Index(IndexOpsMixin):
         >>> kidx.argmax()
         4
         """
-        sdf = self._internal.sdf
-        sdf = sdf.select(self._scol.alias('__index_value__'))
+        sdf = self._internal.sdf.select(self._scol)
 
-        sdf, index_column = _InternalFrame.attach_default_index(
-            sdf, default_index_type='distributed-sequence')
+        sequence_col = "__distributed_sequence_column__"
+        sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
         # sdf here looks like below
         # +-----------------+---------------+
         # |__index_level_0__|__index_value__|
@@ -1238,9 +1237,7 @@ class Index(IndexOpsMixin):
         # |                1|              9|
         # +-----------------+---------------+
 
-        return sdf.orderBy(
-            F.col('__index_value__').desc(),
-            F.col(index_column).asc()).first()[0]
+        return sdf.orderBy(self._scol.desc(), F.col(sequence_col).asc()).first()[0]
 
     def argmin(self):
         """
@@ -1263,14 +1260,13 @@ class Index(IndexOpsMixin):
         >>> kidx.argmin()
         7
         """
-        sdf = self._internal.sdf
-        sdf = sdf.select(self._scol.alias('__index_value__'))
-        sdf, index_column = _InternalFrame.attach_default_index(
-            sdf, default_index_type='distributed-sequence')
+        sdf = self._internal.sdf.select(self._scol)
 
-        return sdf.orderBy(
-            F.col('__index_value__').asc(),
-            F.col(index_column).asc()).first()[0]
+        # This is a workaround to perform an operation based on natural order.
+        sequence_col = "__distributed_sequence_column__"
+        sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
+
+        return sdf.orderBy(self._scol.asc(), F.col(sequence_col).asc()).first()[0]
 
     def set_names(self, names, level=None, inplace=False):
         """

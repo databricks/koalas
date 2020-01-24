@@ -25,10 +25,9 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import BooleanType, LongType
 from pyspark.sql.utils import AnalysisException
 
-from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME,
-                                        SPARK_INDEX_NAME_FORMAT)
+from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
-from databricks.koalas.utils import column_index_level, name_like_string, scol_for
+from databricks.koalas.utils import column_index_level, name_like_string
 
 
 class _IndexerLike(object):
@@ -198,9 +197,10 @@ class iAtIndexer(_IndexerLike):
 
         sdf = self._internal.sdf.select(self._internal.data_columns)
 
-        sdf, index_column = \
-            _InternalFrame.attach_default_index(sdf, default_index_type="distributed-sequence")
-        cond = F.col(index_column) == row_sel
+        # This is a workaround to perform an operation based on natural order.
+        sequence_col = "__distributed_sequence_column__"
+        sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
+        cond = F.col(sequence_col) == row_sel
         pdf = sdf.where(cond).select(*col_sel).toPandas()
 
         if len(pdf) < 1:
