@@ -1219,7 +1219,6 @@ class Index(IndexOpsMixin):
         4
         """
         sdf = self._internal.sdf.select(self._scol)
-
         sequence_col = "__distributed_sequence_column__"
         sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
         # sdf here looks like below
@@ -1261,8 +1260,6 @@ class Index(IndexOpsMixin):
         7
         """
         sdf = self._internal.sdf.select(self._scol)
-
-        # This is a workaround to perform an operation based on natural order.
         sequence_col = "__distributed_sequence_column__"
         sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
 

@@ -196,8 +196,6 @@ class iAtIndexer(_IndexerLike):
             col_sel = (self._internal.data_columns[col_sel],)
 
         sdf = self._internal.sdf.select(self._internal.data_columns)
-
-        # This is a workaround to perform an operation based on natural order.
         sequence_col = "__distributed_sequence_column__"
         sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
         cond = F.col(sequence_col) == row_sel
