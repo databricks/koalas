@@ -46,6 +46,7 @@ from databricks.koalas.utils import (column_index_level, default_session, lazy_p
 
 # A function to turn given numbers to Spark columns that represent Koalas index.
 SPARK_INDEX_NAME_FORMAT = "__index_level_{}__".format
+SPARK_DEFAULT_INDEX_NAME = SPARK_INDEX_NAME_FORMAT(0)
 # A pattern to check if the name of a Spark column is a Koalas index name or not.
 SPARK_INDEX_NAME_PATTERN = re.compile(r"__index_level_[0-9]+__")
 
@@ -459,8 +460,8 @@ class _InternalFrame(object):
                 "index column names [%s]." % SPARK_INDEX_NAME_PATTERN
 
             # Create default index.
-            sdf, index_column = _InternalFrame.attach_default_index(sdf)
-            index_map = [(index_column, None)]
+            sdf = _InternalFrame.attach_default_index(sdf)
+            index_map = [(SPARK_DEFAULT_INDEX_NAME, None)]
 
         if NATURAL_ORDER_COLUMN_NAME not in sdf.columns:
             sdf = sdf.withColumn(NATURAL_ORDER_COLUMN_NAME, F.monotonically_increasing_id())
@@ -516,67 +517,106 @@ class _InternalFrame(object):
         This method attaches a default index to Spark DataFrame. Spark does not have the index
         notion so corresponding column should be generated.
         There are several types of default index can be configured by `compute.default_index_type`.
+
+        >>> sdf = ks.range(10).to_spark()
+        >>> sdf
+        DataFrame[id: bigint]
+
+        It adds the default index column '__index_level_0__'.
+
+        >>> sdf = _InternalFrame.attach_default_index(sdf)
+        >>> sdf
+        DataFrame[__index_level_0__: int, id: bigint]
+
+        It throws an exception if the given column name already exists.
+
+        >>> _InternalFrame.attach_default_index(sdf)
+        ... # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+          ...
+        AssertionError: '__index_level_0__' already exists...
         """
+        index_column = SPARK_DEFAULT_INDEX_NAME
+        assert index_column not in sdf.columns, (
+            "'%s' already exists in the Spark column names '%s'" % (
+                index_column, sdf.columns))
+
         if default_index_type is None:
             default_index_type = get_option("compute.default_index_type")
-
-        i = 0
-        while True:
-            index_column = SPARK_INDEX_NAME_FORMAT(i)
-            if index_column not in sdf.columns:
-                break
-            i += 1
 
         scols = [scol_for(sdf, column) for column in sdf.columns]
         if default_index_type == "sequence":
             sequential_index = F.row_number().over(
                 Window.orderBy(F.monotonically_increasing_id())) - 1
-            return sdf.select(sequential_index.alias(index_column), *scols), index_column
+            return sdf.select(sequential_index.alias(index_column), *scols)
         elif default_index_type == "distributed-sequence":
-            # 1. Calculates counts per each partition ID. `counts` here is, for instance,
-            #     {
-            #         1: 83,
-            #         6: 83,
-            #         3: 83,
-            #         ...
-            #     }
-            sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
-            counts = map(lambda x: (x["key"], x["count"]),
-                         sdf.groupby(sdf['__spark_partition_id'].alias("key")).count().collect())
-
-            # 2. Calculates cumulative sum in an order of partition id.
-            #     Note that it does not matter if partition id guarantees its order or not.
-            #     We just need a one-by-one sequential id.
-
-            # sort by partition key.
-            sorted_counts = sorted(counts, key=lambda x: x[0])
-            # get cumulative sum in an order of partition key.
-            cumulative_counts = [0] + list(accumulate(map(lambda count: count[1], sorted_counts)))
-            # zip it with partition key.
-            sums = dict(zip(map(lambda count: count[0], sorted_counts), cumulative_counts))
-
-            # 3. Attach offset for each partition.
-            @pandas_udf(LongType(), PandasUDFType.SCALAR)
-            def offset(id):
-                current_partition_offset = sums[id.iloc[0]]
-                return pd.Series(current_partition_offset).repeat(len(id))
-
-            sdf = sdf.withColumn('__offset__', offset('__spark_partition_id'))
-
-            # 4. Calculate row_number in each partition.
-            w = Window.partitionBy('__spark_partition_id').orderBy(F.monotonically_increasing_id())
-            row_number = F.row_number().over(w)
-            sdf = sdf.withColumn('__row_number__', row_number)
-
-            # 5. Calcuate the index.
-            return sdf.select(
-                F.expr('__offset__ + __row_number__ - 1').alias(index_column), *scols), index_column
+            return _InternalFrame.attach_distributed_sequence_column(
+                sdf, column_name=index_column)
         elif default_index_type == "distributed":
             return sdf.select(
-                F.monotonically_increasing_id().alias(index_column), *scols), index_column
+                F.monotonically_increasing_id().alias(index_column), *scols)
         else:
             raise ValueError("'compute.default_index_type' should be one of 'sequence',"
                              " 'distributed-sequence' and 'distributed'")
+
+    @staticmethod
+    def attach_distributed_sequence_column(sdf, column_name):
+        """
+        This method attaches a Spark column that has a sequence in a distributed manner.
+        This is equivalent to the column assigned when default index type 'distributed-sequence'.
+
+        >>> sdf = ks.DataFrame(['a', 'b', 'c']).to_spark()
+        >>> sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name="sequence")
+        >>> sdf.sort("sequence").show()  # doctest: +NORMALIZE_WHITESPACE
+        +--------+---+
+        |sequence|  0|
+        +--------+---+
+        |       0|  a|
+        |       1|  b|
+        |       2|  c|
+        +--------+---+
+        """
+
+        scols = [scol_for(sdf, column) for column in sdf.columns]
+
+        # 1. Calculates counts per each partition ID. `counts` here is, for instance,
+        #     {
+        #         1: 83,
+        #         6: 83,
+        #         3: 83,
+        #         ...
+        #     }
+        sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
+        counts = map(lambda x: (x["key"], x["count"]),
+                     sdf.groupby(sdf['__spark_partition_id'].alias("key")).count().collect())
+
+        # 2. Calculates cumulative sum in an order of partition id.
+        #     Note that it does not matter if partition id guarantees its order or not.
+        #     We just need a one-by-one sequential id.
+
+        # sort by partition key.
+        sorted_counts = sorted(counts, key=lambda x: x[0])
+        # get cumulative sum in an order of partition key.
+        cumulative_counts = [0] + list(accumulate(map(lambda count: count[1], sorted_counts)))
+        # zip it with partition key.
+        sums = dict(zip(map(lambda count: count[0], sorted_counts), cumulative_counts))
+
+        # 3. Attach offset for each partition.
+        @pandas_udf(LongType(), PandasUDFType.SCALAR)
+        def offset(id):
+            current_partition_offset = sums[id.iloc[0]]
+            return pd.Series(current_partition_offset).repeat(len(id))
+
+        sdf = sdf.withColumn('__offset__', offset('__spark_partition_id'))
+
+        # 4. Calculate row_number in each partition.
+        w = Window.partitionBy('__spark_partition_id').orderBy(F.monotonically_increasing_id())
+        row_number = F.row_number().over(w)
+        sdf = sdf.withColumn('__row_number__', row_number)
+
+        # 5. Calculate the index.
+        return sdf.select(
+            F.expr('__offset__ + __row_number__ - 1').alias(column_name), *scols)
 
     @lazy_property
     def _column_index_to_name(self) -> Dict[Tuple[str, ...], str]:
@@ -863,7 +903,7 @@ class _InternalFrame(object):
         else:
             name = index.name
             index_map = [(name_like_string(name)
-                          if name is not None else SPARK_INDEX_NAME_FORMAT(0),
+                          if name is not None else SPARK_DEFAULT_INDEX_NAME,
                           name if name is None or isinstance(name, tuple) else (name,))]
 
         index_columns = [index_column for index_column, _ in index_map]
