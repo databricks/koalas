@@ -2053,9 +2053,9 @@ class SeriesGroupBy(GroupBy):
 
     @property
     def _kdf(self) -> DataFrame:
-        # TODO: if names from _kser and _groupkeys are name, grouping key is just ignored.
-        #    it can be a problem when both series have the same name but different operations.
-        series = [self._kser] + [s for s in self._groupkeys if s.name != self._kser.name]
+        # TODO: Currently cannot handle the case when the values in current series
+        #  and groupkeys series are different but only their names are same.
+        series = [self._kser] + [s for s in self._groupkeys if not s._equals(self._kser)]
         return DataFrame(self._kser._kdf._internal.with_new_columns(series))
 
     @property

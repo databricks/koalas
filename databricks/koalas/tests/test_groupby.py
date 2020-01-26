@@ -734,8 +734,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby("b").apply(lambda x: x + 1).sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index(),
                        pdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index())
-        self.assert_eq(kdf.groupby(['b'])['c'].apply(lambda x: x).sort_index(),
-                       pdf.groupby(['b'])['c'].apply(lambda x: x).sort_index())
+        self.assert_eq(kdf.groupby(['b'])['b'].apply(lambda x: x).sort_index(),
+                       pdf.groupby(['b'])['b'].apply(lambda x: x).sort_index())
 
         with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
             kdf.groupby("b").apply(1)
