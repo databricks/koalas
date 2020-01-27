@@ -48,7 +48,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME,
-                                        SPARK_INDEX_NAME_FORMAT)
+                                        SPARK_INDEX_NAME_FORMAT, SPARK_DEFAULT_INDEX_NAME)
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import column_index_level, name_like_string, scol_for, validate_axis
@@ -2696,8 +2696,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # Now, new internal Spark columns are named as same as index name.
             new_index_map = [(column, name) for column, name in new_index_map]
 
-            sdf, index_column = _InternalFrame.attach_default_index(sdf)
-            index_map = [(index_column, None)]
+            sdf = _InternalFrame.attach_default_index(sdf)
+            index_map = [(SPARK_DEFAULT_INDEX_NAME, None)]
 
         if drop:
             new_index_map = []
@@ -3149,7 +3149,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf
         if column == index_column:
-            index_column = SPARK_INDEX_NAME_FORMAT(0)
+            index_column = SPARK_DEFAULT_INDEX_NAME
             sdf = sdf.select([self._internal.index_scols[0].alias(index_column)]
                              + self._internal.data_scols)
 
@@ -8137,7 +8137,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             for i in range(len(quantiles)):
                 cols_dict[column].append(scol_for(sdf, column).getItem(i).alias(column))
 
-        internal_index_column = SPARK_INDEX_NAME_FORMAT(0)
+        internal_index_column = SPARK_DEFAULT_INDEX_NAME
         cols = []
         for i, col in enumerate(zip(*cols_dict.values())):
             cols.append(F.struct(

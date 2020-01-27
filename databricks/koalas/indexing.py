@@ -841,11 +841,13 @@ class iLocIndexer(_LocIndexerLike):
     @lazy_property
     def _internal(self):
         internal = super(iLocIndexer, self)._internal
-        sdf, index_column = \
-            _InternalFrame.attach_default_index(internal.sdf,
-                                                default_index_type='distributed-sequence')
-        self._index_column = index_column
+        sdf = _InternalFrame.attach_distributed_sequence_column(internal.sdf,
+                                                                column_name=self._sequence_col)
         return internal.copy(sdf=sdf.orderBy(NATURAL_ORDER_COLUMN_NAME))
+
+    @lazy_property
+    def _sequence_col(self):
+        return "__distributed_sequence_column__"
 
     def _select_rows(self, rows_sel):
         from databricks.koalas.indexes import Index
@@ -868,7 +870,7 @@ class iLocIndexer(_LocIndexerLike):
                 return None, rows_sel.stop, None
         elif isinstance(rows_sel, int):
             sdf = self._internal.sdf
-            return (sdf[self._index_column] == rows_sel), None, 0
+            return (sdf[self._sequence_col] == rows_sel), None, 0
         else:
             iLocIndexer._raiseNotImplemented(".iloc requires numeric slice or conditional "
                                              "boolean Index, got {}".format(type(rows_sel)))

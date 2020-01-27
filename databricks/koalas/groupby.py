@@ -23,7 +23,6 @@ import inspect
 from collections import Callable, OrderedDict, namedtuple
 from functools import partial
 from itertools import product
-from operator import itemgetter
 from typing import Any, List, Tuple, Union
 
 import numpy as np
@@ -39,7 +38,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.typedef import _infer_return_type
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME,
-                                        SPARK_INDEX_NAME_FORMAT)
+                                        SPARK_INDEX_NAME_FORMAT, SPARK_DEFAULT_INDEX_NAME)
 from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy, \
     _MissingPandasLikeSeriesGroupBy
 from databricks.koalas.series import Series, _col
@@ -1016,7 +1015,7 @@ class GroupBy(object):
                 else:
                     index_map = [(
                         index.name
-                        if index.name is not None else SPARK_INDEX_NAME_FORMAT(0), index.name)]
+                        if index.name is not None else SPARK_DEFAULT_INDEX_NAME, index.name)]
 
                 new_index_columns = [index_column for index_column, _ in index_map]
                 new_data_columns = [str(col) for col in columns]
