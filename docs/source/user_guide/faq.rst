@@ -30,12 +30,12 @@ Should I use PySpark's DataFrame API or Koalas?
 If you are already familiar with pandas and want to leverage Spark for big data, we recommend
 using Koalas. If you are learning Spark from ground up, we recommend you start with PySpark's API.
 
-Can I use Koalas with Jupyter and PySpark?
+Can I use Koalas and PySpark in Juypter?
 ------------------------------------------
 
 If you have installed Koalas and PySpark locally on your machine and wish
 to use Jupyter to explore small data sets, there are `two ways <https://www.sicara.ai/blog/2017-05-02-get-started-pyspark-jupyter-notebook-3-minutes>`_ to run
-PySpark in Jupyter.
+Koalas and PySpark in Jupyter.
 
 1. Install a Python package **findspark** using ``pip install findspark``
 
@@ -55,7 +55,7 @@ Running ``pyspark`` will automatically launch a Jupyter notebook:
 .. image:: images/koalas_jupyter_2.png
     :width: 660px
 
-You can use either of the above methods to use PySpark and Koalas in Jupyter, but not both.
+You can use either of the above methods to use Koalas and PySpark in Jupyter, but not both.
 
 How can I request support for a method?
 ---------------------------------------
