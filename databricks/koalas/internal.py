@@ -811,7 +811,7 @@ class _InternalFrame(object):
                 scol = scol_or_kser._internal.scol
             else:
                 scol = scol_or_kser
-            column_scols.append(scol.alias(name_like_string(idx)))  # type: ignore
+            column_scols.append(scol)
 
         hidden_columns = []
         if keep_order:
@@ -822,7 +822,7 @@ class _InternalFrame(object):
         return self.copy(
             sdf=sdf,
             column_index=column_index,
-            column_scols=[scol_for(sdf, name_like_string(idx)) for idx in column_index],
+            column_scols=[scol_for(sdf, col) for col in self._sdf.select(column_scols).columns],
             scol=None)
 
     def with_filter(self, pred: Union[spark.Column, 'Series']):

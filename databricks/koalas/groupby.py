@@ -2018,8 +2018,8 @@ class SeriesGroupBy(GroupBy):
         #   `SeriesGroupBy` creates another DataFrame and
         #   internal IDs of the columns become different. Maybe we should refactor the whole
         #   class in the future.
-        self._groupkeys_scols = [F.col(name_like_string(s.name)) for s in self._groupkeys]
-        self._agg_columns_scols = [F.col(name_like_string(s.name)) for s in self._agg_columns]
+        self._groupkeys_scols = [F.col(s._internal.data_columns[0]) for s in self._groupkeys]
+        self._agg_columns_scols = [F.col(s._internal.data_columns[0]) for s in self._agg_columns]
 
         if not as_index:
             raise TypeError('as_index=False only valid with DataFrame')
