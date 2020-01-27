@@ -171,6 +171,16 @@ _options = [
             "Index type should be one of 'sequence', 'distributed', 'distributed-sequence'.")),
 
     Option(
+        key='compute.ordered_head',
+        doc=(
+            "'compute.ordered_head' sets whether or not to operate head with natural ordering. "
+            "Koalas doesn't guarantee the row ordering so `head` could return some rows from "
+            "distributed partitions. If 'compute.ordered_head' is set to True, Koalas performs "
+            "natural ordering beforehand, but it will cause a performance overhead."),
+        default=False,
+        types=bool),
+
+    Option(
         key='plotting.max_rows',
         doc=(
             "'plotting.max_rows' sets the visual limit on top-n-based plots such as `plot.bar` "
