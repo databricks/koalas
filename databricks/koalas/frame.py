@@ -989,7 +989,7 @@ class DataFrame(_Frame, Generic[T]):
             raise ValueError("aggs must be a dict mapping from column name (string) to aggregate "
                              "functions (list of strings).")
 
-        kdf = DataFrame(GroupBy._spark_groupby(self, func, ()))  # type: DataFrame
+        kdf = DataFrame(GroupBy._spark_groupby(self, func))  # type: DataFrame
 
         # The codes below basically converts:
         #

@@ -734,8 +734,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby("b").apply(lambda x: x + 1).sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index(),
                        pdf.groupby(['a', 'b']).apply(lambda x: x * x).sort_index())
-        self.assert_eq(kdf.groupby(['b'])['a'].apply(lambda x: x).sort_index(),
-                       pdf.groupby(['b'])['a'].apply(lambda x: x).sort_index())
+        self.assert_eq(kdf.groupby(['b'])['c'].apply(lambda x: x).sort_index(),
+                       pdf.groupby(['b'])['c'].apply(lambda x: x).sort_index())
 
         with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
             kdf.groupby("b").apply(1)
@@ -793,8 +793,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby("b").transform(lambda x: x + 1).sort_index())
         self.assert_eq(kdf.groupby(['a', 'b']).transform(lambda x: x * x).sort_index(),
                        pdf.groupby(['a', 'b']).transform(lambda x: x * x).sort_index())
-        self.assert_eq(kdf.groupby(['b'])['a'].transform(lambda x: x).sort_index(),
-                       pdf.groupby(['b'])['a'].transform(lambda x: x).sort_index())
+        self.assert_eq(kdf.groupby(['b'])['c'].transform(lambda x: x).sort_index(),
+                       pdf.groupby(['b'])['c'].transform(lambda x: x).sort_index())
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
