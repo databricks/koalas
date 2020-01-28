@@ -161,14 +161,14 @@ class IndexOpsMixin(object):
         if isinstance(self.spark_type, StringType):
             # Concatenate string columns
             if isinstance(other, IndexOpsMixin) and isinstance(other.spark_type, StringType):
-                return _column_op(F.concat)(self, other)
+                return _column_op(F.concat)(self, other).rename(self.name)
             # Handle df['col'] + 'literal'
             elif isinstance(other, str):
-                return _column_op(F.concat)(self, F.lit(other))
+                return _column_op(F.concat)(self, F.lit(other)).rename(self.name)
             else:
                 raise TypeError('string addition can only be applied to string series or literals.')
         else:
-            return _column_op(spark.Column.__add__)(self, other)
+            return _column_op(spark.Column.__add__)(self, other).rename(self.name)
 
     def __sub__(self, other):
         # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
@@ -178,19 +178,26 @@ class IndexOpsMixin(object):
                 raise TypeError('datetime subtraction can only be applied to datetime series.')
             return self.astype('bigint') - other.astype('bigint')
         else:
-            return _column_op(spark.Column.__sub__)(self, other)
+            return _column_op(spark.Column.__sub__)(self, other).rename(self.name)
 
-    __mul__ = _column_op(spark.Column.__mul__)
-    __div__ = _numpy_column_op(spark.Column.__div__)
-    __truediv__ = _numpy_column_op(spark.Column.__truediv__)
-    __mod__ = _column_op(spark.Column.__mod__)
+    def __mul__(self, other):
+        return _column_op(spark.Column.__mul__)(self, other).rename(self.name)
+
+    def __div__(self, other):
+        return _numpy_column_op(spark.Column.__div__)(self, other).rename(self.name)
+
+    def __truediv__(self, other):
+        return _numpy_column_op(spark.Column.__truediv__)(self, other).rename(self.name)
+
+    def __mod__(self, other):
+        return _column_op(spark.Column.__mod__)(self, other).rename(self.name)
 
     def __radd__(self, other):
         # Handle 'literal' + df['col']
         if isinstance(self.spark_type, StringType) and isinstance(other, str):
-            return self._with_new_scol(F.concat(F.lit(other), self._scol))
+            return self._with_new_scol(F.concat(F.lit(other), self._scol)).rename(self.name)
         else:
-            return _column_op(spark.Column.__radd__)(self, other)
+            return _column_op(spark.Column.__radd__)(self, other).rename(self.name)
 
     __rsub__ = _column_op(spark.Column.__rsub__)
     __rmul__ = _column_op(spark.Column.__rmul__)
@@ -199,23 +206,37 @@ class IndexOpsMixin(object):
 
     def __floordiv__(self, other):
         return self._with_new_scol(
-            F.floor(_numpy_column_op(spark.Column.__div__)(self, other)._scol))
+            F.floor(_numpy_column_op(spark.Column.__div__)(self, other)._scol)).rename(self.name)
 
     def __rfloordiv__(self, other):
         return self._with_new_scol(
-            F.floor(_numpy_column_op(spark.Column.__rdiv__)(self, other)._scol))
+            F.floor(_numpy_column_op(spark.Column.__rdiv__)(self, other)._scol)).rename(self.name)
 
     __rmod__ = _column_op(spark.Column.__rmod__)
-    __pow__ = _column_op(spark.Column.__pow__)
+
+    def __pow__(self, other):
+        return _column_op(spark.Column.__pow__)(self, other).rename(self.name)
+
     __rpow__ = _column_op(spark.Column.__rpow__)
 
     # comparison operators
-    __eq__ = _column_op(spark.Column.__eq__)
-    __ne__ = _column_op(spark.Column.__ne__)
-    __lt__ = _column_op(spark.Column.__lt__)
-    __le__ = _column_op(spark.Column.__le__)
-    __ge__ = _column_op(spark.Column.__ge__)
-    __gt__ = _column_op(spark.Column.__gt__)
+    def __eq__(self, other):
+        return _column_op(spark.Column.__eq__)(self, other).rename(self.name)
+
+    def __ne__(self, other):
+        return _column_op(spark.Column.__ne__)(self, other).rename(self.name)
+
+    def __lt__(self, other):
+        return _column_op(spark.Column.__lt__)(self, other).rename(self.name)
+
+    def __le__(self, other):
+        return _column_op(spark.Column.__le__)(self, other).rename(self.name)
+
+    def __ge__(self, other):
+        return _column_op(spark.Column.__ge__)(self, other).rename(self.name)
+
+    def __gt__(self, other):
+        return _column_op(spark.Column.__gt__)(self, other).rename(self.name)
 
     # `and`, `or`, `not` cannot be overloaded in Python,
     # so use bitwise operators as boolean operators

@@ -816,3 +816,23 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 kmidx.is_monotonic_decreasing,
                 pmidx.is_monotonic_decreasing)
+
+    def test_arithmetic_internal_data_columns(self):
+        funcs = ('__add__', '__sub__', '__mul__', '__div__', '__truediv__', '__mod__', '__pow__',
+                 '__eq__', '__ne__', '__lt__', '__le__', '__ge__', '__gt__')
+
+        kidx = ks.Index([90, 91, 85], name='koalas')
+        others = (kidx, 100, 'hello')
+        for func in funcs:
+            for other in others:
+                result = getattr(kidx, func)(other)
+                self.assert_eq(kidx._internal.data_columns[0],
+                               result._internal.data_columns[0])
+
+        kidx = ks.Index(['hello', 'databricks', 'koalas'], name='koalas')
+        others = (kidx, 'hello')
+        for func in funcs:
+            for other in others:
+                result = getattr(kidx, func)(other)
+                self.assert_eq(kidx._internal.data_columns[0],
+                               result._internal.data_columns[0])

@@ -1116,3 +1116,24 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                        pser.pct_change(periods=-100000000), almost=True)
         self.assert_eq(kser.pct_change(periods=100000000),
                        pser.pct_change(periods=100000000), almost=True)
+
+    def test_arithmetic_internal_data_columns(self):
+        funcs = ('__add__', '__sub__', '__mul__', '__div__', '__truediv__', '__mod__', '__pow__',
+                 '__eq__', '__ne__', '__lt__', '__le__', '__ge__', '__gt__')
+
+        kser = ks.Series([90, 91, 85], name='koalas')
+        others = (kser, 100, 'hello')
+        for func in funcs:
+            print(f"func: {func}")
+            for other in others:
+                result = getattr(kser, func)(other)
+                self.assert_eq(kser._internal.data_columns[0],
+                               result._internal.data_columns[0])
+
+        kser = ks.Series(['hello', 'databricks', 'koalas'], name='koalas')
+        others = (kser, 'hello')
+        for func in funcs:
+            for other in others:
+                result = getattr(kser, func)(other)
+                self.assert_eq(kser._internal.data_columns[0],
+                               result._internal.data_columns[0])
