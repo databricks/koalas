@@ -134,6 +134,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                 self.assert_eq(getattr((kdf.a + 1).groupby(ddkey), func)().sort_index(),
                                getattr((pdf.a + 1).groupby(pdkey), func)().sort_index(),
                                almost=almost)
+                self.assert_eq(getattr((kdf.b + 1).groupby(ddkey), func)().sort_index(),
+                               getattr((pdf.b + 1).groupby(pdkey), func)().sort_index(),
+                               almost=almost)
 
         for i in [0, 4, 7]:
             for almost, func in funcs:
