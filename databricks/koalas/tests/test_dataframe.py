@@ -1139,7 +1139,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.append(kdf), pdf.append(pdf))
 
     def test_clip(self):
-        pdf = pd.DataFrame({'A': [0, 2, 4]})
+        pdf = pd.DataFrame({'A': [0, 2, 4], 'B': [4, 2, 0], 'X': [-1, 10, 0]},
+                           index=np.random.rand(3))
         kdf = ks.from_pandas(pdf)
 
         # Assert list-like values are not accepted for 'lower' and 'upper'
@@ -1159,7 +1160,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.clip(1, 3), pdf.clip(1, 3))
 
         # Assert behavior on string values
-        str_kdf = ks.DataFrame({'A': ['a', 'b', 'c']})
+        str_kdf = ks.DataFrame({'A': ['a', 'b', 'c']}, index=np.random.rand(3))
         self.assert_eq(str_kdf.clip(1, 3), str_kdf)
 
     def test_binary_operators(self):
