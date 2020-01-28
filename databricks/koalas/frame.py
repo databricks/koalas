@@ -4517,8 +4517,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1        bee
         2     falcon
         """
-
-        return DataFrame(self._internal.copy(sdf=self._sdf.limit(n)))
+        if get_option('compute.ordered_head'):
+            sdf = self._sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
+        else:
+            sdf = self._sdf
+        return DataFrame(self._internal.copy(sdf=sdf.limit(n)))
 
     def pivot_table(self, values=None, index=None, columns=None,
                     aggfunc='mean', fill_value=None):
@@ -5305,7 +5308,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
         }
         by = [mapper[(asc, na_position)](scol) for scol, asc in zip(by, ascending)]
-        sdf = self._sdf.drop(NATURAL_ORDER_COLUMN_NAME).sort(*by)
+        sdf = self._sdf.sort(*(by + [NATURAL_ORDER_COLUMN_NAME])).drop(NATURAL_ORDER_COLUMN_NAME)
         kdf = DataFrame(self._internal.copy(sdf=sdf))  # type: ks.DataFrame
         if inplace:
             self._internal = kdf._internal

@@ -248,6 +248,13 @@ compute.ops_on_diff_frames      False          This determines whether or not to
                                                that method throws an exception.
 compute.default_index_type      'sequence'     This sets the default index type: sequence,
                                                distributed and distributed-sequence.
+compute.ordered_head            False          'compute.ordered_head' sets whether or not to operate
+                                               head with natural ordering. Koalas does not guarantee
+                                               the row ordering so `head` could return some rows
+                                               from distributed partitions. If
+                                               'compute.ordered_head' is set to True, Koalas
+                                               performs natural ordering beforehand, but it will
+                                               cause a performance overhead.
 plotting.max_rows               1000           'plotting.max_rows' sets the visual limit on top-n-
                                                based plots such as `plot.bar` and `plot.pie`. If it
                                                is set to 1000, the first 1000 data points will be
@@ -257,4 +264,3 @@ plotting.sample_ratio           None           'plotting.sample_ratio' sets the 
                                                `plot.line` and `plot.area`. This option defaults to
                                                'plotting.max_rows' option.
 =============================== ============== =====================================================
-
