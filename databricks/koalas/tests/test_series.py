@@ -570,7 +570,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 getattr(kser, name)
 
     def test_clip(self):
-        pser = pd.Series([0, 2, 4])
+        pser = pd.Series([0, 2, 4], index=np.random.rand(3))
         kser = ks.from_pandas(pser)
 
         # Assert list-like values are not accepted for 'lower' and 'upper'

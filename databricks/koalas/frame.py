@@ -4441,22 +4441,29 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         numeric_types = (DecimalType, DoubleType, FloatType, ByteType, IntegerType, LongType,
                          ShortType)
-        numeric_columns = [(c, self._internal.scol_for(c)) for c in self.columns
-                           if isinstance(self._internal.spark_type_for(c), numeric_types)]
+        numeric_columns = [(idx, self._internal.scol_for(idx))
+                           for idx in self._internal.column_index
+                           if isinstance(self._internal.spark_type_for(idx), numeric_types)]
 
         if lower is not None:
-            numeric_columns = [(c, F.when(scol < lower, lower).otherwise(scol).alias(c))
-                               for c, scol in numeric_columns]
+            numeric_columns = [(idx, (F.when(scol < lower, lower).otherwise(scol)
+                                      .alias(name_like_string(idx))))
+                               for idx, scol in numeric_columns]
         if upper is not None:
-            numeric_columns = [(c, F.when(scol > upper, upper).otherwise(scol).alias(c))
-                               for c, scol in numeric_columns]
+            numeric_columns = [(idx, (F.when(scol > upper, upper).otherwise(scol)
+                                      .alias(name_like_string(idx))))
+                               for idx, scol in numeric_columns]
 
-        nonnumeric_columns = [self._internal.scol_for(c) for c in self.columns
-                              if not isinstance(self._internal.spark_type_for(c), numeric_types)]
+        column_index = [idx for idx, _ in numeric_columns]
+        column_scols = [scol for _, scol in numeric_columns]
 
-        sdf = self._sdf.select([scol for _, scol in numeric_columns] + nonnumeric_columns)
+        for idx in self._internal.column_index:
+            if not isinstance(self._internal.spark_type_for(idx), numeric_types):
+                column_index.append(idx)
+                column_scols.append(self._internal.scol_for(idx))
 
-        return ks.DataFrame(sdf)[list(self.columns)]
+        internal = self._internal.with_new_columns(column_scols, column_index=column_index)
+        return DataFrame(internal)[list(self.columns)]
 
     def head(self, n=5):
         """
