@@ -16,7 +16,7 @@
 
 import pandas as pd
 
-from databricks.koalas.internal import _InternalFrame, SPARK_INDEX_NAME_FORMAT
+from databricks.koalas.internal import _InternalFrame, SPARK_DEFAULT_INDEX_NAME
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
@@ -28,7 +28,7 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
         internal = _InternalFrame.from_pandas(pdf)
         sdf = internal.sdf
 
-        self.assert_eq(internal.index_map, [(SPARK_INDEX_NAME_FORMAT(0), None)])
+        self.assert_eq(internal.index_map, [(SPARK_DEFAULT_INDEX_NAME, None)])
         self.assert_eq(internal.column_index, [('a', ), ('b', )])
         self.assert_eq(internal.data_columns, ['a', 'b'])
         self.assertTrue(internal.scol_for(('a',))._jc.equals(sdf['a']._jc))
@@ -42,7 +42,7 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
         internal = _InternalFrame.from_pandas(pdf)
         sdf = internal.sdf
 
-        self.assert_eq(internal.index_map, [(SPARK_INDEX_NAME_FORMAT(0), None), ('a', ('a',))])
+        self.assert_eq(internal.index_map, [(SPARK_DEFAULT_INDEX_NAME, None), ('a', ('a',))])
         self.assert_eq(internal.column_index, [('b', )])
         self.assert_eq(internal.data_columns, ['b'])
         self.assertTrue(internal.scol_for(('b',))._jc.equals(sdf['b']._jc))
@@ -55,7 +55,7 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
         internal = _InternalFrame.from_pandas(pdf)
         sdf = internal.sdf
 
-        self.assert_eq(internal.index_map, [(SPARK_INDEX_NAME_FORMAT(0), None), ('a', ('a',))])
+        self.assert_eq(internal.index_map, [(SPARK_DEFAULT_INDEX_NAME, None), ('a', ('a',))])
         self.assert_eq(internal.column_index, [('x', 'b')])
         self.assert_eq(internal.data_columns, ['(x, b)'])
         self.assertTrue(internal.scol_for(('x', 'b'))._jc.equals(sdf['(x, b)']._jc))

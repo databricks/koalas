@@ -31,7 +31,6 @@ class _MissingPandasLikeSeries(object):
 
     # Properties
     axes = unsupported_property('axes')
-    iat = unsupported_property('iat')
 
     # Functions
     align = unsupported_function('align')

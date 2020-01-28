@@ -39,7 +39,6 @@ class _MissingPandasLikeIndex(object):
     delete = unsupported_function('delete')
     difference = unsupported_function('difference')
     droplevel = unsupported_function('droplevel')
-    equals = unsupported_function('equals')
     factorize = unsupported_function('factorize')
     format = unsupported_function('format')
     get_indexer = unsupported_function('get_indexer')
@@ -51,7 +50,6 @@ class _MissingPandasLikeIndex(object):
     get_value = unsupported_function('get_value')
     groupby = unsupported_function('groupby')
     holds_integer = unsupported_function('holds_integer')
-    identical = unsupported_function('identical')
     insert = unsupported_function('insert')
     intersection = unsupported_function('intersection')
     is_ = unsupported_function('is_')
@@ -94,9 +92,6 @@ class _MissingPandasLikeIndex(object):
 
 class _MissingPandasLikeMultiIndex(object):
 
-    # Properties
-    is_all_dates = unsupported_property('is_all_dates')
-
     # Deprecated properties
     strides = unsupported_property('strides', deprecated=True)
     data = unsupported_property('data', deprecated=True)
@@ -110,7 +105,6 @@ class _MissingPandasLikeMultiIndex(object):
     difference = unsupported_function('difference')
     droplevel = unsupported_function('droplevel')
     equal_levels = unsupported_function('equal_levels')
-    equals = unsupported_function('equals')
     factorize = unsupported_function('factorize')
     format = unsupported_function('format')
     get_indexer = unsupported_function('get_indexer')
@@ -124,7 +118,6 @@ class _MissingPandasLikeMultiIndex(object):
     get_value = unsupported_function('get_value')
     groupby = unsupported_function('groupby')
     holds_integer = unsupported_function('holds_integer')
-    identical = unsupported_function('identical')
     insert = unsupported_function('insert')
     intersection = unsupported_function('intersection')
     is_ = unsupported_function('is_')
@@ -146,7 +139,6 @@ class _MissingPandasLikeMultiIndex(object):
     slice_indexer = unsupported_function('slice_indexer')
     slice_locs = unsupported_function('slice_locs')
     sortlevel = unsupported_function('sortlevel')
-    swaplevel = unsupported_function('swaplevel')
     take = unsupported_function('take')
     to_flat_index = unsupported_function('to_flat_index')
     to_native_types = unsupported_function('to_native_types')

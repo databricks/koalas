@@ -24,6 +24,7 @@ Properties
    Index.has_duplicates
    Index.hasnans
    Index.dtype
+   Index.is_all_dates
    Index.shape
    Index.name
    Index.names
@@ -44,6 +45,8 @@ Modifying and computations
    Index.argmin
    Index.argmax
    Index.copy
+   Index.equals
+   Index.identical
    Index.is_boolean
    Index.is_categorical
    Index.is_floating
@@ -142,6 +145,7 @@ MultiIndex Properties
 
    MultiIndex.has_duplicates
    MultiIndex.hasnans
+   MultiIndex.is_all_dates
    MultiIndex.shape
    MultiIndex.names
    MultiIndex.ndim
@@ -150,6 +154,13 @@ MultiIndex Properties
    MultiIndex.size
    MultiIndex.nlevels
    MultiIndex.levshape
+
+MultiIndex components
+~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.swaplevel
 
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -164,6 +175,8 @@ MultiIndex Modifying and computations
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.equals
+   MultiIndex.identical
    MultiIndex.drop
    MultiIndex.copy
    MultiIndex.rename

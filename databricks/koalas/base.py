@@ -31,7 +31,7 @@ from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, Times
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas import numpy_compat
 from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAME,
-                                        SPARK_INDEX_NAME_FORMAT)
+                                        SPARK_DEFAULT_INDEX_NAME)
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
@@ -351,6 +351,32 @@ class IndexOpsMixin(object):
 
         >>> ser.index.is_monotonic
         True
+
+        Support for MultiIndex
+
+        >>> midx = ks.MultiIndex.from_tuples(
+        ... [('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd'), ('z', 'e')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c'),
+                    ('y', 'd'),
+                    ('z', 'e')],
+                   )
+        >>> midx.is_monotonic
+        True
+
+        >>> midx = ks.MultiIndex.from_tuples(
+        ... [('z', 'a'), ('z', 'b'), ('y', 'c'), ('y', 'd'), ('x', 'e')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('z', 'a'),
+                    ('z', 'b'),
+                    ('y', 'c'),
+                    ('y', 'd'),
+                    ('x', 'e')],
+                   )
+        >>> midx.is_monotonic
+        False
         """
         return self._is_monotonic().all()
 
@@ -405,6 +431,32 @@ class IndexOpsMixin(object):
 
         >>> ser.index.is_monotonic_decreasing
         False
+
+        Support for MultiIndex
+
+        >>> midx = ks.MultiIndex.from_tuples(
+        ... [('x', 'a'), ('x', 'b'), ('y', 'c'), ('y', 'd'), ('z', 'e')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c'),
+                    ('y', 'd'),
+                    ('z', 'e')],
+                   )
+        >>> midx.is_monotonic_decreasing
+        False
+
+        >>> midx = ks.MultiIndex.from_tuples(
+        ... [('z', 'e'), ('z', 'd'), ('y', 'c'), ('y', 'b'), ('x', 'a')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('z', 'a'),
+                    ('z', 'b'),
+                    ('y', 'c'),
+                    ('y', 'd'),
+                    ('x', 'e')],
+                   )
+        >>> midx.is_monotonic_decreasing
+        True
         """
         return self._is_monotonic_decreasing().all()
 
@@ -961,7 +1013,7 @@ class IndexOpsMixin(object):
             sdf_dropna = self._internal._sdf.select(self._scol).dropna()
         else:
             sdf_dropna = self._internal._sdf.select(self._scol)
-        index_name = SPARK_INDEX_NAME_FORMAT(0)
+        index_name = SPARK_DEFAULT_INDEX_NAME
         column_name = self._internal.data_columns[0]
         sdf = sdf_dropna.groupby(scol_for(sdf_dropna, column_name).alias(index_name)).count()
         if sort:

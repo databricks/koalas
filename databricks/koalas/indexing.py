@@ -27,7 +27,7 @@ from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
-from databricks.koalas.utils import column_index_level, name_like_string
+from databricks.koalas.utils import column_index_level, lazy_property, name_like_string
 
 
 class _IndexerLike(object):
@@ -129,6 +129,64 @@ class AtIndexer(_IndexerLike):
         values = pdf.iloc[:, 0].values
         return values if (len(row_sel) < len(self._internal.index_map)
                           or len(values) > 1) else values[0]
+
+
+class iAtIndexer(_IndexerLike):
+    """
+    Access a single value for a row/column pair by integer position.
+
+    Similar to ``iloc``, in that both provide integer-based lookups. Use
+    ``iat`` if you only need to get or set a single value in a DataFrame
+    or Series.
+
+    Raises
+    ------
+    KeyError
+        When label does not exist in DataFrame
+
+    Examples
+    --------
+    >>> df = ks.DataFrame([[0, 2, 3], [0, 4, 1], [10, 20, 30]],
+    ...                   columns=['A', 'B', 'C'])
+    >>> df
+        A   B   C
+    0   0   2   3
+    1   0   4   1
+    2  10  20  30
+
+    Get value at specified row/column pair
+
+    >>> df.iat[1, 2]
+    1
+
+    Get value within a series
+
+    >>> kser = ks.Series([1, 2, 3], index=[10, 20, 30])
+    >>> kser
+    10    1
+    20    2
+    30    3
+    Name: 0, dtype: int64
+
+    >>> kser.iat[1]
+    2
+    """
+    def __getitem__(self, key):
+        if self._is_df:
+            if not isinstance(key, tuple) or len(key) != 2:
+                raise TypeError(
+                    "Use DataFrame.iat like .iat[row_integer_position, column_integer_position]")
+            row_sel, col_sel = key
+            if not isinstance(row_sel, int) or not isinstance(col_sel, int):
+                raise ValueError('iAt based indexing can only have integer indexers')
+            return self._kdf_or_kser.iloc[row_sel, col_sel]
+        else:
+            assert self._is_series, type(self._kdf_or_kser)
+            if not isinstance(key, int) and len(key) != 1:
+                raise TypeError("Use Series.iat like .iat[row_integer_position]")
+            if not isinstance(key, int):
+                raise ValueError('iAt based indexing can only have integer indexers')
+            return self._kdf_or_kser.iloc[key]
 
 
 class _LocIndexerLike(_IndexerLike):
@@ -657,7 +715,7 @@ class LocIndexer(_LocIndexerLike):
                     self._kdf_or_kser[col_sel] = value
 
 
-class ILocIndexer(_LocIndexerLike):
+class iLocIndexer(_LocIndexerLike):
     """
     Purely integer-location based indexing for selection by position.
 
@@ -708,12 +766,14 @@ class ILocIndexer(_LocIndexerLike):
 
     **Indexing just the rows**
 
-    A scalar integer for row selection is not allowed.
+    A scalar integer for row selection.
 
     >>> df.iloc[0]
-    Traceback (most recent call last):
-     ...
-    databricks.koalas.exceptions.SparkPandasNotImplementedError: ...
+    a    1
+    b    2
+    c    3
+    d    4
+    Name: 0, dtype: int64
 
     A list of integers for row selection is not allowed.
 
@@ -778,6 +838,17 @@ class ILocIndexer(_LocIndexerLike):
             pandas_function=".iloc[..., ...]",
             spark_target_function="select, where")
 
+    @lazy_property
+    def _internal(self):
+        internal = super(iLocIndexer, self)._internal
+        sdf = _InternalFrame.attach_distributed_sequence_column(internal.sdf,
+                                                                column_name=self._sequence_col)
+        return internal.copy(sdf=sdf.orderBy(NATURAL_ORDER_COLUMN_NAME))
+
+    @lazy_property
+    def _sequence_col(self):
+        return "__distributed_sequence_column__"
+
     def _select_rows(self, rows_sel):
         from databricks.koalas.indexes import Index
 
@@ -791,14 +862,17 @@ class ILocIndexer(_LocIndexerLike):
                 # If slice is None - select everything, so nothing to do
                 return None, None, None
             elif (rows_sel.start is not None) or (rows_sel.step is not None):
-                ILocIndexer._raiseNotImplemented("Cannot use start or step with Spark.")
+                iLocIndexer._raiseNotImplemented("Cannot use start or step with Spark.")
             elif not isinstance(rows_sel.stop, int):
                 raise TypeError("cannot do slice indexing with these indexers [{}] of {}"
                                 .format(rows_sel.stop, type(rows_sel.stop)))
             else:
                 return None, rows_sel.stop, None
+        elif isinstance(rows_sel, int):
+            sdf = self._internal.sdf
+            return (sdf[self._sequence_col] == rows_sel), None, 0
         else:
-            ILocIndexer._raiseNotImplemented(".iloc requires numeric slice or conditional "
+            iLocIndexer._raiseNotImplemented(".iloc requires numeric slice or conditional "
                                              "boolean Index, got {}".format(type(rows_sel)))
 
     def _select_cols(self, cols_sel):
@@ -811,6 +885,8 @@ class ILocIndexer(_LocIndexerLike):
             column_index = cols_sel._internal.column_index
             column_scols = cols_sel._internal.column_scols
         elif isinstance(cols_sel, int):
+            if cols_sel > len(self._internal.column_index):
+                raise KeyError(cols_sel)
             column_index = [self._internal.column_index[cols_sel]]
             column_scols = [self._internal.column_scols[cols_sel]]
         elif cols_sel is None or cols_sel == slice(None):

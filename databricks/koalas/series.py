@@ -41,7 +41,7 @@ from databricks.koalas.exceptions import SparkPandasIndexingError
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAME,
-                                        SPARK_INDEX_NAME_FORMAT)
+                                        SPARK_DEFAULT_INDEX_NAME)
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.ml import corr
@@ -1707,8 +1707,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                         return self
                 drop_index_scols.append(reduce(lambda x, y: x & y, index_scols))
 
-            sdf = self._internal.sdf.where(~reduce(lambda x, y: x | y, drop_index_scols))
-            return _col(DataFrame(self._internal.copy(sdf=sdf)))
+            cond = ~reduce(lambda x, y: x | y, drop_index_scols)
+            return _col(DataFrame(self._internal.with_filter(cond)))
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'index'")
 
@@ -2017,7 +2017,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         internal = kdf._internal
         sdf = internal.sdf
         sdf = sdf.select([F.concat(F.lit(prefix),
-                                   scol_for(sdf, index_column)).alias(index_column)
+                                   internal.scol_for(index_column)).alias(index_column)
                           for index_column in internal.index_columns] + internal.column_scols)
         kdf._internal = internal.copy(sdf=sdf)
         return _col(kdf)
@@ -2066,7 +2066,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         kdf = self.to_dataframe()
         internal = kdf._internal
         sdf = internal.sdf
-        sdf = sdf.select([F.concat(scol_for(sdf, index_column),
+        sdf = sdf.select([F.concat(internal.scol_for(index_column),
                                    F.lit(suffix)).alias(index_column)
                           for index_column in internal.index_columns] + internal.column_scols)
         kdf._internal = internal.copy(sdf=sdf)
@@ -2607,15 +2607,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             for f in func:
                 applied.append(self.apply(f, args=args, **kwargs).rename(f.__name__))
 
-            sdf = self._internal._sdf.select(
-                self._internal.index_scols + [c._scol for c in applied])
-
-            internal = self.to_dataframe()._internal.copy(
-                sdf=sdf,
-                column_index=[c._internal.column_index[0] for c in applied],
-                column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied],
-                column_index_names=None)
-
+            internal = self._internal.with_new_columns(applied)
             return DataFrame(internal)
         else:
             return self.apply(func, args=args, **kwargs)
@@ -2729,7 +2721,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 "approx_percentile(`%s`, array(%s), %s)" % (self.name, args, accuracy))
             sdf = sdf.select(percentile_col.alias("percentiles"))
 
-            internal_index_column = SPARK_INDEX_NAME_FORMAT(0)
+            internal_index_column = SPARK_DEFAULT_INDEX_NAME
             value_column = "value"
             cols = []
             for i, quantile in enumerate(quantiles):
@@ -3327,8 +3319,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
             self._internal = self.drop(item)._internal
             item_string = name_like_string(item)
-            sdf = sdf.withColumn(SPARK_INDEX_NAME_FORMAT(0), F.lit(str(item_string)))
-            internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_INDEX_NAME_FORMAT(0), None)])
+            sdf = sdf.withColumn(SPARK_DEFAULT_INDEX_NAME, F.lit(str(item_string)))
+            internal = _InternalFrame(sdf=sdf, index_map=[(SPARK_DEFAULT_INDEX_NAME, None)])
             return _col(DataFrame(internal))
 
         internal = self._internal.copy(
@@ -3518,8 +3510,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf_count = ser_count._internal.sdf
         most_value = ser_count.max()
         sdf_most_value = sdf_count.filter("count == {}".format(most_value))
-        sdf = sdf_most_value.select(
-            F.col(SPARK_INDEX_NAME_FORMAT(0)).alias('0'))
+        sdf = sdf_most_value.select(F.col(SPARK_DEFAULT_INDEX_NAME).alias('0'))
         internal = _InternalFrame(sdf=sdf, index_map=None)
 
         result = _col(DataFrame(internal))

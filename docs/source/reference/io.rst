@@ -75,6 +75,7 @@ JSON
    :toctree: api/
 
    read_json
+   DataFrame.to_json
 
 HTML
 ----
