@@ -188,17 +188,17 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                 stats_kdf.sort_values(by=[('X', 'B'), ('Y', 'C')]).reset_index(drop=True),
                 stats_pdf.sort_values(by=[('X', 'B'), ('Y', 'C')]).reset_index(drop=True))
 
-            stats_kdf = kdf.groupby(
-                ('X', 'A')).agg({('X', 'B'): ['min', 'max'], ('Y', 'C'): 'sum'})
-            stats_pdf = pdf.groupby(
-                ('X', 'A')).agg({('X', 'B'): ['min', 'max'], ('Y', 'C'): 'sum'})
-            self.assert_eq(
-                stats_kdf.sort_values(
-                    by=[('X', 'B', 'min'), ('X', 'B', 'max'), ('Y', 'C', 'sum')]
-                ).reset_index(drop=True),
-                stats_pdf.sort_values(
-                    by=[('X', 'B', 'min'), ('X', 'B', 'max'), ('Y', 'C', 'sum')]
-                ).reset_index(drop=True))
+        stats_kdf = kdf.groupby(
+            ('X', 'A')).agg({('X', 'B'): ['min', 'max'], ('Y', 'C'): 'sum'})
+        stats_pdf = pdf.groupby(
+            ('X', 'A')).agg({('X', 'B'): ['min', 'max'], ('Y', 'C'): 'sum'})
+        self.assert_eq(
+            stats_kdf.sort_values(
+                by=[('X', 'B', 'min'), ('X', 'B', 'max'), ('Y', 'C', 'sum')]
+            ).reset_index(drop=True),
+            stats_pdf.sort_values(
+                by=[('X', 'B', 'min'), ('X', 'B', 'max'), ('Y', 'C', 'sum')]
+            ).reset_index(drop=True))
 
     def test_aggregate_func_str_list(self):
         # this is test for cases where only string or list is assigned
