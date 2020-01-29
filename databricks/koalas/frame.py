@@ -4091,8 +4091,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 for v in value.values():
                     if not isinstance(v, (float, int, str, bool)):
                         raise TypeError("Unsupported type %s" % type(v))
-                value = {k if isinstance(k, tuple) else (k,): v for k, v in v.items()}
-                value = {self._internal.column_name_for(k): v for k, v in v.items()
+                value = {k if isinstance(k, tuple) else (k,): v for k, v in value.items()}
+                value = {self._internal.column_name_for(k): v for k, v in value.items()
                          if k in self._internal.column_index}
             if limit is not None:
                 raise ValueError('limit parameter for value is not support now')
