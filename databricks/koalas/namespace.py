@@ -1823,14 +1823,14 @@ def merge(obj, right: 'DataFrame', how: str = 'inner',
     the default suffixes, _x and _y, appended.
 
     >>> merged = ks.merge(df1, df2, left_on='lkey', right_on='rkey')
-    >>> merged.sort_values(by=['lkey', 'value_x', 'rkey', 'value_y'])
+    >>> merged.sort_values(by=['lkey', 'value_x', 'rkey', 'value_y'])  # doctest: +ELLIPSIS
       lkey  value_x rkey  value_y
-    0  bar        2  bar        6
-    5  baz        3  baz        7
-    1  foo        1  foo        5
-    2  foo        1  foo        8
-    3  foo        5  foo        5
-    4  foo        5  foo        8
+    ...bar        2  bar        6
+    ...baz        3  baz        7
+    ...foo        1  foo        5
+    ...foo        1  foo        8
+    ...foo        5  foo        5
+    ...foo        5  foo        8
 
     >>> left_kdf = ks.DataFrame({'A': [1, 2]})
     >>> right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])

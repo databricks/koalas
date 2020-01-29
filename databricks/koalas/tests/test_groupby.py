@@ -154,13 +154,20 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         for as_index in [True, False]:
-            self.assert_eq(kdf.groupby('A', as_index=as_index).agg({'B': 'min', 'C': 'sum'}),
-                           pdf.groupby('A', as_index=as_index).agg({'B': 'min', 'C': 'sum'}))
+            stats_kdf = kdf.groupby('A', as_index=as_index).agg({'B': 'min', 'C': 'sum'})
+            stats_pdf = pdf.groupby('A', as_index=as_index).agg({'B': 'min', 'C': 'sum'})
+            self.assert_eq(stats_kdf.sort_values(by=['B', 'C']).reset_index(drop=True),
+                           stats_pdf.sort_values(by=['B', 'C']).reset_index(drop=True))
 
-            self.assert_eq(kdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'],
-                                                                    'C': 'sum'}),
-                           pdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'],
-                                                                    'C': 'sum'}))
+            stats_kdf = kdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'], 'C': 'sum'})
+            stats_pdf = pdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'], 'C': 'sum'})
+            self.assert_eq(
+                stats_kdf.sort_values(
+                    by=[('B', 'min'), ('B', 'max'), ('C', 'sum')]
+                ).reset_index(drop=True),
+                stats_pdf.sort_values(
+                    by=[('B', 'min'), ('B', 'max'), ('C', 'sum')]
+                ).reset_index(drop=True))
 
         expected_error_message = (r"aggs must be a dict mapping from column name \(string or "
                                   r"tuple\) to aggregate functions \(string or list of strings\).")
@@ -173,15 +180,25 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf.columns = columns
 
         for as_index in [True, False]:
-            self.assert_eq(kdf.groupby(('X', 'A'), as_index=as_index)
-                           .agg({('X', 'B'): 'min', ('Y', 'C'): 'sum'}),
-                           pdf.groupby(('X', 'A'), as_index=as_index)
-                           .agg({('X', 'B'): 'min', ('Y', 'C'): 'sum'}))
+            stats_kdf = kdf.groupby(
+                ('X', 'A'), as_index=as_index).agg({('X', 'B'): 'min', ('Y', 'C'): 'sum'})
+            stats_pdf = pdf.groupby(
+                ('X', 'A'), as_index=as_index).agg({('X', 'B'): 'min', ('Y', 'C'): 'sum'})
+            self.assert_eq(
+                stats_kdf.sort_values(by=[('X', 'B'), ('Y', 'C')]).reset_index(drop=True),
+                stats_pdf.sort_values(by=[('X', 'B'), ('Y', 'C')]).reset_index(drop=True))
 
-        self.assert_eq(kdf.groupby(('X', 'A')).agg({('X', 'B'): ['min', 'max'],
-                                                    ('Y', 'C'): 'sum'}),
-                       pdf.groupby(('X', 'A')).agg({('X', 'B'): ['min', 'max'],
-                                                    ('Y', 'C'): 'sum'}))
+            stats_kdf = kdf.groupby(
+                ('X', 'A')).agg({('X', 'B'): ['min', 'max'], ('Y', 'C'): 'sum'})
+            stats_pdf = pdf.groupby(
+                ('X', 'A')).agg({('X', 'B'): ['min', 'max'], ('Y', 'C'): 'sum'})
+            self.assert_eq(
+                stats_kdf.sort_values(
+                    by=[('X', 'B', 'min'), ('X', 'B', 'max'), ('Y', 'C', 'sum')]
+                ).reset_index(drop=True),
+                stats_pdf.sort_values(
+                    by=[('X', 'B', 'min'), ('X', 'B', 'max'), ('Y', 'C', 'sum')]
+                ).reset_index(drop=True))
 
     def test_aggregate_func_str_list(self):
         # this is test for cases where only string or list is assigned

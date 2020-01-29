@@ -1318,7 +1318,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Generate a Series with duplicated entries.
         >>> s = ks.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],
         ...               name='animal')
-        >>> s
+        >>> s.sort_index()
         0      lama
         1       cow
         2      lama
@@ -1327,11 +1327,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         5     hippo
         Name: animal, dtype: object
 
-        >>> s.drop_duplicates()
-        1       cow
+        >>> s.drop_duplicates().sort_index()
         0      lama
-        5     hippo
+        1       cow
         3    beetle
+        5     hippo
         Name: animal, dtype: object
         """
         kseries = _col(self.to_frame().drop_duplicates())
@@ -1758,7 +1758,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Examples
         --------
         >>> kser = ks.Series([2, 1, 3, 3], name='A')
-        >>> kser.unique()
+        >>> kser.unique().sort_index()
         0    1
         1    3
         2    2
@@ -1769,7 +1769,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: datetime64[ns]
 
         >>> kser.name = ('x', 'a')
-        >>> kser.unique()
+        >>> kser.unique().sort_index()
         0    1
         1    3
         2    2

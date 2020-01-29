@@ -33,7 +33,7 @@ from databricks.koalas import utils
 
 
 shared_conf = {
-    "spark.sql.shuffle.partitions": "5"
+    "spark.sql.shuffle.partitions": "4"
 }
 # Initialize Spark session that should be used in doctests or unittests.
 # Delta requires Spark 2.4.2+. See
