@@ -13,7 +13,7 @@ matrix:
         - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
         - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
         - SPARK_VERSION=2.3.4
-        - PANDAS_VERSION=0.23.4
+        - PANDAS_VERSION=1.0.0rc0
         - PYARROW_VERSION=0.10.0
     - python: "3.6"
       jdk:
@@ -22,7 +22,7 @@ matrix:
         - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
         - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
         - SPARK_VERSION=2.4.4
-        - PANDAS_VERSION=0.24.2
+        - PANDAS_VERSION=1.0.0rc0
         - PYARROW_VERSION=0.13.0
         - KOALAS_USAGE_LOGGER='databricks.koalas.usage_logging.usage_logger'
     # When we upgrade Spark 3.0 for this, we could try to just use JDK 11 at 'xenial'.
@@ -36,7 +36,7 @@ matrix:
         - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
         - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
         - SPARK_VERSION=2.4.4
-        - PANDAS_VERSION=0.25.3
+        - PANDAS_VERSION=1.0.0rc0
         - PYARROW_VERSION=0.14.1
 
 before_install:
