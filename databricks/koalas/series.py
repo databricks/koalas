@@ -4207,38 +4207,22 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 F.lit(None)
             ).otherwise(func(self._scol).over(window))
 
-        # cumprod uses exp(sum(log(...))) trick.
-        if func.__name__ == "cumprod":
-            scol = F.exp(scol)
-
         return self._with_new_scol(scol).rename(self.name)
 
-    def abs(self):
-        """
-        Return a Series with absolute numeric value of each element.
+    def _cumprod(self, skipna, part_cols=()):
+        from pyspark.sql.functions import pandas_udf
 
-        Returns
-        -------
-        abs : Series containing the absolute value of each element.
+        def cumprod(scol):
+            @pandas_udf(returnType=self.spark_type)
+            def negative_check(s):
+                assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), \
+                    "values should be bigger than 0: %s" % s
+                return s
 
-        See Also
-        --------
-        DataFrame.abs
+            return F.sum(F.log(negative_check(scol)))
 
-        Examples
-        --------
-        Absolute numeric values in a Series.
-
-        >>> s = ks.Series([-1.10, 2, -3.33, 4])
-        >>> s.abs()
-        0    1.10
-        1    2.00
-        2    3.33
-        3    4.00
-        Name: 0, dtype: float64
-        """
-        # TODO: The example above should not have "Name: 0".
-        return self._with_new_scol(F.abs(self._scol)).rename(self.name)
+        kser = self._cum(cumprod, skipna, part_cols)
+        return kser._with_new_scol(F.exp(kser._scol)).rename(self.name)
 
     # ----------------------------------------------------------------------
     # Accessor Methods
@@ -4247,6 +4231,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     str = CachedAccessor("str", StringMethods)
 
     # ----------------------------------------------------------------------
+
+    def _apply_series_op(self, op):
+        return op(self)
 
     def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=None):
         """
