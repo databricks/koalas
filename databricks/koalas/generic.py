@@ -1252,10 +1252,11 @@ class _Frame(object):
         Falcon      375.0
         Parrot       25.0
 
-        >>> df.groupby(['Animal'], as_index=False).mean().sort_index()
+        >>> df.groupby(['Animal'], as_index=False).mean().sort_values('Animal')
+        ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
            Animal  Max Speed
-        0  Falcon      375.0
-        1  Parrot       25.0
+        ...Falcon      375.0
+        ...Parrot       25.0
         """
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series

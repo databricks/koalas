@@ -390,10 +390,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby("a")['b'].nunique(dropna=False).sort_index(),
                        pdf.groupby("a")['b'].nunique(dropna=False).sort_index())
 
-        for as_index in [True, False]:
-            self.assert_eq(
-                kdf.groupby("a", as_index=as_index).agg({"b": "nunique"}).sort_index(),
-                pdf.groupby("a", as_index=as_index).agg({"b": "nunique"}).sort_index())
+        nunique_kdf = kdf.groupby("a", as_index=False).agg({"b": "nunique"})
+        nunique_pdf = pdf.groupby("a", as_index=False).agg({"b": "nunique"})
+        self.assert_eq(
+            nunique_kdf.sort_values(['a', 'b']).reset_index(drop=True),
+            nunique_pdf.sort_values(['a', 'b']).reset_index(drop=True))
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
