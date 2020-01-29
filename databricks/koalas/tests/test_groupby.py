@@ -712,9 +712,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby(['a', 'b'])['c'].shift().sort_index(),
                        pdf.groupby(['a', 'b'])['c'].shift().sort_index(), almost=True)
         # TODO: seems like a pandas' bug when fill_value is not None?
-        # self.assert_eq(kdf.groupby(['b'])[['a', 'c']].shift(periods=-1, fill_value=0).sort_index(),
-        #                pdf.groupby(['b'])[['a', 'c']].shift(periods=-1, fill_value=0).sort_index(),
-        #                almost=True)
+        # self.assert_eq(
+        #     kdf.groupby(['b'])[['a', 'c']].shift(periods=-1, fill_value=0).sort_index(),
+        #     pdf.groupby(['b'])[['a', 'c']].shift(periods=-1, fill_value=0).sort_index(),
+        #     almost=True)
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])

@@ -809,10 +809,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         datas.append([('x', 'd', 'o'), ('y', 'c', None), ('y', 'c', None), ('z', 'a', 'r')])
 
         for i, data in enumerate(datas):
-            print(f'data: {data}')
             kmidx = ks.MultiIndex.from_tuples(data)
             pmidx = kmidx.to_pandas()
-            print(pmidx)
             self.assert_eq(
                 kmidx.is_monotonic_increasing,
                 pmidx.is_monotonic_increasing)
