@@ -1294,14 +1294,14 @@ class GroupBy(object):
 
         We can also propagate non-null values forward or backward in group.
 
-        >>> df.groupby(['A'])['B'].fillna(method='ffill')
+        >>> df.groupby(['A'])['B'].fillna(method='ffill').sort_index()
         0    2.0
         1    4.0
         2    NaN
         3    3.0
         Name: B, dtype: float64
 
-        >>> df.groupby(['A']).fillna(method='bfill')
+        >>> df.groupby(['A']).fillna(method='bfill').sort_index()
              B    C  D
         0  2.0  NaN  0
         1  4.0  NaN  1

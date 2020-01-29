@@ -4581,48 +4581,48 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
         ...                        columns='C', aggfunc='sum')
-        >>> table  # doctest: +NORMALIZE_WHITESPACE
+        >>> table.sort_index()  # doctest: +NORMALIZE_WHITESPACE
         C        large  small
         A   B
+        bar one    4.0      5
+            two    7.0      6
         foo one    4.0      1
             two    NaN      6
-        bar two    7.0      6
-            one    4.0      5
 
         We can also fill missing values using the `fill_value` parameter.
 
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
         ...                        columns='C', aggfunc='sum', fill_value=0)
-        >>> table  # doctest: +NORMALIZE_WHITESPACE
+        >>> table.sort_index()  # doctest: +NORMALIZE_WHITESPACE
         C        large  small
         A   B
+        bar one      4      5
+            two      7      6
         foo one      4      1
             two      0      6
-        bar two      7      6
-            one      4      5
 
         We can also calculate multiple types of aggregations for any given
         value column.
 
         >>> table = df.pivot_table(values=['D'], index =['C'],
         ...                        columns="A", aggfunc={'D': 'mean'})
-        >>> table  # doctest: +NORMALIZE_WHITESPACE
+        >>> table.sort_index()  # doctest: +NORMALIZE_WHITESPACE
                  D
         A      bar       foo
         C
-        small  5.5  2.333333
         large  5.5  2.000000
+        small  5.5  2.333333
 
         The next example aggregates on multiple values.
 
         >>> table = df.pivot_table(index=['C'], columns="A", values=['D', 'E'],
         ...                         aggfunc={'D': 'mean', 'E': 'sum'})
-        >>> table # doctest: +NORMALIZE_WHITESPACE
+        >>> table.sort_index() # doctest: +NORMALIZE_WHITESPACE
                  D             E
         A      bar       foo bar foo
         C
-        small  5.5  2.333333  17  13
         large  5.5  2.000000  15   9
+        small  5.5  2.333333  17  13
         """
         if not isinstance(columns, (str, tuple)):
             raise ValueError("columns should be string or tuple.")
@@ -5813,21 +5813,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> left_kdf = ks.DataFrame({'A': [1, 2]})
         >>> right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
 
-        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True)
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True).sort_index()
            A  B
         1  2  x
 
-        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left')
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left').sort_index()
            A     B
         0  1  None
         1  2     x
 
-        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right')
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right').sort_index()
              A  B
         1  2.0  x
         2  NaN  y
 
-        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer')
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer').sort_index()
              A     B
         0  1.0  None
         1  2.0     x

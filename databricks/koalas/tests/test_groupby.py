@@ -379,8 +379,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
                             'b': [2, 2, 2, 3, 3, 4, 4, 5, 5, 5]})
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kdf.groupby("a").agg({"b": "nunique"}),
-                       pdf.groupby("a").agg({"b": "nunique"}))
+        self.assert_eq(kdf.groupby("a").agg({"b": "nunique"}).sort_index(),
+                       pdf.groupby("a").agg({"b": "nunique"}).sort_index())
         self.assert_eq(kdf.groupby("a").nunique().sort_index(),
                        pdf.groupby("a").nunique().sort_index())
         self.assert_eq(kdf.groupby("a").nunique(dropna=False).sort_index(),
@@ -391,8 +391,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby("a")['b'].nunique(dropna=False).sort_index())
 
         for as_index in [True, False]:
-            self.assert_eq(kdf.groupby("a", as_index=as_index).agg({"b": "nunique"}),
-                           pdf.groupby("a", as_index=as_index).agg({"b": "nunique"}))
+            self.assert_eq(
+                kdf.groupby("a", as_index=as_index).agg({"b": "nunique"}).sort_index(),
+                pdf.groupby("a", as_index=as_index).agg({"b": "nunique"}).sort_index())
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])

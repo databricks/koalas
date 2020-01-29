@@ -1835,21 +1835,21 @@ def merge(obj, right: 'DataFrame', how: str = 'inner',
     >>> left_kdf = ks.DataFrame({'A': [1, 2]})
     >>> right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
 
-    >>> ks.merge(left_kdf, right_kdf, left_index=True, right_index=True)
+    >>> ks.merge(left_kdf, right_kdf, left_index=True, right_index=True).sort_index()
        A  B
     1  2  x
 
-    >>> ks.merge(left_kdf, right_kdf, left_index=True, right_index=True, how='left')
+    >>> ks.merge(left_kdf, right_kdf, left_index=True, right_index=True, how='left').sort_index()
        A     B
     0  1  None
     1  2     x
 
-    >>> ks.merge(left_kdf, right_kdf, left_index=True, right_index=True, how='right')
+    >>> ks.merge(left_kdf, right_kdf, left_index=True, right_index=True, how='right').sort_index()
          A  B
     1  2.0  x
     2  NaN  y
 
-    >>> ks.merge(left_kdf, right_kdf, left_index=True, right_index=True, how='outer')
+    >>> ks.merge(left_kdf, right_kdf, left_index=True, right_index=True, how='outer').sort_index()
          A     B
     0  1.0  None
     1  2.0     x
