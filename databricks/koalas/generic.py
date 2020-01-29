@@ -1162,44 +1162,6 @@ class _Frame(object):
         """
         return len(self)  # type: ignore
 
-    def abs(self):
-        """
-        Return a Series/DataFrame with absolute numeric value of each element.
-
-        Returns
-        -------
-        abs : Series/DataFrame containing the absolute value of each element.
-
-        Examples
-        --------
-        Absolute numeric values in a Series.
-
-        >>> s = ks.Series([-1.10, 2, -3.33, 4])
-        >>> s.abs()
-        0    1.10
-        1    2.00
-        2    3.33
-        3    4.00
-        Name: 0, dtype: float64
-
-        Absolute numeric values in a DataFrame.
-
-        >>> df = ks.DataFrame({
-        ...     'a': [4, 5, 6, 7],
-        ...     'b': [10, 20, 30, 40],
-        ...     'c': [100, 50, -30, -50]
-        ...   },
-        ...   columns=['a', 'b', 'c'])
-        >>> df.abs()
-           a   b    c
-        0  4  10  100
-        1  5  20   50
-        2  6  30   30
-        3  7  40   50
-        """
-        # TODO: The first example above should not have "Name: 0".
-        return _spark_col_apply(self, F.abs)
-
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
     # should be updated when it's supported.
     def groupby(self, by, as_index: bool = True):
@@ -1687,19 +1649,3 @@ def _resolve_col(kdf, col_like):
         return kdf[col_like]
     else:
         raise ValueError(col_like)
-
-
-def _spark_col_apply(kdf_or_kser, sfun):
-    """
-    Performs a function to all cells on a dataframe, the function being a known sql function.
-    """
-    from databricks.koalas.frame import DataFrame
-    from databricks.koalas.series import Series
-    if isinstance(kdf_or_kser, Series):
-        kser = kdf_or_kser
-        return kser._with_new_scol(sfun(kser._scol))
-    assert isinstance(kdf_or_kser, DataFrame)
-    kdf = kdf_or_kser
-    sdf = kdf._sdf
-    sdf = sdf.select([sfun(kdf._internal.scol_for(col)).alias(col) for col in kdf.columns])
-    return DataFrame(sdf)

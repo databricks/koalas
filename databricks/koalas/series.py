@@ -946,7 +946,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if index is None:
             scol = self._scol
         else:
-            scol = self._scol.alias(str(index))
+            scol = self._scol.alias(name_like_string(index))
         internal = self._internal.copy(
             scol=scol,
             column_index=[index if index is None or isinstance(index, tuple) else (index,)])
@@ -4212,6 +4212,33 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             scol = F.exp(scol)
 
         return self._with_new_scol(scol).rename(self.name)
+
+    def abs(self):
+        """
+        Return a Series with absolute numeric value of each element.
+
+        Returns
+        -------
+        abs : Series containing the absolute value of each element.
+
+        See Also
+        --------
+        DataFrame.abs
+
+        Examples
+        --------
+        Absolute numeric values in a Series.
+
+        >>> s = ks.Series([-1.10, 2, -3.33, 4])
+        >>> s.abs()
+        0    1.10
+        1    2.00
+        2    3.33
+        3    4.00
+        Name: 0, dtype: float64
+        """
+        # TODO: The example above should not have "Name: 0".
+        return self._with_new_scol(F.abs(self._scol)).rename(self.name)
 
     # ----------------------------------------------------------------------
     # Accessor Methods
