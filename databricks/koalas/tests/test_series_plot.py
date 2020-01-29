@@ -73,9 +73,9 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot("bar", colormap='Paired')
+        ax1 = pdf['a'].plot(kind="bar", colormap='Paired')
         bin1 = self.plot_to_base64(ax1)
-        ax2 = kdf['a'].plot("bar", colormap='Paired')
+        ax2 = kdf['a'].plot(kind="bar", colormap='Paired')
         bin2 = self.plot_to_base64(ax2)
         self.assertEqual(bin1, bin2)
 
@@ -137,9 +137,9 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot("line", colormap='Paired')
+        ax1 = pdf['a'].plot(kind="line", colormap='Paired')
         bin1 = self.plot_to_base64(ax1)
-        ax2 = kdf['a'].plot("line", colormap='Paired')
+        ax2 = kdf['a'].plot(kind="line", colormap='Paired')
         bin2 = self.plot_to_base64(ax2)
         self.assertEqual(bin1, bin2)
 
@@ -153,9 +153,9 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         pdf = self.pdf1
         kdf = self.kdf1
 
-        ax1 = pdf['a'].plot("barh", colormap='Paired')
+        ax1 = pdf['a'].plot(kind="barh", colormap='Paired')
         bin1 = self.plot_to_base64(ax1)
-        ax2 = kdf['a'].plot("barh", colormap='Paired')
+        ax2 = kdf['a'].plot(kind="barh", colormap='Paired')
         bin2 = self.plot_to_base64(ax2)
         self.assertEqual(bin1, bin2)
 
@@ -223,9 +223,9 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         }, index=pd.date_range(start='2018/01/01', end='2018/07/01', freq='M'))
         kdf = ks.from_pandas(pdf)
 
-        ax1 = pdf['sales'].plot("area", colormap='Paired')
+        ax1 = pdf['sales'].plot(kind="area", colormap='Paired')
         bin1 = self.plot_to_base64(ax1)
-        ax2 = kdf['sales'].plot("area", colormap='Paired')
+        ax2 = kdf['sales'].plot(kind="area", colormap='Paired')
         bin2 = self.plot_to_base64(ax2)
         self.assertEqual(bin1, bin2)
 
@@ -236,9 +236,9 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(bin1, bin2)
 
         # just a sanity check for df.col type
-        ax1 = pdf.sales.plot("area", colormap='Paired')
+        ax1 = pdf.sales.plot(kind="area", colormap='Paired')
         bin1 = self.plot_to_base64(ax1)
-        ax2 = kdf.sales.plot("area", colormap='Paired')
+        ax2 = kdf.sales.plot(kind="area", colormap='Paired')
         bin2 = self.plot_to_base64(ax2)
         self.assertEqual(bin1, bin2)
 

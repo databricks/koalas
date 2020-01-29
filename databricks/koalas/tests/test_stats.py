@@ -81,8 +81,9 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf.count(axis=1), pdf.count(axis=1))
             self.assert_eq(kdf.var(axis=1), pdf.var(axis=1))
             self.assert_eq(kdf.std(axis=1), pdf.std(axis=1))
-            self.assert_eq(kdf.max(axis=1), pdf.max(axis=1))
-            self.assert_eq(kdf.min(axis=1), pdf.min(axis=1))
+            # TODO: `max` & `min` with `axis=1` now raise error in pandas 1.0.0
+            # self.assert_eq(kdf.max(axis=1), pdf.max(axis=1))
+            # self.assert_eq(kdf.min(axis=1), pdf.min(axis=1))
             self.assert_eq(kdf.sum(axis=1), pdf.sum(axis=1))
             self.assert_eq(kdf.kurtosis(axis=1), pdf.kurtosis(axis=1))
             self.assert_eq(kdf.skew(axis=1), pdf.skew(axis=1))
@@ -93,7 +94,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         with self.sql_conf({'spark.sql.execution.arrow.enabled': False}):
             # DataFrame
             # we do not handle NaNs for now
-            pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
+            pdf = pd._testing.makeMissingDataframe(0.3, 42).fillna(0)
             kdf = ks.from_pandas(pdf)
 
             res = kdf.corr()

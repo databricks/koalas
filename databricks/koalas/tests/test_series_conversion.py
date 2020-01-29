@@ -54,5 +54,6 @@ class SeriesConversionTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.to_latex(sparsify=False), pser.to_latex(sparsify=False))
         self.assert_eq(kser.to_latex(index_names=False), pser.to_latex(index_names=False))
         self.assert_eq(kser.to_latex(bold_rows=True), pser.to_latex(bold_rows=True))
-        self.assert_eq(kser.to_latex(encoding='ascii'), pser.to_latex(encoding='ascii'))
+        # Error in pandas - ValueError: buf is not a file name and encoding is specified.
+        # self.assert_eq(kser.to_latex(encoding='ascii'), pser.to_latex(encoding='ascii'))
         self.assert_eq(kser.to_latex(decimal=','), pser.to_latex(decimal=','))

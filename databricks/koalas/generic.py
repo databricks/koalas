@@ -308,51 +308,6 @@ class _Frame(object):
 
         return self._cum(cumprod, skipna)  # type: ignore
 
-    def get_dtype_counts(self):
-        """
-        Return counts of unique dtypes in this object.
-
-        .. deprecated:: 0.14.0
-
-        Returns
-        -------
-        dtype : pd.Series
-            Series with the count of columns with each dtype.
-
-        See Also
-        --------
-        dtypes : Return the dtypes in this object.
-
-        Examples
-        --------
-        >>> a = [['a', 1, 1], ['b', 2, 2], ['c', 3, 3]]
-        >>> df = ks.DataFrame(a, columns=['str', 'int1', 'int2'])
-        >>> df
-          str  int1  int2
-        0   a     1     1
-        1   b     2     2
-        2   c     3     3
-
-        >>> df.get_dtype_counts().sort_values()
-        object    1
-        int64     2
-        dtype: int64
-
-        >>> df.str.get_dtype_counts().sort_values()
-        object    1
-        dtype: int64
-        """
-        warnings.warn(
-            "`get_dtype_counts` has been deprecated and will be "
-            "removed in a future version. For DataFrames use "
-            "`.dtypes.value_counts()",
-            FutureWarning)
-        if not isinstance(self.dtypes, Iterable):
-            dtypes = [self.dtypes]
-        else:
-            dtypes = self.dtypes
-        return pd.Series(dict(Counter([d.name for d in list(dtypes)])))
-
     def pipe(self, func, *args, **kwargs):
         r"""
         Apply func(self, \*args, \*\*kwargs).
