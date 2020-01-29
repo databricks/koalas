@@ -4091,11 +4091,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 for v in value.values():
                     if not isinstance(v, (float, int, str, bool)):
                         raise TypeError("Unsupported type %s" % type(v))
-                value = {key if isinstance(key, tuple) else (key,): value
-                         for key, value in value.items()}
-                value = {self._internal.column_name_for(idx): value
-                         for idx, value in value.items()
-                         if idx in self._internal.column_index}
+                value = {k if isinstance(k, tuple) else (k,): v for k, v in v.items()}
+                value = {self._internal.column_name_for(k): v for k, v in v.items()
+                         if k in self._internal.column_index}
             if limit is not None:
                 raise ValueError('limit parameter for value is not support now')
             sdf = self._sdf.fillna(value, subset=self._internal.data_columns)
