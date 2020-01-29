@@ -609,11 +609,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
         self.assert_eq(pdf.fillna(method='bfill', limit=2), kdf.fillna(method='bfill', limit=2))
 
-        pdf = pd.DataFrame({'x': np.random.rand(6),
-                            'y': np.random.rand(6),
-                            'z': [1, 2, 3, 4, np.nan, np.nan]}).set_index(['x', 'y'])
+        pdf = pdf.set_index(['x', 'y'])
         kdf = ks.from_pandas(pdf)
         # check multi index
+        self.assert_eq(kdf.fillna(-1), pdf.fillna(-1))
         self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
         self.assert_eq(pdf.fillna(method='ffill'), kdf.fillna(method='ffill'))
 
@@ -655,6 +654,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.fillna(method='ffill', limit=2), kdf.fillna(method='ffill', limit=2))
         self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
         self.assert_eq(pdf.fillna(method='bfill', limit=2), kdf.fillna(method='bfill', limit=2))
+
+        # check multi index
+        pdf = pdf.set_index([('x', 'a'), ('x', 'b')])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.fillna(-1), pdf.fillna(-1))
+        self.assert_eq(kdf.fillna({('x', 'a'): -1, ('x', 'b'): -2, ('y', 'c'): -5}),
+                       pdf.fillna({('x', 'a'): -1, ('x', 'b'): -2, ('y', 'c'): -5}))
 
     def test_isnull(self):
         pdf = pd.DataFrame({'x': [1, 2, 3, 4, None, 6], 'y': list('abdabd')},
