@@ -5356,8 +5356,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             by = [by]  # type: ignore
         else:
             by = [b if isinstance(b, tuple) else (b,) for b in by]  # type: ignore
-        by = [self[colname]._scol for colname in by]
-        return self._sort(by=by, ascending=ascending,
+
+        new_by = []
+        for colname in by:
+            ser = self[colname]
+            if not isinstance(ser, ks.Series):
+                raise ValueError(
+                    "The column %s is not unique. For a multi-index, the label must be a tuple "
+                    "with elements corresponding to each level." % name_like_string(colname))
+            new_by.append(ser._scol)
+
+        return self._sort(by=new_by, ascending=ascending,
                           inplace=inplace, na_position=na_position)
 
     def sort_index(self, axis: int = 0,
