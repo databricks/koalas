@@ -4542,48 +4542,48 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
         ...                        columns='C', aggfunc='sum')
-        >>> table  # doctest: +NORMALIZE_WHITESPACE
+        >>> table.sort_index()  # doctest: +NORMALIZE_WHITESPACE
         C        large  small
         A   B
+        bar one    4.0      5
+            two    7.0      6
         foo one    4.0      1
             two    NaN      6
-        bar two    7.0      6
-            one    4.0      5
 
         We can also fill missing values using the `fill_value` parameter.
 
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
         ...                        columns='C', aggfunc='sum', fill_value=0)
-        >>> table  # doctest: +NORMALIZE_WHITESPACE
+        >>> table.sort_index()  # doctest: +NORMALIZE_WHITESPACE
         C        large  small
         A   B
+        bar one      4      5
+            two      7      6
         foo one      4      1
             two      0      6
-        bar two      7      6
-            one      4      5
 
         We can also calculate multiple types of aggregations for any given
         value column.
 
         >>> table = df.pivot_table(values=['D'], index =['C'],
         ...                        columns="A", aggfunc={'D': 'mean'})
-        >>> table  # doctest: +NORMALIZE_WHITESPACE
+        >>> table.sort_index()  # doctest: +NORMALIZE_WHITESPACE
                  D
         A      bar       foo
         C
-        small  5.5  2.333333
         large  5.5  2.000000
+        small  5.5  2.333333
 
         The next example aggregates on multiple values.
 
         >>> table = df.pivot_table(index=['C'], columns="A", values=['D', 'E'],
         ...                         aggfunc={'D': 'mean', 'E': 'sum'})
-        >>> table # doctest: +NORMALIZE_WHITESPACE
+        >>> table.sort_index() # doctest: +NORMALIZE_WHITESPACE
                  D             E
         A      bar       foo bar foo
         C
-        small  5.5  2.333333  17  13
         large  5.5  2.000000  15   9
+        small  5.5  2.333333  17  13
         """
         if not isinstance(columns, (str, tuple)):
             raise ValueError("columns should be string or tuple.")
@@ -5762,33 +5762,33 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         the default suffixes, _x and _y, appended.
 
         >>> merged = df1.merge(df2, left_on='lkey', right_on='rkey')
-        >>> merged.sort_values(by=['lkey', 'value_x', 'rkey', 'value_y'])
+        >>> merged.sort_values(by=['lkey', 'value_x', 'rkey', 'value_y'])  # doctest: +ELLIPSIS
           lkey  value_x rkey  value_y
-        0  bar        2  bar        6
-        5  baz        3  baz        7
-        1  foo        1  foo        5
-        2  foo        1  foo        8
-        3  foo        5  foo        5
-        4  foo        5  foo        8
+        ...bar        2  bar        6
+        ...baz        3  baz        7
+        ...foo        1  foo        5
+        ...foo        1  foo        8
+        ...foo        5  foo        5
+        ...foo        5  foo        8
 
         >>> left_kdf = ks.DataFrame({'A': [1, 2]})
         >>> right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
 
-        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True)
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True).sort_index()
            A  B
         1  2  x
 
-        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left')
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left').sort_index()
            A     B
         0  1  None
         1  2     x
 
-        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right')
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right').sort_index()
              A  B
         1  2.0  x
         2  NaN  y
 
-        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer')
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer').sort_index()
              A     B
         0  1.0  None
         1  2.0     x
@@ -6039,12 +6039,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         original DataFrame’s index in the result.
 
         >>> join_kdf = kdf1.join(kdf2.set_index('key'), on='key')
-        >>> join_kdf.sort_index()
-          key   A     B
-        0  K3  A3  None
-        1  K0  A0    B0
-        2  K1  A1    B1
-        3  K2  A2    B2
+        >>> join_kdf.index
+        Int64Index([0, 1, 2, 3], dtype='int64')
         """
         if isinstance(right, ks.Series):
             common = list(self.columns.intersection([right.name]))
@@ -6156,7 +6152,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'A': [1, 2, 3], 'B': [400, 500, 600]}, columns=['A', 'B'])
         >>> new_df = ks.DataFrame({'B': [4, 5, 6], 'C': [7, 8, 9]}, columns=['B', 'C'])
         >>> df.update(new_df)
-        >>> df
+        >>> df.sort_index()
            A  B
         0  1  4
         1  2  5
@@ -6168,7 +6164,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'A': ['a', 'b', 'c'], 'B': ['x', 'y', 'z']}, columns=['A', 'B'])
         >>> new_df = ks.DataFrame({'B': ['d', 'e', 'f', 'g', 'h', 'i']}, columns=['B'])
         >>> df.update(new_df)
-        >>> df
+        >>> df.sort_index()
            A  B
         0  a  d
         1  b  e
@@ -6179,7 +6175,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'A': ['a', 'b', 'c'], 'B': ['x', 'y', 'z']}, columns=['A', 'B'])
         >>> new_column = ks.Series(['d', 'e'], name='B', index=[0, 2])
         >>> df.update(new_column)
-        >>> df
+        >>> df.sort_index()
            A  B
         0  a  d
         1  b  y
@@ -6190,7 +6186,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'A': [1, 2, 3], 'B': [400, 500, 600]}, columns=['A', 'B'])
         >>> new_df = ks.DataFrame({'B': [4, None, 6]}, columns=['B'])
         >>> df.update(new_df)
-        >>> df
+        >>> df.sort_index()
            A      B
         0  1    4.0
         1  2  500.0

@@ -154,13 +154,20 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         for as_index in [True, False]:
-            self.assert_eq(kdf.groupby('A', as_index=as_index).agg({'B': 'min', 'C': 'sum'}),
-                           pdf.groupby('A', as_index=as_index).agg({'B': 'min', 'C': 'sum'}))
+            stats_kdf = kdf.groupby('A', as_index=as_index).agg({'B': 'min', 'C': 'sum'})
+            stats_pdf = pdf.groupby('A', as_index=as_index).agg({'B': 'min', 'C': 'sum'})
+            self.assert_eq(stats_kdf.sort_values(by=['B', 'C']).reset_index(drop=True),
+                           stats_pdf.sort_values(by=['B', 'C']).reset_index(drop=True))
 
-            self.assert_eq(kdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'],
-                                                                    'C': 'sum'}),
-                           pdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'],
-                                                                    'C': 'sum'}))
+            stats_kdf = kdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'], 'C': 'sum'})
+            stats_pdf = pdf.groupby('A', as_index=as_index).agg({'B': ['min', 'max'], 'C': 'sum'})
+            self.assert_eq(
+                stats_kdf.sort_values(
+                    by=[('B', 'min'), ('B', 'max'), ('C', 'sum')]
+                ).reset_index(drop=True),
+                stats_pdf.sort_values(
+                    by=[('B', 'min'), ('B', 'max'), ('C', 'sum')]
+                ).reset_index(drop=True))
 
         expected_error_message = (r"aggs must be a dict mapping from column name \(string or "
                                   r"tuple\) to aggregate functions \(string or list of strings\).")
@@ -173,15 +180,25 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf.columns = columns
 
         for as_index in [True, False]:
-            self.assert_eq(kdf.groupby(('X', 'A'), as_index=as_index)
-                           .agg({('X', 'B'): 'min', ('Y', 'C'): 'sum'}),
-                           pdf.groupby(('X', 'A'), as_index=as_index)
-                           .agg({('X', 'B'): 'min', ('Y', 'C'): 'sum'}))
+            stats_kdf = kdf.groupby(
+                ('X', 'A'), as_index=as_index).agg({('X', 'B'): 'min', ('Y', 'C'): 'sum'})
+            stats_pdf = pdf.groupby(
+                ('X', 'A'), as_index=as_index).agg({('X', 'B'): 'min', ('Y', 'C'): 'sum'})
+            self.assert_eq(
+                stats_kdf.sort_values(by=[('X', 'B'), ('Y', 'C')]).reset_index(drop=True),
+                stats_pdf.sort_values(by=[('X', 'B'), ('Y', 'C')]).reset_index(drop=True))
 
-        self.assert_eq(kdf.groupby(('X', 'A')).agg({('X', 'B'): ['min', 'max'],
-                                                    ('Y', 'C'): 'sum'}),
-                       pdf.groupby(('X', 'A')).agg({('X', 'B'): ['min', 'max'],
-                                                    ('Y', 'C'): 'sum'}))
+        stats_kdf = kdf.groupby(
+            ('X', 'A')).agg({('X', 'B'): ['min', 'max'], ('Y', 'C'): 'sum'})
+        stats_pdf = pdf.groupby(
+            ('X', 'A')).agg({('X', 'B'): ['min', 'max'], ('Y', 'C'): 'sum'})
+        self.assert_eq(
+            stats_kdf.sort_values(
+                by=[('X', 'B', 'min'), ('X', 'B', 'max'), ('Y', 'C', 'sum')]
+            ).reset_index(drop=True),
+            stats_pdf.sort_values(
+                by=[('X', 'B', 'min'), ('X', 'B', 'max'), ('Y', 'C', 'sum')]
+            ).reset_index(drop=True))
 
     def test_aggregate_func_str_list(self):
         # this is test for cases where only string or list is assigned
@@ -362,8 +379,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'a': [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
                             'b': [2, 2, 2, 3, 3, 4, 4, 5, 5, 5]})
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kdf.groupby("a").agg({"b": "nunique"}),
-                       pdf.groupby("a").agg({"b": "nunique"}))
+        self.assert_eq(kdf.groupby("a").agg({"b": "nunique"}).sort_index(),
+                       pdf.groupby("a").agg({"b": "nunique"}).sort_index())
         self.assert_eq(kdf.groupby("a").nunique().sort_index(),
                        pdf.groupby("a").nunique().sort_index())
         self.assert_eq(kdf.groupby("a").nunique(dropna=False).sort_index(),
@@ -373,9 +390,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby("a")['b'].nunique(dropna=False).sort_index(),
                        pdf.groupby("a")['b'].nunique(dropna=False).sort_index())
 
-        for as_index in [True, False]:
-            self.assert_eq(kdf.groupby("a", as_index=as_index).agg({"b": "nunique"}),
-                           pdf.groupby("a", as_index=as_index).agg({"b": "nunique"}))
+        nunique_kdf = kdf.groupby("a", as_index=False).agg({"b": "nunique"})
+        nunique_pdf = pdf.groupby("a", as_index=False).agg({"b": "nunique"})
+        self.assert_eq(
+            nunique_kdf.sort_values(['a', 'b']).reset_index(drop=True),
+            nunique_pdf.sort_values(['a', 'b']).reset_index(drop=True))
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
