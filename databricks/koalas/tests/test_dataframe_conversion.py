@@ -181,7 +181,9 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         self.assert_eq(kdf.to_latex(sparsify=False), pdf.to_latex(sparsify=False))
         self.assert_eq(kdf.to_latex(index_names=False), pdf.to_latex(index_names=False))
         self.assert_eq(kdf.to_latex(bold_rows=True), pdf.to_latex(bold_rows=True))
-        self.assert_eq(kdf.to_latex(encoding='ascii'), pdf.to_latex(encoding='ascii'))
+        # TODO: error in pandas >= 1.0.0:
+        # `ValueError: buf is not a file name and encoding is specified.`
+        # self.assert_eq(kdf.to_latex(encoding='ascii'), pdf.to_latex(encoding='ascii'))
         self.assert_eq(kdf.to_latex(decimal=','), pdf.to_latex(decimal=','))
 
     def test_to_records(self):
