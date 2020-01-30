@@ -1050,7 +1050,7 @@ class Expanding(_RollingAndExpanding):
     def __repr__(self):
         return "Expanding [min_periods={}]".format(self._min_periods)
 
-    _apply_as_series_or_frame = Rolling._apply_as_series_or_frame
+    _apply_as_series_or_frame = Rolling._apply_as_series_or_frame  # type: ignore
 
     def count(self):
         """
@@ -1398,7 +1398,7 @@ class ExpandingGroupby(Expanding):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
-    _apply_as_series_or_frame = RollingGroupby._apply_as_series_or_frame
+    _apply_as_series_or_frame = RollingGroupby._apply_as_series_or_frame  # type: ignore
 
     def count(self):
         """
