@@ -592,9 +592,28 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
         pdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
         kdf = ks.DataFrame(pdf)
-        kdf["c"] = 1
-        pdf["c"] = 1
-        self.assert_eq(repr(kdf), repr(pdf))
+
+        kdf['c'] = ks.Series([10, 20, 30, 20])
+        pdf['c'] = pd.Series([10, 20, 30, 20])
+
+        kdf[('d', 'x')] = ks.Series([100, 200, 300, 200], name='1')
+        pdf[('d', 'x')] = pd.Series([100, 200, 300, 200], name='1')
+
+        kdf[('d', 'y')] = ks.Series([1000, 2000, 3000, 2000], name=('1', '2'))
+        pdf[('d', 'y')] = pd.Series([1000, 2000, 3000, 2000], name=('1', '2'))
+
+        kdf['e'] = ks.Series([10000, 20000, 30000, 20000], name=('1', '2', '3'))
+        pdf['e'] = pd.Series([10000, 20000, 30000, 20000], name=('1', '2', '3'))
+
+        kdf[[('f', 'x'), ('f', 'y')]] = ks.DataFrame({'1': [100000, 200000, 300000, 200000],
+                                                      '2': [1000000, 2000000, 3000000, 2000000]})
+        pdf[[('f', 'x'), ('f', 'y')]] = pd.DataFrame({'1': [100000, 200000, 300000, 200000],
+                                                      '2': [1000000, 2000000, 3000000, 2000000]})
+
+        self.assert_eq(repr(kdf.sort_index()), repr(pdf))
+
+        with self.assertRaisesRegex(KeyError, 'Key length \\(3\\) exceeds index depth \\(2\\)'):
+            kdf[('1', '2', '3')] = ks.Series([100, 200, 300, 200])
 
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
