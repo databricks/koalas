@@ -2200,26 +2200,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> reset_option("compute.ops_on_diff_frames")
         """
         from databricks.koalas.series import Series
-        tmp_cond_col_name = '__tmp_cond_col_{}__'
-        tmp_other_col_name = '__tmp_other_col_{}__'
+
+        tmp_cond_col_name = '__tmp_cond_col_{}__'.format
+        tmp_other_col_name = '__tmp_other_col_{}__'.format
+
         kdf = self.copy()
         if isinstance(cond, DataFrame):
-            for column in self._internal.data_columns:
-                kdf[tmp_cond_col_name.format(column)] = cond.get(column, False)
+            for idx in self._internal.column_index:
+                kdf[tmp_cond_col_name(name_like_string(idx))] = cond.get(idx, False)
         elif isinstance(cond, Series):
-            for column in self._internal.data_columns:
-                kdf[tmp_cond_col_name.format(column)] = cond
+            for idx in self._internal.column_index:
+                kdf[tmp_cond_col_name(name_like_string(idx))] = cond
         else:
             raise ValueError("type of cond must be a DataFrame or Series")
 
         if isinstance(other, DataFrame):
-            for column in self._internal.data_columns:
-                kdf[tmp_other_col_name.format(column)] = other.get(column, np.nan)
+            for idx in self._internal.column_index:
+                kdf[tmp_other_col_name(name_like_string(idx))] = other.get(idx, np.nan)
         else:
-            for column in self._internal.data_columns:
-                kdf[tmp_other_col_name.format(column)] = other
+            for idx in self._internal.column_index:
+                kdf[tmp_other_col_name(name_like_string(idx))] = other
 
-        sdf = kdf._sdf
         # above logic make spark dataframe looks like below:
         # +-----------------+---+---+------------------+-------------------+------------------+--...
         # |__index_level_0__|  A|  B|__tmp_cond_col_A__|__tmp_other_col_A__|__tmp_cond_col_B__|__...
@@ -2231,22 +2232,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |                4|  4|500|             false|                 -4|             false|  ...
         # +-----------------+---+---+------------------+-------------------+------------------+--...
 
-        output = []
-        for column in self._internal.data_columns:
-            data_col_name = self._internal.column_name_for(column)
-            output.append(
+        column_scols = []
+        for idx in self._internal.column_index:
+            column_scols.append(
                 F.when(
-                    scol_for(sdf, tmp_cond_col_name.format(column)), scol_for(sdf, data_col_name)
+                    kdf[tmp_cond_col_name(name_like_string(idx))]._scol,
+                    kdf[idx]._scol
                 ).otherwise(
-                    scol_for(sdf, tmp_other_col_name.format(column))
-                ).alias(data_col_name))
+                    kdf[tmp_other_col_name(name_like_string(idx))]._scol
+                ).alias(kdf._internal.column_name_for(idx)))
 
-        index_scols = kdf._internal.index_scols
-        sdf = sdf.select(index_scols + output + list(HIDDEN_COLUMNS))
-
-        return DataFrame(self._internal.copy(
-            sdf=sdf,
-            column_scols=[scol_for(sdf, column) for column in self._internal.data_columns]))
+        return DataFrame(kdf._internal.with_new_columns(column_scols,
+                                                        column_index=self._internal.column_index))
 
     def mask(self, cond, other=np.nan):
         """
