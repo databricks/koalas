@@ -7958,7 +7958,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...           encoding="utf-8") as f:
         ...     _ = f.write(s)
         >>> with open('%s/info.txt' % path) as f:
-        ...     f.readlines()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+        ...     f.readlines()  # doctest: +SKIP
         ["<class 'databricks.koalas.frame.DataFrame'>\\n",
         'Index: 5 entries, 0 to 4\\n',
         'Data columns (total 3 columns):\\n',
