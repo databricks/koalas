@@ -76,7 +76,7 @@ install:
       conda config --env --add pinned_packages python=$TRAVIS_PYTHON_VERSION && \
       conda config --env --add pinned_packages pandas==$PANDAS_VERSION && \
       conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION && \
-      conda install -c conda-forge/label/rc --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
+      conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
       conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt && \
       conda list;
     fi
