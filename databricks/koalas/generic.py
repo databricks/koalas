@@ -104,7 +104,7 @@ class _Frame(object):
         2    1.0
         Name: A, dtype: float64
         """
-        return self._cum(F.min, skipna)  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cum(F.min, skipna))  # type: ignore
 
     # TODO: add 'axis' parameter
     def cummax(self, skipna: bool = True):
@@ -165,7 +165,7 @@ class _Frame(object):
         2    1.0
         Name: B, dtype: float64
         """
-        return self._cum(F.max, skipna)  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cum(F.max, skipna))  # type: ignore
 
     # TODO: add 'axis' parameter
     def cumsum(self, skipna: bool = True):
@@ -226,7 +226,7 @@ class _Frame(object):
         2    6.0
         Name: A, dtype: float64
         """
-        return self._cum(F.sum, skipna)  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cum(F.sum, skipna))  # type: ignore
 
     # TODO: add 'axis' parameter
     # TODO: use pandas_udf to support negative values and other options later
@@ -295,18 +295,7 @@ class _Frame(object):
         Name: A, dtype: float64
 
         """
-        from pyspark.sql.functions import pandas_udf
-
-        def cumprod(scol):
-            @pandas_udf(returnType=self._kdf._internal.spark_type_for(self.name))
-            def negative_check(s):
-                assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), \
-                    "values should be bigger than 0: %s" % s
-                return s
-
-            return F.sum(F.log(negative_check(scol)))
-
-        return self._cum(cumprod, skipna)  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cumprod(skipna))  # type: ignore
 
     # TODO: Since this method has removed pandas >= 1.0.0,
     # so we should be block this from using it directly via external API
@@ -1161,6 +1150,46 @@ class _Frame(object):
         3
         """
         return len(self)  # type: ignore
+
+    def abs(self):
+        """
+        Return a Series/DataFrame with absolute numeric value of each element.
+
+        Returns
+        -------
+        abs : Series/DataFrame containing the absolute value of each element.
+
+        Examples
+        --------
+
+        Absolute numeric values in a Series.
+
+        >>> s = ks.Series([-1.10, 2, -3.33, 4])
+        >>> s.abs()
+        0    1.10
+        1    2.00
+        2    3.33
+        3    4.00
+        Name: 0, dtype: float64
+
+        Absolute numeric values in a DataFrame.
+
+        >>> df = ks.DataFrame({
+        ...     'a': [4, 5, 6, 7],
+        ...     'b': [10, 20, 30, 40],
+        ...     'c': [100, 50, -30, -50]
+        ...   },
+        ...   columns=['a', 'b', 'c'])
+        >>> df.abs()
+           a   b    c
+        0  4  10  100
+        1  5  20   50
+        2  6  30   30
+        3  7  40   50
+        """
+        # TODO: The first example above should not have "Name: 0".
+        return self._apply_series_op(
+            lambda kser: kser._with_new_scol(F.abs(kser._scol)).rename(kser.name))
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
     # should be updated when it's supported.

@@ -729,6 +729,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.sort_values('b', inplace=True), pdf.sort_values('b', inplace=True))
         self.assert_eq(repr(kdf), repr(pdf))
 
+        columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B')])
+        kdf.columns = columns
+        self.assertRaisesRegex(
+            ValueError,
+            "For a multi-index, the label must be a tuple with elements",
+            lambda: kdf.sort_values(['X']))
+
     def test_sort_index(self):
         pdf = pd.DataFrame({'A': [2, 1, np.nan], 'B': [np.nan, 0, np.nan]},
                            index=['b', 'a', np.nan])

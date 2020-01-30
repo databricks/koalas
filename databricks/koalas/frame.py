@@ -5352,8 +5352,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             by = [by]  # type: ignore
         else:
             by = [b if isinstance(b, tuple) else (b,) for b in by]  # type: ignore
-        by = [self[colname]._scol for colname in by]
-        return self._sort(by=by, ascending=ascending,
+
+        new_by = []
+        for colname in by:
+            ser = self[colname]
+            if not isinstance(ser, ks.Series):
+                raise ValueError(
+                    "The column %s is not unique. For a multi-index, the label must be a tuple "
+                    "with elements corresponding to each level." % name_like_string(colname))
+            new_by.append(ser._scol)
+
+        return self._sort(by=new_by, ascending=ascending,
                           inplace=inplace, na_position=na_position)
 
     def sort_index(self, axis: int = 0,
@@ -6603,50 +6612,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                   index_map=[('summary', None)],
                                   column_scols=[scol_for(sdf, col) for col in data_columns])
         return DataFrame(internal).astype('float64')
-
-    def _cum(self, func, skipna: bool):
-        # This is used for cummin, cummax, cumxum, etc.
-        if func == F.min:
-            func = "cummin"
-        elif func == F.max:
-            func = "cummax"
-        elif func == F.sum:
-            func = "cumsum"
-        elif func.__name__ == "cumprod":
-            func = "cumprod"
-
-        return self._apply_series_op(lambda kser: getattr(kser, func)(skipna))
-
-    def abs(self):
-        """
-        Return a DataFrame with absolute numeric value of each element.
-
-        Returns
-        -------
-        abs : DataFrame containing the absolute value of each element.
-
-        See Also
-        --------
-        Series.abs
-
-        Examples
-        --------
-        Absolute numeric values in a DataFrame.
-
-        >>> df = ks.DataFrame({
-        ...     'a': [4, 5, 6, 7],
-        ...     'b': [10, 20, 30, 40],
-        ...     'c': [100, 50, -30, -50]
-        ...   },
-        ...   columns=['a', 'b', 'c'])
-        >>> df.abs()
-           a   b    c
-        0  4  10  100
-        1  5  20   50
-        2  6  30   30
-        3  7  40   50
-        """
-        return self._apply_series_op(lambda kser: kser.abs())
 
     # TODO: implements 'keep' parameters
     def drop_duplicates(self, subset=None, inplace=False):

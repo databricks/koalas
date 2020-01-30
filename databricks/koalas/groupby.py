@@ -564,7 +564,8 @@ class GroupBy(object):
         Name: a, dtype: float64
         """
         if self._kdf.index.is_monotonic or self._kdf.index.is_monotonic_decreasing:
-            return self._diff(periods)
+            return self._apply_series_op(
+                lambda sg: sg._kser._diff(periods, part_cols=sg._groupkeys_scols))
         else:
             raise ValueError('index must be monotonic increasing or decreasing')
 
@@ -612,8 +613,8 @@ class GroupBy(object):
         Name: C, dtype: int64
 
         """
-
-        return self._cum(F.max)
+        return self._apply_series_op(
+            lambda sg: sg._kser._cum(F.max, True, part_cols=sg._groupkeys_scols))
 
     def cummin(self):
         """
@@ -658,7 +659,8 @@ class GroupBy(object):
         3    10.0
         Name: B, dtype: float64
         """
-        return self._cum(F.min)
+        return self._apply_series_op(
+            lambda sg: sg._kser._cum(F.min, True, part_cols=sg._groupkeys_scols))
 
     def cumprod(self):
         """
@@ -704,27 +706,8 @@ class GroupBy(object):
         Name: B, dtype: float64
 
         """
-        from pyspark.sql.functions import pandas_udf
-
-        def cumprod(scol):
-            # Note that this function will always actually called via `SeriesGroupBy._cum`,
-            # and `Series._cum`.
-            # In case of `DataFrameGroupBy`, it goes through `DataFrameGroupBy._cum`,
-            # `SeriesGroupBy.cumprod`, `SeriesGroupBy._cum` and `Series._cum`
-            #
-            # This is a bit hacky. Maybe we should fix it.
-
-            return_type = self._kser._internal.spark_type_for(self._kser._internal.column_index[0])
-
-            @pandas_udf(returnType=return_type)
-            def negative_check(s):
-                assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), \
-                    "values should be bigger than 0: %s" % s
-                return s
-
-            return F.sum(F.log(negative_check(scol)))
-
-        return self._cum(cumprod)
+        return self._apply_series_op(
+            lambda sg: sg._kser._cumprod(True, part_cols=sg._groupkeys_scols))
 
     def cumsum(self):
         """
@@ -770,7 +753,8 @@ class GroupBy(object):
         Name: B, dtype: float64
 
         """
-        return self._cum(F.sum)
+        return self._apply_series_op(
+            lambda sg: sg._kser._cum(F.sum, True, part_cols=sg._groupkeys_scols))
 
     def apply(self, func):
         """
@@ -1106,7 +1090,8 @@ class GroupBy(object):
         Name: b, dtype: float64
 
         """
-        return self._rank(method, ascending)
+        return self._apply_series_op(
+            lambda sg: sg._kser._rank(method, ascending, part_cols=sg._groupkeys_scols))
 
     # TODO: add axis parameter
     def idxmax(self, skipna=True):
@@ -1539,7 +1524,8 @@ class GroupBy(object):
         7  4
         8  0
         """
-        return self._shift(periods, fill_value)
+        return self._apply_series_op(
+            lambda sg: sg._kser._shift(periods, fill_value, part_cols=sg._groupkeys_scols))
 
     def transform(self, func):
         """
@@ -1870,46 +1856,11 @@ class DataFrameGroupBy(GroupBy):
             return DataFrameGroupBy(self._kdf, self._groupkeys, as_index=self._as_index,
                                     agg_columns=item)
 
-    def _diff(self, *args, **kwargs):
+    def _apply_series_op(self, op):
         applied = []
-        kdf = self._kdf
-
         for column in self._agg_columns:
-            # pandas groupby.diff ignores the grouping key itself.
-            applied.append(column.groupby(self._groupkeys)._diff(*args, **kwargs))
-
-        internal = kdf._internal.with_new_columns(applied, keep_order=False)
-        return DataFrame(internal)
-
-    def _rank(self, *args, **kwargs):
-        applied = []
-        kdf = self._kdf
-
-        for column in self._agg_columns:
-            # pandas groupby.rank ignores the grouping key itself.
-            applied.append(column.groupby(self._groupkeys)._rank(*args, **kwargs))
-
-        internal = kdf._internal.with_new_columns(applied, keep_order=False)
-        return DataFrame(internal)
-
-    def _cum(self, func):
-        # This is used for cummin, cummax, cumsum, etc.
-        if func == F.min:
-            func = "cummin"
-        elif func == F.max:
-            func = "cummax"
-        elif func == F.sum:
-            func = "cumsum"
-        elif func.__name__ == "cumprod":
-            func = "cumprod"
-
-        applied = []
-        kdf = self._kdf
-        for column in self._agg_columns:
-            # pandas groupby.cumxxx ignores the grouping key itself.
-            applied.append(getattr(column.groupby(self._groupkeys), func)())
-
-        internal = kdf._internal.with_new_columns(applied, keep_order=False)
+            applied.append(op(column.groupby(self._groupkeys)))
+        internal = self._kdf._internal.with_new_columns(applied, keep_order=False)
         return DataFrame(internal)
 
     def _fillna(self, *args, **kwargs):
@@ -1919,16 +1870,6 @@ class DataFrameGroupBy(GroupBy):
         for idx in kdf._internal.column_index:
             if all(not self._kdf[idx]._equals(key) for key in self._groupkeys):
                 applied.append(kdf[idx].groupby(self._groupkeys)._fillna(*args, **kwargs))
-
-        internal = kdf._internal.with_new_columns(applied, keep_order=False)
-        return DataFrame(internal)
-
-    def _shift(self, periods, fill_value):
-        applied = []
-        kdf = self._kdf
-
-        for column in self._agg_columns:
-            applied.append(column.groupby(self._groupkeys).shift(periods, fill_value))
 
         internal = kdf._internal.with_new_columns(applied, keep_order=False)
         return DataFrame(internal)
@@ -2047,20 +1988,11 @@ class SeriesGroupBy(GroupBy):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
-    def _diff(self, *args, **kwargs):
-        return Series._diff(self._kser, *args, **kwargs, part_cols=self._groupkeys_scols)
-
-    def _cum(self, func):
-        return Series._cum(self._kser, func, True, part_cols=self._groupkeys_scols)
-
-    def _rank(self, *args, **kwargs):
-        return Series._rank(self._kser, *args, **kwargs, part_cols=self._groupkeys_scols)
+    def _apply_series_op(self, op):
+        return op(self)
 
     def _fillna(self, *args, **kwargs):
         return Series._fillna(self._kser, *args, **kwargs, part_cols=self._groupkeys_scols)
-
-    def _shift(self, periods, fill_value):
-        return Series._shift(self._kser, periods, fill_value, part_cols=self._groupkeys_scols)
 
     @property
     def _kdf(self) -> DataFrame:
