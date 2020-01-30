@@ -144,26 +144,8 @@ class Rolling(_RollingAndExpanding):
         raise AttributeError(item)
 
     def _apply_as_series_or_frame(self, func):
-        """
-        Wraps a function that handles Spark column in order
-        to support it in both Koalas Series and DataFrame.
-        Note that the given `func` name should be same as the API's method name.
-        """
-        from databricks.koalas import DataFrame, Series
-
-        if isinstance(self.kdf_or_kser, Series):
-            kser = self.kdf_or_kser
-            return kser._with_new_scol(func(kser._scol)).rename(kser.name)
-        elif isinstance(self.kdf_or_kser, DataFrame):
-            kdf = self.kdf_or_kser
-            applied = []
-            for column in kdf.columns:
-                applied.append(
-                    getattr(kdf[column].rolling(self._window_val,
-                            self._min_periods), func.__name__)())
-
-            internal = kdf._internal.with_new_columns(applied)
-            return DataFrame(internal)
+        return self.kdf_or_kser._apply_series_op(
+            lambda kser: kser._with_new_scol(func(kser._scol)).rename(kser.name))
 
     def count(self):
         """
@@ -1068,27 +1050,7 @@ class Expanding(_RollingAndExpanding):
     def __repr__(self):
         return "Expanding [min_periods={}]".format(self._min_periods)
 
-    def _apply_as_series_or_frame(self, func):
-        """
-        Wraps a function that handles Spark column in order
-        to support it in both Koalas Series and DataFrame.
-
-        Note that the given `func` name should be same as the API's method name.
-        """
-        from databricks.koalas import DataFrame, Series
-
-        if isinstance(self.kdf_or_kser, Series):
-            kser = self.kdf_or_kser
-            return kser._with_new_scol(func(kser._scol)).rename(kser.name)
-        elif isinstance(self.kdf_or_kser, DataFrame):
-            kdf = self.kdf_or_kser
-            applied = []
-            for column in kdf.columns:
-                applied.append(
-                    getattr(kdf[column].expanding(self._min_periods), func.__name__)())
-
-            internal = kdf._internal.with_new_columns(applied)
-            return DataFrame(internal)
+    _apply_as_series_or_frame = Rolling._apply_as_series_or_frame  # type: ignore
 
     def count(self):
         """
@@ -1436,7 +1398,7 @@ class ExpandingGroupby(Expanding):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
-    _apply_as_series_or_frame = RollingGroupby._apply_as_series_or_frame
+    _apply_as_series_or_frame = RollingGroupby._apply_as_series_or_frame  # type: ignore
 
     def count(self):
         """

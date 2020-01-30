@@ -701,27 +701,7 @@ class GroupBy(object):
         Name: B, dtype: float64
 
         """
-        from pyspark.sql.functions import pandas_udf
-
-        def cumprod(scol):
-            # Note that this function will always actually called via `SeriesGroupBy._cum`,
-            # and `Series._cum`.
-            # In case of `DataFrameGroupBy`, it goes through `DataFrameGroupBy._cum`,
-            # `SeriesGroupBy.cumprod`, `SeriesGroupBy._cum` and `Series._cum`
-            #
-            # This is a bit hacky. Maybe we should fix it.
-
-            return_type = self._kser._internal.spark_type_for(self._kser._internal.column_index[0])
-
-            @pandas_udf(returnType=return_type)
-            def negative_check(s):
-                assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), \
-                    "values should be bigger than 0: %s" % s
-                return s
-
-            return F.sum(F.log(negative_check(scol)))
-
-        return self._cum(cumprod)
+        return self._cumprod()
 
     def cumsum(self):
         """
@@ -1888,8 +1868,6 @@ class DataFrameGroupBy(GroupBy):
             func = "cummax"
         elif func == F.sum:
             func = "cumsum"
-        elif func.__name__ == "cumprod":
-            func = "cumprod"
 
         applied = []
         kdf = self._kdf
@@ -1899,6 +1877,9 @@ class DataFrameGroupBy(GroupBy):
 
         internal = kdf._internal.with_new_columns(applied, keep_order=False)
         return DataFrame(internal)
+
+    def _cumprod(self):
+        return self._cum('cumprod')
 
     def _fillna(self, *args, **kwargs):
         applied = []
@@ -2040,6 +2021,9 @@ class SeriesGroupBy(GroupBy):
 
     def _cum(self, func):
         return Series._cum(self._kser, func, True, part_cols=self._groupkeys_scols)
+
+    def _cumprod(self):
+        return Series._cumprod(self._kser, True, part_cols=self._groupkeys_scols)
 
     def _rank(self, *args, **kwargs):
         return Series._rank(self._kser, *args, **kwargs, part_cols=self._groupkeys_scols)
