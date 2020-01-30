@@ -106,8 +106,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        .sort_values(('x', 'a')).reset_index(drop=True))
         self.assert_eq(kdf.groupby(('x', 'a'))[[('y', 'c')]].sum().sort_index(),
                        pdf.groupby(('x', 'a'))[[('y', 'c')]].sum().sort_index())
-        self.assert_eq(kdf[('x', 'a')].groupby(kdf[('x', 'b')]).sum().sort_index(),
-                       pdf[('x', 'a')].groupby(pdf[('x', 'b')]).sum().sort_index())
+        # TODO: seems like a pandas' bug ?
+        # self.assert_eq(kdf[('x', 'a')].groupby(kdf[('x', 'b')]).sum().sort_index(),
+        #                pdf[('x', 'a')].groupby(pdf[('x', 'b')]).sum().sort_index())
 
     def test_split_apply_combine_on_series(self):
         pdf = pd.DataFrame({'a': [1, 2, 6, 4, 4, 6, 4, 3, 7],
@@ -445,8 +446,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
     def test_diff(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 3,
                             'b': [1, 1, 2, 3, 5, 8] * 3,
-                            'c': [1, 4, 9, 16, 25, 36] * 3},
-                           index=np.random.rand(6 * 3))
+                            'c': [1, 4, 9, 16, 25, 36] * 3})
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby("b").diff().sort_index(),
@@ -467,6 +467,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby(("x", "b")).diff().sort_index())
         self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).diff().sort_index(),
                        pdf.groupby([('x', 'a'), ('x', 'b')]).diff().sort_index())
+
+        with self.assertRaisesRegex(ValueError, 'index must be monotonic increasing or decreasing'):
+            ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]}, index=[3, 1, 2]).groupby('a').diff()
 
     def test_rank(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 3,
@@ -632,8 +635,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2] * 3,
                             'B': [2, 4, None, 3] * 3,
                             'C': [None, None, None, 1] * 3,
-                            'D': [0, 1, 5, 4] * 3},
-                           index=np.random.rand(4 * 3))
+                            'D': [0, 1, 5, 4] * 3})
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.groupby("A").fillna(0).sort_index(),
@@ -654,6 +656,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby(("X", "A")).fillna(method='bfill').sort_index())
         self.assert_eq(kdf.groupby(("X", "A")).fillna(method='ffill').sort_index(),
                        pdf.groupby(("X", "A")).fillna(method='ffill').sort_index())
+
+        with self.assertRaisesRegex(ValueError, 'index must be monotonic increasing or decreasing'):
+            ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]}, index=[3, 1, 2]).groupby('a').fillna(0)
 
     def test_ffill(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2] * 3,
@@ -889,18 +894,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
     def test_idxmax(self):
         pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3] * 3,
                             'b': [1, 2, 3, 4, 5] * 3,
-                            'c': [5, 4, 3, 2, 1] * 3},
-                           index=np.random.rand(5 * 3))
+                            'c': [5, 4, 3, 2, 1] * 3})
         kdf = ks.from_pandas(pdf)
 
-        # TODO: seems like a pandas' bug for idxmax?
-        # self.assert_eq(pdf.groupby(['a']).idxmax().sort_index(),
-        #                kdf.groupby(['a']).idxmax().sort_index())
-        # self.assert_eq(pdf.groupby(['a']).idxmax(skipna=False).sort_index(),
-        #                kdf.groupby(['a']).idxmax(skipna=False).sort_index())
+        self.assert_eq(pdf.groupby(['a']).idxmax().sort_index(),
+                       kdf.groupby(['a']).idxmax().sort_index())
+        self.assert_eq(pdf.groupby(['a']).idxmax(skipna=False).sort_index(),
+                       kdf.groupby(['a']).idxmax(skipna=False).sort_index())
 
         with self.assertRaisesRegex(ValueError, 'idxmax only support one-level index now'):
             kdf.set_index(['a', 'b']).groupby(['c']).idxmax()
+        with self.assertRaisesRegex(ValueError, 'index must be monotonic increasing or decreasing'):
+            ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]}, index=[3, 1, 2]).groupby('a').idxmax()
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
@@ -915,18 +920,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
     def test_idxmin(self):
         pdf = pd.DataFrame({'a': [1, 1, 2, 2, 3] * 3,
                             'b': [1, 2, 3, 4, 5] * 3,
-                            'c': [5, 4, 3, 2, 1] * 3},
-                           index=np.random.rand(5 * 3))
+                            'c': [5, 4, 3, 2, 1] * 3})
         kdf = ks.from_pandas(pdf)
 
-        # TODO: seems like a pandas' bug for idxmin?
-        # self.assert_eq(pdf.groupby(['a']).idxmin().sort_index(),
-        #                kdf.groupby(['a']).idxmin().sort_index())
-        # self.assert_eq(pdf.groupby(['a']).idxmin(skipna=False).sort_index(),
-        #                kdf.groupby(['a']).idxmin(skipna=False).sort_index())
+        self.assert_eq(pdf.groupby(['a']).idxmin().sort_index(),
+                       kdf.groupby(['a']).idxmin().sort_index())
+        self.assert_eq(pdf.groupby(['a']).idxmin(skipna=False).sort_index(),
+                       kdf.groupby(['a']).idxmin(skipna=False).sort_index())
 
         with self.assertRaisesRegex(ValueError, 'idxmin only support one-level index now'):
             kdf.set_index(['a', 'b']).groupby(['c']).idxmin()
+        with self.assertRaisesRegex(ValueError, 'index must be monotonic increasing or decreasing'):
+            ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]}, index=[3, 1, 2]).groupby('a').idxmin()
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
