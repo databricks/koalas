@@ -4614,6 +4614,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if columns not in self.columns:
             raise ValueError("Wrong columns {}.".format(columns))
+        if isinstance(columns, str):
+            columns = (columns,)
 
         if isinstance(values, list):
             values = [col if isinstance(col, tuple) else (col,) for col in values]
@@ -5077,7 +5079,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             except:
                 pass
 
-        columns = []
         column_index = []
         for idx in self._internal.column_index:
             if len(include) > 0:
@@ -5090,10 +5091,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     self._internal.spark_type_for(idx) in exclude_spark_type)
 
             if should_include:
-                columns.append(self._internal.column_name_for(idx))
                 column_index.append(idx)
 
-        column_scols = [self._internal.scol_for(col) for col in columns]
+        column_scols = [self._internal.scol_for(idx) for idx in column_index]
         return DataFrame(self._internal.with_new_columns(column_scols, column_index=column_index))
 
     def count(self, axis=None):
