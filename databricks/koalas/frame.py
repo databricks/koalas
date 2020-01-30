@@ -7994,12 +7994,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...     _ = f.write(s)
         >>> with open('%s/info.txt' % path) as f:
         ...     f.readlines()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
-        [...databricks.koalas.frame.DataFrame...,
+        ["<class 'databricks.koalas.frame.DataFrame'>\\n",
         'Index: 5 entries, 0 to 4\\n',
         'Data columns (total 3 columns):\\n',
-        'int_col      5 non-null int64\\n',
-        'text_col     5 non-null object\\n',
-        'float_col    5 non-null float64\\n',
+        ' #   Column     Non-Null Count  Dtype  \\n',
+        '---  ------     --------------  -----  \\n',
+        ' 0   int_col    5 non-null      int64  \\n',
+        ' 1   text_col   5 non-null      object \\n',
+        ' 2   float_col  5 non-null      float64\\n',
         'dtypes: float64(1), int64(1), object(1)']
         """
         # To avoid pandas' existing config affects Koalas.
