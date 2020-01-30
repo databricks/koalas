@@ -475,11 +475,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
     def test_index_drop_duplicates(self):
         pidx = pd.Index([1, 1, 2])
         kidx = ks.Index([1, 1, 2])
-        self.assert_eq(pidx.drop_duplicates(), kidx.drop_duplicates())
+        self.assert_eq(pidx.drop_duplicates().sort_values(), kidx.drop_duplicates().sort_values())
 
         pidx = pd.MultiIndex.from_tuples([(1, 1), (1, 1), (2, 2)], names=['level1', 'level2'])
         kidx = ks.MultiIndex.from_tuples([(1, 1), (1, 1), (2, 2)], names=['level1', 'level2'])
-        self.assert_eq(pidx.drop_duplicates(), kidx.drop_duplicates())
+        self.assert_eq(pidx.drop_duplicates().sort_values(), kidx.drop_duplicates().sort_values())
 
     def test_index_sort(self):
         idx = ks.Index([1, 2, 3, 4, 5])

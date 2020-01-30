@@ -106,14 +106,14 @@ class GroupBy(object):
         Different aggregations per column
 
         >>> aggregated = df.groupby('A').agg({'B': 'min', 'C': 'sum'})
-        >>> aggregated[['B', 'C']]  # doctest: +NORMALIZE_WHITESPACE
+        >>> aggregated[['B', 'C']].sort_index()  # doctest: +NORMALIZE_WHITESPACE
            B      C
         A
         1  1  0.589
         2  3  0.705
 
         >>> aggregated = df.groupby('A').agg({'B': ['min', 'max']})
-        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+        >>> aggregated.sort_index()  # doctest: +NORMALIZE_WHITESPACE
              B
            min  max
         A
@@ -121,14 +121,14 @@ class GroupBy(object):
         2    3    4
 
         >>> aggregated = df.groupby('A').agg('min')
-        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+        >>> aggregated.sort_index()  # doctest: +NORMALIZE_WHITESPACE
              B      C
         A
         1    1  0.227
         2    3 -0.562
 
         >>> aggregated = df.groupby('A').agg(['min', 'max'])
-        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+        >>> aggregated.sort_index()  # doctest: +NORMALIZE_WHITESPACE
              B           C
            min  max    min    max
         A
@@ -140,21 +140,21 @@ class GroupBy(object):
         used when applying multiple aggregation functions to specific columns.
 
         >>> aggregated = df.groupby('A').agg(b_max=ks.NamedAgg(column='B', aggfunc='max'))
-        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+        >>> aggregated.sort_index()  # doctest: +NORMALIZE_WHITESPACE
              b_max
         A
         1        2
         2        4
 
         >>> aggregated = df.groupby('A').agg(b_max=('B', 'max'), b_min=('B', 'min'))
-        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+        >>> aggregated.sort_index()  # doctest: +NORMALIZE_WHITESPACE
              b_max   b_min
         A
         1        2       1
         2        4       3
 
         >>> aggregated = df.groupby('A').agg(b_max=('B', 'max'), c_min=('C', 'min'))
-        >>> aggregated  # doctest: +NORMALIZE_WHITESPACE
+        >>> aggregated.sort_index()  # doctest: +NORMALIZE_WHITESPACE
              b_max   c_min
         A
         1        2   0.227
@@ -592,7 +592,7 @@ class GroupBy(object):
 
         By default, iterates over rows and finds the sum in each column.
 
-        >>> df.groupby("A").cummax()
+        >>> df.groupby("A").cummax().sort_index()
               B  C
         0   NaN  4
         1   0.1  4
@@ -601,7 +601,7 @@ class GroupBy(object):
 
         It works as below in Series.
 
-        >>> df.C.groupby(df.A).cummax()
+        >>> df.C.groupby(df.A).cummax().sort_index()
         0    4
         1    4
         2    4
@@ -639,7 +639,7 @@ class GroupBy(object):
 
         By default, iterates over rows and finds the sum in each column.
 
-        >>> df.groupby("A").cummin()
+        >>> df.groupby("A").cummin().sort_index()
               B  C
         0   NaN  4
         1   0.1  3
@@ -648,7 +648,7 @@ class GroupBy(object):
 
         It works as below in Series.
 
-        >>> df.B.groupby(df.A).cummin()
+        >>> df.B.groupby(df.A).cummin().sort_index()
         0     NaN
         1     0.1
         2     0.1
@@ -684,7 +684,7 @@ class GroupBy(object):
 
         By default, iterates over rows and finds the sum in each column.
 
-        >>> df.groupby("A").cumprod()
+        >>> df.groupby("A").cumprod().sort_index()
               B     C
         0   NaN   4.0
         1   0.1  12.0
@@ -693,7 +693,7 @@ class GroupBy(object):
 
         It works as below in Series.
 
-        >>> df.B.groupby(df.A).cumprod()
+        >>> df.B.groupby(df.A).cumprod().sort_index()
         0     NaN
         1     0.1
         2     2.0
@@ -750,7 +750,7 @@ class GroupBy(object):
 
         By default, iterates over rows and finds the sum in each column.
 
-        >>> df.groupby("A").cumsum()
+        >>> df.groupby("A").cumsum().sort_index()
               B  C
         0   NaN  4
         1   0.1  7
@@ -759,7 +759,7 @@ class GroupBy(object):
 
         It works as below in Series.
 
-        >>> df.B.groupby(df.A).cumsum()
+        >>> df.B.groupby(df.A).cumsum().sort_index()
         0     NaN
         1     0.1
         2    20.1
@@ -1294,14 +1294,14 @@ class GroupBy(object):
 
         We can also propagate non-null values forward or backward in group.
 
-        >>> df.groupby(['A'])['B'].fillna(method='ffill')
+        >>> df.groupby(['A'])['B'].fillna(method='ffill').sort_index()
         0    2.0
         1    4.0
         2    NaN
         3    3.0
         Name: B, dtype: float64
 
-        >>> df.groupby(['A']).fillna(method='bfill')
+        >>> df.groupby(['A']).fillna(method='bfill').sort_index()
              B    C  D
         0  2.0  NaN  0
         1  4.0  NaN  1
@@ -1350,7 +1350,7 @@ class GroupBy(object):
 
         Propagate non-null values backward.
 
-        >>> df.groupby(['A']).bfill()
+        >>> df.groupby(['A']).bfill().sort_index()
              B    C  D
         0  2.0  NaN  0
         1  4.0  NaN  1
@@ -1401,7 +1401,7 @@ class GroupBy(object):
 
         Propagate non-null values forward.
 
-        >>> df.groupby(['A']).ffill()
+        >>> df.groupby(['A']).ffill().sort_index()
              B    C  D
         0  2.0  NaN  0
         1  4.0  NaN  1
@@ -1440,22 +1440,22 @@ class GroupBy(object):
         5   3   7  3
         6   3   5  6
 
-        >>> df.groupby('a').head(2)
+        >>> df.groupby('a').head(2).sort_index()
             a   b  c
-        7   1   2  3
         2   1   3  5
-        10  3  10  4
-        5   3   7  3
         3   2   6  1
         4   2   9  2
+        5   3   7  3
+        7   1   2  3
+        10  3  10  4
 
-        >>> df.groupby('a')['b'].head(2)
-        7      2
+        >>> df.groupby('a')['b'].head(2).sort_index()
         2      3
-        10    10
-        5      7
         3      6
         4      9
+        5      7
+        7      2
+        10    10
         Name: b, dtype: int64
         """
         tmp_col = '__row_number__'
@@ -1965,7 +1965,7 @@ class DataFrameGroupBy(GroupBy):
         are returned.
 
         >>> described = df.groupby('a').describe()
-        >>> described  # doctest: +NORMALIZE_WHITESPACE
+        >>> described.sort_index()  # doctest: +NORMALIZE_WHITESPACE
               b                                        c
           count mean       std min 25% 50% 75% max count mean       std min 25% 50% 75% max
         a

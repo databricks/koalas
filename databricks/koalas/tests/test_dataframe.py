@@ -1005,14 +1005,29 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         left_kdf = ks.from_pandas(left_pdf)
         right_kdf = ks.from_pandas(right_pdf)
 
-        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True),
-                       left_pdf.merge(right_pdf, left_index=True, right_index=True))
-        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left'),
-                       left_pdf.merge(right_pdf, left_index=True, right_index=True, how='left'))
-        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right'),
-                       left_pdf.merge(right_pdf, left_index=True, right_index=True, how='right'))
-        self.assert_eq(left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer'),
-                       left_pdf.merge(right_pdf, left_index=True, right_index=True, how='outer'))
+        kdf = left_kdf.merge(right_kdf, left_index=True, right_index=True)
+        pdf = left_pdf.merge(right_pdf, left_index=True, right_index=True)
+        self.assert_eq(
+            kdf.sort_values(by=list(kdf.columns)).reset_index(drop=True),
+            pdf.sort_values(by=list(pdf.columns)).reset_index(drop=True))
+
+        kdf = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left')
+        pdf = left_pdf.merge(right_pdf, left_index=True, right_index=True, how='left')
+        self.assert_eq(
+            kdf.sort_values(by=list(kdf.columns)).reset_index(drop=True),
+            pdf.sort_values(by=list(pdf.columns)).reset_index(drop=True))
+
+        kdf = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right')
+        pdf = left_pdf.merge(right_pdf, left_index=True, right_index=True, how='right')
+        self.assert_eq(
+            kdf.sort_values(by=list(kdf.columns)).reset_index(drop=True),
+            pdf.sort_values(by=list(pdf.columns)).reset_index(drop=True))
+
+        kdf = left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer')
+        pdf = left_pdf.merge(right_pdf, left_index=True, right_index=True, how='outer')
+        self.assert_eq(
+            kdf.sort_values(by=list(kdf.columns)).reset_index(drop=True),
+            pdf.sort_values(by=list(pdf.columns)).reset_index(drop=True))
 
     def test_merge_raises(self):
         left = ks.DataFrame({'value': [1, 2, 3, 5, 6],
