@@ -946,7 +946,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if index is None:
             scol = self._scol
         else:
-            scol = self._scol.alias(str(index))
+            scol = self._scol.alias(name_like_string(index))
         internal = self._internal.copy(
             scol=scol,
             column_index=[index if index is None or isinstance(index, tuple) else (index,)])
@@ -1318,7 +1318,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Generate a Series with duplicated entries.
         >>> s = ks.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],
         ...               name='animal')
-        >>> s
+        >>> s.sort_index()
         0      lama
         1       cow
         2      lama
@@ -1327,11 +1327,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         5     hippo
         Name: animal, dtype: object
 
-        >>> s.drop_duplicates()
-        1       cow
+        >>> s.drop_duplicates().sort_index()
         0      lama
-        5     hippo
+        1       cow
         3    beetle
+        5     hippo
         Name: animal, dtype: object
         """
         kseries = _col(self.to_frame().drop_duplicates())
@@ -1758,10 +1758,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Examples
         --------
         >>> kser = ks.Series([2, 1, 3, 3], name='A')
-        >>> kser.unique()
-        0    1
-        1    3
-        2    2
+        >>> kser.unique().sort_values()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+        <BLANKLINE>
+        ...  1
+        ...  2
+        ...  3
         Name: A, dtype: int64
 
         >>> ks.Series([pd.Timestamp('2016-01-01') for _ in range(3)]).unique()
@@ -1769,10 +1770,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: datetime64[ns]
 
         >>> kser.name = ('x', 'a')
-        >>> kser.unique()
-        0    1
-        1    3
-        2    2
+        >>> kser.unique().sort_values()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+        <BLANKLINE>
+        ...  1
+        ...  2
+        ...  3
         Name: (x, a), dtype: int64
         """
         sdf = self._internal.sdf.select(self._scol).distinct()
@@ -3491,19 +3493,21 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         13    NaN
         Name: 0, dtype: float64
 
-        >>> s.mode()
-        0    1.0
-        1    3.0
-        2    2.0
+        >>> s.mode().sort_values()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+        <BLANKLINE>
+        ...  1.0
+        ...  2.0
+        ...  3.0
         Name: 0, dtype: float64
 
         With 'dropna' set to 'False', we can also see NaN in the result
 
-        >>> s.mode(False)
-        0    NaN
-        1    1.0
-        2    3.0
-        3    2.0
+        >>> s.mode(False).sort_values()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+        <BLANKLINE>
+        ...  1.0
+        ...  2.0
+        ...  3.0
+        ...  NaN
         Name: 0, dtype: float64
         """
         ser_count = self.value_counts(dropna=dropna, sort=False)
@@ -4212,6 +4216,33 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             scol = F.exp(scol)
 
         return self._with_new_scol(scol).rename(self.name)
+
+    def abs(self):
+        """
+        Return a Series with absolute numeric value of each element.
+
+        Returns
+        -------
+        abs : Series containing the absolute value of each element.
+
+        See Also
+        --------
+        DataFrame.abs
+
+        Examples
+        --------
+        Absolute numeric values in a Series.
+
+        >>> s = ks.Series([-1.10, 2, -3.33, 4])
+        >>> s.abs()
+        0    1.10
+        1    2.00
+        2    3.33
+        3    4.00
+        Name: 0, dtype: float64
+        """
+        # TODO: The example above should not have "Name: 0".
+        return self._with_new_scol(F.abs(self._scol)).rename(self.name)
 
     # ----------------------------------------------------------------------
     # Accessor Methods

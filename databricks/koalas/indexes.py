@@ -832,11 +832,11 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
-        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 1, 3]).index.unique()
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 1, 3]).index.unique().sort_values()
         Int64Index([1, 3], dtype='int64')
 
-        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=['d', 'e', 'e']).index.unique()
-        Index(['e', 'd'], dtype='object')
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=['d', 'e', 'e']).index.unique().sort_values()
+        Index(['d', 'e'], dtype='object')
         """
         if level is not None:
             self._validate_index_level(level)

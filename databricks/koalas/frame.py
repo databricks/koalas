@@ -483,6 +483,13 @@ class DataFrame(_Frame, Generic[T]):
         else:
             raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
 
+    def _apply_series_op(self, op):
+        applied = []
+        for idx in self._internal.column_index:
+            applied.append(op(self[idx]))
+        internal = self._internal.with_new_columns(applied)
+        return DataFrame(internal)
+
     # Arithmetic Operators
     def _map_series_op(self, op, other):
         from databricks.koalas.base import IndexOpsMixin
@@ -504,16 +511,10 @@ class DataFrame(_Frame, Generic[T]):
             return align_diff_frames(apply_op, self, other, fillna=True, how="full")
         else:
             # DataFrame and Series
-            applied = []
-            for idx in self._internal.column_index:
-                if isinstance(other, DataFrame):
-                    argument = other[idx]
-                else:
-                    argument = other
-                applied.append(getattr(self[idx], op)(argument))
-
-            internal = self._internal.with_new_columns(applied)
-            return DataFrame(internal)
+            if isinstance(other, DataFrame):
+                return self._apply_series_op(lambda kser: getattr(kser, op)(other[kser.name]))
+            else:
+                return self._apply_series_op(lambda kser: getattr(kser, op)(other))
 
     def __add__(self, other):
         return self._map_series_op("add", other)
@@ -907,14 +908,9 @@ class DataFrame(_Frame, Generic[T]):
         1  11.262736  20.857489
         """
 
-        applied = []
-        for idx in self._internal.column_index:
-            # TODO: We can implement shortcut theoretically since it creates new DataFrame
-            #  anyway and we don't have to worry about operations on different DataFrames.
-            applied.append(self[idx].apply(func))
-
-        internal = self._internal.with_new_columns(applied)
-        return DataFrame(internal)
+        # TODO: We can implement shortcut theoretically since it creates new DataFrame
+        #  anyway and we don't have to worry about operations on different DataFrames.
+        return self._apply_series_op(lambda kser: kser.apply(func))
 
     # TODO: not all arguments are implemented comparing to Pandas' for now.
     def aggregate(self, func: Union[List[str], Dict[str, List[str]]]):
@@ -1908,14 +1904,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     func,
                     return_col=as_python_type(kdf[output_idx].spark_type))
                 applied.append(wrapped(self[input_idx]).rename(input_idx))
+
+            internal = self._internal.with_new_columns(applied)
+            return DataFrame(internal)
         else:
             wrapped = ks.pandas_wraps(func)
-            applied = []
-            for idx in self._internal.column_index:
-                applied.append(wrapped(self[idx]).rename(idx))
-
-        internal = self._internal.with_new_columns(applied)
-        return DataFrame(internal)
+            return self._apply_series_op(lambda kser: wrapped(kser).rename(kser.name))
 
     def pop(self, item):
         """
@@ -2330,12 +2324,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(cond, (DataFrame, Series)):
             raise ValueError("type of cond must be a DataFrame or Series")
 
-        column_scols = [(~cond._internal.scol_for(idx)).alias(cond._internal.column_name_for(idx))
-                        for idx in cond._internal.column_index]
-
-        internal = cond._internal.with_new_columns(column_scols)
-        cond_inversed = DataFrame(internal)
-
+        cond_inversed = cond._apply_series_op(lambda kser: ~kser)
         return self.where(cond_inversed, other)
 
     @property
@@ -2757,10 +2746,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0   True  False   True
         1  False   True  False
         """
-        kdf = self.copy()
-        for name, kser in kdf.iteritems():
-            kdf[name] = kser.isnull()
-        return kdf
+        return self._apply_series_op(lambda kser: kser.isnull())
 
     isna = isnull
 
@@ -2792,10 +2778,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  True   True  True
         1  True  False  True
         """
-        kdf = self.copy()
-        for name, kser in kdf.iteritems():
-            kdf[name] = kser.notnull()
-        return kdf
+        return self._apply_series_op(lambda kser: kser.notnull())
 
     notna = notnull
 
@@ -2845,12 +2828,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4    20    23    27
 
         """
-        applied = []
-        for idx in self._internal.column_index:
-            applied.append(self[idx].shift(periods, fill_value))
-
-        internal = self._internal.with_new_columns(applied)
-        return DataFrame(internal)
+        return self._apply_series_op(lambda kser: kser.shift(periods, fill_value))
 
     # TODO: axis should support 1 or 'columns' either at this moment
     def diff(self, periods: int = 1, axis: Union[int, str] = 0):
@@ -2924,12 +2902,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         axis = validate_axis(axis)
         if axis != 0:
             raise ValueError('axis should be either 0 or "index" currently.')
-        applied = []
-        for idx in self._internal.column_index:
-            applied.append(self[idx].diff(periods))
 
-        internal = self._internal.with_new_columns(applied)
-        return DataFrame(internal)
+        return self._apply_series_op(lambda kser: kser.diff(periods))
 
     # TODO: axis should support 1 or 'columns' either at this moment
     def nunique(self, axis: Union[int, str] = 0, dropna: bool = True, approx: bool = False,
@@ -4101,7 +4075,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  0.0  1.0  2.0  5
         3  0.0  3.0  1.0  4
         """
-        sdf = self._sdf
         if value is not None:
             axis = validate_axis(axis)
             if axis != 0:
@@ -4117,23 +4090,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 value = {self._internal.column_name_for(key): value for key, value in value.items()}
             if limit is not None:
                 raise ValueError('limit parameter for value is not support now')
-            sdf = sdf.fillna(value)
-            internal = self._internal.copy(sdf=sdf,
-                                           column_scols=[scol_for(sdf, col)
-                                                         for col in self._internal.data_columns])
+            sdf = self._sdf.fillna(value)
+            kdf = DataFrame(self._internal.copy(
+                sdf=sdf,
+                column_scols=[scol_for(sdf, col) for col in self._internal.data_columns]))
         else:
             if method is None:
                 raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
 
-            applied = []
-            for idx in self._internal.column_index:
-                applied.append(self[idx].fillna(value=value, method=method, axis=axis,
-                                                inplace=False, limit=limit))
-            internal = self._internal.with_new_columns(applied)
+            kdf = self._apply_series_op(
+                lambda kser: kser.fillna(value=value, method=method, axis=axis,
+                                         inplace=False, limit=limit))
         if inplace:
-            self._internal = internal
+            self._internal = kdf._internal
         else:
-            return DataFrame(internal)
+            return kdf
 
     # TODO: add 'downcast' when value parameter exists
     def bfill(self, axis=None, inplace=False, limit=None):
@@ -4437,29 +4408,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         numeric_types = (DecimalType, DoubleType, FloatType, ByteType, IntegerType, LongType,
                          ShortType)
-        numeric_columns = [(idx, self._internal.scol_for(idx))
-                           for idx in self._internal.column_index
-                           if isinstance(self._internal.spark_type_for(idx), numeric_types)]
 
-        if lower is not None:
-            numeric_columns = [(idx, (F.when(scol < lower, lower).otherwise(scol)
-                                      .alias(name_like_string(idx))))
-                               for idx, scol in numeric_columns]
-        if upper is not None:
-            numeric_columns = [(idx, (F.when(scol > upper, upper).otherwise(scol)
-                                      .alias(name_like_string(idx))))
-                               for idx, scol in numeric_columns]
+        def op(kser):
+            if isinstance(kser.spark_type, numeric_types):
+                scol = kser._scol
+                if lower is not None:
+                    scol = F.when(scol < lower, lower).otherwise(scol)
+                if upper is not None:
+                    scol = F.when(scol > upper, upper).otherwise(scol)
+                return scol.alias(kser._internal.data_columns[0])
+            else:
+                return kser
 
-        column_index = [idx for idx, _ in numeric_columns]
-        column_scols = [scol for _, scol in numeric_columns]
-
-        for idx in self._internal.column_index:
-            if not isinstance(self._internal.spark_type_for(idx), numeric_types):
-                column_index.append(idx)
-                column_scols.append(self._internal.scol_for(idx))
-
-        internal = self._internal.with_new_columns(column_scols, column_index=column_index)
-        return DataFrame(internal)[list(self.columns)]
+        return self._apply_series_op(op)
 
     def head(self, n=5):
         """
@@ -4577,48 +4538,48 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
         ...                        columns='C', aggfunc='sum')
-        >>> table  # doctest: +NORMALIZE_WHITESPACE
+        >>> table.sort_index()  # doctest: +NORMALIZE_WHITESPACE
         C        large  small
         A   B
+        bar one    4.0      5
+            two    7.0      6
         foo one    4.0      1
             two    NaN      6
-        bar two    7.0      6
-            one    4.0      5
 
         We can also fill missing values using the `fill_value` parameter.
 
         >>> table = df.pivot_table(values='D', index=['A', 'B'],
         ...                        columns='C', aggfunc='sum', fill_value=0)
-        >>> table  # doctest: +NORMALIZE_WHITESPACE
+        >>> table.sort_index()  # doctest: +NORMALIZE_WHITESPACE
         C        large  small
         A   B
+        bar one      4      5
+            two      7      6
         foo one      4      1
             two      0      6
-        bar two      7      6
-            one      4      5
 
         We can also calculate multiple types of aggregations for any given
         value column.
 
         >>> table = df.pivot_table(values=['D'], index =['C'],
         ...                        columns="A", aggfunc={'D': 'mean'})
-        >>> table  # doctest: +NORMALIZE_WHITESPACE
+        >>> table.sort_index()  # doctest: +NORMALIZE_WHITESPACE
                  D
         A      bar       foo
         C
-        small  5.5  2.333333
         large  5.5  2.000000
+        small  5.5  2.333333
 
         The next example aggregates on multiple values.
 
         >>> table = df.pivot_table(index=['C'], columns="A", values=['D', 'E'],
         ...                         aggfunc={'D': 'mean', 'E': 'sum'})
-        >>> table # doctest: +NORMALIZE_WHITESPACE
+        >>> table.sort_index() # doctest: +NORMALIZE_WHITESPACE
                  D             E
         A      bar       foo bar foo
         C
-        small  5.5  2.333333  17  13
         large  5.5  2.000000  15   9
+        small  5.5  2.333333  17  13
         """
         if not isinstance(columns, (str, tuple)):
             raise ValueError("columns should be string or tuple.")
@@ -5797,33 +5758,33 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         the default suffixes, _x and _y, appended.
 
         >>> merged = df1.merge(df2, left_on='lkey', right_on='rkey')
-        >>> merged.sort_values(by=['lkey', 'value_x', 'rkey', 'value_y'])
+        >>> merged.sort_values(by=['lkey', 'value_x', 'rkey', 'value_y'])  # doctest: +ELLIPSIS
           lkey  value_x rkey  value_y
-        0  bar        2  bar        6
-        5  baz        3  baz        7
-        1  foo        1  foo        5
-        2  foo        1  foo        8
-        3  foo        5  foo        5
-        4  foo        5  foo        8
+        ...bar        2  bar        6
+        ...baz        3  baz        7
+        ...foo        1  foo        5
+        ...foo        1  foo        8
+        ...foo        5  foo        5
+        ...foo        5  foo        8
 
         >>> left_kdf = ks.DataFrame({'A': [1, 2]})
         >>> right_kdf = ks.DataFrame({'B': ['x', 'y']}, index=[1, 2])
 
-        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True)
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True).sort_index()
            A  B
         1  2  x
 
-        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left')
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='left').sort_index()
            A     B
         0  1  None
         1  2     x
 
-        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right')
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='right').sort_index()
              A  B
         1  2.0  x
         2  NaN  y
 
-        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer')
+        >>> left_kdf.merge(right_kdf, left_index=True, right_index=True, how='outer').sort_index()
              A     B
         0  1.0  None
         1  2.0     x
@@ -6074,12 +6035,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         original DataFrame’s index in the result.
 
         >>> join_kdf = kdf1.join(kdf2.set_index('key'), on='key')
-        >>> join_kdf.sort_index()
-          key   A     B
-        0  K3  A3  None
-        1  K0  A0    B0
-        2  K1  A1    B1
-        3  K2  A2    B2
+        >>> join_kdf.index
+        Int64Index([0, 1, 2, 3], dtype='int64')
         """
         if isinstance(right, ks.Series):
             common = list(self.columns.intersection([right.name]))
@@ -6191,7 +6148,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'A': [1, 2, 3], 'B': [400, 500, 600]}, columns=['A', 'B'])
         >>> new_df = ks.DataFrame({'B': [4, 5, 6], 'C': [7, 8, 9]}, columns=['B', 'C'])
         >>> df.update(new_df)
-        >>> df
+        >>> df.sort_index()
            A  B
         0  1  4
         1  2  5
@@ -6203,7 +6160,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'A': ['a', 'b', 'c'], 'B': ['x', 'y', 'z']}, columns=['A', 'B'])
         >>> new_df = ks.DataFrame({'B': ['d', 'e', 'f', 'g', 'h', 'i']}, columns=['B'])
         >>> df.update(new_df)
-        >>> df
+        >>> df.sort_index()
            A  B
         0  a  d
         1  b  e
@@ -6214,7 +6171,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'A': ['a', 'b', 'c'], 'B': ['x', 'y', 'z']}, columns=['A', 'B'])
         >>> new_column = ks.Series(['d', 'e'], name='B', index=[0, 2])
         >>> df.update(new_column)
-        >>> df
+        >>> df.sort_index()
            A  B
         0  a  d
         1  b  y
@@ -6225,7 +6182,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df = ks.DataFrame({'A': [1, 2, 3], 'B': [400, 500, 600]}, columns=['A', 'B'])
         >>> new_df = ks.DataFrame({'B': [4, None, 6]}, columns=['B'])
         >>> df.update(new_df)
-        >>> df
+        >>> df.sort_index()
            A      B
         0  1    4.0
         1  2  500.0
@@ -6450,13 +6407,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3      4      6
         """
         assert isinstance(prefix, str)
-        data_columns = [prefix + self._internal.column_name_for(idx)
-                        for idx in self._internal.column_index]
-        column_scols = [self._internal.scol_for(idx).alias(name)
-                        for idx, name in zip(self._internal.column_index, data_columns)]
-        column_index = [tuple([prefix + i for i in idx]) for idx in self._internal.column_index]
-        internal = self._internal.with_new_columns(column_scols, column_index=column_index)
-        return DataFrame(internal)
+        return self._apply_series_op(
+            lambda kser: kser.rename(tuple([prefix + i for i in kser._internal.column_index[0]])))
 
     def add_suffix(self, suffix):
         """
@@ -6499,13 +6451,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3      4      6
         """
         assert isinstance(suffix, str)
-        data_columns = [self._internal.column_name_for(idx) + suffix
-                        for idx in self._internal.column_index]
-        column_scols = [self._internal.scol_for(idx).alias(name)
-                        for idx, name in zip(self._internal.column_index, data_columns)]
-        column_index = [tuple([i + suffix for i in idx]) for idx in self._internal.column_index]
-        internal = self._internal.with_new_columns(column_scols, column_index=column_index)
-        return DataFrame(internal)
+        return self._apply_series_op(
+            lambda kser: kser.rename(tuple([i + suffix for i in kser._internal.column_index[0]])))
 
     # TODO: include, and exclude should be implemented.
     def describe(self, percentiles: Optional[List[float]] = None) -> 'DataFrame':
@@ -6667,12 +6614,39 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             func = "cumsum"
         elif func.__name__ == "cumprod":
             func = "cumprod"
-        applied = []
-        for column in self.columns:
-            applied.append(getattr(self[column], func)(skipna))
 
-        internal = self._internal.with_new_columns(applied)
-        return DataFrame(internal)
+        return self._apply_series_op(lambda kser: getattr(kser, func)(skipna))
+
+    def abs(self):
+        """
+        Return a DataFrame with absolute numeric value of each element.
+
+        Returns
+        -------
+        abs : DataFrame containing the absolute value of each element.
+
+        See Also
+        --------
+        Series.abs
+
+        Examples
+        --------
+        Absolute numeric values in a DataFrame.
+
+        >>> df = ks.DataFrame({
+        ...     'a': [4, 5, 6, 7],
+        ...     'b': [10, 20, 30, 40],
+        ...     'c': [100, 50, -30, -50]
+        ...   },
+        ...   columns=['a', 'b', 'c'])
+        >>> df.abs()
+           a   b    c
+        0  4  10  100
+        1  5  20   50
+        2  6  30   30
+        3  7  40   50
+        """
+        return self._apply_series_op(lambda kser: kser.abs())
 
     # TODO: implements 'keep' parameters
     def drop_duplicates(self, subset=None, inplace=False):
@@ -7378,12 +7352,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  2.0  2.0
         3  3.0  1.0
         """
-        applied = []
-        for idx in self._internal.column_index:
-            applied.append(self[idx].rank(method=method, ascending=ascending))
-
-        internal = self._internal.with_new_columns(applied)
-        return DataFrame(internal)
+        return self._apply_series_op(lambda kser: kser.rank(method=method, ascending=ascending))
 
     def filter(self, items=None, like=None, regex=None, axis=None):
         """
@@ -7789,14 +7758,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-periods, -periods)
 
-        column_scols = []
-        for idx in self._internal.column_index:
-            prev_row = F.lag(self._internal.scol_for(idx), periods).over(window)
-            column_scols.append(((self._internal.scol_for(idx) - prev_row) / prev_row)
-                                .alias(self._internal.column_name_for(idx)))
+        def op(kser):
+            prev_row = F.lag(kser._scol, periods).over(window)
+            return ((kser._scol - prev_row) / prev_row).alias(kser._internal.data_columns[0])
 
-        internal = self._internal.with_new_columns(column_scols)
-        return DataFrame(internal)
+        return self._apply_series_op(op)
 
     # TODO: axis = 1
     def idxmax(self, axis=0):
