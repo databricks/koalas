@@ -163,9 +163,10 @@ class ReshapeTest(ReusedSQLTestCase):
                        pd.get_dummies(pdf, columns=['x']), almost=True)
         self.assert_eq(ks.get_dummies(kdf, columns=('x', 'a')),
                        pd.get_dummies(pdf, columns=('x', 'a')), almost=True)
-        self.assert_eq(ks.get_dummies(kdf, columns='x'),
-                       pd.get_dummies(pdf, columns='x'), almost=True)
+        self.assert_eq(ks.get_dummies(kdf, columns=['x']),
+                       pd.get_dummies(pdf, columns=['x']), almost=True)
 
-        self.assertRaises(KeyError, lambda: ks.get_dummies(kdf, columns='z'))
+        self.assertRaises(KeyError, lambda: ks.get_dummies(kdf, columns=['z']))
         self.assertRaises(KeyError, lambda: ks.get_dummies(kdf, columns=('x', 'c')))
         self.assertRaises(ValueError, lambda: ks.get_dummies(kdf, columns=[('x',), 'c']))
+        self.assertRaises(TypeError, lambda: ks.get_dummies(kdf, columns='x'))
