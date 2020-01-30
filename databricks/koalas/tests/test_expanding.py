@@ -56,6 +56,14 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
                 "kdf_or_kser must be a series or dataframe; however, got:.*int"):
             Expanding(1, 2)
 
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
+                           index=[1, 3, 2, 4])
+        for f in ("count", "min", "max", "mean", "sum", "std", "var"):
+            with self.assertRaisesRegex(
+                    ValueError,
+                    "index must be monotonic increasing or decreasing"):
+                getattr(kdf.groupby('a').expanding(2), f)()
+
     def test_expanding_repr(self):
         self.assertEqual(repr(ks.range(10).expanding(5)), "Expanding [min_periods=5]")
 
@@ -96,16 +104,14 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             repr(getattr(kser.groupby(kser).expanding(2), f)().sort_index()),
             repr(getattr(pser.groupby(pser).expanding(2), f)().sort_index()))
 
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
-                           index=np.random.rand(4))
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
         pdf = kdf.to_pandas()
         self.assert_eq(
             repr(getattr(kdf.groupby(kdf.a).expanding(2), f)().sort_index()),
             repr(getattr(pdf.groupby(pdf.a).expanding(2), f)().sort_index()))
 
         # Multiindex column
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
-                           index=np.random.rand(4))
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
         kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
         pdf = kdf.to_pandas()
         self.assert_eq(
