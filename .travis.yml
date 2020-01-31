@@ -6,17 +6,15 @@ cache:
 
 matrix:
   include:
-    # commented belows for now because pandas 1.0.0 doesn't support python3.5
-    # we should have discussion about how we handle this. maybe just drop python 3.5?
-    # - python: "3.5"
-    #   jdk:
-    #     - oraclejdk8
-    #   env:
-    #     - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
-    #     - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
-    #     - SPARK_VERSION=2.3.4
-    #     - PANDAS_VERSION=0.23.4
-    #     - PYARROW_VERSION=0.10.0
+    - python: "3.5"
+      jdk:
+        - oraclejdk8
+      env:
+        - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
+        - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
+        - SPARK_VERSION=2.3.4
+        - PANDAS_VERSION=0.23.4
+        - PYARROW_VERSION=0.10.0
     - python: "3.6"
       jdk:
         - oraclejdk8
