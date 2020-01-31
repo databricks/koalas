@@ -15,6 +15,9 @@
 #
 from functools import partial
 from typing import Any
+from distutils.version import LooseVersion
+
+import pandas as pd
 
 from databricks.koalas.internal import SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.utils import name_like_string
@@ -49,8 +52,20 @@ class _RollingAndExpanding(object):
             "to handle the index and columns of output.")
 
     def count(self):
+        # Rolling and Expanding have different behavior for `count` in pandas 1.0.0
+        # for now, we consider both pandas < 1.0.0 and pandas >= 1.0.0
         def count(scol):
             return F.count(scol).over(self._window)
+
+        if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
+            def count_expanding(scol):
+                return F.when(
+                    F.row_number().over(self._unbounded_window) >= self._min_periods,
+                    F.count(scol).over(self._window)
+                ).otherwise(F.lit(None))
+            if isinstance(self, Expanding):
+                return self._apply_as_series_or_frame(count_expanding).astype('float64')
+
         return self._apply_as_series_or_frame(count).astype('float64')
 
     def sum(self):
