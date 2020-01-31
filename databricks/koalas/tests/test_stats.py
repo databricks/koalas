@@ -96,20 +96,31 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
             kdf = ks.from_pandas(pdf)
 
-            res = kdf.corr()
-            sol = pdf.corr()
-            self.assert_eq(res, sol, almost=True)
+            self.assert_eq(kdf.corr(), pdf.corr(), almost=True)
 
             # Series
-            a = pdf.A
-            b = pdf.B
-            da = kdf.A
-            db = kdf.B
+            pser_a = pdf.A
+            pser_b = pdf.B
+            kser_a = kdf.A
+            kser_b = kdf.B
 
-            res = da.corr(db)
-            sol = a.corr(b)
-            self.assertAlmostEqual(res, sol)
-            self.assertRaises(TypeError, lambda: da.corr(kdf))
+            self.assertAlmostEqual(kser_a.corr(kser_b), pser_a.corr(pser_b))
+            self.assertRaises(TypeError, lambda: kser_a.corr(kdf))
+
+            # multi-index columns
+            columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Z', 'D')])
+            pdf.columns = columns
+            kdf.columns = columns
+
+            self.assert_eq(kdf.corr(), pdf.corr(), almost=True)
+
+            # Series
+            pser_xa = pdf[('X', 'A')]
+            pser_xb = pdf[('X', 'B')]
+            kser_xa = kdf[('X', 'A')]
+            kser_xb = kdf[('X', 'B')]
+
+            self.assertAlmostEqual(kser_xa.corr(kser_xb), pser_xa.corr(pser_xb))
 
     def test_cov_corr_meta(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.
