@@ -62,7 +62,7 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
                            index=np.random.rand(4))
         kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
         pdf = kdf.to_pandas()
-        self.assert_eq(repr(getattr(kdf.expanding(2), f)()), repr(getattr(pdf.expanding(2), f)()))
+        self.assert_eq(repr(getattr(kdf.rolling(2), f)()), repr(getattr(pdf.expanding(2), f)()))
 
     def test_rolling_min(self):
         self._test_rolling_func("min")
