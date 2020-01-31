@@ -58,7 +58,7 @@ class _RollingAndExpanding(object):
             return F.count(scol).over(self._window)
 
         if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
-            if isinstance(self, Expanding):
+            if isinstance(self, (Expanding, ExpandingGroupby)):
                 def count_expanding(scol):
                     return F.when(
                         F.row_number().over(self._unbounded_window) >= self._min_periods,
