@@ -58,12 +58,12 @@ class _RollingAndExpanding(object):
             return F.count(scol).over(self._window)
 
         if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
-            def count_expanding(scol):
-                return F.when(
-                    F.row_number().over(self._unbounded_window) >= self._min_periods,
-                    F.count(scol).over(self._window)
-                ).otherwise(F.lit(None))
             if isinstance(self, Expanding):
+                def count_expanding(scol):
+                    return F.when(
+                        F.row_number().over(self._unbounded_window) >= self._min_periods,
+                        F.count(scol).over(self._window)
+                    ).otherwise(F.lit(None))
                 return self._apply_as_series_or_frame(count_expanding).astype('float64')
 
         return self._apply_as_series_or_frame(count).astype('float64')
