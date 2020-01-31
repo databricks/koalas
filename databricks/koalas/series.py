@@ -2113,9 +2113,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         # This implementation is suboptimal because it computes more than necessary,
         # but it should be a start
-        kdf = self._kdf.assign(corr_arg1=self, corr_arg2=other)[["corr_arg1", "corr_arg2"]]
+        columns = ['__corr_arg1__', '__corr_arg2__']
+        kdf = self._kdf.assign(__corr_arg1__=self, __corr_arg2__=other)[columns]
+        kdf.columns = columns
         c = corr(kdf, method=method)
-        return c.loc["corr_arg1", "corr_arg2"]
+        return c.loc[tuple(columns)]
 
     def nsmallest(self, n: int = 5) -> 'Series':
         """
