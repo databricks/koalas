@@ -1439,7 +1439,7 @@ class ExpandingGroupby(Expanding):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).expanding(3).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> s.groupby(s).expanding(3).count().sort_index()  # doctest: +SKIP
         0
         2  0     NaN
            1     NaN
@@ -1457,7 +1457,7 @@ class ExpandingGroupby(Expanding):
         For DataFrame, each expanding count is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
-        >>> df.groupby(df.A).expanding(2).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby(df.A).expanding(2).count().sort_index()  # doctest: +SKIP
                 A    B
         A
         2 0   NaN  NaN
