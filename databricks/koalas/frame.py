@@ -3023,24 +3023,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         third   0.9  0.0  0.49
         """
         if isinstance(decimals, ks.Series):
-            decimals_list = [(k if isinstance(k, tuple) else (k,), v)
-                             for k, v in decimals._to_internal_pandas().items()]
+            decimals = {k if isinstance(k, tuple) else (k,): v
+                        for k, v in decimals._to_internal_pandas().items()}
         elif isinstance(decimals, dict):
-            decimals_list = [(k if isinstance(k, tuple) else (k,), v)
-                             for k, v in decimals.items()]
+            decimals = {k if isinstance(k, tuple) else (k,): v
+                        for k, v in decimals.items()}
         elif isinstance(decimals, int):
-            decimals_list = [(k, decimals) for k in self._internal.column_index]
+            decimals = {k: decimals for k in self._internal.column_index}
         else:
             raise ValueError("decimals must be an integer, a dict-like or a Series")
 
-        sdf = self._sdf
-        for idx, decimal in decimals_list:
-            if idx in self._internal.column_index:
-                col = self._internal.column_name_for(idx)
-                sdf = sdf.withColumn(col, F.round(scol_for(sdf, col), decimal))
-        return DataFrame(self._internal.copy(sdf=sdf,
-                                             column_scols=[scol_for(sdf, col)
-                                                           for col in self._internal.data_columns]))
+        def op(kser):
+            idx = kser._internal.column_index[0]
+            if idx in decimals:
+                return F.round(kser._scol, decimals[idx]).alias(kser._internal.data_columns[0])
+            else:
+                return kser
+
+        return self._apply_series_op(op)
 
     def duplicated(self, subset=None, keep='first'):
         """
