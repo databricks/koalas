@@ -23,12 +23,13 @@ import pyspark
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.stat import Correlation
 
+from databricks.koalas.utils import column_index_level
 
 if TYPE_CHECKING:
     import databricks.koalas as ks
 
 
-CORRELATION_OUTPUT_COLUMN = '_correlation_output'
+CORRELATION_OUTPUT_COLUMN = '__correlation_output__'
 
 
 def corr(kdf: 'ks.DataFrame', method: str = 'pearson') -> pd.DataFrame:
@@ -49,17 +50,18 @@ def corr(kdf: 'ks.DataFrame', method: str = 'pearson') -> pd.DataFrame:
     B -1.0  1.0
     """
     assert method in ('pearson', 'spearman')
-    ndf, fields = to_numeric_df(kdf)
+    ndf, column_index = to_numeric_df(kdf)
     corr = Correlation.corr(ndf, CORRELATION_OUTPUT_COLUMN, method)
     pcorr = corr.toPandas()
     arr = pcorr.iloc[0, 0].toArray()
-    arr = pd.DataFrame(arr)
-    arr.columns = fields
-    arr = arr.set_index(pd.Index(fields))
-    return arr
+    if column_index_level(column_index) > 1:
+        idx = pd.MultiIndex.from_tuples(column_index)
+    else:
+        idx = pd.Index([idx[0] for idx in column_index])
+    return pd.DataFrame(arr, columns=idx, index=idx)
 
 
-def to_numeric_df(kdf: 'ks.DataFrame') -> Tuple[pyspark.sql.DataFrame, List[str]]:
+def to_numeric_df(kdf: 'ks.DataFrame') -> Tuple[pyspark.sql.DataFrame, List[Tuple[str, ...]]]:
     """
     Takes a dataframe and turns it into a dataframe containing a single numerical
     vector of doubles. This dataframe has a single field called '_1'.
@@ -70,14 +72,14 @@ def to_numeric_df(kdf: 'ks.DataFrame') -> Tuple[pyspark.sql.DataFrame, List[str]
              that were converted to numerical types)
 
     >>> to_numeric_df(ks.DataFrame({'A': [0, 1], 'B': [1, 0], 'C': ['x', 'y']}))
-    (DataFrame[_correlation_output: vector], ['A', 'B'])
+    (DataFrame[__correlation_output__: vector], [('A',), ('B',)])
     """
     # TODO, it should be more robust.
     accepted_types = {np.dtype(dt) for dt in [np.int8, np.int16, np.int32, np.int64,
                                               np.float32, np.float64, np.bool_]}
-    numeric_fields = [fname for fname in kdf._internal.data_columns
-                      if kdf[fname].dtype in accepted_types]
-    numeric_df = kdf._sdf.select(*[kdf._internal.scol_for(fname) for fname in numeric_fields])
-    va = VectorAssembler(inputCols=numeric_fields, outputCol=CORRELATION_OUTPUT_COLUMN)
+    numeric_column_index = [idx for idx in kdf._internal.column_index
+                            if kdf[idx].dtype in accepted_types]
+    numeric_df = kdf._sdf.select(*[kdf._internal.scol_for(idx) for idx in numeric_column_index])
+    va = VectorAssembler(inputCols=numeric_df.columns, outputCol=CORRELATION_OUTPUT_COLUMN)
     v = va.transform(numeric_df).select(CORRELATION_OUTPUT_COLUMN)
-    return v, numeric_fields
+    return v, numeric_column_index

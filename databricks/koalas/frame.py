@@ -8204,21 +8204,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if (isinstance(value, Series) and value._kdf is not self) or \
                 (isinstance(value, DataFrame) and value is not self):
             # Different Series or DataFrames
-            level = self._internal.column_index_level
             if isinstance(value, Series):
                 value = value.to_frame()
-                value.columns = pd.MultiIndex.from_tuples(
-                    [tuple(list(value._internal.column_index[0]) + ([''] * (level - 1)))])
             else:
-                assert isinstance(value, DataFrame)
-                value_level = value._internal.column_index_level
-                if value_level > level:
-                    value.columns = pd.MultiIndex.from_tuples(
-                        [idx[level:] for idx in value._internal.column_index])
-                elif value_level < level:
-                    value.columns = pd.MultiIndex.from_tuples(
-                        [tuple(list(idx) + ([''] * (level - value_level)))
-                         for idx in value._internal.column_index])
+                assert isinstance(value, DataFrame), type(value)
+                value = value.copy()
+            level = self._internal.column_index_level
+
+            value.columns = pd.MultiIndex.from_tuples(
+                [tuple([name_like_string(idx)] + ([''] * (level - 1)))
+                 for idx in value._internal.column_index])
 
             if isinstance(key, str):
                 key = [(key,)]
@@ -8227,7 +8222,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 key = [k if isinstance(k, tuple) else (k,) for k in key]
 
-            level = self._internal.column_index_level
+            if any(len(idx) > level for idx in key):
+                raise KeyError('Key length ({}) exceeds index depth ({})'
+                               .format(max(len(idx) for idx in key), level))
             key = [tuple(list(idx) + ([''] * (level - len(idx)))) for idx in key]
 
             def assign_columns(kdf, this_column_index, that_column_index):
