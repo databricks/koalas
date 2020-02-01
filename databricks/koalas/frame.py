@@ -2982,6 +2982,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             of `decimals` which are not columns of the input will be
             ignored.
 
+            .. note:: If `decimals` is a Series, it is expected to be small,
+                as all the data is loaded into the driver's memory.
+
         Returns
         -------
         DataFrame
