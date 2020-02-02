@@ -1284,9 +1284,6 @@ class _Frame(object):
             raise ValueError('No group keys passed!')
         if axis != 0:
             raise ValueError('axis sould be either 0 or "index" currently.')
-        if not isinstance(as_index, bool):
-            raise TypeError('as_index must be a boolean; however, '
-                            'got [%s]' % type(as_index))
         if isinstance(df_or_s, DataFrame):
             df = df_or_s  # type: DataFrame
             col_by = [_resolve_col(df, col_or_s) for col_or_s in by]
