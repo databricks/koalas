@@ -1282,7 +1282,7 @@ class _Frame(object):
         if not len(by):
             raise ValueError('No group keys passed!')
         if axis != 0:
-            raise ValueError('axis sould be either 0 or "index" currently.')
+            raise ValueError('axis should be either 0 or "index" currently.')
         if isinstance(df_or_s, DataFrame):
             df = df_or_s  # type: DataFrame
             col_by = [_resolve_col(df, col_or_s) for col_or_s in by]
