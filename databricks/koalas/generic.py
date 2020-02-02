@@ -170,8 +170,7 @@ class _Frame(object):
     # TODO: add 'axis' parameter
     def cumsum(self, skipna: bool = True):
         """
-        Return cumulative sum over a DataFrame or Series  axis=0,
-   axis.
+        Return cumulative sum over a DataFrame or Series axis.
 
         Returns a DataFrame or Series of the same size containing the cumulative sum.
 
