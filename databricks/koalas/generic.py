@@ -170,7 +170,8 @@ class _Frame(object):
     # TODO: add 'axis' parameter
     def cumsum(self, skipna: bool = True):
         """
-        Return cumulative sum over a DataFrame or Series axis.
+        Return cumulative sum over a DataFrame or Series  axis=0,
+   axis.
 
         Returns a DataFrame or Series of the same size containing the cumulative sum.
 
@@ -1193,7 +1194,7 @@ class _Frame(object):
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
     # should be updated when it's supported.
-    def groupby(self, by, as_index: bool = True):
+    def groupby(self, by, axis=0, as_index: bool = True):
         """
         Group DataFrame or Series using a Series of columns.
 
@@ -1281,6 +1282,8 @@ class _Frame(object):
             raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
         if not len(by):
             raise ValueError('No group keys passed!')
+        if axis != 0:
+            raise ValueError('axis sould be either 0 or "index" currently.')
         if not isinstance(as_index, bool):
             raise TypeError('as_index must be a boolean; however, '
                             'got [%s]' % type(as_index))
