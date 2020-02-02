@@ -1282,7 +1282,7 @@ class _Frame(object):
         if not len(by):
             raise ValueError('No group keys passed!')
         if not isinstance(as_index, bool):
-            raise TypeError('as_index must be an boolean; however, '
+            raise TypeError('as_index must be a boolean; however, '
                             'got [%s]' % type(as_index))
         if isinstance(df_or_s, DataFrame):
             df = df_or_s  # type: DataFrame
