@@ -40,7 +40,8 @@ class ReshapeTest(ReusedSQLTestCase):
             self.assert_eq(ks.get_dummies(kdf_or_kser), pd.get_dummies(pdf_or_ps), almost=True)
 
         kser = ks.Series([1, 1, 1, 2, 2, 1, 3, 4])
-        with self.assertRaises(ValueError, 'get_dummies currently does not support sparse'):
+        with self.assertRaises(
+                NotImplementedError, 'get_dummies currently does not support sparse'):
             ks.get_dummies(kser, sparse=True)
 
     def test_get_dummies_object(self):
