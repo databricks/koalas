@@ -507,8 +507,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
 
         # Assert invalid parameters
-        self.assertRaises(ValueError, lambda: kser.sort_index(axis=1))
-        self.assertRaises(ValueError, lambda: kser.sort_index(kind='mergesort'))
+        self.assertRaises(NotImplementedError, lambda: kser.sort_index(axis=1))
+        self.assertRaises(NotImplementedError, lambda: kser.sort_index(kind='mergesort'))
         self.assertRaises(ValueError, lambda: kser.sort_index(na_position='invalid'))
 
         # Assert default behavior without parameters

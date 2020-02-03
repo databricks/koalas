@@ -2344,10 +2344,3 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, 'type of cond must be a DataFrame or Series'):
             kdf.mask(1)
-
-    def test_set_index(self):
-        kdf = ks.from_pandas(self.pdf)
-
-        with self.assertRaisesRegex(
-                NotImplementedError, 'axis should be either 0 or "index" currently.'):
-            kdf.set_index('a', axis=1)
