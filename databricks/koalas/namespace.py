@@ -1476,7 +1476,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
 
     axis = validate_axis(axis)
     if axis != 0:
-        raise ValueError('axis should be either 0 or "index" currently.')
+        raise NotImplementedError('axis should be either 0 or "index" currently.')
 
     if len(objs) == 0:
         raise ValueError('No objects to concatenate')

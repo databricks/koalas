@@ -469,6 +469,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq((kser % 2 == 0).any(), (pser % 2 == 0).any())
 
+        with self.assertRaisesRegex(
+                NotImplementedError, 'axis should be either 0 or "index" currently.'):
+            kser.any(axis=1)
+
     def test_reset_index_with_default_index_types(self):
         pser = pd.Series([1, 2, 3], name='0', index=np.random.rand(3))
         kser = ks.from_pandas(pser)

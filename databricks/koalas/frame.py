@@ -2063,7 +2063,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
         if isinstance(key, str):
             key = (key,)
         if len(key) > len(self._internal.index_scols):
@@ -2901,7 +2901,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         return self._apply_series_op(lambda kser: kser.diff(periods))
 
@@ -2955,7 +2955,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
         res = self._sdf.select([self[idx]._nunique(dropna, approx, rsd)
                                 for idx in self._internal.column_index]).toPandas()
         if self._internal.column_index_level == 1:
@@ -5458,9 +5458,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         b 1  0  3
         """
         if axis != 0:
-            raise ValueError("No other axes than 0 are supported at the moment")
+            raise NotImplementedError("No other axis than 0 are supported at the moment")
         if kind is not None:
-            raise ValueError("Specifying the sorting algorithm is supported at the moment.")
+            raise NotImplementedError(
+                "Specifying the sorting algorithm is not supported at the moment.")
 
         if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
             by = self._internal.index_scols
@@ -7139,7 +7140,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         applied = []
         column_index = self._internal.column_index
@@ -7222,7 +7223,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         applied = []
         column_index = self._internal.column_index
@@ -8047,9 +8048,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         result_as_series = False
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
         if numeric_only is not True:
-            raise ValueError("quantile currently doesn't supports numeric_only")
+            raise NotImplementedError("quantile currently doesn't supports numeric_only")
         if isinstance(q, float):
             result_as_series = True
             key = str(q)
