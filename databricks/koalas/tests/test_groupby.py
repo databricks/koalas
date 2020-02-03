@@ -80,6 +80,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.b, as_index=False))
 
+        self.assertRaises(ValueError, lambda: kdf.groupby('a', axis=1))
         self.assertRaises(ValueError, lambda: kdf.groupby('a', 'b'))
         self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.a, kdf.b))
 
