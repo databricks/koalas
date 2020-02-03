@@ -17,12 +17,13 @@
 from datetime import datetime
 from distutils.version import LooseVersion
 import inspect
+import sys
 
 import numpy as np
 import pandas as pd
 
 from databricks import koalas as ks
-from databricks.koalas.config import set_option, reset_option, option_context
+from databricks.koalas.config import option_context
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
@@ -654,6 +655,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.fillna(method='ffill', limit=2), kdf.fillna(method='ffill', limit=2))
         self.assert_eq(pdf.fillna(method='bfill'), kdf.fillna(method='bfill'))
         self.assert_eq(pdf.fillna(method='bfill', limit=2), kdf.fillna(method='bfill', limit=2))
+
+        self.assert_eq(kdf.fillna({'x': -1}), pdf.fillna({'x': -1}))
+
+        if sys.version_info >= (3, 6):
+            # flaky in Python 3.5.
+            self.assert_eq(kdf.fillna({'x': -1, ('x', 'b'): -2}),
+                           pdf.fillna({'x': -1, ('x', 'b'): -2}))
+            self.assert_eq(kdf.fillna({('x', 'b'): -2, 'x': -1}),
+                           pdf.fillna({('x', 'b'): -2, 'x': -1}))
 
         # check multi index
         pdf = pdf.set_index([('x', 'a'), ('x', 'b')])
