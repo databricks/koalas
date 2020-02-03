@@ -81,7 +81,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.b, as_index=False))
 
         self.assertRaises(ValueError, lambda: kdf.groupby('a', 'b'))
-        self.assertRaises(ValueError, lambda: kdf.a.groupby(kdf.a, kdf.b))
+        self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.a, kdf.b))
 
         # we can't use column name/names as a parameter `by` for `SeriesGroupBy`.
         self.assertRaises(KeyError, lambda: kdf.a.groupby(by='a'))
