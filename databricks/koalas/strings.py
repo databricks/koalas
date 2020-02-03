@@ -1936,7 +1936,7 @@ class StringMethods(object):
         Name: 0, dtype: object
         """
         if expand:
-            raise ValueError("expand=True is currently not supported.")
+            raise NotImplementedError("expand=True is currently not supported.")
 
         return _wrap_accessor_pandas(
             self,

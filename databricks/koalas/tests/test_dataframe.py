@@ -1120,7 +1120,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert using the sort parameter raises an exception
         msg = "The 'sort' parameter is currently not supported"
-        with self.assertRaises(ValueError, msg=msg):
+        with self.assertRaises(NotImplementedError, msg=msg):
             kdf.append(kdf, sort=True)
 
         # Assert using 'verify_integrity' only raises an exception for overlapping indices

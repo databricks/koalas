@@ -6123,7 +6123,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(other, ks.Series):
             raise ValueError("DataFrames.append() does not support appending Series to DataFrames")
         if sort:
-            raise ValueError("The 'sort' parameter is currently not supported")
+            raise NotImplementedError("The 'sort' parameter is currently not supported")
 
         if not ignore_index:
             index_scols = self._internal.index_scols

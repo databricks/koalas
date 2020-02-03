@@ -1277,7 +1277,8 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
         remaining_columns = []
     else:
         if isinstance(prefix, str):
-            raise ValueError("get_dummies currently does not support prefix as string types")
+            raise NotImplementedError(
+                "get_dummies currently does not support prefix as string types")
         kdf = data.copy()
 
         if columns is None:
@@ -1318,8 +1319,9 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
 
     if any(not isinstance(kdf._internal.spark_type_for(idx), _get_dummies_acceptable_types)
            for idx in column_index):
-        raise ValueError("get_dummies currently only accept {} values"
-                         .format(', '.join([t.typeName() for t in _get_dummies_acceptable_types])))
+        raise NotImplementedError(
+            "get_dummies currently only accept {} values"
+            .format(', '.join([t.typeName() for t in _get_dummies_acceptable_types])))
 
     if prefix is not None and len(column_index) != len(prefix):
         raise ValueError(
