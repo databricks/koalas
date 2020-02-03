@@ -56,6 +56,7 @@ class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaises(TypeError):
             self.to_html(unsupported_param=1)
 
+        # TODO: `to_clipboard` raises Error since `xclip` seems not work in GitHub Actions on Linux
         # Support for **kwargs
         self.to_clipboard(sep=',', index=False)
 
