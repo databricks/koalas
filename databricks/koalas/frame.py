@@ -5457,6 +5457,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         a 1  2  1
         b 1  0  3
         """
+        axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError("No other axis than 0 are supported at the moment")
         if kind is not None:
