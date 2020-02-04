@@ -9,137 +9,119 @@ on:
       - master
 
 jobs:
-  python3_5:
+  python35:
     runs-on: ubuntu-latest
     env:
       SPARK_VERSION: 2.3.4
-      PANDAS_VERSION: 0.23.4
+      PANDAS_VERSION: 0.23.3
       PYARROW_VERSION: 0.10.0
-
+      KOALAS_USAGE_LOGGER: databricks.koalas.usage_logging.usage_logger
+      QT_QPA_PLATFORM: offscreen
     steps:
     - uses: actions/checkout@v2
-
     - uses: actions/setup-java@v1
       with:
         java-version: 1.8
-
-    - name: setup_python
+    - name: Setup Python 3.5
       uses: actions/setup-python@v1
       with:
         python-version: 3.5
-
-    - name: before_install
+    - name: Download dependencies
       run: ./dev/download_travis_dependencies.sh
-
-    - name: install
+    - name: Install Python dependencies
       run: |
         sudo apt-get update
+        export DISPLAY=:0.0
+        sudo apt-get install xclip
         pip install --upgrade cython
+        pip install pyperclip
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip install 'pyspark>=2.4'
         pip list
-
-    - name: before_script
+    - name: Setup environment variables
       run: |
         export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
-        export QT_QPA_PLATFORM="offscreen"
         ./dev/lint-python
-
-    - name: script
+    - name: Run tests
       run: ./dev/pytest
-
-    - name: after_success
+    - name: Update Codecov
       run: bash <(curl -s https://codecov.io/bash)
 
-  python3_6:
+  python36:
     runs-on: ubuntu-latest
     env:
       SPARK_VERSION: 2.4.4
       PANDAS_VERSION: 0.24.2
       PYARROW_VERSION: 0.13.0
-
+      KOALAS_USAGE_LOGGER: databricks.koalas.usage_logging.usage_logger
+      QT_QPA_PLATFORM: offscreen
+      DISPLAY: localhost:0.0
     steps:
     - uses: actions/checkout@v2
-
     - uses: actions/setup-java@v1
       with:
         java-version: 1.8
-
-    - name: setup_python
+    - name: Setup Python 3.6
       uses: actions/setup-python@v1
       with:
         python-version: 3.6
-  
-    - name: before_install
+    - name: Download dependencies
       run: ./dev/download_travis_dependencies.sh
-  
-    - name: install
+    - name: Install Python dependencies
       run: |
         sudo apt-get update
+        sudo apt-get install xclip
         pip install --upgrade cython
         pip install pyperclip
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip install 'pyspark>=2.4'
         pip list
-
-    - name: before_script
+    - name: Setup environment variables
       run: |
         export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
-        export QT_QPA_PLATFORM="offscreen"
-        python --version
-        pip list
         ./dev/lint-python
-  
-    - name: script
+    - name: Run tests
       run: ./dev/pytest
-  
-    - name: after_success
+    - name: Update Codecov
       run: bash <(curl -s https://codecov.io/bash)
 
-  python3_7:
+  python37:
     runs-on: ubuntu-latest
     env:
       SPARK_VERSION: 2.4.4
       PANDAS_VERSION: 0.25.3
       PYARROW_VERSION: 0.14.1
-
+      KOALAS_USAGE_LOGGER: databricks.koalas.usage_logging.usage_logger
+      QT_QPA_PLATFORM: offscreen
+      DISPLAY: localhost:0.0
     steps:
     - uses: actions/checkout@v2
-
     - uses: actions/setup-java@v1
       with:
         java-version: 1.8
-
-    - name: setup_python
+    - name: Setup Python 3.7
       uses: actions/setup-python@v1
       with:
         python-version: 3.7
-  
-    - name: before_install
+    - name: Download dependencies
       run: ./dev/download_travis_dependencies.sh
-  
-    - name: install
+    - name: Install Python dependencies
       run: |
         sudo apt-get update
+        sudo apt-get install xclip
         pip install --upgrade cython
         pip install pyperclip
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip install 'pyspark>=2.4'
         pip list
-
-    - name: before_script
+    - name: Setup environment variables
       run: |
         export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
-        export QT_QPA_PLATFORM="offscreen"
-        python --version
-        pip list
         ./dev/lint-python
-  
-    - name: script
+    - name: Run tests
       run: ./dev/pytest
-  
-    - name: after_success
+    - name: Update Codecov
       run: bash <(curl -s https://codecov.io/bash)
