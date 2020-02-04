@@ -4081,6 +4081,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
             if not isinstance(value, (float, int, str, bool, dict, pd.Series)):
                 raise TypeError("Unsupported type %s" % type(value))
+            if limit is not None:
+                raise ValueError('limit parameter for value is not support now')
             if isinstance(value, pd.Series):
                 value = value.to_dict()
             if isinstance(value, dict):
@@ -4088,21 +4090,25 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     if not isinstance(v, (float, int, str, bool)):
                         raise TypeError("Unsupported type %s" % type(v))
                 value = {k if isinstance(k, tuple) else (k,): v for k, v in value.items()}
-                value = {self._internal.column_name_for(k): v for k, v in value.items()
-                         if k in self._internal.column_index}
-            if limit is not None:
-                raise ValueError('limit parameter for value is not support now')
-            sdf = self._sdf.fillna(value, subset=self._internal.data_columns)
-            kdf = DataFrame(self._internal.copy(
-                sdf=sdf,
-                column_scols=[scol_for(sdf, col) for col in self._internal.data_columns]))
-        else:
-            if method is None:
-                raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
 
-            kdf = self._apply_series_op(
-                lambda kser: kser.fillna(value=value, method=method, axis=axis,
-                                         inplace=False, limit=limit))
+                def op(kser):
+                    idx = kser._internal.column_index[0]
+                    for k, v in value.items():
+                        if k == idx[:len(k)]:
+                            return kser.fillna(value=value[k], method=method, axis=axis,
+                                               inplace=False, limit=limit)
+                    else:
+                        return kser
+            else:
+                op = lambda kser: kser.fillna(value=value, method=method, axis=axis,
+                                              inplace=False, limit=limit)
+        elif method is not None:
+            op = lambda kser: kser.fillna(value=value, method=method, axis=axis,
+                                          inplace=False, limit=limit)
+        else:
+            raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
+
+        kdf = self._apply_series_op(op)
         if inplace:
             self._internal = kdf._internal
         else:
