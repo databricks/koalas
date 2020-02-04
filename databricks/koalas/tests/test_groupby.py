@@ -71,6 +71,19 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.a.groupby(kdf.b).sum().sort_index(),
                        pdf.a.groupby(pdf.b).sum().sort_index())
 
+        for axis in [0, 'index']:
+            self.assert_eq(kdf.groupby('a', axis=axis).a.sum().sort_index(),
+                           pdf.groupby('a', axis=axis).a.sum().sort_index())
+            self.assert_eq(kdf.groupby('a', axis=axis)['a'].sum().sort_index(),
+                           pdf.groupby('a', axis=axis)['a'].sum().sort_index())
+            self.assert_eq(kdf.groupby('a', axis=axis)[['a']].sum().sort_index(),
+                           pdf.groupby('a', axis=axis)[['a']].sum().sort_index())
+            self.assert_eq(kdf.groupby('a', axis=axis)[['a', 'c']].sum().sort_index(),
+                           pdf.groupby('a', axis=axis)[['a', 'c']].sum().sort_index())
+
+            self.assert_eq(kdf.a.groupby(kdf.b, axis=axis).sum().sort_index(),
+                           pdf.a.groupby(pdf.b, axis=axis).sum().sort_index())
+
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False).a)
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)['a'])
         self.assertRaises(ValueError, lambda: kdf.groupby('a', as_index=False)[['a']])
@@ -80,7 +93,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.b, as_index=False))
 
-        self.assertRaises(ValueError, lambda: kdf.groupby('a', axis=1))
+        self.assertRaises(NotImplementedError, lambda: kdf.groupby('a', axis=1))
+        self.assertRaises(NotImplementedError, lambda: kdf.groupby('a', axis='columns'))
         self.assertRaises(ValueError, lambda: kdf.groupby('a', 'b'))
         self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.a, kdf.b))
 
