@@ -40,7 +40,7 @@ class ReshapeTest(ReusedSQLTestCase):
             self.assert_eq(ks.get_dummies(kdf_or_kser), pd.get_dummies(pdf_or_ps), almost=True)
 
         kser = ks.Series([1, 1, 1, 2, 2, 1, 3, 4])
-        with self.assertRaises(
+        with self.assertRaisesRegex(
                 NotImplementedError, 'get_dummies currently does not support sparse'):
             ks.get_dummies(kser, sparse=True)
 
@@ -122,7 +122,7 @@ class ReshapeTest(ReusedSQLTestCase):
         self.assert_eq(ks.get_dummies(kdf, prefix=['foo'], columns=['B']),
                        pd.get_dummies(pdf, prefix=['foo'], columns=['B']), almost=True)
 
-        with self.assertRaisesRegex(ValueError, "string types"):
+        with self.assertRaisesRegex(NotImplementedError, "string types"):
             ks.get_dummies(kdf, prefix='foo')
         with self.assertRaisesRegex(ValueError, "Length of 'prefix' \\(1\\) .* \\(2\\)"):
             ks.get_dummies(kdf, prefix=['foo'])
