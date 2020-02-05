@@ -36,7 +36,6 @@ jobs:
       run: ./dev/download_travis_dependencies.sh
     - name: Install Python dependencies
       run: |
-        export DISPLAY=:0.0
         sudo apt-get install xclip xvfb
         python3 -m pip install --upgrade pip
         pip install --upgrade cython
@@ -64,7 +63,6 @@ jobs:
       PYARROW_VERSION: 0.13.0
       KOALAS_USAGE_LOGGER: databricks.koalas.usage_logging.usage_logger
       QT_QPA_PLATFORM: offscreen
-      DISPLAY: localhost:0.0
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-java@v1
