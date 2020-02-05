@@ -100,7 +100,6 @@ jobs:
       PYARROW_VERSION: 0.14.1
       KOALAS_USAGE_LOGGER: databricks.koalas.usage_logging.usage_logger
       QT_QPA_PLATFORM: offscreen
-      DISPLAY: localhost:0.0
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-java@v1
