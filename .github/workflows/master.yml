@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SPARK_VERSION: 2.3.4
-      PANDAS_VERSION: 0.23.3
+      PANDAS_VERSION: 0.23.4
       PYARROW_VERSION: 0.10.0
       KOALAS_USAGE_LOGGER: databricks.koalas.usage_logging.usage_logger
       QT_QPA_PLATFORM: offscreen
@@ -22,29 +22,37 @@ jobs:
     - uses: actions/setup-java@v1
       with:
         java-version: 1.8
+    # Setup Python 3.5 via `apt-get install` since the dafault Python3.5 from `actions/setup-python`
+    # seems to have some problem with Tkinter, so we should manually install the python3.5-tk.
+    # for this, we should use the Python we manually installed, not the default one from `actions/setup-python`
     - name: Setup Python 3.5
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.5
+      run: |
+        sudo add-apt-repository ppa:deadsnakes/ppa
+        sudo apt-get update
+        sudo apt-get install tk-dev python3.5-tk python3 python3.5 python-pip python3-pip python-pytest
+        sudo rm /usr/bin/python
+        sudo ln -s /usr/bin/python3.5 /usr/bin/python
     - name: Download dependencies
       run: ./dev/download_travis_dependencies.sh
     - name: Install Python dependencies
       run: |
-        sudo apt-get update
         export DISPLAY=:0.0
-        sudo apt-get install xclip
+        sudo apt-get install xclip xvfb
+        python3 -m pip install --upgrade pip
         pip install --upgrade cython
-        pip install pyperclip
+        pip install setuptools
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip install 'pyspark>=2.4'
         pip list
     - name: Setup environment variables
       run: |
+        sudo apt-get install flake8
         export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
     - name: Run tests
-      run: ./dev/pytest
+      run: |
+        ./dev/pytest
     - name: Update Codecov
       run: bash <(curl -s https://codecov.io/bash)
 
@@ -73,7 +81,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install xclip
         pip install --upgrade cython
-        pip install pyperclip
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip install 'pyspark>=2.4'
@@ -112,7 +119,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install xclip
         pip install --upgrade cython
-        pip install pyperclip
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip install 'pyspark>=2.4'

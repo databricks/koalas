@@ -17,7 +17,6 @@ import os
 import shutil
 import string
 import tempfile
-import unittest
 
 import numpy as np
 import pandas as pd
@@ -159,8 +158,6 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         output_path = "%s/%s" % (self.tmp_dir, output_paths[0])
         self.assertEqual("[%s]" % open(output_path).read().strip(), expected)
 
-    # TODO: `to_clipboard` raises Error since `xclip` seems not work in GitHub Actions on Linux
-    @unittest.skip("Skip for now until `xclip` issue is solved in GitHub Actions")
     def test_to_clipboard(self):
         pdf = self.pdf
         kdf = self.kdf

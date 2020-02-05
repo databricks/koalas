@@ -14,8 +14,6 @@
 # limitations under the License.
 #
 
-import unittest
-
 import pandas as pd
 
 from databricks import koalas as ks
@@ -32,8 +30,6 @@ class SeriesConversionTest(ReusedSQLTestCase, SQLTestUtils):
     def kser(self):
         return ks.from_pandas(self.pser)
 
-    # TODO: `to_clipboard` raises Error since `xclip` seems not work in GitHub Actions on Linux
-    @unittest.skip("Skip for now until `xclip` issue is solved in GitHub Actions")
     def test_to_clipboard(self):
         pser = self.pser
         kser = self.kser
