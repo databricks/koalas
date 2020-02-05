@@ -36,10 +36,10 @@ jobs:
       run: ./dev/download_travis_dependencies.sh
     - name: Install Python dependencies
       run: |
-        sudo apt-get install xclip xvfb
+        sudo apt-get install xclip
         python3 -m pip install --upgrade pip
-        pip install --upgrade cython
         pip install setuptools
+        pip install wheel
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip install 'pyspark>=2.4'
@@ -78,7 +78,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install xclip
-        pip install --upgrade cython
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip install 'pyspark>=2.4'
@@ -115,7 +114,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install xclip
-        pip install --upgrade cython
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip install 'pyspark>=2.4'
