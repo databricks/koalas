@@ -2063,7 +2063,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
         if isinstance(key, str):
             key = (key,)
         if len(key) > len(self._internal.index_scols):
@@ -2898,7 +2898,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         return self._apply_series_op(lambda kser: kser.diff(periods))
 
@@ -2952,7 +2952,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
         res = self._sdf.select([self[idx]._nunique(dropna, approx, rsd)
                                 for idx in self._internal.column_index]).toPandas()
         if self._internal.column_index_level == 1:
@@ -2978,6 +2978,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             columns not included in `decimals` will be left as is. Elements
             of `decimals` which are not columns of the input will be
             ignored.
+
+            .. note:: If `decimals` is a Series, it is expected to be small,
+                as all the data is loaded into the driver's memory.
 
         Returns
         -------
@@ -3020,24 +3023,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         third   0.9  0.0  0.49
         """
         if isinstance(decimals, ks.Series):
-            decimals_list = [(k if isinstance(k, tuple) else (k,), v)
-                             for k, v in decimals._to_internal_pandas().items()]
+            decimals = {k if isinstance(k, tuple) else (k,): v
+                        for k, v in decimals._to_internal_pandas().items()}
         elif isinstance(decimals, dict):
-            decimals_list = [(k if isinstance(k, tuple) else (k,), v)
-                             for k, v in decimals.items()]
+            decimals = {k if isinstance(k, tuple) else (k,): v
+                        for k, v in decimals.items()}
         elif isinstance(decimals, int):
-            decimals_list = [(k, decimals) for k in self._internal.column_index]
+            decimals = {k: decimals for k in self._internal.column_index}
         else:
             raise ValueError("decimals must be an integer, a dict-like or a Series")
 
-        sdf = self._sdf
-        for idx, decimal in decimals_list:
-            if idx in self._internal.column_index:
-                col = self._internal.column_name_for(idx)
-                sdf = sdf.withColumn(col, F.round(scol_for(sdf, col), decimal))
-        return DataFrame(self._internal.copy(sdf=sdf,
-                                             column_scols=[scol_for(sdf, col)
-                                                           for col in self._internal.data_columns]))
+        def op(kser):
+            idx = kser._internal.column_index[0]
+            if idx in decimals:
+                return F.round(kser._scol, decimals[idx]).alias(kser._internal.data_columns[0])
+            else:
+                return kser
+
+        return self._apply_series_op(op)
 
     def duplicated(self, subset=None, keep='first'):
         """
@@ -5454,10 +5457,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         a 1  2  1
         b 1  0  3
         """
+        axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError("No other axes than 0 are supported at the moment")
+            raise NotImplementedError("No other axis than 0 are supported at the moment")
         if kind is not None:
-            raise ValueError("Specifying the sorting algorithm is supported at the moment.")
+            raise NotImplementedError(
+                "Specifying the sorting algorithm is not supported at the moment.")
 
         if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
             by = self._internal.index_scols
@@ -6119,7 +6124,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(other, ks.Series):
             raise ValueError("DataFrames.append() does not support appending Series to DataFrames")
         if sort:
-            raise ValueError("The 'sort' parameter is currently not supported")
+            raise NotImplementedError("The 'sort' parameter is currently not supported")
 
         if not ignore_index:
             index_scols = self._internal.index_scols
@@ -7136,7 +7141,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         applied = []
         column_index = self._internal.column_index
@@ -7219,7 +7224,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         applied = []
         column_index = self._internal.column_index
@@ -8044,9 +8049,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         result_as_series = False
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
         if numeric_only is not True:
-            raise ValueError("quantile currently doesn't supports numeric_only")
+            raise NotImplementedError("quantile currently doesn't supports numeric_only")
         if isinstance(q, float):
             result_as_series = True
             key = str(q)

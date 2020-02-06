@@ -715,7 +715,7 @@ class IndexOpsMixin(object):
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         sdf = self._internal._sdf.select(self._scol)
         col = scol_for(sdf, sdf.columns[0])
@@ -778,7 +778,7 @@ class IndexOpsMixin(object):
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         sdf = self._internal._sdf.select(self._scol)
         col = scol_for(sdf, sdf.columns[0])
