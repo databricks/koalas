@@ -452,6 +452,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq((kser % 2 == 0).all(), (pser % 2 == 0).all())
 
+        with self.assertRaisesRegex(
+                NotImplementedError, 'axis should be either 0 or "index" currently.'):
+            kser.all(axis=1)
+
     def test_any(self):
         for pser in [pd.Series([False, False], name='x'),
                      pd.Series([True, False], name='x'),
@@ -468,6 +472,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
 
         self.assert_eq((kser % 2 == 0).any(), (pser % 2 == 0).any())
+
+        with self.assertRaisesRegex(
+                NotImplementedError, 'axis should be either 0 or "index" currently.'):
+            kser.any(axis=1)
 
     def test_reset_index_with_default_index_types(self):
         pser = pd.Series([1, 2, 3], name='0', index=np.random.rand(3))
@@ -503,8 +511,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
 
         # Assert invalid parameters
-        self.assertRaises(ValueError, lambda: kser.sort_index(axis=1))
-        self.assertRaises(ValueError, lambda: kser.sort_index(kind='mergesort'))
+        self.assertRaises(NotImplementedError, lambda: kser.sort_index(axis=1))
+        self.assertRaises(NotImplementedError, lambda: kser.sort_index(kind='mergesort'))
         self.assertRaises(ValueError, lambda: kser.sort_index(na_position='invalid'))
 
         # Assert default behavior without parameters
