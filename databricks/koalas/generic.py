@@ -34,7 +34,7 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
-from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
+from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for, validate_axis
 from databricks.koalas.window import Rolling, Expanding
 
 
@@ -1193,7 +1193,7 @@ class _Frame(object):
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
     # should be updated when it's supported.
-    def groupby(self, by, as_index: bool = True):
+    def groupby(self, by, axis=0, as_index: bool = True):
         """
         Group DataFrame or Series using a Series of columns.
 
@@ -1209,6 +1209,8 @@ class _Frame(object):
             If Series is passed, the Series or dict VALUES
             will be used to determine the groups. A label or list of
             labels may be passed to group by the columns in ``self``.
+        axis : int, default 0 or 'index'
+            Can only be set to 0 at the moment.
         as_index : bool, default True
             For aggregated output, return object with group labels as the
             index. Only relevant for DataFrame input. as_index=False is
@@ -1281,6 +1283,9 @@ class _Frame(object):
             raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
         if not len(by):
             raise ValueError('No group keys passed!')
+        axis = validate_axis(axis)
+        if axis != 0:
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
         if isinstance(df_or_s, DataFrame):
             df = df_or_s  # type: DataFrame
             col_by = [_resolve_col(df, col_or_s) for col_or_s in by]
