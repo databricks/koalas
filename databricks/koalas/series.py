@@ -4288,10 +4288,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 return partial(property_or_func, self)
         return self.getField(item)
 
-    def __str__(self):
-        # TODO: figure out how to reuse the original one.
-        return 'Column<%s>' % self._scol._jc.toString().encode('utf8')
-
     def _to_internal_pandas(self):
         """
         Return a pandas Series directly from _internal to avoid overhead of copy.
