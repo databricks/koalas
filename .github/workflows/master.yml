@@ -15,6 +15,7 @@ jobs:
       SPARK_VERSION: 2.3.4
       PANDAS_VERSION: 0.23.4
       PYARROW_VERSION: 0.10.0
+      PYTHON_EXECUTABLE: xvfb-run python
       KOALAS_USAGE_LOGGER: databricks.koalas.usage_logging.usage_logger
     steps:
     - uses: actions/checkout@v2
