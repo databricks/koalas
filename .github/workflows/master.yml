@@ -29,7 +29,7 @@ jobs:
       run: |
         sudo add-apt-repository ppa:deadsnakes/ppa
         sudo apt-get update
-        sudo apt-get install tk-dev python3.5-tk python3 python3.5 python-pip python3-pip python-pytest
+        sudo apt-get install tk-dev python3.5-tk python3 python3.5 python-pip python3-pip
         sudo rm /usr/bin/python
         sudo ln -s /usr/bin/python3.5 /usr/bin/python
     - name: Using cache
@@ -41,9 +41,9 @@ jobs:
           ${{ runner.os }}-pip-
     - name: Download dependencies
       run: ./dev/download_travis_dependencies.sh
-    - name: Install Python dependencies
+    - name: Install dependencies & Run tests
       run: |
-        sudo apt-get install xclip
+        sudo apt-get install xclip python-pytest flake8
         python3 -m pip install --upgrade pip
         pip install setuptools
         pip install wheel
@@ -51,13 +51,7 @@ jobs:
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip install 'pyspark>=2.4'
         pip list
-    - name: Setup environment variables
-      run: |
-        sudo apt-get install flake8
-        export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
-    - name: Run tests
-      run: |
         ./dev/pytest
     - name: Update Codecov
       run: bash <(curl -s https://codecov.io/bash)
@@ -75,10 +69,6 @@ jobs:
     - uses: actions/setup-java@v1
       with:
         java-version: 1.8
-    - name: Setup Python 3.6
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.6
     - name: Using cache
       uses: actions/cache@v1
       with:
@@ -88,20 +78,28 @@ jobs:
           ${{ runner.os }}-pip-
     - name: Download dependencies
       run: ./dev/download_travis_dependencies.sh
-    - name: Install Python dependencies
+    - name: Install dependencies & Run tests
       run: |
         sudo apt-get update
-        sudo apt-get install xclip
-        pip install -r requirements-dev.txt
-        pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
-        pip install 'pyspark>=2.4'
-        pip list
-    - name: Setup environment variables
-      run: |
-        export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
+        curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
+        bash miniconda.sh -b -p $HOME/miniconda
+        . $HOME/miniconda/etc/profile.d/conda.sh
+        hash -r
+        conda config --set always_yes yes --set changeps1 no
+        conda update -q conda
+        conda info -a
+        conda create -c conda-forge -q -n test-environment python=3.6
+        conda activate test-environment
+        conda install -c conda-forge --yes codecov
+        conda config --env --add pinned_packages python=3.6 && \
+        conda config --env --add pinned_packages pandas==$PANDAS_VERSION && \
+        conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION && \
+        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
+        conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt && \
+        conda install 'pyspark>=2.4' && \
+        conda list
         ./dev/lint-python
-    - name: Run tests
-      run: ./dev/pytest
+        ./dev/pytest
     - name: Update Codecov
       run: bash <(curl -s https://codecov.io/bash)
 
@@ -118,10 +116,6 @@ jobs:
     - uses: actions/setup-java@v1
       with:
         java-version: 1.8
-    - name: Setup Python 3.7
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.7
     - name: Using cache
       uses: actions/cache@v1
       with:
@@ -131,19 +125,27 @@ jobs:
           ${{ runner.os }}-pip-
     - name: Download dependencies
       run: ./dev/download_travis_dependencies.sh
-    - name: Install Python dependencies
+    - name: Install dependencies & Run tests
       run: |
         sudo apt-get update
-        sudo apt-get install xclip
-        pip install -r requirements-dev.txt
-        pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
-        pip install 'pyspark>=2.4'
-        pip list
-    - name: Setup environment variables
-      run: |
-        export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
+        curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
+        bash miniconda.sh -b -p $HOME/miniconda
+        . $HOME/miniconda/etc/profile.d/conda.sh
+        hash -r
+        conda config --set always_yes yes --set changeps1 no
+        conda update -q conda
+        conda info -a
+        conda create -c conda-forge -q -n test-environment python=3.7
+        conda activate test-environment
+        conda install -c conda-forge --yes codecov
+        conda config --env --add pinned_packages python=3.7 && \
+        conda config --env --add pinned_packages pandas==$PANDAS_VERSION && \
+        conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION && \
+        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
+        conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt && \
+        conda install 'pyspark>=2.4' && \
+        conda list
         ./dev/lint-python
-    - name: Run tests
-      run: ./dev/pytest
+        ./dev/pytest
     - name: Update Codecov
       run: bash <(curl -s https://codecov.io/bash)
