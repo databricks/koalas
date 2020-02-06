@@ -296,7 +296,7 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series(['This is a sentence.', 'This-is-a-long-word.'])
         self.check_func_on_series(lambda x: x.str.rsplit(n=2), pser)
         self.check_func_on_series(lambda x: x.str.rsplit(pat='-', n=2), pser)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotImplementedError):
             self.check_func(lambda x: x.str.rsplit(expand=True))
 
     def test_string_translate(self):
