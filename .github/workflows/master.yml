@@ -80,7 +80,6 @@ jobs:
       run: ./dev/download_travis_dependencies.sh
     - name: Install dependencies & Run tests
       run: |
-        sudo apt-get update
         curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
         bash miniconda.sh -b -p $HOME/miniconda
         . $HOME/miniconda/etc/profile.d/conda.sh
@@ -127,7 +126,6 @@ jobs:
       run: ./dev/download_travis_dependencies.sh
     - name: Install dependencies & Run tests
       run: |
-        sudo apt-get update
         curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
         bash miniconda.sh -b -p $HOME/miniconda
         . $HOME/miniconda/etc/profile.d/conda.sh
