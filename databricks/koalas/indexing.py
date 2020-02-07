@@ -27,7 +27,8 @@ from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
-from databricks.koalas.utils import column_index_level, lazy_property, name_like_string
+from databricks.koalas.utils import (column_index_level, lazy_property, name_like_string,
+                                     temp_column_name)
 
 
 class _IndexerLike(object):
@@ -847,7 +848,8 @@ class iLocIndexer(_LocIndexerLike):
 
     @lazy_property
     def _sequence_col(self):
-        return "__distributed_sequence_column__"
+        internal = super(iLocIndexer, self)._internal
+        return temp_column_name(internal.sdf, "distributed_sequence_column")
 
     def _select_rows(self, rows_sel):
         from databricks.koalas.indexes import Index

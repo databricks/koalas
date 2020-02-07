@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 from databricks.koalas.config import get_option
 from databricks.koalas.typedef import infer_pd_series_spark_type, spark_type_to_pandas_dtype
 from databricks.koalas.utils import (column_index_level, default_session, lazy_property,
-                                     name_like_string, scol_for)
+                                     name_like_string, scol_for, temp_column_name)
 
 
 # A function to turn given numbers to Spark columns that represent Koalas index.
@@ -579,6 +579,10 @@ class _InternalFrame(object):
 
         scols = [scol_for(sdf, column) for column in sdf.columns]
 
+        spark_partition_column = temp_column_name(sdf, 'spark_partition_id')
+        offset_column = temp_column_name(sdf, 'offset')
+        row_number_column = temp_column_name(sdf, 'row_number')
+
         # 1. Calculates counts per each partition ID. `counts` here is, for instance,
         #     {
         #         1: 83,
@@ -586,9 +590,9 @@ class _InternalFrame(object):
         #         3: 83,
         #         ...
         #     }
-        sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
+        sdf = sdf.withColumn(spark_partition_column, F.spark_partition_id())
         counts = map(lambda x: (x["key"], x["count"]),
-                     sdf.groupby(sdf['__spark_partition_id'].alias("key")).count().collect())
+                     sdf.groupby(sdf[spark_partition_column].alias("key")).count().collect())
 
         # 2. Calculates cumulative sum in an order of partition id.
         #     Note that it does not matter if partition id guarantees its order or not.
@@ -607,16 +611,17 @@ class _InternalFrame(object):
             current_partition_offset = sums[id.iloc[0]]
             return pd.Series(current_partition_offset).repeat(len(id))
 
-        sdf = sdf.withColumn('__offset__', offset('__spark_partition_id'))
+        sdf = sdf.withColumn(offset_column, offset(spark_partition_column))
 
         # 4. Calculate row_number in each partition.
-        w = Window.partitionBy('__spark_partition_id').orderBy(F.monotonically_increasing_id())
+        w = Window.partitionBy(spark_partition_column).orderBy(F.monotonically_increasing_id())
         row_number = F.row_number().over(w)
-        sdf = sdf.withColumn('__row_number__', row_number)
+        sdf = sdf.withColumn(row_number_column, row_number)
 
         # 5. Calculate the index.
         return sdf.select(
-            F.expr('__offset__ + __row_number__ - 1').alias(column_name), *scols)
+            (sdf[offset_column] + sdf[row_number_column] - 1).alias(column_name),
+            *scols)
 
     @lazy_property
     def _column_index_to_name(self) -> Dict[Tuple[str, ...], str]:

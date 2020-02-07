@@ -40,7 +40,8 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series, _col
 from databricks.koalas.utils import (compare_allow_null, compare_disallow_null, compare_null_first,
-                                     compare_null_last, default_session, name_like_string, scol_for)
+                                     compare_null_last, default_session, name_like_string, scol_for,
+                                     temp_column_name)
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 
 
@@ -1230,7 +1231,7 @@ class Index(IndexOpsMixin):
         4
         """
         sdf = self._internal.sdf.select(self._scol)
-        sequence_col = "__distributed_sequence_column__"
+        sequence_col = temp_column_name(sdf, "distributed_sequence_column")
         sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
         # sdf here looks like below
         # +-----------------+---------------+
@@ -1271,7 +1272,7 @@ class Index(IndexOpsMixin):
         7
         """
         sdf = self._internal.sdf.select(self._scol)
-        sequence_col = "__distributed_sequence_column__"
+        sequence_col = temp_column_name(sdf, "distributed_sequence_column")
         sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
 
         return sdf.orderBy(self._scol.asc(), F.col(sequence_col).asc()).first()[0]

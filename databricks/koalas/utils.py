@@ -411,6 +411,50 @@ def validate_axis(axis=0, none_axis=0):
     return {None: none_axis, 'index': 0, 'columns': 1}.get(axis, axis)
 
 
+def temp_column_name(sdf: spark.DataFrame, gen: Union[str, Callable[[int], str]]) -> str:
+    """
+    Generate a temporaty column name which does not exist in the given Spark DataFrame
+
+    >>> sdf = ks.DataFrame(['a', 'b', 'c']).to_spark().withColumn('__dummy_0__', F.lit(0))
+    >>> sdf.show()  # doctest: +NORMALIZE_WHITESPACE
+    +---+-----------+
+    |  0|__dummy_0__|
+    +---+-----------+
+    |  a|          0|
+    |  b|          0|
+    |  c|          0|
+    +---+-----------+
+
+    >>> temp_column_name(sdf, 'tmp')
+    '__tmp_0__'
+    >>> temp_column_name(sdf, 'dummy')
+    '__dummy_1__'
+    >>> temp_column_name(sdf, '{}'.format)
+    '1'
+
+    >>> sdf = sdf.withColumnRenamed('__dummy_0__', '1')
+    >>> sdf.show()  # doctest: +NORMALIZE_WHITESPACE
+    +---+---+
+    |  0|  1|
+    +---+---+
+    |  a|  0|
+    |  b|  0|
+    |  c|  0|
+    +---+---+
+    >>> temp_column_name(sdf, '{}'.format)
+    '2'
+    """
+    if isinstance(gen, str):
+        base = gen
+        gen = lambda i: '__{}_{}__'.format(base, i)
+    for i in range(len(sdf.columns) + 1):
+        tmp_column = gen(i)
+        if tmp_column not in sdf.columns:
+            return tmp_column
+    else:
+        raise AssertionError('The given `gen` could not generate a temporary column name.')
+
+
 def compare_null_first(left, right, comp):
     return ((left.isNotNull() & right.isNotNull() & comp(left, right))
             | (left.isNull() & right.isNotNull()))
