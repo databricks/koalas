@@ -15,12 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-# We're doing pytest with `xvfb-run` for CI since without this some of the tests would fail
-# for GUI library because there is no display server.
-# The X virtual framebuffer(Xvfb) display server is used to perform all the graphical operations
-# in memory without showing any screen output.
-# If you want to run test with Xvfb, set environment `PYTHON_EXECUTABLE` to `xvfb-run python`.
 PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE:-python}"
 
 
