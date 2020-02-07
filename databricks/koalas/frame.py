@@ -1819,7 +1819,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ... def length(s) -> int:
             ...    return len(s)
             ...
-            >>> df = ks.DataFrame(range(1000), columns=['A'])
+            >>> df = ks.DataFrame({'A': range(1000)})
             >>> df.apply(length, axis=0)  # doctest: +SKIP
             0     83
             1     83
