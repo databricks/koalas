@@ -40,7 +40,6 @@ class _MissingPandasLikeDataFrame(object):
 
     # Functions
     align = unsupported_function('align')
-    apply = unsupported_function('apply')
     asfreq = unsupported_function('asfreq')
     asof = unsupported_function('asof')
     at_time = unsupported_function('at_time')
