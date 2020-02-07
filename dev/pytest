@@ -40,9 +40,6 @@ if [ -n "$KOALAS_USAGE_LOGGER" ]; then
 fi
 
 # Runs both doctests and unit tests by default, otherwise hands arguments over to pytest.
-# We're doing pytest with `xvfb-run` for CI since without this some of the tests would fail for GUI library because there is no display server.
-# The X virtual framebuffer(Xvfb) display server is used to perform all the graphical operations in memory without showing any screen output.
-# If you want to run your test with Xvfb, set the environment variable `PYTHON_EXECUTABLE` to `xvfb-run python`.
 if [ "$#" = 0 ]; then
     if [[ "$SPARK_VERSION" == 2.3* ]] || [[ "$SPARK_VERSION" == 2.4.1* ]] || [[ "$SPARK_VERSION" == 2.4.2* ]]; then
         # Delta requires Spark 2.4.2+. We skip the related doctests.

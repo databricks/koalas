@@ -8,6 +8,9 @@ on:
     branches: 
       - master
 
+# We're doing pytest with `xvfb-run` for CI since without this some of the tests would fail for GUI library because there is no display server.
+# The X virtual framebuffer(Xvfb) display server is used to perform all the graphical operations in memory without showing any screen output.
+# If you want to run your test with Xvfb, set the environment variable `PYTHON_EXECUTABLE` to `xvfb-run python`.
 jobs:
   python35:
     runs-on: ubuntu-latest
@@ -41,12 +44,14 @@ jobs:
           ${{ runner.os }}-pip-
     - name: Download dependencies
       run: ./dev/download_travis_dependencies.sh
-    - name: Install dependencies & Run tests
+    - name: Install dependencies & run tests
       run: |
         sudo apt-get install xclip python-pytest flake8
         python3 -m pip install --upgrade pip
         pip install setuptools
         pip install wheel
+        # Test PyPI installation at Python 3.5. This is also because
+        # one of the dependency requires Python 3.6 Conda specifically.
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip install 'pyspark>=2.4'
@@ -85,16 +90,18 @@ jobs:
         hash -r
         conda config --set always_yes yes --set changeps1 no
         conda update -q conda
+        # Useful for debugging any issues with conda
         conda info -a
+        # Replace dep1 dep2 ... with your dependencies
         conda create -c conda-forge -q -n test-environment python=3.6
         conda activate test-environment
         conda install -c conda-forge --yes codecov
-        conda config --env --add pinned_packages python=3.6 && \
-        conda config --env --add pinned_packages pandas==$PANDAS_VERSION && \
-        conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION && \
-        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
-        conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt && \
-        conda install 'pyspark>=2.4' && \
+        conda config --env --add pinned_packages python=3.6
+        conda config --env --add pinned_packages pandas==$PANDAS_VERSION
+        conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
+        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
+        conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
+        conda install 'pyspark>=2.4'
         conda list
         ./dev/lint-python
         ./dev/pytest
@@ -130,16 +137,18 @@ jobs:
         hash -r
         conda config --set always_yes yes --set changeps1 no
         conda update -q conda
+        # Useful for debugging any issues with conda
         conda info -a
+        # Replace dep1 dep2 ... with your dependencies
         conda create -c conda-forge -q -n test-environment python=3.7
         conda activate test-environment
         conda install -c conda-forge --yes codecov
-        conda config --env --add pinned_packages python=3.7 && \
-        conda config --env --add pinned_packages pandas==$PANDAS_VERSION && \
-        conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION && \
-        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
-        conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt && \
-        conda install 'pyspark>=2.4' && \
+        conda config --env --add pinned_packages python=3.7
+        conda config --env --add pinned_packages pandas==$PANDAS_VERSION
+        conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
+        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
+        conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
+        conda install 'pyspark>=2.4'
         conda list
         ./dev/lint-python
         ./dev/pytest
