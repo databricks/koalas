@@ -47,8 +47,8 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install -r requirements-dev.txt
         python -m pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
-        python -m pip install 'pyspark>=2.4'
         python -m pip list
+        export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
     - name: Update Codecov
@@ -60,6 +60,7 @@ jobs:
       SPARK_VERSION: 2.4.4
       PANDAS_VERSION: 0.24.2
       PYARROW_VERSION: 0.13.0
+      PYTHON_EXECUTABLE: xvfb-run python
       KOALAS_USAGE_LOGGER: databricks.koalas.usage_logging.usage_logger
     steps:
     - uses: actions/checkout@v2
@@ -94,8 +95,8 @@ jobs:
         conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
         conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
-        conda install 'pyspark>=2.4'
         conda list
+        export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
     - name: Update Codecov
@@ -107,6 +108,7 @@ jobs:
       SPARK_VERSION: 2.4.4
       PANDAS_VERSION: 0.25.3
       PYARROW_VERSION: 0.14.1
+      PYTHON_EXECUTABLE: xvfb-run python
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-java@v1
@@ -140,8 +142,8 @@ jobs:
         conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
         conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
-        conda install 'pyspark>=2.4'
         conda list
+        export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
     - name: Update Codecov
