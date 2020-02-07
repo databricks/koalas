@@ -31,10 +31,11 @@ jobs:
     - name: Setup Python 3.5
       run: |
         sudo add-apt-repository ppa:deadsnakes/ppa
-        sudo apt-get update
-        sudo apt-get install tk-dev python3.5-tk python3 python3.5 python-pip python3-pip
+        sudo apt-get install tk-dev python3.5-tk python3.5
         sudo rm /usr/bin/python
         sudo ln -s /usr/bin/python3.5 /usr/bin/python
+        # Add the path which packages are actually installed to `PATH`
+        echo "::add-path::/home/runner/.local/bin"
     - name: Using cache
       uses: actions/cache@v1
       with:
@@ -44,18 +45,16 @@ jobs:
           ${{ runner.os }}-pip-
     - name: Download dependencies
       run: ./dev/download_travis_dependencies.sh
-    - name: Install dependencies & run tests
+    - name: Install dependencies & Run tests
       run: |
-        sudo apt-get install xclip python-pytest flake8
-        python3 -m pip install --upgrade pip
-        pip install setuptools
-        pip install wheel
-        # Test PyPI installation at Python 3.5. This is also because
-        # one of the dependency requires Python 3.6 Conda specifically.
-        pip install -r requirements-dev.txt
-        pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
-        pip install 'pyspark>=2.4'
-        pip list
+        sudo apt-get install xclip
+        python -m pip install --upgrade pip
+        # python -m pip install setuptools
+        # python -m pip install wheel
+        python -m pip install -r requirements-dev.txt
+        python -m pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
+        python -m pip install 'pyspark>=2.4'
+        python -m pip list
         ./dev/lint-python
         ./dev/pytest
     - name: Update Codecov
