@@ -571,6 +571,17 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(repr(pdf1.where(pdf2 < -250)),
                        repr(kdf1.where(kdf2 < -250).sort_index()))
 
+        # multi-index columns
+        pdf1 = pd.DataFrame({('X', 'A'): [0, 1, 2, 3, 4],
+                             ('X', 'B'): [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame({('X', 'A'): [0, -1, -2, -3, -4],
+                             ('X', 'B'): [-100, -200, -300, -400, -500]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(repr(pdf1.where(pdf2 > 100)),
+                       repr(kdf1.where(kdf2 > 100).sort_index()))
+
     def test_mask(self):
         pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
         pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
@@ -587,6 +598,17 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(repr(pdf1.mask(pdf2 > -250)),
                        repr(kdf1.mask(kdf2 > -250).sort_index()))
+
+        # multi-index columns
+        pdf1 = pd.DataFrame({('X', 'A'): [0, 1, 2, 3, 4],
+                             ('X', 'B'): [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame({('X', 'A'): [0, -1, -2, -3, -4],
+                             ('X', 'B'): [-100, -200, -300, -400, -500]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(repr(pdf1.mask(pdf2 < 100)),
+                       repr(kdf1.mask(kdf2 < 100).sort_index()))
 
     def test_multi_index_column_assignment_frame(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})

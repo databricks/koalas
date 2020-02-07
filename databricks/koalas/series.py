@@ -3886,8 +3886,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
-        data_col_name = self._internal.column_name_for(self._internal.column_index[0])
-
         assert isinstance(cond, Series)
 
         # We should check the DataFrame from both `cond` and `other`.
@@ -3901,7 +3899,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             kdf['__tmp_cond_col__'] = cond
             kdf['__tmp_other_col__'] = other
 
-            sdf = kdf._sdf
             # above logic makes a Spark DataFrame looks like below:
             # +-----------------+---+----------------+-----------------+
             # |__index_level_0__|  0|__tmp_cond_col__|__tmp_other_col__|
@@ -3913,21 +3910,18 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             # |                4|  4|            true|              500|
             # +-----------------+---+----------------+-----------------+
             condition = F.when(
-                sdf['__tmp_cond_col__'], sdf[data_col_name]
-            ).otherwise(sdf['__tmp_other_col__']).alias(data_col_name)
+                kdf['__tmp_cond_col__']._scol, kdf[self._internal.column_index[0]]._scol
+            ).otherwise(kdf['__tmp_other_col__']._scol).alias(self._internal.data_columns[0])
 
-            sdf = sdf.select(*self._internal.index_columns + [condition])
-            return _col(ks.DataFrame(_InternalFrame(
-                sdf=sdf,
-                index_map=self._internal.index_map,
-                column_index=self._internal.column_index,
-                column_index_names=self._internal.column_index_names)))
+            internal = kdf._internal.with_new_columns([condition],
+                                                      column_index=self._internal.column_index)
+            return _col(DataFrame(internal))
         else:
             if isinstance(other, Series):
                 other = other._scol
             condition = F.when(
                 cond._scol, self._scol
-            ).otherwise(other).alias(data_col_name)
+            ).otherwise(other).alias(self._internal.data_columns[0])
             return self._with_new_scol(condition)
 
     def mask(self, cond, other=np.nan):
