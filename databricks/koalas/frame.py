@@ -3692,24 +3692,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 scol = self._internal.scol_for(idx)
             scols.append(scol)
 
-        adding_data_columns = []
-        adding_column_index = []
+        column_index = self._internal.column_index.copy()
         for idx, scol in pairs.items():
             if idx not in set(i[:len(idx)] for i in self._internal.column_index):
-                name = name_like_string(idx)
-                scols.append(scol.alias(name))
-                adding_data_columns.append(name)
-                adding_column_index.append(idx)
+                scols.append(scol.alias(name_like_string(idx)))
+                column_index.append(idx)
 
-        sdf = self._sdf.select(self._internal.index_scols + scols)
         level = self._internal.column_index_level
-        adding_column_index = [tuple(list(idx) + ([''] * (level - len(idx))))
-                               for idx in adding_column_index]
-        internal = self._internal.copy(
-            sdf=sdf,
-            column_index=(self._internal.column_index + adding_column_index),
-            column_scols=[scol_for(sdf, col)
-                          for col in (self._internal.data_columns + adding_data_columns)])
+        column_index = [tuple(list(idx) + ([''] * (level - len(idx)))) for idx in column_index]
+
+        internal = self._internal.with_new_columns(scols, column_index=column_index)
         return DataFrame(internal)
 
     @staticmethod
