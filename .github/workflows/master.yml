@@ -45,8 +45,6 @@ jobs:
       run: |
         sudo apt-get install xclip
         python -m pip install --upgrade pip
-        # python -m pip install setuptools
-        # python -m pip install wheel
         python -m pip install -r requirements-dev.txt
         python -m pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         python -m pip install 'pyspark>=2.4'
