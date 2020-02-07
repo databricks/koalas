@@ -8,9 +8,6 @@ on:
     branches: 
       - master
 
-# We're doing pytest with `xvfb-run` for CI since without this some of the tests would fail for GUI library because there is no display server.
-# The X virtual framebuffer(Xvfb) display server is used to perform all the graphical operations in memory without showing any screen output.
-# If you want to run your test with Xvfb, set the environment variable `PYTHON_EXECUTABLE` to `xvfb-run python`.
 jobs:
   python35:
     runs-on: ubuntu-latest
@@ -19,7 +16,6 @@ jobs:
       PANDAS_VERSION: 0.23.4
       PYARROW_VERSION: 0.10.0
       PYTHON_EXECUTABLE: xvfb-run python
-      KOALAS_USAGE_LOGGER: databricks.koalas.usage_logging.usage_logger
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-java@v1
@@ -45,7 +41,7 @@ jobs:
           ${{ runner.os }}-pip-
     - name: Download dependencies
       run: ./dev/download_travis_dependencies.sh
-    - name: Install dependencies & Run tests
+    - name: Install dependencies & run tests
       run: |
         sudo apt-get install xclip
         python -m pip install --upgrade pip
@@ -81,7 +77,7 @@ jobs:
           ${{ runner.os }}-pip-
     - name: Download dependencies
       run: ./dev/download_travis_dependencies.sh
-    - name: Install dependencies & Run tests
+    - name: Install dependencies & run tests
       run: |
         curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
         bash miniconda.sh -b -p $HOME/miniconda
@@ -113,7 +109,6 @@ jobs:
       SPARK_VERSION: 2.4.4
       PANDAS_VERSION: 0.25.3
       PYARROW_VERSION: 0.14.1
-      KOALAS_USAGE_LOGGER: databricks.koalas.usage_logging.usage_logger
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-java@v1
@@ -128,7 +123,7 @@ jobs:
           ${{ runner.os }}-pip-
     - name: Download dependencies
       run: ./dev/download_travis_dependencies.sh
-    - name: Install dependencies & Run tests
+    - name: Install dependencies & run tests
       run: |
         curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
         bash miniconda.sh -b -p $HOME/miniconda
