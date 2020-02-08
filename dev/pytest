@@ -17,7 +17,6 @@
 #
 PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE:-python}"
 
-
 set -o pipefail
 set -e
 

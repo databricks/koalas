@@ -21,17 +21,6 @@ jobs:
     - uses: actions/setup-java@v1
       with:
         java-version: 1.8
-    # Setup Python 3.5 via `apt-get install` since the dafault Python3.5 from `actions/setup-python`
-    # seems to have some problem with Tkinter, so we should manually install the python3.5-tk.
-    # for this, we should use the Python we manually installed, not the default one from `actions/setup-python`
-    - name: Setup Python 3.5
-      run: |
-        sudo add-apt-repository ppa:deadsnakes/ppa
-        sudo apt-get install tk-dev python3.5-tk python3.5
-        sudo rm /usr/bin/python
-        sudo ln -s /usr/bin/python3.5 /usr/bin/python
-        # Add the path which packages are actually installed to `PATH`
-        echo "::add-path::/home/runner/.local/bin"
     - name: Using cache
       uses: actions/cache@v1
       with:
@@ -39,29 +28,50 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    - name: Download dependencies
-      run: ./dev/download_travis_dependencies.sh
+    # Setup Python3.5 via `apt-get install` since the dafault Python3.5 from `actions/setup-python`
+    # seems to have some problem with Tkinter, so we should manually install the python3.5-tk.
+    # for this, we should use the Python manually installed, not the default one from `actions/setup-python`
+    - name: Setup Python 3.5
+      run: |
+        sudo add-apt-repository ppa:deadsnakes/ppa
+        sudo apt-get install tk-dev python3.5-tk python3.5
+        sudo rm /usr/bin/python
+        sudo ln -s /usr/bin/python3.5 /usr/bin/python
+        # Below command is required for ensuring pip installed executables to be in the path.
+        echo "::add-path::/home/runner/.local/bin"
     - name: Install dependencies & run tests
       run: |
+        ./dev/download_travis_dependencies.sh
         sudo apt-get install xclip
-        python -m pip install --upgrade pip
-        python -m pip install -r requirements-dev.txt
-        python -m pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
-        python -m pip list
+        pip install setuptools
+        pip install -r requirements-dev.txt
+        pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
+        pip list
         export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
+    # Push the results back to codecov
     - name: Update Codecov
       run: bash <(curl -s https://codecov.io/bash)
 
-  python36:
+  python-conda:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: [3.6, 3.7]
+        include:
+          - python: 3.6
+            pandas: 0.24.2
+            pyarrow: 0.13.0
+            logger: databricks.koalas.usage_logging.usage_logger
+          - python: 3.7
+            pandas: 0.25.3
+            pyarrow: 0.14.1
     env:
       SPARK_VERSION: 2.4.4
-      PANDAS_VERSION: 0.24.2
-      PYARROW_VERSION: 0.13.0
-      PYTHON_EXECUTABLE: xvfb-run python
-      KOALAS_USAGE_LOGGER: databricks.koalas.usage_logging.usage_logger
+      DISPLAY: 0.0
+      QT_QPA_PLATFORM: offscreen
+      KOALAS_USAGE_LOGGER: ${{ matrix.logger }}
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-java@v1
@@ -74,10 +84,9 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    - name: Download dependencies
-      run: ./dev/download_travis_dependencies.sh
     - name: Install dependencies & run tests
       run: |
+        ./dev/download_travis_dependencies.sh
         curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
         bash miniconda.sh -b -p $HOME/miniconda
         . $HOME/miniconda/etc/profile.d/conda.sh
@@ -90,61 +99,15 @@ jobs:
         conda create -c conda-forge -q -n test-environment python=3.6
         conda activate test-environment
         conda install -c conda-forge --yes codecov
-        conda config --env --add pinned_packages python=3.6
-        conda config --env --add pinned_packages pandas==$PANDAS_VERSION
-        conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
-        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
+        conda config --env --add pinned_packages python=${{ matrix.python }}
+        conda config --env --add pinned_packages pandas==${{ matrix.pandas }}
+        conda config --env --add pinned_packages pyarrow==${{ matrix.pyarrow }}
+        conda install -c conda-forge --yes pandas==${{ matrix.pandas }} pyarrow==${{ matrix.pyarrow }}
         conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
         conda list
         export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
-    - name: Update Codecov
-      run: bash <(curl -s https://codecov.io/bash)
-
-  python37:
-    runs-on: ubuntu-latest
-    env:
-      SPARK_VERSION: 2.4.4
-      PANDAS_VERSION: 0.25.3
-      PYARROW_VERSION: 0.14.1
-      PYTHON_EXECUTABLE: xvfb-run python
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-java@v1
-      with:
-        java-version: 1.8
-    - name: Using cache
-      uses: actions/cache@v1
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    - name: Download dependencies
-      run: ./dev/download_travis_dependencies.sh
-    - name: Install dependencies & run tests
-      run: |
-        curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
-        bash miniconda.sh -b -p $HOME/miniconda
-        . $HOME/miniconda/etc/profile.d/conda.sh
-        hash -r
-        conda config --set always_yes yes --set changeps1 no
-        conda update -q conda
-        # Useful for debugging any issues with conda
-        conda info -a
-        # Replace dep1 dep2 ... with your dependencies
-        conda create -c conda-forge -q -n test-environment python=3.7
-        conda activate test-environment
-        conda install -c conda-forge --yes codecov
-        conda config --env --add pinned_packages python=3.7
-        conda config --env --add pinned_packages pandas==$PANDAS_VERSION
-        conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
-        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
-        conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
-        conda list
-        export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
-        ./dev/lint-python
-        ./dev/pytest
+    # Push the results back to codecov
     - name: Update Codecov
       run: bash <(curl -s https://codecov.io/bash)
