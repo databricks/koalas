@@ -75,6 +75,7 @@ jobs:
       PANDAS_VERSION: ${{ matrix.pandas-version }}
       PYARROW_VERSION: ${{ matrix.pyarrow-version }}
       DISPLAY: 0.0
+      # `QT_QPA_PLATFORM` for resolving 'QXcbConnection: Could not connect to display :0.0'
       QT_QPA_PLATFORM: offscreen
       KOALAS_USAGE_LOGGER: ${{ matrix.logger }}
     steps:
