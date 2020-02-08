@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: [3.6, 3.7]
+        python-version: [3.6, 3.7]
         include:
           - python-version: 3.6
             spark-version: 2.4.4
