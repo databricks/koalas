@@ -54,21 +54,26 @@ jobs:
     - name: Update Codecov
       run: bash <(curl -s https://codecov.io/bash)
 
-  python-conda:
+  python:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python: [3.6, 3.7]
         include:
-          - python: 3.6
-            pandas: 0.24.2
-            pyarrow: 0.13.0
+          - python-version: 3.6
+            spark-version: 2.4.4
+            pandas-version: 0.24.2
+            pyarrow-version: 0.13.0
             logger: databricks.koalas.usage_logging.usage_logger
-          - python: 3.7
-            pandas: 0.25.3
-            pyarrow: 0.14.1
+          - python-version: 3.7
+            spark-version: 2.4.4
+            pandas-version: 0.25.3
+            pyarrow-version: 0.14.1
     env:
-      SPARK_VERSION: 2.4.4
+      PYTHON_VERSION: ${{ matrix.python-version }}
+      SPARK_VERSION: ${{ matrix.spark-version }}
+      PANDAS_VERSION: ${{ matrix.pandas-version }}
+      PYARROW_VERSION: ${{ matrix.pyarrow-version }}
       DISPLAY: 0.0
       QT_QPA_PLATFORM: offscreen
       KOALAS_USAGE_LOGGER: ${{ matrix.logger }}
@@ -96,13 +101,13 @@ jobs:
         # Useful for debugging any issues with conda
         conda info -a
         # Replace dep1 dep2 ... with your dependencies
-        conda create -c conda-forge -q -n test-environment python=3.6
+        conda create -c conda-forge -q -n test-environment python=$PYTHON_VERSION
         conda activate test-environment
         conda install -c conda-forge --yes codecov
-        conda config --env --add pinned_packages python=${{ matrix.python }}
-        conda config --env --add pinned_packages pandas==${{ matrix.pandas }}
-        conda config --env --add pinned_packages pyarrow==${{ matrix.pyarrow }}
-        conda install -c conda-forge --yes pandas==${{ matrix.pandas }} pyarrow==${{ matrix.pyarrow }}
+        conda config --env --add pinned_packages python=$PYTHON_VERSION
+        conda config --env --add pinned_packages pandas==$PANDAS_VERSION
+        conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
+        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
         conda list
         export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
