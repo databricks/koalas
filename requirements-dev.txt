@@ -6,7 +6,6 @@ numpy>=1.14
 
 # Optional dependencies in Koalas.
 mlflow>=1.0
-scikit-learn
 
 # Dependency issues
 protobuf<3.9.0
