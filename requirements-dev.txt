@@ -6,6 +6,8 @@ numpy>=1.14
 
 # Optional dependencies in Koalas.
 mlflow>=1.0
+# scikit-learn is an optional dependency for mlflow
+scikit-learn
 
 # Dependency issues
 protobuf<3.9.0
@@ -24,6 +26,5 @@ flake8
 # Test
 pytest
 pytest-cov
-scikit-learn
 openpyxl
 xlrd
