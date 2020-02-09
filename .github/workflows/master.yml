@@ -16,7 +16,7 @@ jobs:
       SPARK_VERSION: 2.3.4
       PANDAS_VERSION: 0.23.4
       PYARROW_VERSION: 0.10.0
-      # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around wtih  xvfb-run
+      # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around wtih xvfb-run
       PYTHON_EXECUTABLE: xvfb-run python
     steps:
     - uses: actions/checkout@v2
