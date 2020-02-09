@@ -46,7 +46,7 @@ if [ "$#" = 0 ]; then
         if [[ "$SPARK_VERSION" == 2.3* ]]; then
             $PYTHON_EXECUTABLE -m pytest --cov=databricks -k " -melt -to_delta -read_delta" --verbose --showlocals --color=yes --doctest-modules databricks "${logopts[@]}"
         else
-            $PYTHON_EXECUTABLE -m pytest --cov=databricks -k "-to_delta -read_delta" --verbose --showlocals --doctest-modules --color=yes databricks "${logopts[@]}"
+            $PYTHON_EXECUTABLE -m pytest --cov=databricks -k "-to_delta -read_delta" --verbose --showlocals --color=yes --doctest-modules databricks "${logopts[@]}"
         fi
     else
         $PYTHON_EXECUTABLE -m pytest --cov=databricks --verbose --showlocals --color=yes --doctest-modules databricks "${logopts[@]}"
