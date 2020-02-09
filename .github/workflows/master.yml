@@ -67,12 +67,12 @@ jobs:
         python-version: [3.6, 3.7]
         include:
           - python-version: 3.6
-            spark-version: 2.4.4
+            spark-version: 2.4.5
             pandas-version: 0.24.2
             pyarrow-version: 0.13.0
             logger: databricks.koalas.usage_logging.usage_logger
           - python-version: 3.7
-            spark-version: 2.4.4
+            spark-version: 2.4.5
             pandas-version: 0.25.3
             pyarrow-version: 0.14.1
     env:
