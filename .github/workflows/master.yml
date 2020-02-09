@@ -16,7 +16,7 @@ jobs:
       SPARK_VERSION: 2.3.4
       # The name of the directory '.cache' is for Travis CI. Once we remove Travis CI,
       # we should download Spark to a directory with a different name to prevent confusion.
-      SPARK_CACHE_DIR: ~/.cache/spark-versions
+      SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
       PANDAS_VERSION: 0.23.4
       PYARROW_VERSION: 0.10.0
       # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around wtih xvfb-run
@@ -91,7 +91,7 @@ jobs:
       KOALAS_USAGE_LOGGER: ${{ matrix.logger }}
       # The name of the directory '.cache' is for Travis CI. Once we remove Travis CI,
       # we should download Spark to a directory with a different name to prevent confusion.
-      SPARK_CACHE_DIR: ~/.cache/spark-versions
+      SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-java@v1
