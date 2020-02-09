@@ -712,7 +712,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert unsupported axis value yet
         msg = 'axis should be either 0 or "index" currently.'
-        with self.assertRaisesRegex(ValueError, msg):
+        with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.nunique(axis=1)
 
         # multi-index columns
@@ -758,8 +758,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         # Assert invalid parameters
-        self.assertRaises(ValueError, lambda: kdf.sort_index(axis=1))
-        self.assertRaises(ValueError, lambda: kdf.sort_index(kind='mergesort'))
+        self.assertRaises(NotImplementedError, lambda: kdf.sort_index(axis=1))
+        self.assertRaises(NotImplementedError, lambda: kdf.sort_index(kind='mergesort'))
         self.assertRaises(ValueError, lambda: kdf.sort_index(na_position='invalid'))
 
         # Assert default behavior without parameters
@@ -823,7 +823,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, msg):
             kdf.xs(('mammal', 1))
         msg = 'axis should be either 0 or "index" currently.'
-        with self.assertRaisesRegex(ValueError, msg):
+        with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.xs('num_wings', axis=1)
         msg = r"'Key length \(4\) exceeds index depth \(3\)'"
         with self.assertRaisesRegex(KeyError, msg):
@@ -1120,7 +1120,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Assert using the sort parameter raises an exception
         msg = "The 'sort' parameter is currently not supported"
-        with self.assertRaises(ValueError, msg=msg):
+        with self.assertRaises(NotImplementedError, msg=msg):
             kdf.append(kdf, sort=True)
 
         # Assert using 'verify_integrity' only raises an exception for overlapping indices
@@ -1972,7 +1972,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.all(), pdf.all())
 
-        with self.assertRaisesRegex(ValueError, 'axis should be either 0 or "index" currently.'):
+        with self.assertRaisesRegex(
+                NotImplementedError, 'axis should be either 0 or "index" currently.'):
             kdf.all(axis=1)
 
     def test_any(self):
@@ -2001,7 +2002,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.any(), pdf.any())
 
-        with self.assertRaisesRegex(ValueError, 'axis should be either 0 or "index" currently.'):
+        with self.assertRaisesRegex(
+                NotImplementedError, 'axis should be either 0 or "index" currently.'):
             kdf.any(axis=1)
 
     def test_rank(self):
@@ -2108,7 +2110,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, msg):
             kdf.diff(1.5)
         msg = 'axis should be either 0 or "index" currently.'
-        with self.assertRaisesRegex(ValueError, msg):
+        with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.diff(axis=1)
 
         # multi-index columns
@@ -2313,10 +2315,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_quantile(self):
         kdf = ks.from_pandas(self.pdf)
 
-        with self.assertRaisesRegex(ValueError, 'axis should be either 0 or "index" currently.'):
+        with self.assertRaisesRegex(
+                NotImplementedError, 'axis should be either 0 or "index" currently.'):
             kdf.quantile(.5, axis=1)
 
-        with self.assertRaisesRegex(ValueError, "quantile currently doesn't supports numeric_only"):
+        with self.assertRaisesRegex(
+                NotImplementedError, "quantile currently doesn't supports numeric_only"):
             kdf.quantile(.5, numeric_only=False)
 
     def test_pct_change(self):

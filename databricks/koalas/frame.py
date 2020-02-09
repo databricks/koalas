@@ -2063,7 +2063,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
         if isinstance(key, str):
             key = (key,)
         if len(key) > len(self._internal.index_scols):
@@ -2200,26 +2200,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> reset_option("compute.ops_on_diff_frames")
         """
         from databricks.koalas.series import Series
-        tmp_cond_col_name = '__tmp_cond_col_{}__'
-        tmp_other_col_name = '__tmp_other_col_{}__'
+
+        tmp_cond_col_name = '__tmp_cond_col_{}__'.format
+        tmp_other_col_name = '__tmp_other_col_{}__'.format
+
         kdf = self.copy()
         if isinstance(cond, DataFrame):
-            for column in self._internal.data_columns:
-                kdf[tmp_cond_col_name.format(column)] = cond.get(column, False)
+            for idx in self._internal.column_index:
+                kdf[tmp_cond_col_name(name_like_string(idx))] = cond.get(idx, False)
         elif isinstance(cond, Series):
-            for column in self._internal.data_columns:
-                kdf[tmp_cond_col_name.format(column)] = cond
+            for idx in self._internal.column_index:
+                kdf[tmp_cond_col_name(name_like_string(idx))] = cond
         else:
             raise ValueError("type of cond must be a DataFrame or Series")
 
         if isinstance(other, DataFrame):
-            for column in self._internal.data_columns:
-                kdf[tmp_other_col_name.format(column)] = other.get(column, np.nan)
+            for idx in self._internal.column_index:
+                kdf[tmp_other_col_name(name_like_string(idx))] = other.get(idx, np.nan)
         else:
-            for column in self._internal.data_columns:
-                kdf[tmp_other_col_name.format(column)] = other
+            for idx in self._internal.column_index:
+                kdf[tmp_other_col_name(name_like_string(idx))] = other
 
-        sdf = kdf._sdf
         # above logic make spark dataframe looks like below:
         # +-----------------+---+---+------------------+-------------------+------------------+--...
         # |__index_level_0__|  A|  B|__tmp_cond_col_A__|__tmp_other_col_A__|__tmp_cond_col_B__|__...
@@ -2231,22 +2232,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |                4|  4|500|             false|                 -4|             false|  ...
         # +-----------------+---+---+------------------+-------------------+------------------+--...
 
-        output = []
-        for column in self._internal.data_columns:
-            data_col_name = self._internal.column_name_for(column)
-            output.append(
+        column_scols = []
+        for idx in self._internal.column_index:
+            column_scols.append(
                 F.when(
-                    scol_for(sdf, tmp_cond_col_name.format(column)), scol_for(sdf, data_col_name)
+                    kdf[tmp_cond_col_name(name_like_string(idx))]._scol,
+                    kdf[idx]._scol
                 ).otherwise(
-                    scol_for(sdf, tmp_other_col_name.format(column))
-                ).alias(data_col_name))
+                    kdf[tmp_other_col_name(name_like_string(idx))]._scol
+                ).alias(kdf._internal.column_name_for(idx)))
 
-        index_scols = kdf._internal.index_scols
-        sdf = sdf.select(index_scols + output + list(HIDDEN_COLUMNS))
-
-        return DataFrame(self._internal.copy(
-            sdf=sdf,
-            column_scols=[scol_for(sdf, column) for column in self._internal.data_columns]))
+        return DataFrame(kdf._internal.with_new_columns(column_scols,
+                                                        column_index=self._internal.column_index))
 
     def mask(self, cond, other=np.nan):
         """
@@ -2901,7 +2898,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         return self._apply_series_op(lambda kser: kser.diff(periods))
 
@@ -2955,7 +2952,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
         res = self._sdf.select([self[idx]._nunique(dropna, approx, rsd)
                                 for idx in self._internal.column_index]).toPandas()
         if self._internal.column_index_level == 1:
@@ -2981,6 +2978,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             columns not included in `decimals` will be left as is. Elements
             of `decimals` which are not columns of the input will be
             ignored.
+
+            .. note:: If `decimals` is a Series, it is expected to be small,
+                as all the data is loaded into the driver's memory.
 
         Returns
         -------
@@ -3023,24 +3023,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         third   0.9  0.0  0.49
         """
         if isinstance(decimals, ks.Series):
-            decimals_list = [(k if isinstance(k, tuple) else (k,), v)
-                             for k, v in decimals._to_internal_pandas().items()]
+            decimals = {k if isinstance(k, tuple) else (k,): v
+                        for k, v in decimals._to_internal_pandas().items()}
         elif isinstance(decimals, dict):
-            decimals_list = [(k if isinstance(k, tuple) else (k,), v)
-                             for k, v in decimals.items()]
+            decimals = {k if isinstance(k, tuple) else (k,): v
+                        for k, v in decimals.items()}
         elif isinstance(decimals, int):
-            decimals_list = [(k, decimals) for k in self._internal.column_index]
+            decimals = {k: decimals for k in self._internal.column_index}
         else:
             raise ValueError("decimals must be an integer, a dict-like or a Series")
 
-        sdf = self._sdf
-        for idx, decimal in decimals_list:
-            if idx in self._internal.column_index:
-                col = self._internal.column_name_for(idx)
-                sdf = sdf.withColumn(col, F.round(scol_for(sdf, col), decimal))
-        return DataFrame(self._internal.copy(sdf=sdf,
-                                             column_scols=[scol_for(sdf, col)
-                                                           for col in self._internal.data_columns]))
+        def op(kser):
+            idx = kser._internal.column_index[0]
+            if idx in decimals:
+                return F.round(kser._scol, decimals[idx]).alias(kser._internal.data_columns[0])
+            else:
+                return kser
+
+        return self._apply_series_op(op)
 
     def duplicated(self, subset=None, keep='first'):
         """
@@ -3692,24 +3692,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 scol = self._internal.scol_for(idx)
             scols.append(scol)
 
-        adding_data_columns = []
-        adding_column_index = []
+        column_index = self._internal.column_index.copy()
         for idx, scol in pairs.items():
             if idx not in set(i[:len(idx)] for i in self._internal.column_index):
-                name = name_like_string(idx)
-                scols.append(scol.alias(name))
-                adding_data_columns.append(name)
-                adding_column_index.append(idx)
+                scols.append(scol.alias(name_like_string(idx)))
+                column_index.append(idx)
 
-        sdf = self._sdf.select(self._internal.index_scols + scols)
         level = self._internal.column_index_level
-        adding_column_index = [tuple(list(idx) + ([''] * (level - len(idx))))
-                               for idx in adding_column_index]
-        internal = self._internal.copy(
-            sdf=sdf,
-            column_index=(self._internal.column_index + adding_column_index),
-            column_scols=[scol_for(sdf, col)
-                          for col in (self._internal.data_columns + adding_data_columns)])
+        column_index = [tuple(list(idx) + ([''] * (level - len(idx)))) for idx in column_index]
+
+        internal = self._internal.with_new_columns(scols, column_index=column_index)
         return DataFrame(internal)
 
     @staticmethod
@@ -5453,10 +5445,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         a 1  2  1
         b 1  0  3
         """
+        axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError("No other axes than 0 are supported at the moment")
+            raise NotImplementedError("No other axis than 0 are supported at the moment")
         if kind is not None:
-            raise ValueError("Specifying the sorting algorithm is supported at the moment.")
+            raise NotImplementedError(
+                "Specifying the sorting algorithm is not supported at the moment.")
 
         if level is None or (is_list_like(level) and len(level) == 0):  # type: ignore
             by = self._internal.index_scols
@@ -6118,7 +6112,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(other, ks.Series):
             raise ValueError("DataFrames.append() does not support appending Series to DataFrames")
         if sort:
-            raise ValueError("The 'sort' parameter is currently not supported")
+            raise NotImplementedError("The 'sort' parameter is currently not supported")
 
         if not ignore_index:
             index_scols = self._internal.index_scols
@@ -7135,7 +7129,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         applied = []
         column_index = self._internal.column_index
@@ -7218,7 +7212,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         applied = []
         column_index = self._internal.column_index
@@ -8043,9 +8037,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         result_as_series = False
         axis = validate_axis(axis)
         if axis != 0:
-            raise ValueError('axis should be either 0 or "index" currently.')
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
         if numeric_only is not True:
-            raise ValueError("quantile currently doesn't supports numeric_only")
+            raise NotImplementedError("quantile currently doesn't supports numeric_only")
         if isinstance(q, float):
             result_as_series = True
             key = str(q)

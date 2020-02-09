@@ -97,7 +97,8 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
             ValueError, "All objects passed", lambda: ks.concat([None, None]))
 
         self.assertRaisesRegex(
-            ValueError, 'axis should be either 0 or', lambda: ks.concat([kdf, kdf], axis=1))
+            NotImplementedError, 'axis should be either 0 or',
+            lambda: ks.concat([kdf, kdf], axis=1))
 
         pdf3 = pdf.copy()
         kdf3 = kdf.copy()
