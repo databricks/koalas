@@ -89,7 +89,6 @@ jobs:
       DISPLAY: 0.0
       QT_QPA_PLATFORM: offscreen
       KOALAS_USAGE_LOGGER: ${{ matrix.logger }}
-      MINICONDA_HOME: ~/miniconda
       # The name of the directory '.cache' is for Travis CI. Once we remove Travis CI,
       # we should download Spark to a directory with a different name to prevent confusion.
       SPARK_CACHE_DIR: ~/.cache/spark-versions
@@ -106,9 +105,9 @@ jobs:
       run: |
         ./dev/download_travis_dependencies.sh
         curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
-        bash miniconda.sh -b -p $MINICONDA_HOME
+        bash miniconda.sh -b -p $HOME/miniconda
         # See also https://github.com/conda/conda/issues/7980
-        . $MINICONDA_HOME/etc/profile.d/conda.sh
+        . $HOME/miniconda/etc/profile.d/conda.sh
         hash -r
         conda config --set always_yes yes --set changeps1 no
         conda update -q conda
@@ -129,8 +128,8 @@ jobs:
         # The environment should be initialized newly between Github Actions steps. Also,
         # for some reasons we should add enviornment directory manually to allow for
         # 'test-enviornment' to be found. See also https://github.com/conda/conda/issues/7980
-        . $MINICONDA_HOME/etc/profile.d/conda.sh
-        conda config --prepend envs_dirs $MINICONDA_HOME/envs
+        . $HOME/miniconda/etc/profile.d/conda.sh
+        conda config --prepend envs_dirs $HOME/miniconda/envs
         conda activate test-environment
         export SPARK_HOME="$SPARK_CACHE_DIR/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
