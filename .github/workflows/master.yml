@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SPARK_VERSION: 2.3.4
+      # The name of the directory '.cache' is for Travis CI. Once we remove Travis CI,
+      # we should download Spark to a directory with a different name to prevent confusion.
+      SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
       PANDAS_VERSION: 0.23.4
       PYARROW_VERSION: 0.10.0
       # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around wtih xvfb-run
@@ -29,6 +32,10 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
+    - uses: actions/cache@v1
+      with:
+        path: ${{ env.SPARK_CACHE_DIR }}
+        key: ${{ runner.os }}-koalas-spark-${{ env.SPARK_VERSION }}
     # Setup Python 3.5 via `apt-get install` since the dafault Python 3.5 from `actions/setup-python`
     # seems to have some problems with Tkinter, so we should manually install the python3.5-tk.
     # For this, we should use the Python manually installed, not the default one from `actions/setup-python`
@@ -50,9 +57,7 @@ jobs:
         pip list
     - name: Run tests
       run: |
-        # .cache directory is for Travis CI. Once we remove Travis CI, we should download
-        # Spark to a directory with a different name to prevent confusion.
-        export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
+        export SPARK_HOME="$SPARK_CACHE_DIR/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
     # Push the results back to codecov
@@ -84,6 +89,9 @@ jobs:
       DISPLAY: 0.0
       QT_QPA_PLATFORM: offscreen
       KOALAS_USAGE_LOGGER: ${{ matrix.logger }}
+      # The name of the directory '.cache' is for Travis CI. Once we remove Travis CI,
+      # we should download Spark to a directory with a different name to prevent confusion.
+      SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-java@v1
@@ -91,10 +99,8 @@ jobs:
         java-version: 1.8
     - uses: actions/cache@v1
       with:
-        path: /home/runner/miniconda/envs
-        key: ${{ runner.os }}-conda-${{ hashFiles('**/requirements-dev.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-conda-
+        path: ${{ env.SPARK_CACHE_DIR }}
+        key: ${{ runner.os }}-koalas-spark-${{ env.SPARK_VERSION }}
     - name: Install dependencies
       run: |
         ./dev/download_travis_dependencies.sh
@@ -123,11 +129,9 @@ jobs:
         # for some reasons we should add enviornment directory manually to allow for
         # 'test-enviornment' to be found. See also https://github.com/conda/conda/issues/7980
         . $HOME/miniconda/etc/profile.d/conda.sh
-        conda config --prepend envs_dirs /home/runner/miniconda/envs
+        conda config --prepend envs_dirs $HOME/miniconda/envs
         conda activate test-environment
-        # .cache directory is for Travis CI. Once we remove Travis CI, we should download
-        # Spark to a directory with a different name to prevent confusion.
-        export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
+        export SPARK_HOME="$SPARK_CACHE_DIR/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
     # Push the results back to codecov
