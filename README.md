@@ -17,7 +17,7 @@
   <strong><a href="https://www.gofundme.com/f/help-thirsty-koalas-devastated-by-recent-fires">Help Thirsty Koalas Devasted by Recent Fires</a></strong>
 </p>
 
-The Koalas project makes data scientists more productive when interacting with big data, by implementing the pandas DataFrame API on top of Apache Spark.
+aaa The Koalas project makes data scientists more productive when interacting with big data, by implementing the pandas DataFrame API on top of Apache Spark.
 
 pandas is the de facto standard (single-node) DataFrame implementation in Python, while Spark is the de facto standard for big data processing. With this package, you can:
  - Be immediately productive with Spark, with no learning curve, if you are already familiar with pandas.
