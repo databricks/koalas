@@ -68,8 +68,6 @@ What is the list of APIs that are not plan to support in Koalas?
 
 Koalas doesn't support several APIs that may cause memory issues mostly due to the size of the data.
 
-They potentially 
-
 The following is a list of APIs that Koalas doesn't plan to support.
 
 - DataFrame
