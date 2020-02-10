@@ -169,3 +169,4 @@ It internally performs a join operation which can be expensive in general, which
 this operation should be avoided.
 
 See `Operations on different DataFrames <options.rst#operations-on-different-dataframes>`_ for more details.
+
