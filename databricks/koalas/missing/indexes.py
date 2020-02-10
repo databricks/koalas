@@ -32,6 +32,13 @@ class _MissingPandasLikeIndex(object):
     # Properties
     nbytes = unsupported_property('nbytes')
 
+    # Deprecated properties (*removed in pandas>=1.0.0)
+    strides = unsupported_property('strides', deprecated=True)
+    data = unsupported_property('data', deprecated=True)
+    itemsize = unsupported_property('itemsize', deprecated=True)
+    base = unsupported_property('base', deprecated=True)
+    flags = unsupported_property('flags', deprecated=True)
+
     # Functions
     argsort = unsupported_function('argsort')
     asof = unsupported_function('asof')
@@ -78,6 +85,11 @@ class _MissingPandasLikeIndex(object):
     item = unsupported_function('item', deprecated=True)
     set_value = unsupported_function('set_value')
 
+    # Deprecated functions (*removed in pandas>=1.0.0)
+    get_duplicates = unsupported_function('get_duplicates', deprecated=True)
+    summary = unsupported_function('summary', deprecated=True)
+    contains = unsupported_function('contains', deprecated=True)
+
     # Properties we won't support.
     values = common.values(unsupported_property)
     array = common.array(unsupported_property)
@@ -96,6 +108,11 @@ class _MissingPandasLikeMultiIndex(object):
     strides = unsupported_property('strides', deprecated=True)
     data = unsupported_property('data', deprecated=True)
     itemsize = unsupported_property('itemsize', deprecated=True)
+
+    # Deprecated properties (*removed in pandas>=1.0.0)
+    base = unsupported_property('base', deprecated=True)
+    labels = unsupported_property('labels', deprecated=True)
+    flags = unsupported_property('flags', deprecated=True)
 
     # Functions
     argsort = unsupported_function('argsort')
@@ -152,6 +169,12 @@ class _MissingPandasLikeMultiIndex(object):
     get_values = unsupported_function('get_values', deprecated=True)
     item = unsupported_function('item', deprecated=True)
     set_value = unsupported_function('set_value', deprecated=True)
+
+    # Deprecated functions (*removed in pandas>=1.0.0)
+    set_labels = unsupported_function('set_labels')
+    summary = unsupported_function('summary', deprecated=True)
+    to_hierarchical = unsupported_function('to_hierarchical', deprecated=True)
+    contains = unsupported_function('contains', deprecated=True)
 
     # Functions we won't support.
     values = common.values(unsupported_property)

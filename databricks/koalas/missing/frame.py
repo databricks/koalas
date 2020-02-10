@@ -32,6 +32,12 @@ class _MissingPandasLikeDataFrame(object):
     # Properties
     axes = unsupported_property('axes')
 
+    # Deprecated properties (*removed in pandas>=1.0.0)
+    blocks = unsupported_property('blocks', deprecated=True)
+    ftypes = unsupported_property('ftypes', deprecated=True)
+    is_copy = unsupported_property('is_copy', deprecated=True)
+    ix = unsupported_property('ix', deprecated=True)
+
     # Functions
     align = unsupported_function('align')
     apply = unsupported_function('apply')
@@ -95,6 +101,18 @@ class _MissingPandasLikeDataFrame(object):
     get_values = unsupported_function('get_values', deprecated=True)
     compound = unsupported_function('compound', deprecated=True)
     reindex_axis = unsupported_function('reindex_axis', deprecated=True)
+
+    # Deprecated functions (*removed in pandas>=1.0.0)
+    as_blocks = unsupported_function('as_blocks', deprecated=True)
+    as_matrix = unsupported_function('as_matrix', deprecated=True)
+    clip_lower = unsupported_function('clip_lower', deprecated=True)
+    clip_upper = unsupported_function('clip_upper', deprecated=True)
+    get_ftype_counts = unsupported_function('get_ftype_counts', deprecated=True)
+    get_value = unsupported_function('get_value', deprecated=True)
+    set_value = unsupported_function('set_value', deprecated=True)
+    to_dense = unsupported_function('to_dense', deprecated=True)
+    to_sparse = unsupported_function('to_sparse', deprecated=True)
+    to_msgpack = unsupported_function('to_msgpack', deprecated=True)
 
     # Properties we won't support.
     values = common.values(unsupported_property)
