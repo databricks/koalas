@@ -68,6 +68,10 @@ What is the list of APIs that are not planned to support in Koalas?
 
 Koalas doesn't support several APIs that may cause memory issues mostly due to the size of the data.
 
+For example, implementing and using `DataFrame.values` in Koalas can cause all data belonging to the
+
+DataFrame to be loaded into the driver's memory, causing memory errors like OOM.
+
 The following is a list of APIs that Koalas doesn't plan to support.
 
 - DataFrame
