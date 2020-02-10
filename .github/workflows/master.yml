@@ -9,37 +9,45 @@ on:
       - master
 
 jobs:
-  python35:
+  pip_python35:
+    name: PIP, Python (3.5)
     runs-on: ubuntu-latest
     env:
       SPARK_VERSION: 2.3.4
+      # The name of the directory '.cache' is for Travis CI. Once we remove Travis CI,
+      # we should download Spark to a directory with a different name to prevent confusion.
+      SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
       PANDAS_VERSION: 0.23.4
       PYARROW_VERSION: 0.10.0
+      # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around wtih xvfb-run
       PYTHON_EXECUTABLE: xvfb-run python
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-java@v1
       with:
         java-version: 1.8
-    - name: Using cache
-      uses: actions/cache@v1
+    - uses: actions/cache@v1
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    # Setup Python3.5 via `apt-get install` since the dafault Python3.5 from `actions/setup-python`
-    # seems to have some problem with Tkinter, so we should manually install the python3.5-tk.
-    # for this, we should use the Python manually installed, not the default one from `actions/setup-python`
+    - uses: actions/cache@v1
+      with:
+        path: ${{ env.SPARK_CACHE_DIR }}
+        key: ${{ runner.os }}-koalas-spark-${{ env.SPARK_VERSION }}
+    # Setup Python 3.5 via `apt-get install` since the dafault Python 3.5 from `actions/setup-python`
+    # seems to have some problems with Tkinter, so we should manually install the python3.5-tk.
+    # For this, we should use the Python manually installed, not the default one from `actions/setup-python`
     - name: Setup Python 3.5
       run: |
         sudo add-apt-repository ppa:deadsnakes/ppa
         sudo apt-get install tk-dev python3.5-tk python3.5
         sudo rm /usr/bin/python
         sudo ln -s /usr/bin/python3.5 /usr/bin/python
-        # Below command is required for ensuring pip installed executables to be in the path.
+        # Below command is required for ensuring PIP-installed executables to be in the path.
         echo "::add-path::/home/runner/.local/bin"
-    - name: Install dependencies & run tests
+    - name: Install dependencies
       run: |
         ./dev/download_travis_dependencies.sh
         sudo apt-get install xclip
@@ -47,26 +55,29 @@ jobs:
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip list
-        export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
+    - name: Run tests
+      run: |
+        export SPARK_HOME="$SPARK_CACHE_DIR/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
     # Push the results back to codecov
     - name: Update Codecov
       run: bash <(curl -s https://codecov.io/bash)
 
-  python:
+  conda_python:
+    name: Conda, Python
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.6, 3.7]
         include:
           - python-version: 3.6
-            spark-version: 2.4.4
+            spark-version: 2.4.5
             pandas-version: 0.24.2
             pyarrow-version: 0.13.0
             logger: databricks.koalas.usage_logging.usage_logger
           - python-version: 3.7
-            spark-version: 2.4.4
+            spark-version: 2.4.5
             pandas-version: 0.25.3
             pyarrow-version: 0.14.1
     env:
@@ -74,27 +85,28 @@ jobs:
       SPARK_VERSION: ${{ matrix.spark-version }}
       PANDAS_VERSION: ${{ matrix.pandas-version }}
       PYARROW_VERSION: ${{ matrix.pyarrow-version }}
-      DISPLAY: 0.0
       # `QT_QPA_PLATFORM` for resolving 'QXcbConnection: Could not connect to display :0.0'
+      DISPLAY: 0.0
       QT_QPA_PLATFORM: offscreen
       KOALAS_USAGE_LOGGER: ${{ matrix.logger }}
+      # The name of the directory '.cache' is for Travis CI. Once we remove Travis CI,
+      # we should download Spark to a directory with a different name to prevent confusion.
+      SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-java@v1
       with:
         java-version: 1.8
-    - name: Using cache
-      uses: actions/cache@v1
+    - uses: actions/cache@v1
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    - name: Install dependencies & run tests
+        path: ${{ env.SPARK_CACHE_DIR }}
+        key: ${{ runner.os }}-koalas-spark-${{ env.SPARK_VERSION }}
+    - name: Install dependencies
       run: |
         ./dev/download_travis_dependencies.sh
         curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
         bash miniconda.sh -b -p $HOME/miniconda
+        # See also https://github.com/conda/conda/issues/7980
         . $HOME/miniconda/etc/profile.d/conda.sh
         hash -r
         conda config --set always_yes yes --set changeps1 no
@@ -111,9 +123,18 @@ jobs:
         conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
         conda list
-        export SPARK_HOME="$HOME/.cache/spark-versions/spark-$SPARK_VERSION-bin-hadoop2.7"
+    - name: Run tests
+      run: |
+        # The environment should be initialized newly between Github Actions steps. Also,
+        # for some reasons we should add enviornment directory manually to allow for
+        # 'test-enviornment' to be found. See also https://github.com/conda/conda/issues/7980
+        . $HOME/miniconda/etc/profile.d/conda.sh
+        conda config --prepend envs_dirs $HOME/miniconda/envs
+        conda activate test-environment
+        export SPARK_HOME="$SPARK_CACHE_DIR/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
     # Push the results back to codecov
     - name: Update Codecov
       run: bash <(curl -s https://codecov.io/bash)
+
