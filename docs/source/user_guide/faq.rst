@@ -63,8 +63,8 @@ lot longer (in the order of days)
 principles cannot be changed lightly given the large user base of Spark. A new, separate project
 provides an opportunity for us to experiment with new design principles.
 
-What is the list of APIs that are not plan to support in Koalas?
-----------------------------------------------------------------
+What is the list of APIs that are not planned to support in Koalas?
+-------------------------------------------------------------------
 
 Koalas doesn't support several APIs that may cause memory issues mostly due to the size of the data.
 
