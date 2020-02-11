@@ -38,17 +38,6 @@ matrix:
         - SPARK_VERSION=2.4.5
         - PANDAS_VERSION=0.25.3
         - PYARROW_VERSION=0.14.1
-    - python: 3.7
-      dist: xenial
-      sudo: true
-      jdk:
-        - oraclejdk8
-      env:
-        - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
-        - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
-        - SPARK_VERSION=2.4.5
-        - PANDAS_VERSION=1.0.1
-        - PYARROW_VERSION=0.14.1
 
 before_install:
   - ./dev/download_travis_dependencies.sh
