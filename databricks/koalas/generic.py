@@ -297,8 +297,7 @@ class _Frame(object):
         """
         return self._apply_series_op(lambda kser: kser._cumprod(skipna))  # type: ignore
 
-    # TODO: Since this method has removed pandas >= 1.0.0,
-    # so we should be block this from using it directly via external API
+    # TODO: Although this has removed pandas >= 1.0.0, but we're keeping this as deprecated
     def get_dtype_counts(self):
         """
         Return counts of unique dtypes in this object.
