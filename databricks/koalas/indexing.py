@@ -641,15 +641,14 @@ class LocIndexer(_LocIndexerLike):
                 if any(len(key) != level for key in cols_sel):
                     raise ValueError('All the key level should be the same as column index level.')
 
-            index_to_column = list(zip(self._internal.column_index, self._internal.data_columns))
             column_index = []
             column_scols = []
             for key in cols_sel:
                 found = False
-                for idx, column in index_to_column:
+                for idx in self._internal.column_index:
                     if idx == key or idx[0] == key:
                         column_index.append(idx)
-                        column_scols.append(self._internal.scol_for(column))
+                        column_scols.append(self._internal.scol_for(idx))
                         found = True
                 if not found:
                     raise KeyError("['{}'] not in index".format(name_like_string(key)))

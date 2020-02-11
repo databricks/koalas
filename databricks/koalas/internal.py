@@ -622,25 +622,27 @@ class _InternalFrame(object):
     def _column_index_to_name(self) -> Dict[Tuple[str, ...], str]:
         return dict(zip(self.column_index, self.data_columns))
 
-    def column_name_for(self, column_name_or_index: Union[str, Tuple[str, ...]]) -> str:
+    def column_name_for(self, column_index_or_index_column: Union[str, Tuple[str, ...]]) -> str:
         """ Return the actual Spark column name for the given column name or index. """
-        if column_name_or_index in self._column_index_to_name:
-            return self._column_index_to_name[column_name_or_index]
+        if column_index_or_index_column in self._column_index_to_name:
+            return self._column_index_to_name[column_index_or_index_column]
         else:
-            if not isinstance(column_name_or_index, str):
-                raise KeyError(name_like_string(column_name_or_index))
-            return column_name_or_index
+            if column_index_or_index_column not in self.index_columns:
+                raise KeyError(name_like_string(column_index_or_index_column))
+            return column_index_or_index_column  # type: ignore
 
     @lazy_property
     def _column_index_to_scol(self) -> Dict[Tuple[str, ...], spark.Column]:
         return dict(zip(self.column_index, self.column_scols))
 
-    def scol_for(self, column_name_or_index: Union[str, Tuple[str, ...]]):
+    def scol_for(self, column_index_or_index_column: Union[str, Tuple[str, ...]]):
         """ Return Spark Column for the given column name or index. """
-        if column_name_or_index in self._column_index_to_scol:
-            return self._column_index_to_scol[column_name_or_index]
+        if column_index_or_index_column in self._column_index_to_scol:
+            return self._column_index_to_scol[column_index_or_index_column]
         else:
-            return scol_for(self._sdf, self.column_name_for(column_name_or_index))
+            if column_index_or_index_column not in self.index_columns:
+                raise KeyError(name_like_string(column_index_or_index_column))
+            return scol_for(self._sdf, self.column_name_for(column_index_or_index_column))
 
     def spark_type_for(self, column_name_or_index: Union[str, Tuple[str, ...]]) -> DataType:
         """ Return DataType for the given column name or index. """
@@ -681,7 +683,9 @@ class _InternalFrame(object):
     @lazy_property
     def scols(self) -> List[spark.Column]:
         """ Return Spark Columns for the managed columns including index columns. """
-        return [self.scol_for(column) for column in self.columns]
+        index_columns = set(self.index_columns)
+        return self.index_scols + [self.scol_for(idx) for idx in self.column_index
+                                   if self.column_name_for(idx) not in index_columns]
 
     @property
     def index_map(self) -> List[IndexMap]:
