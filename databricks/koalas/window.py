@@ -633,8 +633,6 @@ class RollingGroupby(Rolling):
             kdf = groupby._kser.to_frame()
         elif isinstance(groupby, DataFrameGroupBy):
             kdf = groupby._kdf
-            if not (kdf.index.is_monotonic or kdf.index.is_monotonic_decreasing):
-                raise ValueError("index must be monotonic increasing or decreasing")
         else:
             raise TypeError(
                 "groupby must be a SeriesGroupBy or DataFrameGroupBy; "
@@ -1387,8 +1385,6 @@ class ExpandingGroupby(Expanding):
             kdf = groupby._kser.to_frame()
         elif isinstance(groupby, DataFrameGroupBy):
             kdf = groupby._kdf
-            if not (kdf.index.is_monotonic or kdf.index.is_monotonic_decreasing):
-                raise ValueError("index must be monotonic increasing or decreasing")
         else:
             raise TypeError(
                 "groupby must be a SeriesGroupBy or DataFrameGroupBy; "

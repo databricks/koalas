@@ -56,14 +56,6 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
                 "kdf_or_kser must be a series or dataframe; however, got:.*int"):
             Expanding(1, 2)
 
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
-                           index=[1, 3, 2, 4])
-        for f in ("count", "min", "max", "mean", "sum", "std", "var"):
-            with self.assertRaisesRegex(
-                    ValueError,
-                    "index must be monotonic increasing or decreasing"):
-                getattr(kdf.groupby('a').expanding(2), f)()
-
     def test_expanding_repr(self):
         self.assertEqual(repr(ks.range(10).expanding(5)), "Expanding [min_periods=5]")
 

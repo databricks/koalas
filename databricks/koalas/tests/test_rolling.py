@@ -35,14 +35,6 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
                 "kdf_or_kser must be a series or dataframe; however, got:.*int"):
             Rolling(1, 2)
 
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
-                           index=[1, 3, 2, 4])
-        for f in ("count", "min", "max", "mean", "sum", "std", "var"):
-            with self.assertRaisesRegex(
-                    ValueError,
-                    "index must be monotonic increasing or decreasing"):
-                getattr(kdf.groupby('a').rolling(2), f)()
-
     def _test_rolling_func(self, f):
         kser = ks.Series([1, 2, 3], index=np.random.rand(3))
         pser = kser.to_pandas()

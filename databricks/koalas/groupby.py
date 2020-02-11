@@ -563,11 +563,8 @@ class GroupBy(object):
         5    NaN
         Name: a, dtype: float64
         """
-        if self._kdf.index.is_monotonic or self._kdf.index.is_monotonic_decreasing:
-            return self._apply_series_op(
-                lambda sg: sg._kser._diff(periods, part_cols=sg._groupkeys_scols))
-        else:
-            raise ValueError('index must be monotonic increasing or decreasing')
+        return self._apply_series_op(
+            lambda sg: sg._kser._diff(periods, part_cols=sg._groupkeys_scols))
 
     def cummax(self):
         """
@@ -1133,14 +1130,11 @@ class GroupBy(object):
         """
         if len(self._kdf._internal.index_names) != 1:
             raise ValueError('idxmax only support one-level index now')
-        if self._kdf.index.is_monotonic or self._kdf.index.is_monotonic_decreasing:
-            groupkeys = self._groupkeys
-            groupkey_cols = [s.alias(SPARK_INDEX_NAME_FORMAT(i))
-                             for i, s in enumerate(self._groupkeys_scols)]
-            sdf = self._kdf._sdf
-            index = self._kdf._internal.index_columns[0]
-        else:
-            raise ValueError('index must be monotonic increasing or decreasing')
+        groupkeys = self._groupkeys
+        groupkey_cols = [s.alias(SPARK_INDEX_NAME_FORMAT(i))
+                         for i, s in enumerate(self._groupkeys_scols)]
+        sdf = self._kdf._sdf
+        index = self._kdf._internal.index_columns[0]
 
         stat_exprs = []
         for kser, c in zip(self._agg_columns, self._agg_columns_scols):
@@ -1207,14 +1201,11 @@ class GroupBy(object):
         """
         if len(self._kdf._internal.index_names) != 1:
             raise ValueError('idxmin only support one-level index now')
-        if self._kdf.index.is_monotonic or self._kdf.index.is_monotonic_decreasing:
-            groupkeys = self._groupkeys
-            groupkey_cols = [s.alias(SPARK_INDEX_NAME_FORMAT(i))
-                             for i, s in enumerate(self._groupkeys_scols)]
-            sdf = self._kdf._sdf
-            index = self._kdf._internal.index_columns[0]
-        else:
-            raise ValueError('index must be monotonic increasing or decreasing')
+        groupkeys = self._groupkeys
+        groupkey_cols = [s.alias(SPARK_INDEX_NAME_FORMAT(i))
+                         for i, s in enumerate(self._groupkeys_scols)]
+        sdf = self._kdf._sdf
+        index = self._kdf._internal.index_columns[0]
 
         stat_exprs = []
         for kser, c in zip(self._agg_columns, self._agg_columns_scols):
@@ -1302,10 +1293,7 @@ class GroupBy(object):
         2  3.0  1.0  5
         3  3.0  1.0  4
         """
-        if self._kdf.index.is_monotonic or self._kdf.index.is_monotonic_decreasing:
-            return self._fillna(value, method, axis, inplace, limit)
-        else:
-            raise ValueError("index must be monotonic increasing or decreasing")
+        return self._fillna(value, method, axis, inplace, limit)
 
     def bfill(self, limit=None):
         """
