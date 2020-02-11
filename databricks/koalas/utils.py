@@ -99,26 +99,26 @@ def combine_frames(this, *args, how="full"):
 
         joined_df = joined_df.select(
             merged_index_scols +
-            [this[idx]._scol.alias("__this_%s" % this._internal.column_name_for(idx))
-             for idx in this._internal.column_index] +
-            [that[idx]._scol.alias("__that_%s" % that._internal.column_name_for(idx))
-             for idx in that._internal.column_index])
+            [this[label]._scol.alias("__this_%s" % this._internal.column_name_for(label))
+             for label in this._internal.column_labels] +
+            [that[label]._scol.alias("__that_%s" % that._internal.column_name_for(label))
+             for label in that._internal.column_labels])
 
         index_columns = set(this._internal.index_columns)
         new_data_columns = [c for c in joined_df.columns if c not in index_columns]
-        level = max(this._internal.column_index_level, that._internal.column_index_level)
-        column_index = ([tuple(['this'] + ([''] * (level - len(idx))) + list(idx))
-                         for idx in this._internal.column_index]
-                        + [tuple(['that'] + ([''] * (level - len(idx))) + list(idx))
-                           for idx in that._internal.column_index])
-        column_index_names = ((([None] * (1 + level - len(this._internal.column_index_level)))
-                               + this._internal.column_index_names)
-                              if this._internal.column_index_names is not None else None)
+        level = max(this._internal.column_labels_level, that._internal.column_labels_level)
+        column_labels = ([tuple(['this'] + ([''] * (level - len(label))) + list(label))
+                         for label in this._internal.column_labels]
+                         + [tuple(['that'] + ([''] * (level - len(label))) + list(label))
+                            for label in that._internal.column_labels])
+        column_label_names = ((([None] * (1 + level - len(this._internal.column_labels_level)))
+                               + this._internal.column_label_names)
+                              if this._internal.column_label_names is not None else None)
         return DataFrame(
             this._internal.copy(sdf=joined_df,
-                                column_index=column_index,
+                                column_labels=column_labels,
                                 column_scols=[scol_for(joined_df, col) for col in new_data_columns],
-                                column_index_names=column_index_names))
+                                column_label_names=column_label_names))
     else:
         raise ValueError(
             "Cannot combine the series or dataframe because it comes from a different dataframe. "
@@ -141,16 +141,16 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
         >>> kdf1 = ks.DataFrame({'a': [9, 8, 7, 6, 5, 4, 3, 2, 1]})
         >>> kdf2 = ks.DataFrame({'a': [9, 8, 7, 6, 5, 4, 3, 2, 1]})
         >>>
-        >>> def func(kdf, this_column_index, that_column_index):
+        >>> def func(kdf, this_column_labels, that_column_labels):
         ...    kdf  # conceptually this is A + B.
         ...
         ...    # Within this function, Series from A or B can be performed against `kdf`.
-        ...    this_idx = this_column_index[0]  # this is ('a',) from kdf1.
-        ...    that_idx = that_column_index[0]  # this is ('a',) from kdf2.
-        ...    new_series = (kdf[this_idx] - kdf[that_idx]).rename(str(this_idx))
+        ...    this_label = this_column_labels[0]  # this is ('a',) from kdf1.
+        ...    that_label = that_column_labels[0]  # this is ('a',) from kdf2.
+        ...    new_series = (kdf[this_label] - kdf[that_label]).rename(str(this_label))
         ...
         ...    # This new series will be placed in new DataFrame.
-        ...    yield (new_series, this_idx)
+        ...    yield (new_series, this_label)
         >>>
         >>>
         >>> align_diff_frames(func, kdf1, kdf2).sort_index()
@@ -181,76 +181,76 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
     """
     assert how == "full" or how == "left"
 
-    this_column_index = this._internal.column_index
-    that_column_index = that._internal.column_index
-    common_column_index = set(this_column_index).intersection(that_column_index)
+    this_column_labels = this._internal.column_labels
+    that_column_labels = that._internal.column_labels
+    common_column_labels = set(this_column_labels).intersection(that_column_labels)
 
     # 1. Full outer join given two dataframes.
     combined = combine_frames(this, that, how=how)
 
     # 2. Apply given function to transform the columns in a batch and keep the new columns.
-    combined_column_index = combined._internal.column_index
+    combined_column_labels = combined._internal.column_labels
 
     that_columns_to_apply = []
     this_columns_to_apply = []
     additional_that_columns = []
     columns_to_keep = []
-    column_index_to_keep = []
+    column_labels_to_keep = []
 
-    for combined_idx in combined_column_index:
-        for common_idx in common_column_index:
-            if combined_idx == tuple(['this', *common_idx]):
-                this_columns_to_apply.append(combined_idx)
+    for combined_label in combined_column_labels:
+        for common_label in common_column_labels:
+            if combined_label == tuple(['this', *common_label]):
+                this_columns_to_apply.append(combined_label)
                 break
-            elif combined_idx == tuple(['that', *common_idx]):
-                that_columns_to_apply.append(combined_idx)
+            elif combined_label == tuple(['that', *common_label]):
+                that_columns_to_apply.append(combined_label)
                 break
         else:
             if how == "left" and \
-                    combined_idx in [tuple(['that', *idx]) for idx in that_column_index]:
+                    combined_label in [tuple(['that', *label]) for label in that_column_labels]:
                 # In this case, we will drop `that_columns` in `columns_to_keep` but passes
                 # it later to `func`. `func` should resolve it.
                 # Note that adding this into a separate list (`additional_that_columns`)
                 # is intentional so that `this_columns` and `that_columns` can be paired.
-                additional_that_columns.append(combined_idx)
+                additional_that_columns.append(combined_label)
             elif fillna:
-                columns_to_keep.append(F.lit(None).cast(FloatType()).alias(str(combined_idx)))
-                column_index_to_keep.append(combined_idx)
+                columns_to_keep.append(F.lit(None).cast(FloatType()).alias(str(combined_label)))
+                column_labels_to_keep.append(combined_label)
             else:
-                columns_to_keep.append(combined._internal.scol_for(combined_idx))
-                column_index_to_keep.append(combined_idx)
+                columns_to_keep.append(combined._internal.scol_for(combined_label))
+                column_labels_to_keep.append(combined_label)
 
     that_columns_to_apply += additional_that_columns
 
     # Should extract columns to apply and do it in a batch in case
     # it adds new columns for example.
     if len(this_columns_to_apply) > 0 or len(that_columns_to_apply) > 0:
-        kser_set, column_index_applied = \
+        kser_set, column_labels_applied = \
             zip(*resolve_func(combined, this_columns_to_apply, that_columns_to_apply))
         columns_applied = [c._scol for c in kser_set]
-        column_index_applied = list(column_index_applied)
+        column_labels_applied = list(column_labels_applied)
     else:
         columns_applied = []
-        column_index_applied = []
+        column_labels_applied = []
 
     applied = combined[columns_applied + columns_to_keep]
-    applied.columns = pd.MultiIndex.from_tuples(column_index_applied + column_index_to_keep)
+    applied.columns = pd.MultiIndex.from_tuples(column_labels_applied + column_labels_to_keep)
 
     # 3. Restore the names back and deduplicate columns.
-    this_idxes = OrderedDict()
+    this_labels = OrderedDict()
     # Add columns in an order of its original frame.
-    for this_idx in this_column_index:
-        for new_idx in applied._internal.column_index:
-            if new_idx[1:] not in this_idxes and this_idx == new_idx[1:]:
-                this_idxes[new_idx[1:]] = new_idx
+    for this_label in this_column_labels:
+        for new_label in applied._internal.column_labels:
+            if new_label[1:] not in this_labels and this_label == new_label[1:]:
+                this_labels[new_label[1:]] = new_label
 
     # After that, we will add the rest columns.
-    other_idxes = OrderedDict()
-    for new_idx in applied._internal.column_index:
-        if new_idx[1:] not in this_idxes:
-            other_idxes[new_idx[1:]] = new_idx
+    other_labels = OrderedDict()
+    for new_label in applied._internal.column_labels:
+        if new_label[1:] not in this_labels:
+            other_labels[new_label[1:]] = new_label
 
-    kdf = applied[list(this_idxes.values()) + list(other_idxes.values())]
+    kdf = applied[list(this_labels.values()) + list(other_labels.values())]
     kdf.columns = kdf.columns.droplevel()
     return kdf
 
@@ -262,14 +262,14 @@ def align_diff_series(func, this_series, *args, how="full"):
     cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
     combined = combine_frames(this_series.to_frame(), *cols, how=how)
 
-    that_columns = [combined['that'][arg._internal.column_index[0]]._scol
+    that_columns = [combined['that'][arg._internal.column_labels[0]]._scol
                     if isinstance(arg, IndexOpsMixin) else arg for arg in args]
 
-    scol = func(combined['this'][this_series._internal.column_index[0]]._scol,
+    scol = func(combined['this'][this_series._internal.column_labels[0]]._scol,
                 *that_columns)
 
     return Series(combined._internal.copy(scol=scol,
-                                          column_index=this_series._internal.column_index),
+                                          column_labels=this_series._internal.column_labels),
                   anchor=combined)
 
 
@@ -368,12 +368,12 @@ def scol_for(sdf: spark.DataFrame, column_name: str) -> spark.Column:
     return sdf['`{}`'.format(column_name)]
 
 
-def column_index_level(column_index: List[Tuple[str, ...]]) -> int:
+def column_labels_level(column_labels: List[Tuple[str, ...]]) -> int:
     """ Return the level of the column index. """
-    if len(column_index) == 0:
+    if len(column_labels) == 0:
         return 0
     else:
-        levels = set(0 if idx is None else len(idx) for idx in column_index)
+        levels = set(0 if label is None else len(label) for label in column_labels)
         assert len(levels) == 1, levels
         return list(levels)[0]
 

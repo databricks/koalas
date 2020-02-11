@@ -132,7 +132,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, 'Column_index_names should '
                                                 'be list-like or None for a MultiIndex'):
-            ks.DataFrame(kdf1._internal.copy(column_index_names='level'))
+            ks.DataFrame(kdf1._internal.copy(column_label_names='level'))
 
         self.assert_eq(kdf['X'], pdf['X'])
         self.assert_eq(kdf['X'].columns.names, pdf['X'].columns.names)
