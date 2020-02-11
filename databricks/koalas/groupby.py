@@ -879,8 +879,10 @@ class GroupBy(object):
             kdf = DataFrame(pdf)
             return_schema = kdf._sdf.drop(*HIDDEN_COLUMNS).schema
 
-        sdf = self._spark_group_map_apply(
+        sdf = GroupBy._spark_group_map_apply(
+            self._kdf,
             lambda pdf: pdf.groupby(input_groupnames).apply(func),
+            self._groupkeys_scols,
             return_schema,
             retain_index=should_infer_schema)
 
@@ -938,17 +940,18 @@ class GroupBy(object):
         def pandas_filter(pdf):
             return pdf.groupby(groupby_names).filter(func)
 
-        sdf = self._spark_group_map_apply(
-            pandas_filter, data_schema, retain_index=True)
+        sdf = GroupBy._spark_group_map_apply(
+            self._kdf, pandas_filter, self._groupkeys_scols, data_schema, retain_index=True)
         return DataFrame(self._kdf._internal.copy(
             sdf=sdf,
             column_scols=[scol_for(sdf, col) for col in self._kdf._internal.data_columns]))
 
-    def _spark_group_map_apply(self, func, return_schema, retain_index):
-        index_columns = self._kdf._internal.index_columns
-        index_names = self._kdf._internal.index_names
-        data_columns = self._kdf._internal.data_columns
-        column_index = self._kdf._internal.column_index
+    @staticmethod
+    def _spark_group_map_apply(kdf, func, groupkeys_scols, return_schema, retain_index):
+        index_columns = kdf._internal.index_columns
+        index_names = kdf._internal.index_names
+        data_columns = kdf._internal.data_columns
+        column_index = kdf._internal.column_index
 
         def rename_output(pdf):
             # TODO: This logic below was borrowed from `DataFrame.pandas_df` to set the index
@@ -1019,8 +1022,8 @@ class GroupBy(object):
 
         grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(rename_output)
 
-        sdf = self._kdf._sdf.drop(*HIDDEN_COLUMNS)
-        input_groupkeys = [s for s in self._groupkeys_scols]
+        sdf = kdf._sdf.drop(*HIDDEN_COLUMNS)
+        input_groupkeys = [s for s in groupkeys_scols]
         sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
 
         return sdf
@@ -1637,8 +1640,9 @@ class GroupBy(object):
             if len(pdf) <= limit:
                 return kdf
 
-            sdf = self._spark_group_map_apply(
-                pandas_transform, return_schema, retain_index=True)
+            sdf = GroupBy._spark_group_map_apply(
+                self._kdf, pandas_transform, self._groupkeys_scols,
+                return_schema, retain_index=True)
             # If schema is inferred, we can restore indexes too.
             internal = kdf._internal.copy(sdf=sdf,
                                           column_scols=[scol_for(sdf, col)
@@ -1649,8 +1653,9 @@ class GroupBy(object):
             return_schema = StructType([
                 StructField(c, return_type) for c in data_columns if c not in input_groupnames])
 
-            sdf = self._spark_group_map_apply(
-                pandas_transform, return_schema, retain_index=False)
+            sdf = GroupBy._spark_group_map_apply(
+                self._kdf, pandas_transform, self._groupkeys_scols,
+                return_schema, retain_index=False)
             # Otherwise, it loses index.
             internal = _InternalFrame(sdf=sdf, index_map=None)
 

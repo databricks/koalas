@@ -98,6 +98,7 @@ Function application, GroupBy & Window
 .. autosummary::
    :toctree: api/
 
+   DataFrame.apply
    DataFrame.applymap
    DataFrame.pipe
    DataFrame.agg

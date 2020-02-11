@@ -41,7 +41,8 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, FloatType,
-                               IntegerType, LongType, NumericType, ShortType)
+                               IntegerType, LongType, NumericType, ShortType, StructType,
+                               StructField)
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -1799,6 +1800,229 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return DataFrame(internal)
 
     T = property(transpose)
+
+    def apply(self, func, axis=0):
+        """
+        Apply a function along an axis of the DataFrame.
+
+        Objects passed to the function are Series objects whose index is
+        either the DataFrame's index (``axis=0``) or the DataFrame's columns
+        (``axis=1``).
+
+        .. note:: when `axis` is 0 or 'index', the `func` is unable to access
+            to the whole input series. Koalas internally splits the input series into multiple
+            batches and calls `func` with each batch multiple times. Therefore, operations
+            such as global aggregations are impossible. See the example below.
+
+            >>> # This case does not return the length of whole series but of the batch internally
+            ... # used.
+            ... def length(s) -> int:
+            ...    return len(s)
+            ...
+            >>> df = ks.DataFrame({'A': range(1000)})
+            >>> df.apply(length, axis=0)  # doctest: +SKIP
+            0     83
+            1     83
+            2     83
+            ...
+            10    83
+            11    83
+            Name: 0, dtype: int32
+
+        .. note:: this API executes the function once to infer the type which is
+            potentially expensive, for instance, when the dataset is created after
+            aggregations or sorting.
+
+            To avoid this, specify return type in ``func``, for instance, as below:
+
+            >>> def square(s) -> ks.Series[np.int32]:
+            ...     return s ** 2
+
+            Koalas uses return type hint and does not try to infer the type.
+
+            In case when axis is 1, it requires to specify `DataFrame` with type hints
+            as below:
+
+            >>> def plus_one(x) -> ks.DataFrame[float, float]:
+            ...    return x + 1
+
+            If the return type is specified, the output column names become
+            `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
+            DataFrame in ``func``. See examples below.
+
+
+        Parameters
+        ----------
+        func : function
+            Function to apply to each column or row.
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+            Axis along which the function is applied:
+
+            * 0 or 'index': apply function to each column.
+            * 1 or 'columns': apply function to each row.
+
+        Returns
+        -------
+        Series or DataFrame
+            Result of applying ``func`` along the given axis of the
+            DataFrame.
+
+        See Also
+        --------
+        DataFrame.applymap: For elementwise operations.
+        DataFrame.aggregate: Only perform aggregating type operations.
+        DataFrame.transform: Only perform transforming type operations.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([[4, 9]] * 3, columns=['A', 'B'])
+        >>> df
+           A  B
+        0  4  9
+        1  4  9
+        2  4  9
+
+        Using a numpy universal function (in this case the same as
+        ``np.sqrt(df)``):
+
+        >>> def sqrt(x) -> ks.Series[float]:
+        ...    return np.sqrt(x)
+        ...
+        >>> df.apply(sqrt, axis=0)
+             A    B
+        0  2.0  3.0
+        1  2.0  3.0
+        2  2.0  3.0
+
+        You can omit the type hint and let Koalas infer its type.
+
+        >>> df.apply(np.sqrt, axis=0)
+             A    B
+        0  2.0  3.0
+        1  2.0  3.0
+        2  2.0  3.0
+
+        When `axis` is 1 or 'columns', it applies the function for each row.
+
+        >>> def summation(x) -> np.int64:
+        ...    return np.sum(x)
+        ...
+        >>> df.apply(summation, axis=1)
+        0    13
+        1    13
+        2    13
+        Name: 0, dtype: int64
+
+        Likewise, you can omit the type hint and let Koalas infer its type.
+
+        >>> df.apply(np.sum, axis=1)
+        0    13
+        1    13
+        2    13
+        Name: 0, dtype: int64
+
+        Returning a list-like will result in a Series
+
+        >>> df.apply(lambda x: [1, 2], axis=1)
+        0    [1, 2]
+        1    [1, 2]
+        2    [1, 2]
+        Name: 0, dtype: object
+
+        In order to specify the types when `axis` is '1', it should use DataFrame[...]
+        annotation. In this case, the column names are automatically generated.
+
+        >>> def identify(x) -> ks.DataFrame[np.int64, np.int64]:
+        ...     return x
+        ...
+        >>> df.apply(identify, axis=1)
+           c0  c1
+        0   4   9
+        1   4   9
+        2   4   9
+        """
+        from databricks.koalas.groupby import GroupBy
+        from databricks.koalas.series import _col
+
+        if isinstance(func, np.ufunc):
+            f = func
+            func = lambda *args, **kwargs: f(*args, **kwargs)
+
+        assert callable(func), "the first argument should be a callable function."
+
+        axis = validate_axis(axis)
+        should_return_series = False
+        spec = inspect.getfullargspec(func)
+        return_sig = spec.annotations.get("return", None)
+        should_infer_schema = return_sig is None
+
+        def apply_func(pdf):
+            pdf_or_pser = pdf.apply(func, axis=axis)
+            if isinstance(pdf_or_pser, pd.Series):
+                return pdf_or_pser.to_frame()
+            else:
+                return pdf_or_pser
+
+        if should_infer_schema:
+            # Here we execute with the first 1000 to get the return type.
+            # If the records were less than 1000, it uses pandas API directly for a shortcut.
+            limit = get_option("compute.shortcut_limit")
+            pdf = self.head(limit + 1)._to_internal_pandas()
+            applied = pdf.apply(func, axis=axis)
+            kser_or_kdf = ks.from_pandas(applied)
+            if len(pdf) <= limit:
+                return kser_or_kdf
+
+            kdf = kser_or_kdf
+            if isinstance(kser_or_kdf, ks.Series):
+                should_return_series = True
+                kdf = kser_or_kdf.to_frame()
+
+            return_schema = kdf._internal._sdf.drop(*HIDDEN_COLUMNS).schema
+
+            sdf = GroupBy._spark_group_map_apply(
+                self, apply_func, (F.spark_partition_id(),),
+                return_schema, retain_index=True)
+
+            # If schema is inferred, we can restore indexes too.
+            internal = kdf._internal.copy(sdf=sdf,
+                                          column_scols=[scol_for(sdf, col)
+                                                        for col in kdf._internal.data_columns])
+        else:
+            return_schema = _infer_return_type(func).tpe
+            require_index_axis = getattr(return_sig, "__origin__", None) == ks.Series
+            require_column_axis = getattr(return_sig, "__origin__", None) == ks.DataFrame
+            if require_index_axis:
+                if axis != 0:
+                    raise TypeError(
+                        "The given function should specify a scalar or a series as its type "
+                        "hints when axis is 0 or 'index'; however, the return type "
+                        "was %s" % return_sig)
+                fields_types = zip(self.columns, [return_schema] * len(self.columns))
+                return_schema = StructType([StructField(c, t) for c, t in fields_types])
+            elif require_column_axis:
+                if axis != 1:
+                    raise TypeError(
+                        "The given function should specify a scalar or a frame as its type "
+                        "hints when axis is 1 or 'column'; however, the return type "
+                        "was %s" % return_sig)
+            else:
+                # any axis is fine.
+                should_return_series = True
+                return_schema = StructType([StructField("0", return_schema)])
+
+            sdf = GroupBy._spark_group_map_apply(
+                self, apply_func, (F.spark_partition_id(),),
+                return_schema, retain_index=False)
+
+            # Otherwise, it loses index.
+            internal = _InternalFrame(sdf=sdf, index_map=None)
+
+        result = DataFrame(internal)
+        if should_return_series:
+            return _col(result)
+        else:
+            return result
 
     def transform(self, func):
         """
