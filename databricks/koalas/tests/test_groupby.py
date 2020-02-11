@@ -486,9 +486,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).diff().sort_index(),
                        pdf.groupby([('x', 'a'), ('x', 'b')]).diff().sort_index())
 
-        with self.assertRaisesRegex(ValueError, 'index must be monotonic increasing or decreasing'):
-            ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]}, index=[3, 1, 2]).groupby('a').diff()
-
     def test_rank(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 3,
                             'b': [1, 1, 2, 3, 5, 8] * 3,
@@ -674,9 +671,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                        pdf.groupby(("X", "A")).fillna(method='bfill').sort_index())
         self.assert_eq(kdf.groupby(("X", "A")).fillna(method='ffill').sort_index(),
                        pdf.groupby(("X", "A")).fillna(method='ffill').sort_index())
-
-        with self.assertRaisesRegex(ValueError, 'index must be monotonic increasing or decreasing'):
-            ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]}, index=[3, 1, 2]).groupby('a').fillna(0)
 
     def test_ffill(self):
         pdf = pd.DataFrame({'A': [1, 1, 2, 2] * 3,
@@ -922,8 +916,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         with self.assertRaisesRegex(ValueError, 'idxmax only support one-level index now'):
             kdf.set_index(['a', 'b']).groupby(['c']).idxmax()
-        with self.assertRaisesRegex(ValueError, 'index must be monotonic increasing or decreasing'):
-            ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]}, index=[3, 1, 2]).groupby('a').idxmax()
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
@@ -948,8 +940,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         with self.assertRaisesRegex(ValueError, 'idxmin only support one-level index now'):
             kdf.set_index(['a', 'b']).groupby(['c']).idxmin()
-        with self.assertRaisesRegex(ValueError, 'index must be monotonic increasing or decreasing'):
-            ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]}, index=[3, 1, 2]).groupby('a').idxmin()
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
