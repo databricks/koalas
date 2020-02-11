@@ -70,10 +70,11 @@ jobs:
     strategy:
       matrix:
         python-version: [3.6, 3.7]
+        pandas-version: [1.0.1]
         include:
           - python-version: 3.6
             spark-version: 2.4.5
-            pandas-version: [0.24.2, 1.0.1]
+            pandas-version: 0.24.2
             pyarrow-version: 0.13.0
             logger: databricks.koalas.usage_logging.usage_logger
           - python-version: 3.7
