@@ -302,6 +302,8 @@ class _Frame(object):
         """
         Return counts of unique dtypes in this object.
 
+        .. deprecated:: 0.14.0
+
         Returns
         -------
         dtype : pd.Series
