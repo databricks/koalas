@@ -1026,17 +1026,17 @@ class IndexOpsMixin(object):
             sum = sdf_dropna.count()
             sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
 
-        column_index = self._internal.column_index
-        if (column_index[0] is None) or (None in column_index[0]):
+        column_labels = self._internal.column_labels
+        if (column_labels[0] is None) or (None in column_labels[0]):
             internal = _InternalFrame(sdf=sdf,
                                       index_map=[(index_name, None)],
                                       column_scols=[scol_for(sdf, 'count')])
         else:
             internal = _InternalFrame(sdf=sdf,
                                       index_map=[(index_name, None)],
-                                      column_index=column_index,
+                                      column_labels=column_labels,
                                       column_scols=[scol_for(sdf, 'count')],
-                                      column_index_names=self._internal.column_index_names)
+                                      column_label_names=self._internal.column_label_names)
 
         return _col(DataFrame(internal))
 

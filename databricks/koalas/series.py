@@ -354,7 +354,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
-        return self._internal.spark_type_for(self._internal.column_index[0])
+        return self._internal.spark_type_for(self._internal.column_labels[0])
 
     plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
 
@@ -897,7 +897,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     @property
     def name(self) -> Union[str, Tuple[str, ...]]:
         """Return name of the Series."""
-        name = self._internal.column_index[0]
+        name = self._internal.column_labels[0]
         if name is not None and len(name) == 1:
             return name[0]
         else:
@@ -949,7 +949,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             scol = self._scol.alias(name_like_string(index))
         internal = self._internal.copy(
             scol=scol,
-            column_index=[index if index is None or isinstance(index, tuple) else (index,)])
+            column_labels=[index if index is None or isinstance(index, tuple) else (index,)])
         if kwargs.get('inplace', False):
             self._internal = internal
             return self
@@ -1122,18 +1122,18 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             renamed = self
         sdf = renamed._internal.spark_internal_df
-        column_index = None  # type: Optional[List[Tuple[str, ...]]]
-        if renamed._internal.column_index[0] is None:
-            column_index = [('0',)]
-            column_index_names = None
+        column_labels = None  # type: Optional[List[Tuple[str, ...]]]
+        if renamed._internal.column_labels[0] is None:
+            column_labels = [('0',)]
+            column_label_names = None
         else:
-            column_index = renamed._internal.column_index
-            column_index_names = renamed._internal.column_index_names
+            column_labels = renamed._internal.column_labels
+            column_label_names = renamed._internal.column_label_names
         internal = _InternalFrame(sdf=sdf,
                                   index_map=renamed._internal.index_map,
-                                  column_index=column_index,
+                                  column_labels=column_labels,
                                   column_scols=[scol_for(sdf, sdf.columns[-1])],
-                                  column_index_names=column_index_names)
+                                  column_label_names=column_label_names)
         return DataFrame(internal)
 
     to_dataframe = to_frame
@@ -1780,9 +1780,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = self._internal.sdf.select(self._scol).distinct()
         internal = _InternalFrame(sdf=sdf,
                                   index_map=None,
-                                  column_index=[self._internal.column_index[0]],
+                                  column_labels=[self._internal.column_labels[0]],
                                   column_scols=[scol_for(sdf, self._internal.data_columns[0])],
-                                  column_index_names=self._internal.column_index_names)
+                                  column_label_names=self._internal.column_label_names)
         return _col(DataFrame(internal))
 
     def sort_values(self, ascending: bool = True, inplace: bool = False,
@@ -2748,9 +2748,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             internal = _InternalFrame(
                 sdf=sdf,
                 index_map=[(internal_index_column, None)],
-                column_index=None,
+                column_labels=None,
                 column_scols=[scol_for(sdf, value_column)],
-                column_index_names=None)
+                column_label_names=None)
 
             return DataFrame(internal)[value_column].rename(self.name)
         else:
@@ -3306,7 +3306,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                            .format(len(item), len(self._internal.index_map)))
 
         cols = (self._internal.index_scols[len(item):] +
-                [self._internal.scol_for(self._internal.column_index[0])])
+                [self._internal.scol_for(self._internal.column_labels[0])])
         rows = [self._internal.scols[level] == index
                 for level, index in enumerate(item)]
         sdf = self._internal.sdf \
@@ -3814,17 +3814,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         combined = combine_frames(self.to_frame(), other.to_frame(), how='leftouter')
         combined_sdf = combined._sdf
         this_col = "__this_%s" % str(
-            self._internal.column_name_for(self._internal.column_index[0]))
+            self._internal.column_name_for(self._internal.column_labels[0]))
         that_col = "__that_%s" % str(
-            self._internal.column_name_for(other._internal.column_index[0]))
+            self._internal.column_name_for(other._internal.column_labels[0]))
         cond = F.when(scol_for(combined_sdf, that_col).isNotNull(),
                       scol_for(combined_sdf, that_col)) \
                 .otherwise(combined_sdf[this_col]) \
-                .alias(str(self._internal.column_name_for(self._internal.column_index[0])))
+                .alias(str(self._internal.column_name_for(self._internal.column_labels[0])))
         internal = _InternalFrame(
             sdf=combined_sdf.select(index_scol_names + [cond]),
             index_map=self._internal.index_map,
-            column_index=self._internal.column_index)
+            column_labels=self._internal.column_labels)
         self_updated = _col(ks.DataFrame(internal))
         self._internal = self_updated._internal
         self._kdf = self_updated._kdf
@@ -3910,11 +3910,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             # |                4|  4|            true|              500|
             # +-----------------+---+----------------+-----------------+
             condition = F.when(
-                kdf['__tmp_cond_col__']._scol, kdf[self._internal.column_index[0]]._scol
+                kdf['__tmp_cond_col__']._scol, kdf[self._internal.column_labels[0]]._scol
             ).otherwise(kdf['__tmp_other_col__']._scol).alias(self._internal.data_columns[0])
 
             internal = kdf._internal.with_new_columns([condition],
-                                                      column_index=self._internal.column_index)
+                                                      column_labels=self._internal.column_labels)
             return _col(DataFrame(internal))
         else:
             if isinstance(other, Series):
@@ -4057,7 +4057,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         cols = (self._internal.index_scols[:level] +
                 self._internal.index_scols[level+len(key):] +
-                [self._internal.scol_for(self._internal.column_index[0])])
+                [self._internal.scol_for(self._internal.column_labels[0])])
         rows = [self._internal.scols[lvl] == index
                 for lvl, index in enumerate(key, level)]
         sdf = self._internal.sdf \

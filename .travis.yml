@@ -21,7 +21,7 @@ matrix:
       env:
         - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
         - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
-        - SPARK_VERSION=2.4.4
+        - SPARK_VERSION=2.4.5
         - PANDAS_VERSION=0.24.2
         - PYARROW_VERSION=0.13.0
         - KOALAS_USAGE_LOGGER='databricks.koalas.usage_logging.usage_logger'
@@ -35,7 +35,7 @@ matrix:
       env:
         - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
         - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
-        - SPARK_VERSION=2.4.4
+        - SPARK_VERSION=2.4.5
         - PANDAS_VERSION=0.25.3
         - PYARROW_VERSION=0.14.1
 
