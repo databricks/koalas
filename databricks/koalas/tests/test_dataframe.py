@@ -2397,3 +2397,42 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, 'type of cond must be a DataFrame or Series'):
             kdf.mask(1)
+
+    def test_query(self):
+        kdf = ks.DataFrame(
+            {'A + B': range(1, 6),
+             'B ?!': range(10, 0, -2),
+             '"C", "D"': range(10, 5, -1)})
+        pdf = kdf.to_pandas()
+
+        exprs = ('`A + B` > `B ?!`',
+                 '`A + B` < `"C", "D"`',
+                 '`"C", "D"` == `B ?!`')
+        for expr in exprs:
+            self.assert_eq(kdf.query(expr), pdf.query(expr))
+
+        # test `inplace=True`
+        for expr in exprs:
+            dummy_kdf = kdf.copy()
+            dummy_pdf = pdf.copy()
+
+            pdf.query(expr, inplace=True)
+            kdf.query(expr, inplace=True)
+
+            self.assert_eq(dummy_kdf, dummy_pdf)
+
+        invalid_exprs = (1, 1.0, (exprs[0],), [exprs[0]])
+        for expr in invalid_exprs:
+            with self.assertRaisesRegex(
+                    ValueError,
+                    'expr must be a string to be evaluated, {} given'
+                    .format(type(expr))):
+                kdf.query(expr)
+
+        invalid_inplaces = (1, 0, 'True', 'False')
+        for inplace in invalid_inplaces:
+            with self.assertRaisesRegex(
+                    ValueError,
+                    'For argument "inplace" expected type bool, received type {}.'
+                    .format(type(inplace).__name__)):
+                kdf.query('a < b', inplace=inplace)
