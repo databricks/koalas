@@ -23,7 +23,7 @@ import pyspark
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.stat import Correlation
 
-from databricks.koalas.utils import column_index_level
+from databricks.koalas.utils import column_labels_level
 
 if TYPE_CHECKING:
     import databricks.koalas as ks
@@ -50,14 +50,14 @@ def corr(kdf: 'ks.DataFrame', method: str = 'pearson') -> pd.DataFrame:
     B -1.0  1.0
     """
     assert method in ('pearson', 'spearman')
-    ndf, column_index = to_numeric_df(kdf)
+    ndf, column_labels = to_numeric_df(kdf)
     corr = Correlation.corr(ndf, CORRELATION_OUTPUT_COLUMN, method)
     pcorr = corr.toPandas()
     arr = pcorr.iloc[0, 0].toArray()
-    if column_index_level(column_index) > 1:
-        idx = pd.MultiIndex.from_tuples(column_index)
+    if column_labels_level(column_labels) > 1:
+        idx = pd.MultiIndex.from_tuples(column_labels)
     else:
-        idx = pd.Index([idx[0] for idx in column_index])
+        idx = pd.Index([label[0] for label in column_labels])
     return pd.DataFrame(arr, columns=idx, index=idx)
 
 
@@ -77,9 +77,9 @@ def to_numeric_df(kdf: 'ks.DataFrame') -> Tuple[pyspark.sql.DataFrame, List[Tupl
     # TODO, it should be more robust.
     accepted_types = {np.dtype(dt) for dt in [np.int8, np.int16, np.int32, np.int64,
                                               np.float32, np.float64, np.bool_]}
-    numeric_column_index = [idx for idx in kdf._internal.column_index
-                            if kdf[idx].dtype in accepted_types]
-    numeric_df = kdf._sdf.select(*[kdf._internal.scol_for(idx) for idx in numeric_column_index])
+    numeric_column_labels = [label for label in kdf._internal.column_labels
+                             if kdf[label].dtype in accepted_types]
+    numeric_df = kdf._sdf.select(*[kdf._internal.scol_for(idx) for idx in numeric_column_labels])
     va = VectorAssembler(inputCols=numeric_df.columns, outputCol=CORRELATION_OUTPUT_COLUMN)
     v = va.transform(numeric_df).select(CORRELATION_OUTPUT_COLUMN)
-    return v, numeric_column_index
+    return v, numeric_column_labels

@@ -27,7 +27,7 @@ from pyspark.sql.utils import AnalysisException
 
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
-from databricks.koalas.utils import column_index_level, lazy_property, name_like_string
+from databricks.koalas.utils import column_labels_level, lazy_property, name_like_string
 
 
 class _IndexerLike(object):
@@ -102,7 +102,7 @@ class AtIndexer(_IndexerLike):
             if isinstance(key, tuple) and len(key) != 1:
                 raise TypeError("Use Series.at like .at[row_index]")
             row_sel = key
-            col_sel = self._internal.column_index[0]
+            col_sel = self._internal.column_labels[0]
 
         if len(self._internal.index_map) == 1:
             if is_list_like(row_sel):
@@ -205,7 +205,7 @@ class _LocIndexerLike(_IndexerLike):
             if cond is None and limit is None:
                 return self._kdf_or_kser
 
-            column_index = self._internal.column_index
+            column_labels = self._internal.column_labels
             column_scols = self._internal.column_scols
             returns_series = True
         else:
@@ -225,11 +225,11 @@ class _LocIndexerLike(_IndexerLike):
                                        cols_sel][list(self._kdf_or_kser.columns)]
 
             cond, limit, remaining_index = self._select_rows(rows_sel)
-            column_index, column_scols, returns_series = self._select_cols(cols_sel)
+            column_labels, column_scols, returns_series = self._select_cols(cols_sel)
 
             if cond is None and limit is None and returns_series:
                 return Series(self._internal.copy(scol=column_scols[0],
-                                                  column_index=[column_index[0]]),
+                                                  column_labels=[column_labels[0]]),
                               anchor=self._kdf_or_kser)
 
         if remaining_index is not None:
@@ -239,12 +239,12 @@ class _LocIndexerLike(_IndexerLike):
             index_scols = self._internal.index_scols
             index_map = self._internal.index_map
 
-        if self._internal.column_index_names is None:
-            column_index_names = None
+        if self._internal.column_label_names is None:
+            column_label_names = None
         else:
             # Manage column index names
-            level = column_index_level(column_index)
-            column_index_names = self._internal.column_index_names[-level:]
+            level = column_labels_level(column_labels)
+            column_label_names = self._internal.column_label_names[-level:]
 
         try:
             sdf = self._internal._sdf
@@ -263,8 +263,8 @@ class _LocIndexerLike(_IndexerLike):
 
         internal = _InternalFrame(sdf=sdf,
                                   index_map=index_map,
-                                  column_index=column_index,
-                                  column_index_names=column_index_names)
+                                  column_labels=column_labels,
+                                  column_label_names=column_label_names)
         kdf = DataFrame(internal)
 
         if returns_series:
@@ -572,37 +572,37 @@ class LocIndexer(_LocIndexerLike):
             return (reduce(lambda x, y: x & y, rows),
                     None, len(self._internal.index_map) - len(rows_sel))
 
-    def _get_from_multiindex_column(self, key, indexes=None):
+    def _get_from_multiindex_column(self, key, labels=None):
         """ Select columns from multi-index columns.
 
         :param key: the multi-index column keys represented by tuple
         :return: DataFrame or Series
         """
         assert isinstance(key, tuple)
-        if indexes is None:
-            indexes = [(idx, idx) for idx in self._internal.column_index]
+        if labels is None:
+            labels = [(label, label) for label in self._internal.column_labels]
         for k in key:
-            indexes = [(index, idx[1:]) for index, idx in indexes if idx[0] == k]
-            if len(indexes) == 0:
+            labels = [(label, lbl[1:]) for label, lbl in labels if lbl[0] == k]
+            if len(labels) == 0:
                 raise KeyError(k)
 
-        if all(len(idx) > 0 and idx[0] == '' for _, idx in indexes):
+        if all(len(lbl) > 0 and lbl[0] == '' for _, lbl in labels):
             # If the head is '', drill down recursively.
-            indexes = [(col, tuple([str(key), *idx[1:]])) for i, (col, idx) in enumerate(indexes)]
-            return self._get_from_multiindex_column((str(key),), indexes)
+            labels = [(label, tuple([str(key), *lbl[1:]])) for i, (label, lbl) in enumerate(labels)]
+            return self._get_from_multiindex_column((str(key),), labels)
         else:
-            returns_series = all(len(idx) == 0 for _, idx in indexes)
+            returns_series = all(len(lbl) == 0 for _, lbl in labels)
             if returns_series:
-                idxes = set(idx for idx, _ in indexes)
-                assert len(idxes) == 1
-                index = list(idxes)[0]
-                column_index = [index]
-                column_scols = [self._internal.scol_for(index)]
+                labels = set(label for label, _ in labels)
+                assert len(labels) == 1
+                label = list(labels)[0]
+                column_labels = [label]
+                column_scols = [self._internal.scol_for(label)]
             else:
-                column_index = [idx for _, idx in indexes]
-                column_scols = [self._internal.scol_for(idx) for idx, _ in indexes]
+                column_labels = [lbl for _, lbl in labels]
+                column_scols = [self._internal.scol_for(label) for label, _ in labels]
 
-        return column_index, column_scols, returns_series
+        return column_labels, column_scols, returns_series
 
     def _select_cols(self, cols_sel):
         from databricks.koalas.series import Series
@@ -620,40 +620,40 @@ class LocIndexer(_LocIndexerLike):
             cols_sel = [cols_sel]
 
         if cols_sel is None:
-            column_index = self._internal.column_index
+            column_labels = self._internal.column_labels
             column_scols = self._internal.column_scols
         elif isinstance(cols_sel, (str, tuple)):
             if isinstance(cols_sel, str):
                 cols_sel = (cols_sel,)
             return self._get_from_multiindex_column(cols_sel)
         elif all(isinstance(key, Series) for key in cols_sel):
-            column_index = [key._internal.column_index[0] for key in cols_sel]
+            column_labels = [key._internal.column_labels[0] for key in cols_sel]
             column_scols = [key._scol for key in cols_sel]
         elif all(isinstance(key, spark.Column) for key in cols_sel):
-            column_index = [(self._internal.sdf.select(col).columns[0],) for col in cols_sel]
+            column_labels = [(self._internal.sdf.select(col).columns[0],) for col in cols_sel]
             column_scols = cols_sel
         elif (any(isinstance(key, str) for key in cols_sel)
               and any(isinstance(key, tuple) for key in cols_sel)):
             raise TypeError('Expected tuple, got str')
         else:
             if all(isinstance(key, tuple) for key in cols_sel):
-                level = self._internal.column_index_level
+                level = self._internal.column_labels_level
                 if any(len(key) != level for key in cols_sel):
                     raise ValueError('All the key level should be the same as column index level.')
 
-            column_index = []
+            column_labels = []
             column_scols = []
             for key in cols_sel:
                 found = False
-                for idx in self._internal.column_index:
-                    if idx == key or idx[0] == key:
-                        column_index.append(idx)
-                        column_scols.append(self._internal.scol_for(idx))
+                for label in self._internal.column_labels:
+                    if label == key or label[0] == key:
+                        column_labels.append(label)
+                        column_scols.append(self._internal.scol_for(label))
                         found = True
                 if not found:
                     raise KeyError("['{}'] not in index".format(name_like_string(key)))
 
-        return column_index, column_scols, returns_series
+        return column_labels, column_scols, returns_series
 
     def __setitem__(self, key, value):
         from databricks.koalas.frame import DataFrame
@@ -881,20 +881,20 @@ class iLocIndexer(_LocIndexerLike):
 
         # make cols_sel a 1-tuple of string if a single string
         if isinstance(cols_sel, Series) and cols_sel._equals(self._kdf_or_kser):
-            column_index = cols_sel._internal.column_index
+            column_labels = cols_sel._internal.column_labels
             column_scols = cols_sel._internal.column_scols
         elif isinstance(cols_sel, int):
-            if cols_sel > len(self._internal.column_index):
+            if cols_sel > len(self._internal.column_labels):
                 raise KeyError(cols_sel)
-            column_index = [self._internal.column_index[cols_sel]]
+            column_labels = [self._internal.column_labels[cols_sel]]
             column_scols = [self._internal.column_scols[cols_sel]]
         elif cols_sel is None or cols_sel == slice(None):
-            column_index = self._internal.column_index
+            column_labels = self._internal.column_labels
             column_scols = self._internal.column_scols
         elif isinstance(cols_sel, slice):
             if all(s is None or isinstance(s, int)
                    for s in (cols_sel.start, cols_sel.stop, cols_sel.step)):
-                column_index = self._internal.column_index[cols_sel]
+                column_labels = self._internal.column_labels[cols_sel]
                 column_scols = self._internal.column_scols[cols_sel]
             else:
                 not_none = cols_sel.start if cols_sel.start is not None \
@@ -905,7 +905,7 @@ class iLocIndexer(_LocIndexerLike):
             if all(isinstance(s, bool) for s in cols_sel):
                 cols_sel = [i for i, s in enumerate(cols_sel) if s]
             if all(isinstance(s, int) for s in cols_sel):
-                column_index = [self._internal.column_index[s] for s in cols_sel]
+                column_labels = [self._internal.column_labels[s] for s in cols_sel]
                 column_scols = [self._internal.column_scols[s] for s in cols_sel]
             else:
                 raise TypeError('cannot perform reduce with flexible type')
@@ -913,4 +913,4 @@ class iLocIndexer(_LocIndexerLike):
             raise ValueError("Location based indexing can only have [integer, integer slice, "
                              "listlike of integers, boolean array] types, got {}".format(cols_sel))
 
-        return column_index, column_scols, returns_series
+        return column_labels, column_scols, returns_series
