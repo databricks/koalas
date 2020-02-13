@@ -8338,8 +8338,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         .. note::
             * MultiIndex columns are not supported.
             * If you want to use MultiIndex columns, you can just workaround
-              by using `DataFrame.apply` although it is less performance.
-            * Internal columns that starting with __.. are able to access,
+              by using :meth:`DataFrame.apply` although it is less performant.
+            * Internal columns that starting with __. are able to access,
               however, they are not supposed to be accessed.
             * This delegates to Spark SQL so the syntax follows Spark SQL
 
