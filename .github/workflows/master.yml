@@ -60,7 +60,7 @@ jobs:
         export SPARK_HOME="$SPARK_CACHE_DIR/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
-    - uses: codecov/codecov-action@v1
+    - uses: codecov/codecov-action@v1.0.5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -134,7 +134,7 @@ jobs:
         export SPARK_HOME="$SPARK_CACHE_DIR/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
-    - uses: codecov/codecov-action@v1
+    - uses: codecov/codecov-action@v1.0.5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
 
