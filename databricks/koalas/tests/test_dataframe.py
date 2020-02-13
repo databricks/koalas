@@ -132,7 +132,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, 'Column_index_names should '
                                                 'be list-like or None for a MultiIndex'):
-            ks.DataFrame(kdf1._internal.copy(column_index_names='level'))
+            ks.DataFrame(kdf1._internal.copy(column_label_names='level'))
 
         self.assert_eq(kdf['X'], pdf['X'])
         self.assert_eq(kdf['X'].columns.names, pdf['X'].columns.names)
@@ -2267,14 +2267,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                            columns=['a', 'b', 'c'],
                            index=np.random.rand(600))
         kdf = ks.DataFrame(pdf)
-
-        def _test(kdf, expected):
-            self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(), expected)
-
-            with option_context("compute.shortcut_limit", 500):
-                self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(), expected)
-
-        _test(kdf, pdf.transform(lambda x: x + 1).sort_index())
+        self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(),
+                       pdf.transform(lambda x: x + 1).sort_index())
+        with option_context("compute.shortcut_limit", 500):
+            self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(),
+                           pdf.transform(lambda x: x + 1).sort_index())
 
         with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
             kdf.transform(1)
@@ -2284,7 +2281,63 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = columns
         kdf.columns = columns
 
-        _test(kdf, pdf.transform(lambda x: x + 1).sort_index())
+        self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(),
+                       pdf.transform(lambda x: x + 1).sort_index())
+        with option_context("compute.shortcut_limit", 500):
+            self.assert_eq(kdf.transform(lambda x: x + 1).sort_index(),
+                           pdf.transform(lambda x: x + 1).sort_index())
+
+    def test_apply(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 100,
+                            'b': [1., 1., 2., 3., 5., 8.] * 100,
+                            'c': [1, 4, 9, 16, 25, 36] * 100},
+                           columns=['a', 'b', 'c'],
+                           index=np.random.rand(600))
+        kdf = ks.DataFrame(pdf)
+
+        self.assert_eq(kdf.apply(lambda x: x + 1).sort_index(),
+                       pdf.apply(lambda x: x + 1).sort_index())
+        with option_context("compute.shortcut_limit", 500):
+            self.assert_eq(kdf.apply(lambda x: x + 1).sort_index(),
+                           pdf.apply(lambda x: x + 1).sort_index())
+
+        # returning a Series
+        self.assert_eq(kdf.apply(lambda x: len(x), axis=1).sort_index(),
+                       pdf.apply(lambda x: len(x), axis=1).sort_index())
+        with option_context("compute.shortcut_limit", 500):
+            self.assert_eq(kdf.apply(lambda x: len(x), axis=1).sort_index(),
+                           pdf.apply(lambda x: len(x), axis=1).sort_index())
+
+        with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
+            kdf.apply(1)
+
+        with self.assertRaisesRegex(TypeError, "The given function.*1 or 'column'; however"):
+            def f1(_) -> ks.DataFrame[int]:
+                pass
+            kdf.apply(f1, axis=0)
+
+        with self.assertRaisesRegex(TypeError, "The given function.*0 or 'index'; however"):
+            def f2(_) -> ks.Series[int]:
+                pass
+            kdf.apply(f2, axis=1)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.apply(lambda x: x + 1).sort_index(),
+                       pdf.apply(lambda x: x + 1).sort_index())
+        with option_context("compute.shortcut_limit", 500):
+            self.assert_eq(kdf.apply(lambda x: x + 1).sort_index(),
+                           pdf.apply(lambda x: x + 1).sort_index())
+
+        # returning a Series
+        self.assert_eq(kdf.apply(lambda x: len(x), axis=1).sort_index(),
+                       pdf.apply(lambda x: len(x), axis=1).sort_index())
+        with option_context("compute.shortcut_limit", 500):
+            self.assert_eq(kdf.apply(lambda x: len(x), axis=1).sort_index(),
+                           pdf.apply(lambda x: len(x), axis=1).sort_index())
 
     def test_empty_timestamp(self):
         pdf = pd.DataFrame({'t': [datetime(2019, 1, 1, 0, 0, 0),

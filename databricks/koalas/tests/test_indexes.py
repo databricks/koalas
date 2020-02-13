@@ -587,8 +587,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pidx, kidx)
 
     def test_multiindex_tuple_column_name(self):
-        column_index = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')])
-        pdf = pd.DataFrame([[1, 2, 3], [4, 5, 6], [7, 8, 9]], columns=column_index)
+        column_labels = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')])
+        pdf = pd.DataFrame([[1, 2, 3], [4, 5, 6], [7, 8, 9]], columns=column_labels)
         pdf.set_index(('a', 'x'), append=True, inplace=True)
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf, kdf)

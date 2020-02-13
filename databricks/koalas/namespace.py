@@ -1276,7 +1276,7 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
     if isinstance(data, Series):
         if prefix is not None:
             prefix = [str(prefix)]
-        column_index = [(data.name,)]
+        column_labels = [(data.name,)]
         kdf = data.to_dataframe()
         remaining_columns = []
     else:
@@ -1286,58 +1286,58 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
         kdf = data.copy()
 
         if columns is None:
-            column_index = [idx for idx in kdf._internal.column_index
-                            if isinstance(kdf._internal.spark_type_for(idx),
-                                          _get_dummies_default_accept_types)]
+            column_labels = [label for label in kdf._internal.column_labels
+                             if isinstance(kdf._internal.spark_type_for(label),
+                                           _get_dummies_default_accept_types)]
         else:
             if isinstance(columns, (str, tuple)):
                 if isinstance(columns, str):
                     key = (columns,)
                 else:
                     key = columns
-                column_index = [idx for idx in kdf._internal.column_index
-                                if idx[:len(key)] == key]
-                if len(column_index) == 0:
-                    raise KeyError(column_index)
+                column_labels = [label for label in kdf._internal.column_labels
+                                 if label[:len(key)] == key]
+                if len(column_labels) == 0:
+                    raise KeyError(column_labels)
                 if prefix is None:
-                    prefix = [str(idx[len(key):]) if len(idx) > len(key) + 1
-                              else idx[len(key)] if len(idx) == len(key) + 1 else ''
-                              for idx in column_index]
+                    prefix = [str(label[len(key):]) if len(label) > len(key) + 1
+                              else label[len(key)] if len(label) == len(key) + 1 else ''
+                              for label in column_labels]
             elif (any(isinstance(col, str) for col in columns)
                     and any(isinstance(col, tuple) for col in columns)):
                 raise ValueError('Expected tuple, got str')
             else:
-                column_index = [idx for key in columns
-                                for idx in kdf._internal.column_index
-                                if idx == key or idx[0] == key]
-        if len(column_index) == 0:
+                column_labels = [label for key in columns
+                                 for label in kdf._internal.column_labels
+                                 if label == key or label[0] == key]
+        if len(column_labels) == 0:
             if columns is None:
                 return kdf
             raise KeyError("{} not in index".format(columns))
 
         if prefix is None:
-            prefix = [str(idx) if len(idx) > 1 else idx[0] for idx in column_index]
+            prefix = [str(label) if len(label) > 1 else label[0] for label in column_labels]
 
-        column_index_set = set(column_index)
-        remaining_columns = [kdf[idx].rename(name_like_string(idx))
-                             for idx in kdf._internal.column_index
-                             if idx not in column_index_set]
+        column_labels_set = set(column_labels)
+        remaining_columns = [kdf[label].rename(name_like_string(label))
+                             for label in kdf._internal.column_labels
+                             if label not in column_labels_set]
 
-    if any(not isinstance(kdf._internal.spark_type_for(idx), _get_dummies_acceptable_types)
-           for idx in column_index):
+    if any(not isinstance(kdf._internal.spark_type_for(label), _get_dummies_acceptable_types)
+           for label in column_labels):
         raise NotImplementedError(
             "get_dummies currently only accept {} values"
             .format(', '.join([t.typeName() for t in _get_dummies_acceptable_types])))
 
-    if prefix is not None and len(column_index) != len(prefix):
+    if prefix is not None and len(column_labels) != len(prefix):
         raise ValueError(
             "Length of 'prefix' ({}) did not match the length of the columns being encoded ({})."
-            .format(len(prefix), len(column_index)))
+            .format(len(prefix), len(column_labels)))
 
     all_values = _reduce_spark_multi(kdf._sdf,
-                                     [F.collect_set(kdf._internal.scol_for(idx))
-                                      for idx in column_index])
-    for i, idx in enumerate(column_index):
+                                     [F.collect_set(kdf._internal.scol_for(label))
+                                      for label in column_labels])
+    for i, label in enumerate(column_labels):
         values = sorted(all_values[i])
         if drop_first:
             values = values[1:]
@@ -1349,11 +1349,11 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
                 return '{}{}{}'.format(prefix[i], prefix_sep, value)
 
         for value in values:
-            remaining_columns.append((kdf[idx].notnull() & (kdf[idx] == value))
+            remaining_columns.append((kdf[label].notnull() & (kdf[label] == value))
                                      .astype(dtype)
                                      .rename(column_name(value)))
         if dummy_na:
-            remaining_columns.append(kdf[idx].isnull().astype(dtype).rename(column_name('nan')))
+            remaining_columns.append(kdf[label].isnull().astype(dtype).rename(column_name('nan')))
 
     return kdf[remaining_columns]
 
@@ -1510,8 +1510,8 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
         new_objs.append(obj)
     objs = new_objs
 
-    column_index_levels = set(obj._internal.column_index_level for obj in objs)
-    if len(column_index_levels) != 1:
+    column_labels_levels = set(obj._internal.column_labels_level for obj in objs)
+    if len(column_labels_levels) != 1:
         raise ValueError('MultiIndex columns should have the same levels')
 
     # DataFrame, DataFrame, ...
@@ -1528,44 +1528,44 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                         index_of_first_kdf=index_of_first_kdf.names,
                         index_of_kdf=index_of_kdf.names))
 
-    column_indexes_of_kdfs = [kdf._internal.column_index for kdf in objs]
+    column_labelses_of_kdfs = [kdf._internal.column_labels for kdf in objs]
     if ignore_index:
         index_names_of_kdfs = [[] for _ in objs]
     else:
         index_names_of_kdfs = [kdf._internal.index_names for kdf in objs]
     if (all(name == index_names_of_kdfs[0] for name in index_names_of_kdfs)
-            and all(idx == column_indexes_of_kdfs[0] for idx in column_indexes_of_kdfs)):
+            and all(idx == column_labelses_of_kdfs[0] for idx in column_labelses_of_kdfs)):
         # If all columns are in the same order and values, use it.
         kdfs = objs
-        merged_columns = column_indexes_of_kdfs[0]
+        merged_columns = column_labelses_of_kdfs[0]
     else:
         if join == "inner":
-            interested_columns = set.intersection(*map(set, column_indexes_of_kdfs))
+            interested_columns = set.intersection(*map(set, column_labelses_of_kdfs))
             # Keep the column order with its firsts DataFrame.
             merged_columns = sorted(list(map(
-                lambda c: column_indexes_of_kdfs[0][column_indexes_of_kdfs[0].index(c)],
+                lambda c: column_labelses_of_kdfs[0][column_labelses_of_kdfs[0].index(c)],
                 interested_columns)))
 
             kdfs = [kdf[merged_columns] for kdf in objs]
         elif join == "outer":
             # If there are columns unmatched, just sort the column names.
             merged_columns = \
-                sorted(list(set(itertools.chain.from_iterable(column_indexes_of_kdfs))))
+                sorted(list(set(itertools.chain.from_iterable(column_labelses_of_kdfs))))
 
             kdfs = []
             for kdf in objs:
-                columns_to_add = list(set(merged_columns) - set(kdf._internal.column_index))
+                columns_to_add = list(set(merged_columns) - set(kdf._internal.column_labels))
 
                 # TODO: NaN and None difference for missing values. pandas seems filling NaN.
                 sdf = kdf._sdf
-                for idx in columns_to_add:
-                    sdf = sdf.withColumn(name_like_string(idx), F.lit(None))
+                for label in columns_to_add:
+                    sdf = sdf.withColumn(name_like_string(label), F.lit(None))
 
                 data_columns = (kdf._internal.data_columns
-                                + [name_like_string(idx) for idx in columns_to_add])
+                                + [name_like_string(label) for label in columns_to_add])
                 kdf = DataFrame(kdf._internal.copy(
                     sdf=sdf,
-                    column_index=(kdf._internal.column_index + columns_to_add),
+                    column_labels=(kdf._internal.column_labels + columns_to_add),
                     column_scols=[scol_for(sdf, col) for col in data_columns]))
 
                 kdfs.append(kdf[merged_columns])

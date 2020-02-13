@@ -89,9 +89,9 @@ class PythonModelWrapper(object):
             # However, this is only possible with spark >= 3.0
             # s = F.struct(*data.columns)
             # return_col = self._model_udf(s)
-            column_index = [(col,) for col in data._sdf.select(return_col).columns]
+            column_labels = [(col,) for col in data._sdf.select(return_col).columns]
             return Series(data._internal.copy(scol=return_col,
-                                              column_index=column_index),
+                                              column_labels=column_labels),
                           anchor=data)
 
 

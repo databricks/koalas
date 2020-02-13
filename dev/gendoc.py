@@ -80,7 +80,7 @@ def list_releases_to_document(cur_version):
     cur_version = "v" + cur_version
     releases = [(
         release['name'], release['tag_name'], release['body']
-    ) for release in retry(get_json, url=tag_url)]
+    ) for release in retry(get_json, url=tag_url) if not release['draft']]
     filtered = filter(
         lambda release: LooseVersion(release[1]) <= LooseVersion(cur_version), releases)
     return sorted(filtered, reverse=True, key=lambda release: LooseVersion(release[1]))

@@ -93,9 +93,9 @@ class Index(IndexOpsMixin):
         if scol is None:
             scol = kdf._internal.index_scols[0]
         internal = kdf._internal.copy(scol=scol,
-                                      column_index=kdf._internal.index_names,
+                                      column_labels=kdf._internal.index_names,
                                       column_scols=kdf._internal.index_scols,
-                                      column_index_names=None)
+                                      column_label_names=None)
         IndexOpsMixin.__init__(self, internal, kdf)
 
     def _with_new_scol(self, scol: spark.Column) -> 'Index':
@@ -336,7 +336,7 @@ class Index(IndexOpsMixin):
         internal = self._kdf._internal.copy(
             sdf=sdf,
             index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
-            column_index=[], column_scols=[], column_index_names=None)
+            column_labels=[], column_scols=[], column_label_names=None)
         return DataFrame(internal)._to_internal_pandas().index
 
     toPandas = to_pandas
@@ -613,10 +613,10 @@ class Index(IndexOpsMixin):
         scol = self._scol
         if name is not None:
             scol = scol.alias(name_like_string(name))
-        column_index = [None] if len(kdf._internal.index_map) > 1 else kdf._internal.index_names
+        column_labels = [None] if len(kdf._internal.index_map) > 1 else kdf._internal.index_names
         return Series(kdf._internal.copy(scol=scol,
-                                         column_index=column_index,
-                                         column_index_names=None),
+                                         column_labels=column_labels,
+                                         column_label_names=None),
                       anchor=kdf)
 
     def to_frame(self, index=True, name=None) -> DataFrame:
@@ -686,7 +686,7 @@ class Index(IndexOpsMixin):
 
         internal = _InternalFrame(sdf=sdf,
                                   index_map=index_map,
-                                  column_index=[name],
+                                  column_labels=[name],
                                   column_scols=[scol_for(sdf, name_like_string(name))])
         return DataFrame(internal)
 
@@ -1438,8 +1438,8 @@ class MultiIndex(Index):
         scol = F.struct(kdf._internal.index_scols)
         data_columns = kdf._sdf.select(scol).columns
         internal = kdf._internal.copy(scol=scol,
-                                      column_index=[(col, None) for col in data_columns],
-                                      column_index_names=None)
+                                      column_labels=[(col, None) for col in data_columns],
+                                      column_label_names=None)
         IndexOpsMixin.__init__(self, internal, kdf)
 
     def _with_new_scol(self, scol: spark.Column):
@@ -1777,21 +1777,21 @@ class MultiIndex(Index):
         else:
             raise TypeError("'name' must be a list / sequence of column names.")
 
-        sdf = self._internal.sdf.select([scol.alias(name_like_string(idx))
-                                         for scol, idx in zip(self._internal.index_scols, name)]
+        sdf = self._internal.sdf.select([scol.alias(name_like_string(label))
+                                         for scol, label in zip(self._internal.index_scols, name)]
                                         + [NATURAL_ORDER_COLUMN_NAME])
 
         if index:
-            index_map = [(name_like_string(idx), n)
-                         for idx, n in zip(name, self._internal.index_names)]
+            index_map = [(name_like_string(label), n)
+                         for label, n in zip(name, self._internal.index_names)]
         else:
             index_map = None  # type: ignore
 
         internal = _InternalFrame(sdf=sdf,
                                   index_map=index_map,
-                                  column_index=name,
-                                  column_scols=[scol_for(sdf, name_like_string(idx))
-                                                for idx in name])
+                                  column_labels=name,
+                                  column_scols=[scol_for(sdf, name_like_string(label))
+                                                for label in name])
         return DataFrame(internal)
 
     def to_pandas(self) -> pd.MultiIndex:

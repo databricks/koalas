@@ -564,23 +564,23 @@ class _Frame(object):
             kdf = self.to_frame()
 
         if columns is None:
-            column_index = kdf._internal.column_index
+            column_labels = kdf._internal.column_labels
         elif isinstance(columns, str):
-            column_index = [(columns,)]
+            column_labels = [(columns,)]
         elif isinstance(columns, tuple):
-            column_index = [columns]
+            column_labels = [columns]
         else:
-            column_index = [idx if isinstance(idx, tuple) else (idx,) for idx in columns]
+            column_labels = [label if isinstance(label, tuple) else (label,) for label in columns]
 
-        if header is True and kdf._internal.column_index_level > 1:
+        if header is True and kdf._internal.column_labels_level > 1:
             raise ValueError('to_csv only support one-level index column now')
         elif isinstance(header, list):
             sdf = kdf._sdf.select(
-                [self._internal.scol_for(idx).alias(new_name)
-                 for (idx, new_name) in zip(column_index, header)])
+                [self._internal.scol_for(label).alias(new_name)
+                 for (label, new_name) in zip(column_labels, header)])
             header = True
         else:
-            sdf = kdf._sdf.select([kdf._internal.scol_for(idx) for idx in column_index])
+            sdf = kdf._sdf.select([kdf._internal.scol_for(label) for label in column_labels])
 
         if num_files is not None:
             sdf = sdf.repartition(num_files)

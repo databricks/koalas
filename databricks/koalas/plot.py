@@ -418,14 +418,14 @@ class KoalasHistPlot(HistPlot):
 
         sdf = self.data._sdf
 
-        for i, idx in enumerate(self.data._internal.column_index):
+        for i, label in enumerate(self.data._internal.column_labels):
             # 'y' is a Spark DataFrame that selects one column.
-            y = sdf.select(self.data._internal.scol_for(idx))
+            y = sdf.select(self.data._internal.scol_for(label))
             ax = self._get_ax(i)
 
             kwds = self.kwds.copy()
 
-            label = pprint_thing(idx if len(idx) > 1 else idx[0])
+            label = pprint_thing(label if len(label) > 1 else label[0])
             kwds['label'] = label
 
             style, kwds = self._apply_style_colors(colors, kwds, i, label)
@@ -583,14 +583,14 @@ class KoalasKdePlot(KdePlot):
 
         sdf = self.data._sdf
 
-        for i, idx in enumerate(self.data._internal.column_index):
+        for i, label in enumerate(self.data._internal.column_labels):
             # 'y' is a Spark DataFrame that selects one column.
-            y = sdf.select(self.data._internal.scol_for(idx))
+            y = sdf.select(self.data._internal.scol_for(label))
             ax = self._get_ax(i)
 
             kwds = self.kwds.copy()
 
-            label = pprint_thing(idx if len(idx) > 1 else idx[0])
+            label = pprint_thing(label if len(label) > 1 else label[0])
             kwds['label'] = label
 
             style, kwds = self._apply_style_colors(colors, kwds, i, label)
