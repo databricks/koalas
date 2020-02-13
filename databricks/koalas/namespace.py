@@ -26,10 +26,7 @@ import itertools
 
 import numpy as np
 import pandas as pd
-<<<<<<< Updated upstream
 from pandas.api.types import is_list_like
-=======
->>>>>>> Stashed changes
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
