@@ -2400,16 +2400,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_query(self):
         kdf = ks.DataFrame(
-            {'A + B': range(1, 6),
-             'B !': range(10, 0, -2),
-             '"C", "D"': range(10, 5, -1)})
+            {'A': range(1, 6),
+             'B': range(10, 0, -2),
+             'C': range(10, 5, -1)})
         pdf = kdf.to_pandas()
 
-        exprs = ('`A + B` > `B !`',
-                 '`A + B` < `"C", "D"`',
-                 '`"C", "D"` == `B ?!`')
+        exprs = ('A > B',
+                 'A < C',
+                 'C == B')
         for expr in exprs:
-            self.assert_eq(repr(kdf.query(expr)), repr(pdf.query(expr)))
+            self.assert_eq(kdf.query(expr), pdf.query(expr))
 
         # test `inplace=True`
         for expr in exprs:
