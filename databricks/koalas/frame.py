@@ -1801,6 +1801,137 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     T = property(transpose)
 
+    def map_in_pandas(self, func):
+        """
+        Map a function that takes pandas DataFrame and outputs pandas DataFrame. The pandas
+        DataFrame given to the function is of a batch used internally.
+
+        .. note:: the `func` is unable to access to the whole input frame. Koalas internally
+            splits the input series into multiple batches and calls `func` with each batch multiple
+            times. Therefore, operations such as global aggregations are impossible. See the example
+            below.
+
+            >>> # This case does not return the length of whole frame but of the batch internally
+            ... # used.
+            ... def length(pdf) -> ks.DataFrame[int]:
+            ...     return pd.DataFrame([len(pdf)])
+            ...
+            >>> df = ks.DataFrame({'A': range(1000)})
+            >>> df.map_in_pandas(length)  # doctest: +SKIP
+                c0
+            0   83
+            1   83
+            2   83
+            ...
+            10  83
+            11  83
+
+        .. note:: this API executes the function once to infer the type which is
+            potentially expensive, for instance, when the dataset is created after
+            aggregations or sorting.
+
+            To avoid this, specify return type in ``func``, for instance, as below:
+
+            >>> def plus_one(x) -> ks.DataFrame[float, float]:
+            ...    return x + 1
+
+            If the return type is specified, the output column names become
+            `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
+            DataFrame in ``func``. See examples below.
+
+
+        Parameters
+        ----------
+        func : function
+            Function to apply to each pandas frame.
+
+        Returns
+        -------
+        DataFrame
+
+        See Also
+        --------
+        DataFrame.apply: For row/columnwise operations.
+        DataFrame.applymap: For elementwise operations.
+        DataFrame.aggregate: Only perform aggregating type operations.
+        DataFrame.transform: Only perform transforming type operations.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(1, 2), (3, 4), (5, 6)], columns=['A', 'B'])
+        >>> df
+           A  B
+        0  1  2
+        1  3  4
+        2  5  6
+
+        >>> def take_func(pdf) -> ks.DataFrame[int, int]:
+        ...     return pdf.query('A == 1')
+        >>> df.map_in_pandas(take_func)
+           c0  c1
+        0   1   2
+
+        You can also omit the type hints so Koalas infers the return schema as below:
+
+        >>> df.map_in_pandas(lambda pdf: pdf.query('A == 1'))
+           A  B
+        0  1  2
+        """
+        # TODO: codes here partially duplicate `DataFrame.apply`. Can we deduplicate?
+
+        from databricks.koalas.groupby import GroupBy
+
+        if isinstance(func, np.ufunc):
+            f = func
+            func = lambda *args, **kwargs: f(*args, **kwargs)
+
+        assert callable(func), "the first argument should be a callable function."
+
+        spec = inspect.getfullargspec(func)
+        return_sig = spec.annotations.get("return", None)
+        should_infer_schema = return_sig is None
+
+        if should_infer_schema:
+            # Here we execute with the first 1000 to get the return type.
+            # If the records were less than 1000, it uses pandas API directly for a shortcut.
+            limit = get_option("compute.shortcut_limit")
+            pdf = self.head(limit + 1)._to_internal_pandas()
+            applied = func(pdf)
+            if not isinstance(applied, pd.DataFrame):
+                raise ValueError(
+                    "The given function should return a frame; however, "
+                    "the return type was %s." % type(applied))
+            kdf = ks.DataFrame(applied)
+            if len(pdf) <= limit:
+                return kdf
+
+            return_schema = kdf._internal._sdf.drop(*HIDDEN_COLUMNS).schema
+
+            sdf = GroupBy._spark_group_map_apply(
+                self, func, (F.spark_partition_id(),),
+                return_schema, retain_index=True)
+
+            # If schema is inferred, we can restore indexes too.
+            internal = kdf._internal.copy(sdf=sdf,
+                                          column_scols=[scol_for(sdf, col)
+                                                        for col in kdf._internal.data_columns])
+        else:
+            return_schema = _infer_return_type(func).tpe
+            is_return_dataframe = getattr(return_sig, "__origin__", None) == ks.DataFrame
+            if not is_return_dataframe:
+                raise TypeError(
+                    "The given function should specify a frame as its type "
+                    "hints; however, the return type was %s." % return_sig)
+
+            sdf = GroupBy._spark_group_map_apply(
+                self, func, (F.spark_partition_id(),),
+                return_schema, retain_index=False)
+
+            # Otherwise, it loses index.
+            internal = _InternalFrame(sdf=sdf, index_map=None)
+
+        return DataFrame(internal)
+
     def apply(self, func, axis=0):
         """
         Apply a function along an axis of the DataFrame.
