@@ -44,12 +44,12 @@ if [ "$#" = 0 ]; then
     if [[ "$SPARK_VERSION" == 2.3* ]] || [[ "$SPARK_VERSION" == 2.4.1* ]] || [[ "$SPARK_VERSION" == 2.4.2* ]]; then
         # Delta requires Spark 2.4.2+. We skip the related doctests.
         if [[ "$SPARK_VERSION" == 2.3* ]]; then
-            $PYTHON_EXECUTABLE -m pytest --cov=databricks -k " -melt -to_delta -read_delta" --verbose --showlocals --color=yes --doctest-modules databricks "${logopts[@]}"
+            $PYTHON_EXECUTABLE -m pytest --cov=databricks --cov-report xml:"$FWDIR/coverage.xml" -k " -melt -to_delta -read_delta" --verbose --showlocals --color=yes --doctest-modules databricks "${logopts[@]}"
         else
-            $PYTHON_EXECUTABLE -m pytest --cov=databricks -k "-to_delta -read_delta" --verbose --showlocals --color=yes --doctest-modules databricks "${logopts[@]}"
+            $PYTHON_EXECUTABLE -m pytest --cov=databricks --cov-report xml:"$FWDIR/coverage.xml" -k "-to_delta -read_delta" --verbose --showlocals --color=yes --doctest-modules databricks "${logopts[@]}"
         fi
     else
-        $PYTHON_EXECUTABLE -m pytest --cov=databricks --verbose --showlocals --color=yes --doctest-modules databricks "${logopts[@]}"
+        $PYTHON_EXECUTABLE -m pytest --cov=databricks --cov-report xml:"$FWDIR/coverage.xml" --verbose --showlocals --color=yes --doctest-modules databricks "${logopts[@]}"
     fi
 else
     $PYTHON_EXECUTABLE -m pytest "$@"
