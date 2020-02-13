@@ -228,9 +228,7 @@ class _LocIndexerLike(_IndexerLike):
             column_labels, column_scols, returns_series = self._select_cols(cols_sel)
 
             if cond is None and limit is None and returns_series:
-                return Series(self._internal.copy(scol=column_scols[0],
-                                                  column_labels=[column_labels[0]]),
-                              anchor=self._kdf_or_kser)
+                return self._kdf_or_kser._kser_for(column_labels[0])
 
         if remaining_index is not None:
             index_scols = self._internal.index_scols[-remaining_index:]
