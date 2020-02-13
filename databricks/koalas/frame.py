@@ -2429,18 +2429,36 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         tmp_other_col_name = '__tmp_other_col_{}__'.format
 
         kdf = self.copy()
+
+        tmp_cond_col_names = [tmp_cond_col_name(name_like_string(label))
+                              for label in self._internal.column_labels]
         if isinstance(cond, DataFrame):
-            for label in self._internal.column_labels:
-                kdf[tmp_cond_col_name(name_like_string(label))] = cond.get(label, False)
+            cond = cond[[(cond._internal.scol_for(label)
+                          if label in cond._internal.column_labels else F.lit(False)).alias(name)
+                         for label, name
+                         in zip(self._internal.column_labels, tmp_cond_col_names)]]
+            kdf[tmp_cond_col_names] = cond
         elif isinstance(cond, Series):
-            for label in self._internal.column_labels:
-                kdf[tmp_cond_col_name(name_like_string(label))] = cond
+            cond = cond.to_frame()
+            cond = cond[[cond._internal.column_scols[0].alias(name) for name in tmp_cond_col_names]]
+            kdf[tmp_cond_col_names] = cond
         else:
             raise ValueError("type of cond must be a DataFrame or Series")
 
+        tmp_other_col_names = [tmp_other_col_name(name_like_string(label))
+                               for label in self._internal.column_labels]
         if isinstance(other, DataFrame):
-            for label in self._internal.column_labels:
-                kdf[tmp_other_col_name(name_like_string(label))] = other.get(label, np.nan)
+            other = other[[(other._internal.scol_for(label)
+                            if label in other._internal.column_labels else F.lit(np.nan))
+                           .alias(name)
+                           for label, name
+                           in zip(self._internal.column_labels, tmp_other_col_names)]]
+            kdf[tmp_other_col_names] = other
+        elif isinstance(other, Series):
+            other = other.to_frame()
+            other = other[[other._internal.column_scols[0].alias(name)
+                           for name in tmp_other_col_names]]
+            kdf[tmp_other_col_names] = other
         else:
             for label in self._internal.column_labels:
                 kdf[tmp_other_col_name(name_like_string(label))] = other
