@@ -8390,6 +8390,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
            A   B  C C
         0  1  10   10
         """
+        if isinstance(self.columns, pd.MultiIndex):
+            raise ValueError("Doesn't support for MultiIndex columns")
         if not isinstance(expr, str):
             raise ValueError(
                 'expr must be a string to be evaluated, {} given'

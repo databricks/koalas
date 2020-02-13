@@ -2421,6 +2421,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
             self.assert_eq(dummy_kdf, dummy_pdf)
 
+        # invalid values for `expr`
         invalid_exprs = (1, 1.0, (exprs[0],), [exprs[0]])
         for expr in invalid_exprs:
             with self.assertRaisesRegex(
@@ -2429,6 +2430,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                     .format(type(expr))):
                 kdf.query(expr)
 
+        # invalid values for `inplace`
         invalid_inplaces = (1, 0, 'True', 'False')
         for inplace in invalid_inplaces:
             with self.assertRaisesRegex(
@@ -2436,3 +2438,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                     'For argument "inplace" expected type bool, received type {}.'
                     .format(type(inplace).__name__)):
                 kdf.query('a < b', inplace=inplace)
+
+        # doesn't support for MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([('A', 'Z'), ('B', 'X'), ('C', 'C')])
+        kdf.columns = columns
+        with self.assertRaisesRegex(ValueError, "Doesn't support for MultiIndex columns"):
+            kdf.query("('A', 'Z') > ('B', 'X')")
