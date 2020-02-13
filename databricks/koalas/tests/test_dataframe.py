@@ -2409,7 +2409,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                  '`A + B` < `"C", "D"`',
                  '`"C", "D"` == `B ?!`')
         for expr in exprs:
-            self.assert_eq(kdf.query(expr), pdf.query(expr))
+            self.assert_eq(repr(kdf.query(expr)), repr(pdf.query(expr)))
 
         # test `inplace=True`
         for expr in exprs:
