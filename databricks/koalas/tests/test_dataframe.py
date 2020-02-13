@@ -2401,11 +2401,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_query(self):
         kdf = ks.DataFrame(
             {'A + B': range(1, 6),
-             'B ?!': range(10, 0, -2),
+             'B !': range(10, 0, -2),
              '"C", "D"': range(10, 5, -1)})
         pdf = kdf.to_pandas()
 
-        exprs = ('`A + B` > `B ?!`',
+        exprs = ('`A + B` > `B !`',
                  '`A + B` < `"C", "D"`',
                  '`"C", "D"` == `B ?!`')
         for expr in exprs:
