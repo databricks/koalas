@@ -8350,6 +8350,104 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(internal) if not result_as_series else DataFrame(internal).T[key]
 
+    def query(self, expr, inplace=False):
+        """
+        Query the columns of a DataFrame with a boolean expression.
+
+        .. note::
+            * Using variables in the environment with `@` is not supported.
+            * Internal columns that starting with __. are able to access,
+              however, they are not supposed to be accessed.
+            * This delegates to Spark SQL so the syntax follows Spark SQL
+            * If you want the exactly same syntax with pandas' you can work around
+              by using :meth:`DataFrame.map_in_pandas`. See the example below.
+
+                >>> df = ks.DataFrame([(1, 2), (3, 4), (5, 6)], columns=['A', 'B'])
+                >>> df
+                   A  B
+                0  1  2
+                1  3  4
+                2  5  6
+                >>> num = 1
+                >>> df.map_in_pandas(lambda pdf: pdf.query('A > @num'))  # doctest: +SKIP
+                   A  B
+                1  3  4
+                2  5  6
+
+        Parameters
+        ----------
+        expr : str
+            The query string to evaluate.
+
+            You can refer to column names that contain spaces by surrounding
+            them in backticks.
+
+            For example, if one of your columns is called ``a a`` and you want
+            to sum it with ``b``, your query should be ```a a` + b``.
+
+        inplace : bool
+            Whether the query should modify the data in place or return
+            a modified copy.
+
+        Returns
+        -------
+        DataFrame
+            DataFrame resulting from the provided query expression.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': range(1, 6),
+        ...                    'B': range(10, 0, -2),
+        ...                    'C C': range(10, 5, -1)})
+        >>> df
+           A   B  C C
+        0  1  10   10
+        1  2   8    9
+        2  3   6    8
+        3  4   4    7
+        4  5   2    6
+
+        >>> df.query('A > B')
+           A  B  C C
+        4  5  2    6
+
+        The previous expression is equivalent to
+
+        >>> df[df.A > df.B]
+           A  B  C C
+        4  5  2    6
+
+        For columns with spaces in their name, you can use backtick quoting.
+
+        >>> df.query('B == `C C`')
+           A   B  C C
+        0  1  10   10
+
+        The previous expression is equivalent to
+
+        >>> df[df.B == df['C C']]
+           A   B  C C
+        0  1  10   10
+        """
+        if isinstance(self.columns, pd.MultiIndex):
+            raise ValueError("Doesn't support for MultiIndex columns")
+        if not isinstance(expr, str):
+            raise ValueError(
+                'expr must be a string to be evaluated, {} given'
+                .format(type(expr)))
+        if not isinstance(inplace, bool):
+            raise ValueError(
+                'For argument "inplace" expected type bool, received type {}.'
+                .format(type(inplace).__name__))
+
+        sdf = self._sdf.filter(expr)
+        internal = self._internal.copy(sdf=sdf)
+
+        if inplace:
+            self._internal = internal
+        else:
+            return DataFrame(internal)
+
     def explain(self, extended: bool = False):
         """
         Prints the underlying (logical and physical) Spark plans to the console for debugging
