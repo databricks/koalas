@@ -8336,14 +8336,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Query the columns of a DataFrame with a boolean expression.
 
         .. note::
-            * MultiIndex columns are not supported.
             * Using variables in the environment with `@` is not supported.
             * Internal columns that starting with __. are able to access,
               however, they are not supposed to be accessed.
             * This delegates to Spark SQL so the syntax follows Spark SQL
-            * If you want to use MultiIndex columns, or variables in the environment,
-              you can just workaround by using :meth:`DataFrame.map_in_pandas`
-              although it is less performant. See the example below.
+            * If you want the exactly same syntax with pandas' you can work around
+              by using :meth:`DataFrame.map_in_pandas`. See the example below.
 
                 >>> df = ks.DataFrame([(1, 2), (3, 4), (5, 6)], columns=['A', 'B'])
                 >>> df
