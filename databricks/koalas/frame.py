@@ -8469,8 +8469,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 'For argument "inplace" expected type bool, received type {}.'
                 .format(type(inplace).__name__))
 
-        sdf = self._sdf.filter(expr)
-        internal = self._internal.copy(sdf=sdf)
+        column_names = [label[0] for label in self._internal.column_labels]
+        sdf = self._sdf.select(self._internal.index_scols
+                               + [scol.alias(col) for scol, col
+                                  in zip(self._internal.column_scols, column_names)]) \
+            .filter(expr)
+        internal = self._internal.copy(sdf=sdf,
+                                       column_scols=[scol_for(sdf, col) for col in column_names])
 
         if inplace:
             self._internal = internal
