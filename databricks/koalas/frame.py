@@ -6857,14 +6857,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         exprs = []
         column_labels = []
         for label in self._internal.column_labels:
-            kser = self[label]
-            spark_type = kser.spark_type
+            scol = self._internal.scol_for(label)
+            spark_type = self._internal.spark_type_for(label)
             if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
-                exprs.append(F.nanvl(kser._scol, F.lit(None))
-                             .alias(kser._internal.data_columns[0]))
+                exprs.append(F.nanvl(scol, F.lit(None))
+                             .alias(self._internal.column_name_for(label)))
                 column_labels.append(label)
             elif isinstance(spark_type, NumericType):
-                exprs.append(kser._scol)
+                exprs.append(scol)
                 column_labels.append(label)
 
         if len(exprs) == 0:
