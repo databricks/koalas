@@ -8345,17 +8345,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
               you can just workaround by using :meth:`DataFrame.map_in_pandas`
               although it is less performant. See the example below.
 
-            >>> df = ks.DataFrame([(1, 2), (3, 4), (5, 6)], columns=['A', 'B'])
-            >>> df
-               A  B
-            0  1  2
-            1  3  4
-            2  5  6
-            >>> num = 1
-            >>> df.map_in_pandas(lambda pdf: pdf.query('A > @num'))  # doctest: +SKIP
-               A  B
-            1  3  4
-            2  5  6
+                >>> df = ks.DataFrame([(1, 2), (3, 4), (5, 6)], columns=['A', 'B'])
+                >>> df
+                   A  B
+                0  1  2
+                1  3  4
+                2  5  6
+                >>> num = 1
+                >>> df.map_in_pandas(lambda pdf: pdf.query('A > @num'))  # doctest: +SKIP
+                   A  B
+                1  3  4
+                2  5  6
 
         Parameters
         ----------
