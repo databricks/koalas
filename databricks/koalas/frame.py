@@ -8352,7 +8352,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             1  3  4
             2  5  6
             >>> num = 1
-            >>> df.map_in_pandas(lambda pdf: pdf.query('A > @num'))
+            >>> df.map_in_pandas(lambda pdf: pdf.query('A > @num'))  # doctest: +SKIP
                A  B
             1  3  4
             2  5  6
