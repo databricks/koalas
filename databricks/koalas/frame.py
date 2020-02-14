@@ -6837,15 +6837,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         exprs = []
         data_columns = []
-        for label in self._internal.column_labels:
-            kser = self._kser_for(label)
-            spark_type = kser.spark_type
+        for col in self.columns:
+            kseries = self[col]
+            spark_type = kseries.spark_type
             if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
-                exprs.append(F.nanvl(kser._scol, F.lit(None)).alias(kser.name))
-                data_columns.append(kser.name)
+                exprs.append(F.nanvl(kseries._scol, F.lit(None)).alias(kseries.name))
+                data_columns.append(kseries.name)
             elif isinstance(spark_type, NumericType):
-                exprs.append(kser._scol)
-                data_columns.append(kser.name)
+                exprs.append(kseries._scol)
+                data_columns.append(kseries.name)
 
         if len(exprs) == 0:
             raise ValueError("Cannot describe a DataFrame without columns")
