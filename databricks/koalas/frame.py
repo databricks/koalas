@@ -6783,6 +6783,32 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         75%         3.0       6.0
         max         3.0       6.0
 
+        For multi-index columns:
+
+        >>> df.columns = [('num', 'a'), ('num', 'b'), ('obj', 'c')]
+        >>> df.describe()  # doctest: +NORMALIZE_WHITESPACE
+               num
+                 a    b
+        count  3.0  3.0
+        mean   2.0  5.0
+        std    1.0  1.0
+        min    1.0  4.0
+        25%    1.0  4.0
+        50%    2.0  5.0
+        75%    3.0  6.0
+        max    3.0  6.0
+
+        >>> df[('num', 'b')].describe()
+        count    3.0
+        mean     5.0
+        std      1.0
+        min      4.0
+        25%      4.0
+        50%      5.0
+        75%      6.0
+        max      6.0
+        Name: (num, b), dtype: float64
+
         Describing a ``DataFrame`` and selecting custom percentiles.
 
         >>> df = ks.DataFrame({'numeric1': [1, 2, 3],
@@ -6829,16 +6855,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Name: numeric1, dtype: float64
         """
         exprs = []
-        data_columns = []
-        for col in self.columns:
-            kseries = self[col]
-            spark_type = kseries.spark_type
+        column_labels = []
+        for label in self._internal.column_labels:
+            scol = self._internal.scol_for(label)
+            spark_type = self._internal.spark_type_for(label)
             if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
-                exprs.append(F.nanvl(kseries._scol, F.lit(None)).alias(kseries.name))
-                data_columns.append(kseries.name)
+                exprs.append(F.nanvl(scol, F.lit(None))
+                             .alias(self._internal.column_name_for(label)))
+                column_labels.append(label)
             elif isinstance(spark_type, NumericType):
-                exprs.append(kseries._scol)
-                data_columns.append(kseries.name)
+                exprs.append(scol)
+                column_labels.append(label)
 
         if len(exprs) == 0:
             raise ValueError("Cannot describe a DataFrame without columns")
@@ -6859,7 +6886,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         internal = _InternalFrame(sdf=sdf,
                                   index_map=[('summary', None)],
-                                  column_scols=[scol_for(sdf, col) for col in data_columns])
+                                  column_labels=column_labels,
+                                  column_scols=[scol_for(sdf, self._internal.column_name_for(label))
+                                                for label in column_labels])
         return DataFrame(internal).astype('float64')
 
     # TODO: implements 'keep' parameters
