@@ -43,7 +43,8 @@ from databricks.koalas.missing.groupby import _MissingPandasLikeDataFrameGroupBy
     _MissingPandasLikeSeriesGroupBy
 from databricks.koalas.series import Series, _col
 from databricks.koalas.config import get_option
-from databricks.koalas.utils import column_labels_level, scol_for, name_like_string
+from databricks.koalas.utils import (column_labels_level, scol_for, name_like_string,
+                                     validate_bool_kwarg)
 from databricks.koalas.window import RollingGroupby, ExpandingGroupby
 
 # to keep it the same as pandas
@@ -1298,7 +1299,7 @@ class GroupBy(object):
         """
         return self._fillna(value, method, axis, inplace, limit)
 
-    def bfill(self, limit=None):
+    def bfill(self, inplace=False, limit=None):
         """
         Synonym for `DataFrame.fillna()` with ``method=`bfill```.
 
@@ -1345,11 +1346,11 @@ class GroupBy(object):
         2  3.0  1.0  5
         3  3.0  1.0  4
         """
-        return self._fillna(method='bfill', limit=limit)
+        return self._fillna(method='bfill', inplace=inplace, limit=limit)
 
     backfill = bfill
 
-    def ffill(self, limit=None):
+    def ffill(self, inplace=False, limit=None):
         """
         Synonym for `DataFrame.fillna()` with ``method=`ffill```.
 
@@ -1396,7 +1397,7 @@ class GroupBy(object):
         2  NaN  NaN  5
         3  3.0  1.0  4
         """
-        return self._fillna(method='ffill', limit=limit)
+        return self._fillna(method='ffill', inplace=inplace, limit=limit)
 
     pad = ffill
 
