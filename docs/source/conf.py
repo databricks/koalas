@@ -17,10 +17,13 @@ import importlib.util
 import errno
 
 from databricks import koalas
-sys.path.insert(0, os.path.abspath('.'))
+
+sys.path.insert(0, os.path.abspath("."))
 
 # Remove previously generated rst files. Ignore errors just in case it stops generating whole docs.
-shutil.rmtree("%s/reference/api" % os.path.dirname(os.path.abspath(__file__)), ignore_errors=True)
+shutil.rmtree(
+    "%s/reference/api" % os.path.dirname(os.path.abspath(__file__)), ignore_errors=True
+)
 try:
     os.mkdir("%s/reference/api" % os.path.dirname(os.path.abspath(__file__)))
 except OSError as e:
@@ -44,30 +47,30 @@ gendoc()
 
 # -- Project information -----------------------------------------------------
 
-project = 'Koalas'
-copyright = '2019, Databricks'
-author = 'The Koalas Team'
+project = "Koalas"
+copyright = "2019, Databricks"
+author = "The Koalas Team"
 
 # The full version, including alpha/beta/rc tags
-release = os.environ.get('RELEASE_VERSION', koalas.__version__)
+release = os.environ.get("RELEASE_VERSION", koalas.__version__)
 
 
 # -- General configuration ---------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
-needs_sphinx = '1.2'
+needs_sphinx = "1.2"
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.viewcode',
-    'numpydoc',  # handle NumPy documentation formatted docstrings. Needs to install
-    'matplotlib.sphinxext.plot_directive',  # For visualize plot result
-    'nbsphinx',  # Converts Jupyter Notebook to reStructuredText files for Sphinx.
+    "sphinx.ext.autodoc",
+    "sphinx.ext.viewcode",
+    "numpydoc",  # handle NumPy documentation formatted docstrings. Needs to install
+    "matplotlib.sphinxext.plot_directive",  # For visualize plot result
+    "nbsphinx",  # Converts Jupyter Notebook to reStructuredText files for Sphinx.
     # For ipython directive in reStructuredText files.
-    'IPython.sphinxext.ipython_console_highlighting',
+    "IPython.sphinxext.ipython_console_highlighting",
 ]
 
 # matplotlib plot directive
@@ -80,24 +83,24 @@ import pandas as pd
 import databricks.koalas as ks"""
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = "sphinx"
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = "index"
 
 numpydoc_show_class_members = False
 
 # -- Options for auto output -------------------------------------------------
 
-autoclass_content = 'both'
+autoclass_content = "both"
 autosummary_generate = True
 
 
@@ -106,7 +109,7 @@ autosummary_generate = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'nature_with_gtoc'
+html_theme = "nature_with_gtoc"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -114,7 +117,7 @@ html_theme = 'nature_with_gtoc'
 html_static_path = []
 
 # Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = ['themes']
+html_theme_path = ["themes"]
 
 # If false, no index is generated.
 html_use_index = False
@@ -125,7 +128,7 @@ html_domain_indices = False
 # The name of an image file (relative to this directory) to use as a favicon of
 # the docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = 'favicon.ico'
+html_favicon = "favicon.ico"
 
 
 # -- Options for manual page output ---------------------------------------
@@ -133,6 +136,5 @@ html_favicon = 'favicon.ico'
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'databricks.koalas', u'databricks.koalas Documentation',
-     [u'Author'], 1)
+    ("index", "databricks.koalas", u"databricks.koalas Documentation", [u"Author"], 1)
 ]

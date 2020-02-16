@@ -37,6 +37,7 @@ class PythonModelWrapper(object):
     This wrapper acts as a predictor on koalas
 
     """
+
     def __init__(self, model_uri, return_type_hint):
         self._model_uri = model_uri  # type: str
         self._return_type_hint = return_type_hint
@@ -50,7 +51,7 @@ class PythonModelWrapper(object):
         # return an integer or a categorical)
         # We can do the same for pytorch/tensorflow/keras models by looking at the output types.
         # However, this is probably better done in mlflow than here.
-        if hint == 'infer' or not hint:
+        if hint == "infer" or not hint:
             hint = np.float64
         return as_spark_type(hint)
 
@@ -64,7 +65,9 @@ class PythonModelWrapper(object):
     @lazy_property
     def _model_udf(self):
         spark = default_session()
-        return pyfunc.spark_udf(spark, model_uri=self._model_uri, result_type=self._return_type)
+        return pyfunc.spark_udf(
+            spark, model_uri=self._model_uri, result_type=self._return_type
+        )
 
     def __str__(self):
         return "PythonModelWrapper({})".format(str(self._model))
@@ -90,12 +93,13 @@ class PythonModelWrapper(object):
             # s = F.struct(*data.columns)
             # return_col = self._model_udf(s)
             column_labels = [(col,) for col in data._sdf.select(return_col).columns]
-            return Series(data._internal.copy(scol=return_col,
-                                              column_labels=column_labels),
-                          anchor=data)
+            return Series(
+                data._internal.copy(scol=return_col, column_labels=column_labels),
+                anchor=data,
+            )
 
 
-def load_model(model_uri, predict_type='infer') -> PythonModelWrapper:
+def load_model(model_uri, predict_type="infer") -> PythonModelWrapper:
     """
     Loads an MLflow model into an wrapper that can be used both for pandas and Koalas DataFrame.
 

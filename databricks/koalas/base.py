@@ -28,10 +28,15 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
 from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType
 
-from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks import (
+    koalas as ks,
+)  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas import numpy_compat
-from databricks.koalas.internal import (_InternalFrame, NATURAL_ORDER_COLUMN_NAME,
-                                        SPARK_DEFAULT_INDEX_NAME)
+from databricks.koalas.internal import (
+    _InternalFrame,
+    NATURAL_ORDER_COLUMN_NAME,
+    SPARK_DEFAULT_INDEX_NAME,
+)
 from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
@@ -41,8 +46,10 @@ def booleanize_null(left_scol, scol, f):
     """
     Booleanize Null in Spark Column
     """
-    comp_ops = [getattr(spark.Column, '__{}__'.format(comp_op))
-                for comp_op in ['eq', 'ne', 'lt', 'le', 'ge', 'gt']]
+    comp_ops = [
+        getattr(spark.Column, "__{}__".format(comp_op))
+        for comp_op in ["eq", "ne", "lt", "le", "ge", "gt"]
+    ]
 
     if f in comp_ops:
         # if `f` is "!=", fill null with True otherwise False
@@ -69,6 +76,7 @@ def _column_op(f):
     :param self: Koalas Series
     :param args: arguments that the function `f` takes.
     """
+
     @wraps(f)
     def wrapper(self, *args):
         # It is possible for the function `f` takes other arguments than Spark Column.
@@ -77,7 +85,9 @@ def _column_op(f):
         cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
         if all(self._kdf is col._kdf for col in cols):
             # Same DataFrame anchors
-            args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
+            args = [
+                arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args
+            ]
             scol = f(self._scol, *args)
             scol = booleanize_null(self._scol, scol, f)
 
@@ -101,11 +111,14 @@ def _numpy_column_op(f):
         new_args = []
         for arg in args:
             # TODO: This is a quick hack to support NumPy type. We should revisit this.
-            if isinstance(self.spark_type, LongType) and isinstance(arg, np.timedelta64):
-                new_args.append(float(arg / np.timedelta64(1, 's')))
+            if isinstance(self.spark_type, LongType) and isinstance(
+                arg, np.timedelta64
+            ):
+                new_args.append(float(arg / np.timedelta64(1, "s")))
             else:
                 new_args.append(arg)
         return _column_op(f)(self, *new_args)
+
     return wrapper
 
 
@@ -114,9 +127,7 @@ def _wrap_accessor_spark(accessor, fn, return_type=None):
     Wrap an accessor property or method, e.g., Series.dt.date with a spark function.
     """
     if return_type:
-        return _column_op(
-            lambda col: fn(col).cast(return_type)
-        )(accessor._data)
+        return _column_op(lambda col: fn(col).cast(return_type))(accessor._data)
     else:
         return _column_op(fn)(accessor._data)
 
@@ -144,6 +155,7 @@ class IndexOpsMixin(object):
     def _with_new_scol(self, scol: spark.Column) -> IndexOpsMixin
         Creates new object with the new column
     """
+
     def __init__(self, internal: _InternalFrame, kdf):
         assert internal is not None
         assert kdf is not None and isinstance(kdf, DataFrame)
@@ -160,23 +172,31 @@ class IndexOpsMixin(object):
     def __add__(self, other):
         if isinstance(self.spark_type, StringType):
             # Concatenate string columns
-            if isinstance(other, IndexOpsMixin) and isinstance(other.spark_type, StringType):
+            if isinstance(other, IndexOpsMixin) and isinstance(
+                other.spark_type, StringType
+            ):
                 return _column_op(F.concat)(self, other)
             # Handle df['col'] + 'literal'
             elif isinstance(other, str):
                 return _column_op(F.concat)(self, F.lit(other))
             else:
-                raise TypeError('string addition can only be applied to string series or literals.')
+                raise TypeError(
+                    "string addition can only be applied to string series or literals."
+                )
         else:
             return _column_op(spark.Column.__add__)(self, other)
 
     def __sub__(self, other):
         # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
         # behaviors. Pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
-        if isinstance(other, IndexOpsMixin) and isinstance(self.spark_type, TimestampType):
+        if isinstance(other, IndexOpsMixin) and isinstance(
+            self.spark_type, TimestampType
+        ):
             if not isinstance(other.spark_type, TimestampType):
-                raise TypeError('datetime subtraction can only be applied to datetime series.')
-            return self.astype('bigint') - other.astype('bigint')
+                raise TypeError(
+                    "datetime subtraction can only be applied to datetime series."
+                )
+            return self.astype("bigint") - other.astype("bigint")
         else:
             return _column_op(spark.Column.__sub__)(self, other)
 
@@ -199,11 +219,13 @@ class IndexOpsMixin(object):
 
     def __floordiv__(self, other):
         return self._with_new_scol(
-            F.floor(_numpy_column_op(spark.Column.__div__)(self, other)._scol))
+            F.floor(_numpy_column_op(spark.Column.__div__)(self, other)._scol)
+        )
 
     def __rfloordiv__(self, other):
         return self._with_new_scol(
-            F.floor(_numpy_column_op(spark.Column.__rdiv__)(self, other)._scol))
+            F.floor(_numpy_column_op(spark.Column.__rdiv__)(self, other)._scol)
+        )
 
     __rmod__ = _column_op(spark.Column.__rmod__)
     __pow__ = _column_op(spark.Column.__pow__)
@@ -226,21 +248,27 @@ class IndexOpsMixin(object):
     __ror__ = _column_op(spark.Column.__ror__)
 
     # NDArray Compat
-    def __array_ufunc__(self, ufunc: Callable, method: str, *inputs: Any, **kwargs: Any):
+    def __array_ufunc__(
+        self, ufunc: Callable, method: str, *inputs: Any, **kwargs: Any
+    ):
         # Try dunder methods first.
         result = numpy_compat.maybe_dispatch_ufunc_to_dunder_op(
-            self, ufunc, method, *inputs, **kwargs)
+            self, ufunc, method, *inputs, **kwargs
+        )
 
         # After that, we try with PySpark APIs.
         if result is NotImplemented:
             result = numpy_compat.maybe_dispatch_ufunc_to_spark_func(
-                self, ufunc, method, *inputs, **kwargs)
+                self, ufunc, method, *inputs, **kwargs
+            )
 
         if result is not NotImplemented:
             return result
         else:
             # TODO: support more APIs?
-            raise NotImplementedError("Koalas objects currently do not support %s." % ufunc)
+            raise NotImplementedError(
+                "Koalas objects currently do not support %s." % ufunc
+            )
 
     @property
     def dtype(self):
@@ -383,7 +411,9 @@ class IndexOpsMixin(object):
     def _is_monotonic(self):
         col = self._scol
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull())
+        return self._with_new_scol(
+            (col >= F.lag(col, 1).over(window)) & col.isNotNull()
+        )
 
     is_monotonic_increasing = is_monotonic
 
@@ -463,7 +493,9 @@ class IndexOpsMixin(object):
     def _is_monotonic_decreasing(self):
         col = self._scol
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull())
+        return self._with_new_scol(
+            (col <= F.lag(col, 1).over(window)) & col.isNotNull()
+        )
 
     @property
     def ndim(self):
@@ -533,6 +565,7 @@ class IndexOpsMixin(object):
         Int64Index([1, 2], dtype='int64', name='a')
         """
         from databricks.koalas.typedef import as_spark_type
+
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
@@ -583,9 +616,12 @@ class IndexOpsMixin(object):
         Index([True, False, True, False, True, False], dtype='object', name='a')
         """
         if not is_list_like(values):
-            raise TypeError("only list-like objects are allowed to be passed"
-                            " to isin(), you passed a [{values_type}]"
-                            .format(values_type=type(values).__name__))
+            raise TypeError(
+                "only list-like objects are allowed to be passed"
+                " to isin(), you passed a [{values_type}]".format(
+                    values_type=type(values).__name__
+                )
+            )
 
         return self._with_new_scol(self._scol.isin(list(values))).rename(self.name)
 
@@ -617,10 +653,13 @@ class IndexOpsMixin(object):
         Index([False, False, True], dtype='object', name='a')
         """
         from databricks.koalas.indexes import MultiIndex
+
         if isinstance(self, MultiIndex):
             raise NotImplementedError("isna is not defined for MultiIndex")
         if isinstance(self.spark_type, (FloatType, DoubleType)):
-            return self._with_new_scol(self._scol.isNull() | F.isnan(self._scol)).rename(self.name)
+            return self._with_new_scol(
+                self._scol.isNull() | F.isnan(self._scol)
+            ).rename(self.name)
         else:
             return self._with_new_scol(self._scol.isNull()).rename(self.name)
 
@@ -661,6 +700,7 @@ class IndexOpsMixin(object):
         Index([True, True, False], dtype='object', name='a')
         """
         from databricks.koalas.indexes import MultiIndex
+
         if isinstance(self, MultiIndex):
             raise NotImplementedError("notna is not defined for MultiIndex")
         return (~self.isnull()).rename(self.name)
@@ -724,7 +764,9 @@ class IndexOpsMixin(object):
         # any and every was added as of Spark 3.0
         # ret = sdf.select(F.expr("every(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
         # Here we use min as its alternative:
-        ret = sdf.select(F.min(F.coalesce(col.cast('boolean'), F.lit(True)))).collect()[0][0]
+        ret = sdf.select(F.min(F.coalesce(col.cast("boolean"), F.lit(True)))).collect()[
+            0
+        ][0]
         if ret is None:
             return True
         else:
@@ -787,7 +829,9 @@ class IndexOpsMixin(object):
         # any and every was added as of Spark 3.0
         # ret = sdf.select(F.expr("any(CAST(`%s` AS BOOLEAN))" % sdf.columns[0])).collect()[0][0]
         # Here we use max as its alternative:
-        ret = sdf.select(F.max(F.coalesce(col.cast('boolean'), F.lit(False)))).collect()[0][0]
+        ret = sdf.select(
+            F.max(F.coalesce(col.cast("boolean"), F.lit(False)))
+        ).collect()[0][0]
         if ret is None:
             return False
         else:
@@ -845,17 +889,24 @@ class IndexOpsMixin(object):
 
     def _shift(self, periods, fill_value, part_cols=()):
         if not isinstance(periods, int):
-            raise ValueError('periods should be an int; however, got [%s]' % type(periods))
+            raise ValueError(
+                "periods should be an int; however, got [%s]" % type(periods)
+            )
 
         col = self._scol
-        window = Window.partitionBy(*part_cols).orderBy(NATURAL_ORDER_COLUMN_NAME) \
+        window = (
+            Window.partitionBy(*part_cols)
+            .orderBy(NATURAL_ORDER_COLUMN_NAME)
             .rowsBetween(-periods, -periods)
+        )
         lag_col = F.lag(col, periods).over(window)
         col = F.when(lag_col.isNull() | F.isnan(lag_col), fill_value).otherwise(lag_col)
         return self._with_new_scol(col).rename(self.name)
 
     # TODO: Update Documentation for Bins Parameter when its supported
-    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+    def value_counts(
+        self, normalize=False, sort=True, ascending=False, bins=None, dropna=True
+    ):
         """
         Return a Series containing counts of unique values.
         The resulting object will be in descending order so that the
@@ -1015,32 +1066,40 @@ class IndexOpsMixin(object):
             sdf_dropna = self._internal._sdf.select(self._scol)
         index_name = SPARK_DEFAULT_INDEX_NAME
         column_name = self._internal.data_columns[0]
-        sdf = sdf_dropna.groupby(scol_for(sdf_dropna, column_name).alias(index_name)).count()
+        sdf = sdf_dropna.groupby(
+            scol_for(sdf_dropna, column_name).alias(index_name)
+        ).count()
         if sort:
             if ascending:
-                sdf = sdf.orderBy(F.col('count'))
+                sdf = sdf.orderBy(F.col("count"))
             else:
-                sdf = sdf.orderBy(F.col('count').desc())
+                sdf = sdf.orderBy(F.col("count").desc())
 
         if normalize:
             sum = sdf_dropna.count()
-            sdf = sdf.withColumn('count', F.col('count') / F.lit(sum))
+            sdf = sdf.withColumn("count", F.col("count") / F.lit(sum))
 
         column_labels = self._internal.column_labels
         if (column_labels[0] is None) or (None in column_labels[0]):
-            internal = _InternalFrame(sdf=sdf,
-                                      index_map=[(index_name, None)],
-                                      column_scols=[scol_for(sdf, 'count')])
+            internal = _InternalFrame(
+                sdf=sdf,
+                index_map=[(index_name, None)],
+                column_scols=[scol_for(sdf, "count")],
+            )
         else:
-            internal = _InternalFrame(sdf=sdf,
-                                      index_map=[(index_name, None)],
-                                      column_labels=column_labels,
-                                      column_scols=[scol_for(sdf, 'count')],
-                                      column_label_names=self._internal.column_label_names)
+            internal = _InternalFrame(
+                sdf=sdf,
+                index_map=[(index_name, None)],
+                column_labels=column_labels,
+                column_scols=[scol_for(sdf, "count")],
+                column_label_names=self._internal.column_label_names,
+            )
 
         return _col(DataFrame(internal))
 
-    def nunique(self, dropna: bool = True, approx: bool = False, rsd: float = 0.05) -> int:
+    def nunique(
+        self, dropna: bool = True, approx: bool = False, rsd: float = 0.05
+    ) -> int:
         """
         Return number of unique elements in the object.
         Excludes NA values by default.
@@ -1096,10 +1155,15 @@ class IndexOpsMixin(object):
 
     def _nunique(self, dropna=True, approx=False, rsd=0.05):
         colname = self._internal.data_columns[0]
-        count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
+        count_fn = (
+            partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
+        )
         if dropna:
             return count_fn(self._scol).alias(colname)
         else:
-            return (count_fn(self._scol) +
-                    F.when(F.count(F.when(self._scol.isNull(), 1)
-                                   .otherwise(None)) >= 1, 1).otherwise(0)).alias(colname)
+            return (
+                count_fn(self._scol)
+                + F.when(
+                    F.count(F.when(self._scol.isNull(), 1).otherwise(None)) >= 1, 1
+                ).otherwise(0)
+            ).alias(colname)

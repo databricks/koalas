@@ -21,49 +21,50 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
 class OneByOneDefaultIndexTest(ReusedSQLTestCase, TestUtils):
-
     @classmethod
     def setUpClass(cls):
         super(OneByOneDefaultIndexTest, cls).setUpClass()
-        set_option('compute.default_index_type', 'sequence')
+        set_option("compute.default_index_type", "sequence")
 
     @classmethod
     def tearDownClass(cls):
-        reset_option('compute.default_index_type')
+        reset_option("compute.default_index_type")
         super(OneByOneDefaultIndexTest, cls).tearDownClass()
 
     def test_default_index(self):
         sdf = self.spark.range(1000)
-        self.assert_eq(ks.DataFrame(sdf).sort_index(), pd.DataFrame({'id': list(range(1000))}))
+        self.assert_eq(
+            ks.DataFrame(sdf).sort_index(), pd.DataFrame({"id": list(range(1000))})
+        )
 
 
 class DistributedOneByOneDefaultIndexTest(ReusedSQLTestCase, TestUtils):
-
     @classmethod
     def setUpClass(cls):
         super(DistributedOneByOneDefaultIndexTest, cls).setUpClass()
-        set_option('compute.default_index_type', 'distributed-sequence')
+        set_option("compute.default_index_type", "distributed-sequence")
 
     @classmethod
     def tearDownClass(cls):
-        reset_option('compute.default_index_type')
+        reset_option("compute.default_index_type")
         super(DistributedOneByOneDefaultIndexTest, cls).tearDownClass()
 
     def test_default_index(self):
         sdf = self.spark.range(1000)
-        self.assert_eq(ks.DataFrame(sdf).sort_index(), pd.DataFrame({'id': list(range(1000))}))
+        self.assert_eq(
+            ks.DataFrame(sdf).sort_index(), pd.DataFrame({"id": list(range(1000))})
+        )
 
 
 class DistributedDefaultIndexTest(ReusedSQLTestCase, TestUtils):
-
     @classmethod
     def setUpClass(cls):
         super(DistributedDefaultIndexTest, cls).setUpClass()
-        set_option('compute.default_index_type', 'distributed')
+        set_option("compute.default_index_type", "distributed")
 
     @classmethod
     def tearDownClass(cls):
-        reset_option('compute.default_index_type')
+        reset_option("compute.default_index_type")
         super(DistributedDefaultIndexTest, cls).tearDownClass()
 
     def test_default_index(self):

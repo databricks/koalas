@@ -40,16 +40,20 @@ def inspect_missing_properties(original_type, target_type):
     missing = []
     deprecated = []
 
-    for name, func in inspect.getmembers(original_type, lambda o: isinstance(o, property)):
+    for name, func in inspect.getmembers(
+        original_type, lambda o: isinstance(o, property)
+    ):
         # Skip the private attributes
-        if name.startswith('_'):
+        if name.startswith("_"):
             continue
 
-        if hasattr(target_type, name) and isinstance(getattr(target_type, name), property):
+        if hasattr(target_type, name) and isinstance(
+            getattr(target_type, name), property
+        ):
             continue
 
         docstring = func.fget.__doc__
-        if docstring and ('.. deprecated::' in docstring):
+        if docstring and (".. deprecated::" in docstring):
             deprecated.append(name)
         else:
             missing.append(name)
@@ -58,24 +62,30 @@ def inspect_missing_properties(original_type, target_type):
 
 
 def _main():
-    for original_type, target_type in [(pd.DataFrame, DataFrame),
-                                       (pd.Series, Series),
-                                       (pd.core.groupby.DataFrameGroupBy, DataFrameGroupBy),
-                                       (pd.core.groupby.SeriesGroupBy, SeriesGroupBy),
-                                       (pd.Index, Index),
-                                       (pd.MultiIndex, MultiIndex)]:
+    for original_type, target_type in [
+        (pd.DataFrame, DataFrame),
+        (pd.Series, Series),
+        (pd.core.groupby.DataFrameGroupBy, DataFrameGroupBy),
+        (pd.core.groupby.SeriesGroupBy, SeriesGroupBy),
+        (pd.Index, Index),
+        (pd.MultiIndex, MultiIndex),
+    ]:
         missing, deprecated = inspect_missing_properties(original_type, target_type)
 
-        print('MISSING properties for {}'.format(original_type.__name__))
+        print("MISSING properties for {}".format(original_type.__name__))
         for name in missing:
             print("""    {0} = unsupported_property('{0}')""".format(name))
 
         print()
-        print('DEPRECATED properties for {}'.format(original_type.__name__))
+        print("DEPRECATED properties for {}".format(original_type.__name__))
         for name in deprecated:
-            print("""    {0} = unsupported_property('{0}', deprecated=True)""".format(name))
+            print(
+                """    {0} = unsupported_property('{0}', deprecated=True)""".format(
+                    name
+                )
+            )
         print()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     _main()

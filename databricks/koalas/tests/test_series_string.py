@@ -25,88 +25,94 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
 class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
-
     @property
     def pser(self):
-        return pd.Series(['apples', 'Bananas', 'carrots', '1', '100', '',
-                          '\nleading-whitespace', 'trailing-Whitespace    \t',
-                          None, np.NaN])
+        return pd.Series(
+            [
+                "apples",
+                "Bananas",
+                "carrots",
+                "1",
+                "100",
+                "",
+                "\nleading-whitespace",
+                "trailing-Whitespace    \t",
+                None,
+                np.NaN,
+            ]
+        )
 
     def check_func(self, func):
         self.check_func_on_series(func, self.pser)
 
     def check_func_on_series(self, func, pser):
         kser = ks.from_pandas(pser)
-        mt.assert_series_equal(
-            func(kser).toPandas(),
-            func(pser),
-            check_names=False
-        )
+        mt.assert_series_equal(func(kser).toPandas(), func(pser), check_names=False)
 
     def test_string_add_str_num(self):
-        pdf = pd.DataFrame(dict(col1=['a'], col2=[1]))
+        pdf = pd.DataFrame(dict(col1=["a"], col2=[1]))
         kdf = ks.from_pandas(pdf)
         with self.assertRaises(TypeError):
-            kdf['col1'] + kdf['col2']
+            kdf["col1"] + kdf["col2"]
 
     def test_string_add_assign(self):
-        pdf = pd.DataFrame(dict(col1=['a', 'b', 'c'], col2=['1', '2', '3']))
+        pdf = pd.DataFrame(dict(col1=["a", "b", "c"], col2=["1", "2", "3"]))
         kdf = ks.from_pandas(pdf)
-        kdf['col1'] += kdf['col2']
-        pdf['col1'] += pdf['col2']
-        self.assert_eq(kdf['col1'], pdf['col1'])
+        kdf["col1"] += kdf["col2"]
+        pdf["col1"] += pdf["col2"]
+        self.assert_eq(kdf["col1"], pdf["col1"])
 
     def test_string_add_str_str(self):
-        pdf = pd.DataFrame(dict(col1=['a', 'b', 'c'], col2=['1', '2', '3']))
+        pdf = pd.DataFrame(dict(col1=["a", "b", "c"], col2=["1", "2", "3"]))
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kdf['col1'] + kdf['col2'], pdf['col1'] + pdf['col2'])
-        self.assert_eq(kdf['col2'] + kdf['col1'], pdf['col2'] + pdf['col1'])
+        self.assert_eq(kdf["col1"] + kdf["col2"], pdf["col1"] + pdf["col2"])
+        self.assert_eq(kdf["col2"] + kdf["col1"], pdf["col2"] + pdf["col1"])
 
     def test_string_add_str_lit(self):
-        pdf = pd.DataFrame(dict(col1=['a', 'b', 'c']))
+        pdf = pd.DataFrame(dict(col1=["a", "b", "c"]))
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kdf['col1'] + '_lit', pdf['col1'] + '_lit')
-        self.assert_eq('_lit' + kdf['col1'], '_lit' + pdf['col1'])
+        self.assert_eq(kdf["col1"] + "_lit", pdf["col1"] + "_lit")
+        self.assert_eq("_lit" + kdf["col1"], "_lit" + pdf["col1"])
 
     def test_string_capitalize(self):
-        self.check_func(lambda x:  x.str.capitalize())
+        self.check_func(lambda x: x.str.capitalize())
 
     def test_string_title(self):
         self.check_func(lambda x: x.str.title())
 
     def test_string_lower(self):
-        self.check_func(lambda x:  x.str.lower())
+        self.check_func(lambda x: x.str.lower())
 
     def test_string_upper(self):
-        self.check_func(lambda x:  x.str.upper())
+        self.check_func(lambda x: x.str.upper())
 
     def test_string_swapcase(self):
         self.check_func(lambda x: x.str.swapcase())
 
     def test_string_startswith(self):
-        pattern = 'car'
+        pattern = "car"
         self.check_func(lambda x: x.str.startswith(pattern))
         self.check_func(lambda x: x.str.startswith(pattern, na=False))
 
     def test_string_endswith(self):
-        pattern = 's'
+        pattern = "s"
         self.check_func(lambda x: x.str.endswith(pattern))
         self.check_func(lambda x: x.str.endswith(pattern, na=False))
 
     def test_string_strip(self):
         self.check_func(lambda x: x.str.strip())
-        self.check_func(lambda x: x.str.strip('es\t'))
-        self.check_func(lambda x: x.str.strip('1'))
+        self.check_func(lambda x: x.str.strip("es\t"))
+        self.check_func(lambda x: x.str.strip("1"))
 
     def test_string_lstrip(self):
         self.check_func(lambda x: x.str.lstrip())
-        self.check_func(lambda x: x.str.lstrip('\n1le'))
-        self.check_func(lambda x: x.str.lstrip('s'))
+        self.check_func(lambda x: x.str.lstrip("\n1le"))
+        self.check_func(lambda x: x.str.lstrip("s"))
 
     def test_string_rstrip(self):
         self.check_func(lambda x: x.str.rstrip())
-        self.check_func(lambda x: x.str.rstrip('\t ec'))
-        self.check_func(lambda x: x.str.rstrip('0'))
+        self.check_func(lambda x: x.str.rstrip("\t ec"))
+        self.check_func(lambda x: x.str.rstrip("0"))
 
     def test_string_get(self):
         self.check_func(lambda x: x.str.get(6))
@@ -147,84 +153,86 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
     def test_string_center(self):
         self.check_func(lambda x: x.str.center(0))
         self.check_func(lambda x: x.str.center(10))
-        self.check_func(lambda x: x.str.center(10, 'x'))
+        self.check_func(lambda x: x.str.center(10, "x"))
 
     def test_string_contains(self):
-        self.check_func(lambda x: x.str.contains('le', regex=False))
-        self.check_func(lambda x: x.str.contains('White', case=True, regex=False))
-        self.check_func(lambda x: x.str.contains('apples|carrots', regex=True))
-        self.check_func(lambda x: x.str.contains('BANANAS', flags=re.IGNORECASE, na=False))
+        self.check_func(lambda x: x.str.contains("le", regex=False))
+        self.check_func(lambda x: x.str.contains("White", case=True, regex=False))
+        self.check_func(lambda x: x.str.contains("apples|carrots", regex=True))
+        self.check_func(
+            lambda x: x.str.contains("BANANAS", flags=re.IGNORECASE, na=False)
+        )
 
     def test_string_count(self):
-        self.check_func(lambda x: x.str.count('wh|Wh'))
-        self.check_func(lambda x: x.str.count('WH', flags=re.IGNORECASE))
+        self.check_func(lambda x: x.str.count("wh|Wh"))
+        self.check_func(lambda x: x.str.count("WH", flags=re.IGNORECASE))
 
     def test_string_decode(self):
         kser = ks.from_pandas(self.pser)
         with self.assertRaises(NotImplementedError):
-            kser.str.decode('utf-8')
+            kser.str.decode("utf-8")
 
     def test_string_encode(self):
         kser = ks.from_pandas(self.pser)
         with self.assertRaises(NotImplementedError):
-            kser.str.encode('utf-8')
+            kser.str.encode("utf-8")
 
     def test_string_extract(self):
         kser = ks.from_pandas(self.pser)
         with self.assertRaises(NotImplementedError):
-            kser.str.extract('pat')
+            kser.str.extract("pat")
 
     def test_string_extractall(self):
         kser = ks.from_pandas(self.pser)
         with self.assertRaises(NotImplementedError):
-            kser.str.extractall('pat')
+            kser.str.extractall("pat")
 
     def test_string_find(self):
-        self.check_func(lambda x: x.str.find('a'))
-        self.check_func(lambda x: x.str.find('a', start=3))
-        self.check_func(lambda x: x.str.find('a', start=0, end=1))
+        self.check_func(lambda x: x.str.find("a"))
+        self.check_func(lambda x: x.str.find("a", start=3))
+        self.check_func(lambda x: x.str.find("a", start=0, end=1))
 
     def test_string_findall(self):
-        self.check_func(lambda x: x.str.findall('es|as'))
-        self.check_func(lambda x: x.str.findall('wh.*', flags=re.IGNORECASE))
+        self.check_func(lambda x: x.str.findall("es|as"))
+        self.check_func(lambda x: x.str.findall("wh.*", flags=re.IGNORECASE))
 
     def test_string_index(self):
-        pser = pd.Series(['tea', 'eat'])
-        self.check_func_on_series(lambda x: x.str.index('ea'), pser)
+        pser = pd.Series(["tea", "eat"])
+        self.check_func_on_series(lambda x: x.str.index("ea"), pser)
         with self.assertRaises(Exception):
-            self.check_func_on_series(lambda x: x.str.index('ea', start=0, end=2), pser)
+            self.check_func_on_series(lambda x: x.str.index("ea", start=0, end=2), pser)
         with self.assertRaises(Exception):
-            self.check_func(lambda x: x.str.index('not-found'))
+            self.check_func(lambda x: x.str.index("not-found"))
 
     def test_string_join(self):
-        pser = pd.Series([['a', 'b', 'c'], ['xx', 'yy', 'zz']])
+        pser = pd.Series([["a", "b", "c"], ["xx", "yy", "zz"]])
         self.check_func_on_series(lambda x: x.str.join("-"), pser)
         self.check_func(lambda x: x.str.join("-"))
 
     def test_string_len(self):
         self.check_func(lambda x: x.str.len())
-        pser = pd.Series([['a', 'b', 'c'], ['xx'], []])
+        pser = pd.Series([["a", "b", "c"], ["xx"], []])
         self.check_func_on_series(lambda x: x.str.len(), pser)
 
     def test_string_ljust(self):
         self.check_func(lambda x: x.str.ljust(0))
         self.check_func(lambda x: x.str.ljust(10))
-        self.check_func(lambda x: x.str.ljust(30, 'x'))
+        self.check_func(lambda x: x.str.ljust(30, "x"))
 
     def test_string_match(self):
-        self.check_func(lambda x: x.str.match('in'))
-        self.check_func(lambda x: x.str.match('apples|carrots', na=False))
-        self.check_func(lambda x: x.str.match('White', case=True))
-        self.check_func(lambda x: x.str.match('BANANAS', flags=re.IGNORECASE))
+        self.check_func(lambda x: x.str.match("in"))
+        self.check_func(lambda x: x.str.match("apples|carrots", na=False))
+        self.check_func(lambda x: x.str.match("White", case=True))
+        self.check_func(lambda x: x.str.match("BANANAS", flags=re.IGNORECASE))
 
     def test_string_normalize(self):
-        self.check_func(lambda x: x.str.normalize('NFC'))
-        self.check_func(lambda x: x.str.normalize('NFKD'))
+        self.check_func(lambda x: x.str.normalize("NFC"))
+        self.check_func(lambda x: x.str.normalize("NFKD"))
 
     def test_string_pad(self):
         self.check_func(lambda x: x.str.pad(10))
-        self.check_func(lambda x: x.str.pad(10, side='both'))
-        self.check_func(lambda x: x.str.pad(10, side='right', fillchar='-'))
+        self.check_func(lambda x: x.str.pad(10, side="both"))
+        self.check_func(lambda x: x.str.pad(10, side="right", fillchar="-"))
 
     def test_string_partition(self):
         with self.assertRaises(NotImplementedError):
@@ -238,33 +246,35 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
             )
 
     def test_string_replace(self):
-        self.check_func(lambda x: x.str.replace('a.', 'xx', regex=True))
-        self.check_func(lambda x: x.str.replace('a.', 'xx', regex=False))
-        self.check_func(lambda x: x.str.replace('ing', '0', flags=re.IGNORECASE))
+        self.check_func(lambda x: x.str.replace("a.", "xx", regex=True))
+        self.check_func(lambda x: x.str.replace("a.", "xx", regex=False))
+        self.check_func(lambda x: x.str.replace("ing", "0", flags=re.IGNORECASE))
         # reverse every lowercase word
         repl = lambda m: m.group(0)[::-1]
-        self.check_func(lambda x: x.str.replace(r'[a-z]+', repl))
+        self.check_func(lambda x: x.str.replace(r"[a-z]+", repl))
         # compiled regex with flags
-        regex_pat = re.compile(r'WHITESPACE', flags=re.IGNORECASE)
-        self.check_func(lambda x: x.str.replace(regex_pat, '---'))
+        regex_pat = re.compile(r"WHITESPACE", flags=re.IGNORECASE)
+        self.check_func(lambda x: x.str.replace(regex_pat, "---"))
 
     def test_string_rfind(self):
-        self.check_func(lambda x: x.str.rfind('a'))
-        self.check_func(lambda x: x.str.rfind('a', start=3))
-        self.check_func(lambda x: x.str.rfind('a', start=0, end=1))
+        self.check_func(lambda x: x.str.rfind("a"))
+        self.check_func(lambda x: x.str.rfind("a", start=3))
+        self.check_func(lambda x: x.str.rfind("a", start=0, end=1))
 
     def test_string_rindex(self):
-        pser = pd.Series(['teatea', 'eateat'])
-        self.check_func_on_series(lambda x: x.str.rindex('ea'), pser)
+        pser = pd.Series(["teatea", "eateat"])
+        self.check_func_on_series(lambda x: x.str.rindex("ea"), pser)
         with self.assertRaises(Exception):
-            self.check_func_on_series(lambda x: x.str.rindex('ea', start=0, end=2), pser)
+            self.check_func_on_series(
+                lambda x: x.str.rindex("ea", start=0, end=2), pser
+            )
         with self.assertRaises(Exception):
-            self.check_func(lambda x: x.str.rindex('not-found'))
+            self.check_func(lambda x: x.str.rindex("not-found"))
 
     def test_string_rjust(self):
         self.check_func(lambda x: x.str.rjust(0))
         self.check_func(lambda x: x.str.rjust(10))
-        self.check_func(lambda x: x.str.rjust(30, 'x'))
+        self.check_func(lambda x: x.str.rjust(30, "x"))
 
     def test_string_rpartition(self):
         with self.assertRaises(NotImplementedError):
@@ -277,30 +287,30 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         self.check_func(lambda x: x.str.slice(start=0, stop=5, step=3))
 
     def test_string_slice_replace(self):
-        self.check_func(lambda x: x.str.slice_replace(1, repl='X'))
-        self.check_func(lambda x: x.str.slice_replace(stop=2, repl='X'))
-        self.check_func(lambda x: x.str.slice_replace(start=1, stop=3, repl='X'))
+        self.check_func(lambda x: x.str.slice_replace(1, repl="X"))
+        self.check_func(lambda x: x.str.slice_replace(stop=2, repl="X"))
+        self.check_func(lambda x: x.str.slice_replace(start=1, stop=3, repl="X"))
 
     def test_string_split(self):
         self.check_func(lambda x: x.str.split())
-        self.check_func(lambda x: x.str.split(r'p*'))
-        pser = pd.Series(['This is a sentence.', 'This-is-a-long-word.'])
+        self.check_func(lambda x: x.str.split(r"p*"))
+        pser = pd.Series(["This is a sentence.", "This-is-a-long-word."])
         self.check_func_on_series(lambda x: x.str.split(n=2), pser)
-        self.check_func_on_series(lambda x: x.str.split(pat='-', n=2), pser)
+        self.check_func_on_series(lambda x: x.str.split(pat="-", n=2), pser)
         with self.assertRaises(NotImplementedError):
             self.check_func(lambda x: x.str.split(expand=True))
 
     def test_string_rsplit(self):
         self.check_func(lambda x: x.str.rsplit())
-        self.check_func(lambda x: x.str.rsplit(r'p*'))
-        pser = pd.Series(['This is a sentence.', 'This-is-a-long-word.'])
+        self.check_func(lambda x: x.str.rsplit(r"p*"))
+        pser = pd.Series(["This is a sentence.", "This-is-a-long-word."])
         self.check_func_on_series(lambda x: x.str.rsplit(n=2), pser)
-        self.check_func_on_series(lambda x: x.str.rsplit(pat='-', n=2), pser)
+        self.check_func_on_series(lambda x: x.str.rsplit(pat="-", n=2), pser)
         with self.assertRaises(NotImplementedError):
             self.check_func(lambda x: x.str.rsplit(expand=True))
 
     def test_string_translate(self):
-        m = str.maketrans({'a': 'X', 'e': 'Y', 'i': None})
+        m = str.maketrans({"a": "X", "e": "Y", "i": None})
         self.check_func(lambda x: x.str.translate(m))
 
     def test_string_wrap(self):

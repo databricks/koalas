@@ -55,17 +55,23 @@ def get_json(url):
     try:
         request = Request(url)
         if GITHUB_OAUTH_KEY:
-            request.add_header('Authorization', 'token %s' % GITHUB_OAUTH_KEY)
+            request.add_header("Authorization", "token %s" % GITHUB_OAUTH_KEY)
 
         response = urlopen(request).read()
         if isinstance(response, bytes):
-            response = response.decode('utf-8')
+            response = response.decode("utf-8")
         return json.loads(response)
     except HTTPError as e:
-        if "X-RateLimit-Remaining" in e.headers and e.headers["X-RateLimit-Remaining"] == '0':
-            print("Exceeded the GitHub API rate limit; see the instructions in " +
-                  "dev/gendoc.py to configure an OAuth token for making authenticated " +
-                  "GitHub requests.", sys.stderr)
+        if (
+            "X-RateLimit-Remaining" in e.headers
+            and e.headers["X-RateLimit-Remaining"] == "0"
+        ):
+            print(
+                "Exceeded the GitHub API rate limit; see the instructions in "
+                + "dev/gendoc.py to configure an OAuth token for making authenticated "
+                + "GitHub requests.",
+                sys.stderr,
+            )
         else:
             print("Unable to fetch URL, exiting: %s" % url, sys.stderr)
         raise
@@ -78,11 +84,14 @@ def list_releases_to_document(cur_version):
     """
     tag_url = "https://api.github.com/repos/databricks/koalas/releases"
     cur_version = "v" + cur_version
-    releases = [(
-        release['name'], release['tag_name'], release['body']
-    ) for release in retry(get_json, url=tag_url) if not release['draft']]
+    releases = [
+        (release["name"], release["tag_name"], release["body"])
+        for release in retry(get_json, url=tag_url)
+        if not release["draft"]
+    ]
     filtered = filter(
-        lambda release: LooseVersion(release[1]) <= LooseVersion(cur_version), releases)
+        lambda release: LooseVersion(release[1]) <= LooseVersion(cur_version), releases
+    )
     return sorted(filtered, reverse=True, key=lambda release: LooseVersion(release[1]))
 
 
@@ -117,12 +126,16 @@ def gen_release_notes(path):
             # Make PR reference link pretty.
             # Replace ", #..." to ", `...<https://github.com/databricks/koalas/pull/...>`_"
             release_doc = re.sub(
-                r', #(\d+)',
-                r', `#\1 <https://github.com/databricks/koalas/pull/\1>`_', release_doc)
+                r", #(\d+)",
+                r", `#\1 <https://github.com/databricks/koalas/pull/\1>`_",
+                release_doc,
+            )
             # Replace "(#..." to "(`...<https://github.com/databricks/koalas/pull/...>`_"
             release_doc = re.sub(
-                r'\(#(\d+)',
-                r'(`#\1 <https://github.com/databricks/koalas/pull/\1>`_', release_doc)
+                r"\(#(\d+)",
+                r"(`#\1 <https://github.com/databricks/koalas/pull/\1>`_",
+                release_doc,
+            )
 
             index_file.write("   " + tag_name)
             index_file.write("\n")
@@ -179,7 +192,7 @@ def download_pandoc_if_needed(path):
             # if only 3.5 is supported, should be `run(..., check=True)`
             subprocess.check_call(cmd)
             files = os.listdir(".")
-            archive_name = next(x for x in files if x.startswith('data.tar'))
+            archive_name = next(x for x in files if x.startswith("data.tar"))
             cmd = ["tar", "xf", archive_name]
             subprocess.check_call(cmd)
             # pandoc and pandoc-citeproc are in ./usr/bin subfolder
@@ -205,7 +218,9 @@ def download_pandoc_if_needed(path):
             raise RuntimeError("Linux pandoc is only compiled for 64bit.")
 
     if pf not in pandoc_urls:
-        raise RuntimeError("Can't handle your platform (only Linux, Mac OS X, Windows).")
+        raise RuntimeError(
+            "Can't handle your platform (only Linux, Mac OS X, Windows)."
+        )
 
     filename = pandoc_urls[pf].split("/")[-1]
     os.environ["PATH"] = "%s:%s" % (path, os.environ["PATH"])
@@ -216,10 +231,13 @@ def download_pandoc_if_needed(path):
     os.chdir(path)
     try:
         if not os.path.isfile(filename):
+
             def download_pandoc():
                 try:
                     pandoc_download._handle_linux = _handle_linux
-                    return pandoc_download.download_pandoc(targetfolder=path, version="latest")
+                    return pandoc_download.download_pandoc(
+                        targetfolder=path, version="latest"
+                    )
                 finally:
                     if os.path.isfile(filename):
                         os.remove(filename)

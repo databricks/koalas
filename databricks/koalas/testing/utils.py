@@ -43,7 +43,9 @@ class SQLTestUtils(object):
         `value` to the configuration `key` and then restores it back when it exits.
         """
         assert isinstance(pairs, dict), "pairs should be a dictionary."
-        assert hasattr(self, "spark"), "it should have 'spark' attribute, having a spark session."
+        assert hasattr(
+            self, "spark"
+        ), "it should have 'spark' attribute, having a spark session."
 
         keys = pairs.keys()
         new_values = pairs.values()
@@ -65,7 +67,9 @@ class SQLTestUtils(object):
         A convenient context manager to test with some specific databases. This drops the given
         databases if it exists and sets current database to "default" when it exits.
         """
-        assert hasattr(self, "spark"), "it should have 'spark' attribute, having a spark session."
+        assert hasattr(
+            self, "spark"
+        ), "it should have 'spark' attribute, having a spark session."
 
         try:
             yield
@@ -80,7 +84,9 @@ class SQLTestUtils(object):
         A convenient context manager to test with some specific tables. This drops the given tables
         if it exists.
         """
-        assert hasattr(self, "spark"), "it should have 'spark' attribute, having a spark session."
+        assert hasattr(
+            self, "spark"
+        ), "it should have 'spark' attribute, having a spark session."
 
         try:
             yield
@@ -94,7 +100,9 @@ class SQLTestUtils(object):
         A convenient context manager to test with some specific views. This drops the given views
         if it exists.
         """
-        assert hasattr(self, "spark"), "it should have 'spark' attribute, having a spark session."
+        assert hasattr(
+            self, "spark"
+        ), "it should have 'spark' attribute, having a spark session."
 
         try:
             yield
@@ -108,7 +116,9 @@ class SQLTestUtils(object):
         A convenient context manager to test with some specific functions. This drops the given
         functions if it exists.
         """
-        assert hasattr(self, "spark"), "it should have 'spark' attribute, having a spark session."
+        assert hasattr(
+            self, "spark"
+        ), "it should have 'spark' attribute, having a spark session."
 
         try:
             yield
@@ -118,11 +128,10 @@ class SQLTestUtils(object):
 
 
 class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
-
     @classmethod
     def setUpClass(cls):
         cls.spark = default_session()
-        cls.spark.conf.set('spark.sql.execution.arrow.enabled', True)
+        cls.spark.conf.set("spark.sql.execution.arrow.enabled", True)
 
     @classmethod
     def tearDownClass(cls):
@@ -133,19 +142,25 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
 
     def assertPandasEqual(self, left, right):
         if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
-            msg = ("DataFrames are not equal: " +
-                   "\n\nLeft:\n%s\n%s" % (left, left.dtypes) +
-                   "\n\nRight:\n%s\n%s" % (right, right.dtypes))
+            msg = (
+                "DataFrames are not equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtypes)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtypes)
+            )
             self.assertTrue(left.equals(right), msg=msg)
         elif isinstance(left, pd.Series) and isinstance(right, pd.Series):
-            msg = ("Series are not equal: " +
-                   "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
-                   "\n\nRight:\n%s\n%s" % (right, right.dtype))
+            msg = (
+                "Series are not equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtype)
+            )
             self.assertTrue((left == right).all(), msg=msg)
         elif isinstance(left, pd.Index) and isinstance(right, pd.Index):
-            msg = ("Indices are not equal: " +
-                   "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
-                   "\n\nRight:\n%s\n%s" % (right, right.dtype))
+            msg = (
+                "Indices are not equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtype)
+            )
             self.assertTrue((left == right).all(), msg=msg)
         else:
             raise ValueError("Unexpected values: (%s, %s)" % (left, right))
@@ -159,29 +174,37 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
             dropping missing values (NaN, NaT, None)
         """
         if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
-            msg = ("DataFrames are not almost equal: " +
-                   "\n\nLeft:\n%s\n%s" % (left, left.dtypes) +
-                   "\n\nRight:\n%s\n%s" % (right, right.dtypes))
+            msg = (
+                "DataFrames are not almost equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtypes)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtypes)
+            )
             self.assertEqual(left.shape, right.shape, msg=msg)
             for lcol, rcol in zip(left.columns, right.columns):
-                self.assertEqual(name_like_string(lcol), name_like_string(rcol), msg=msg)
+                self.assertEqual(
+                    name_like_string(lcol), name_like_string(rcol), msg=msg
+                )
                 for lnull, rnull in zip(left[lcol].isnull(), right[rcol].isnull()):
                     self.assertEqual(lnull, rnull, msg=msg)
                 for lval, rval in zip(left[lcol].dropna(), right[rcol].dropna()):
                     self.assertAlmostEqual(lval, rval, msg=msg)
         elif isinstance(left, pd.Series) and isinstance(left, pd.Series):
-            msg = ("Series are not almost equal: " +
-                   "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
-                   "\n\nRight:\n%s\n%s" % (right, right.dtype))
+            msg = (
+                "Series are not almost equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtype)
+            )
             self.assertEqual(len(left), len(right), msg=msg)
             for lnull, rnull in zip(left.isnull(), right.isnull()):
                 self.assertEqual(lnull, rnull, msg=msg)
             for lval, rval in zip(left.dropna(), right.dropna()):
                 self.assertAlmostEqual(lval, rval, msg=msg)
         elif isinstance(left, pd.Index) and isinstance(left, pd.Index):
-            msg = ("Indices are not almost equal: " +
-                   "\n\nLeft:\n%s\n%s" % (left, left.dtype) +
-                   "\n\nRight:\n%s\n%s" % (right, right.dtype))
+            msg = (
+                "Indices are not almost equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtype)
+            )
             self.assertEqual(len(left), len(right), msg=msg)
             for lnull, rnull in zip(left.isnull(), right.isnull()):
                 self.assertEqual(lnull, rnull, msg=msg)
@@ -225,7 +248,6 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
 
 
 class TestUtils(object):
-
     @contextmanager
     def temp_dir(self):
         tmp = tempfile.mkdtemp()
@@ -241,7 +263,6 @@ class TestUtils(object):
 
 
 class ComparisonTestBase(ReusedSQLTestCase):
-
     @property
     def kdf(self):
         return ks.from_pandas(self.pdf)
