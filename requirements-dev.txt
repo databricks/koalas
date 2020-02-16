@@ -18,6 +18,7 @@ pypandoc
 ipython
 
 # Linter
+black==19.10b0; python_version >= '3.6'
 mypy
 flake8
 
