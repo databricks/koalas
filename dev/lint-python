@@ -27,6 +27,8 @@ MINIMUM_PYCODESTYLE="2.4.0"
 
 SPHINX_BUILD="sphinx-build"
 
+BLACK_BUILD="black"
+
 MYPY_BUILD="mypy"
 
 # Sphinx will import Koalas out of the box. Importing Koalas requires to have
@@ -212,11 +214,35 @@ Skipping pydocstyle checks for now."
     fi
 }
 
+function black_test {
+    local BLACK_REPORT=
+    local BLACK_STATUS=
+
+    if ! hash "$BLACK_BUILD" 2> /dev/null; then
+        echo "The $BLACK_BUILD command was not found. Skipping black checks for now."
+        echo
+        return
+    fi
+
+    echo "starting black test..."
+    BLACK_REPORT=$( ($BLACK_BUILD --check --verbose .) 2>&1)
+    BLACK_STATUS=$?
+
+    if [ "$BLACK_STATUS" -ne 0 ]; then
+        echo "black checks failed:"
+        echo "$BLACK_REPORT"
+        echo "$BLACK_STATUS"
+        exit "$BLACK_STATUS"
+    else
+        echo "black checks passed."
+        echo
+    fi
+}
+
 function mypy_test {
     local MYPY_REPORT=
     local MYPY_STATUS=
 
-    # Check that the documentation builds acceptably, skip check if sphinx is not installed.
     if ! hash "$MYPY_BUILD" 2> /dev/null; then
         echo "The $MYPY_BUILD command was not found. Skipping mypy checks for now."
         echo
@@ -284,6 +310,7 @@ compile_python_test "$PYTHON_SOURCE"
 pycodestyle_test "$PYTHON_SOURCE"
 flake8_test
 pydocstyle_test
+black_test
 mypy_test
 sphinx_test
 
