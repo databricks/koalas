@@ -69,13 +69,9 @@ from pyspark.sql.types import (
 )
 from pyspark.sql.window import Window
 
-from databricks import (
-    koalas as ks,
-)  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.utils import (
-    validate_arguments_and_invoke_function,
-    align_diff_frames,
-)
+from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.utils import (validate_arguments_and_invoke_function, align_diff_frames,
+                                     validate_bool_kwarg)
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import (
     _InternalFrame,
@@ -2882,6 +2878,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2013  7     84
         2014  10    31
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if isinstance(keys, (str, tuple)):
             keys = [keys]
         else:
@@ -3063,6 +3060,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         lion           mammal   80.5     run
         monkey         mammal    NaN    jump
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         multi_index = len(self._internal.index_map) > 1
 
         def rename(index):
@@ -4505,6 +4503,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  Batman  Batmobile  1940-04-25
         """
         axis = validate_axis(axis)
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if axis == 0:
             if subset is not None:
                 if isinstance(subset, str):
@@ -4635,6 +4634,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if value is not None:
             axis = validate_axis(axis)
+            inplace = validate_bool_kwarg(inplace, "inplace")
             if axis != 0:
                 raise NotImplementedError(
                     "fillna currently only works for axis=0 or axis='index'"
@@ -4904,6 +4904,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise NotImplementedError("replace currently works only when limit=None")
         if regex is not False:
             raise NotImplementedError("replace currently doesn't supports regex")
+        inplace = validate_bool_kwarg(inplace, "inplace")
 
         if value is not None and not isinstance(value, (int, float, str, list, dict)):
             raise TypeError("Unsupported type {}".format(type(value)))
@@ -6066,6 +6067,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4     D     7     2
         3  None     8     4
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if isinstance(by, (str, tuple)):
             by = [by]  # type: ignore
         else:
@@ -6171,6 +6173,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         a 1  2  1
         b 1  0  3
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError(
@@ -7528,6 +7531,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  2  c
         4  3  d
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if subset is None:
             subset = self._internal.column_labels
         elif isinstance(subset, str):
@@ -8533,6 +8537,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index_mapper_ret_stype = None
         columns_mapper_fn = None
 
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if mapper:
             axis = validate_axis(axis)
             if axis == 0:

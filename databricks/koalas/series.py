@@ -50,13 +50,9 @@ from databricks.koalas.internal import (
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.ml import corr
-from databricks.koalas.utils import (
-    validate_arguments_and_invoke_function,
-    scol_for,
-    combine_frames,
-    name_like_string,
-    validate_axis,
-)
+from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
+                                     combine_frames, name_like_string, validate_axis,
+                                     validate_bool_kwarg)
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
@@ -1116,6 +1112,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         3    4
         Name: foo, dtype: int64
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if inplace and not drop:
             raise TypeError(
                 "Cannot reset_index inplace on a Series to create a DataFrame"
@@ -1420,6 +1417,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         5     hippo
         Name: animal, dtype: object
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         kseries = _col(self.to_frame().drop_duplicates())
 
         if inplace:
@@ -1517,6 +1515,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         part_cols=(),
     ):
         axis = validate_axis(axis)
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if axis != 0:
             raise NotImplementedError(
                 "fillna currently only works for axis=0 or axis='index'"
@@ -1614,6 +1613,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         1    2.0
         Name: 0, dtype: float64
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         # TODO: last two examples from Pandas produce different results.
         kseries = _col(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
@@ -1997,11 +1997,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         0    z
         Name: 0, dtype: object
         """
-        kseries = _col(
-            self.to_dataframe().sort_values(
-                by=self.name, ascending=ascending, na_position=na_position
-            )
-        )
+        inplace = validate_bool_kwarg(inplace, "inplace")
+        kseries = _col(self.to_dataframe().sort_values(by=self.name, ascending=ascending,
+                                                       na_position=na_position))
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf
@@ -2092,15 +2090,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         b  1    0
         Name: 0, dtype: int64
         """
-        kseries = _col(
-            self.to_dataframe().sort_index(
-                axis=axis,
-                level=level,
-                ascending=ascending,
-                kind=kind,
-                na_position=na_position,
-            )
-        )
+        inplace = validate_bool_kwarg(inplace, "inplace")
+        kseries = _col(self.to_dataframe().sort_index(axis=axis, level=level, ascending=ascending,
+                                                      kind=kind, na_position=na_position))
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf
