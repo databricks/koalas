@@ -4193,7 +4193,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Now, to combine the two datasets and view the highest speeds
         of the birds across the two datasets
-        (unlike pandas, )
 
         >>> s1.combine(s2, max).sort_index()
         duck        NaN
