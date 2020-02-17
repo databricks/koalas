@@ -22,6 +22,7 @@ matrix:
         - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
         - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
         - SPARK_VERSION=2.4.5
+        - BLACK_VERSION=19.10b0
         - PANDAS_VERSION=0.24.2
         - PYARROW_VERSION=0.13.0
         - KOALAS_USAGE_LOGGER='databricks.koalas.usage_logging.usage_logger'
@@ -36,6 +37,7 @@ matrix:
         - PATH=$(echo "$PATH" | sed -e 's/:\/usr\/local\/lib\/jvm\/openjdk11\/bin//')
         - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
         - SPARK_VERSION=2.4.5
+        - BLACK_VERSION=19.10b0
         - PANDAS_VERSION=0.25.3
         - PYARROW_VERSION=0.14.1
 
@@ -76,7 +78,7 @@ install:
       conda config --env --add pinned_packages python=$TRAVIS_PYTHON_VERSION && \
       conda config --env --add pinned_packages pandas==$PANDAS_VERSION && \
       conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION && \
-      conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
+      conda install -c conda-forge --yes black==$BLACK_VERSION pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
       conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt && \
       conda list;
     fi
