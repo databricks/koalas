@@ -69,9 +69,14 @@ from pyspark.sql.types import (
 )
 from pyspark.sql.window import Window
 
-from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.utils import (validate_arguments_and_invoke_function, align_diff_frames,
-                                     validate_bool_kwarg)
+from databricks import (
+    koalas as ks,
+)  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.utils import (
+    validate_arguments_and_invoke_function,
+    align_diff_frames,
+    validate_bool_kwarg,
+)
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import (
     _InternalFrame,

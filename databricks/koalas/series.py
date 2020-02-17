@@ -50,9 +50,14 @@ from databricks.koalas.internal import (
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.ml import corr
-from databricks.koalas.utils import (validate_arguments_and_invoke_function, scol_for,
-                                     combine_frames, name_like_string, validate_axis,
-                                     validate_bool_kwarg)
+from databricks.koalas.utils import (
+    validate_arguments_and_invoke_function,
+    scol_for,
+    combine_frames,
+    name_like_string,
+    validate_axis,
+    validate_bool_kwarg,
+)
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
 
@@ -1998,8 +2003,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: object
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        kseries = _col(self.to_dataframe().sort_values(by=self.name, ascending=ascending,
-                                                       na_position=na_position))
+        kseries = _col(
+            self.to_dataframe().sort_values(
+                by=self.name, ascending=ascending, na_position=na_position
+            )
+        )
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf
@@ -2091,8 +2099,15 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: int64
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        kseries = _col(self.to_dataframe().sort_index(axis=axis, level=level, ascending=ascending,
-                                                      kind=kind, na_position=na_position))
+        kseries = _col(
+            self.to_dataframe().sort_index(
+                axis=axis,
+                level=level,
+                ascending=ascending,
+                kind=kind,
+                na_position=na_position,
+            )
+        )
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf

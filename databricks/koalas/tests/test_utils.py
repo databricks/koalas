@@ -17,8 +17,11 @@
 import pandas as pd
 
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
-from databricks.koalas.utils import (lazy_property, validate_arguments_and_invoke_function,
-                                     validate_bool_kwarg)
+from databricks.koalas.utils import (
+    lazy_property,
+    validate_arguments_and_invoke_function,
+    validate_bool_kwarg,
+)
 
 some_global_variable = 0
 
@@ -75,8 +78,8 @@ class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
         # This should fail because we are explicitly setting a non-boolean value
         koalas = "true"
         with self.assertRaisesRegex(
-                ValueError,
-                'For argument "koalas" expected type bool, received type str.'):
+            ValueError, 'For argument "koalas" expected type bool, received type str.'
+        ):
             validate_bool_kwarg(koalas, "koalas")
 
 
