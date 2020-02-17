@@ -3076,44 +3076,57 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             )
 
     def test_map_in_pandas(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 100,
-                            'b': [1., 1., 2., 3., 5., 8.] * 100,
-                            'c': [1, 4, 9, 16, 25, 36] * 100},
-                           columns=['a', 'b', 'c'],
-                           index=np.random.rand(600))
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 2, 3, 4, 5, 6] * 100,
+                "b": [1.0, 1.0, 2.0, 3.0, 5.0, 8.0] * 100,
+                "c": [1, 4, 9, 16, 25, 36] * 100,
+            },
+            columns=["a", "b", "c"],
+            index=np.random.rand(600),
+        )
         kdf = ks.DataFrame(pdf)
 
         self.assert_eq(
-            kdf.map_in_pandas(lambda pdf: pdf + 1).sort_index(),
-            (pdf + 1).sort_index())
+            kdf.map_in_pandas(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index()
+        )
         with option_context("compute.shortcut_limit", 500):
             self.assert_eq(
                 kdf.map_in_pandas(lambda pdf: pdf + 1).sort_index(),
-                (pdf + 1).sort_index())
+                (pdf + 1).sort_index(),
+            )
 
-        with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
+        with self.assertRaisesRegex(
+            AssertionError, "the first argument should be a callable"
+        ):
             kdf.map_in_pandas(1)
 
-        with self.assertRaisesRegex(TypeError, "The given function.*frame as its type hints"):
+        with self.assertRaisesRegex(
+            TypeError, "The given function.*frame as its type hints"
+        ):
+
             def f2(_) -> ks.Series[int]:
                 pass
+
             kdf.map_in_pandas(f2)
 
-        with self.assertRaisesRegex(ValueError, "The given function should return a frame"):
+        with self.assertRaisesRegex(
+            ValueError, "The given function should return a frame"
+        ):
             kdf.map_in_pandas(lambda pdf: 1)
 
         # multi-index columns
-        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
         pdf.columns = columns
         kdf.columns = columns
 
         self.assert_eq(
-            kdf.map_in_pandas(lambda x: x + 1).sort_index(),
-            (pdf + 1).sort_index())
+            kdf.map_in_pandas(lambda x: x + 1).sort_index(), (pdf + 1).sort_index()
+        )
         with option_context("compute.shortcut_limit", 500):
             self.assert_eq(
-                kdf.map_in_pandas(lambda x: x + 1).sort_index(),
-                (pdf + 1).sort_index())
+                kdf.map_in_pandas(lambda x: x + 1).sort_index(), (pdf + 1).sort_index()
+            )
 
     def test_empty_timestamp(self):
         pdf = pd.DataFrame(

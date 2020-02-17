@@ -2040,7 +2040,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if not isinstance(applied, pd.DataFrame):
                 raise ValueError(
                     "The given function should return a frame; however, "
-                    "the return type was %s." % type(applied))
+                    "the return type was %s." % type(applied)
+                )
             kdf = ks.DataFrame(applied)
             if len(pdf) <= limit:
                 return kdf
@@ -2048,24 +2049,28 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return_schema = kdf._internal._sdf.drop(*HIDDEN_COLUMNS).schema
 
             sdf = GroupBy._spark_group_map_apply(
-                self, func, (F.spark_partition_id(),),
-                return_schema, retain_index=True)
+                self, func, (F.spark_partition_id(),), return_schema, retain_index=True
+            )
 
             # If schema is inferred, we can restore indexes too.
-            internal = kdf._internal.copy(sdf=sdf,
-                                          column_scols=[scol_for(sdf, col)
-                                                        for col in kdf._internal.data_columns])
+            internal = kdf._internal.copy(
+                sdf=sdf,
+                column_scols=[scol_for(sdf, col) for col in kdf._internal.data_columns],
+            )
         else:
             return_schema = _infer_return_type(func).tpe
-            is_return_dataframe = getattr(return_sig, "__origin__", None) == ks.DataFrame
+            is_return_dataframe = (
+                getattr(return_sig, "__origin__", None) == ks.DataFrame
+            )
             if not is_return_dataframe:
                 raise TypeError(
                     "The given function should specify a frame as its type "
-                    "hints; however, the return type was %s." % return_sig)
+                    "hints; however, the return type was %s." % return_sig
+                )
 
             sdf = GroupBy._spark_group_map_apply(
-                self, func, (F.spark_partition_id(),),
-                return_schema, retain_index=False)
+                self, func, (F.spark_partition_id(),), return_schema, retain_index=False
+            )
 
             # Otherwise, it loses index.
             internal = _InternalFrame(sdf=sdf, index_map=None)

@@ -307,10 +307,10 @@ pushd "$SPARK_ROOT_DIR" &> /dev/null
 PYTHON_SOURCE="$(find . -name "*.py")"
 
 compile_python_test "$PYTHON_SOURCE"
+black_test
 pycodestyle_test "$PYTHON_SOURCE"
 flake8_test
 pydocstyle_test
-black_test
 mypy_test
 sphinx_test
 
