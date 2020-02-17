@@ -420,7 +420,7 @@ class DataFrame(_Frame, Generic[T]):
 
         >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
         >>> df.axes
-        [RangeIndex(start=0, stop=2, step=1), Index(['col1', 'col2'], dtype='object')]
+        [Int64Index([0, 1], dtype='int64'), Index(['col1', 'col2'], dtype='object')]
         """
         return [self.index, self.columns]
 
