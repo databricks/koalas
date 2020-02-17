@@ -794,13 +794,11 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_combine(self):
         # Series.combine
-        pser1 = pd.Series({'falcon': 330.0, 'eagle': 160.0})
-        pser2 = pd.Series({'falcon': 345.0, 'eagle': 200.0, 'duck': 30.0})
-        pser1 = self.pser1
-        pser2 = self.pser2
-        kser1 = ks.from_pandas(pser1)
-        kser2 = ks.from_pandas(pser2)
+        kser1 = ks.Series({'falcon': 330.0, 'eagle': 160.0})
+        kser2 = ks.Series({'falcon': 345.0, 'eagle': 200.0, 'duck': 30.0})
+        pser1 = kser1.to_pandas()
+        pser2 = kser2.to_pandas()
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
-            self.assert_eq(repr(pser1.combine(pser2, max)),
-                           repr(kser1.combine(kser2, max).sort_index()))
+            self.assert_eq(repr(kser1.combine(kser2, max)),
+                           repr(pser1.combine(pser2, max).sort_index()))
