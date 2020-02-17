@@ -4139,6 +4139,116 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol((scol - prev_row) / prev_row)
 
+    def combine(self, other, func, fill_value=None):
+        """
+        Combine the Series with a Series or scalar according to `func`.
+
+        Combine the Series and `other` using `func` to perform elementwise
+        selection for combined Series.
+        `fill_value` is assumed when value is missing at some index
+        from one of the two objects being combined.
+
+        .. note:: This API internally performs a join operation which can be pretty expensive
+            in general. if you want to use though, set `compute.ops_on_diff_frames` to True.
+
+        Parameters
+        ----------
+        other : Series or scalar
+            The value(s) to be combined with the `Series`.
+        func : function
+            Function that takes two scalars as inputs and returns an element.
+        fill_value : scalar, optional
+            The value to assume when an index is missing from
+            one Series or the other. The default specifies to use the
+            appropriate NaN value for the underlying dtype of the Series.
+
+        Returns
+        -------
+        Series
+            The result of combining the Series with the other object.
+
+        See Also
+        --------
+        Series.combine_first : Combine Series values, choosing the calling
+            Series' values first.
+
+        Examples
+        --------
+        Consider 2 Datasets ``s1`` and ``s2`` containing
+        highest clocked speeds of different birds.
+
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> s1 = ks.Series({'falcon': 330.0, 'eagle': 160.0})
+        >>> s1
+        falcon    330.0
+        eagle     160.0
+        Name: 0, dtype: float64
+        >>> s2 = ks.Series({'falcon': 345.0, 'eagle': 200.0, 'duck': 30.0})
+        >>> s2
+        falcon    345.0
+        eagle     200.0
+        duck       30.0
+        Name: 0, dtype: float64
+
+        Now, to combine the two datasets and view the highest speeds
+        of the birds across the two datasets
+        (unlike pandas, )
+
+        >>> s1.combine(s2, max).sort_index()
+        duck        NaN
+        eagle     200.0
+        falcon    345.0
+        Name: 0, dtype: float64
+
+        In the previous example, the resulting value for duck is missing,
+        because the maximum of a NaN and a float is a NaN.
+        So, in the example, we set ``fill_value=0``,
+        so the maximum value returned will be the value from some dataset.
+
+        >>> s1.combine(s2, max, fill_value=0).sort_index()
+        duck       30.0
+        eagle     200.0
+        falcon    345.0
+        Name: 0, dtype: float64
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        func = getattr(F, func.__name__)
+        name = self.name
+        this = '__this_0'
+        that = '__that_0'
+        if isinstance(other, ks.Series):
+            combined = combine_frames(self.to_frame(), other)
+        else:
+            # Managing scala value
+            self = self.rename(this)
+            combined = self.to_frame()
+            combined[that] = other
+
+        sdf = combined._sdf
+        index_scols = combined._internal.index_scols
+
+        # If `fill_value` is not given, we should ignore the missing values
+        # otherwise, we can just use `fillna`
+        if fill_value is None:
+            cond = (F.when(sdf[this].isNull() | sdf[that].isNull(), sdf[this])
+                     .otherwise(sdf[that]))
+            sdf = sdf.withColumn(that, cond)
+        elif fill_value is not None:
+            sdf = sdf.fillna(fill_value, subset=[this, that])
+
+        # Union `self` and `other` for using aggregate function with groupby
+        sdf = (sdf.select(*index_scols, sdf[this])
+               .union(sdf.select(*index_scols, sdf[that])))
+        sdf = sdf.groupby(*index_scols).agg(func(sdf[this]).alias(name))
+
+        internal = _InternalFrame(
+            sdf=sdf,
+            index_map=self._internal.index_map)
+
+        return _col(ks.DataFrame(internal))
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 
