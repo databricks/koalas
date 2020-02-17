@@ -354,17 +354,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     @property
     def axes(self):
         """
-        Return a list representing the axes of the DataFrame.
-
-        It has the row axis labels and column axis labels as the only members.
-        They are returned in that order.
+        Return a list of the row axis labels.
 
         Examples
         --------
 
         >>> kser = ks.Series([1, 2, 3])
         >>> kser.axes
-        [RangeIndex(start=0, stop=2, step=1), Index(['col1', 'col2'], dtype='object')]
+        [Int64Index([0, 1, 2], dtype='int64')]
         """
         return [self.index]
 
