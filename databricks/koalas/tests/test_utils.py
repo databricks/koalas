@@ -72,6 +72,8 @@ class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(validate_bool_kwarg(koalas, "koalas"), True)
         koalas = False
         self.assert_eq(validate_bool_kwarg(koalas, "koalas"), False)
+        koalas = None
+        self.assert_eq(validate_bool_kwarg(koalas, "koalas"), None)
 
         # This should fail because we are explicitly setting a non-boolean value
         koalas = "true"
