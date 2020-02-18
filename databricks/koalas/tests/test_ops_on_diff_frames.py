@@ -646,6 +646,9 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(repr(kser1.combine_first(kser2).sort_index()),
                        repr(pser1.combine_first(pser2).sort_index()))
+        with self.assertRaisesRegex(ValueError,
+                                    "`combine_first` only allows `Series` for parameter `other`"):
+            kser1.combine_first(50)
 
         # MultiIndex
         midx1 = pd.MultiIndex([['lama', 'cow', 'falcon', 'koala'],

@@ -4178,7 +4178,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
-        if not isinstance(self, ks.Series):
+        if not isinstance(other, ks.Series):
             raise ValueError("`combine_first` only allows `Series` for parameter `other`")
         this = '__this_0'
         that = '__that_0'
