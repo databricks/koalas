@@ -4180,15 +4180,15 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> from databricks.koalas.config import set_option, reset_option
         >>> set_option("compute.ops_on_diff_frames", True)
         >>> s1 = ks.Series({'falcon': 330.0, 'eagle': 160.0})
-        >>> s1
-        falcon    330.0
+        >>> s1.sort_index()
         eagle     160.0
+        falcon    330.0
         Name: 0, dtype: float64
         >>> s2 = ks.Series({'falcon': 345.0, 'eagle': 200.0, 'duck': 30.0})
         >>> s2
-        falcon    345.0
-        eagle     200.0
         duck       30.0
+        eagle     200.0
+        falcon    345.0
         Name: 0, dtype: float64
 
         Now, to combine the two datasets and view the highest speeds
