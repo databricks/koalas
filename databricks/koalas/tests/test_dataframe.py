@@ -2487,9 +2487,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_take(self):
         kdf = ks.DataFrame(
-            {'A': range(1, 6),
-             'B': range(10, 0, -2),
-             'C': range(10, 5, -1)})
+            {'A': range(0, 50000),
+             'B': range(100000, 0, -2),
+             'C': range(100000, 50000, -1)})
         pdf = kdf.to_pandas()
 
         # axis=0 (default)
