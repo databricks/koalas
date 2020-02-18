@@ -1913,9 +1913,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return_schema, retain_index=True)
 
             # If schema is inferred, we can restore indexes too.
-            internal = kdf._internal.copy(sdf=sdf,
-                                          column_scols=[scol_for(sdf, col)
-                                                        for col in kdf._internal.data_columns])
+            internal = kdf._internal.with_new_sdf(sdf)
         else:
             return_schema = _infer_return_type(func).tpe
             is_return_dataframe = getattr(return_sig, "__origin__", None) == ks.DataFrame
@@ -2117,9 +2115,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return_schema, retain_index=True)
 
             # If schema is inferred, we can restore indexes too.
-            internal = kdf._internal.copy(sdf=sdf,
-                                          column_scols=[scol_for(sdf, col)
-                                                        for col in kdf._internal.data_columns])
+            internal = kdf._internal.with_new_sdf(sdf)
         else:
             return_schema = _infer_return_type(func).tpe
             require_index_axis = getattr(return_sig, "__origin__", None) == ks.Series
@@ -4741,9 +4737,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             sdf = sdf.replace(to_replace, value, subset)
 
-        internal = self._internal.copy(sdf=sdf,
-                                       column_scols=[scol_for(sdf, col)
-                                                     for col in self._internal.data_columns])
+        internal = self._internal.with_new_sdf(sdf)
         if inplace:
             self._internal = internal
         else:
@@ -4862,7 +4856,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = self._sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
         else:
             sdf = self._sdf
-        return DataFrame(self._internal.copy(sdf=sdf.limit(n)))
+        return DataFrame(self._internal.with_new_sdf(sdf.limit(n)))
 
     def pivot_table(self, values=None, index=None, columns=None,
                     aggfunc='mean', fill_value=None):
@@ -5649,8 +5643,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             (False, 'last'): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
         }
         by = [mapper[(asc, na_position)](scol) for scol, asc in zip(by, ascending)]
-        sdf = self._sdf.sort(*(by + [NATURAL_ORDER_COLUMN_NAME])).drop(NATURAL_ORDER_COLUMN_NAME)
-        kdf = DataFrame(self._internal.copy(sdf=sdf))  # type: ks.DataFrame
+        sdf = self._sdf.sort(*(by + [NATURAL_ORDER_COLUMN_NAME]))
+        kdf = DataFrame(self._internal.with_new_sdf(sdf))  # type: ks.DataFrame
         if inplace:
             self._internal = kdf._internal
             return None
@@ -6608,9 +6602,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = update_sdf.select([scol_for(update_sdf, col)
                                  for col in self._internal.columns] +
                                 list(HIDDEN_COLUMNS))
-        internal = self._internal.copy(sdf=sdf,
-                                       column_scols=[scol_for(sdf, col)
-                                                     for col in self._internal.data_columns])
+        internal = self._internal.with_new_sdf(sdf)
         self._internal = internal
 
     def sample(self, n: Optional[int] = None, frac: Optional[float] = None, replace: bool = False,
@@ -6691,7 +6683,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("frac must be specified.")
 
         sdf = self._sdf.sample(withReplacement=replace, fraction=frac, seed=random_state)
-        return DataFrame(self._internal.copy(sdf=sdf))
+        return DataFrame(self._internal.with_new_sdf(sdf))
 
     def astype(self, dtype) -> 'DataFrame':
         """
@@ -7090,7 +7082,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf.drop(*HIDDEN_COLUMNS) \
             .drop_duplicates(subset=[self._internal.column_name_for(label) for label in subset])
-        internal = self._internal.copy(sdf=sdf)
+        internal = self._internal.with_new_sdf(sdf)
         if inplace:
             self._internal = internal
         else:
@@ -7290,7 +7282,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         joined_df = self._sdf.drop(NATURAL_ORDER_COLUMN_NAME) \
             .join(labels, on=index_column, how="right")
-        internal = self._internal.copy(sdf=joined_df)
+        internal = self._internal.with_new_sdf(joined_df)
 
         return internal
 
@@ -8029,7 +8021,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     sdf = sdf.withColumn(index_columns[i], gen_new_index_column(i))
             else:
                 sdf = sdf.withColumn(index_columns[level], gen_new_index_column(level))
-            internal = internal.copy(sdf=sdf)
+            internal = internal.with_new_sdf(sdf)
         if columns_mapper_fn:
             # rename column name.
             # Will modify the `_internal._column_labels` and transform underlying spark dataframe
@@ -8608,7 +8600,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         inplace = validate_bool_kwarg(inplace, "inplace")
 
         sdf = self._sdf.filter(expr)
-        internal = self._internal.copy(sdf=sdf)
+        internal = self._internal.with_new_sdf(sdf)
 
         if inplace:
             self._internal = internal
