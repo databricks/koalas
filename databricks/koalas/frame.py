@@ -8559,6 +8559,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 >>> # now, below will raise exception, so we can't use `map_in_pandas`
                 ... # anymore like the above example
                 ... df.map_in_pandas(lambda pdf: pdf.query('A > @num'))  # doctest: +SKIP
+                >>> reset_option('compute.shortcut_limit')
 
         Parameters
         ----------
