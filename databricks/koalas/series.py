@@ -4185,7 +4185,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         falcon    330.0
         Name: 0, dtype: float64
         >>> s2 = ks.Series({'falcon': 345.0, 'eagle': 200.0, 'duck': 30.0})
-        >>> s2
+        >>> s2.sort_index()
         duck       30.0
         eagle     200.0
         falcon    345.0
@@ -4230,11 +4230,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         # If `fill_value` is not given, we should ignore the missing values
         # otherwise, we can just use `fillna`
-        if fill_value is None:
+        if fill_value in (None, np.nan):
             cond = (F.when(sdf[this].isNull() | sdf[that].isNull(), sdf[this])
                      .otherwise(sdf[that]))
             sdf = sdf.withColumn(that, cond)
-        elif fill_value is not None:
+        else:
             sdf = sdf.fillna(fill_value, subset=[this, that])
 
         # Union `self` and `other` for using aggregate function with groupby

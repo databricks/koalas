@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.version import LooseVersion
+
 import pandas as pd
 import numpy as np
 
@@ -647,19 +649,19 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(repr(kser1.combine(kser2, max).sort_index()),
                        repr(pser1.combine(pser2, max).sort_index()))
 
-        values = (-300, 0, 300, None)
+        values = (-300, 0, 300, np.nan)
         for value in values:
             self.assert_eq(repr(kser1.combine(kser2, max, fill_value=value).sort_index()),
                            repr(pser1.combine(pser2, max, fill_value=value).sort_index()))
 
-        # with scala values
-        other = 100
-        self.assert_eq(repr(kser1.combine(other, max).sort_index()),
-                       repr(pser1.combine(other, max).sort_index()))
-
-        for value in values:
-            self.assert_eq(repr(kser1.combine(other, max, fill_value=value).sort_index()),
-                           repr(pser1.combine(other, max, fill_value=value).sort_index()))
+        # with scala values (bug in pandas<1.0.0)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            other = 100
+            self.assert_eq(repr(kser1.combine(other, max).sort_index()),
+                           repr(pser1.combine(other, max).sort_index()))
+            for value in values:
+                self.assert_eq(repr(kser1.combine(other, max, fill_value=value).sort_index()),
+                               repr(pser1.combine(other, max, fill_value=value).sort_index()))
 
         # MultiIndex
         midx1 = pd.MultiIndex([['lama', 'cow', 'falcon', 'koala'],
@@ -682,13 +684,13 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(repr(kser1.combine(kser2, max, fill_value=value).sort_index()),
                            repr(pser1.combine(pser2, max, fill_value=value).sort_index()))
 
-        # MultiIndex with scala values
-        self.assert_eq(repr(kser1.combine(other, max).sort_index()),
-                       repr(pser1.combine(other, max).sort_index()))
-
-        for value in values:
-            self.assert_eq(repr(kser1.combine(other, max, fill_value=value).sort_index()),
-                           repr(pser1.combine(other, max, fill_value=value).sort_index()))
+        # MultiIndex with scala values (bug in pandas<1.0.0)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(repr(kser1.combine(other, max).sort_index()),
+                           repr(pser1.combine(other, max).sort_index()))
+            for value in values:
+                self.assert_eq(repr(kser1.combine(other, max, fill_value=value).sort_index()),
+                               repr(pser1.combine(other, max, fill_value=value).sort_index()))
 
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
