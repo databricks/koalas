@@ -45,11 +45,11 @@ To put your self inside this environment run::
 The final step required is to install Koalas. This can be done with the
 following command::
 
-    conda install koalas
+    conda install -c conda-forge koalas
 
 To install a specific Koalas version::
 
-    conda install koalas=0.19.0
+    conda install -c conda-forge koalas=0.19.0
 
 
 Installing from PyPI

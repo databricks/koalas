@@ -59,7 +59,6 @@ class _MissingPandasLikeDataFrame(object):
     mode = unsupported_function('mode')
     prod = unsupported_function('prod')
     product = unsupported_function('product')
-    query = unsupported_function('query')
     reindex_like = unsupported_function('reindex_like')
     rename_axis = unsupported_function('rename_axis')
     reorder_levels = unsupported_function('reorder_levels')

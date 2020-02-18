@@ -46,7 +46,8 @@ from pyspark.sql.types import (BooleanType, ByteType, DecimalType, DoubleType, F
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.utils import validate_arguments_and_invoke_function, align_diff_frames
+from databricks.koalas.utils import (validate_arguments_and_invoke_function, align_diff_frames,
+                                     validate_bool_kwarg)
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import (_InternalFrame, HIDDEN_COLUMNS, NATURAL_ORDER_COLUMN_NAME,
                                         SPARK_INDEX_NAME_FORMAT, SPARK_DEFAULT_INDEX_NAME)
@@ -1801,6 +1802,137 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     T = property(transpose)
 
+    def map_in_pandas(self, func):
+        """
+        Map a function that takes pandas DataFrame and outputs pandas DataFrame. The pandas
+        DataFrame given to the function is of a batch used internally.
+
+        .. note:: the `func` is unable to access to the whole input frame. Koalas internally
+            splits the input series into multiple batches and calls `func` with each batch multiple
+            times. Therefore, operations such as global aggregations are impossible. See the example
+            below.
+
+            >>> # This case does not return the length of whole frame but of the batch internally
+            ... # used.
+            ... def length(pdf) -> ks.DataFrame[int]:
+            ...     return pd.DataFrame([len(pdf)])
+            ...
+            >>> df = ks.DataFrame({'A': range(1000)})
+            >>> df.map_in_pandas(length)  # doctest: +SKIP
+                c0
+            0   83
+            1   83
+            2   83
+            ...
+            10  83
+            11  83
+
+        .. note:: this API executes the function once to infer the type which is
+            potentially expensive, for instance, when the dataset is created after
+            aggregations or sorting.
+
+            To avoid this, specify return type in ``func``, for instance, as below:
+
+            >>> def plus_one(x) -> ks.DataFrame[float, float]:
+            ...    return x + 1
+
+            If the return type is specified, the output column names become
+            `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
+            DataFrame in ``func``. See examples below.
+
+
+        Parameters
+        ----------
+        func : function
+            Function to apply to each pandas frame.
+
+        Returns
+        -------
+        DataFrame
+
+        See Also
+        --------
+        DataFrame.apply: For row/columnwise operations.
+        DataFrame.applymap: For elementwise operations.
+        DataFrame.aggregate: Only perform aggregating type operations.
+        DataFrame.transform: Only perform transforming type operations.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(1, 2), (3, 4), (5, 6)], columns=['A', 'B'])
+        >>> df
+           A  B
+        0  1  2
+        1  3  4
+        2  5  6
+
+        >>> def take_func(pdf) -> ks.DataFrame[int, int]:
+        ...     return pdf.query('A == 1')
+        >>> df.map_in_pandas(take_func)
+           c0  c1
+        0   1   2
+
+        You can also omit the type hints so Koalas infers the return schema as below:
+
+        >>> df.map_in_pandas(lambda pdf: pdf.query('A == 1'))
+           A  B
+        0  1  2
+        """
+        # TODO: codes here partially duplicate `DataFrame.apply`. Can we deduplicate?
+
+        from databricks.koalas.groupby import GroupBy
+
+        if isinstance(func, np.ufunc):
+            f = func
+            func = lambda *args, **kwargs: f(*args, **kwargs)
+
+        assert callable(func), "the first argument should be a callable function."
+
+        spec = inspect.getfullargspec(func)
+        return_sig = spec.annotations.get("return", None)
+        should_infer_schema = return_sig is None
+
+        if should_infer_schema:
+            # Here we execute with the first 1000 to get the return type.
+            # If the records were less than 1000, it uses pandas API directly for a shortcut.
+            limit = get_option("compute.shortcut_limit")
+            pdf = self.head(limit + 1)._to_internal_pandas()
+            applied = func(pdf)
+            if not isinstance(applied, pd.DataFrame):
+                raise ValueError(
+                    "The given function should return a frame; however, "
+                    "the return type was %s." % type(applied))
+            kdf = ks.DataFrame(applied)
+            if len(pdf) <= limit:
+                return kdf
+
+            return_schema = kdf._internal._sdf.drop(*HIDDEN_COLUMNS).schema
+
+            sdf = GroupBy._spark_group_map_apply(
+                self, func, (F.spark_partition_id(),),
+                return_schema, retain_index=True)
+
+            # If schema is inferred, we can restore indexes too.
+            internal = kdf._internal.copy(sdf=sdf,
+                                          column_scols=[scol_for(sdf, col)
+                                                        for col in kdf._internal.data_columns])
+        else:
+            return_schema = _infer_return_type(func).tpe
+            is_return_dataframe = getattr(return_sig, "__origin__", None) == ks.DataFrame
+            if not is_return_dataframe:
+                raise TypeError(
+                    "The given function should specify a frame as its type "
+                    "hints; however, the return type was %s." % return_sig)
+
+            sdf = GroupBy._spark_group_map_apply(
+                self, func, (F.spark_partition_id(),),
+                return_schema, retain_index=False)
+
+            # Otherwise, it loses index.
+            internal = _InternalFrame(sdf=sdf, index_map=None)
+
+        return DataFrame(internal)
+
     def apply(self, func, axis=0):
         """
         Apply a function along an axis of the DataFrame.
@@ -2684,6 +2816,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2013  7     84
         2014  10    31
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if isinstance(keys, (str, tuple)):
             keys = [keys]
         else:
@@ -2857,6 +2990,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         lion           mammal   80.5     run
         monkey         mammal    NaN    jump
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         multi_index = len(self._internal.index_map) > 1
 
         def rename(index):
@@ -4190,6 +4324,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  Batman  Batmobile  1940-04-25
         """
         axis = validate_axis(axis)
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if axis == 0:
             if subset is not None:
                 if isinstance(subset, str):
@@ -4312,6 +4447,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if value is not None:
             axis = validate_axis(axis)
+            inplace = validate_bool_kwarg(inplace, "inplace")
             if axis != 0:
                 raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
             if not isinstance(value, (float, int, str, bool, dict, pd.Series)):
@@ -4561,6 +4697,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise NotImplementedError("replace currently works only when limit=None")
         if regex is not False:
             raise NotImplementedError("replace currently doesn't supports regex")
+        inplace = validate_bool_kwarg(inplace, "inplace")
 
         if value is not None and not isinstance(value, (int, float, str, list, dict)):
             raise TypeError("Unsupported type {}".format(type(value)))
@@ -5591,6 +5728,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4     D     7     2
         3  None     8     4
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if isinstance(by, (str, tuple)):
             by = [by]  # type: ignore
         else:
@@ -5688,6 +5826,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         a 1  2  1
         b 1  0  3
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError("No other axis than 0 are supported at the moment")
@@ -6779,6 +6918,32 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         75%         3.0       6.0
         max         3.0       6.0
 
+        For multi-index columns:
+
+        >>> df.columns = [('num', 'a'), ('num', 'b'), ('obj', 'c')]
+        >>> df.describe()  # doctest: +NORMALIZE_WHITESPACE
+               num
+                 a    b
+        count  3.0  3.0
+        mean   2.0  5.0
+        std    1.0  1.0
+        min    1.0  4.0
+        25%    1.0  4.0
+        50%    2.0  5.0
+        75%    3.0  6.0
+        max    3.0  6.0
+
+        >>> df[('num', 'b')].describe()
+        count    3.0
+        mean     5.0
+        std      1.0
+        min      4.0
+        25%      4.0
+        50%      5.0
+        75%      6.0
+        max      6.0
+        Name: (num, b), dtype: float64
+
         Describing a ``DataFrame`` and selecting custom percentiles.
 
         >>> df = ks.DataFrame({'numeric1': [1, 2, 3],
@@ -6825,16 +6990,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Name: numeric1, dtype: float64
         """
         exprs = []
-        data_columns = []
-        for col in self.columns:
-            kseries = self[col]
-            spark_type = kseries.spark_type
+        column_labels = []
+        for label in self._internal.column_labels:
+            scol = self._internal.scol_for(label)
+            spark_type = self._internal.spark_type_for(label)
             if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
-                exprs.append(F.nanvl(kseries._scol, F.lit(None)).alias(kseries.name))
-                data_columns.append(kseries.name)
+                exprs.append(F.nanvl(scol, F.lit(None))
+                             .alias(self._internal.column_name_for(label)))
+                column_labels.append(label)
             elif isinstance(spark_type, NumericType):
-                exprs.append(kseries._scol)
-                data_columns.append(kseries.name)
+                exprs.append(scol)
+                column_labels.append(label)
 
         if len(exprs) == 0:
             raise ValueError("Cannot describe a DataFrame without columns")
@@ -6855,7 +7021,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         internal = _InternalFrame(sdf=sdf,
                                   index_map=[('summary', None)],
-                                  column_scols=[scol_for(sdf, col) for col in data_columns])
+                                  column_labels=column_labels,
+                                  column_scols=[scol_for(sdf, self._internal.column_name_for(label))
+                                                for label in column_labels])
         return DataFrame(internal).astype('float64')
 
     # TODO: implements 'keep' parameters
@@ -6906,6 +7074,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  2  c
         4  3  d
         """
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if subset is None:
             subset = self._internal.column_labels
         elif isinstance(subset, str):
@@ -7803,6 +7972,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index_mapper_ret_stype = None
         columns_mapper_fn = None
 
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if mapper:
             axis = validate_axis(axis)
             if axis == 0:
@@ -8349,6 +8519,101 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             column_label_names=None)
 
         return DataFrame(internal) if not result_as_series else DataFrame(internal).T[key]
+
+    def query(self, expr, inplace=False):
+        """
+        Query the columns of a DataFrame with a boolean expression.
+
+        .. note::
+            * Using variables in the environment with `@` is not supported.
+            * Internal columns that starting with __. are able to access,
+              however, they are not supposed to be accessed.
+            * This delegates to Spark SQL so the syntax follows Spark SQL
+            * If you want the exactly same syntax with pandas' you can work around
+              by using :meth:`DataFrame.map_in_pandas`. See the example below.
+
+                >>> df = ks.DataFrame([(1, 2), (3, 4), (5, 6)], columns=['A', 'B'])
+                >>> df
+                   A  B
+                0  1  2
+                1  3  4
+                2  5  6
+                >>> num = 1
+                >>> df.map_in_pandas(lambda pdf: pdf.query('A > @num'))
+                   A  B
+                1  3  4
+                2  5  6
+
+        Parameters
+        ----------
+        expr : str
+            The query string to evaluate.
+
+            You can refer to column names that contain spaces by surrounding
+            them in backticks.
+
+            For example, if one of your columns is called ``a a`` and you want
+            to sum it with ``b``, your query should be ```a a` + b``.
+
+        inplace : bool
+            Whether the query should modify the data in place or return
+            a modified copy.
+
+        Returns
+        -------
+        DataFrame
+            DataFrame resulting from the provided query expression.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': range(1, 6),
+        ...                    'B': range(10, 0, -2),
+        ...                    'C C': range(10, 5, -1)})
+        >>> df
+           A   B  C C
+        0  1  10   10
+        1  2   8    9
+        2  3   6    8
+        3  4   4    7
+        4  5   2    6
+
+        >>> df.query('A > B')
+           A  B  C C
+        4  5  2    6
+
+        The previous expression is equivalent to
+
+        >>> df[df.A > df.B]
+           A  B  C C
+        4  5  2    6
+
+        For columns with spaces in their name, you can use backtick quoting.
+
+        >>> df.query('B == `C C`')
+           A   B  C C
+        0  1  10   10
+
+        The previous expression is equivalent to
+
+        >>> df[df.B == df['C C']]
+           A   B  C C
+        0  1  10   10
+        """
+        if isinstance(self.columns, pd.MultiIndex):
+            raise ValueError("Doesn't support for MultiIndex columns")
+        if not isinstance(expr, str):
+            raise ValueError(
+                'expr must be a string to be evaluated, {} given'
+                .format(type(expr)))
+        inplace = validate_bool_kwarg(inplace, "inplace")
+
+        sdf = self._sdf.filter(expr)
+        internal = self._internal.copy(sdf=sdf)
+
+        if inplace:
+            self._internal = internal
+        else:
+            return DataFrame(internal)
 
     def explain(self, extended: bool = False):
         """

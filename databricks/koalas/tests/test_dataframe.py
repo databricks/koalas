@@ -2339,6 +2339,46 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf.apply(lambda x: len(x), axis=1).sort_index(),
                            pdf.apply(lambda x: len(x), axis=1).sort_index())
 
+    def test_map_in_pandas(self):
+        pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6] * 100,
+                            'b': [1., 1., 2., 3., 5., 8.] * 100,
+                            'c': [1, 4, 9, 16, 25, 36] * 100},
+                           columns=['a', 'b', 'c'],
+                           index=np.random.rand(600))
+        kdf = ks.DataFrame(pdf)
+
+        self.assert_eq(
+            kdf.map_in_pandas(lambda pdf: pdf + 1).sort_index(),
+            (pdf + 1).sort_index())
+        with option_context("compute.shortcut_limit", 500):
+            self.assert_eq(
+                kdf.map_in_pandas(lambda pdf: pdf + 1).sort_index(),
+                (pdf + 1).sort_index())
+
+        with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
+            kdf.map_in_pandas(1)
+
+        with self.assertRaisesRegex(TypeError, "The given function.*frame as its type hints"):
+            def f2(_) -> ks.Series[int]:
+                pass
+            kdf.map_in_pandas(f2)
+
+        with self.assertRaisesRegex(ValueError, "The given function should return a frame"):
+            kdf.map_in_pandas(lambda pdf: 1)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(
+            kdf.map_in_pandas(lambda x: x + 1).sort_index(),
+            (pdf + 1).sort_index())
+        with option_context("compute.shortcut_limit", 500):
+            self.assert_eq(
+                kdf.map_in_pandas(lambda x: x + 1).sort_index(),
+                (pdf + 1).sort_index())
+
     def test_empty_timestamp(self):
         pdf = pd.DataFrame({'t': [datetime(2019, 1, 1, 0, 0, 0),
                                   datetime(2019, 1, 2, 0, 0, 0),
@@ -2397,3 +2437,50 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, 'type of cond must be a DataFrame or Series'):
             kdf.mask(1)
+
+    def test_query(self):
+        kdf = ks.DataFrame(
+            {'A': range(1, 6),
+             'B': range(10, 0, -2),
+             'C': range(10, 5, -1)})
+        pdf = kdf.to_pandas()
+
+        exprs = ('A > B',
+                 'A < C',
+                 'C == B')
+        for expr in exprs:
+            self.assert_eq(kdf.query(expr), pdf.query(expr))
+
+        # test `inplace=True`
+        for expr in exprs:
+            dummy_kdf = kdf.copy()
+            dummy_pdf = pdf.copy()
+
+            pdf.query(expr, inplace=True)
+            kdf.query(expr, inplace=True)
+
+            self.assert_eq(dummy_kdf, dummy_pdf)
+
+        # invalid values for `expr`
+        invalid_exprs = (1, 1.0, (exprs[0],), [exprs[0]])
+        for expr in invalid_exprs:
+            with self.assertRaisesRegex(
+                    ValueError,
+                    'expr must be a string to be evaluated, {} given'
+                    .format(type(expr))):
+                kdf.query(expr)
+
+        # invalid values for `inplace`
+        invalid_inplaces = (1, 0, 'True', 'False')
+        for inplace in invalid_inplaces:
+            with self.assertRaisesRegex(
+                    ValueError,
+                    'For argument "inplace" expected type bool, received type {}.'
+                    .format(type(inplace).__name__)):
+                kdf.query('a < b', inplace=inplace)
+
+        # doesn't support for MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([('A', 'Z'), ('B', 'X'), ('C', 'C')])
+        kdf.columns = columns
+        with self.assertRaisesRegex(ValueError, "Doesn't support for MultiIndex columns"):
+            kdf.query("('A', 'Z') > ('B', 'X')")
