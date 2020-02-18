@@ -2484,3 +2484,39 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.columns = columns
         with self.assertRaisesRegex(ValueError, "Doesn't support for MultiIndex columns"):
             kdf.query("('A', 'Z') > ('B', 'X')")
+
+    def test_take(self):
+        kdf = ks.DataFrame(
+            {'A': range(1, 6),
+             'B': range(10, 0, -2),
+             'C': range(10, 5, -1)})
+        pdf = kdf.to_pandas()
+
+        # axis=0 (default)
+        self.assert_eq(kdf.take([1, 2]),
+                       pdf.take([1, 2]))
+        self.assert_eq(kdf.take([-1, -2]),
+                       pdf.take([-1, -2]))
+
+        # axis=1
+        self.assert_eq(kdf.take([1, 2], axis=1),
+                       pdf.take([1, 2], axis=1))
+        self.assert_eq(kdf.take([-1, -2], axis=1),
+                       pdf.take([-1, -2], axis=1))
+
+        # MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([('A', 'Z'), ('B', 'X'), ('C', 'C')])
+        kdf.columns = columns
+        pdf.columns = columns
+
+        # MultiIndex columns with axis=0 (default)
+        self.assert_eq(kdf.take([1, 2]),
+                       pdf.take([1, 2]))
+        self.assert_eq(kdf.take([-1, -2]),
+                       pdf.take([-1, -2]))
+
+        # MultiIndex columns with axis=1
+        self.assert_eq(kdf.take([1, 2], axis=1),
+                       pdf.take([1, 2], axis=1))
+        self.assert_eq(kdf.take([-1, -2], axis=1),
+                       pdf.take([-1, -2], axis=1))

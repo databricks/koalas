@@ -155,6 +155,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.head
    DataFrame.reset_index
    DataFrame.set_index
+   DataFrame.take
    DataFrame.isin
    DataFrame.sample
 
