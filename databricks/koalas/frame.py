@@ -8559,6 +8559,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 >>> # Now, below will raise exception, so we can't use `map_in_pandas`
                 ... # anymore like the above example.
                 ... df.map_in_pandas(lambda pdf: pdf.query('A > @num'))  # doctest: +SKIP
+                org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+                ...
+                pandas.core.computation.ops.UndefinedVariableError: local variable 'num' is not...
                 >>> reset_option('compute.shortcut_limit')
 
         Parameters
