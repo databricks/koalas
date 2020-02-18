@@ -4139,6 +4139,60 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol((scol - prev_row) / prev_row)
 
+    def combine_first(self, other):
+        """
+        Combine Series values, choosing the calling Series's values first.
+
+        .. note:: This API internally performs a join operation which can be pretty expensive
+            in general. if you want to use though, set `compute.ops_on_diff_frames` to True.
+
+        Parameters
+        ----------
+        other : Series
+            The value(s) to be combined with the `Series`.
+
+        Returns
+        -------
+        Series
+            The result of combining the Series with the other object.
+
+        See Also
+        --------
+        Series.combine : Perform elementwise operation on two Series
+            using a given function.
+
+        Notes
+        -----
+        Result index will be the union of the two indexes.
+
+        Examples
+        --------
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> s1 = ks.Series([1, np.nan])
+        >>> s2 = ks.Series([3, 4])
+        >>> s1.combine_first(s2)
+        0    1.0
+        1    4.0
+        Name: 0, dtype: float64
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        if not isinstance(self, ks.Series):
+            raise ValueError("`combine_first` only allows `Series` for parameter `other`")
+        this = '__this_0'
+        that = '__that_0'
+        combined = combine_frames(self.to_frame(), other)
+        index_scols = combined._internal.index_scols
+        sdf = combined._sdf
+        # If `self` has missing value, use value of `other`
+        cond = F.when(sdf[this].isNull(), sdf[that]).otherwise(sdf[this])
+        sdf = sdf.select(*index_scols, cond.alias(self.name))
+        internal = _InternalFrame(
+            sdf=sdf,
+            index_map=self._internal.index_map)
+        return _col(ks.DataFrame(internal))
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 
