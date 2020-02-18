@@ -9278,7 +9278,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 1  3  4
                 2  5  6
                 >>> num = 1
-                >>> df.map_in_pandas(lambda pdf: pdf.query('A > @num'))  # doctest: +SKIP
+                >>> df.map_in_pandas(lambda pdf: pdf.query('A > @num'))
                    A  B
                 1  3  4
                 2  5  6
@@ -9344,12 +9344,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError(
                 "expr must be a string to be evaluated, {} given".format(type(expr))
             )
-        if not isinstance(inplace, bool):
-            raise ValueError(
-                'For argument "inplace" expected type bool, received type {}.'.format(
-                    type(inplace).__name__
-                )
-            )
+        inplace = validate_bool_kwarg(inplace, "inplace")
 
         sdf = self._sdf.filter(expr)
         internal = self._internal.copy(sdf=sdf)
