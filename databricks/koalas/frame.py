@@ -8540,11 +8540,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 0  1  2
                 1  3  4
                 2  5  6
-                >>> # You can check the value of `compute.shortcut_limit` like the below
+                >>> # You can check the value of `compute.shortcut_limit` like the below.
                 ... get_option('compute.shortcut_limit')
                 1000
                 >>> # Since 1000 is larger than the size of the data(in this case, 3),
-                ... # we can work around with `map_in_pandas`
+                ... # we can work around with `map_in_pandas`.
                 ... num = 1
                 >>> df.map_in_pandas(lambda pdf: pdf.query('A > @num'))
                    A  B
@@ -8557,7 +8557,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 >>> get_option('compute.shortcut_limit')
                 2
                 >>> # Now, below will raise exception, so we can't use `map_in_pandas`
-                ... # anymore like the above example
+                ... # anymore like the above example.
                 ... df.map_in_pandas(lambda pdf: pdf.query('A > @num'))  # doctest: +SKIP
                 >>> reset_option('compute.shortcut_limit')
 
