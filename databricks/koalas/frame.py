@@ -8543,7 +8543,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 >>> # you can check the value of `compute.shortcut_limit` like the below
                 ... get_option('compute.shortcut_limit')
                 1000
-                >>> # 1000 is larger than the size of the data(in this case, 3),
+                >>> # Since 1000 is larger than the size of the data(in this case, 3),
                 ... # we can work around with `map_in_pandas`
                 ... num = 1
                 >>> df.map_in_pandas(lambda pdf: pdf.query('A > @num'))
