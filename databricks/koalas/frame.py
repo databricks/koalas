@@ -8599,8 +8599,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 .format(type(expr)))
         inplace = validate_bool_kwarg(inplace, "inplace")
 
-        sdf = self._sdf.filter(expr)
-        internal = self._internal.with_new_sdf(sdf)
+        data_columns = [label[0] for label in self._internal.column_labels]
+        sdf = self._sdf.select(self._internal.index_scols
+                               + [scol.alias(col) for scol, col
+                                  in zip(self._internal.column_scols, data_columns)]) \
+            .filter(expr)
+        internal = self._internal.with_new_sdf(sdf, data_columns=data_columns)
 
         if inplace:
             self._internal = internal
