@@ -551,7 +551,7 @@ class Index(IndexOpsMixin):
         if not isinstance(value, (float, int, str, bool)):
             raise TypeError("Unsupported type %s" % type(value))
         sdf = self._internal.sdf.fillna(value)
-        result = DataFrame(self._kdf._internal.copy(sdf=sdf)).index
+        result = DataFrame(self._kdf._internal.with_new_sdf(sdf)).index
         return result
 
     # TODO: ADD keep parameter

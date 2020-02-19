@@ -2028,7 +2028,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = sdf.select([F.concat(F.lit(prefix),
                                    internal.scol_for(index_column)).alias(index_column)
                           for index_column in internal.index_columns] + internal.column_scols)
-        kdf._internal = internal.copy(sdf=sdf)
+        kdf._internal = internal.with_new_sdf(sdf)
         return _col(kdf)
 
     def add_suffix(self, suffix):
@@ -2078,7 +2078,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = sdf.select([F.concat(internal.scol_for(index_column),
                                    F.lit(suffix)).alias(index_column)
                           for index_column in internal.index_columns] + internal.column_scols)
-        kdf._internal = internal.copy(sdf=sdf)
+        kdf._internal = internal.with_new_sdf(sdf)
         return _col(kdf)
 
     def corr(self, other, method='pearson'):
