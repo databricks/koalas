@@ -646,22 +646,40 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pser1 = kser1.to_pandas()
         pser2 = kser2.to_pandas()
 
-        self.assert_eq(repr(kser1.combine(kser2, max).sort_index()),
-                       repr(pser1.combine(pser2, max).sort_index()))
+        self.assert_eq(kser1.combine(kser2, max).sort_index(),
+                       pser1.combine(pser2, max).sort_index(), almost=True)
+        self.assert_eq(kser1.combine(kser2, lambda x, y: x + y).sort_index(),
+                       pser1.combine(pser2, lambda x, y: x + y).sort_index(), almost=True)
+        self.assert_eq(kser1.combine(kser2, lambda x, y: x * x).sort_index(),
+                       pser1.combine(pser2, lambda x, y: x * x).sort_index(), almost=True)
+        self.assert_eq(kser1.combine(kser2, lambda x, y: y * y).sort_index(),
+                       pser1.combine(pser2, lambda x, y: y * y).sort_index(), almost=True)
+        self.assert_eq(kser1.combine(kser2, lambda x, y: (x + y) * 10).sort_index(),
+                       pser1.combine(pser2, lambda x, y: (x + y) * 10).sort_index(), almost=True)
 
         values = (-300, 0, 300, np.nan)
         for value in values:
-            self.assert_eq(repr(kser1.combine(kser2, max, fill_value=value).sort_index()),
-                           repr(pser1.combine(pser2, max, fill_value=value).sort_index()))
+            self.assert_eq(kser1.combine(kser2, max, fill_value=value).sort_index(),
+                           pser1.combine(pser2, max, fill_value=value).sort_index(), almost=True)
 
         # with scala values (bug in pandas<1.0.0)
         if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
-            other = 100
-            self.assert_eq(repr(kser1.combine(other, max).sort_index()),
-                           repr(pser1.combine(other, max).sort_index()))
+            self.assert_eq(
+                kser1.combine(100, max).sort_index(),
+                pser1.combine(100, max).sort_index(), almost=True)
+            self.assert_eq(
+                kser1.combine(-100, lambda x, y: x * x).sort_index(),
+                pser1.combine(-100, lambda x, y: x * x).sort_index(), almost=True)
+            self.assert_eq(
+                kser1.combine(0, lambda x, y: y * y).sort_index(),
+                pser1.combine(0, lambda x, y: y * y).sort_index(), almost=True)
+            self.assert_eq(
+                kser1.combine(30.3 - 500.25, lambda x, y: (x + y) * 10).sort_index(),
+                pser1.combine(30.3 - 500.25, lambda x, y: (x + y) * 10).sort_index(), almost=True)
             for value in values:
-                self.assert_eq(repr(kser1.combine(other, max, fill_value=value).sort_index()),
-                               repr(pser1.combine(other, max, fill_value=value).sort_index()))
+                self.assert_eq(
+                    kser1.combine(100, max, fill_value=value).sort_index(),
+                    pser1.combine(100, max, fill_value=value).sort_index(), almost=True)
 
         # MultiIndex
         midx1 = pd.MultiIndex([['lama', 'cow', 'falcon', 'koala'],
@@ -677,20 +695,37 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pser1 = kser1.to_pandas()
         pser2 = kser2.to_pandas()
 
-        self.assert_eq(repr(kser1.combine(kser2, max).sort_index()),
-                       repr(pser1.combine(pser2, max).sort_index()))
+        self.assert_eq(kser1.combine(kser2, max).sort_index(),
+                       pser1.combine(pser2, max).sort_index(), almost=True)
+        self.assert_eq(kser1.combine(kser2, lambda x, y: x * x).sort_index(),
+                       pser1.combine(pser2, lambda x, y: x * x).sort_index(), almost=True)
+        self.assert_eq(kser1.combine(kser2, lambda x, y: y * y).sort_index(),
+                       pser1.combine(pser2, lambda x, y: y * y).sort_index(), almost=True)
+        self.assert_eq(kser1.combine(kser2, lambda x, y: (x + y) * 10).sort_index(),
+                       pser1.combine(pser2, lambda x, y: (x + y) * 10).sort_index(), almost=True)
 
         for value in values:
-            self.assert_eq(repr(kser1.combine(kser2, max, fill_value=value).sort_index()),
-                           repr(pser1.combine(pser2, max, fill_value=value).sort_index()))
+            self.assert_eq(kser1.combine(kser2, max, fill_value=value).sort_index(),
+                           pser1.combine(pser2, max, fill_value=value).sort_index(), almost=True)
 
         # MultiIndex with scala values (bug in pandas<1.0.0)
         if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
-            self.assert_eq(repr(kser1.combine(other, max).sort_index()),
-                           repr(pser1.combine(other, max).sort_index()))
+            self.assert_eq(
+                kser1.combine(100, max).sort_index(),
+                pser1.combine(100, max).sort_index(), almost=True)
+            self.assert_eq(
+                kser1.combine(-100, lambda x, y: x * x).sort_index(),
+                pser1.combine(-100, lambda x, y: x * x).sort_index(), almost=True)
+            self.assert_eq(
+                kser1.combine(0, lambda x, y: y * y).sort_index(),
+                pser1.combine(0, lambda x, y: y * y).sort_index(), almost=True)
+            self.assert_eq(
+                kser1.combine(30.3 - 500.25, lambda x, y: (x + y) * 10).sort_index(),
+                pser1.combine(30.3 - 500.25, lambda x, y: (x + y) * 10).sort_index(), almost=True)
             for value in values:
-                self.assert_eq(repr(kser1.combine(other, max, fill_value=value).sort_index()),
-                               repr(pser1.combine(other, max, fill_value=value).sort_index()))
+                self.assert_eq(
+                    kser1.combine(100, max, fill_value=value).sort_index(),
+                    pser1.combine(100, max, fill_value=value).sort_index(), almost=True)
 
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):

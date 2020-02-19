@@ -33,6 +33,7 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import BooleanType, StructType
 from pyspark.sql.window import Window
+from pyspark.sql.functions import udf, pandas_udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
@@ -4151,6 +4152,35 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         .. note:: This API internally performs a join operation which can be pretty expensive
             in general. if you want to use though, set `compute.ops_on_diff_frames` to True.
 
+        .. note:: The result can be slightly different from pandas, since we only support
+            for float type of Series for now.
+            if given Series has integer type, it casted to float in the resulting Series.
+            See the examples below.
+
+                >>> set_option("compute.ops_on_diff_frames", True)
+                >>> kser1 = ks.Series([1, 2, 3, 4, 5])
+                >>> kser2 = ks.Series([5, 4, 3, 2, 1])
+                >>> kser1.combine(kser2, lambda x, y: x + y)
+                0    6.0
+                1    6.0
+                3    6.0
+                2    6.0
+                4    6.0
+                Name: 0, dtype: float64
+
+                whereas pandas looks like the below.
+
+                >>> pser1 = kser1.to_pandas()
+                >>> pser2 = kser2.to_pandas()
+                >>> pser1.combine(pser2, lambda x, y: x + y)
+                0    6
+                1    6
+                2    6
+                3    6
+                4    6
+                Name: 0, dtype: int64
+                >>> reset_option("compute.ops_on_diff_frames")
+
         Parameters
         ----------
         other : Series or scalar
@@ -4213,10 +4243,23 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
-        func = getattr(F, func.__name__)
+        # TODO: only `func` with return numeric-type is supported for now,
+        # assuming this case is the most frequent.
+        # because we can't infer the return type of `func` before it actually return.
+        @udf("double")
+        def spark_udf(x, y):
+            x = float("NaN") if x is None else x
+            y = float("NaN") if y is None else y
+            result = func(x, y)
+            if not isinstance(result, (int, float)):
+                raise NotImplementedError(
+                    "Only `func` with returning numeric-type is supported for now.")
+            return float(result)
+
         name = self.name
         this = '__this_0'
         that = '__that_0'
+
         if isinstance(other, ks.Series):
             combined = combine_frames(self.to_frame(), other)
         else:
@@ -4228,19 +4271,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = combined._sdf
         index_scols = combined._internal.index_scols
 
-        # If `fill_value` is not given, we should ignore the missing values
-        # otherwise, we can just use `fillna`
-        if fill_value in (None, np.nan):
-            cond = (F.when(sdf[this].isNull() | sdf[that].isNull(), sdf[this])
-                     .otherwise(sdf[that]))
-            sdf = sdf.withColumn(that, cond)
-        else:
+        if fill_value not in (None, np.nan):
             sdf = sdf.fillna(fill_value, subset=[this, that])
 
-        # Union `self` and `other` for using aggregate function with groupby
-        sdf = (sdf.select(*index_scols, sdf[this])
-               .union(sdf.select(*index_scols, sdf[that])))
-        sdf = sdf.groupby(*index_scols).agg(func(sdf[this]).alias(name))
+        # applying spark_udf
+        sdf = sdf.select(*index_scols, spark_udf(this, that).alias(name))
 
         internal = _InternalFrame(
             sdf=sdf,
