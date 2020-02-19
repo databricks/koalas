@@ -33,7 +33,7 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import BooleanType, StructType
 from pyspark.sql.window import Window
-from pyspark.sql.functions import udf, pandas_udf
+from pyspark.sql.functions import udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option
