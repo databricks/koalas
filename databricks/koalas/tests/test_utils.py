@@ -17,7 +17,8 @@
 import pandas as pd
 
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
-from databricks.koalas.utils import lazy_property, validate_arguments_and_invoke_function
+from databricks.koalas.utils import (lazy_property, validate_arguments_and_invoke_function,
+                                     validate_bool_kwarg)
 
 some_global_variable = 0
 
@@ -64,6 +65,22 @@ class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
         # If lazy prop is not working, the second test would fail (because it'd be 2)
         self.assert_eq(obj.lazy_prop, 1)
         self.assert_eq(obj.lazy_prop, 1)
+
+    def test_validate_bool_kwarg(self):
+        # This should pass and run fine
+        koalas = True
+        self.assert_eq(validate_bool_kwarg(koalas, "koalas"), True)
+        koalas = False
+        self.assert_eq(validate_bool_kwarg(koalas, "koalas"), False)
+        koalas = None
+        self.assert_eq(validate_bool_kwarg(koalas, "koalas"), None)
+
+        # This should fail because we are explicitly setting a non-boolean value
+        koalas = "true"
+        with self.assertRaisesRegex(
+                ValueError,
+                'For argument "koalas" expected type bool, received type str.'):
+            validate_bool_kwarg(koalas, "koalas")
 
 
 class TestClassForLazyProp:
