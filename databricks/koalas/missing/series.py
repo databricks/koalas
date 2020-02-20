@@ -29,9 +29,6 @@ def unsupported_property(property_name, deprecated=False, reason=""):
 
 class _MissingPandasLikeSeries(object):
 
-    # Properties
-    axes = unsupported_property('axes')
-
     # Functions
     align = unsupported_function('align')
     argsort = unsupported_function('argsort')

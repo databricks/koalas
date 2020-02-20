@@ -2484,3 +2484,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.columns = columns
         with self.assertRaisesRegex(ValueError, "Doesn't support for MultiIndex columns"):
             kdf.query("('A', 'Z') > ('B', 'X')")
+
+    def test_axes(self):
+        pdf = self.pdf
+        kdf = ks.from_pandas(pdf)
+        self.assert_list_eq(pdf.axes, kdf.axes)
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_list_eq(pdf.axes, kdf.axes)

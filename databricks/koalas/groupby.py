@@ -888,9 +888,7 @@ class GroupBy(object):
 
         if should_infer_schema:
             # If schema is inferred, we can restore indexes too.
-            internal = kdf._internal.copy(sdf=sdf,
-                                          column_scols=[scol_for(sdf, col)
-                                                        for col in kdf._internal.data_columns])
+            internal = kdf._internal.with_new_sdf(sdf)
         else:
             # Otherwise, it loses index.
             internal = _InternalFrame(sdf=sdf, index_map=None)
@@ -942,9 +940,7 @@ class GroupBy(object):
 
         sdf = GroupBy._spark_group_map_apply(
             self._kdf, pandas_filter, self._groupkeys_scols, data_schema, retain_index=True)
-        return DataFrame(self._kdf._internal.copy(
-            sdf=sdf,
-            column_scols=[scol_for(sdf, col) for col in self._kdf._internal.data_columns]))
+        return DataFrame(self._kdf._internal.with_new_sdf(sdf))
 
     @staticmethod
     def _spark_group_map_apply(kdf, func, groupkeys_scols, return_schema, retain_index):
@@ -1452,10 +1448,7 @@ class GroupBy(object):
         sdf = sdf.withColumn(
             tmp_col, F.row_number().over(window)).filter(F.col(tmp_col) <= n).drop(tmp_col)
 
-        internal = self._kdf._internal.copy(
-            sdf=sdf,
-            column_scols=[scol_for(sdf, col) for col in self._kdf._internal.data_columns])
-
+        internal = self._kdf._internal.with_new_sdf(sdf)
         return DataFrame(internal)
 
     def shift(self, periods=1, fill_value=None):
@@ -1644,9 +1637,7 @@ class GroupBy(object):
                 self._kdf, pandas_transform, self._groupkeys_scols,
                 return_schema, retain_index=True)
             # If schema is inferred, we can restore indexes too.
-            internal = kdf._internal.copy(sdf=sdf,
-                                          column_scols=[scol_for(sdf, col)
-                                                        for col in kdf._internal.data_columns])
+            internal = kdf._internal.with_new_sdf(sdf)
         else:
             return_type = _infer_return_type(func).tpe
             data_columns = self._kdf._internal.data_columns

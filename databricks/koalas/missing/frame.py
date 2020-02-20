@@ -29,9 +29,6 @@ def unsupported_property(property_name, deprecated=False, reason=""):
 
 class _MissingPandasLikeDataFrame(object):
 
-    # Properties
-    axes = unsupported_property('axes')
-
     # Functions
     align = unsupported_function('align')
     asfreq = unsupported_function('asfreq')

@@ -52,8 +52,6 @@ class _RollingAndExpanding(object):
             "to handle the index and columns of output.")
 
     def count(self):
-        # Rolling and Expanding have different behavior for `count` in pandas 1.0.0
-        # for now, we consider both pandas < 1.0.0 and pandas >= 1.0.0
         def count(scol):
             return F.count(scol).over(self._window)
 

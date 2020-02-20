@@ -740,18 +740,20 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kdf.groupby('a').shift().sort_index(),
                        pdf.groupby('a').shift().sort_index())
-        # TODO: seems like a pandas' bug when fill_value is not None?
-        # self.assert_eq(kdf.groupby(['a', 'b']).shift(periods=-1, fill_value=0).sort_index(),
-        #                pdf.groupby(['a', 'b']).shift(periods=-1, fill_value=0).sort_index())
+        # pandas' bug when fill_value is not None
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            self.assert_eq(kdf.groupby(['a', 'b']).shift(periods=-1, fill_value=0).sort_index(),
+                           pdf.groupby(['a', 'b']).shift(periods=-1, fill_value=0).sort_index())
         self.assert_eq(kdf.groupby(['b'])['a'].shift().sort_index(),
                        pdf.groupby(['b'])['a'].shift().sort_index(), almost=True)
         self.assert_eq(kdf.groupby(['a', 'b'])['c'].shift().sort_index(),
                        pdf.groupby(['a', 'b'])['c'].shift().sort_index(), almost=True)
-        # TODO: seems like a pandas' bug when fill_value is not None?
-        # self.assert_eq(
-        #     kdf.groupby(['b'])[['a', 'c']].shift(periods=-1, fill_value=0).sort_index(),
-        #     pdf.groupby(['b'])[['a', 'c']].shift(periods=-1, fill_value=0).sort_index(),
-        #     almost=True)
+        # pandas' bug when fill_value is not None
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            self.assert_eq(
+                kdf.groupby(['b'])[['a', 'c']].shift(periods=-1, fill_value=0).sort_index(),
+                pdf.groupby(['b'])[['a', 'c']].shift(periods=-1, fill_value=0).sort_index(),
+                almost=True)
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
@@ -760,11 +762,12 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kdf.groupby(('x', 'a')).shift().sort_index(),
                        pdf.groupby(('x', 'a')).shift().sort_index())
-        # TODO: seems like a pandas' bug when fill_value is not None?
-        # self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).shift(periods=-1,
-        #                                                            fill_value=0).sort_index(),
-        #                pdf.groupby([('x', 'a'), ('x', 'b')]).shift(periods=-1,
-        #                                                            fill_value=0).sort_index())
+        # pandas' bug when fill_value is not None
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            self.assert_eq(kdf.groupby([('x', 'a'), ('x', 'b')]).shift(periods=-1,
+                                                                       fill_value=0).sort_index(),
+                           pdf.groupby([('x', 'a'), ('x', 'b')]).shift(periods=-1,
+                                                                       fill_value=0).sort_index())
 
     def test_apply(self):
         pdf = pd.DataFrame({'a': [1, 2, 3, 4, 5, 6],

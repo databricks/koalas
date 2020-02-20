@@ -353,6 +353,20 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return self.dtype
 
     @property
+    def axes(self):
+        """
+        Return a list of the row axis labels.
+
+        Examples
+        --------
+
+        >>> kser = ks.Series([1, 2, 3])
+        >>> kser.axes
+        [Int64Index([0, 1, 2], dtype='int64')]
+        """
+        return [self.index]
+
+    @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self._internal.spark_type_for(self._internal.column_labels[0])
@@ -2028,7 +2042,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = sdf.select([F.concat(F.lit(prefix),
                                    internal.scol_for(index_column)).alias(index_column)
                           for index_column in internal.index_columns] + internal.column_scols)
-        kdf._internal = internal.copy(sdf=sdf)
+        kdf._internal = internal.with_new_sdf(sdf)
         return _col(kdf)
 
     def add_suffix(self, suffix):
@@ -2078,7 +2092,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = sdf.select([F.concat(internal.scol_for(index_column),
                                    F.lit(suffix)).alias(index_column)
                           for index_column in internal.index_columns] + internal.column_scols)
-        kdf._internal = internal.copy(sdf=sdf)
+        kdf._internal = internal.with_new_sdf(sdf)
         return _col(kdf)
 
     def corr(self, other, method='pearson'):
