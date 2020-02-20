@@ -4161,7 +4161,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 >>> set_option("compute.ops_on_diff_frames", True)
                 >>> kser1 = ks.Series([1, 2, 3, 4, 5])
                 >>> kser2 = ks.Series([5, 4, 3, 2, 1])
-                >>> kser1.combine(kser2, lambda x, y: x + y)
+                >>> kser1.combine(kser2, lambda x, y: x + y).sort_index()
                 0    6.0
                 1    6.0
                 3    6.0
@@ -4173,7 +4173,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
                 >>> pser1 = kser1.to_pandas()
                 >>> pser2 = kser2.to_pandas()
-                >>> pser1.combine(pser2, lambda x, y: x + y)
+                >>> pser1.combine(pser2, lambda x, y: x + y).sort_index()
                 0    6
                 1    6
                 2    6
