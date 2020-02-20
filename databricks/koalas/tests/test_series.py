@@ -1124,3 +1124,17 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                        pser.pct_change(periods=-100000000), almost=True)
         self.assert_eq(kser.pct_change(periods=100000000),
                        pser.pct_change(periods=100000000), almost=True)
+
+    def test_axes(self):
+        kser = ks.Series([90, 91, 85], index=[2, 4, 1])
+        pser = kser.to_pandas()
+        self.assert_list_eq(kser.axes, pser.axes)
+
+        # for MultiIndex
+        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+                              ['speed', 'weight', 'length']],
+                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        pser = kser.to_pandas()
+        self.assert_list_eq(kser.axes, pser.axes)

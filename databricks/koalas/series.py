@@ -353,6 +353,20 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return self.dtype
 
     @property
+    def axes(self):
+        """
+        Return a list of the row axis labels.
+
+        Examples
+        --------
+
+        >>> kser = ks.Series([1, 2, 3])
+        >>> kser.axes
+        [Int64Index([0, 1, 2], dtype='int64')]
+        """
+        return [self.index]
+
+    @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self._internal.spark_type_for(self._internal.column_labels[0])

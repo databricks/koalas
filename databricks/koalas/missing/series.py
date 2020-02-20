@@ -29,9 +29,6 @@ def unsupported_property(property_name, deprecated=False, reason=""):
 
 class _MissingPandasLikeSeries(object):
 
-    # Properties
-    axes = unsupported_property('axes')
-
     # Deprecated properties
     blocks = unsupported_property('blocks', deprecated=True)
     ftypes = unsupported_property('ftypes', deprecated=True)

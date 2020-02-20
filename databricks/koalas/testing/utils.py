@@ -216,6 +216,10 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
     def assert_array_eq(self, left, right):
         self.assertTrue((left == right).all())
 
+    def assert_list_eq(self, left, right):
+        for litem, ritem in zip(left, right):
+            self.assert_eq(litem, ritem)
+
     @staticmethod
     def _to_pandas(df):
         if isinstance(df, (DataFrame, Series, Index)):

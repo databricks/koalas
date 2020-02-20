@@ -408,6 +408,23 @@ class DataFrame(_Frame, Generic[T]):
         """
         return 2
 
+    @property
+    def axes(self):
+        """
+        Return a list representing the axes of the DataFrame.
+
+        It has the row axis labels and column axis labels as the only members.
+        They are returned in that order.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
+        >>> df.axes
+        [Int64Index([0, 1], dtype='int64'), Index(['col1', 'col2'], dtype='object')]
+        """
+        return [self.index, self.columns]
+
     def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=False):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
