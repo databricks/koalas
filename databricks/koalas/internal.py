@@ -453,6 +453,7 @@ class _InternalFrame(object):
         Column<b'(a, y)'>
         """
         assert isinstance(sdf, spark.DataFrame)
+        assert not sdf.isStreaming, "Koalas does not support Structured Streaming."
 
         if index_map is None:
             assert not any(SPARK_INDEX_NAME_PATTERN.match(name) for name in sdf.columns), \
