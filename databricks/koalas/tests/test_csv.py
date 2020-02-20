@@ -228,6 +228,9 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(ks.read_csv(fn, escapechar='E'),
                            pd.read_csv(fn, escapechar='E'), almost=True)
 
+            self.assert_eq(ks.read_csv(fn, escapechar='ABC', escape="E"),
+                           pd.read_csv(fn, escapechar='E'), almost=True)
+
     def test_to_csv(self):
         pdf = pd.DataFrame({'aa': [1, 2, 3], 'bb': [4, 5, 6]}, index=[0, 1, 3])
         kdf = ks.DataFrame(pdf)

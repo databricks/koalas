@@ -203,7 +203,6 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
         usecols = list(usecols)
     if usecols is None or callable(usecols) or len(usecols) > 0:
         reader = default_session().read
-        reader.options(**options)
         reader.option("inferSchema", True)
         reader.option("sep", sep)
 
@@ -225,6 +224,8 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
             if not isinstance(comment, str) or len(comment) != 1:
                 raise ValueError("Only length-1 comment characters supported")
             reader.option("comment", comment)
+
+        reader.options(**options)
 
         if isinstance(names, str):
             sdf = reader.schema(names).csv(path)
