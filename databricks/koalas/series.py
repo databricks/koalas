@@ -4157,6 +4157,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             if given Series has integer type, it casted to float in the resulting Series.
             See the examples below.
 
+                >>> from databricks.koalas.config import set_option, reset_option
                 >>> set_option("compute.ops_on_diff_frames", True)
                 >>> kser1 = ks.Series([1, 2, 3, 4, 5])
                 >>> kser2 = ks.Series([5, 4, 3, 2, 1])
