@@ -4164,8 +4164,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 >>> kser1.combine(kser2, lambda x, y: x + y).sort_index()
                 0    6.0
                 1    6.0
-                3    6.0
                 2    6.0
+                3    6.0
                 4    6.0
                 Name: 0, dtype: float64
 
