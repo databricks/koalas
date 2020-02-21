@@ -33,9 +33,9 @@ using Koalas. If you are learning Spark from ground up, we recommend you start w
 Does Koalas support Structured Streaming?
 -----------------------------------------
 
-No, Koalas does not support Structured Streaming.
+No, Koalas does not support Structured Streaming officially.
 
-You might still be able to use Koalas in `foreachBatch` as a workaround:
+As a workaround, you can use Koalas APIs with `foreachBatch` in Structured Streaming which allows batch APIs:
 
 .. code-block:: python
 
