@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.version import LooseVersion
+
 import numpy as np
 import pandas as pd
 
@@ -60,7 +62,10 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(repr(ks.range(10).expanding(5)), "Expanding [min_periods=5]")
 
     def test_expanding_count(self):
-        self._test_expanding_func("count")
+        # The behaviour of Expanding.count are different between pandas>=1.0.0 and lower,
+        # and we're following the behaviour of latest version of pandas.
+        if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
+            self._test_expanding_func("count")
 
     def test_expanding_min(self):
         self._test_expanding_func("min")
@@ -115,7 +120,10 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             repr(getattr(pdf.groupby([("a", "x"), ("a", "y")]).expanding(2), f)().sort_index()))
 
     def test_groupby_expanding_count(self):
-        self._test_groupby_expanding_func("count")
+        # The behaviour of ExpandingGroupby.count are different between pandas>=1.0.0 and lower,
+        # and we're following the behaviour of latest version of pandas.
+        if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
+            self._test_groupby_expanding_func("count")
 
     def test_groupby_expanding_min(self):
         self._test_groupby_expanding_func("min")

@@ -55,15 +55,6 @@ class _RollingAndExpanding(object):
         def count(scol):
             return F.count(scol).over(self._window)
 
-        if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
-            if isinstance(self, (Expanding, ExpandingGroupby)):
-                def count_expanding(scol):
-                    return F.when(
-                        F.row_number().over(self._unbounded_window) >= self._min_periods,
-                        F.count(scol).over(self._window)
-                    ).otherwise(F.lit(None))
-                return self._apply_as_series_or_frame(count_expanding).astype('float64')
-
         return self._apply_as_series_or_frame(count).astype('float64')
 
     def sum(self):
@@ -1104,7 +1095,12 @@ class Expanding(_RollingAndExpanding):
         2  2.0
         3  3.0
         """
-        return super(Expanding, self).count()
+        def count(scol):
+            return F.when(
+                F.row_number().over(self._unbounded_window) >= self._min_periods,
+                F.count(scol).over(self._window)
+            ).otherwise(F.lit(None))
+        return self._apply_as_series_or_frame(count).astype('float64')
 
     def sum(self):
         """
