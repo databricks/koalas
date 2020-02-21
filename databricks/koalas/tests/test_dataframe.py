@@ -2135,7 +2135,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                        kdf.duplicated(keep=False).sort_index())
         self.assert_eq(pd.Series(pdf.duplicated(subset=['b']), name='0').sort_index(),
                        kdf.duplicated(subset=['b']).sort_index())
-        with self.assertRaisesRegex(ValueError, "'keep' only support 'first', 'last' and False"):
+        with self.assertRaisesRegex(ValueError, "'keep' only supports 'first', 'last' and False"):
             kdf.duplicated(keep='false')
         with self.assertRaisesRegex(KeyError, "'d'"):
             kdf.duplicated(subset=['d'])
