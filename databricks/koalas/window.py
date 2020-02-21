@@ -23,9 +23,12 @@ from databricks.koalas.internal import SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.utils import name_like_string
 from pyspark.sql import Window
 from pyspark.sql import functions as F
-from databricks.koalas.missing.window import _MissingPandasLikeRolling, \
-    _MissingPandasLikeRollingGroupby, _MissingPandasLikeExpanding, \
-    _MissingPandasLikeExpandingGroupby
+from databricks.koalas.missing.window import (
+    _MissingPandasLikeRolling,
+    _MissingPandasLikeRollingGroupby,
+    _MissingPandasLikeExpanding,
+    _MissingPandasLikeExpandingGroupby,
+)
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.internal import NATURAL_ORDER_COLUMN_NAME
@@ -33,12 +36,12 @@ from databricks.koalas.utils import scol_for
 
 
 class _RollingAndExpanding(object):
-
     def __init__(self, window, min_periods):
         self._window = window
         # This unbounded Window is later used to handle 'min_periods' for now.
         self._unbounded_window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(
-            Window.unboundedPreceding, Window.currentRow)
+            Window.unboundedPreceding, Window.currentRow
+        )
         self._min_periods = min_periods
 
     def _apply_as_series_or_frame(self, func):
@@ -49,28 +52,31 @@ class _RollingAndExpanding(object):
         """
         raise NotImplementedError(
             "A class that inherits this class should implement this method "
-            "to handle the index and columns of output.")
+            "to handle the index and columns of output."
+        )
 
     def count(self):
         def count(scol):
             return F.count(scol).over(self._window)
 
-        if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
             if isinstance(self, (Expanding, ExpandingGroupby)):
+
                 def count_expanding(scol):
                     return F.when(
                         F.row_number().over(self._unbounded_window) >= self._min_periods,
-                        F.count(scol).over(self._window)
+                        F.count(scol).over(self._window),
                     ).otherwise(F.lit(None))
-                return self._apply_as_series_or_frame(count_expanding).astype('float64')
 
-        return self._apply_as_series_or_frame(count).astype('float64')
+                return self._apply_as_series_or_frame(count_expanding).astype("float64")
+
+        return self._apply_as_series_or_frame(count).astype("float64")
 
     def sum(self):
         def sum(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
-                F.sum(scol).over(self._window)
+                F.sum(scol).over(self._window),
             ).otherwise(F.lit(None))
 
         return self._apply_as_series_or_frame(sum)
@@ -79,7 +85,7 @@ class _RollingAndExpanding(object):
         def min(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
-                F.min(scol).over(self._window)
+                F.min(scol).over(self._window),
             ).otherwise(F.lit(None))
 
         return self._apply_as_series_or_frame(min)
@@ -88,7 +94,7 @@ class _RollingAndExpanding(object):
         def max(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
-                F.max(scol).over(self._window)
+                F.max(scol).over(self._window),
             ).otherwise(F.lit(None))
 
         return self._apply_as_series_or_frame(max)
@@ -97,7 +103,7 @@ class _RollingAndExpanding(object):
         def mean(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
-                F.mean(scol).over(self._window)
+                F.mean(scol).over(self._window),
             ).otherwise(F.lit(None))
 
         return self._apply_as_series_or_frame(mean)
@@ -106,7 +112,7 @@ class _RollingAndExpanding(object):
         def std(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
-                F.stddev(scol).over(self._window)
+                F.stddev(scol).over(self._window),
             ).otherwise(F.lit(None))
 
         return self._apply_as_series_or_frame(std)
@@ -115,14 +121,13 @@ class _RollingAndExpanding(object):
         def var(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
-                F.variance(scol).over(self._window)
+                F.variance(scol).over(self._window),
             ).otherwise(F.lit(None))
 
         return self._apply_as_series_or_frame(var)
 
 
 class Rolling(_RollingAndExpanding):
-
     def __init__(self, kdf_or_kser, window, min_periods=None):
         from databricks.koalas import DataFrame, Series
 
@@ -141,9 +146,11 @@ class Rolling(_RollingAndExpanding):
         self.kdf_or_kser = kdf_or_kser
         if not isinstance(kdf_or_kser, (DataFrame, Series)):
             raise TypeError(
-                "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser))
+                "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser)
+            )
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(
-            Window.currentRow - (self._window_val - 1), Window.currentRow)
+            Window.currentRow - (self._window_val - 1), Window.currentRow
+        )
 
         super(Rolling, self).__init__(window, min_periods)
 
@@ -158,7 +165,8 @@ class Rolling(_RollingAndExpanding):
 
     def _apply_as_series_or_frame(self, func):
         return self.kdf_or_kser._apply_series_op(
-            lambda kser: kser._with_new_scol(func(kser._scol)).rename(kser.name))
+            lambda kser: kser._with_new_scol(func(kser._scol)).rename(kser.name)
+        )
 
     def count(self):
         """
@@ -622,7 +630,6 @@ class Rolling(_RollingAndExpanding):
 
 
 class RollingGroupby(Rolling):
-
     def __init__(self, groupby, groupkeys, window, min_periods=None):
         from databricks.koalas.groupby import SeriesGroupBy
         from databricks.koalas.groupby import DataFrameGroupBy
@@ -634,7 +641,8 @@ class RollingGroupby(Rolling):
         else:
             raise TypeError(
                 "groupby must be a SeriesGroupBy or DataFrameGroupBy; "
-                "however, got: %s" % type(groupby))
+                "however, got: %s" % type(groupby)
+            )
 
         super(RollingGroupby, self).__init__(kdf, window, min_periods)
         self._groupby = groupby
@@ -643,9 +651,11 @@ class RollingGroupby(Rolling):
         # DataFrame. So, if the given `groupkeys` is a series, they end up with
         # being a different series.
         self._window = self._window.partitionBy(
-            *[F.col(name_like_string(ser.name)) for ser in groupkeys])
+            *[F.col(name_like_string(ser.name)) for ser in groupkeys]
+        )
         self._unbounded_window = self._unbounded_window.partitionBy(
-            *[F.col(name_like_string(ser.name)) for ser in groupkeys])
+            *[F.col(name_like_string(ser.name)) for ser in groupkeys]
+        )
         self._groupkeys = groupkeys
         # Current implementation reuses DataFrameGroupBy implementations for Series as well.
         self.kdf = self.kdf_or_kser
@@ -682,26 +692,25 @@ class RollingGroupby(Rolling):
                 # given series. This is because, in case of series, we convert it into
                 # DataFrame. So, if the given `groupkeys` is a series, they end up with
                 # being a different series.
-                F.col(
-                    name_like_string(groupkey.name)
-                ).alias(
+                F.col(name_like_string(groupkey.name)).alias(
                     SPARK_INDEX_NAME_FORMAT(len(new_index_scols))
-                ))
+                )
+            )
             new_index_map.append(
-                (SPARK_INDEX_NAME_FORMAT(len(new_index_map)),
-                 groupkey._internal.column_labels[0]))
+                (SPARK_INDEX_NAME_FORMAT(len(new_index_map)), groupkey._internal.column_labels[0])
+            )
 
         for new_index_scol, index_name in zip(kdf._internal.index_scols, kdf._internal.index_names):
             new_index_scols.append(
-                new_index_scol.alias(SPARK_INDEX_NAME_FORMAT(len(new_index_scols))))
+                new_index_scol.alias(SPARK_INDEX_NAME_FORMAT(len(new_index_scols)))
+            )
             new_index_map.append((SPARK_INDEX_NAME_FORMAT(len(new_index_map)), index_name))
 
         applied = []
         for column in kdf.columns:
             applied.append(
-                kdf[column]._with_new_scol(
-                    func(kdf[column]._scol)
-                ).rename(kdf[column].name))
+                kdf[column]._with_new_scol(func(kdf[column]._scol)).rename(kdf[column].name)
+            )
 
         # Seems like pandas filters out when grouped key is NA.
         cond = self._groupkeys[0]._scol.isNotNull()
@@ -713,7 +722,8 @@ class RollingGroupby(Rolling):
             sdf=sdf,
             index_map=new_index_map,
             column_labels=[c._internal.column_labels[0] for c in applied],
-            column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied])
+            column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied],
+        )
 
         ret = DataFrame(internal)
         if isinstance(self._groupby, SeriesGroupBy):
@@ -1036,7 +1046,6 @@ class RollingGroupby(Rolling):
 
 
 class Expanding(_RollingAndExpanding):
-
     def __init__(self, kdf_or_kser, min_periods=1):
         from databricks.koalas import DataFrame, Series
 
@@ -1045,9 +1054,11 @@ class Expanding(_RollingAndExpanding):
         self.kdf_or_kser = kdf_or_kser
         if not isinstance(kdf_or_kser, (DataFrame, Series)):
             raise TypeError(
-                "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser))
+                "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser)
+            )
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(
-            Window.unboundedPreceding, Window.currentRow)
+            Window.unboundedPreceding, Window.currentRow
+        )
         super(Expanding, self).__init__(window, min_periods)
 
     def __getattr__(self, item: str) -> Any:
@@ -1374,7 +1385,6 @@ class Expanding(_RollingAndExpanding):
 
 
 class ExpandingGroupby(Expanding):
-
     def __init__(self, groupby, groupkeys, min_periods=1):
         from databricks.koalas.groupby import SeriesGroupBy
         from databricks.koalas.groupby import DataFrameGroupBy
@@ -1386,7 +1396,8 @@ class ExpandingGroupby(Expanding):
         else:
             raise TypeError(
                 "groupby must be a SeriesGroupBy or DataFrameGroupBy; "
-                "however, got: %s" % type(groupby))
+                "however, got: %s" % type(groupby)
+            )
 
         super(ExpandingGroupby, self).__init__(kdf, min_periods)
         self._groupby = groupby
@@ -1395,9 +1406,11 @@ class ExpandingGroupby(Expanding):
         # DataFrame. So, if the given `groupkeys` is a series, they end up with
         # being a different series.
         self._window = self._window.partitionBy(
-            *[F.col(name_like_string(ser.name)) for ser in groupkeys])
+            *[F.col(name_like_string(ser.name)) for ser in groupkeys]
+        )
         self._unbounded_window = self._window.partitionBy(
-            *[F.col(name_like_string(ser.name)) for ser in groupkeys])
+            *[F.col(name_like_string(ser.name)) for ser in groupkeys]
+        )
         self._groupkeys = groupkeys
         # Current implementation reuses DataFrameGroupBy implementations for Series as well.
         self.kdf = self.kdf_or_kser
