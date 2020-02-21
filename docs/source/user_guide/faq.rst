@@ -35,6 +35,22 @@ Does Koalas support Structured Streaming?
 
 No, Koalas does not support Structured Streaming.
 
+You might still be able to use Koalas in `foreachBatch` as a workaround:
+
+.. code-block:: python
+
+   >>> def func(batch_df, batch_id):
+   ...     koalas_df = ks.DataFrame(batch_df)
+   ...     koalas_df['a'] = 1
+   ...     print(koalas_df)
+
+   >>> spark.readStream.format("rate").load().writeStream.foreachBatch(func).start()
+                   timestamp  value  a
+   0 2020-02-21 09:49:37.574      4  1
+                   timestamp  value  a
+   0 2020-02-21 09:49:38.574      5  1
+   ...
+
 How can I request support for a method?
 ---------------------------------------
 
