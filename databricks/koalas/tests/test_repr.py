@@ -85,8 +85,10 @@ class ReprTest(ReusedSQLTestCase):
             self.assertEqual(kdf._repr_html_(), kdf.to_pandas()._repr_html_())
 
     def test_repr_float_index(self):
-        kdf = ks.DataFrame({'a': np.random.rand(ReprTest.max_display_count)},
-                           index=np.random.rand(ReprTest.max_display_count))
+        kdf = ks.DataFrame(
+            {"a": np.random.rand(ReprTest.max_display_count)},
+            index=np.random.rand(ReprTest.max_display_count),
+        )
         self.assertTrue("Showing only the first" not in repr(kdf))
         self.assert_eq(repr(kdf), repr(kdf.to_pandas()))
         self.assertTrue("Showing only the first" not in repr(kdf.a))
@@ -97,8 +99,10 @@ class ReprTest(ReusedSQLTestCase):
         self.assertTrue("Showing only the first" not in kdf._repr_html_())
         self.assertEqual(kdf._repr_html_(), kdf.to_pandas()._repr_html_())
 
-        kdf = ks.DataFrame({'a': np.random.rand(ReprTest.max_display_count + 1)},
-                           index=np.random.rand(ReprTest.max_display_count + 1))
+        kdf = ks.DataFrame(
+            {"a": np.random.rand(ReprTest.max_display_count + 1)},
+            index=np.random.rand(ReprTest.max_display_count + 1),
+        )
         self.assertTrue("Showing only the first" in repr(kdf))
         self.assertTrue("Showing only the first" in repr(kdf.a))
         self.assertTrue("Showing only the first" in repr(kdf.index))
