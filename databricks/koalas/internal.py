@@ -453,6 +453,7 @@ class _InternalFrame(object):
         Column<b'(a, y)'>
         """
         assert isinstance(sdf, spark.DataFrame)
+        assert not sdf.isStreaming, "Koalas does not support Structured Streaming."
 
         if index_map is None:
             assert not any(SPARK_INDEX_NAME_PATTERN.match(name) for name in sdf.columns), \
@@ -782,16 +783,34 @@ class _InternalFrame(object):
                                for name in index_names]
         return pdf
 
+    def with_new_sdf(self, sdf: spark.DataFrame,
+                     data_columns: Optional[List[str]] = None) -> '_InternalFrame':
+        """ Copy the immutable _InternalFrame with the updates by the specified Spark DataFrame.
+
+        :param sdf: the new Spark DataFrame
+        :param data_columns: the new column names.
+            If None, the original one is used.
+        :return: the copied _InternalFrame.
+        """
+        if data_columns is None:
+            data_columns = self.data_columns
+        else:
+            assert len(data_columns) == len(self.column_labels), \
+                (len(data_columns), len(self.column_labels))
+        sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME)
+        return self.copy(sdf=sdf, column_scols=[scol_for(sdf, col) for col in data_columns])
+
     def with_new_columns(self, scols_or_ksers: List[Union[spark.Column, 'Series']],
                          column_labels: Optional[List[Tuple[str, ...]]] = None,
                          keep_order: bool = True) -> '_InternalFrame':
-        """ Copy the immutable DataFrame with the updates by the specified Spark Columns or Series.
+        """
+        Copy the immutable _InternalFrame with the updates by the specified Spark Columns or Series.
 
         :param scols_or_ksers: the new Spark Columns or Series.
         :param column_labels: the new column index.
             If None, the its column_labels is used when the corresponding `scols_or_ksers` is
             Series, otherwise the original one is used.
-        :return: the copied immutable DataFrame.
+        :return: the copied _InternalFrame.
         """
         from databricks.koalas.series import Series
 
@@ -832,10 +851,10 @@ class _InternalFrame(object):
             scol=None)
 
     def with_filter(self, pred: Union[spark.Column, 'Series']):
-        """ Copy the immutable DataFrame with the updates by the predicate.
+        """ Copy the immutable _InternalFrame with the updates by the predicate.
 
         :param pred: the predicate to filter.
-        :return: the copied immutable DataFrame.
+        :return: the copied _InternalFrame.
         """
         from databricks.koalas.series import Series
         if isinstance(pred, Series):

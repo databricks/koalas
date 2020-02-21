@@ -181,8 +181,9 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         self.assert_eq(kdf.to_latex(sparsify=False), pdf.to_latex(sparsify=False))
         self.assert_eq(kdf.to_latex(index_names=False), pdf.to_latex(index_names=False))
         self.assert_eq(kdf.to_latex(bold_rows=True), pdf.to_latex(bold_rows=True))
-        self.assert_eq(kdf.to_latex(encoding='ascii'), pdf.to_latex(encoding='ascii'))
         self.assert_eq(kdf.to_latex(decimal=','), pdf.to_latex(decimal=','))
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            self.assert_eq(kdf.to_latex(encoding='ascii'), pdf.to_latex(encoding='ascii'))
 
     def test_to_records(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):

@@ -15,6 +15,9 @@
 #
 from functools import partial
 from typing import Any
+from distutils.version import LooseVersion
+
+import pandas as pd
 
 from databricks.koalas.internal import SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.utils import name_like_string
@@ -51,6 +54,16 @@ class _RollingAndExpanding(object):
     def count(self):
         def count(scol):
             return F.count(scol).over(self._window)
+
+        if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
+            if isinstance(self, (Expanding, ExpandingGroupby)):
+                def count_expanding(scol):
+                    return F.when(
+                        F.row_number().over(self._unbounded_window) >= self._min_periods,
+                        F.count(scol).over(self._window)
+                    ).otherwise(F.lit(None))
+                return self._apply_as_series_or_frame(count_expanding).astype('float64')
+
         return self._apply_as_series_or_frame(count).astype('float64')
 
     def sum(self):
@@ -1420,37 +1433,37 @@ class ExpandingGroupby(Expanding):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).expanding(3).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> s.groupby(s).expanding(3).count().sort_index()  # doctest: +SKIP
         0
-        2  0     1.0
-           1     2.0
-        3  2     1.0
-           3     2.0
+        2  0     NaN
+           1     NaN
+        3  2     NaN
+           3     NaN
            4     3.0
-        4  5     1.0
-           6     2.0
+        4  5     NaN
+           6     NaN
            7     3.0
            8     4.0
-        5  9     1.0
-           10    2.0
+        5  9     NaN
+           10    NaN
         Name: 0, dtype: float64
 
         For DataFrame, each expanding count is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
-        >>> df.groupby(df.A).expanding(2).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby(df.A).expanding(2).count().sort_index()  # doctest: +SKIP
                 A    B
         A
-        2 0   1.0  1.0
+        2 0   NaN  NaN
           1   2.0  2.0
-        3 2   1.0  1.0
+        3 2   NaN  NaN
           3   2.0  2.0
           4   3.0  3.0
-        4 5   1.0  1.0
+        4 5   NaN  NaN
           6   2.0  2.0
           7   3.0  3.0
           8   4.0  4.0
-        5 9   1.0  1.0
+        5 9   NaN  NaN
           10  2.0  2.0
         """
         return super(ExpandingGroupby, self).count()

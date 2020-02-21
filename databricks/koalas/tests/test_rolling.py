@@ -101,16 +101,14 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
             repr(getattr(kser.groupby(kser).rolling(2), f)().sort_index()),
             repr(getattr(pser.groupby(pser).rolling(2), f)()))
 
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
-                           index=np.random.rand(4))
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
         pdf = kdf.to_pandas()
         self.assert_eq(
             repr(getattr(kdf.groupby(kdf.a).rolling(2), f)().sort_index()),
             repr(getattr(pdf.groupby(pdf.a).rolling(2), f)().sort_index()))
 
         # Multiindex column
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
-                           index=np.random.rand(4))
+        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
         kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
         pdf = kdf.to_pandas()
         self.assert_eq(
@@ -137,6 +135,7 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
         self._test_groupby_rolling_func("sum")
 
     def test_groupby_rolling_std(self):
+        # TODO: `std` now raise error in pandas 1.0.0
         self._test_groupby_rolling_func("std")
 
     def test_groupby_rolling_var(self):

@@ -26,7 +26,7 @@ import itertools
 
 import numpy as np
 import pandas as pd
-
+from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
@@ -1266,6 +1266,10 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
     if sparse is not False:
         raise NotImplementedError("get_dummies currently does not support sparse")
 
+    if columns is not None:
+        if not is_list_like(columns):
+            raise TypeError("Input must be a list-like for parameter `columns`")
+
     if dtype is None:
         dtype = 'byte'
 
@@ -1307,7 +1311,9 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
                                  for label in kdf._internal.column_labels
                                  if label == key or label[0] == key]
         if len(column_labels) == 0:
-            return kdf
+            if columns is None:
+                return kdf
+            raise KeyError("{} not in index".format(columns))
 
         if prefix is None:
             prefix = [str(label) if len(label) > 1 else label[0] for label in column_labels]

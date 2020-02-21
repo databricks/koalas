@@ -551,7 +551,7 @@ class Index(IndexOpsMixin):
         if not isinstance(value, (float, int, str, bool)):
             raise TypeError("Unsupported type %s" % type(value))
         sdf = self._internal.sdf.fillna(value)
-        result = DataFrame(self._kdf._internal.copy(sdf=sdf)).index
+        result = DataFrame(self._kdf._internal.with_new_sdf(sdf)).index
         return result
 
     # TODO: ADD keep parameter
@@ -1924,13 +1924,13 @@ class MultiIndex(Index):
         return result
 
     # TODO: ADD error parameter
-    def drop(self, labels, level=None):
+    def drop(self, codes, level=None):
         """
         Make new MultiIndex with passed list of labels deleted
 
         Parameters
         ----------
-        labels : array-like
+        codes : array-like
             Must be a list of tuples
         level : int or level name, default None
 
@@ -1962,7 +1962,7 @@ class MultiIndex(Index):
             scol = index_scols[0]
         else:
             scol = index_scols[level] if isinstance(level, int) else sdf[level]
-        sdf = sdf[~scol.isin(labels)]
+        sdf = sdf[~scol.isin(codes)]
         return MultiIndex(DataFrame(_InternalFrame(sdf=sdf,
                                                    index_map=self._kdf._internal.index_map)))
 

@@ -297,6 +297,8 @@ class _Frame(object):
         """
         return self._apply_series_op(lambda kser: kser._cumprod(skipna))  # type: ignore
 
+    # TODO: Although this has removed pandas >= 1.0.0, but we're keeping this as deprecated
+    # since we're using this for `DataFrame.info` internally.
     def get_dtype_counts(self):
         """
         Return counts of unique dtypes in this object.
