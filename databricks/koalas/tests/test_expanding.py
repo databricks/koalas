@@ -25,7 +25,6 @@ from databricks.koalas.window import Expanding
 
 
 class ExpandingTest(ReusedSQLTestCase, TestUtils):
-
     def _test_expanding_func(self, f):
         kser = ks.Series([1, 2, 3], index=np.random.rand(3))
         pser = kser.to_pandas()
@@ -33,19 +32,18 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
 
         # Multiindex
         kser = ks.Series(
-            [1, 2, 3],
-            index=pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')]))
+            [1, 2, 3], index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")])
+        )
         pser = kser.to_pandas()
         self.assert_eq(repr(getattr(kser.expanding(2), f)()), repr(getattr(pser.expanding(2), f)()))
 
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
         pdf = kdf.to_pandas()
         self.assert_eq(repr(getattr(kdf.expanding(2), f)()), repr(getattr(pdf.expanding(2), f)()))
 
         # Multiindex column
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
-                           index=np.random.rand(4))
-        kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
+        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
+        kdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y")])
         pdf = kdf.to_pandas()
         self.assert_eq(repr(getattr(kdf.expanding(2), f)()), repr(getattr(pdf.expanding(2), f)()))
 
@@ -54,8 +52,8 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             ks.range(10).expanding(-1)
 
         with self.assertRaisesRegex(
-                TypeError,
-                "kdf_or_kser must be a series or dataframe; however, got:.*int"):
+            TypeError, "kdf_or_kser must be a series or dataframe; however, got:.*int"
+        ):
             Expanding(1, 2)
 
     def test_expanding_repr(self):
@@ -90,34 +88,39 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
         pser = kser.to_pandas()
         self.assert_eq(
             repr(getattr(kser.groupby(kser).expanding(2), f)().sort_index()),
-            repr(getattr(pser.groupby(pser).expanding(2), f)().sort_index()))
+            repr(getattr(pser.groupby(pser).expanding(2), f)().sort_index()),
+        )
 
         # Multiindex
         kser = ks.Series(
-            [1, 2, 3],
-            index=pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')]))
+            [1, 2, 3], index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")])
+        )
         pser = kser.to_pandas()
         self.assert_eq(
             repr(getattr(kser.groupby(kser).expanding(2), f)().sort_index()),
-            repr(getattr(pser.groupby(pser).expanding(2), f)().sort_index()))
+            repr(getattr(pser.groupby(pser).expanding(2), f)().sort_index()),
+        )
 
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
+        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
         pdf = kdf.to_pandas()
         self.assert_eq(
             repr(getattr(kdf.groupby(kdf.a).expanding(2), f)().sort_index()),
-            repr(getattr(pdf.groupby(pdf.a).expanding(2), f)().sort_index()))
+            repr(getattr(pdf.groupby(pdf.a).expanding(2), f)().sort_index()),
+        )
 
         # Multiindex column
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
-        kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
+        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
+        kdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y")])
         pdf = kdf.to_pandas()
         self.assert_eq(
             repr(getattr(kdf.groupby(("a", "x")).expanding(2), f)().sort_index()),
-            repr(getattr(pdf.groupby(("a", "x")).expanding(2), f)().sort_index()))
+            repr(getattr(pdf.groupby(("a", "x")).expanding(2), f)().sort_index()),
+        )
 
         self.assert_eq(
             repr(getattr(kdf.groupby([("a", "x"), ("a", "y")]).expanding(2), f)().sort_index()),
-            repr(getattr(pdf.groupby([("a", "x"), ("a", "y")]).expanding(2), f)().sort_index()))
+            repr(getattr(pdf.groupby([("a", "x"), ("a", "y")]).expanding(2), f)().sort_index()),
+        )
 
     def test_groupby_expanding_count(self):
         # The behaviour of ExpandingGroupby.count are different between pandas>=1.0.0 and lower,

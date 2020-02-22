@@ -21,6 +21,9 @@ ipython
 mypy
 flake8
 
+# Code formatter
+black==19.10b0
+
 # Test
 pytest
 pytest-cov
