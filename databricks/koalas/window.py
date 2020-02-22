@@ -58,7 +58,7 @@ class _RollingAndExpanding(object):
         def count(scol):
             return F.count(scol).over(self._window)
 
-        return self._apply_as_series_or_frame(count).astype('float64')
+        return self._apply_as_series_or_frame(count).astype("float64")
 
     def sum(self):
         def sum(scol):
@@ -1103,12 +1103,14 @@ class Expanding(_RollingAndExpanding):
         2  2.0
         3  3.0
         """
+
         def count(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
-                F.count(scol).over(self._window)
+                F.count(scol).over(self._window),
             ).otherwise(F.lit(None))
-        return self._apply_as_series_or_frame(count).astype('float64')
+
+        return self._apply_as_series_or_frame(count).astype("float64")
 
     def sum(self):
         """

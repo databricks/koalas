@@ -62,7 +62,7 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
     def test_expanding_count(self):
         # The behaviour of Expanding.count are different between pandas>=1.0.0 and lower,
         # and we're following the behaviour of latest version of pandas.
-        if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
             self._test_expanding_func("count")
 
     def test_expanding_min(self):
@@ -125,7 +125,7 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
     def test_groupby_expanding_count(self):
         # The behaviour of ExpandingGroupby.count are different between pandas>=1.0.0 and lower,
         # and we're following the behaviour of latest version of pandas.
-        if LooseVersion(pd.__version__) >= LooseVersion('1.0.0'):
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
             self._test_groupby_expanding_func("count")
 
     def test_groupby_expanding_min(self):
