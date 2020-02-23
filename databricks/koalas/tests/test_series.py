@@ -1138,17 +1138,41 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.xs(("a", "lama", "speed")), pser.xs(("a", "lama", "speed")))
 
     def test_duplicates(self):
-        # test on texts
+        # test on texts (keep="first")
         pser = pd.Series(["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal")
         kser = ks.Series(pser)
 
         self.assert_eq(pser.drop_duplicates().sort_values(), kser.drop_duplicates().sort_values())
 
-        # test on numbers
+        # test on texts (keep="last")
+        pser = pd.Series(["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal")
+        kser = ks.Series(pser)
+
+        self.assert_eq(pser.drop_duplicates(keep="last").sort_values(), kser.drop_duplicates(keep="last").sort_values())
+
+        # test on texts (keep=False)
+        pser = pd.Series(["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal")
+        kser = ks.Series(pser)
+
+        self.assert_eq(pser.drop_duplicates(keep=False).sort_values(), kser.drop_duplicates(keep=False).sort_values())
+
+        # test on numbers (keep="first")
         pser = pd.Series([1, 1, 2, 4, 3])
         kser = ks.Series(pser)
 
         self.assert_eq(pser.drop_duplicates().sort_values(), kser.drop_duplicates().sort_values())
+
+        # test on numbers (keep="last")
+        pser = pd.Series([1, 1, 2, 4, 3])
+        kser = ks.Series(pser)
+
+        self.assert_eq(pser.drop_duplicates(keep="last").sort_values(), kser.drop_duplicates(keep="last").sort_values())
+
+        # test on numbers (keep=False)
+        pser = pd.Series([1, 1, 2, 4, 3])
+        kser = ks.Series(pser)
+
+        self.assert_eq(pser.drop_duplicates(keep=False).sort_values(), kser.drop_duplicates(keep=False).sort_values())
 
     def test_update(self):
         pser = pd.Series([10, 20, 15, 30, 45], name="x")
