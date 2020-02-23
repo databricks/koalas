@@ -1378,19 +1378,24 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     tolist = to_list
 
-    def drop_duplicates(self, inplace=False):
+    def drop_duplicates(self, keep="first", inplace=False):
         """
-        Return koalas Series with duplicate values removed.
+        Return Series with duplicate values removed.
 
         Parameters
         ----------
-        inplace: bool, default False
-            If True, performs operation inpalce and returns None.
+        keep : {'first', 'last', ``False``}, default 'first'
+            Method to handle dropping duplicates:
+            - 'first' : Drop duplicates except for the first occurrence.
+            - 'last' : Drop duplicates except for the last occurrence.
+            - ``False`` : Drop all duplicates.
+        inplace : bool, default ``False``
+            If ``True``, performs operation inplace and returns None.
 
         Returns
         -------
         Series
-            Series with deplicates dropped.
+            Series with duplicates dropped.
 
         Examples
         --------
@@ -1414,7 +1419,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: animal, dtype: object
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        kseries = _col(self.to_frame().drop_duplicates())
+        kseries = _col(self.to_frame().drop_duplicates(keep=keep))
 
         if inplace:
             self._internal = kseries._internal
