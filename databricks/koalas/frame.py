@@ -3590,7 +3590,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             name = self._internal.index_names[0]
         else:
             name = ("0",)
-        column = name_like_string(name)
+        column = "__duplicated__"
 
         sdf = self._sdf
 
@@ -3612,7 +3612,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.withColumn(column, F.count("*").over(window) > 1)
         else:
             raise ValueError("'keep' only supports 'first', 'last' and False")
-        return name, column, sdf
+        return name, name_like_string(name), sdf
 
     def duplicated(self, subset=None, keep="first"):
         """
@@ -3672,11 +3672,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         name, column, sdf = self._mark_duplicates(subset, keep)
         index_column = self._internal.index_columns[0]
-        if column == index_column:
-            index_column = SPARK_DEFAULT_INDEX_NAME
-            sdf = sdf.select(
-                [self._internal.index_scols[0].alias(index_column)] + self._internal.data_scols
-            )
+
+        sdf = sdf.withColumn(column, F.col("__duplicated__"))
 
         sdf = sdf.select(scol_for(sdf, index_column), scol_for(sdf, column))
         return _col(
@@ -7439,15 +7436,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
 
-        _, column, sdf = self._mark_duplicates(subset, keep)
-        index_column = self._internal.index_columns[0]
-        if column == index_column:
-            index_column = SPARK_DEFAULT_INDEX_NAME
-            sdf = sdf.select(
-                [self._internal.index_scols[0].alias(index_column)] + self._internal.data_scols
-            )
+        sdf = self._mark_duplicates(subset, keep)[-1]
 
-        sdf = sdf.where(~F.col(column)).drop(column)
+        sdf = sdf.where(~F.col("__duplicated__")).drop("__duplicated__")
         internal = self._internal.with_new_sdf(sdf)
         if inplace:
             self._internal = internal
