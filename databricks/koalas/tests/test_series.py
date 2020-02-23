@@ -19,6 +19,7 @@ from collections import defaultdict
 from distutils.version import LooseVersion
 import inspect
 from io import BytesIO
+from itertools import product
 from datetime import datetime, timedelta
 
 import matplotlib
@@ -1138,41 +1139,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.xs(("a", "lama", "speed")), pser.xs(("a", "lama", "speed")))
 
     def test_duplicates(self):
-        # test on texts (keep="first")
-        pser = pd.Series(["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal")
-        kser = ks.Series(pser)
+        psers = [
+            pd.Series(
+                ["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal"  # test on texts
+            ),
+            pd.Series([1, 1, 2, 4, 3]),  # test on numbers
+        ]
+        keeps = ["first", "last", False]
 
-        self.assert_eq(pser.drop_duplicates().sort_values(), kser.drop_duplicates().sort_values())
+        for pser, keep in product(psers, keeps):
+            with self.subTest():
+                kser = ks.Series(pser)
 
-        # test on texts (keep="last")
-        pser = pd.Series(["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal")
-        kser = ks.Series(pser)
-
-        self.assert_eq(pser.drop_duplicates(keep="last").sort_values(), kser.drop_duplicates(keep="last").sort_values())
-
-        # test on texts (keep=False)
-        pser = pd.Series(["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal")
-        kser = ks.Series(pser)
-
-        self.assert_eq(pser.drop_duplicates(keep=False).sort_values(), kser.drop_duplicates(keep=False).sort_values())
-
-        # test on numbers (keep="first")
-        pser = pd.Series([1, 1, 2, 4, 3])
-        kser = ks.Series(pser)
-
-        self.assert_eq(pser.drop_duplicates().sort_values(), kser.drop_duplicates().sort_values())
-
-        # test on numbers (keep="last")
-        pser = pd.Series([1, 1, 2, 4, 3])
-        kser = ks.Series(pser)
-
-        self.assert_eq(pser.drop_duplicates(keep="last").sort_values(), kser.drop_duplicates(keep="last").sort_values())
-
-        # test on numbers (keep=False)
-        pser = pd.Series([1, 1, 2, 4, 3])
-        kser = ks.Series(pser)
-
-        self.assert_eq(pser.drop_duplicates(keep=False).sort_values(), kser.drop_duplicates(keep=False).sort_values())
+                self.assert_eq(
+                    pser.drop_duplicates(keep=keep).sort_values(),
+                    kser.drop_duplicates(keep=keep).sort_values(),
+                )
 
     def test_update(self):
         pser = pd.Series([10, 20, 15, 30, 45], name="x")
