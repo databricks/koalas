@@ -2070,28 +2070,44 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        # inplace is False
-        self.assert_eq(pdf.drop_duplicates().sort_index(), kdf.drop_duplicates().sort_index())
-        self.assert_eq(pdf.drop_duplicates("a").sort_index(), kdf.drop_duplicates("a").sort_index())
-        self.assert_eq(
-            pdf.drop_duplicates(["a", "b"]).sort_index(),
-            kdf.drop_duplicates(["a", "b"]).sort_index(),
-        )
+        for keep in ["first", "last", False]:
+            with self.subTest():
+                # inplace is False
+                self.assert_eq(
+                    pdf.drop_duplicates(keep=keep).sort_index(),
+                    kdf.drop_duplicates(keep=keep).sort_index(),
+                )
+                print("this passed")
+                self.assert_eq(
+                    pdf.drop_duplicates("a", keep=keep).sort_index(),
+                    kdf.drop_duplicates("a", keep=keep).sort_index(),
+                )
+                print("this failed")
+                self.assert_eq(
+                    pdf.drop_duplicates(["a", "b"], keep=keep).sort_index(),
+                    kdf.drop_duplicates(["a", "b"], keep=keep).sort_index(),
+                )
 
-        # multi-index columns, inplace is False
+        # multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b")])
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(pdf.drop_duplicates().sort_index(), kdf.drop_duplicates().sort_index())
-        self.assert_eq(
-            pdf.drop_duplicates(("x", "a")).sort_index(),
-            kdf.drop_duplicates(("x", "a")).sort_index(),
-        )
-        self.assert_eq(
-            pdf.drop_duplicates([("x", "a"), ("y", "b")]).sort_index(),
-            kdf.drop_duplicates([("x", "a"), ("y", "b")]).sort_index(),
-        )
+        for keep in ["first", "last", False]:
+            with self.subTest():
+                # inplace is False
+                self.assert_eq(
+                    pdf.drop_duplicates(keep=keep).sort_index(),
+                    kdf.drop_duplicates(keep=keep).sort_index(),
+                )
+                self.assert_eq(
+                    pdf.drop_duplicates(("x", "a"), keep=keep).sort_index(),
+                    kdf.drop_duplicates(("x", "a"), keep=keep).sort_index(),
+                )
+                self.assert_eq(
+                    pdf.drop_duplicates([("x", "a"), ("y", "b")], keep=keep).sort_index(),
+                    kdf.drop_duplicates([("x", "a"), ("y", "b")], keep=keep).sort_index(),
+                )
 
         # inplace is True
         subset_list = [None, "a", ["a", "b"]]
