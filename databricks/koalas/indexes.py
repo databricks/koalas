@@ -657,14 +657,14 @@ class Index(IndexOpsMixin):
         kdf = self._kdf
         sdf = kdf._sdf
         scol = self._scol
-        if kdf.empty:
-            name = "0"
-            sdf = sdf.withColumn(name, scol).select(scol, name)
-            column_labels = [(name,)]
-        else:
+        if not kdf.empty:
             column_labels = (
                 [None] if len(kdf._internal.index_map) > 1 else kdf._internal.index_names
             )
+        else:
+            name = "0"
+            sdf = sdf.withColumn(name, scol).select(scol, name)
+            column_labels = [(name,)]
         if name is not None:
             scol = scol.alias(name_like_string(name))
 
