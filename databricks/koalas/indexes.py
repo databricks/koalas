@@ -662,7 +662,8 @@ class Index(IndexOpsMixin):
                 [None] if len(kdf._internal.index_map) > 1 else kdf._internal.index_names
             )
         else:
-            name = "0"
+            name = self.name if name is None else name
+            name = "0" if name is None else name
             sdf = sdf.withColumn(name, scol).select(scol, name)
             column_labels = [(name,)]
         if name is not None:

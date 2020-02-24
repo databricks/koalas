@@ -655,6 +655,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq((kidx1.to_series() == kidx2.to_series() == kidx3.to_series()).all(), True)
 
+        kidx1.name = "koalas"
+        kidx2.name = "koalas"
+        kidx3.name = "koalas"
+
+        self.assert_eq((kidx1.to_series() == kidx2.to_series() == kidx3.to_series()).all(), True)
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
