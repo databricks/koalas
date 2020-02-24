@@ -48,6 +48,7 @@ _build
 
 # Coverage
 .coverage*
+coverage.xml
 
 # Spark
 spark-warehouse/
