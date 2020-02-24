@@ -635,6 +635,15 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
+        >>> index = ks.Index([1, 2, 3, 4, 5])
+        >>> index.to_series()
+        1    1
+        2    2
+        3    3
+        4    4
+        5    5
+        Name: 0, dtype: int64
+
         >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
         ...                   columns=['dogs', 'cats'],
         ...                   index=list('abcd'))
@@ -646,14 +655,24 @@ class Index(IndexOpsMixin):
         Name: 0, dtype: object
         """
         kdf = self._kdf
+        sdf = kdf._sdf
         scol = self._scol
+        if kdf.empty:
+            name = "0"
+            sdf = sdf.withColumn(name, scol).select(scol, name)
+            column_labels = [(name,)]
+        else:
+            column_labels = (
+                [None] if len(kdf._internal.index_map) > 1 else kdf._internal.index_names
+            )
         if name is not None:
             scol = scol.alias(name_like_string(name))
-        column_labels = [None] if len(kdf._internal.index_map) > 1 else kdf._internal.index_names
-        return Series(
-            kdf._internal.copy(scol=scol, column_labels=column_labels, column_label_names=None),
-            anchor=kdf,
+
+        internal = kdf._internal.copy(
+            sdf=sdf, scol=scol, column_labels=column_labels, column_label_names=None
         )
+
+        return Series(internal, anchor=kdf)
 
     def to_frame(self, index=True, name=None) -> DataFrame:
         """
