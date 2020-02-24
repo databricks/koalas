@@ -27,6 +27,7 @@ Attributes and underlying data
 
    DataFrame.dtypes
    DataFrame.shape
+   DataFrame.axes
    DataFrame.ndim
    DataFrame.size
    DataFrame.select_dtypes
@@ -64,6 +65,7 @@ Indexing, iteration
    DataFrame.get
    DataFrame.where
    DataFrame.mask
+   DataFrame.query
 
 Binary operator functions
 -------------------------

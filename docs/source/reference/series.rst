@@ -28,6 +28,7 @@ Attributes
    Series.name
    Series.spark_type
    Series.shape
+   Series.axes
    Series.size
    Series.empty
    Series.T

@@ -30,7 +30,6 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
         "isnat",
         "matmul",
         "frexp",
-
         # Values are close enough but tests failed.
         "arccos",
         "exp",
@@ -40,7 +39,6 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
         "log1p",  # flaky
         "modf",
         "floor_divide",  # flaky
-
         # Results seem inconsistent in a different version of, I (Hyukjin) suspect, PyArrow.
         # From PyArrow 0.15, seems it returns the correct results via PySpark. Probably we
         # can enable it later when Koalas switches to PyArrow 0.15 completely.
@@ -49,10 +47,10 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
 
     @property
     def pdf(self):
-        return pd.DataFrame({
-            'a': [1, 2, 3, 4, 5, 6, 7, 8, 9],
-            'b': [4, 5, 6, 3, 2, 1, 0, 0, 0],
-        }, index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
+        return pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0],},
+            index=[0, 1, 3, 5, 6, 8, 9, 9, 9],
+        )
 
     @property
     def kdf(self):
@@ -85,9 +83,11 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
     def test_np_spark_compat_series(self):
         # Use randomly generated dataFrame
         pdf = pd.DataFrame(
-            np.random.randint(-100, 100, size=(np.random.randint(100), 2)), columns=['a', 'b'])
+            np.random.randint(-100, 100, size=(np.random.randint(100), 2)), columns=["a", "b"]
+        )
         pdf2 = pd.DataFrame(
-            np.random.randint(-100, 100, size=(len(pdf), len(pdf.columns))), columns=['a', 'b'])
+            np.random.randint(-100, 100, size=(len(pdf), len(pdf.columns))), columns=["a", "b"]
+        )
         kdf = ks.from_pandas(pdf)
         kdf2 = ks.from_pandas(pdf2)
 
@@ -105,16 +105,14 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
             if np_name not in self.blacklist:
                 try:
                     # binary ufunc
-                    self.assert_eq(
-                        np_func(pdf.a, pdf.b), np_func(kdf.a, kdf.b), almost=True)
-                    self.assert_eq(
-                        np_func(pdf.a, 1), np_func(kdf.a, 1), almost=True)
+                    self.assert_eq(np_func(pdf.a, pdf.b), np_func(kdf.a, kdf.b), almost=True)
+                    self.assert_eq(np_func(pdf.a, 1), np_func(kdf.a, 1), almost=True)
                 except Exception as e:
                     raise AssertionError("Test in '%s' function was failed." % np_name) from e
 
         # Test only top 5 for now. 'compute.ops_on_diff_frames' option increases too much time.
         try:
-            set_option('compute.ops_on_diff_frames', True)
+            set_option("compute.ops_on_diff_frames", True)
             for np_name, spark_func in list(binary_np_spark_mappings.items())[:5]:
                 np_func = getattr(np, np_name)
                 if np_name not in self.blacklist:
@@ -122,18 +120,22 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
                         # binary ufunc
                         self.assert_eq(
                             np_func(pdf.a, pdf2.b).sort_index(),
-                            np_func(kdf.a, kdf2.b).sort_index(), almost=True)
+                            np_func(kdf.a, kdf2.b).sort_index(),
+                            almost=True,
+                        )
                     except Exception as e:
                         raise AssertionError("Test in '%s' function was failed." % np_name) from e
         finally:
-            reset_option('compute.ops_on_diff_frames')
+            reset_option("compute.ops_on_diff_frames")
 
     def test_np_spark_compat_frame(self):
         # Use randomly generated dataFrame
         pdf = pd.DataFrame(
-            np.random.randint(-100, 100, size=(np.random.randint(100), 2)), columns=['a', 'b'])
+            np.random.randint(-100, 100, size=(np.random.randint(100), 2)), columns=["a", "b"]
+        )
         pdf2 = pd.DataFrame(
-            np.random.randint(-100, 100, size=(len(pdf), len(pdf.columns))), columns=['a', 'b'])
+            np.random.randint(-100, 100, size=(len(pdf), len(pdf.columns))), columns=["a", "b"]
+        )
         kdf = ks.from_pandas(pdf)
         kdf2 = ks.from_pandas(pdf2)
 
@@ -151,16 +153,14 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
             if np_name not in self.blacklist:
                 try:
                     # binary ufunc
-                    self.assert_eq(
-                        np_func(pdf, pdf), np_func(kdf, kdf), almost=True)
-                    self.assert_eq(
-                        np_func(pdf, 1), np_func(kdf, 1), almost=True)
+                    self.assert_eq(np_func(pdf, pdf), np_func(kdf, kdf), almost=True)
+                    self.assert_eq(np_func(pdf, 1), np_func(kdf, 1), almost=True)
                 except Exception as e:
                     raise AssertionError("Test in '%s' function was failed." % np_name) from e
 
         # Test only top 5 for now. 'compute.ops_on_diff_frames' option increases too much time.
         try:
-            set_option('compute.ops_on_diff_frames', True)
+            set_option("compute.ops_on_diff_frames", True)
             for np_name, spark_func in list(binary_np_spark_mappings.items())[:5]:
                 np_func = getattr(np, np_name)
                 if np_name not in self.blacklist:
@@ -168,9 +168,11 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
                         # binary ufunc
                         self.assert_eq(
                             np_func(pdf, pdf2).sort_index(),
-                            np_func(kdf, kdf2).sort_index(), almost=True)
+                            np_func(kdf, kdf2).sort_index(),
+                            almost=True,
+                        )
 
                     except Exception as e:
                         raise AssertionError("Test in '%s' function was failed." % np_name) from e
         finally:
-            reset_option('compute.ops_on_diff_frames')
+            reset_option("compute.ops_on_diff_frames")
