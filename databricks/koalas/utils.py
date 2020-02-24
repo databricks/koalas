@@ -450,44 +450,33 @@ def validate_bool_kwarg(value, arg_name):
     return value
 
 
-def temp_column_name(sdf: spark.DataFrame, base_name: str) -> str:
+def verify_temp_column_name(sdf: spark.DataFrame, column_name: str) -> str:
     """
     Generate a temporaty column name which does not exist in the given Spark DataFrame
 
-    >>> sdf = ks.DataFrame(['a', 'b', 'c']).to_spark().withColumn('__dummy_0__', F.lit(0))
+    >>> sdf = ks.DataFrame(['a', 'b', 'c']).to_spark().withColumn('__dummy__', F.lit(0))
     >>> sdf.show()  # doctest: +NORMALIZE_WHITESPACE
-    +---+-----------+
-    |  0|__dummy_0__|
-    +---+-----------+
-    |  a|          0|
-    |  b|          0|
-    |  c|          0|
-    +---+-----------+
+    +---+---------+
+    |  0|__dummy__|
+    +---+---------+
+    |  a|        0|
+    |  b|        0|
+    |  c|        0|
+    +---+---------+
 
-    >>> temp_column_name(sdf, 'tmp')
-    '__tmp_0__'
-    >>> temp_column_name(sdf, 'dummy')
-    '__dummy_1__'
-
-    >>> sdf = sdf.withColumnRenamed('0', '__dummy_1__')
-    >>> sdf.show()  # doctest: +NORMALIZE_WHITESPACE
-    +-----------+-----------+
-    |__dummy_1__|__dummy_0__|
-    +-----------+-----------+
-    |          a|          0|
-    |          b|          0|
-    |          c|          0|
-    +-----------+-----------+
-    >>> temp_column_name(sdf, 'dummy')
-    '__dummy_2__'
+    >>> verify_temp_column_name(sdf, '__tmp__')
+    '__tmp__'
+    >>> verify_temp_column_name(sdf, '__dummy__')
+    Traceback (most recent call last):
+    ...
+    AssertionError: ... `__dummy__` ...: ['0', '__dummy__']
     """
-    gen = lambda i: "__{}_{}__".format(base_name, i)
-    for i in range(len(sdf.columns) + 1):
-        tmp_column = gen(i)
-        if tmp_column not in sdf.columns:
-            return tmp_column
-    else:
-        raise AssertionError("The given `base_name` could not generate a temporary column name.")
+    assert (
+        column_name not in sdf.columns
+    ), "The give column name `{}` already exists in the Spark DataFrame: {}".format(
+        column_name, sdf.columns
+    )
+    return column_name
 
 
 def compare_null_first(left, right, comp):

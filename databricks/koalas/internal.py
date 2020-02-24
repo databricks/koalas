@@ -48,7 +48,7 @@ from databricks.koalas.utils import (
     lazy_property,
     name_like_string,
     scol_for,
-    temp_column_name,
+    verify_temp_column_name,
 )
 
 
@@ -606,9 +606,9 @@ class _InternalFrame(object):
 
         scols = [scol_for(sdf, column) for column in sdf.columns]
 
-        spark_partition_column = temp_column_name(sdf, "spark_partition_id")
-        offset_column = temp_column_name(sdf, "offset")
-        row_number_column = temp_column_name(sdf, "row_number")
+        spark_partition_column = verify_temp_column_name(sdf, "__spark_partition_id__")
+        offset_column = verify_temp_column_name(sdf, "__offset__")
+        row_number_column = verify_temp_column_name(sdf, "__row_number__")
 
         # 1. Calculates counts per each partition ID. `counts` here is, for instance,
         #     {
