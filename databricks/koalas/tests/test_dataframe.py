@@ -2077,12 +2077,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                     pdf.drop_duplicates(keep=keep).sort_index(),
                     kdf.drop_duplicates(keep=keep).sort_index(),
                 )
-                print("this passed")
                 self.assert_eq(
                     pdf.drop_duplicates("a", keep=keep).sort_index(),
                     kdf.drop_duplicates("a", keep=keep).sort_index(),
                 )
-                print("this failed")
                 self.assert_eq(
                     pdf.drop_duplicates(["a", "b"], keep=keep).sort_index(),
                     kdf.drop_duplicates(["a", "b"], keep=keep).sort_index(),
