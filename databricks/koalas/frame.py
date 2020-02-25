@@ -7877,6 +7877,109 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(exploded_df)
 
+    def unstack(self):
+        """
+        Pivot the (necessarily hierarchical) index labels. The output
+        will be a Series.
+
+        Returns
+        -------
+        Series or DataFrame
+
+        See Also
+        --------
+        DataFrame.pivot : Pivot a table based on column values.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({"A": {"0": "a", "1": "b", "2": "c"},
+        ...                    "B": {"0": "1", "1": "3", "2": "5"},
+        ...                    "C": {"0": "2", "1": "4", "2": "6"}},
+        ...                   columns=["A", "B", "C"])
+        >>> df
+           A  B  C
+        0  a  1  2
+        1  b  3  4
+        2  c  5  6
+
+        >>> df.unstack().sort_index()
+        A  0    a
+           1    b
+           2    c
+        B  0    1
+           1    3
+           2    5
+        C  0    2
+           1    4
+           2    6
+        Name: 0, dtype: object
+
+        >>> df.columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
+        >>> df.unstack().sort_index()
+        X  A  0    a
+              1    b
+              2    c
+           B  0    1
+              1    3
+              2    5
+        Y  C  0    2
+              1    4
+              2    6
+        Name: 0, dtype: object
+        """
+        from databricks.koalas.series import _col
+
+        if len(self._internal.index_columns) > 1:
+            raise NotImplementedError(
+                "Multi-index is not supported. Consider "
+                "using DataFrame.pivot_table or DataFrame.pivot instead."
+            )
+
+        # TODO: Codes here are similar with melt. Should we deduplicate?
+        column_labels = self._internal.column_labels
+        ser_name = "0"
+        sdf = self._sdf
+        new_index_columns = [
+            SPARK_INDEX_NAME_FORMAT(i) for i in range(self._internal.column_labels_level)
+        ]
+
+        new_index_map = []
+        if self._internal.column_label_names is not None:
+            new_index_map.extend(zip(new_index_columns, self._internal.column_label_names))
+        else:
+            new_index_map.extend(zip(new_index_columns, [None] * len(new_index_columns)))
+
+        pairs = F.explode(
+            F.array(
+                *[
+                    F.struct(
+                        *(
+                            [F.lit(c).alias(name) for c, name in zip(idx, new_index_columns)]
+                            + [self._internal.scol_for(idx).alias(ser_name)]
+                        )
+                    )
+                    for idx in column_labels
+                ]
+            )
+        )
+
+        columns = [
+            F.col("pairs.%s" % name)
+            for name in new_index_columns[: self._internal.column_labels_level]
+        ] + [F.col("pairs.%s" % ser_name)]
+
+        new_index_len = len(new_index_columns)
+        existing_index_columns = []
+        for i, index_name in enumerate(self._internal.index_names):
+            new_index_map.append((SPARK_INDEX_NAME_FORMAT(i + new_index_len), index_name))
+            existing_index_columns.append(
+                self._internal.index_scols[i].alias(SPARK_INDEX_NAME_FORMAT(i + new_index_len))
+            )
+
+        exploded_df = sdf.withColumn("pairs", pairs).select(existing_index_columns + columns)
+
+        return _col(DataFrame(_InternalFrame(exploded_df, index_map=new_index_map)))
+
     # TODO: axis, skipna, and many arguments should be implemented.
     def all(self, axis: Union[int, str] = 0) -> bool:
         """

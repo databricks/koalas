@@ -182,6 +182,7 @@ Reshaping, sorting, transposing
    DataFrame.sort_values
    DataFrame.nlargest
    DataFrame.nsmallest
+   DataFrame.unstack
    DataFrame.melt
    DataFrame.T
    DataFrame.transpose

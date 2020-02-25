@@ -1859,6 +1859,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ktable.index, ptable.index)
         self.assert_eq(repr(ktable.index), repr(ptable.index))
 
+    def test_unstack_errors(self):
+        kdf = ks.DataFrame(
+            np.random.randn(3, 3),
+            index=pd.MultiIndex.from_tuples([("rg1", "x"), ("rg1", "y"), ("rg2", "z")]),
+        )
+
+        with self.assertRaisesRegex(NotImplementedError, "Multi-index is not supported."):
+            kdf.unstack()
+
     def test_pivot_errors(self):
         kdf = ks.range(10)
 

@@ -83,8 +83,6 @@ class _MissingPandasLikeDataFrame(object):
     tshift = unsupported_function("tshift")
     tz_convert = unsupported_function("tz_convert")
     tz_localize = unsupported_function("tz_localize")
-    unstack = unsupported_function("unstack")
-
     # Deprecated functions
     convert_objects = unsupported_function("convert_objects", deprecated=True)
     select = unsupported_function("select", deprecated=True)
