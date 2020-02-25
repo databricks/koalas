@@ -1400,6 +1400,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Examples
         --------
         Generate a Series with duplicated entries.
+
         >>> s = ks.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],
         ...               name='animal')
         >>> s.sort_index()
@@ -1411,8 +1412,33 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         5     hippo
         Name: animal, dtype: object
 
+        With the 'keep' parameter, the selection behaviour of duplicated values
+        can be changed. The value 'first' keeps the first occurrence for each
+        set of duplicated entries. The default value of keep is 'first'.
+
         >>> s.drop_duplicates().sort_index()
         0      lama
+        1       cow
+        3    beetle
+        5     hippo
+        Name: animal, dtype: object
+
+        The value 'last' for parameter 'keep' keeps the last occurrence for
+        each set of duplicated entries.
+
+        >>> s.drop_duplicates(keep='last').sort_index()
+        1       cow
+        3    beetle
+        4      lama
+        5     hippo
+        Name: animal, dtype: object
+
+        The value ``False`` for parameter 'keep' discards all sets of
+        duplicated entries. Setting the value of 'inplace' to ``True`` performs
+        the operation inplace and returns ``None``.
+
+        >>> s.drop_duplicates(keep=False, inplace=True)
+        >>> s.sort_index()
         1       cow
         3    beetle
         5     hippo
