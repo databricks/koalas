@@ -3567,6 +3567,53 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return self._apply_series_op(op)
 
+    def _mark_duplicates(self, subset=None, keep="first"):
+        if len(self._internal.index_names) > 1:
+            raise ValueError("We don't support multi-index yet.")
+
+        if subset is None:
+            subset = self._internal.column_labels
+        else:
+            if isinstance(subset, str):
+                subset = [(subset,)]
+            elif isinstance(subset, tuple):
+                subset = [subset]
+            else:
+                subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
+            diff = set(subset).difference(set(self._internal.column_labels))
+            if len(diff) > 0:
+                raise KeyError(", ".join([str(d) if len(d) > 1 else d[0] for d in diff]))
+        group_cols = [self._internal.column_name_for(label) for label in subset]
+
+        index_column = self._internal.index_columns[0]
+        if self._internal.index_names[0] is not None:
+            name = self._internal.index_names[0]
+        else:
+            name = ("0",)
+        column = "__duplicated__"
+
+        sdf = self._sdf
+
+        if keep == "first" or keep == "last":
+            if keep == "first":
+                ord_func = spark.functions.asc
+            else:
+                ord_func = spark.functions.desc
+            window = (
+                Window.partitionBy(group_cols)
+                .orderBy(ord_func(NATURAL_ORDER_COLUMN_NAME))
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            )
+            sdf = sdf.withColumn(column, F.row_number().over(window) > 1)
+        elif not keep:
+            window = Window.partitionBy(group_cols).rowsBetween(
+                Window.unboundedPreceding, Window.unboundedFollowing
+            )
+            sdf = sdf.withColumn(column, F.count("*").over(window) > 1)
+        else:
+            raise ValueError("'keep' only supports 'first', 'last' and False")
+        return name, name_like_string(name), sdf
+
     def duplicated(self, subset=None, keep="first"):
         """
         Return boolean Series denoting duplicate rows, optionally only considering certain columns.
@@ -3623,55 +3670,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.series import _col
 
-        if len(self._internal.index_names) > 1:
-            raise ValueError("Now we don't support multi-index Now.")
-
-        if subset is None:
-            subset = self._internal.column_labels
-        else:
-            if isinstance(subset, str):
-                subset = [(subset,)]
-            elif isinstance(subset, tuple):
-                subset = [subset]
-            else:
-                subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
-            diff = set(subset).difference(set(self._internal.column_labels))
-            if len(diff) > 0:
-                raise KeyError(", ".join([str(d) if len(d) > 1 else d[0] for d in diff]))
-        group_cols = [self._internal.column_name_for(label) for label in subset]
-
+        name, column, sdf = self._mark_duplicates(subset, keep)
         index_column = self._internal.index_columns[0]
-        if self._internal.index_names[0] is not None:
-            name = self._internal.index_names[0]
-        else:
-            name = ("0",)
-        column = name_like_string(name)
 
-        sdf = self._sdf
-        if column == index_column:
-            index_column = SPARK_DEFAULT_INDEX_NAME
-            sdf = sdf.select(
-                [self._internal.index_scols[0].alias(index_column)] + self._internal.data_scols
-            )
+        sdf = sdf.withColumn(column, F.col("__duplicated__"))
 
-        if keep == "first" or keep == "last":
-            if keep == "first":
-                ord_func = spark.functions.asc
-            else:
-                ord_func = spark.functions.desc
-            window = (
-                Window.partitionBy(group_cols)
-                .orderBy(ord_func(NATURAL_ORDER_COLUMN_NAME))
-                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
-            )
-            sdf = sdf.withColumn(column, F.row_number().over(window) > 1)
-        elif not keep:
-            window = Window.partitionBy(group_cols).rowsBetween(
-                Window.unboundedPreceding, Window.unboundedFollowing
-            )
-            sdf = sdf.withColumn(column, F.count("*").over(window) > 1)
-        else:
-            raise ValueError("'keep' only support 'first', 'last' and False")
         sdf = sdf.select(scol_for(sdf, index_column), scol_for(sdf, column))
         return _col(
             DataFrame(
@@ -7378,8 +7381,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
         return DataFrame(internal).astype("float64")
 
-    # TODO: implements 'keep' parameters
-    def drop_duplicates(self, subset=None, inplace=False):
+    def drop_duplicates(self, subset=None, keep="first", inplace=False):
         """
         Return DataFrame with duplicate rows removed, optionally only
         considering certain columns.
@@ -7388,13 +7390,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ----------
         subset : column label or sequence of labels, optional
             Only consider certain columns for identifying duplicates, by
-            default use all of the columns
+            default use all of the columns.
+        keep : {'first', 'last', False}, default 'first'
+            Determines which duplicates (if any) to keep.
+            - ``first`` : Drop duplicates except for the first occurrence.
+            - ``last`` : Drop duplicates except for the last occurrence.
+            - False : Drop all duplicates.
         inplace : boolean, default False
-            Whether to drop duplicates in place or to return a copy
+            Whether to drop duplicates in place or to return a copy.
 
         Returns
         -------
         DataFrame
+            DataFrame with duplicates removed or None if ``inplace=True``.
 
         >>> df = ks.DataFrame(
         ...     {'a': [1, 2, 2, 2, 3], 'b': ['a', 'a', 'a', 'c', 'd']}, columns = ['a', 'b'])
@@ -7406,39 +7414,44 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  2  c
         4  3  d
 
-        >>> df.drop_duplicates().sort_values(['a', 'b'])
+        >>> df.drop_duplicates().sort_index()
            a  b
         0  1  a
         1  2  a
         3  2  c
         4  3  d
 
-        >>> df.drop_duplicates('a').sort_values(['a', 'b'])
+        >>> df.drop_duplicates('a').sort_index()
            a  b
         0  1  a
         1  2  a
         4  3  d
 
-        >>> df.drop_duplicates(['a', 'b']).sort_values(['a', 'b'])
+        >>> df.drop_duplicates(['a', 'b']).sort_index()
            a  b
         0  1  a
         1  2  a
+        3  2  c
+        4  3  d
+
+        >>> df.drop_duplicates(keep='last').sort_index()
+           a  b
+        0  1  a
+        2  2  a
+        3  2  c
+        4  3  d
+
+        >>> df.drop_duplicates(keep=False).sort_index()
+           a  b
+        0  1  a
         3  2  c
         4  3  d
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        if subset is None:
-            subset = self._internal.column_labels
-        elif isinstance(subset, str):
-            subset = [(subset,)]
-        elif isinstance(subset, tuple):
-            subset = [subset]
-        else:
-            subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
 
-        sdf = self._sdf.drop(*HIDDEN_COLUMNS).drop_duplicates(
-            subset=[self._internal.column_name_for(label) for label in subset]
-        )
+        sdf = self._mark_duplicates(subset, keep)[-1]
+
+        sdf = sdf.where(~F.col("__duplicated__")).drop("__duplicated__")
         internal = self._internal.with_new_sdf(sdf)
         if inplace:
             self._internal = internal

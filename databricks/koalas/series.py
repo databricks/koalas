@@ -1378,23 +1378,29 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     tolist = to_list
 
-    def drop_duplicates(self, inplace=False):
+    def drop_duplicates(self, keep="first", inplace=False):
         """
-        Return koalas Series with duplicate values removed.
+        Return Series with duplicate values removed.
 
         Parameters
         ----------
-        inplace: bool, default False
-            If True, performs operation inpalce and returns None.
+        keep : {'first', 'last', ``False``}, default 'first'
+            Method to handle dropping duplicates:
+            - 'first' : Drop duplicates except for the first occurrence.
+            - 'last' : Drop duplicates except for the last occurrence.
+            - ``False`` : Drop all duplicates.
+        inplace : bool, default ``False``
+            If ``True``, performs operation inplace and returns None.
 
         Returns
         -------
         Series
-            Series with deplicates dropped.
+            Series with duplicates dropped.
 
         Examples
         --------
         Generate a Series with duplicated entries.
+
         >>> s = ks.Series(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'],
         ...               name='animal')
         >>> s.sort_index()
@@ -1406,15 +1412,40 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         5     hippo
         Name: animal, dtype: object
 
+        With the 'keep' parameter, the selection behaviour of duplicated values
+        can be changed. The value 'first' keeps the first occurrence for each
+        set of duplicated entries. The default value of keep is 'first'.
+
         >>> s.drop_duplicates().sort_index()
         0      lama
         1       cow
         3    beetle
         5     hippo
         Name: animal, dtype: object
+
+        The value 'last' for parameter 'keep' keeps the last occurrence for
+        each set of duplicated entries.
+
+        >>> s.drop_duplicates(keep='last').sort_index()
+        1       cow
+        3    beetle
+        4      lama
+        5     hippo
+        Name: animal, dtype: object
+
+        The value ``False`` for parameter 'keep' discards all sets of
+        duplicated entries. Setting the value of 'inplace' to ``True`` performs
+        the operation inplace and returns ``None``.
+
+        >>> s.drop_duplicates(keep=False, inplace=True)
+        >>> s.sort_index()
+        1       cow
+        3    beetle
+        5     hippo
+        Name: animal, dtype: object
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        kseries = _col(self.to_frame().drop_duplicates())
+        kseries = _col(self.to_frame().drop_duplicates(keep=keep))
 
         if inplace:
             self._internal = kseries._internal
