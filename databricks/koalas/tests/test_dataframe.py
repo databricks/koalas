@@ -2070,9 +2070,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
+        # inplace is False
         for keep in ["first", "last", False]:
-            with self.subTest():
-                # inplace is False
+            with self.subTest(keep=keep):
                 self.assert_eq(
                     pdf.drop_duplicates(keep=keep).sort_index(),
                     kdf.drop_duplicates(keep=keep).sort_index(),
@@ -2086,14 +2086,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                     kdf.drop_duplicates(["a", "b"], keep=keep).sort_index(),
                 )
 
-        # multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b")])
         pdf.columns = columns
         kdf.columns = columns
 
+        # inplace is False
         for keep in ["first", "last", False]:
-            with self.subTest():
-                # inplace is False
+            with self.subTest("multi-index columns", keep=keep):
                 self.assert_eq(
                     pdf.drop_duplicates(keep=keep).sort_index(),
                     kdf.drop_duplicates(keep=keep).sort_index(),
