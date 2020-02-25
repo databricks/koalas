@@ -95,7 +95,6 @@ class _MissingPandasLikeSeries(object):
     get_values = unsupported_function("get_values", deprecated=True)
 
     # Properties we won't support.
-    values = common.values(unsupported_property)
     array = common.array(unsupported_property)
     duplicated = common.duplicated(unsupported_property)
     nbytes = unsupported_property(

@@ -33,6 +33,7 @@ Properties
    Index.nlevels
    Index.empty
    Index.T
+   Index.values
 
 Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -154,6 +155,7 @@ MultiIndex Properties
    MultiIndex.size
    MultiIndex.nlevels
    MultiIndex.levshape
+   MultiIndex.values
 
 MultiIndex components
 ~~~~~~~~~~~~~~~~~~~~~

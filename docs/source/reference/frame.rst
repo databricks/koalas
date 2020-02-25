@@ -31,6 +31,7 @@ Attributes and underlying data
    DataFrame.ndim
    DataFrame.size
    DataFrame.select_dtypes
+   DataFrame.values
 
 Conversion
 ----------

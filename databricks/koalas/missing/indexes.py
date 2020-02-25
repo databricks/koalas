@@ -81,7 +81,6 @@ class _MissingPandasLikeIndex(object):
     set_value = unsupported_function("set_value")
 
     # Properties we won't support.
-    values = common.values(unsupported_property)
     array = common.array(unsupported_property)
     duplicated = common.duplicated(unsupported_property)
 
@@ -156,7 +155,6 @@ class _MissingPandasLikeMultiIndex(object):
     set_value = unsupported_function("set_value", deprecated=True)
 
     # Functions we won't support.
-    values = common.values(unsupported_property)
     array = common.array(unsupported_property)
     duplicated = common.duplicated(unsupported_property)
     codes = unsupported_property(

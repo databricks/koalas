@@ -161,15 +161,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(kser, pser)
 
-    def test_values_property(self):
-        kser = self.kser
-        msg = (
-            "Koalas does not support the 'values' property. If you want to collect your data "
-            + "as an NumPy array, use 'to_numpy()' instead."
-        )
-        with self.assertRaises(NotImplementedError, msg=msg):
-            kser.values
-
     def test_or(self):
         pdf = pd.DataFrame(
             {

@@ -954,15 +954,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             ):
                 getattr(kdf, name)
 
-    def test_values_property(self):
-        kdf = self.kdf
-        msg = (
-            "Koalas does not support the 'values' property. If you want to collect your data "
-            + "as an NumPy array, use 'to_numpy()' instead."
-        )
-        with self.assertRaises(NotImplementedError, msg=msg):
-            kdf.values
-
     def test_to_numpy(self):
         pdf = pd.DataFrame(
             {
