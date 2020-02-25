@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.version import LooseVersion
+
+import pandas as pd
 
 from databricks.koalas.missing import _unsupported_function, _unsupported_property, common
 
@@ -90,6 +93,19 @@ class _MissingPandasLikeIndex(object):
     to_list = common.to_list(unsupported_function)
     tolist = common.tolist(unsupported_function)
     __iter__ = common.__iter__(unsupported_function)
+
+    if LooseVersion(pd.__version__) < LooseVersion("1.0"):
+        # Deprecated properties
+        strides = unsupported_property("strides", deprecated=True)
+        data = unsupported_property("data", deprecated=True)
+        itemsize = unsupported_property("itemsize", deprecated=True)
+        base = unsupported_property("base", deprecated=True)
+        flags = unsupported_property("flags", deprecated=True)
+
+        # Deprecated functions
+        get_duplicates = unsupported_function("get_duplicates", deprecated=True)
+        summary = unsupported_function("summary", deprecated=True)
+        contains = unsupported_function("contains", deprecated=True)
 
 
 class _MissingPandasLikeMultiIndex(object):
@@ -177,3 +193,15 @@ class _MissingPandasLikeMultiIndex(object):
     memory_usage = common.memory_usage(unsupported_function)
     to_list = common.to_list(unsupported_function)
     tolist = common.tolist(unsupported_function)
+
+    if LooseVersion(pd.__version__) < LooseVersion("1.0"):
+        # Deprecated properties
+        base = unsupported_property("base", deprecated=True)
+        labels = unsupported_property("labels", deprecated=True)
+        flags = unsupported_property("flags", deprecated=True)
+
+        # Deprecated functions
+        set_labels = unsupported_function("set_labels")
+        summary = unsupported_function("summary", deprecated=True)
+        to_hierarchical = unsupported_function("to_hierarchical", deprecated=True)
+        contains = unsupported_function("contains", deprecated=True)

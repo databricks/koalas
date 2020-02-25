@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.version import LooseVersion
+
+import pandas as pd
 
 from databricks.koalas.missing import _unsupported_function, _unsupported_property, common
 
@@ -83,6 +86,7 @@ class _MissingPandasLikeDataFrame(object):
     tshift = unsupported_function("tshift")
     tz_convert = unsupported_function("tz_convert")
     tz_localize = unsupported_function("tz_localize")
+
     # Deprecated functions
     convert_objects = unsupported_function("convert_objects", deprecated=True)
     select = unsupported_function("select", deprecated=True)
@@ -98,3 +102,22 @@ class _MissingPandasLikeDataFrame(object):
     to_pickle = common.to_pickle(unsupported_function)
     memory_usage = common.memory_usage(unsupported_function)
     to_xarray = common.to_xarray(unsupported_function)
+
+    if LooseVersion(pd.__version__) < LooseVersion("1.0"):
+        # Deprecated properties
+        blocks = unsupported_property("blocks", deprecated=True)
+        ftypes = unsupported_property("ftypes", deprecated=True)
+        is_copy = unsupported_property("is_copy", deprecated=True)
+        ix = unsupported_property("ix", deprecated=True)
+
+        # Deprecated functions
+        as_blocks = unsupported_function("as_blocks", deprecated=True)
+        as_matrix = unsupported_function("as_matrix", deprecated=True)
+        clip_lower = unsupported_function("clip_lower", deprecated=True)
+        clip_upper = unsupported_function("clip_upper", deprecated=True)
+        get_ftype_counts = unsupported_function("get_ftype_counts", deprecated=True)
+        get_value = unsupported_function("get_value", deprecated=True)
+        set_value = unsupported_function("set_value", deprecated=True)
+        to_dense = unsupported_function("to_dense", deprecated=True)
+        to_sparse = unsupported_function("to_sparse", deprecated=True)
+        to_msgpack = unsupported_function("to_msgpack", deprecated=True)

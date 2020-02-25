@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.version import LooseVersion
+
+import pandas as pd
 
 from databricks.koalas.missing import _unsupported_function, _unsupported_property, common
 
@@ -115,3 +118,43 @@ class _MissingPandasLikeSeries(object):
         reason="If you want to collect your flattened underlying data as an NumPy array, "
         "use 'to_numpy().ravel()' instead.",
     )
+
+    if LooseVersion(pd.__version__) < LooseVersion("1.0"):
+        # Deprecated properties
+        blocks = unsupported_property("blocks", deprecated=True)
+        ftypes = unsupported_property("ftypes", deprecated=True)
+        ftype = unsupported_property("ftype", deprecated=True)
+        is_copy = unsupported_property("is_copy", deprecated=True)
+        ix = unsupported_property("ix", deprecated=True)
+        asobject = unsupported_property("asobject", deprecated=True)
+        strides = unsupported_property("strides", deprecated=True)
+        imag = unsupported_property("imag", deprecated=True)
+        itemsize = unsupported_property("itemsize", deprecated=True)
+        data = unsupported_property("data", deprecated=True)
+        base = unsupported_property("base", deprecated=True)
+        flags = unsupported_property("flags", deprecated=True)
+
+        # Deprecated functions
+        as_blocks = unsupported_function("as_blocks", deprecated=True)
+        as_matrix = unsupported_function("as_matrix", deprecated=True)
+        clip_lower = unsupported_function("clip_lower", deprecated=True)
+        clip_upper = unsupported_function("clip_upper", deprecated=True)
+        compress = unsupported_function("compress", deprecated=True)
+        get_ftype_counts = unsupported_function("get_ftype_counts", deprecated=True)
+        get_value = unsupported_function("get_value", deprecated=True)
+        set_value = unsupported_function("set_value", deprecated=True)
+        valid = unsupported_function("valid", deprecated=True)
+        to_dense = unsupported_function("to_dense", deprecated=True)
+        to_sparse = unsupported_function("to_sparse", deprecated=True)
+        to_msgpack = unsupported_function("to_msgpack", deprecated=True)
+        compound = unsupported_function("compound", deprecated=True)
+        put = unsupported_function("put", deprecated=True)
+        ptp = unsupported_function("ptp", deprecated=True)
+        argmax = unsupported_function("argmax", deprecated=True)
+        argmin = unsupported_function("argmin", deprecated=True)
+
+        # Functions we won't support.
+        real = unsupported_property(
+            "real",
+            reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.",
+        )
