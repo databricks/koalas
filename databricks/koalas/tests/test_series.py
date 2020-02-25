@@ -1139,16 +1139,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.xs(("a", "lama", "speed")), pser.xs(("a", "lama", "speed")))
 
     def test_duplicates(self):
-        psers = [
-            pd.Series(
-                ["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal"  # test on texts
+        psers = {
+            "test on texts": pd.Series(
+                ["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal"
             ),
-            pd.Series([1, 1, 2, 4, 3]),  # test on numbers
-        ]
+            "test on numbers": pd.Series([1, 1, 2, 4, 3]),
+        }
         keeps = ["first", "last", False]
 
-        for pser, keep in product(psers, keeps):
-            with self.subTest():
+        for (msg, pser), keep in product(psers.items(), keeps):
+            with self.subTest(msg, keep=keep):
                 kser = ks.Series(pser)
 
                 self.assert_eq(
