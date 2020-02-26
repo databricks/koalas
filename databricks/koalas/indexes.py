@@ -1696,12 +1696,8 @@ class MultiIndex(Index):
         for field in self.spark_type[::-1]:
             left = col.getField(field.name)
             right = prev.getField(field.name)
-            if isinstance(field.dataType, StringType):
-                compare = compare_disallow_null
-            elif isinstance(field.dataType, BooleanType):
+            if isinstance(field.dataType, BooleanType):
                 compare = compare_allow_null
-            elif isinstance(field.dataType, NumericType):
-                compare = compare_null_first
             else:
                 compare = compare_null_last
             cond = F.when(left.eqNullSafe(right), cond).otherwise(
