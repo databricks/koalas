@@ -168,7 +168,20 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby(("x", "a"))[[("y", "c")]].sum().sort_index(),
             pdf.groupby(("x", "a"))[[("y", "c")]].sum().sort_index(),
         )
-        # TODO: seems like a pandas' bug ?
+        # TODO: seems like a pandas' bug. it works well in Koalas like the below.
+        # >>> pdf[('x', 'a')].groupby(pdf[('x', 'b')]).sum().sort_index()
+        # Traceback (most recent call last):
+        # ...
+        # ValueError: Can only tuple-index with a MultiIndex
+        # >>> kdf[('x', 'a')].groupby(kdf[('x', 'b')]).sum().sort_index()
+        # (x, b)
+        # 1    13
+        # 2     9
+        # 3     8
+        # 4     1
+        # 7     6
+        # Name: (x, a), dtype: int64
+        # So, skip this for now.
         # self.assert_eq(kdf[('x', 'a')].groupby(kdf[('x', 'b')]).sum().sort_index(),
         #                pdf[('x', 'a')].groupby(pdf[('x', 'b')]).sum().sort_index())
 
