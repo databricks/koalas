@@ -1673,7 +1673,7 @@ class _Frame(object):
         sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_columns])
 
         # Attach a dummy column for index to avoid default index.
-        sdf = sdf.withColumn("__DUMMY__", F.monotonically_increasing_id())
+        sdf = _InternalFrame.attach_distributed_column(sdf, "__DUMMY__")
 
         # This is expected to be small so it's fine to transpose.
         return (

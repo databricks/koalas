@@ -579,12 +579,17 @@ class _InternalFrame(object):
         elif default_index_type == "distributed-sequence":
             return _InternalFrame.attach_distributed_sequence_column(sdf, column_name=index_column)
         elif default_index_type == "distributed":
-            return sdf.select(F.monotonically_increasing_id().alias(index_column), *scols)
+            return _InternalFrame.attach_distributed_column(sdf, column_name=index_column)
         else:
             raise ValueError(
                 "'compute.default_index_type' should be one of 'sequence',"
                 " 'distributed-sequence' and 'distributed'"
             )
+
+    @staticmethod
+    def attach_distributed_column(sdf, column_name):
+        scols = [scol_for(sdf, column) for column in sdf.columns]
+        return sdf.select(F.monotonically_increasing_id().alias(column_name), *scols)
 
     @staticmethod
     def attach_distributed_sequence_column(sdf, column_name):

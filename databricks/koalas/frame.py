@@ -5434,6 +5434,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         foo
         one  1.0  NaN  NaN
         two  NaN  3.0  4.0
+
+        It also support multi-index and multi-index column.
+        >>> df.columns = pd.MultiIndex.from_tuples([('a', 'foo'), ('a', 'bar'), ('b', 'baz')])
+
+        >>> df = df.set_index(('a', 'bar'), append=True)
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
+                      a   b
+                    foo baz
+        (a, bar)
+        0 A         one   1
+        1 A         one   2
+        2 B         two   3
+        3 C         two   4
+
+        >>> df.pivot(columns=('a', 'foo'), values=('b', 'baz')).sort_index()
+        ('a', 'foo')  one  two
+        0 A           1.0  NaN
+        1 A           2.0  NaN
+        2 B           NaN  3.0
+        3 C           NaN  4.0
+
         """
         if columns is None:
             raise ValueError("columns should be set.")
@@ -5447,10 +5468,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             index = [index]
         else:
             df = self.copy()
-            df["__DUMMY__"] = F.monotonically_increasing_id()
-            df.set_index("__DUMMY__", append=True, inplace=True)
-            df.reset_index(level=range(len(df._internal.index_map) - 1), inplace=True)
-            index = df._internal.column_labels[: len(df._internal.index_map)]
+            num_index_col = len(df._internal.index_columns)
+            df.reset_index(inplace=True)
+            sdf = _InternalFrame.attach_distributed_column(
+                df._sdf.drop(SPARK_DEFAULT_INDEX_NAME), SPARK_DEFAULT_INDEX_NAME
+            )
+            df = DataFrame(df._internal.with_new_sdf(sdf))
+            index = df._internal.column_labels[:num_index_col]
 
         df = df.pivot_table(index=index, columns=columns, values=values, aggfunc="first")
 
