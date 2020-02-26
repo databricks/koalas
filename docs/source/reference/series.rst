@@ -33,6 +33,7 @@ Attributes
    Series.empty
    Series.T
    Series.hasnans
+   Series.values
 
 Conversion
 ----------

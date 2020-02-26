@@ -95,9 +95,6 @@ class _MissingPandasLikeDataFrame(object):
     compound = unsupported_function("compound", deprecated=True)
     reindex_axis = unsupported_function("reindex_axis", deprecated=True)
 
-    # Properties we won't support.
-    values = common.values(unsupported_property)
-
     # Functions we won't support.
     to_pickle = common.to_pickle(unsupported_function)
     memory_usage = common.memory_usage(unsupported_function)

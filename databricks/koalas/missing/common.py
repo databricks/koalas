@@ -22,10 +22,6 @@ memory_usage = lambda f: f(
     "to do. Use Spark's web UI to monitor disk and memory usage of your application.",
 )
 
-values = lambda f: f(
-    "values", reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead."
-)
-
 array = lambda f: f(
     "array", reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead."
 )

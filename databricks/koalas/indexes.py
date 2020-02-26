@@ -20,6 +20,7 @@ Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 from distutils.version import LooseVersion
 from functools import partial
 from typing import Any, List, Optional, Tuple, Union
+import warnings
 
 import pandas as pd
 import numpy as np
@@ -401,6 +402,30 @@ class Index(IndexOpsMixin):
         if copy:
             result = result.copy()
         return result
+
+    @property
+    def values(self):
+        """
+        Return an array representing the data in the Index.
+
+        .. warning:: We recommend using `Index.to_numpy()` instead.
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Returns
+        -------
+        numpy.ndarray
+
+        Examples
+        --------
+        >>> ks.Series([1, 2, 3, 4]).index.values
+        array([0, 1, 2, 3])
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[[1, 2, 3], [4, 5, 6]]).index.values
+        array([(1, 4), (2, 5), (3, 6)], dtype=object)
+        """
+        warnings.warn("We recommend using `{}.to_numpy()` instead.".format(type(self).__name__))
+        return self.to_numpy()
 
     @property
     def spark_type(self):

@@ -448,8 +448,95 @@ class _Frame(object):
         Returns
         -------
         numpy.ndarray
+
+        Examples
+        --------
+        >>> ks.DataFrame({"A": [1, 2], "B": [3, 4]}).to_numpy()
+        array([[1, 3],
+               [2, 4]])
+
+        With heterogeneous data, the lowest common type will have to be used.
+
+        >>> ks.DataFrame({"A": [1, 2], "B": [3.0, 4.5]}).to_numpy()
+        array([[1. , 3. ],
+               [2. , 4.5]])
+
+        For a mix of numeric and non-numeric types, the output array will have object dtype.
+
+        >>> df = ks.DataFrame({"A": [1, 2], "B": [3.0, 4.5], "C": pd.date_range('2000', periods=2)})
+        >>> df.to_numpy()
+        array([[1, 3.0, Timestamp('2000-01-01 00:00:00')],
+               [2, 4.5, Timestamp('2000-01-02 00:00:00')]], dtype=object)
+
+        For Series,
+
+        >>> ks.Series(['a', 'b', 'a']).to_numpy()
+        array(['a', 'b', 'a'], dtype=object)
         """
         return self.to_pandas().values
+
+    @property
+    def values(self):
+        """
+        Return a Numpy representation of the DataFrame or the Series.
+
+        .. warning:: We recommend using `DataFrame.to_numpy()` or `Series.to_numpy()` instead.
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Returns
+        -------
+        numpy.ndarray
+
+        Examples
+        --------
+        A DataFrame where all columns are the same type (e.g., int64) results in an array of
+        the same type.
+
+        >>> df = ks.DataFrame({'age':    [ 3,  29],
+        ...                    'height': [94, 170],
+        ...                    'weight': [31, 115]})
+        >>> df
+           age  height  weight
+        0    3      94      31
+        1   29     170     115
+        >>> df.dtypes
+        age       int64
+        height    int64
+        weight    int64
+        dtype: object
+        >>> df.values
+        array([[  3,  94,  31],
+               [ 29, 170, 115]])
+
+        A DataFrame with mixed type columns(e.g., str/object, int64, float32) results in an ndarray
+        of the broadest type that accommodates these mixed types (e.g., object).
+
+        >>> df2 = ks.DataFrame([('parrot',   24.0, 'second'),
+        ...                     ('lion',     80.5, 'first'),
+        ...                     ('monkey', np.nan, None)],
+        ...                   columns=('name', 'max_speed', 'rank'))
+        >>> df2.dtypes
+        name          object
+        max_speed    float64
+        rank          object
+        dtype: object
+        >>> df2.values
+        array([['parrot', 24.0, 'second'],
+               ['lion', 80.5, 'first'],
+               ['monkey', nan, None]], dtype=object)
+
+        For Series,
+
+        >>> ks.Series([1, 2, 3]).values
+        array([1, 2, 3])
+
+        >>> ks.Series(list('aabc')).values
+        array(['a', 'a', 'b', 'c'], dtype=object)
+        """
+        warnings.warn("We recommend using `{}.to_numpy()` instead.".format(type(self).__name__))
+        return self.to_numpy()
 
     def to_csv(
         self,
