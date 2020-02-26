@@ -446,7 +446,7 @@ class DataFrame(_Frame, Generic[T]):
         """
         return [self.index, self.columns]
 
-    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=False):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=None):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
         number of columns.
