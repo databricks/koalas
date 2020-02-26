@@ -48,6 +48,7 @@ from databricks.koalas.utils import (
     lazy_property,
     name_like_string,
     scol_for,
+    verify_temp_column_name,
 )
 
 
@@ -605,6 +606,10 @@ class _InternalFrame(object):
 
         scols = [scol_for(sdf, column) for column in sdf.columns]
 
+        spark_partition_column = verify_temp_column_name(sdf, "__spark_partition_id__")
+        offset_column = verify_temp_column_name(sdf, "__offset__")
+        row_number_column = verify_temp_column_name(sdf, "__row_number__")
+
         # 1. Calculates counts per each partition ID. `counts` here is, for instance,
         #     {
         #         1: 83,
@@ -612,10 +617,10 @@ class _InternalFrame(object):
         #         3: 83,
         #         ...
         #     }
-        sdf = sdf.withColumn("__spark_partition_id", F.spark_partition_id())
+        sdf = sdf.withColumn(spark_partition_column, F.spark_partition_id())
         counts = map(
             lambda x: (x["key"], x["count"]),
-            sdf.groupby(sdf["__spark_partition_id"].alias("key")).count().collect(),
+            sdf.groupby(sdf[spark_partition_column].alias("key")).count().collect(),
         )
 
         # 2. Calculates cumulative sum in an order of partition id.
@@ -635,15 +640,17 @@ class _InternalFrame(object):
             current_partition_offset = sums[id.iloc[0]]
             return pd.Series(current_partition_offset).repeat(len(id))
 
-        sdf = sdf.withColumn("__offset__", offset("__spark_partition_id"))
+        sdf = sdf.withColumn(offset_column, offset(spark_partition_column))
 
         # 4. Calculate row_number in each partition.
-        w = Window.partitionBy("__spark_partition_id").orderBy(F.monotonically_increasing_id())
+        w = Window.partitionBy(spark_partition_column).orderBy(F.monotonically_increasing_id())
         row_number = F.row_number().over(w)
-        sdf = sdf.withColumn("__row_number__", row_number)
+        sdf = sdf.withColumn(row_number_column, row_number)
 
         # 5. Calculate the index.
-        return sdf.select(F.expr("__offset__ + __row_number__ - 1").alias(column_name), *scols)
+        return sdf.select(
+            (sdf[offset_column] + sdf[row_number_column] - 1).alias(column_name), *scols
+        )
 
     @lazy_property
     def _column_labels_to_name(self) -> Dict[Tuple[str, ...], str]:

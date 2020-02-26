@@ -450,6 +450,35 @@ def validate_bool_kwarg(value, arg_name):
     return value
 
 
+def verify_temp_column_name(sdf: spark.DataFrame, column_name: str) -> str:
+    """
+    Generate a temporaty column name which does not exist in the given Spark DataFrame
+
+    >>> sdf = ks.DataFrame(['a', 'b', 'c']).to_spark().withColumn('__dummy__', F.lit(0))
+    >>> sdf.show()  # doctest: +NORMALIZE_WHITESPACE
+    +---+---------+
+    |  0|__dummy__|
+    +---+---------+
+    |  a|        0|
+    |  b|        0|
+    |  c|        0|
+    +---+---------+
+
+    >>> verify_temp_column_name(sdf, '__tmp__')
+    '__tmp__'
+    >>> verify_temp_column_name(sdf, '__dummy__')
+    Traceback (most recent call last):
+    ...
+    AssertionError: ... `__dummy__` ...: ['0', '__dummy__']
+    """
+    assert (
+        column_name not in sdf.columns
+    ), "The give column name `{}` already exists in the Spark DataFrame: {}".format(
+        column_name, sdf.columns
+    )
+    return column_name
+
+
 def compare_null_first(left, right, comp):
     return (left.isNotNull() & right.isNotNull() & comp(left, right)) | (
         left.isNull() & right.isNotNull()
