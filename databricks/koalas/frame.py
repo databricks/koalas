@@ -2062,23 +2062,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             potentially expensive, for instance, when the dataset is created after
             aggregations or sorting.
 
-            To avoid this, specify return type in ``func``, for instance, as below:
+            To avoid this, specify the return type as `Series` or scalar value in ``func``,
+            for instance, as below:
 
             >>> def square(s) -> ks.Series[np.int32]:
             ...     return s ** 2
 
             Koalas uses return type hint and does not try to infer the type.
 
-            In case when axis is 1, it requires to specify `DataFrame` with type hints
-            as below:
+            In case when axis is 1, it requires to specify `DataFrame` or scalar value
+            with type hints as below:
 
             >>> def plus_one(x) -> ks.DataFrame[float, float]:
             ...    return x + 1
 
-            If the return type is specified, the output column names become
+            If the return type is specified as `DataFrame`, the output column names become
             `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
             DataFrame in ``func``. See examples below.
 
+            However, this way switches the index type to default index type in the output
+            because the type hint cannot express the index type at this moment. Use
+            `reset_index()` to keep index as a workaround.
 
         Parameters
         ----------
