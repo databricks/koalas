@@ -52,8 +52,8 @@ setup(
         'numpy>=1.14',
         'matplotlib>=3.0.0',
     ],
-    maintainer="Databricks",
-    maintainer_email="koalas@databricks.com",
+    author="Databricks",
+    author_email="koalas@databricks.com",
     license='http://www.apache.org/licenses/LICENSE-2.0',
     url="https://github.com/databricks/koalas",
     project_urls={
