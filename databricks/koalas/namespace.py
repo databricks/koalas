@@ -26,11 +26,23 @@ import itertools
 
 import numpy as np
 import pandas as pd
-
+from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import ByteType, ShortType, IntegerType, LongType, FloatType, \
-    DoubleType, BooleanType, TimestampType, DecimalType, StringType, DateType, StructType
+from pyspark.sql.types import (
+    ByteType,
+    ShortType,
+    IntegerType,
+    LongType,
+    FloatType,
+    DoubleType,
+    BooleanType,
+    TimestampType,
+    DecimalType,
+    StringType,
+    DateType,
+    StructType,
+)
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
@@ -41,13 +53,35 @@ from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.series import Series, _col
 
 
-__all__ = ["from_pandas", "range", "read_csv", "read_delta", "read_table", "read_spark_io",
-           "read_parquet", "read_clipboard", "read_excel", "read_html", "to_datetime",
-           "get_dummies", "concat", "melt", "isna", "isnull", "notna", "notnull",
-           "read_sql_table", "read_sql_query", "read_sql", "read_json", "merge", "to_numeric"]
+__all__ = [
+    "from_pandas",
+    "range",
+    "read_csv",
+    "read_delta",
+    "read_table",
+    "read_spark_io",
+    "read_parquet",
+    "read_clipboard",
+    "read_excel",
+    "read_html",
+    "to_datetime",
+    "get_dummies",
+    "concat",
+    "melt",
+    "isna",
+    "isnull",
+    "notna",
+    "notnull",
+    "read_sql_table",
+    "read_sql_query",
+    "read_sql",
+    "read_json",
+    "merge",
+    "to_numeric",
+]
 
 
-def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'DataFrame']:
+def from_pandas(pobj: Union["pd.DataFrame", "pd.Series"]) -> Union["Series", "DataFrame"]:
     """Create a Koalas DataFrame or Series from a pandas DataFrame or Series.
 
     This is similar to Spark's `SparkSession.createDataFrame()` with pandas DataFrame,
@@ -74,10 +108,9 @@ def from_pandas(pobj: Union['pd.DataFrame', 'pd.Series']) -> Union['Series', 'Da
         raise ValueError("Unknown data type: {}".format(type(pobj)))
 
 
-def range(start: int,
-          end: Optional[int] = None,
-          step: int = 1,
-          num_partitions: Optional[int] = None) -> DataFrame:
+def range(
+    start: int, end: Optional[int] = None, step: int = 1, num_partitions: Optional[int] = None
+) -> DataFrame:
     """
     Create a DataFrame with some range of numbers.
 
@@ -128,9 +161,22 @@ def range(start: int,
     return DataFrame(sdf)
 
 
-def read_csv(path, sep=',', header='infer', names=None, index_col=None,
-             usecols=None, squeeze=False, mangle_dupe_cols=True, dtype=None,
-             parse_dates=False, quotechar=None, escapechar=None, comment=None, **options):
+def read_csv(
+    path,
+    sep=",",
+    header="infer",
+    names=None,
+    index_col=None,
+    usecols=None,
+    squeeze=False,
+    mangle_dupe_cols=True,
+    dtype=None,
+    parse_dates=False,
+    quotechar=None,
+    escapechar=None,
+    comment=None,
+    **options
+):
     """Read CSV (comma-separated) file into DataFrame.
 
     Parameters
@@ -203,11 +249,10 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
         usecols = list(usecols)
     if usecols is None or callable(usecols) or len(usecols) > 0:
         reader = default_session().read
-        reader.options(**options)
         reader.option("inferSchema", True)
         reader.option("sep", sep)
 
-        if header == 'infer':
+        if header == "infer":
             header = 0 if names is None else None
         if header == 0:
             reader.option("header", True)
@@ -226,23 +271,29 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
                 raise ValueError("Only length-1 comment characters supported")
             reader.option("comment", comment)
 
+        reader.options(**options)
+
         if isinstance(names, str):
             sdf = reader.schema(names).csv(path)
         else:
             sdf = reader.csv(path)
             if header is None:
-                sdf = sdf.selectExpr(*["`%s` as `%s`" % (field.name, i)
-                                       for i, field in enumerate(sdf.schema)])
+                sdf = sdf.selectExpr(
+                    *["`%s` as `%s`" % (field.name, i) for i, field in enumerate(sdf.schema)]
+                )
         if isinstance(names, list):
             names = list(names)
             if len(set(names)) != len(names):
-                raise ValueError('Found non-unique column index')
+                raise ValueError("Found non-unique column index")
             if len(names) != len(sdf.schema):
-                raise ValueError('The number of names [%s] does not match the number '
-                                 'of columns [%d]. Try names by a Spark SQL DDL-formatted '
-                                 'string.' % (len(sdf.schema), len(names)))
-            sdf = sdf.selectExpr(*["`%s` as `%s`" % (field.name, name)
-                                   for field, name in zip(sdf.schema, names)])
+                raise ValueError(
+                    "The number of names [%s] does not match the number "
+                    "of columns [%d]. Try names by a Spark SQL DDL-formatted "
+                    "string." % (len(sdf.schema), len(names))
+                )
+            sdf = sdf.selectExpr(
+                *["`%s` as `%s`" % (field.name, name) for field, name in zip(sdf.schema, names)]
+            )
 
         if usecols is not None:
             if callable(usecols):
@@ -250,17 +301,23 @@ def read_csv(path, sep=',', header='infer', names=None, index_col=None,
                 missing = []
             elif all(isinstance(col, int) for col in usecols):
                 cols = [field.name for i, field in enumerate(sdf.schema) if i in usecols]
-                missing = [col for col in usecols
-                           if col >= len(sdf.schema) or sdf.schema[col].name not in cols]
+                missing = [
+                    col
+                    for col in usecols
+                    if col >= len(sdf.schema) or sdf.schema[col].name not in cols
+                ]
             elif all(isinstance(col, str) for col in usecols):
                 cols = [field.name for field in sdf.schema if field.name in usecols]
                 missing = [col for col in usecols if col not in cols]
             else:
-                raise ValueError("'usecols' must either be list-like of all strings, "
-                                 "all unicode, all integers or a callable.")
+                raise ValueError(
+                    "'usecols' must either be list-like of all strings, "
+                    "all unicode, all integers or a callable."
+                )
             if len(missing) > 0:
-                raise ValueError('Usecols do not match columns, columns expected but not '
-                                 'found: %s' % missing)
+                raise ValueError(
+                    "Usecols do not match columns, columns expected but not " "found: %s" % missing
+                )
 
             if len(cols) > 0:
                 sdf = sdf.select(cols)
@@ -319,11 +376,16 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
     0     a     b
     1     c     d
     """
-    return read_spark_io(path, format='json', index_col=index_col, **options)
+    return read_spark_io(path, format="json", index_col=index_col, **options)
 
 
-def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str] = None,
-               index_col: Optional[Union[str, List[str]]] = None, **options) -> DataFrame:
+def read_delta(
+    path: str,
+    version: Optional[str] = None,
+    timestamp: Optional[str] = None,
+    index_col: Optional[Union[str, List[str]]] = None,
+    **options
+) -> DataFrame:
     """
     Read a Delta Lake table on some file system and return a DataFrame.
 
@@ -377,10 +439,10 @@ def read_delta(path: str, version: Optional[str] = None, timestamp: Optional[str
     0   0
     """
     if version is not None:
-        options['versionAsOf'] = version
+        options["versionAsOf"] = version
     if timestamp is not None:
-        options['timestampAsOf'] = timestamp
-    return read_spark_io(path, format='delta', index_col=index_col, **options)
+        options["timestampAsOf"] = timestamp
+    return read_spark_io(path, format="delta", index_col=index_col, **options)
 
 
 def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> DataFrame:
@@ -419,10 +481,13 @@ def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> 
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
-def read_spark_io(path: Optional[str] = None, format: Optional[str] = None,
-                  schema: Union[str, 'StructType'] = None,
-                  index_col: Optional[Union[str, List[str]]] = None,
-                  **options) -> DataFrame:
+def read_spark_io(
+    path: Optional[str] = None,
+    format: Optional[str] = None,
+    schema: Union[str, "StructType"] = None,
+    index_col: Optional[Union[str, List[str]]] = None,
+    **options
+) -> DataFrame:
     """Load a DataFrame from a Spark data source.
 
     Parameters
@@ -527,7 +592,7 @@ def read_parquet(path, columns=None, index_col=None) -> DataFrame:
     return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
 
 
-def read_clipboard(sep=r'\s+', **kwargs):
+def read_clipboard(sep=r"\s+", **kwargs):
     r"""
     Read text from clipboard and pass to read_csv. See read_csv for the
     full argument list
@@ -549,11 +614,33 @@ def read_clipboard(sep=r'\s+', **kwargs):
     return from_pandas(pd.read_clipboard(sep, **kwargs))
 
 
-def read_excel(io, sheet_name=0, header=0, names=None, index_col=None, usecols=None, squeeze=False,
-               dtype=None, engine=None, converters=None, true_values=None, false_values=None,
-               skiprows=None, nrows=None, na_values=None, keep_default_na=True, verbose=False,
-               parse_dates=False, date_parser=None, thousands=None, comment=None, skipfooter=0,
-               convert_float=True, mangle_dupe_cols=True, **kwds):
+def read_excel(
+    io,
+    sheet_name=0,
+    header=0,
+    names=None,
+    index_col=None,
+    usecols=None,
+    squeeze=False,
+    dtype=None,
+    engine=None,
+    converters=None,
+    true_values=None,
+    false_values=None,
+    skiprows=None,
+    nrows=None,
+    na_values=None,
+    keep_default_na=True,
+    verbose=False,
+    parse_dates=False,
+    date_parser=None,
+    thousands=None,
+    comment=None,
+    skipfooter=0,
+    convert_float=True,
+    mangle_dupe_cols=True,
+    **kwds
+):
     """
     Read an Excel file into a Koalas DataFrame.
 
@@ -751,24 +838,55 @@ def read_excel(io, sheet_name=0, header=0, names=None, index_col=None, usecols=N
     2     None    NaN
     """
     pdfs = pd.read_excel(
-        io=io, sheet_name=sheet_name, header=header, names=names, index_col=index_col,
-        usecols=usecols, squeeze=squeeze, dtype=dtype, engine=engine, converters=converters,
-        true_values=true_values, false_values=false_values, skiprows=skiprows, nrows=nrows,
-        na_values=na_values, keep_default_na=keep_default_na, verbose=verbose,
-        parse_dates=parse_dates, date_parser=date_parser, thousands=thousands, comment=comment,
-        skipfooter=skipfooter, convert_float=convert_float, mangle_dupe_cols=mangle_dupe_cols,
-        **kwds)
+        io=io,
+        sheet_name=sheet_name,
+        header=header,
+        names=names,
+        index_col=index_col,
+        usecols=usecols,
+        squeeze=squeeze,
+        dtype=dtype,
+        engine=engine,
+        converters=converters,
+        true_values=true_values,
+        false_values=false_values,
+        skiprows=skiprows,
+        nrows=nrows,
+        na_values=na_values,
+        keep_default_na=keep_default_na,
+        verbose=verbose,
+        parse_dates=parse_dates,
+        date_parser=date_parser,
+        thousands=thousands,
+        comment=comment,
+        skipfooter=skipfooter,
+        convert_float=convert_float,
+        mangle_dupe_cols=mangle_dupe_cols,
+        **kwds
+    )
     if isinstance(pdfs, dict):
         return OrderedDict([(key, from_pandas(value)) for key, value in pdfs.items()])
     else:
         return from_pandas(pdfs)
 
 
-def read_html(io, match='.+', flavor=None, header=None, index_col=None,
-              skiprows=None, attrs=None, parse_dates=False,
-              thousands=',', encoding=None,
-              decimal='.', converters=None, na_values=None,
-              keep_default_na=True, displayed_only=True):
+def read_html(
+    io,
+    match=".+",
+    flavor=None,
+    header=None,
+    index_col=None,
+    skiprows=None,
+    attrs=None,
+    parse_dates=False,
+    thousands=",",
+    encoding=None,
+    decimal=".",
+    converters=None,
+    na_values=None,
+    keep_default_na=True,
+    displayed_only=True,
+):
     r"""Read HTML tables into a ``list`` of ``DataFrame`` objects.
 
     Parameters
@@ -869,10 +987,22 @@ def read_html(io, match='.+', flavor=None, header=None, index_col=None,
     DataFrame.to_html
     """
     pdfs = pd.read_html(
-        io=io, match=match, flavor=flavor, header=header, index_col=index_col, skiprows=skiprows,
-        attrs=attrs, parse_dates=parse_dates, thousands=thousands, encoding=encoding,
-        decimal=decimal, converters=converters, na_values=na_values,
-        keep_default_na=keep_default_na, displayed_only=displayed_only)
+        io=io,
+        match=match,
+        flavor=flavor,
+        header=header,
+        index_col=index_col,
+        skiprows=skiprows,
+        attrs=attrs,
+        parse_dates=parse_dates,
+        thousands=thousands,
+        encoding=encoding,
+        decimal=decimal,
+        converters=converters,
+        na_values=na_values,
+        keep_default_na=keep_default_na,
+        displayed_only=displayed_only,
+    )
     return [from_pandas(pdf) for pdf in pdfs]
 
 
@@ -918,8 +1048,8 @@ def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, *
     >>> ks.read_sql_table('table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
     """
     reader = default_session().read
-    reader.option('dbtable', table_name)
-    reader.option('url', con)
+    reader.option("dbtable", table_name)
+    reader.option("url", con)
     if schema is not None:
         reader.schema(schema)
     reader.options(**options)
@@ -971,8 +1101,8 @@ def read_sql_query(sql, con, index_col=None, **options):
     >>> ks.read_sql_query('SELECT * FROM table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
     """
     reader = default_session().read
-    reader.option('query', sql)
-    reader.option('url', con)
+    reader.option("query", sql)
+    reader.option("url", con)
     reader.options(**options)
     sdf = reader.format("jdbc").load()
     index_map = _get_index_map(sdf, index_col)
@@ -1025,14 +1155,15 @@ def read_sql(sql, con, index_col=None, columns=None, **options):
     >>> ks.read_sql('SELECT * FROM table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
     """
     striped = sql.strip()
-    if ' ' not in striped:  # TODO: identify the table name or not more precisely.
+    if " " not in striped:  # TODO: identify the table name or not more precisely.
         return read_sql_table(sql, con, index_col=index_col, columns=columns, **options)
     else:
         return read_sql_query(sql, con, index_col=index_col, **options)
 
 
-def to_datetime(arg, errors='raise', format=None, unit=None, infer_datetime_format=False,
-                origin='unix'):
+def to_datetime(
+    arg, errors="raise", format=None, unit=None, infer_datetime_format=False, origin="unix"
+):
     """
     Convert argument to datetime.
 
@@ -1153,34 +1284,50 @@ def to_datetime(arg, errors='raise', format=None, unit=None, infer_datetime_form
             format=format,
             unit=unit,
             infer_datetime_format=infer_datetime_format,
-            origin=origin)
+            origin=origin,
+        )
     if isinstance(arg, DataFrame):
         return _to_datetime2(
-            arg_year=arg['year'],
-            arg_month=arg['month'],
-            arg_day=arg['day'],
+            arg_year=arg["year"],
+            arg_month=arg["month"],
+            arg_day=arg["day"],
             errors=errors,
             format=format,
             unit=unit,
             infer_datetime_format=infer_datetime_format,
-            origin=origin)
+            origin=origin,
+        )
     if isinstance(arg, dict):
         return _to_datetime2(
-            arg_year=arg['year'],
-            arg_month=arg['month'],
-            arg_day=arg['day'],
+            arg_year=arg["year"],
+            arg_month=arg["month"],
+            arg_day=arg["day"],
             errors=errors,
             format=format,
             unit=unit,
             infer_datetime_format=infer_datetime_format,
-            origin=origin)
+            origin=origin,
+        )
     return pd.to_datetime(
-        arg, errors=errors, format=format, unit=unit, infer_datetime_format=infer_datetime_format,
-        origin=origin)
+        arg,
+        errors=errors,
+        format=format,
+        unit=unit,
+        infer_datetime_format=infer_datetime_format,
+        origin=origin,
+    )
 
 
-def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None, sparse=False,
-                drop_first=False, dtype=None):
+def get_dummies(
+    data,
+    prefix=None,
+    prefix_sep="_",
+    dummy_na=False,
+    columns=None,
+    sparse=False,
+    drop_first=False,
+    dtype=None,
+):
     """
     Convert categorical variable into dummy/indicator variables, also
     known as one hot encoding.
@@ -1266,8 +1413,12 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
     if sparse is not False:
         raise NotImplementedError("get_dummies currently does not support sparse")
 
+    if columns is not None:
+        if not is_list_like(columns):
+            raise TypeError("Input must be a list-like for parameter `columns`")
+
     if dtype is None:
-        dtype = 'byte'
+        dtype = "byte"
 
     if isinstance(data, Series):
         if prefix is not None:
@@ -1278,82 +1429,108 @@ def get_dummies(data, prefix=None, prefix_sep='_', dummy_na=False, columns=None,
     else:
         if isinstance(prefix, str):
             raise NotImplementedError(
-                "get_dummies currently does not support prefix as string types")
+                "get_dummies currently does not support prefix as string types"
+            )
         kdf = data.copy()
 
         if columns is None:
-            column_labels = [label for label in kdf._internal.column_labels
-                             if isinstance(kdf._internal.spark_type_for(label),
-                                           _get_dummies_default_accept_types)]
+            column_labels = [
+                label
+                for label in kdf._internal.column_labels
+                if isinstance(
+                    kdf._internal.spark_type_for(label), _get_dummies_default_accept_types
+                )
+            ]
         else:
             if isinstance(columns, (str, tuple)):
                 if isinstance(columns, str):
                     key = (columns,)
                 else:
                     key = columns
-                column_labels = [label for label in kdf._internal.column_labels
-                                 if label[:len(key)] == key]
+                column_labels = [
+                    label for label in kdf._internal.column_labels if label[: len(key)] == key
+                ]
                 if len(column_labels) == 0:
                     raise KeyError(column_labels)
                 if prefix is None:
-                    prefix = [str(label[len(key):]) if len(label) > len(key) + 1
-                              else label[len(key)] if len(label) == len(key) + 1 else ''
-                              for label in column_labels]
-            elif (any(isinstance(col, str) for col in columns)
-                    and any(isinstance(col, tuple) for col in columns)):
-                raise ValueError('Expected tuple, got str')
+                    prefix = [
+                        str(label[len(key) :])
+                        if len(label) > len(key) + 1
+                        else label[len(key)]
+                        if len(label) == len(key) + 1
+                        else ""
+                        for label in column_labels
+                    ]
+            elif any(isinstance(col, str) for col in columns) and any(
+                isinstance(col, tuple) for col in columns
+            ):
+                raise ValueError("Expected tuple, got str")
             else:
-                column_labels = [label for key in columns
-                                 for label in kdf._internal.column_labels
-                                 if label == key or label[0] == key]
+                column_labels = [
+                    label
+                    for key in columns
+                    for label in kdf._internal.column_labels
+                    if label == key or label[0] == key
+                ]
         if len(column_labels) == 0:
-            return kdf
+            if columns is None:
+                return kdf
+            raise KeyError("{} not in index".format(columns))
 
         if prefix is None:
             prefix = [str(label) if len(label) > 1 else label[0] for label in column_labels]
 
         column_labels_set = set(column_labels)
-        remaining_columns = [kdf[label].rename(name_like_string(label))
-                             for label in kdf._internal.column_labels
-                             if label not in column_labels_set]
+        remaining_columns = [
+            kdf[label].rename(name_like_string(label))
+            for label in kdf._internal.column_labels
+            if label not in column_labels_set
+        ]
 
-    if any(not isinstance(kdf._internal.spark_type_for(label), _get_dummies_acceptable_types)
-           for label in column_labels):
+    if any(
+        not isinstance(kdf._internal.spark_type_for(label), _get_dummies_acceptable_types)
+        for label in column_labels
+    ):
         raise NotImplementedError(
-            "get_dummies currently only accept {} values"
-            .format(', '.join([t.typeName() for t in _get_dummies_acceptable_types])))
+            "get_dummies currently only accept {} values".format(
+                ", ".join([t.typeName() for t in _get_dummies_acceptable_types])
+            )
+        )
 
     if prefix is not None and len(column_labels) != len(prefix):
         raise ValueError(
-            "Length of 'prefix' ({}) did not match the length of the columns being encoded ({})."
-            .format(len(prefix), len(column_labels)))
+            "Length of 'prefix' ({}) did not match the length of "
+            "the columns being encoded ({}).".format(len(prefix), len(column_labels))
+        )
 
-    all_values = _reduce_spark_multi(kdf._sdf,
-                                     [F.collect_set(kdf._internal.scol_for(label))
-                                      for label in column_labels])
+    all_values = _reduce_spark_multi(
+        kdf._sdf, [F.collect_set(kdf._internal.scol_for(label)) for label in column_labels]
+    )
     for i, label in enumerate(column_labels):
         values = sorted(all_values[i])
         if drop_first:
             values = values[1:]
 
         def column_name(value):
-            if prefix is None or prefix[i] == '':
+            if prefix is None or prefix[i] == "":
                 return str(value)
             else:
-                return '{}{}{}'.format(prefix[i], prefix_sep, value)
+                return "{}{}{}".format(prefix[i], prefix_sep, value)
 
         for value in values:
-            remaining_columns.append((kdf[label].notnull() & (kdf[label] == value))
-                                     .astype(dtype)
-                                     .rename(column_name(value)))
+            remaining_columns.append(
+                (kdf[label].notnull() & (kdf[label] == value))
+                .astype(dtype)
+                .rename(column_name(value))
+            )
         if dummy_na:
-            remaining_columns.append(kdf[label].isnull().astype(dtype).rename(column_name('nan')))
+            remaining_columns.append(kdf[label].isnull().astype(dtype).rename(column_name("nan")))
 
     return kdf[remaining_columns]
 
 
 # TODO: there are many parameters to implement and support. See Pandas's pd.concat.
-def concat(objs, axis=0, join='outer', ignore_index=False):
+def concat(objs, axis=0, join="outer", ignore_index=False):
     """
     Concatenate pandas objects along a particular axis with optional set logic
     along the other axes.
@@ -1470,26 +1647,33 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
     0      c       3
     1      d       4
     """
-    if isinstance(objs, (DataFrame, IndexOpsMixin)) or \
-            not isinstance(objs, Iterable):  # TODO: support dict
-        raise TypeError('first argument must be an iterable of koalas '
-                        'objects, you passed an object of type '
-                        '"{name}"'.format(name=type(objs).__name__))
+    if isinstance(objs, (DataFrame, IndexOpsMixin)) or not isinstance(
+        objs, Iterable
+    ):  # TODO: support dict
+        raise TypeError(
+            "first argument must be an iterable of koalas "
+            "objects, you passed an object of type "
+            '"{name}"'.format(name=type(objs).__name__)
+        )
 
     axis = validate_axis(axis)
     if axis != 0:
         raise NotImplementedError('axis should be either 0 or "index" currently.')
 
     if len(objs) == 0:
-        raise ValueError('No objects to concatenate')
+        raise ValueError("No objects to concatenate")
     objs = list(filter(lambda obj: obj is not None, objs))
     if len(objs) == 0:
-        raise ValueError('All objects passed were None')
+        raise ValueError("All objects passed were None")
 
     for obj in objs:
         if not isinstance(obj, (Series, DataFrame)):
-            raise TypeError('cannot concatenate object of type '"'{name}"'; only ks.Series '
-                            'and ks.DataFrame are valid'.format(name=type(objs).__name__))
+            raise TypeError(
+                "cannot concatenate object of type "
+                "'{name}"
+                "; only ks.Series "
+                "and ks.DataFrame are valid".format(name=type(objs).__name__)
+            )
 
     # Series, Series ...
     # We should return Series if objects are all Series.
@@ -1500,13 +1684,13 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
     new_objs = []
     for obj in objs:
         if isinstance(obj, Series):
-            obj = obj.rename('0').to_dataframe()
+            obj = obj.rename("0").to_dataframe()
         new_objs.append(obj)
     objs = new_objs
 
     column_labels_levels = set(obj._internal.column_labels_level for obj in objs)
     if len(column_labels_levels) != 1:
-        raise ValueError('MultiIndex columns should have the same levels')
+        raise ValueError("MultiIndex columns should have the same levels")
 
     # DataFrame, DataFrame, ...
     # All Series are converted into DataFrame and then compute concat.
@@ -1516,19 +1700,21 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
         for index_of_kdf in indices_of_kdfs:
             if index_of_first_kdf.names != index_of_kdf.names:
                 raise ValueError(
-                    'Index type and names should be same in the objects to concatenate. '
-                    'You passed different indices '
-                    '{index_of_first_kdf} and {index_of_kdf}'.format(
-                        index_of_first_kdf=index_of_first_kdf.names,
-                        index_of_kdf=index_of_kdf.names))
+                    "Index type and names should be same in the objects to concatenate. "
+                    "You passed different indices "
+                    "{index_of_first_kdf} and {index_of_kdf}".format(
+                        index_of_first_kdf=index_of_first_kdf.names, index_of_kdf=index_of_kdf.names
+                    )
+                )
 
     column_labelses_of_kdfs = [kdf._internal.column_labels for kdf in objs]
     if ignore_index:
         index_names_of_kdfs = [[] for _ in objs]
     else:
         index_names_of_kdfs = [kdf._internal.index_names for kdf in objs]
-    if (all(name == index_names_of_kdfs[0] for name in index_names_of_kdfs)
-            and all(idx == column_labelses_of_kdfs[0] for idx in column_labelses_of_kdfs)):
+    if all(name == index_names_of_kdfs[0] for name in index_names_of_kdfs) and all(
+        idx == column_labelses_of_kdfs[0] for idx in column_labelses_of_kdfs
+    ):
         # If all columns are in the same order and values, use it.
         kdfs = objs
         merged_columns = column_labelses_of_kdfs[0]
@@ -1536,15 +1722,21 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
         if join == "inner":
             interested_columns = set.intersection(*map(set, column_labelses_of_kdfs))
             # Keep the column order with its firsts DataFrame.
-            merged_columns = sorted(list(map(
-                lambda c: column_labelses_of_kdfs[0][column_labelses_of_kdfs[0].index(c)],
-                interested_columns)))
+            merged_columns = sorted(
+                list(
+                    map(
+                        lambda c: column_labelses_of_kdfs[0][column_labelses_of_kdfs[0].index(c)],
+                        interested_columns,
+                    )
+                )
+            )
 
             kdfs = [kdf[merged_columns] for kdf in objs]
         elif join == "outer":
             # If there are columns unmatched, just sort the column names.
-            merged_columns = \
-                sorted(list(set(itertools.chain.from_iterable(column_labelses_of_kdfs))))
+            merged_columns = sorted(
+                list(set(itertools.chain.from_iterable(column_labelses_of_kdfs)))
+            )
 
             kdfs = []
             for kdf in objs:
@@ -1555,29 +1747,37 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
                 for label in columns_to_add:
                     sdf = sdf.withColumn(name_like_string(label), F.lit(None))
 
-                data_columns = (kdf._internal.data_columns
-                                + [name_like_string(label) for label in columns_to_add])
-                kdf = DataFrame(kdf._internal.copy(
-                    sdf=sdf,
-                    column_labels=(kdf._internal.column_labels + columns_to_add),
-                    column_scols=[scol_for(sdf, col) for col in data_columns]))
+                data_columns = kdf._internal.data_columns + [
+                    name_like_string(label) for label in columns_to_add
+                ]
+                kdf = DataFrame(
+                    kdf._internal.copy(
+                        sdf=sdf,
+                        column_labels=(kdf._internal.column_labels + columns_to_add),
+                        column_scols=[scol_for(sdf, col) for col in data_columns],
+                    )
+                )
 
                 kdfs.append(kdf[merged_columns])
         else:
-            raise ValueError(
-                "Only can inner (intersect) or outer (union) join the other axis.")
+            raise ValueError("Only can inner (intersect) or outer (union) join the other axis.")
 
     if ignore_index:
         sdfs = [kdf._sdf.select(kdf._internal.column_scols) for kdf in kdfs]
     else:
-        sdfs = [kdf._sdf.select(kdf._internal.index_scols + kdf._internal.column_scols)
-                for kdf in kdfs]
+        sdfs = [
+            kdf._sdf.select(kdf._internal.index_scols + kdf._internal.column_scols) for kdf in kdfs
+        ]
     concatenated = reduce(lambda x, y: x.union(y), sdfs)
 
     index_map = None if ignore_index else kdfs[0]._internal.index_map
-    result_kdf = DataFrame(kdfs[0]._internal.copy(
-        sdf=concatenated, index_map=index_map,
-        column_scols=[scol_for(concatenated, col) for col in kdfs[0]._internal.data_columns]))
+    result_kdf = DataFrame(
+        kdfs[0]._internal.copy(
+            sdf=concatenated,
+            index_map=index_map,
+            column_scols=[scol_for(concatenated, col) for col in kdfs[0]._internal.data_columns],
+        )
+    )
 
     if should_return_series:
         # If all input were Series, we should return Series.
@@ -1586,8 +1786,7 @@ def concat(objs, axis=0, join='outer', ignore_index=False):
         return result_kdf
 
 
-def melt(frame, id_vars=None, value_vars=None, var_name=None,
-         value_name='value'):
+def melt(frame, id_vars=None, value_vars=None, var_name=None, value_name="value"):
     return DataFrame.melt(frame, id_vars, value_vars, var_name, value_name)
 
 
@@ -1746,12 +1945,17 @@ def notna(obj):
 notnull = notna
 
 
-def merge(obj, right: 'DataFrame', how: str = 'inner',
-          on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
-          left_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
-          right_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
-          left_index: bool = False, right_index: bool = False,
-          suffixes: Tuple[str, str] = ('_x', '_y')) -> 'DataFrame':
+def merge(
+    obj,
+    right: "DataFrame",
+    how: str = "inner",
+    on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+    left_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+    right_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+    left_index: bool = False,
+    right_index: bool = False,
+    suffixes: Tuple[str, str] = ("_x", "_y"),
+) -> "DataFrame":
     """
     Merge DataFrame objects with a database-style join.
 
@@ -1863,8 +2067,15 @@ def merge(obj, right: 'DataFrame', how: str = 'inner',
         instead of NaN.
     """
     return obj.merge(
-        right, how=how, on=on, left_on=left_on, right_on=right_on,
-        left_index=left_index, right_index=right_index, suffixes=suffixes)
+        right,
+        how=how,
+        on=on,
+        left_on=left_on,
+        right_on=right_on,
+        left_index=left_index,
+        right_index=right_index,
+        suffixes=suffixes,
+    )
 
 
 def to_numeric(arg):
@@ -1934,28 +2145,31 @@ def to_numeric(arg):
     1.0
     """
     if isinstance(arg, Series):
-        return arg._with_new_scol(arg._internal.scol.cast('float'))
+        return arg._with_new_scol(arg._internal.scol.cast("float"))
     else:
         return pd.to_numeric(arg)
 
 
 # @pandas_wraps(return_col=np.datetime64)
 @pandas_wraps
-def _to_datetime1(arg, errors, format, unit, infer_datetime_format,
-                  origin) -> Series[np.datetime64]:
+def _to_datetime1(
+    arg, errors, format, unit, infer_datetime_format, origin
+) -> Series[np.datetime64]:
     return pd.to_datetime(
         arg,
         errors=errors,
         format=format,
         unit=unit,
         infer_datetime_format=infer_datetime_format,
-        origin=origin)
+        origin=origin,
+    )
 
 
 # @pandas_wraps(return_col=np.datetime64)
 @pandas_wraps
-def _to_datetime2(arg_year, arg_month, arg_day,
-                  errors, format, unit, infer_datetime_format, origin) -> Series[np.datetime64]:
+def _to_datetime2(
+    arg_year, arg_month, arg_day, errors, format, unit, infer_datetime_format, origin
+) -> Series[np.datetime64]:
     arg = dict(year=arg_year, month=arg_month, day=arg_day)
     for key in arg:
         if arg[key] is None:
@@ -1966,11 +2180,11 @@ def _to_datetime2(arg_year, arg_month, arg_day,
         format=format,
         unit=unit,
         infer_datetime_format=infer_datetime_format,
-        origin=origin)
+        origin=origin,
+    )
 
 
-def _get_index_map(sdf: spark.DataFrame,
-                   index_col: Optional[Union[str, List[str]]] = None):
+def _get_index_map(sdf: spark.DataFrame, index_col: Optional[Union[str, List[str]]] = None):
     if index_col is not None:
         if isinstance(index_col, str):
             index_col = [index_col]
@@ -1985,9 +2199,14 @@ def _get_index_map(sdf: spark.DataFrame,
     return index_map
 
 
-_get_dummies_default_accept_types = (
-    DecimalType, StringType, DateType
-)
+_get_dummies_default_accept_types = (DecimalType, StringType, DateType)
 _get_dummies_acceptable_types = _get_dummies_default_accept_types + (
-    ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType, BooleanType, TimestampType
+    ByteType,
+    ShortType,
+    IntegerType,
+    LongType,
+    FloatType,
+    DoubleType,
+    BooleanType,
+    TimestampType,
 )

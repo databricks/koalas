@@ -27,9 +27,11 @@ Attributes and underlying data
 
    DataFrame.dtypes
    DataFrame.shape
+   DataFrame.axes
    DataFrame.ndim
    DataFrame.size
    DataFrame.select_dtypes
+   DataFrame.values
 
 Conversion
 ----------
@@ -181,6 +183,7 @@ Reshaping, sorting, transposing
    DataFrame.sort_values
    DataFrame.nlargest
    DataFrame.nsmallest
+   DataFrame.unstack
    DataFrame.melt
    DataFrame.T
    DataFrame.transpose

@@ -61,7 +61,7 @@ Guardrails to prevent users from shooting themselves in the foot
 Certain operations in pandas are prohibitively expensive as data scales, and we don't want to give users the illusion that they can rely on such operations in Koalas. That is to say, methods implemented in Koalas should be safe to perform by default on large datasets. As a result, the following capabilities are not implemented in Koalas:
 
 1. Capabilities that are fundamentally not parallelizable: e.g. imperatively looping over each element
-2. Capabilities that require materializing the entire working set in a single node's memory. This is why we do not implement `pandas.DataFrame.values <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.values.html#pandas.DataFrame.values>`_. Another example is the `_repr_html_` call caps the total number of records shown to a maximum of 1000, to prevent users from blowing up their driver node simply by typing the name of the DataFrame in a notebook.
+2. Capabilities that require materializing the entire working set in a single node's memory. This is why we do not implement `pandas.DataFrame.to_xarray <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_xarray.html>`_. Another example is the `_repr_html_` call caps the total number of records shown to a maximum of 1000, to prevent users from blowing up their driver node simply by typing the name of the DataFrame in a notebook.
 
 A few exceptions, however, exist. One common pattern with "big data science" is that while the initial dataset is large, the working set becomes smaller as the analysis goes deeper. For example, data scientists often perform aggregation on datasets and want to then convert the aggregated dataset to some local data structure. To help data scientists, we offer the following:
 
@@ -75,7 +75,7 @@ Be a lean API layer and move fast
 
 Koalas is designed as an API overlay layer on top of Spark. The project should be lightweight, and most functions should be implemented as wrappers around Spark or pandas. Koalas does not accept heavyweight implementations, e.g. execution engine changes.
 
-This approach enables us to move fast. For the considerable future, we aim to be making weekly releases. If we find a critical bug, we will be making a new release as soon as the bug fix is available.
+This approach enables us to move fast. For the considerable future, we aim to be making bi-weekly releases. If we find a critical bug, we will be making a new release as soon as the bug fix is available.
 
 High test coverage
 ------------------
