@@ -1096,7 +1096,7 @@ class _Frame(object):
 
     kurt = kurtosis
 
-    def min(self, axis=None, numeric_only=False):
+    def min(self, axis=None, numeric_only=None):
         """
         Return the minimum of the values.
 
@@ -1141,7 +1141,7 @@ class _Frame(object):
             F.min, name="min", numeric_only=numeric_only, axis=axis
         )
 
-    def max(self, axis=None, numeric_only=False):
+    def max(self, axis=None, numeric_only=None):
         """
         Return the maximum of the values.
 

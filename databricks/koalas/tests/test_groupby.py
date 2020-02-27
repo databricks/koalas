@@ -168,9 +168,23 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby(("x", "a"))[[("y", "c")]].sum().sort_index(),
             pdf.groupby(("x", "a"))[[("y", "c")]].sum().sort_index(),
         )
-        # TODO: seems like a pandas' bug ?
-        # self.assert_eq(kdf[('x', 'a')].groupby(kdf[('x', 'b')]).sum().sort_index(),
-        #                pdf[('x', 'a')].groupby(pdf[('x', 'b')]).sum().sort_index())
+        # TODO: seems like a pandas' bug. it works well in Koalas like the below.
+        # >>> pdf[('x', 'a')].groupby(pdf[('x', 'b')]).sum().sort_index()
+        # Traceback (most recent call last):
+        # ...
+        # ValueError: Can only tuple-index with a MultiIndex
+        # >>> kdf[('x', 'a')].groupby(kdf[('x', 'b')]).sum().sort_index()
+        # (x, b)
+        # 1    13
+        # 2     9
+        # 3     8
+        # 4     1
+        # 7     6
+        # Name: (x, a), dtype: int64
+        expected_result = ks.Series(
+            [13, 9, 8, 1, 6], name=("x", "a"), index=pd.Index([1, 2, 3, 4, 7], name=("x", "b"))
+        )
+        self.assert_eq(kdf[("x", "a")].groupby(kdf[("x", "b")]).sum().sort_index(), expected_result)
 
     def test_split_apply_combine_on_series(self):
         pdf = pd.DataFrame(
@@ -1029,7 +1043,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby(["a", "b"])["c"].shift().sort_index(),
             almost=True,
         )
-        # TODO: seems like a pandas' bug when fill_value is not None when only pandas>=1.0.0
+        # TODO: known pandas' bug when fill_value is not None pandas>=1.0.0
+        # https://github.com/pandas-dev/pandas/issues/31971#issue-565171762
         if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
             self.assert_eq(
                 kdf.groupby(["b"])[["a", "c"]].shift(periods=-1, fill_value=0).sort_index(),
