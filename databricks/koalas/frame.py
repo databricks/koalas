@@ -5467,13 +5467,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             df = self
             index = [index]
         else:
-            df = self.copy()
-            num_index_col = len(df._internal.index_columns)
-            df.reset_index(inplace=True)
-            sdf = _InternalFrame.attach_distributed_column(
-                df._sdf.drop(SPARK_DEFAULT_INDEX_NAME), SPARK_DEFAULT_INDEX_NAME
-            )
-            df = DataFrame(df._internal.with_new_sdf(sdf))
+            num_index_col = len(self._internal.index_columns)
+            sdf = _InternalFrame.attach_distributed_column(self._sdf, "__DUMMY__")
+            df = DataFrame(self._internal.copy(sdf=sdf))
+            df["__DUMMY__"] = scol_for(sdf, "__DUMMY__")
+            df.set_index(df.columns[-1], append=True, inplace=True)
+            df.reset_index(level=range(num_index_col), inplace=True)
             index = df._internal.column_labels[:num_index_col]
 
         df = df.pivot_table(index=index, columns=columns, values=values, aggfunc="first")
