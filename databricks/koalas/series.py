@@ -4546,4 +4546,7 @@ def _unpack_scalar(sdf):
 
 def _col(df):
     assert isinstance(df, (DataFrame, pd.DataFrame)), type(df)
-    return df[df.columns[0]]
+    if isinstance(df, DataFrame):
+        return df._kser_for(df._internal.column_labels[0])
+    else:
+        return df[df.columns[0]]

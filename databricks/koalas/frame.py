@@ -523,10 +523,44 @@ class DataFrame(_Frame, Generic[T]):
         else:
             raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
 
+    def _kser_for(self, label):
+        """
+        Create Series with a proper column label.
+
+        The given label must be verified to exist in `_InternalFrame.column_labels`.
+
+        For example, in some method, self is like:
+
+        >>> self = ks.range(3)
+
+        `self._kser_for(label)` can be used with `_InternalFrame.column_labels`:
+
+        >>> self._kser_for(self._internal.column_labels[0])
+        0    0
+        1    1
+        2    2
+        Name: id, dtype: int64
+
+        `self._kser_for(label)` must not be used directly with user inputs.
+        In that case, `self[label]` should be used instead, which checks the label exists or not:
+
+        >>> self['id']
+        0    0
+        1    1
+        2    2
+        Name: id, dtype: int64
+        """
+        from databricks.koalas.series import Series
+
+        return Series(
+            self._internal.copy(scol=self._internal.scol_for(label), column_labels=[label]),
+            anchor=self,
+        )
+
     def _apply_series_op(self, op):
         applied = []
         for label in self._internal.column_labels:
-            applied.append(op(self[label]))
+            applied.append(op(self._kser_for(label)))
         internal = self._internal.with_new_columns(applied)
         return DataFrame(internal)
 
@@ -549,7 +583,10 @@ class DataFrame(_Frame, Generic[T]):
             # Different DataFrames
             def apply_op(kdf, this_column_labels, that_column_labels):
                 for this_label, that_label in zip(this_column_labels, that_column_labels):
-                    yield (getattr(kdf[this_label], op)(kdf[that_label]), this_label)
+                    yield (
+                        getattr(kdf._kser_for(this_label), op)(kdf._kser_for(that_label)),
+                        this_label,
+                    )
 
             return align_diff_frames(apply_op, self, other, fillna=True, how="full")
         else:
@@ -1110,8 +1147,10 @@ class DataFrame(_Frame, Generic[T]):
         polar    22000
         koala    80000
         """
-        cols = list(self.columns)
-        return list((col_name, self[col_name]) for col_name in cols)
+        return [
+            (label if len(label) > 1 else label[0], self._kser_for(label))
+            for label in self._internal.column_labels
+        ]
 
     def iterrows(self):
         """
@@ -1853,7 +1892,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                             F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i))
                             for i, col in enumerate(label)
                         ]
-                        + [self[label]._scol.alias("value")]
+                        + [self._internal.scol_for(label).alias("value")]
                     )
                     for label in self._internal.column_labels
                 ]
@@ -2359,9 +2398,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 self._internal.column_labels, kdf._internal.column_labels
             ):
                 wrapped = ks.pandas_wraps(
-                    func, return_col=as_python_type(kdf[output_label].spark_type)
+                    func, return_col=as_python_type(kdf._internal.spark_type_for(output_label))
                 )
-                applied.append(wrapped(self[input_label]).rename(input_label))
+                applied.append(wrapped(self._kser_for(input_label)).rename(input_label))
 
             internal = self._internal.with_new_columns(applied)
             return DataFrame(internal)
@@ -2733,7 +2772,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         column_scols = []
         for label in self._internal.column_labels:
             column_scols.append(
-                F.when(kdf[tmp_cond_col_name(name_like_string(label))]._scol, kdf[label]._scol)
+                F.when(
+                    kdf[tmp_cond_col_name(name_like_string(label))]._scol,
+                    kdf._internal.scol_for(label),
+                )
                 .otherwise(kdf[tmp_other_col_name(name_like_string(label))]._scol)
                 .alias(kdf._internal.column_name_for(label))
             )
@@ -3481,7 +3523,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
         res = self._sdf.select(
-            [self[label]._nunique(dropna, approx, rsd) for label in self._internal.column_labels]
+            [
+                self._kser_for(label)._nunique(dropna, approx, rsd)
+                for label in self._internal.column_labels
+            ]
         ).toPandas()
         if self._internal.column_labels_level == 1:
             res.columns = [label[0] for label in self._internal.column_labels]
@@ -4544,7 +4589,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             cnt = reduce(
                 lambda x, y: x + y,
-                [F.when(self[label].notna()._scol, 1).otherwise(0) for label in labels],
+                [F.when(self._kser_for(label).notna()._scol, 1).otherwise(0) for label in labels],
                 F.lit(0),
             )
             if thresh is not None:
@@ -5569,7 +5614,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         dtype: object
         """
         return pd.Series(
-            [self[label].dtype for label in self._internal.column_labels],
+            [self._kser_for(label).dtype for label in self._internal.column_labels],
             index=pd.Index(
                 [label if len(label) > 1 else label[0] for label in self._internal.column_labels]
             ),
@@ -5725,12 +5770,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for label in self._internal.column_labels:
             if len(include) > 0:
                 should_include = (
-                    infer_dtype_from_object(self[label].dtype.name) in include_numpy_type
+                    infer_dtype_from_object(self._kser_for(label).dtype.name) in include_numpy_type
                     or self._internal.spark_type_for(label) in include_spark_type
                 )
             else:
                 should_include = not (
-                    infer_dtype_from_object(self[label].dtype.name) in exclude_numpy_type
+                    infer_dtype_from_object(self._kser_for(label).dtype.name) in exclude_numpy_type
                     or self._internal.spark_type_for(label) in exclude_spark_type
                 )
 
@@ -8048,13 +8093,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         applied = []
         column_labels = self._internal.column_labels
         for label in column_labels:
-            col = self[label]._scol
-            all_col = F.min(F.coalesce(col.cast("boolean"), F.lit(True)))
+            scol = self._internal.scol_for(label)
+            all_col = F.min(F.coalesce(scol.cast("boolean"), F.lit(True)))
             applied.append(F.when(all_col.isNull(), True).otherwise(all_col))
 
         # TODO: there is a similar logic to transpose in, for instance,
         #  DataFrame.any, Series.quantile. Maybe we should deduplicate it.
-        sdf = self._sdf
         value_column = "value"
         cols = []
         for label, applied_col in zip(column_labels, applied):
@@ -8065,8 +8109,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
             )
 
-        sdf = sdf.select(F.array(*cols).alias("arrays")).select(F.explode(F.col("arrays")))
-
+        sdf = self._sdf.select(F.array(*cols).alias("arrays")).select(F.explode(F.col("arrays")))
         sdf = sdf.selectExpr("col.*")
 
         index_column_name = lambda i: (
@@ -8138,13 +8181,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         applied = []
         column_labels = self._internal.column_labels
         for label in column_labels:
-            col = self[label]._scol
-            all_col = F.max(F.coalesce(col.cast("boolean"), F.lit(False)))
+            scol = self._internal.scol_for(label)
+            all_col = F.max(F.coalesce(scol.cast("boolean"), F.lit(False)))
             applied.append(F.when(all_col.isNull(), False).otherwise(all_col))
 
         # TODO: there is a similar logic to transpose in, for instance,
         #  DataFrame.all, Series.quantile. Maybe we should deduplicate it.
-        sdf = self._sdf
         value_column = "value"
         cols = []
         for label, applied_col in zip(column_labels, applied):
@@ -8155,8 +8197,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
             )
 
-        sdf = sdf.select(F.array(*cols).alias("arrays")).select(F.explode(F.col("arrays")))
-
+        sdf = self._sdf.select(F.array(*cols).alias("arrays")).select(F.explode(F.col("arrays")))
         sdf = sdf.selectExpr("col.*")
 
         index_column_name = lambda i: (
@@ -9297,9 +9338,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 for k, this_label, that_label in zip_longest(
                     key, this_column_labels, that_column_labels
                 ):
-                    yield (kdf[that_label], tuple(["that", *k]))
+                    yield (kdf._kser_for(that_label), tuple(["that", *k]))
                     if this_label is not None and this_label[1:] != k:
-                        yield (kdf[this_label], this_label)
+                        yield (kdf._kser_for(this_label), this_label)
 
             kdf = align_diff_frames(assign_columns, self, value, fillna=False, how="left")
         elif isinstance(key, list):
@@ -9356,7 +9397,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # Different DataFrames
             def apply_op(kdf, this_column_labels, that_column_labels):
                 for this_label, that_label in zip(this_column_labels, that_column_labels):
-                    yield (ufunc(kdf[this_label], kdf[that_label], **kwargs), this_label)
+                    yield (
+                        ufunc(kdf._kser_for(this_label), kdf._kser_for(that_label), **kwargs),
+                        this_label,
+                    )
 
             return align_diff_frames(apply_op, this, that, fillna=True, how="full")
         else:
