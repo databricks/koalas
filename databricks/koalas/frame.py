@@ -5479,6 +5479,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         foo
         one  1.0  NaN  NaN
         two  NaN  3.0  4.0
+
+        It also support multi-index and multi-index column.
+        >>> df.columns = pd.MultiIndex.from_tuples([('a', 'foo'), ('a', 'bar'), ('b', 'baz')])
+
+        >>> df = df.set_index(('a', 'bar'), append=True)
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
+                      a   b
+                    foo baz
+        (a, bar)
+        0 A         one   1
+        1 A         one   2
+        2 B         two   3
+        3 C         two   4
+
+        >>> df.pivot(columns=('a', 'foo'), values=('b', 'baz')).sort_index()
+        ('a', 'foo')  one  two
+        0 A           1.0  NaN
+        1 A           2.0  NaN
+        2 B           NaN  3.0
+        3 C           NaN  4.0
+
         """
         if columns is None:
             raise ValueError("columns should be set.")
@@ -5491,11 +5512,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             df = self
             index = [index]
         else:
-            df = self.copy()
-            df["__DUMMY__"] = F.monotonically_increasing_id()
-            df.set_index("__DUMMY__", append=True, inplace=True)
-            df.reset_index(level=range(len(df._internal.index_map) - 1), inplace=True)
-            index = df._internal.column_labels[: len(df._internal.index_map)]
+            num_index_col = len(self._internal.index_columns)
+            sdf = _InternalFrame.attach_distributed_column(self._sdf, "__DUMMY__")
+            df = DataFrame(self._internal.copy(sdf=sdf))
+            df["__DUMMY__"] = scol_for(sdf, "__DUMMY__")
+            df.set_index(df.columns[-1], append=True, inplace=True)
+            df.reset_index(level=range(num_index_col), inplace=True)
+            index = df._internal.column_labels[:num_index_col]
 
         df = df.pivot_table(index=index, columns=columns, values=values, aggfunc="first")
 
