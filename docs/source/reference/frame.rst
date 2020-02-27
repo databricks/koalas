@@ -108,6 +108,7 @@ Function application, GroupBy & Window
    DataFrame.aggregate
    DataFrame.groupby
    DataFrame.transform
+   DataFrame.map_in_pandas
 
 .. _api.dataframe.stats:
 

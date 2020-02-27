@@ -9057,34 +9057,26 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Query the columns of a DataFrame with a boolean expression.
 
-        .. note::
-            * Using variables in the environment with `@` is not supported.
-            * Internal columns that starting with __. are able to access,
-              however, they are not supposed to be accessed.
-            * This delegates to Spark SQL so the syntax follows Spark SQL
-            * If you want the pandas syntax, you can work around. See the example below.
+        .. note:: Internal columns that starting with a '__' prefix are able to access, however,
+            they are not supposed to be accessed.
 
-                >>> # If you want to use with `@`, we can work around with `map_in_pandas`.
-                >>> # map_in_pandas is performed at workers in different nodes.
-                >>> # Therefore, in order to use the syntax with @, you should make sure
-                >>> # the variable is serialized by, for example, putting it within the closure.
-                >>> df = ks.DataFrame({'A': range(800), 'B': range(800)})
-                >>> def query_func(pdf) -> ks.DataFrame[int, int]:
-                ...     num = 790
-                ...     return pdf.query('A > @num')
-                >>> df.map_in_pandas(query_func)
-                    c0   c1
-                0  791  791
-                1  792  792
-                2  793  793
-                3  794  794
-                4  795  795
-                5  796  796
-                6  797  797
-                7  798  798
-                8  799  799
-                >>> # Note that the index will be lost after map_in_pandas.
-                >>> # See the related issue https://github.com/databricks/koalas/issues/1307.
+        .. note:: This API delegates to Spark SQL so the syntax follows Spark SQL. Therefore, the
+            pandas specific syntax such as `@` is not supported. If you want the pandas syntax,
+            you can work around with :meth:`DataFrame.map_in_pandas`, but you should
+            be aware that `query_func` will be executed at different nodes in a distributed manner.
+            So, for example, to use `@` syntax, make sure the variable is serialized by, for
+            example, putting it within the closure as below.
+
+            >>> df = ks.DataFrame({'A': range(2000), 'B': range(2000)})
+            >>> def query_func(pdf):
+            ...     num = 1995
+            ...     return pdf.query('A > @num')
+            >>> df.map_in_pandas(query_func)
+                     A     B
+            1996  1996  1996
+            1997  1997  1997
+            1998  1998  1998
+            1999  1999  1999
 
         Parameters
         ----------
