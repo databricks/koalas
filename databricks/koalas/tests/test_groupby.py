@@ -181,9 +181,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         # 4     1
         # 7     6
         # Name: (x, a), dtype: int64
-        # So, skip this for now.
-        # self.assert_eq(kdf[('x', 'a')].groupby(kdf[('x', 'b')]).sum().sort_index(),
-        #                pdf[('x', 'a')].groupby(pdf[('x', 'b')]).sum().sort_index())
+        expected_result = ks.Series(
+            [13, 9, 8, 1, 6], name=("x", "a"), index=pd.Index([1, 2, 3, 4, 7], name=("x", "b"))
+        )
+        self.assert_eq(kdf[("x", "a")].groupby(kdf[("x", "b")]).sum().sort_index(), expected_result)
 
     def test_split_apply_combine_on_series(self):
         pdf = pd.DataFrame(
