@@ -743,69 +743,82 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx.argmax()
 
     def test_monotonic(self):
-        # test monotonic_increasing & monotonic_decreasing for MultiIndex
-        # it's changed a lot since pandas >= 1.0.0, we follow latest major.
-        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
-            datas = []
+        # test monotonic_increasing & monotonic_decreasing for MultiIndex.
+        # Since the Behavior for null value was changed in pandas >= 1.0.0,
+        # several cases are tested differently.
+        datas = []
 
-            # increasing / decreasing ordered each index level with string
-            datas.append([("w", "a"), ("x", "b"), ("y", "c"), ("z", "d")])
-            datas.append([("w", "d"), ("x", "c"), ("y", "b"), ("z", "a")])
-            datas.append([("z", "a"), ("y", "b"), ("x", "c"), ("w", "d")])
-            datas.append([("z", "d"), ("y", "c"), ("x", "b"), ("w", "a")])
-            # mixed order each index level with string
-            datas.append([("z", "a"), ("x", "b"), ("y", "c"), ("w", "d")])
-            datas.append([("z", "a"), ("y", "c"), ("x", "b"), ("w", "d")])
+        # increasing / decreasing ordered each index level with string
+        datas.append([("w", "a"), ("x", "b"), ("y", "c"), ("z", "d")])
+        datas.append([("w", "d"), ("x", "c"), ("y", "b"), ("z", "a")])
+        datas.append([("z", "a"), ("y", "b"), ("x", "c"), ("w", "d")])
+        datas.append([("z", "d"), ("y", "c"), ("x", "b"), ("w", "a")])
+        # mixed order each index level with string
+        datas.append([("z", "a"), ("x", "b"), ("y", "c"), ("w", "d")])
+        datas.append([("z", "a"), ("y", "c"), ("x", "b"), ("w", "d")])
 
-            # increasing / decreasing ordered each index level with integer
-            datas.append([(1, 100), (2, 200), (3, 300), (4, 400), (5, 500)])
-            datas.append([(1, 500), (2, 400), (3, 300), (4, 200), (5, 100)])
-            datas.append([(5, 100), (4, 200), (3, 300), (2, 400), (1, 500)])
-            datas.append([(5, 500), (4, 400), (3, 300), (2, 200), (1, 100)])
-            # mixed order each index level with integer
-            datas.append([(1, 500), (3, 400), (2, 300), (4, 200), (5, 100)])
-            datas.append([(1, 100), (2, 300), (3, 200), (4, 400), (5, 500)])
+        # increasing / decreasing ordered each index level with integer
+        datas.append([(1, 100), (2, 200), (3, 300), (4, 400), (5, 500)])
+        datas.append([(1, 500), (2, 400), (3, 300), (4, 200), (5, 100)])
+        datas.append([(5, 100), (4, 200), (3, 300), (2, 400), (1, 500)])
+        datas.append([(5, 500), (4, 400), (3, 300), (2, 200), (1, 100)])
+        # mixed order each index level with integer
+        datas.append([(1, 500), (3, 400), (2, 300), (4, 200), (5, 100)])
+        datas.append([(1, 100), (2, 300), (3, 200), (4, 400), (5, 500)])
 
-            # integer / negative mixed tests
-            datas.append([("a", -500), ("b", -400), ("c", -300), ("d", -200), ("e", -100)])
-            datas.append([("e", -500), ("d", -400), ("c", -300), ("b", -200), ("a", -100)])
-            datas.append([(-5, "a"), (-4, "b"), (-3, "c"), (-2, "d"), (-1, "e")])
-            datas.append([(-5, "e"), (-4, "d"), (-3, "c"), (-2, "b"), (-1, "a")])
-            datas.append([(-5, "e"), (-3, "d"), (-2, "c"), (-4, "b"), (-1, "a")])
-            datas.append([(-5, "e"), (-4, "c"), (-3, "b"), (-2, "d"), (-1, "a")])
+        # integer / negative mixed tests
+        datas.append([("a", -500), ("b", -400), ("c", -300), ("d", -200), ("e", -100)])
+        datas.append([("e", -500), ("d", -400), ("c", -300), ("b", -200), ("a", -100)])
+        datas.append([(-5, "a"), (-4, "b"), (-3, "c"), (-2, "d"), (-1, "e")])
+        datas.append([(-5, "e"), (-4, "d"), (-3, "c"), (-2, "b"), (-1, "a")])
+        datas.append([(-5, "e"), (-3, "d"), (-2, "c"), (-4, "b"), (-1, "a")])
+        datas.append([(-5, "e"), (-4, "c"), (-3, "b"), (-2, "d"), (-1, "a")])
 
-            # None type tests (None type is treated as the smallest value)
-            datas.append([(None, 100), (2, 200), (3, 300), (4, 400), (5, 500)])
-            datas.append([(1, 100), (2, 200), (None, 300), (4, 400), (5, 500)])
-            datas.append([(1, 100), (2, 200), (3, 300), (4, 400), (None, 500)])
-            datas.append([(5, None), (4, 200), (3, 300), (2, 400), (1, 500)])
-            datas.append([(5, 100), (4, 200), (3, None), (2, 400), (1, 500)])
-            datas.append([(5, 100), (4, 200), (3, 300), (2, 400), (1, None)])
-            datas.append([(None, None), (2, 200), (3, 300), (4, 400), (5, 500)])
-            datas.append([(1, 100), (2, 200), (None, None), (4, 400), (5, 500)])
-            datas.append([(1, 100), (2, 200), (3, 300), (4, 400), (None, None)])
-            datas.append([(-5, None), (-4, None), (-3, None), (-2, None), (-1, None)])
-            datas.append([(None, "e"), (None, "c"), (None, "b"), (None, "d"), (None, "a")])
-            datas.append([(None, None), (None, None), (None, None), (None, None), (None, None)])
+        # None type tests (None type is treated as the smallest value)
+        datas.append([(1, 100), (2, 200), (None, 300), (4, 400), (5, 500)])
+        datas.append([(5, None), (4, 200), (3, 300), (2, 400), (1, 500)])
+        datas.append([(5, 100), (4, 200), (3, None), (2, 400), (1, 500)])
+        datas.append([(5, 100), (4, 200), (3, 300), (2, 400), (1, None)])
+        datas.append([(1, 100), (2, 200), (None, None), (4, 400), (5, 500)])
+        datas.append([(-5, None), (-4, None), (-3, None), (-2, None), (-1, None)])
+        datas.append([(None, "e"), (None, "c"), (None, "b"), (None, "d"), (None, "a")])
+        datas.append([(None, None), (None, None), (None, None), (None, None), (None, None)])
 
-            # duplicated index value tests
-            datas.append([("x", "d"), ("y", "c"), ("y", "b"), ("z", "a")])
-            datas.append([("x", "d"), ("y", "b"), ("y", "c"), ("z", "a")])
-            datas.append([("x", "d"), ("y", "c"), ("y", None), ("z", "a")])
-            datas.append([("x", "d"), ("y", None), ("y", "c"), ("z", "a")])
-            datas.append([("x", "d"), ("y", None), ("y", None), ("z", "a")])
-            datas.append([("x", "d"), ("y", "c"), ("y", "b"), (None, "a")])
-            datas.append([("x", "d"), ("y", "b"), ("y", "c"), (None, "a")])
+        # duplicated index value tests
+        datas.append([("x", "d"), ("y", "c"), ("y", "b"), ("z", "a")])
+        datas.append([("x", "d"), ("y", "b"), ("y", "c"), ("z", "a")])
+        datas.append([("x", "d"), ("y", "c"), ("y", None), ("z", "a")])
+        datas.append([("x", "d"), ("y", None), ("y", None), ("z", "a")])
+        datas.append([("x", "d"), ("y", "c"), ("y", "b"), (None, "a")])
+        datas.append([("x", "d"), ("y", "b"), ("y", "c"), (None, "a")])
 
-            # more depth tests
-            datas.append([("x", "d", "o"), ("y", "c", "p"), ("y", "c", "q"), ("z", "a", "r")])
-            datas.append([("x", "d", "o"), ("y", "c", "q"), ("y", "c", "p"), ("z", "a", "r")])
-            datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", "q"), ("z", "a", "r")])
-            datas.append([("x", "d", "o"), ("y", "c", "p"), ("y", "c", None), ("z", "a", "r")])
-            datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", None), ("z", "a", "r")])
+        # more depth tests
+        datas.append([("x", "d", "o"), ("y", "c", "p"), ("y", "c", "q"), ("z", "a", "r")])
+        datas.append([("x", "d", "o"), ("y", "c", "q"), ("y", "c", "p"), ("z", "a", "r")])
+        datas.append([("x", "d", "o"), ("y", "c", "p"), ("y", "c", None), ("z", "a", "r")])
+        datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", None), ("z", "a", "r")])
 
-            for i, data in enumerate(datas):
-                kmidx = ks.MultiIndex.from_tuples(data)
-                pmidx = kmidx.to_pandas()
-                self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
-                self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+        for data in datas:
+            kmidx = ks.MultiIndex.from_tuples(data)
+            pmidx = kmidx.to_pandas()
+            self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
+            self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+
+        # The datas below are showing different result depends on pandas version.
+        # Because the behavior of handling null values is changed in pandas >= 1.0.0.
+        datas = []
+        datas.append([(None, 100), (2, 200), (3, 300), (4, 400), (5, 500)])
+        datas.append([(1, 100), (2, 200), (3, 300), (4, 400), (None, 500)])
+        datas.append([(None, None), (2, 200), (3, 300), (4, 400), (5, 500)])
+        datas.append([(1, 100), (2, 200), (3, 300), (4, 400), (None, None)])
+        datas.append([("x", "d"), ("y", None), ("y", "c"), ("z", "a")])
+        datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", "q"), ("z", "a", "r")])
+
+        for data in datas:
+            kmidx = ks.MultiIndex.from_tuples(data)
+            pmidx = kmidx.to_pandas()
+            expected_increasing_result = pmidx.is_monotonic_increasing
+            if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+                expected_increasing_result = not expected_increasing_result
+            self.assert_eq(kmidx.is_monotonic_increasing, expected_increasing_result)
+            self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
