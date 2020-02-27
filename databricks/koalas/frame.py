@@ -524,6 +524,32 @@ class DataFrame(_Frame, Generic[T]):
             raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
 
     def _kser_for(self, label):
+        """
+        Create Series with a proper column label.
+
+        The given label must be verified to exist in `_InternalFrame.column_labels`.
+
+        For example, in some method, self is like:
+
+        >>> self = ks.range(3)
+
+        `self._kser_for(label)` can be used with `_InternalFrame.column_labels`:
+
+        >>> self._kser_for(self._internal.column_labels[0])
+        0    0
+        1    1
+        2    2
+        Name: id, dtype: int64
+
+        `self._kser_for(label)` must not be used directly with user inputs.
+        In that case, `self[label]` should be used instead, which checks the label exists or not:
+
+        >>> self['id']
+        0    0
+        1    1
+        2    2
+        Name: id, dtype: int64
+        """
         from databricks.koalas.series import Series
 
         return Series(
