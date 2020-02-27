@@ -9062,40 +9062,29 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             * Internal columns that starting with __. are able to access,
               however, they are not supposed to be accessed.
             * This delegates to Spark SQL so the syntax follows Spark SQL
-            * If you want the exactly same syntax with pandas you can work around
-              by using :meth:`DataFrame.map_in_pandas`, when only the size of the
-              data is smaller than `compute.shortcut_limit`. See the example below.
+            * If you want the pandas syntax, you can work around. See the example below.
 
-                >>> from databricks.koalas.config import set_option, reset_option, get_option
-                >>> df = ks.DataFrame([(1, 2), (3, 4), (5, 6)], columns=['A', 'B'])
-                >>> df
-                   A  B
-                0  1  2
-                1  3  4
-                2  5  6
-                >>> # You can check the value of `compute.shortcut_limit` like the below.
-                ... get_option('compute.shortcut_limit')
-                1000
-                >>> # Since 1000 is larger than the size of the data(in this case, 3),
-                ... # we can work around with `map_in_pandas`.
-                ... num = 1
-                >>> df.map_in_pandas(lambda pdf: pdf.query('A > @num'))
-                   A  B
-                1  3  4
-                2  5  6
-
-                >>> # After then, let's set `compute.shortcut_limit` to 2,
-                ... # which is smaller value than the size of the data.
-                ... set_option('compute.shortcut_limit', 2)
-                >>> get_option('compute.shortcut_limit')
-                2
-                >>> # Now, below will raise exception, so we can't use `map_in_pandas`
-                ... # anymore like the above example.
-                ... df.map_in_pandas(lambda pdf: pdf.query('A > @num'))  # doctest: +SKIP
-                org.apache.spark.api.python.PythonException: Traceback (most recent call last):
-                ...
-                pandas.core.computation.ops.UndefinedVariableError: local variable 'num' is not...
-                >>> reset_option('compute.shortcut_limit')
+                >>> # If you want to use with `@`, we can work around with `map_in_pandas`.
+                >>> # map_in_pandas is performed at workers in different nodes.
+                >>> # Therefore, in order to use the syntax with @, you should make sure
+                >>> # the variable is serialized by, for example, putting it within the closure.
+                >>> df = ks.DataFrame({'A': range(800), 'B': range(800)})
+                >>> def query_func(pdf) -> ks.DataFrame[int, int]:
+                ...     num = 790
+                ...     return pdf.query('A > @num')
+                >>> df.map_in_pandas(query_func)
+                    c0   c1
+                0  791  791
+                1  792  792
+                2  793  793
+                3  794  794
+                4  795  795
+                5  796  796
+                6  797  797
+                7  798  798
+                8  799  799
+                >>> # Note that the index will be lost after map_in_pandas.
+                >>> # See the related issue https://github.com/databricks/koalas/issues/1307.
 
         Parameters
         ----------
