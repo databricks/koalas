@@ -5487,14 +5487,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df  # doctest: +NORMALIZE_WHITESPACE
                       a   b
                     foo baz
-        (a, bar)
+          (a, bar)
         0 A         one   1
         1 A         one   2
         2 B         two   3
         3 C         two   4
 
         >>> df.pivot(columns=('a', 'foo'), values=('b', 'baz')).sort_index()
+        ... # doctest: +NORMALIZE_WHITESPACE
         ('a', 'foo')  one  two
+          (a, bar)
         0 A           1.0  NaN
         1 A           2.0  NaN
         2 B           NaN  3.0
@@ -5512,6 +5514,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             df = self
             index = [index]
         else:
+            index_names = self._internal.index_names
             num_index_col = len(self._internal.index_columns)
             sdf = _InternalFrame.attach_distributed_column(self._sdf, "__DUMMY__")
             df = DataFrame(self._internal.copy(sdf=sdf))
@@ -5526,9 +5529,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return df
         else:
             index_columns = df._internal.index_columns
-            # Note that the existing indexing column won't exist in the pivoted DataFrame.
             internal = df._internal.copy(
-                index_map=[(index_column, None) for index_column in index_columns]
+                index_map=[
+                    (index_column, name) for index_column, name in zip(index_columns, index_names)
+                ]
             )
             return DataFrame(internal)
 
