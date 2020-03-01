@@ -4365,17 +4365,15 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         if not isinstance(other, ks.Series):
             raise ValueError("`combine_first` only allows `Series` for parameter `other`")
-        this = '__this_0'
-        that = '__that_0'
+        this = "__this_0"
+        that = "__that_0"
         combined = combine_frames(self.to_frame(), other)
         index_scols = combined._internal.index_scols
         sdf = combined._sdf
         # If `self` has missing value, use value of `other`
         cond = F.when(sdf[this].isNull(), sdf[that]).otherwise(sdf[this])
         sdf = sdf.select(*index_scols, cond.alias(self.name))
-        internal = _InternalFrame(
-            sdf=sdf,
-            index_map=self._internal.index_map)
+        internal = _InternalFrame(sdf=sdf, index_map=self._internal.index_map)
         return _col(ks.DataFrame(internal))
 
     def _cum(self, func, skipna, part_cols=()):
