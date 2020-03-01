@@ -27,9 +27,11 @@ Attributes and underlying data
 
    DataFrame.dtypes
    DataFrame.shape
+   DataFrame.axes
    DataFrame.ndim
    DataFrame.size
    DataFrame.select_dtypes
+   DataFrame.values
 
 Conversion
 ----------
@@ -106,6 +108,7 @@ Function application, GroupBy & Window
    DataFrame.aggregate
    DataFrame.groupby
    DataFrame.transform
+   DataFrame.map_in_pandas
 
 .. _api.dataframe.stats:
 
@@ -181,6 +184,7 @@ Reshaping, sorting, transposing
    DataFrame.sort_values
    DataFrame.nlargest
    DataFrame.nsmallest
+   DataFrame.unstack
    DataFrame.melt
    DataFrame.T
    DataFrame.transpose

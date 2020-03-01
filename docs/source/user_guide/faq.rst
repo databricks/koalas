@@ -6,7 +6,7 @@ What's the project's status?
 ----------------------------
 
 This project is currently in beta and is rapidly evolving.
-We plan to do weekly releases at this stage.
+We plan to do bi-weekly releases at this stage.
 You should expect the following differences:
 
  - some functions may be missing. Please create a GitHub issue if your favorite function is not yet supported. We also document all the functions that are not yet supported in the `missing directory <https://github.com/databricks/koalas/tree/master/databricks/koalas/missing>`_.
@@ -29,6 +29,27 @@ Should I use PySpark's DataFrame API or Koalas?
 
 If you are already familiar with pandas and want to leverage Spark for big data, we recommend
 using Koalas. If you are learning Spark from ground up, we recommend you start with PySpark's API.
+
+Does Koalas support Structured Streaming?
+-----------------------------------------
+
+No, Koalas does not support Structured Streaming officially.
+
+As a workaround, you can use Koalas APIs with `foreachBatch` in Structured Streaming which allows batch APIs:
+
+.. code-block:: python
+
+   >>> def func(batch_df, batch_id):
+   ...     koalas_df = ks.DataFrame(batch_df)
+   ...     koalas_df['a'] = 1
+   ...     print(koalas_df)
+
+   >>> spark.readStream.format("rate").load().writeStream.foreachBatch(func).start()
+                   timestamp  value  a
+   0 2020-02-21 09:49:37.574      4  1
+                   timestamp  value  a
+   0 2020-02-21 09:49:38.574      5  1
+   ...
 
 How can I request support for a method?
 ---------------------------------------
