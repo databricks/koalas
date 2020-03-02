@@ -57,6 +57,7 @@ from pyspark.sql.types import (
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.config import option_context
 from databricks.koalas.utils import (
     validate_arguments_and_invoke_function,
     align_diff_frames,
@@ -5516,7 +5517,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             # The index after `reset_index()` will never be used, so use "distributed" index
             # as a dummy to avoid overhead.
-            with ks.option_context("compute.default_index_type", "distributed"):
+            with option_context("compute.default_index_type", "distributed"):
                 df = self.reset_index()
             index = df._internal.column_labels[: len(self._internal.index_columns)]
 
