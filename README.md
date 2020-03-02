@@ -90,3 +90,12 @@ See [FAQ](https://koalas.readthedocs.io/en/latest/user_guide/faq.html) in the of
 
 See [Best Practices](https://koalas.readthedocs.io/en/latest/user_guide/best_practices.html) in the official documentation.
 
+
+## Koalas talks
+
+See [Koalas talks](https://koalas.readthedocs.io/en/latest/getting_started/videos.html) in the official documentation.
+
+- [New Developments in the Open Source Ecosystem: Apache Spark 3.0, Delta Lake, and Koalas](https://databricks.com/session_eu19/new-developments-in-the-open-source-ecosystem-apache-spark-3-0-delta-lake-and-koalas) - Spark + AI Summit Europe 2019 (Oct 16, 2019)
+- [Koalas: Making an Easy Transition from Pandas to Apache Spark](https://databricks.com/session_eu19/koalas-making-an-easy-transition-from-pandas-to-apache-spark) - Spark + AI Summit Europe 2019 (Oct 16, 2019)
+- [Koalas: Pandas on Apache Spark](https://databricks.com/session_eu19/koalas-pandas-on-apache-spark) - Spark + AI Summit Europe 2019 (Oct 16, 2019)
+- [Official Announcement of Koalas Open Source Project](https://databricks.com/session/official-announcement-of-koalas-open-source-project) - Spark + AI Summit 2019 (Apr 24, 2019)
