@@ -682,6 +682,17 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             repr(pser1.combine_first(pser2).sort_index()),
         )
 
+    def test_to_series_comparison(self):
+        kidx1 = ks.Index([1, 2, 3, 4, 5])
+        kidx2 = ks.Index([1, 2, 3, 4, 5])
+
+        self.assert_eq((kidx1.to_series() == kidx2.to_series()).all(), True)
+
+        kidx1.name = "koalas"
+        kidx2.name = "koalas"
+
+        self.assert_eq((kidx1.to_series() == kidx2.to_series()).all(), True)
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod

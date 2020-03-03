@@ -28,10 +28,10 @@ from pyspark.sql.utils import AnalysisException
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 from databricks.koalas.utils import (
-    column_labels_level,
     lazy_property,
     name_like_string,
     verify_temp_column_name,
+    scol_for,
 )
 
 
@@ -256,12 +256,27 @@ class _LocIndexerLike(_IndexerLike):
             index_scols = self._internal.index_scols
             index_map = self._internal.index_map
 
-        if self._internal.column_label_names is None:
-            column_label_names = None
+        if len(column_labels) > 0:
+            column_labels = column_labels.copy()
+            column_labels_level = max(
+                len(label) if label is not None else 1 for label in column_labels
+            )
+            none_column = 0
+            for i, label in enumerate(column_labels):
+                if label is None:
+                    label = (str(none_column),)
+                    none_column += 1
+                if len(label) < column_labels_level:
+                    label = tuple(list(label) + ([""]) * (column_labels_level - len(label)))
+                column_labels[i] = label
+
+            if self._internal.column_label_names is None:
+                column_label_names = None
+            else:
+                # Manage column index names
+                column_label_names = self._internal.column_label_names[-column_labels_level:]
         else:
-            # Manage column index names
-            level = column_labels_level(column_labels)
-            column_label_names = self._internal.column_label_names[-level:]
+            column_label_names = None
 
         try:
             sdf = self._internal._sdf
@@ -273,6 +288,7 @@ class _LocIndexerLike(_IndexerLike):
                 else:
                     sdf = sdf.limit(sdf.count() + limit)
 
+            data_columns = sdf.select(column_scols).columns
             sdf = sdf.select(index_scols + column_scols)
         except AnalysisException:
             raise KeyError(
@@ -283,6 +299,7 @@ class _LocIndexerLike(_IndexerLike):
             sdf=sdf,
             index_map=index_map,
             column_labels=column_labels,
+            column_scols=[scol_for(sdf, col) for col in data_columns],
             column_label_names=column_label_names,
         )
         kdf = DataFrame(internal)
