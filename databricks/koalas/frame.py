@@ -5336,14 +5336,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     # then ['2_b', '2_e', '3_b', '3_e'].
 
                     # We sort the columns of Spark DataFrame by values.
-                    data_columns.sort(key=lambda x: x.split("_", 1)[1])
+                    data_columns.sort(key=lambda x: x.split("_")[:0:-1])
                     sdf = sdf.select(index_columns + data_columns)
 
                     column_name_to_index = dict(
                         zip(self._internal.data_columns, self._internal.column_labels)
                     )
                     column_labels = [
-                        tuple(list(column_name_to_index[name.split("_")[1]]) + [name.split("_")[0]])
+                        tuple(
+                            list(column_name_to_index[name.split("_", 1)[1]])
+                            + [name.split("_", 1)[0]]
+                        )
                         for name in data_columns
                     ]
                     index_map = list(zip(index_columns, index))
