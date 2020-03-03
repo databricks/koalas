@@ -651,91 +651,144 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_combine(self):
         # Series.combine
-        kser1 = ks.Series({'falcon': 330.0, 'eagle': 160.0})
-        kser2 = ks.Series({'falcon': 345.0, 'eagle': 200.0, 'duck': 30.0})
+        kser1 = ks.Series({"falcon": 330.0, "eagle": 160.0})
+        kser2 = ks.Series({"falcon": 345.0, "eagle": 200.0, "duck": 30.0})
         pser1 = kser1.to_pandas()
         pser2 = kser2.to_pandas()
 
-        self.assert_eq(kser1.combine(kser2, max).sort_index(),
-                       pser1.combine(pser2, max).sort_index(), almost=True)
-        self.assert_eq(kser1.combine(kser2, lambda x, y: x + y).sort_index(),
-                       pser1.combine(pser2, lambda x, y: x + y).sort_index(), almost=True)
-        self.assert_eq(kser1.combine(kser2, lambda x, y: x * x).sort_index(),
-                       pser1.combine(pser2, lambda x, y: x * x).sort_index(), almost=True)
-        self.assert_eq(kser1.combine(kser2, lambda x, y: y * y).sort_index(),
-                       pser1.combine(pser2, lambda x, y: y * y).sort_index(), almost=True)
-        self.assert_eq(kser1.combine(kser2, lambda x, y: (x + y) * 10).sort_index(),
-                       pser1.combine(pser2, lambda x, y: (x + y) * 10).sort_index(), almost=True)
+        self.assert_eq(
+            kser1.combine(kser2, max).sort_index(),
+            pser1.combine(pser2, max).sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kser1.combine(kser2, lambda x, y: x + y).sort_index(),
+            pser1.combine(pser2, lambda x, y: x + y).sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kser1.combine(kser2, lambda x, y: x * x).sort_index(),
+            pser1.combine(pser2, lambda x, y: x * x).sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kser1.combine(kser2, lambda x, y: y * y).sort_index(),
+            pser1.combine(pser2, lambda x, y: y * y).sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kser1.combine(kser2, lambda x, y: (x + y) * 10).sort_index(),
+            pser1.combine(pser2, lambda x, y: (x + y) * 10).sort_index(),
+            almost=True,
+        )
 
         values = (-300, 0, 300, np.nan)
         for value in values:
-            self.assert_eq(kser1.combine(kser2, max, fill_value=value).sort_index(),
-                           pser1.combine(pser2, max, fill_value=value).sort_index(), almost=True)
+            self.assert_eq(
+                kser1.combine(kser2, max, fill_value=value).sort_index(),
+                pser1.combine(pser2, max, fill_value=value).sort_index(),
+                almost=True,
+            )
 
         # with scala values (bug in pandas<1.0.0)
         if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
             self.assert_eq(
                 kser1.combine(100, max).sort_index(),
-                pser1.combine(100, max).sort_index(), almost=True)
+                pser1.combine(100, max).sort_index(),
+                almost=True,
+            )
             self.assert_eq(
                 kser1.combine(-100, lambda x, y: x * x).sort_index(),
-                pser1.combine(-100, lambda x, y: x * x).sort_index(), almost=True)
+                pser1.combine(-100, lambda x, y: x * x).sort_index(),
+                almost=True,
+            )
             self.assert_eq(
                 kser1.combine(0, lambda x, y: y * y).sort_index(),
-                pser1.combine(0, lambda x, y: y * y).sort_index(), almost=True)
+                pser1.combine(0, lambda x, y: y * y).sort_index(),
+                almost=True,
+            )
             self.assert_eq(
                 kser1.combine(30.3 - 500.25, lambda x, y: (x + y) * 10).sort_index(),
-                pser1.combine(30.3 - 500.25, lambda x, y: (x + y) * 10).sort_index(), almost=True)
+                pser1.combine(30.3 - 500.25, lambda x, y: (x + y) * 10).sort_index(),
+                almost=True,
+            )
             for value in values:
                 self.assert_eq(
                     kser1.combine(100, max, fill_value=value).sort_index(),
-                    pser1.combine(100, max, fill_value=value).sort_index(), almost=True)
+                    pser1.combine(100, max, fill_value=value).sort_index(),
+                    almost=True,
+                )
 
         # MultiIndex
-        midx1 = pd.MultiIndex([['lama', 'cow', 'falcon', 'koala'],
-                               ['speed', 'weight', 'length', 'power']],
-                              [[0, 3, 1, 1, 1, 2, 2, 2],
-                               [0, 2, 0, 3, 2, 0, 1, 3]])
-        midx2 = pd.MultiIndex([['lama', 'cow', 'falcon'],
-                               ['speed', 'weight', 'length']],
-                              [[0, 0, 0, 1, 1, 1, 2, 2, 2],
-                               [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        midx1 = pd.MultiIndex(
+            [["lama", "cow", "falcon", "koala"], ["speed", "weight", "length", "power"]],
+            [[0, 3, 1, 1, 1, 2, 2, 2], [0, 2, 0, 3, 2, 0, 1, 3]],
+        )
+        midx2 = pd.MultiIndex(
+            [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
+        )
         kser1 = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1], index=midx1)
         kser2 = ks.Series([-45, 200, -1.2, 30, -250, 1.5, 320, 1, -0.3], index=midx2)
         pser1 = kser1.to_pandas()
         pser2 = kser2.to_pandas()
 
-        self.assert_eq(kser1.combine(kser2, max).sort_index(),
-                       pser1.combine(pser2, max).sort_index(), almost=True)
-        self.assert_eq(kser1.combine(kser2, lambda x, y: x * x).sort_index(),
-                       pser1.combine(pser2, lambda x, y: x * x).sort_index(), almost=True)
-        self.assert_eq(kser1.combine(kser2, lambda x, y: y * y).sort_index(),
-                       pser1.combine(pser2, lambda x, y: y * y).sort_index(), almost=True)
-        self.assert_eq(kser1.combine(kser2, lambda x, y: (x + y) * 10).sort_index(),
-                       pser1.combine(pser2, lambda x, y: (x + y) * 10).sort_index(), almost=True)
+        self.assert_eq(
+            kser1.combine(kser2, max).sort_index(),
+            pser1.combine(pser2, max).sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kser1.combine(kser2, lambda x, y: x * x).sort_index(),
+            pser1.combine(pser2, lambda x, y: x * x).sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kser1.combine(kser2, lambda x, y: y * y).sort_index(),
+            pser1.combine(pser2, lambda x, y: y * y).sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kser1.combine(kser2, lambda x, y: (x + y) * 10).sort_index(),
+            pser1.combine(pser2, lambda x, y: (x + y) * 10).sort_index(),
+            almost=True,
+        )
 
         for value in values:
-            self.assert_eq(kser1.combine(kser2, max, fill_value=value).sort_index(),
-                           pser1.combine(pser2, max, fill_value=value).sort_index(), almost=True)
+            self.assert_eq(
+                kser1.combine(kser2, max, fill_value=value).sort_index(),
+                pser1.combine(pser2, max, fill_value=value).sort_index(),
+                almost=True,
+            )
 
         # MultiIndex with scala values (bug in pandas<1.0.0)
         if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
             self.assert_eq(
                 kser1.combine(100, max).sort_index(),
-                pser1.combine(100, max).sort_index(), almost=True)
+                pser1.combine(100, max).sort_index(),
+                almost=True,
+            )
             self.assert_eq(
                 kser1.combine(-100, lambda x, y: x * x).sort_index(),
-                pser1.combine(-100, lambda x, y: x * x).sort_index(), almost=True)
+                pser1.combine(-100, lambda x, y: x * x).sort_index(),
+                almost=True,
+            )
             self.assert_eq(
                 kser1.combine(0, lambda x, y: y * y).sort_index(),
-                pser1.combine(0, lambda x, y: y * y).sort_index(), almost=True)
+                pser1.combine(0, lambda x, y: y * y).sort_index(),
+                almost=True,
+            )
             self.assert_eq(
                 kser1.combine(30.3 - 500.25, lambda x, y: (x + y) * 10).sort_index(),
-                pser1.combine(30.3 - 500.25, lambda x, y: (x + y) * 10).sort_index(), almost=True)
+                pser1.combine(30.3 - 500.25, lambda x, y: (x + y) * 10).sort_index(),
+                almost=True,
+            )
             for value in values:
                 self.assert_eq(
                     kser1.combine(100, max, fill_value=value).sort_index(),
-                    pser1.combine(100, max, fill_value=value).sort_index(), almost=True)
+                    pser1.combine(100, max, fill_value=value).sort_index(),
+                    almost=True,
+                )
 
     def test_to_series_comparison(self):
         kidx1 = ks.Index([1, 2, 3, 4, 5])
@@ -846,16 +899,16 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
         kdf2 = ks.from_pandas(pdf2)
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
-            self.assert_eq(repr(pdf1.mask(pdf2 > -250)),
-                           repr(kdf1.mask(kdf2 > -250).sort_index()))
+            self.assert_eq(repr(pdf1.mask(pdf2 > -250)), repr(kdf1.mask(kdf2 > -250).sort_index()))
 
     def test_combine(self):
         # Series.combine
-        kser1 = ks.Series({'falcon': 330.0, 'eagle': 160.0})
-        kser2 = ks.Series({'falcon': 345.0, 'eagle': 200.0, 'duck': 30.0})
+        kser1 = ks.Series({"falcon": 330.0, "eagle": 160.0})
+        kser2 = ks.Series({"falcon": 345.0, "eagle": 200.0, "duck": 30.0})
         pser1 = kser1.to_pandas()
         pser2 = kser2.to_pandas()
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
-            self.assert_eq(repr(kser1.combine(kser2, max)),
-                           repr(pser1.combine(pser2, max).sort_index()))
+            self.assert_eq(
+                repr(kser1.combine(kser2, max)), repr(pser1.combine(pser2, max).sort_index())
+            )

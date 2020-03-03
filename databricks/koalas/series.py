@@ -4439,12 +4439,13 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             result = func(x, y)
             if not isinstance(result, (int, float)):
                 raise NotImplementedError(
-                    "Only `func` with returning numeric-type is supported for now.")
+                    "Only `func` with returning numeric-type is supported for now."
+                )
             return float(result)
 
         name = self.name
-        this = '__this_0'
-        that = '__that_0'
+        this = "__this_0"
+        that = "__that_0"
 
         if isinstance(other, ks.Series):
             combined = combine_frames(self.to_frame(), other)
@@ -4463,9 +4464,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         # applying spark_udf
         sdf = sdf.select(*index_scols, spark_udf(this, that).alias(name))
 
-        internal = _InternalFrame(
-            sdf=sdf,
-            index_map=self._internal.index_map)
+        internal = _InternalFrame(sdf=sdf, index_map=self._internal.index_map)
 
         return _col(ks.DataFrame(internal))
 
