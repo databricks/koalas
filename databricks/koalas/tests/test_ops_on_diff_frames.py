@@ -649,7 +649,6 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(KeyError, "Key length \\(3\\) exceeds index depth \\(2\\)"):
             kdf[("1", "2", "3")] = ks.Series([100, 200, 300, 200])
 
-<<<<<<< HEAD
     def test_combine(self):
         # Series.combine
         kser1 = ks.Series({'falcon': 330.0, 'eagle': 160.0})
@@ -738,11 +737,9 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
                     kser1.combine(100, max, fill_value=value).sort_index(),
                     pser1.combine(100, max, fill_value=value).sort_index(), almost=True)
 
-=======
     def test_to_series_comparison(self):
         kidx1 = ks.Index([1, 2, 3, 4, 5])
         kidx2 = ks.Index([1, 2, 3, 4, 5])
->>>>>>> 73df665efb85bcf93c2db3f2731b7bb0be180c27
 
         self.assert_eq((kidx1.to_series() == kidx2.to_series()).all(), True)
 
