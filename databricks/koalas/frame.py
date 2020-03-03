@@ -57,6 +57,7 @@ from pyspark.sql.types import (
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.config import option_context
 from databricks.koalas.utils import (
     validate_arguments_and_invoke_function,
     align_diff_frames,
@@ -5514,14 +5515,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             df = self
             index = [index]
         else:
-            index_names = self._internal.index_names
-            num_index_col = len(self._internal.index_columns)
-            sdf = _InternalFrame.attach_distributed_column(self._sdf, "__DUMMY__")
-            df = DataFrame(self._internal.copy(sdf=sdf))
-            df["__DUMMY__"] = scol_for(sdf, "__DUMMY__")
-            df.set_index(df.columns[-1], append=True, inplace=True)
-            df.reset_index(level=range(num_index_col), inplace=True)
-            index = df._internal.column_labels[:num_index_col]
+            # The index after `reset_index()` will never be used, so use "distributed" index
+            # as a dummy to avoid overhead.
+            with option_context("compute.default_index_type", "distributed"):
+                df = self.reset_index()
+            index = df._internal.column_labels[: len(self._internal.index_columns)]
 
         df = df.pivot_table(index=index, columns=columns, values=values, aggfunc="first")
 
@@ -5531,7 +5529,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             index_columns = df._internal.index_columns
             internal = df._internal.copy(
                 index_map=[
-                    (index_column, name) for index_column, name in zip(index_columns, index_names)
+                    (index_column, name)
+                    for index_column, name in zip(index_columns, self._internal.index_names)
                 ]
             )
             return DataFrame(internal)
