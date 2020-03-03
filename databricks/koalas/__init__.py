@@ -21,18 +21,23 @@ from databricks.koalas.version import __version__
 
 def assert_pyspark_version():
     import logging
+
     pyspark_ver = None
     try:
         import pyspark
     except ImportError:
-        raise ImportError('Unable to import pyspark - consider doing a pip install with [spark] '
-                          'extra to install pyspark with pip')
+        raise ImportError(
+            "Unable to import pyspark - consider doing a pip install with [spark] "
+            "extra to install pyspark with pip"
+        )
     else:
-        pyspark_ver = getattr(pyspark, '__version__')
-        if pyspark_ver is None or pyspark_ver < '2.4':
+        pyspark_ver = getattr(pyspark, "__version__")
+        if pyspark_ver is None or pyspark_ver < "2.4":
             logging.warning(
-                'Found pyspark version "{}" installed. pyspark>=2.4.0 is recommended.'
-                .format(pyspark_ver if pyspark_ver is not None else '<unknown version>'))
+                'Found pyspark version "{}" installed. pyspark>=2.4.0 is recommended.'.format(
+                    pyspark_ver if pyspark_ver is not None else "<unknown version>"
+                )
+            )
 
 
 assert_pyspark_version()
@@ -40,8 +45,9 @@ assert_pyspark_version()
 import pyspark
 import pyarrow
 
-if LooseVersion(pyarrow.__version__) >= LooseVersion("0.15") and \
-        LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+if LooseVersion(pyarrow.__version__) >= LooseVersion("0.15") and LooseVersion(
+    pyspark.__version__
+) < LooseVersion("3.0"):
     # This is required to support PyArrow 0.15 in PySpark versions lower than 3.0.
     # See SPARK-29367.
     os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
@@ -53,10 +59,31 @@ from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.config import get_option, set_option, reset_option, options
 from databricks.koalas.groupby import NamedAgg
 
-__all__ = ['read_csv', 'read_parquet', 'to_datetime', 'from_pandas',
-           'get_dummies', 'DataFrame', 'Series', 'Index', 'MultiIndex', 'pandas_wraps',
-           'sql', 'range', 'concat', 'melt', 'get_option', 'set_option', 'reset_option',
-           'read_sql_table', 'read_sql_query', 'read_sql', 'options', 'option_context', 'NamedAgg']
+__all__ = [
+    "read_csv",
+    "read_parquet",
+    "to_datetime",
+    "from_pandas",
+    "get_dummies",
+    "DataFrame",
+    "Series",
+    "Index",
+    "MultiIndex",
+    "pandas_wraps",
+    "sql",
+    "range",
+    "concat",
+    "melt",
+    "get_option",
+    "set_option",
+    "reset_option",
+    "read_sql_table",
+    "read_sql_query",
+    "read_sql",
+    "options",
+    "option_context",
+    "NamedAgg",
+]
 
 
 def _auto_patch():
@@ -68,21 +95,29 @@ def _auto_patch():
     if logger_module is not None:
         try:
             from databricks.koalas import usage_logging
+
             usage_logging.attach(logger_module)
         except Exception as e:
             from pyspark.util import _exception_message
-            logger = logging.getLogger('databricks.koalas.usage_logger')
-            logger.warning('Tried to attach usage logger `{}`, but an exception was raised: {}'
-                           .format(logger_module, _exception_message(e)))
+
+            logger = logging.getLogger("databricks.koalas.usage_logger")
+            logger.warning(
+                "Tried to attach usage logger `{}`, but an exception was raised: {}".format(
+                    logger_module, _exception_message(e)
+                )
+            )
 
     # Autopatching is on by default.
     x = os.getenv("SPARK_KOALAS_AUTOPATCH", "true")
     if x.lower() in ("true", "1", "enabled"):
-        logger = logging.getLogger('spark')
-        logger.info("Patching spark automatically. You can disable it by setting "
-                    "SPARK_KOALAS_AUTOPATCH=false in your environment")
+        logger = logging.getLogger("spark")
+        logger.info(
+            "Patching spark automatically. You can disable it by setting "
+            "SPARK_KOALAS_AUTOPATCH=false in your environment"
+        )
 
         from pyspark.sql import dataframe as df
+
         df.DataFrame.to_koalas = DataFrame.to_koalas
 
 

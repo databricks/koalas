@@ -15,6 +15,8 @@
 #
 
 
+from distutils.version import LooseVersion
+
 import pandas as pd
 
 from databricks import koalas as ks
@@ -22,10 +24,9 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
 class SeriesConversionTest(ReusedSQLTestCase, SQLTestUtils):
-
     @property
     def pser(self):
-        return pd.Series([1, 2, 3, 4, 5, 6, 7], name='x')
+        return pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
 
     @property
     def kser(self):
@@ -36,10 +37,10 @@ class SeriesConversionTest(ReusedSQLTestCase, SQLTestUtils):
         kser = self.kser
 
         self.assert_eq(kser.to_clipboard(), pser.to_clipboard())
-        self.assert_eq(kser.to_clipboard(excel=False),
-                       pser.to_clipboard(excel=False))
-        self.assert_eq(kser.to_clipboard(sep=',', index=False),
-                       pser.to_clipboard(sep=',', index=False))
+        self.assert_eq(kser.to_clipboard(excel=False), pser.to_clipboard(excel=False))
+        self.assert_eq(
+            kser.to_clipboard(sep=",", index=False), pser.to_clipboard(sep=",", index=False)
+        )
 
     def test_to_latex(self):
         pser = self.pser
@@ -49,10 +50,13 @@ class SeriesConversionTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.to_latex(col_space=2), pser.to_latex(col_space=2))
         self.assert_eq(kser.to_latex(header=True), pser.to_latex(header=True))
         self.assert_eq(kser.to_latex(index=False), pser.to_latex(index=False))
-        self.assert_eq(kser.to_latex(na_rep='-'), pser.to_latex(na_rep='-'))
-        self.assert_eq(kser.to_latex(float_format='%.1f'), pser.to_latex(float_format='%.1f'))
+        self.assert_eq(kser.to_latex(na_rep="-"), pser.to_latex(na_rep="-"))
+        self.assert_eq(kser.to_latex(float_format="%.1f"), pser.to_latex(float_format="%.1f"))
         self.assert_eq(kser.to_latex(sparsify=False), pser.to_latex(sparsify=False))
         self.assert_eq(kser.to_latex(index_names=False), pser.to_latex(index_names=False))
         self.assert_eq(kser.to_latex(bold_rows=True), pser.to_latex(bold_rows=True))
-        self.assert_eq(kser.to_latex(encoding='ascii'), pser.to_latex(encoding='ascii'))
-        self.assert_eq(kser.to_latex(decimal=','), pser.to_latex(decimal=','))
+        # Can't specifying `encoding` without specifying `buf` as filename in pandas >= 1.0.0
+        # https://github.com/pandas-dev/pandas/blob/master/pandas/io/formats/format.py#L492-L495
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            self.assert_eq(kser.to_latex(encoding="ascii"), pser.to_latex(encoding="ascii"))
+        self.assert_eq(kser.to_latex(decimal=","), pser.to_latex(decimal=","))

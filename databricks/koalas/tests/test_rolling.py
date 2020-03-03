@@ -23,7 +23,6 @@ from databricks.koalas.window import Rolling
 
 
 class RollingTest(ReusedSQLTestCase, TestUtils):
-
     def test_rolling_error(self):
         with self.assertRaisesRegex(ValueError, "window must be >= 0"):
             ks.range(10).rolling(window=-1)
@@ -31,8 +30,8 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
             ks.range(10).rolling(window=1, min_periods=-1)
 
         with self.assertRaisesRegex(
-                TypeError,
-                "kdf_or_kser must be a series or dataframe; however, got:.*int"):
+            TypeError, "kdf_or_kser must be a series or dataframe; however, got:.*int"
+        ):
             Rolling(1, 2)
 
     def _test_rolling_func(self, f):
@@ -40,27 +39,24 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
         pser = kser.to_pandas()
         self.assert_eq(repr(getattr(kser.rolling(2), f)()), repr(getattr(pser.rolling(2), f)()))
 
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
-                           index=np.random.rand(4))
+        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
         pdf = kdf.to_pandas()
         self.assert_eq(repr(getattr(kdf.rolling(2), f)()), repr(getattr(pdf.rolling(2), f)()))
 
         # Multiindex
         kser = ks.Series(
-            [1, 2, 3],
-            index=pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')]))
+            [1, 2, 3], index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")])
+        )
         pser = kser.to_pandas()
         self.assert_eq(repr(getattr(kser.rolling(2), f)()), repr(getattr(pser.rolling(2), f)()))
 
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
-                           index=np.random.rand(4))
+        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
         pdf = kdf.to_pandas()
         self.assert_eq(repr(getattr(kdf.rolling(2), f)()), repr(getattr(pdf.rolling(2), f)()))
 
         # Multiindex column
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
-                           index=np.random.rand(4))
-        kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
+        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
+        kdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y")])
         pdf = kdf.to_pandas()
         self.assert_eq(repr(getattr(kdf.rolling(2), f)()), repr(getattr(pdf.rolling(2), f)()))
 
@@ -90,36 +86,39 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
         pser = kser.to_pandas()
         self.assert_eq(
             repr(getattr(kser.groupby(kser).rolling(2), f)().sort_index()),
-            repr(getattr(pser.groupby(pser).rolling(2), f)().sort_index()))
+            repr(getattr(pser.groupby(pser).rolling(2), f)().sort_index()),
+        )
 
         # Multiindex
         kser = ks.Series(
-            [1, 2, 3],
-            index=pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y'), ('b', 'z')]))
+            [1, 2, 3], index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")])
+        )
         pser = kser.to_pandas()
         self.assert_eq(
             repr(getattr(kser.groupby(kser).rolling(2), f)().sort_index()),
-            repr(getattr(pser.groupby(pser).rolling(2), f)()))
+            repr(getattr(pser.groupby(pser).rolling(2), f)()),
+        )
 
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
-                           index=np.random.rand(4))
+        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
         pdf = kdf.to_pandas()
         self.assert_eq(
             repr(getattr(kdf.groupby(kdf.a).rolling(2), f)().sort_index()),
-            repr(getattr(pdf.groupby(pdf.a).rolling(2), f)().sort_index()))
+            repr(getattr(pdf.groupby(pdf.a).rolling(2), f)().sort_index()),
+        )
 
         # Multiindex column
-        kdf = ks.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]},
-                           index=np.random.rand(4))
-        kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
+        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
+        kdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y")])
         pdf = kdf.to_pandas()
         self.assert_eq(
             repr(getattr(kdf.groupby(("a", "x")).rolling(2), f)().sort_index()),
-            repr(getattr(pdf.groupby(("a", "x")).rolling(2), f)().sort_index()))
+            repr(getattr(pdf.groupby(("a", "x")).rolling(2), f)().sort_index()),
+        )
 
         self.assert_eq(
             repr(getattr(kdf.groupby([("a", "x"), ("a", "y")]).rolling(2), f)().sort_index()),
-            repr(getattr(pdf.groupby([("a", "x"), ("a", "y")]).rolling(2), f)().sort_index()))
+            repr(getattr(pdf.groupby([("a", "x"), ("a", "y")]).rolling(2), f)().sort_index()),
+        )
 
     def test_groupby_rolling_count(self):
         self._test_groupby_rolling_func("count")
@@ -137,6 +136,7 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
         self._test_groupby_rolling_func("sum")
 
     def test_groupby_rolling_std(self):
+        # TODO: `std` now raise error in pandas 1.0.0
         self._test_groupby_rolling_func("std")
 
     def test_groupby_rolling_var(self):
