@@ -21,6 +21,8 @@ import sys
 
 import numpy as np
 import pandas as pd
+import pyspark
+from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
@@ -2921,3 +2923,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = columns
         kdf.columns = columns
         self.assert_list_eq(pdf.axes, kdf.axes)
+
+    def test_udt(self):
+        sparse_values = {0: 0.1, 1: 1.1}
+        sparse_vector = SparseVector(len(sparse_values), sparse_values)
+        pdf = pd.DataFrame({"a": [sparse_vector], "b": [10]})
+
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+                kdf = ks.from_pandas(pdf)
+                self.assert_eq(kdf, pdf)
+        else:
+            kdf = ks.from_pandas(pdf)
+            self.assert_eq(kdf, pdf)
