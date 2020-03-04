@@ -1443,7 +1443,7 @@ class _Frame(object):
 
             # This is to match the output with pandas'. Pandas seems returning different results
             # when given series is from different dataframes. It only applies when as_index is
-            # False. Seems like a bug in pandas.
+            # False.
             should_drop_index = any(
                 isinstance(col_or_s, ks.Series) and df is not col_or_s._kdf for col_or_s in by
             )
@@ -1461,6 +1461,7 @@ class _Frame(object):
         )
 
     def _resolve_grouping_series(self, by):
+        should_use_name = False
         if isinstance(self, ks.Series):
             kdf = self._kdf
         else:
@@ -1476,11 +1477,15 @@ class _Frame(object):
                     )
 
                 kdf = align_diff_frames(assign_columns, kdf, col_or_s, fillna=False, how="inner")
+                # Should use name to search series because now the anchor is different
+                should_use_name = True
 
         new_by_series = []
         for col_or_s in by:
-            if isinstance(col_or_s, ks.Series):
+            if isinstance(col_or_s, ks.Series) and should_use_name:
                 new_by_series.append(kdf[col_or_s.name])
+            elif isinstance(col_or_s, ks.Series):
+                new_by_series.append(col_or_s)
             elif isinstance(col_or_s, tuple):
                 new_by_series.append(kdf[col_or_s])
             else:

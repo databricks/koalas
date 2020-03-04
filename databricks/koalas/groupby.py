@@ -1878,7 +1878,7 @@ class DataFrameGroupBy(GroupBy):
         kdf: DataFrame,
         by: List[Series],
         as_index: bool = True,
-        should_drop_index: bool = True,
+        should_drop_index: bool = False,
         agg_columns: List[Union[str, Tuple[str, ...]]] = None,
     ):
         self._kdf = kdf
@@ -1921,7 +1921,11 @@ class DataFrameGroupBy(GroupBy):
                     if name in groupkey_names:
                         raise ValueError("cannot insert {}, already exists".format(name))
             return DataFrameGroupBy(
-                self._kdf, self._groupkeys, as_index=self._as_index, agg_columns=item
+                self._kdf,
+                self._groupkeys,
+                as_index=self._as_index,
+                agg_columns=item,
+                should_drop_index=self._should_drop_index,
             )
 
     def _apply_series_op(self, op):
