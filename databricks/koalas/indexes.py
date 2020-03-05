@@ -1451,6 +1451,13 @@ class Index(IndexOpsMixin):
         sdf_diff = sdf_self.select(idx_self).subtract(sdf_other.select(idx_other))
         internal = _InternalFrame(sdf=sdf_diff, index_map=self._internal.index_map)
         result = DataFrame(internal).index
+        # Name(s) will be kept when only name(s) of (Multi)Index are the same.
+        if isinstance(self, type(other)) and isinstance(self, ks.MultiIndex):
+            if self.names == other.names:
+                result.names = self.names
+        elif isinstance(self, type(other)) and not isinstance(self, ks.MultiIndex):
+            if self.name == other.name:
+                result.name = self.name
         return result if sort is None else result.sort_values()
 
     @property

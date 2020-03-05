@@ -825,8 +825,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_difference(self):
         # Index
-        kidx1 = ks.Index([1, 2, 3, 4])
-        kidx2 = ks.Index([3, 4, 5, 6])
+        kidx1 = ks.Index([1, 2, 3, 4], name="koalas")
+        kidx2 = ks.Index([3, 4, 5, 6], name="koalas")
         pidx1 = kidx1.to_pandas()
         pidx2 = kidx2.to_pandas()
 
@@ -865,8 +865,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx1.difference(kidx2, sort=1)
 
         # MultiIndex
-        kidx1 = ks.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
-        kidx2 = ks.MultiIndex.from_tuples([("a", "x", 1), ("b", "z", 2), ("k", "z", 3)])
+        kidx1 = ks.MultiIndex.from_tuples(
+            [("a", "x", 1), ("b", "y", 2), ("c", "z", 3)], names=["hello", "koalas", "world"]
+        )
+        kidx2 = ks.MultiIndex.from_tuples(
+            [("a", "x", 1), ("b", "z", 2), ("k", "z", 3)], names=["hello", "koalas", "world"]
+        )
         pidx1 = kidx1.to_pandas()
         pidx2 = kidx2.to_pandas()
 
