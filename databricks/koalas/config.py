@@ -217,7 +217,7 @@ _options = [
         types=(float, type(None)),
         check_func=(
             lambda v: v is None or 1 >= v >= 0,
-            "'plotting.sample_ratio' should be 1 >= value >= 0.",
+            "'plotting.sample_ratio' should be 1.0 >= value >= 0.0.",
         ),
     ),
 ]  # type: List[Option]
