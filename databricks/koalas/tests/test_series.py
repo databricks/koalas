@@ -1279,10 +1279,44 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_list_eq(kser.axes, pser.axes)
 
     def test_combine_first(self):
+        kser1 = ks.Series({"falcon": 330.0, "eagle": 160.0})
+        kser2 = ks.Series({"falcon": 345.0, "eagle": 200.0, "duck": 30.0})
+        pser1 = kser1.to_pandas()
+        pser2 = kser2.to_pandas()
+
+        self.assert_eq(
+            repr(kser1.combine_first(kser2).sort_index()),
+            repr(pser1.combine_first(pser2).sort_index()),
+        )
+        with self.assertRaisesRegex(
+            ValueError, "`combine_first` only allows `Series` for parameter `other`"
+        ):
+            kser1.combine_first(50)
+
+        # MultiIndex
+        midx1 = pd.MultiIndex(
+            [["lama", "cow", "falcon", "koala"], ["speed", "weight", "length", "power"]],
+            [[0, 3, 1, 1, 1, 2, 2, 2], [0, 2, 0, 3, 2, 0, 1, 3]],
+        )
+        midx2 = pd.MultiIndex(
+            [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
+        )
+        kser1 = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1], index=midx1)
+        kser2 = ks.Series([-45, 200, -1.2, 30, -250, 1.5, 320, 1, -0.3], index=midx2)
+        pser1 = kser1.to_pandas()
+        pser2 = kser2.to_pandas()
+
+        self.assert_eq(
+            repr(kser1.combine_first(kser2).sort_index()),
+            repr(pser1.combine_first(pser2).sort_index()),
+        )
+
+        # Series come from same DataFrame
         kdf = ks.DataFrame(
             {
-                "A": pd.Series({"falcon": 330.0, "eagle": 160.0}),
-                "B": pd.Series({"falcon": 345.0, "eagle": 200.0, "duck": 30.0}),
+                "A": {"falcon": 330.0, "eagle": 160.0},
+                "B": {"falcon": 345.0, "eagle": 200.0, "duck": 30.0},
             }
         )
         kser1 = kdf.A
