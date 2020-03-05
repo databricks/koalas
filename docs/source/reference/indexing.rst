@@ -60,6 +60,7 @@ Modifying and computations
    Index.min
    Index.max
    Index.rename
+   Index.repeat
    Index.unique
    Index.nunique
    Index.value_counts
@@ -183,6 +184,7 @@ MultiIndex Modifying and computations
    MultiIndex.drop
    MultiIndex.copy
    MultiIndex.rename
+   MultiIndex.repeat
    MultiIndex.min
    MultiIndex.max
    MultiIndex.value_counts
