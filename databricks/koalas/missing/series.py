@@ -69,7 +69,6 @@ class _MissingPandasLikeSeries(object):
     reindex_like = unsupported_function("reindex_like")
     rename_axis = unsupported_function("rename_axis")
     reorder_levels = unsupported_function("reorder_levels")
-    repeat = unsupported_function("repeat")
     resample = unsupported_function("resample")
     searchsorted = unsupported_function("searchsorted")
     sem = unsupported_function("sem")

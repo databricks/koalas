@@ -887,3 +887,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         # Exceptions for MultiIndex
         with self.assertRaisesRegex(TypeError, "other must be a MultiIndex or a list of tuples"):
             kidx1.difference(["b", "z", "2"])
+
+    def test_repeat(self):
+        pidx = pd.Index(["a", "b", "c"])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx.repeat(3).sort_values(), pidx.repeat(3).sort_values())
+        self.assert_eq(kidx.repeat(0).sort_values(), pidx.repeat(0).sort_values())
+
+        self.assertRaises(ValueError, lambda: kidx.repeat(-1))
+        self.assertRaises(ValueError, lambda: kidx.repeat("abc"))
+
+        pmidx = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(kmidx.repeat(3).sort_values(), pmidx.repeat(3).sort_values())
+        self.assert_eq(kmidx.repeat(0).sort_values(), pmidx.repeat(0).sort_values())
+
+        self.assertRaises(ValueError, lambda: kmidx.repeat(-1))
+        self.assertRaises(ValueError, lambda: kmidx.repeat("abc"))
