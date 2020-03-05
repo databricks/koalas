@@ -1283,3 +1283,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
         pser = kser.to_pandas()
         self.assert_list_eq(kser.axes, pser.axes)
+
+    def test_combine_first(self):
+        kdf = ks.DataFrame(
+            {
+                "A": pd.Series({"falcon": 330.0, "eagle": 160.0}),
+                "B": pd.Series({"falcon": 345.0, "eagle": 200.0, "duck": 30.0}),
+            }
+        )
+        kser1 = kdf.A
+        kser2 = kdf.B
+        pser1 = kser1.to_pandas()
+        pser2 = kser2.to_pandas()
+
+        self.assert_eq(
+            repr(kser1.combine_first(kser2).sort_index()),
+            repr(pser1.combine_first(pser2).sort_index()),
+        )

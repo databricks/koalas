@@ -35,7 +35,7 @@ from pyspark.sql.types import BooleanType, StructType
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.config import get_option
+from databricks.koalas.config import get_option, option_context
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.exceptions import SparkPandasIndexingError
 from databricks.koalas.frame import DataFrame
@@ -4328,9 +4328,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         Combine Series values, choosing the calling Series's values first.
 
-        .. note:: This API internally performs a join operation which can be pretty expensive
-            in general. if you want to use though, set `compute.ops_on_diff_frames` to True.
-
         Parameters
         ----------
         other : Series
@@ -4352,22 +4349,24 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
-        >>> from databricks.koalas.config import set_option, reset_option
-        >>> set_option("compute.ops_on_diff_frames", True)
         >>> s1 = ks.Series([1, np.nan])
         >>> s2 = ks.Series([3, 4])
         >>> s1.combine_first(s2)
         0    1.0
         1    4.0
         Name: 0, dtype: float64
-
-        >>> reset_option("compute.ops_on_diff_frames")
         """
         if not isinstance(other, ks.Series):
             raise ValueError("`combine_first` only allows `Series` for parameter `other`")
-        this = "__this_0"
-        that = "__that_0"
-        combined = combine_frames(self.to_frame(), other)
+        if self._kdf is other._kdf:
+            this = self.name
+            that = other.name
+            combined = self._kdf
+        else:
+            this = "__this_{}".format(self.name)
+            that = "__that_{}".format(other.name)
+            with option_context("compute.ops_on_diff_frames", True):
+                combined = combine_frames(self.to_frame(), other)
         index_scols = combined._internal.index_scols
         sdf = combined._sdf
         # If `self` has missing value, use value of `other`
