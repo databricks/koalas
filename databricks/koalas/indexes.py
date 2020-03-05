@@ -1415,10 +1415,8 @@ class Index(IndexOpsMixin):
 
         >>> idx1 = ks.Index([2, 1, 3, 4])
         >>> idx2 = ks.Index([3, 4, 5, 6])
-        >>> idx1.difference(idx2)
+        >>> idx1.difference(idx2, sort=True)
         Int64Index([1, 2], dtype='int64')
-        >>> idx1.difference(idx2, sort=False)
-        Int64Index([2, 1], dtype='int64')
 
         MultiIndex
 
