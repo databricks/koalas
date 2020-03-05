@@ -1436,11 +1436,10 @@ class Index(IndexOpsMixin):
                 )
             )
         # Handling MultiIndex
-        if isinstance(self, ks.MultiIndex):
-            if not isinstance(other, ks.MultiIndex):
-                if not all([isinstance(item, tuple) for item in other]):
-                    raise TypeError("other must be a MultiIndex or a list of tuples")
-                other = ks.MultiIndex.from_tuples(other)
+        if isinstance(self, ks.MultiIndex) and not isinstance(other, ks.MultiIndex):
+            if not all([isinstance(item, tuple) for item in other]):
+                raise TypeError("other must be a MultiIndex or a list of tuples")
+            other = ks.MultiIndex.from_tuples(other)
 
         if not isinstance(other, ks.Index):
             other = ks.Index(other)
