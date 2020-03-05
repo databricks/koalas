@@ -26,16 +26,16 @@ import matplotlib
 
 matplotlib.use("agg")
 from matplotlib import pyplot as plt
-import pyspark
 import numpy as np
 import pandas as pd
+import pyspark
+from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
 from databricks.koalas import Series
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
-from databricks.koalas.utils import default_session
 
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
@@ -510,15 +510,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             )
 
     def test_value_counts(self):
-        if (
-            LooseVersion(pyspark.__version__) < LooseVersion("2.4")
-            and default_session().conf.get("spark.sql.execution.arrow.enabled") == "true"
-        ):
-            default_session().conf.set("spark.sql.execution.arrow.enabled", "false")
-            try:
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
                 self._test_value_counts()
-            finally:
-                default_session().conf.set("spark.sql.execution.arrow.enabled", "true")
             self.assertRaises(
                 RuntimeError,
                 lambda: ks.MultiIndex.from_tuples([("x", "a"), ("x", "b")]).value_counts(),
@@ -1300,3 +1294,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             repr(kser1.combine_first(kser2).sort_index()),
             repr(pser1.combine_first(pser2).sort_index()),
         )
+
+    def test_udt(self):
+        sparse_values = {0: 0.1, 1: 1.1}
+        sparse_vector = SparseVector(len(sparse_values), sparse_values)
+        pser = pd.Series([sparse_vector])
+
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+                kser = ks.from_pandas(pser)
+                self.assert_eq(kser, pser)
+        else:
+            kser = ks.from_pandas(pser)
+            self.assert_eq(kser, pser)

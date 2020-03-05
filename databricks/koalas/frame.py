@@ -57,6 +57,7 @@ from pyspark.sql.types import (
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.config import option_context
 from databricks.koalas.utils import (
     validate_arguments_and_invoke_function,
     align_diff_frames,
@@ -5514,14 +5515,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             df = self
             index = [index]
         else:
-            index_names = self._internal.index_names
-            num_index_col = len(self._internal.index_columns)
-            sdf = _InternalFrame.attach_distributed_column(self._sdf, "__DUMMY__")
-            df = DataFrame(self._internal.copy(sdf=sdf))
-            df["__DUMMY__"] = scol_for(sdf, "__DUMMY__")
-            df.set_index(df.columns[-1], append=True, inplace=True)
-            df.reset_index(level=range(num_index_col), inplace=True)
-            index = df._internal.column_labels[:num_index_col]
+            # The index after `reset_index()` will never be used, so use "distributed" index
+            # as a dummy to avoid overhead.
+            with option_context("compute.default_index_type", "distributed"):
+                df = self.reset_index()
+            index = df._internal.column_labels[: len(self._internal.index_columns)]
 
         df = df.pivot_table(index=index, columns=columns, values=values, aggfunc="first")
 
@@ -5531,7 +5529,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             index_columns = df._internal.index_columns
             internal = df._internal.copy(
                 index_map=[
-                    (index_column, name) for index_column, name in zip(index_columns, index_names)
+                    (index_column, name)
+                    for index_column, name in zip(index_columns, self._internal.index_names)
                 ]
             )
             return DataFrame(internal)
@@ -7968,8 +7967,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def unstack(self):
         """
-        Pivot the (necessarily hierarchical) index labels. The output
-        will be a Series.
+        Pivot the (necessarily hierarchical) index labels.
+
+        Returns a DataFrame having a new level of column labels whose inner-most level
+        consists of the pivoted index labels.
+
+        If the index is not a MultiIndex, the output will be a Series.
+
+        .. note:: If the index is a MultiIndex, the output DataFrame could be very wide, and
+            it could cause a serious performance degradation since Spark partitions it row based.
 
         Returns
         -------
@@ -8015,14 +8021,56 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
               1    4
               2    6
         Name: 0, dtype: object
+
+        For MultiIndex case:
+
+        >>> df = ks.DataFrame({"A": ["a", "b", "c"],
+        ...                    "B": [1, 3, 5],
+        ...                    "C": [2, 4, 6]},
+        ...                   columns=["A", "B", "C"])
+        >>> df = df.set_index('A', append=True)
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
+             B  C
+          A
+        0 a  1  2
+        1 b  3  4
+        2 c  5  6
+        >>> df.unstack().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+             B              C
+        A    a    b    c    a    b    c
+        0  1.0  NaN  NaN  2.0  NaN  NaN
+        1  NaN  3.0  NaN  NaN  4.0  NaN
+        2  NaN  NaN  5.0  NaN  NaN  6.0
         """
         from databricks.koalas.series import _col
 
         if len(self._internal.index_columns) > 1:
-            raise NotImplementedError(
-                "Multi-index is not supported. Consider "
-                "using DataFrame.pivot_table or DataFrame.pivot instead."
+            # The index after `reset_index()` will never be used, so use "distributed" index
+            # as a dummy to avoid overhead.
+            with option_context("compute.default_index_type", "distributed"):
+                df = self.reset_index()
+            index = df._internal.column_labels[: len(self._internal.index_columns) - 1]
+            columns = df.columns[len(self._internal.index_columns) - 1]
+            df = df.pivot_table(
+                index=index, columns=columns, values=self._internal.column_labels, aggfunc="first"
             )
+            internal = df._internal.copy(
+                index_map=[
+                    (index_column, name)
+                    for index_column, name in zip(
+                        df._internal.index_columns, self._internal.index_names[:-1]
+                    )
+                ],
+                column_label_names=(
+                    df._internal.column_label_names[:-1]
+                    + [
+                        None
+                        if self._internal.index_names[-1] is None
+                        else df._internal.column_label_names[-1]
+                    ]
+                ),
+            )
+            return DataFrame(internal)
 
         # TODO: Codes here are similar with melt. Should we deduplicate?
         column_labels = self._internal.column_labels

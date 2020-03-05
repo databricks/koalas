@@ -822,3 +822,68 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 expected_increasing_result = not expected_increasing_result
             self.assert_eq(kmidx.is_monotonic_increasing, expected_increasing_result)
             self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+
+    def test_difference(self):
+        # Index
+        kidx1 = ks.Index([1, 2, 3, 4], name="koalas")
+        kidx2 = ks.Index([3, 4, 5, 6], name="koalas")
+        pidx1 = kidx1.to_pandas()
+        pidx2 = kidx2.to_pandas()
+
+        self.assert_eq(kidx1.difference(kidx2).sort_values(), pidx1.difference(pidx2).sort_values())
+        self.assert_eq(
+            kidx1.difference([3, 4, 5, 6]).sort_values(),
+            pidx1.difference([3, 4, 5, 6]).sort_values(),
+        )
+        self.assert_eq(
+            kidx1.difference((3, 4, 5, 6)).sort_values(),
+            pidx1.difference((3, 4, 5, 6)).sort_values(),
+        )
+        self.assert_eq(
+            kidx1.difference({3, 4, 5, 6}).sort_values(),
+            pidx1.difference({3, 4, 5, 6}).sort_values(),
+        )
+        self.assert_eq(
+            kidx1.difference({3: 1, 4: 2, 5: 3, 6: 4}).sort_values(),
+            pidx1.difference({3: 1, 4: 2, 5: 3, 6: 4}).sort_values(),
+        )
+
+        # Exceptions for Index
+        with self.assertRaisesRegex(TypeError, "Input must be Index or array-like"):
+            kidx1.difference("1234")
+        with self.assertRaisesRegex(TypeError, "Input must be Index or array-like"):
+            kidx1.difference(1234)
+        with self.assertRaisesRegex(TypeError, "Input must be Index or array-like"):
+            kidx1.difference(12.34)
+        with self.assertRaisesRegex(TypeError, "Input must be Index or array-like"):
+            kidx1.difference(None)
+        with self.assertRaisesRegex(TypeError, "Input must be Index or array-like"):
+            kidx1.difference(np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "The 'sort' keyword only takes the values of None or True; 1 was passed."
+        ):
+            kidx1.difference(kidx2, sort=1)
+
+        # MultiIndex
+        kidx1 = ks.MultiIndex.from_tuples(
+            [("a", "x", 1), ("b", "y", 2), ("c", "z", 3)], names=["hello", "koalas", "world"]
+        )
+        kidx2 = ks.MultiIndex.from_tuples(
+            [("a", "x", 1), ("b", "z", 2), ("k", "z", 3)], names=["hello", "koalas", "world"]
+        )
+        pidx1 = kidx1.to_pandas()
+        pidx2 = kidx2.to_pandas()
+
+        self.assert_eq(kidx1.difference(kidx2).sort_values(), pidx1.difference(pidx2).sort_values())
+        self.assert_eq(
+            kidx1.difference({("a", "x", 1)}).sort_values(),
+            pidx1.difference({("a", "x", 1)}).sort_values(),
+        )
+        self.assert_eq(
+            kidx1.difference({("a", "x", 1): [1, 2, 3]}).sort_values(),
+            pidx1.difference({("a", "x", 1): [1, 2, 3]}).sort_values(),
+        )
+
+        # Exceptions for MultiIndex
+        with self.assertRaisesRegex(TypeError, "other must be a MultiIndex or a list of tuples"):
+            kidx1.difference(["b", "z", "2"])
