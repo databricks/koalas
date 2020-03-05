@@ -1391,6 +1391,71 @@ class Index(IndexOpsMixin):
                 names = self_names
         return self.rename(name=names, inplace=inplace)
 
+    def difference(self, other, sort=None):
+        """
+        Return a new Index with elements from the index that are not in
+        `other`.
+
+        This is the set difference of two Index objects.
+
+        Parameters
+        ----------
+        other : Index or array-like
+        sort : True or None, default None
+            Whether to sort the resulting index.
+            * True : Attempt to sort the result.
+            * None : Do not sort the result.
+
+        Returns
+        -------
+        difference : Index
+
+        Examples
+        --------
+
+        >>> idx1 = ks.Index([2, 1, 3, 4])
+        >>> idx2 = ks.Index([3, 4, 5, 6])
+        >>> idx1.difference(idx2)
+        Int64Index([1, 2], dtype='int64')
+        >>> idx1.difference(idx2, sort=False)
+        Int64Index([2, 1], dtype='int64')
+
+        MultiIndex
+
+        >>> midx1 = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        >>> midx2 = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'z', 2), ('k', 'z', 3)])
+        >>> midx1.difference(midx2)  # doctest: +SKIP
+        MultiIndex([('b', 'y', 2),
+                    ('c', 'z', 3)],
+                   )
+        """
+        if not is_list_like(other):
+            raise TypeError("Input must be Index or array-like")
+        if not isinstance(sort, (type(None), type(True))):
+            raise ValueError(
+                "The 'sort' keyword only takes the values of None or True; {} was passed.".format(
+                    sort
+                )
+            )
+        # Handling MultiIndex
+        if isinstance(self, ks.MultiIndex):
+            if not isinstance(other, ks.MultiIndex):
+                if not all([isinstance(item, tuple) for item in other]):
+                    raise TypeError("other must be a MultiIndex or a list of tuples")
+                other = ks.MultiIndex.from_tuples(other)
+
+        if not isinstance(other, ks.Index):
+            other = ks.Index(other)
+
+        sdf_self = self._internal.sdf
+        sdf_other = other._internal.sdf
+        idx_self = self._internal.index_scols
+        idx_other = other._internal.index_scols
+        sdf_diff = sdf_self.select(idx_self).subtract(sdf_other.select(idx_other))
+        internal = _InternalFrame(sdf=sdf_diff, index_map=self._internal.index_map)
+        result = DataFrame(internal).index
+        return result if sort is None else result.sort_values()
+
     @property
     def is_all_dates(self):
         """
