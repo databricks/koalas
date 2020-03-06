@@ -8105,8 +8105,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         column_labels = OrderedDict(sorted(column_labels.items(), key=lambda x: x[0]))
 
+        if self._internal.column_label_names is None:
+            column_label_names = None
+            index_name = None
+        else:
+            column_label_names = self._internal.column_label_names[:-1]
+            if self._internal.column_label_names[-1] is None:
+                index_name = None
+            else:
+                index_name = (self._internal.column_label_names[-1],)
+
         index_column = SPARK_INDEX_NAME_FORMAT(len(self._internal.index_map))
-        index_map = self._internal.index_map + [(index_column, None)]
+        index_map = self._internal.index_map + [(index_column, index_name)]
         data_columns = [name_like_string(label) for label in column_labels]
 
         structs = [
@@ -8153,6 +8163,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             index_map=index_map,
             column_labels=list(column_labels),
             column_scols=[scol_for(sdf, col) for col in data_columns],
+            column_label_names=column_label_names,
         )
         kdf = DataFrame(internal)
 
