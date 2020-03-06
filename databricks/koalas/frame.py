@@ -38,6 +38,7 @@ else:
     from pandas.core.dtypes.common import _get_dtype_from_object as infer_dtype_from_object
 from pandas.core.accessor import CachedAccessor
 from pandas.core.dtypes.inference import is_sequence
+import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf
@@ -50,6 +51,7 @@ from pyspark.sql.types import (
     IntegerType,
     LongType,
     NumericType,
+    NullType,
     ShortType,
     StructType,
     StructField,
@@ -8073,46 +8075,71 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.series import _col
 
+        if len(self._internal.column_labels) == 0:
+            return DataFrame(self._internal.with_filter(F.lit(False)))
+
         column_labels = {}
+        spark_types = {}  # FIXME: for Spark 2.3
         index_values = []
         returns_series = False
         for label in self._internal.column_labels:
-            scol = self._internal.scol_for(label)
             new_label = label[:-1]
             if len(new_label) == 0:
                 new_label = ("0",)
                 returns_series = True
             value = label[-1]
+
+            scol = self._internal.scol_for(label)
             if new_label not in column_labels:
                 column_labels[new_label] = {value: scol}
             else:
                 column_labels[new_label][value] = scol
+
+            # FIXME: for Spark 2.3
+            spark_type = self._internal.spark_type_for(label)
+            if new_label not in spark_types and not isinstance(spark_type, NullType):
+                spark_types[new_label] = spark_type
+
             if value not in index_values:
                 index_values.append(value)
+
         column_labels = OrderedDict(sorted(column_labels.items(), key=lambda x: x[0]))
 
         index_column = SPARK_INDEX_NAME_FORMAT(len(self._internal.index_map))
         index_map = self._internal.index_map + [(index_column, None)]
         data_columns = [name_like_string(label) for label in column_labels]
 
-        pairs = F.explode(
-            F.array(
-                [
-                    F.struct(
-                        [F.lit(value).alias(index_column)]
-                        + [
-                            (
-                                column_labels[new_label][value]
-                                if value in column_labels[new_label]
-                                else F.lit(None)
-                            ).alias(name)
-                            for new_label, name in zip(column_labels, data_columns)
-                        ]
-                    )
-                    for value in index_values
+        structs = [
+            F.struct(
+                [F.lit(value).alias(index_column)]
+                + [
+                    (
+                        column_labels[label][value]
+                        if value in column_labels[label]
+                        else F.lit(None).cast(spark_types[label])  # FIXME: cast for Spark 2.3
+                    ).alias(name)
+                    for label, name in zip(column_labels, data_columns)
                 ]
-            )
-        )
+            ).alias(value)
+            for value in index_values
+        ]
+
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+            # FIXME: for Spark 2.3
+            fields = [list(field.dataType) for field in self._sdf.select(structs).schema]
+
+            def nullables(left, right):
+                return [
+                    StructField(
+                        name=l.name, dataType=l.dataType, nullable=(l.nullable or r.nullable),
+                    )
+                    for l, r in zip(left, right)
+                ]
+
+            struct_type = StructType(reduce(nullables, fields))
+            structs = [struct.cast(struct_type) for struct in structs]
+
+        pairs = F.explode(F.array(structs))
 
         sdf = self._sdf.withColumn("pairs", pairs)
         sdf = sdf.select(
