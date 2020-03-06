@@ -360,6 +360,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.head(2), pdf.head(2))
         self.assert_eq(kdf.head(3), pdf.head(3))
+        self.assert_eq(kdf.head(0), pdf.head(0))
+        self.assert_eq(kdf.head(-3), pdf.head(-3))
+        self.assert_eq(kdf.head(-10), pdf.head(-10))
 
     def test_attributes(self):
         kdf = self.kdf
