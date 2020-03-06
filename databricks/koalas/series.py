@@ -4375,6 +4375,60 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         internal = _InternalFrame(sdf=sdf, index_map=self._internal.index_map)
         return _col(ks.DataFrame(internal))
 
+    def repeat(self, repeats: int) -> "Series":
+        """
+        Repeat elements of a Series.
+
+        Returns a new Series where each element of the current Series
+        is repeated consecutively a given number of times.
+
+        Parameters
+        ----------
+        repeats : int
+            The number of repetitions for each element. This should be a
+            non-negative integer. Repeating 0 times will return an empty
+            Series.
+
+        Returns
+        -------
+        Series
+            Newly created Series with repeated elements.
+
+        See Also
+        --------
+        Index.repeat : Equivalent function for Index.
+        MultiIndex.repeat : Equivalent function for MultiIndex.
+
+        Examples
+        --------
+        >>> s = ks.Series(['a', 'b', 'c'])
+        >>> s
+        0    a
+        1    b
+        2    c
+        Name: 0, dtype: object
+        >>> s.repeat(2)
+        0    a
+        1    b
+        2    c
+        0    a
+        1    b
+        2    c
+        Name: 0, dtype: object
+        >>> ks.Series([1, 2, 3]).repeat(0)
+        Series([], Name: 0, dtype: int64)
+        """
+        if not isinstance(repeats, int):
+            raise ValueError("`repeats` argument must be integer, but got {}".format(type(repeats)))
+        elif repeats < 0:
+            raise ValueError("negative dimensions are not allowed")
+
+        kdf = self.to_frame()
+        if repeats == 0:
+            return _col(DataFrame(kdf._internal.with_filter(F.lit(False))))
+        else:
+            return _col(ks.concat([kdf] * repeats))
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 

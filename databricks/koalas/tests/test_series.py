@@ -1341,3 +1341,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         else:
             kser = ks.from_pandas(pser)
             self.assert_eq(kser, pser)
+
+    def test_repeat(self):
+        pser = pd.Series(["a", "b", "c"], name="0", index=np.random.rand(3))
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.repeat(3).sort_index(), pser.repeat(3).sort_index())
+        self.assert_eq(kser.repeat(0).sort_index(), pser.repeat(0).sort_index())
+
+        self.assertRaises(ValueError, lambda: kser.repeat(-1))
+        self.assertRaises(ValueError, lambda: kser.repeat("abc"))

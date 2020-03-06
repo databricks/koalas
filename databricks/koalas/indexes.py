@@ -1494,6 +1494,53 @@ class Index(IndexOpsMixin):
         """
         return isinstance(self.spark_type, TimestampType)
 
+    def repeat(self, repeats: int) -> "Index":
+        """
+        Repeat elements of a Index.
+
+        Returns a new Index where each element of the current Index
+        is repeated consecutively a given number of times.
+
+        Parameters
+        ----------
+        repeats : int
+            The number of repetitions for each element. This should be a
+            non-negative integer. Repeating 0 times will return an empty
+            Index.
+
+        Returns
+        -------
+        repeated_index : Index
+            Newly created Index with repeated elements.
+
+        See Also
+        --------
+        Series.repeat : Equivalent function for Series.
+        MultiIndex.repeat : Equivalent function for MultiIndex.
+
+        Examples
+        --------
+        >>> idx = ks.Index(['a', 'b', 'c'])
+        >>> idx
+        Index(['a', 'b', 'c'], dtype='object')
+        >>> idx.repeat(2)
+        Index(['a', 'b', 'c', 'a', 'b', 'c'], dtype='object')
+        """
+        if not isinstance(repeats, int):
+            raise ValueError("`repeats` argument must be integer, but got {}".format(type(repeats)))
+        elif repeats < 0:
+            raise ValueError("negative dimensions are not allowed")
+
+        sdf = self._internal.sdf.select(self._internal.scol)
+        internal = _InternalFrame(
+            sdf=sdf, index_map=[(sdf.columns[0], self._internal.index_names[0])]
+        )
+        kdf = DataFrame(internal)  # type: DataFrame
+        if repeats == 0:
+            return DataFrame(kdf._internal.with_filter(F.lit(False))).index
+        else:
+            return ks.concat([kdf] * repeats).index
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)
@@ -2147,6 +2194,64 @@ class MultiIndex(Index):
         False
         """
         return False
+
+    def repeat(self, repeats: int) -> "MultiIndex":
+        """
+        Repeat elements of a MultiIndex.
+
+        Returns a new MultiIndex where each element of the current MultiIndex
+        is repeated consecutively a given number of times.
+
+        Parameters
+        ----------
+        repeats : int
+            The number of repetitions for each element. This should be a
+            non-negative integer. Repeating 0 times will return an empty
+            Index.
+
+        Returns
+        -------
+        repeated_index : MultiIndex
+            Newly created MultiIndex with repeated elements.
+
+        See Also
+        --------
+        Series.repeat : Equivalent function for Series.
+        Index.repeat : Equivalent function for Index.
+
+        Examples
+        --------
+        >>> midx = ks.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c')],
+                   )
+        >>> midx.repeat(2)  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c'),
+                    ('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c')],
+                   )
+        >>> midx.repeat(0)  # doctest: +SKIP
+        MultiIndex([], )
+        """
+        if not isinstance(repeats, int):
+            raise ValueError("`repeats` argument must be integer, but got {}".format(type(repeats)))
+        elif repeats < 0:
+            raise ValueError("negative dimensions are not allowed")
+
+        sdf = self._internal.sdf.select(self._internal.index_scols)
+        internal = _InternalFrame(
+            sdf=sdf, index_map=list(zip(sdf.columns, self._internal.index_names))
+        )
+        kdf = DataFrame(internal)  # type: DataFrame
+        if repeats == 0:
+            return DataFrame(kdf._internal.with_filter(F.lit(False))).index
+        else:
+            return ks.concat([kdf] * repeats).index
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):

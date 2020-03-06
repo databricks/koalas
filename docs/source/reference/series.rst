@@ -182,6 +182,7 @@ Reshaping, sorting, transposing
 
    Series.sort_index
    Series.sort_values
+   Series.repeat
 
 Combining / joining / merging
 -----------------------------
