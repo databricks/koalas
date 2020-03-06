@@ -5074,7 +5074,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return self._apply_series_op(op)
 
-    def head(self, n=5):
+    def head(self, n: int = 5) -> "DataFrame":
         """
         Return the first `n` rows.
 
@@ -5126,11 +5126,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1        bee
         2     falcon
         """
-        if get_option("compute.ordered_head"):
-            sdf = self._sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
+        if n < 0:
+            n = len(self) + n
+        if n <= 0:
+            return DataFrame(self._internal.with_filter(F.lit(False)))
         else:
-            sdf = self._sdf
-        return DataFrame(self._internal.with_new_sdf(sdf.limit(n)))
+            if get_option("compute.ordered_head"):
+                sdf = self._sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
+            else:
+                sdf = self._sdf
+            return DataFrame(self._internal.with_new_sdf(sdf.limit(n)))
 
     def pivot_table(self, values=None, index=None, columns=None, aggfunc="mean", fill_value=None):
         """

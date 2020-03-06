@@ -1844,7 +1844,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'index'")
 
-    def head(self, n=5):
+    def head(self, n: int = 5) -> "Series":
         """
         Return the first n rows.
 
