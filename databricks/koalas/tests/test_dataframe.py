@@ -1852,6 +1852,48 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ktable.index, ptable.index)
         self.assert_eq(repr(ktable.index), repr(ptable.index))
 
+    def test_stack(self):
+        pdf_single_level_cols = pd.DataFrame(
+            [[0, 1], [2, 3]], index=["cat", "dog"], columns=["weight", "height"]
+        )
+        kdf_single_level_cols = ks.from_pandas(pdf_single_level_cols)
+
+        self.assert_eq(
+            kdf_single_level_cols.stack().sort_index(), pdf_single_level_cols.stack().sort_index()
+        )
+
+        multicol1 = pd.MultiIndex.from_tuples([("weight", "kg"), ("weight", "pounds")])
+        pdf_multi_level_cols1 = pd.DataFrame(
+            [[1, 2], [2, 4]], index=["cat", "dog"], columns=multicol1
+        )
+        kdf_multi_level_cols1 = ks.from_pandas(pdf_multi_level_cols1)
+
+        self.assert_eq(
+            kdf_multi_level_cols1.stack().sort_index(), pdf_multi_level_cols1.stack().sort_index()
+        )
+
+        multicol2 = pd.MultiIndex.from_tuples([("weight", "kg"), ("height", "m")])
+        pdf_multi_level_cols2 = pd.DataFrame(
+            [[1.0, 2.0], [3.0, 4.0]], index=["cat", "dog"], columns=multicol2
+        )
+        kdf_multi_level_cols2 = ks.from_pandas(pdf_multi_level_cols2)
+
+        self.assert_eq(
+            kdf_multi_level_cols2.stack().sort_index(), pdf_multi_level_cols2.stack().sort_index()
+        )
+
+        pdf = pd.DataFrame(
+            {
+                ("y", "c"): [True, True],
+                ("x", "b"): [False, False],
+                ("x", "c"): [True, False],
+                ("y", "a"): [False, True],
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.stack().sort_index(), pdf.stack().sort_index(), almost=True)
+
     def test_unstack(self):
         pdf = pd.DataFrame(
             np.random.randn(3, 3),
