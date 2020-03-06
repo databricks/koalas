@@ -1893,7 +1893,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.stack().sort_index(), pdf.stack().sort_index(), almost=True)
-        self.assert_eq(kdf[[]].stack().sort_index(), pdf[[]].stack().sort_index())
+        self.assert_eq(kdf[[]].stack().sort_index(), pdf[[]].stack().sort_index(), almost=True)
 
     def test_unstack(self):
         pdf = pd.DataFrame(
