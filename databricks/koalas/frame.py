@@ -8079,9 +8079,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(self._internal.with_filter(F.lit(False)))
 
         column_labels = {}
-        spark_types = {}  # FIXME: for Spark 2.3
         index_values = []
         returns_series = False
+        spark_types = {}  # FIXME: for Spark 2.3
         for label in self._internal.column_labels:
             new_label = label[:-1]
             if len(new_label) == 0:
@@ -8095,13 +8095,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 column_labels[new_label][value] = scol
 
+            if value not in index_values:
+                index_values.append(value)
+
             # FIXME: for Spark 2.3
             spark_type = self._internal.spark_type_for(label)
             if new_label not in spark_types and not isinstance(spark_type, NullType):
                 spark_types[new_label] = spark_type
-
-            if value not in index_values:
-                index_values.append(value)
 
         column_labels = OrderedDict(sorted(column_labels.items(), key=lambda x: x[0]))
 
