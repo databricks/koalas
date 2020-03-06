@@ -17,8 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union, List
-from typing import Optional, Union, List, Tuple
+from typing import Optional, Union, List, Tuple, Dict
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
@@ -48,7 +47,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.utils import default_session, name_like_string, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.internal import _InternalFrame, IndexMap
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.series import Series, _col
 
@@ -327,7 +326,7 @@ def read_csv(
         sdf = default_session().createDataFrame([], schema=StructType())
 
     index_map = _get_index_map(sdf, index_col)
-    kdf = DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    kdf = DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
     if dtype is not None:
         if isinstance(dtype, dict):
@@ -478,7 +477,7 @@ def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> 
     sdf = default_session().read.table(name)
     index_map = _get_index_map(sdf, index_col)
 
-    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 def read_spark_io(
@@ -540,7 +539,7 @@ def read_spark_io(
     sdf = default_session().read.load(path=path, format=format, schema=schema, **options)
     index_map = _get_index_map(sdf, index_col)
 
-    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 def read_parquet(path, columns=None, index_col=None) -> DataFrame:
@@ -589,7 +588,7 @@ def read_parquet(path, columns=None, index_col=None) -> DataFrame:
 
     index_map = _get_index_map(sdf, index_col)
 
-    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 def read_clipboard(sep=r"\s+", **kwargs):
@@ -1055,7 +1054,7 @@ def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, *
     reader.options(**options)
     sdf = reader.format("jdbc").load()
     index_map = _get_index_map(sdf, index_col)
-    kdf = DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    kdf = DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
     if columns is not None:
         if isinstance(columns, str):
             columns = [columns]
@@ -1106,7 +1105,7 @@ def read_sql_query(sql, con, index_col=None, **options):
     reader.options(**options)
     sdf = reader.format("jdbc").load()
     index_map = _get_index_map(sdf, index_col)
-    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 # TODO: add `coerce_float`, `params`, and 'parse_dates' parameters
@@ -1504,7 +1503,7 @@ def get_dummies(
         )
 
     all_values = _reduce_spark_multi(
-        kdf._sdf, [F.collect_set(kdf._internal.scol_for(label)) for label in column_labels]
+        kdf._sdf, [F.collect_set(kdf._internal.spark_column_for(label)) for label in column_labels]
     )
     for i, label in enumerate(column_labels):
         values = sorted(all_values[i])
@@ -1747,14 +1746,14 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                 for label in columns_to_add:
                     sdf = sdf.withColumn(name_like_string(label), F.lit(None))
 
-                data_columns = kdf._internal.data_columns + [
+                data_columns = kdf._internal.data_spark_column_names + [
                     name_like_string(label) for label in columns_to_add
                 ]
                 kdf = DataFrame(
                     kdf._internal.copy(
-                        sdf=sdf,
+                        spark_frame=sdf,
                         column_labels=(kdf._internal.column_labels + columns_to_add),
-                        column_scols=[scol_for(sdf, col) for col in data_columns],
+                        data_spark_columns=[scol_for(sdf, col) for col in data_columns],
                     )
                 )
 
@@ -1763,19 +1762,22 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
             raise ValueError("Only can inner (intersect) or outer (union) join the other axis.")
 
     if ignore_index:
-        sdfs = [kdf._sdf.select(kdf._internal.column_scols) for kdf in kdfs]
+        sdfs = [kdf._sdf.select(kdf._internal.data_spark_columns) for kdf in kdfs]
     else:
         sdfs = [
-            kdf._sdf.select(kdf._internal.index_scols + kdf._internal.column_scols) for kdf in kdfs
+            kdf._sdf.select(kdf._internal.index_spark_columns + kdf._internal.data_spark_columns)
+            for kdf in kdfs
         ]
     concatenated = reduce(lambda x, y: x.union(y), sdfs)
 
     index_map = None if ignore_index else kdfs[0]._internal.index_map
     result_kdf = DataFrame(
         kdfs[0]._internal.copy(
-            sdf=concatenated,
+            spark_frame=concatenated,
             index_map=index_map,
-            column_scols=[scol_for(concatenated, col) for col in kdfs[0]._internal.data_columns],
+            data_spark_columns=[
+                scol_for(concatenated, col) for col in kdfs[0]._internal.data_spark_column_names
+            ],
         )
     )
 
@@ -2145,7 +2147,7 @@ def to_numeric(arg):
     1.0
     """
     if isinstance(arg, Series):
-        return arg._with_new_scol(arg._internal.scol.cast("float"))
+        return arg._with_new_scol(arg._internal.spark_column.cast("float"))
     else:
         return pd.to_numeric(arg)
 
@@ -2192,9 +2194,9 @@ def _get_index_map(sdf: spark.DataFrame, index_col: Optional[Union[str, List[str
         for col in index_col:
             if col not in sdf_columns:
                 raise KeyError(col)
-        index_map = [(col, (col,)) for col in index_col]  # type: Optional[List[IndexMap]]
+        index_map = OrderedDict((col, (col,)) for col in index_col)
     else:
-        index_map = None
+        index_map = None  # type: ignore
 
     return index_map
 

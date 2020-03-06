@@ -82,7 +82,9 @@ def to_numeric_df(kdf: "ks.DataFrame") -> Tuple[pyspark.sql.DataFrame, List[Tupl
     numeric_column_labels = [
         label for label in kdf._internal.column_labels if kdf[label].dtype in accepted_types
     ]
-    numeric_df = kdf._sdf.select(*[kdf._internal.scol_for(idx) for idx in numeric_column_labels])
+    numeric_df = kdf._sdf.select(
+        *[kdf._internal.spark_column_for(idx) for idx in numeric_column_labels]
+    )
     va = VectorAssembler(inputCols=numeric_df.columns, outputCol=CORRELATION_OUTPUT_COLUMN)
     v = va.transform(numeric_df).select(CORRELATION_OUTPUT_COLUMN)
     return v, numeric_column_labels
