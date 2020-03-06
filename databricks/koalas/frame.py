@@ -8100,7 +8100,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             # FIXME: for Spark 2.3
             spark_type = self._internal.spark_type_for(label)
-            if new_label not in spark_types and not isinstance(spark_type, NullType):
+            if new_label not in spark_types:
                 spark_types[new_label] = spark_type
 
         column_labels = OrderedDict(sorted(column_labels.items(), key=lambda x: x[0]))
