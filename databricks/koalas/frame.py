@@ -8017,11 +8017,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
              weight  height
         cat       0       1
         dog       2       3
-        >>> df_single_level_cols.stack()
-        cat  weight    0
-             height    1
-        dog  weight    2
-             height    3
+        >>> df_single_level_cols.stack().sort_index()
+        cat  height    1
+             weight    0
+        dog  height    3
+             weight    2
         Name: 0, dtype: int64
 
         **Multi level columns: simple case**
@@ -8039,7 +8039,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 kg pounds
         cat      1      2
         dog      2      4
-        >>> df_multi_level_cols1.stack()
+        >>> df_multi_level_cols1.stack().sort_index()
                     weight
         cat kg           1
             pounds       2
@@ -8064,7 +8064,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 kg      m
         cat    1.0    2.0
         dog    3.0    4.0
-        >>> df_multi_level_cols2.stack()  # doctest: +SKIP
+        >>> df_multi_level_cols2.stack().sort_index()  # doctest: +SKIP
                 height  weight
         cat kg     NaN     1.0
             m      2.0     NaN
@@ -8077,7 +8077,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(self._internal.with_filter(F.lit(False)))
 
         column_labels = defaultdict(dict)
-        index_values = []
+        index_values = set()
         should_returns_series = False
         for label in self._internal.column_labels:
             new_label = label[:-1]
@@ -8089,8 +8089,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             scol = self._internal.scol_for(label)
             column_labels[new_label][value] = scol
 
-            if value not in index_values:
-                index_values.append(value)
+            index_values.add(value)
 
         column_labels = OrderedDict(sorted(column_labels.items(), key=lambda x: x[0]))
 
