@@ -18,6 +18,7 @@ from datetime import datetime
 from distutils.version import LooseVersion
 import inspect
 import sys
+import unittest
 
 import numpy as np
 import pandas as pd
@@ -1852,6 +1853,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ktable.index, ptable.index)
         self.assert_eq(repr(ktable.index), repr(ptable.index))
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
+        "stack won't work property with PySpark<2.4",
+    )
     def test_stack(self):
         pdf_single_level_cols = pd.DataFrame(
             [[0, 1], [2, 3]], index=["cat", "dog"], columns=["weight", "height"]

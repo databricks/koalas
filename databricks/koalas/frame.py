@@ -17,7 +17,7 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from distutils.version import LooseVersion
 import re
 import warnings
@@ -38,7 +38,6 @@ else:
     from pandas.core.dtypes.common import _get_dtype_from_object as infer_dtype_from_object
 from pandas.core.accessor import CachedAccessor
 from pandas.core.dtypes.inference import is_sequence
-import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf
@@ -51,7 +50,6 @@ from pyspark.sql.types import (
     IntegerType,
     LongType,
     NumericType,
-    NullType,
     ShortType,
     StructType,
     StructField,
@@ -8066,7 +8064,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 kg      m
         cat    1.0    2.0
         dog    3.0    4.0
-        >>> df_multi_level_cols2.stack()
+        >>> df_multi_level_cols2.stack()  # doctest: +SKIP
                 height  weight
         cat kg     NaN     1.0
             m      2.0     NaN
@@ -8078,30 +8076,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if len(self._internal.column_labels) == 0:
             return DataFrame(self._internal.with_filter(F.lit(False)))
 
-        column_labels = {}
+        column_labels = defaultdict(dict)
         index_values = []
-        returns_series = False
-        spark_types = {}  # FIXME: for Spark 2.3
+        should_returns_series = False
         for label in self._internal.column_labels:
             new_label = label[:-1]
             if len(new_label) == 0:
                 new_label = ("0",)
-                returns_series = True
+                should_returns_series = True
             value = label[-1]
 
             scol = self._internal.scol_for(label)
-            if new_label not in column_labels:
-                column_labels[new_label] = {value: scol}
-            else:
-                column_labels[new_label][value] = scol
+            column_labels[new_label][value] = scol
 
             if value not in index_values:
                 index_values.append(value)
-
-            # FIXME: for Spark 2.3
-            spark_type = self._internal.spark_type_for(label)
-            if new_label not in spark_types:
-                spark_types[new_label] = spark_type
 
         column_labels = OrderedDict(sorted(column_labels.items(), key=lambda x: x[0]))
 
@@ -8126,28 +8115,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     (
                         column_labels[label][value]
                         if value in column_labels[label]
-                        else F.lit(None).cast(spark_types[label])  # FIXME: cast for Spark 2.3
+                        else F.lit(None)
                     ).alias(name)
                     for label, name in zip(column_labels, data_columns)
                 ]
             ).alias(value)
             for value in index_values
         ]
-
-        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
-            # FIXME: for Spark 2.3
-            fields = [list(field.dataType) for field in self._sdf.select(structs).schema]
-
-            def nullables(left, right):
-                return [
-                    StructField(
-                        name=l.name, dataType=l.dataType, nullable=(l.nullable or r.nullable),
-                    )
-                    for l, r in zip(left, right)
-                ]
-
-            struct_type = StructType(reduce(nullables, fields))
-            structs = [struct.cast(struct_type) for struct in structs]
 
         pairs = F.explode(F.array(structs))
 
@@ -8167,7 +8141,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
         kdf = DataFrame(internal)
 
-        if returns_series:
+        if should_returns_series:
             return _col(kdf)
         else:
             return kdf
