@@ -18,6 +18,7 @@ from datetime import datetime
 from distutils.version import LooseVersion
 import inspect
 import sys
+import unittest
 
 import numpy as np
 import pandas as pd
@@ -1854,6 +1855,55 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ktable, ptable)
         self.assert_eq(ktable.index, ptable.index)
         self.assert_eq(repr(ktable.index), repr(ptable.index))
+
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
+        "stack won't work property with PySpark<2.4",
+    )
+    def test_stack(self):
+        pdf_single_level_cols = pd.DataFrame(
+            [[0, 1], [2, 3]], index=["cat", "dog"], columns=["weight", "height"]
+        )
+        kdf_single_level_cols = ks.from_pandas(pdf_single_level_cols)
+
+        self.assert_eq(
+            kdf_single_level_cols.stack().sort_index(), pdf_single_level_cols.stack().sort_index()
+        )
+
+        multicol1 = pd.MultiIndex.from_tuples(
+            [("weight", "kg"), ("weight", "pounds")], names=["x", "y"]
+        )
+        pdf_multi_level_cols1 = pd.DataFrame(
+            [[1, 2], [2, 4]], index=["cat", "dog"], columns=multicol1
+        )
+        kdf_multi_level_cols1 = ks.from_pandas(pdf_multi_level_cols1)
+
+        self.assert_eq(
+            kdf_multi_level_cols1.stack().sort_index(), pdf_multi_level_cols1.stack().sort_index()
+        )
+
+        multicol2 = pd.MultiIndex.from_tuples([("weight", "kg"), ("height", "m")])
+        pdf_multi_level_cols2 = pd.DataFrame(
+            [[1.0, 2.0], [3.0, 4.0]], index=["cat", "dog"], columns=multicol2
+        )
+        kdf_multi_level_cols2 = ks.from_pandas(pdf_multi_level_cols2)
+
+        self.assert_eq(
+            kdf_multi_level_cols2.stack().sort_index(), pdf_multi_level_cols2.stack().sort_index()
+        )
+
+        pdf = pd.DataFrame(
+            {
+                ("y", "c"): [True, True],
+                ("x", "b"): [False, False],
+                ("x", "c"): [True, False],
+                ("y", "a"): [False, True],
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.stack().sort_index(), pdf.stack().sort_index(), almost=True)
+        self.assert_eq(kdf[[]].stack().sort_index(), pdf[[]].stack().sort_index(), almost=True)
 
     def test_unstack(self):
         pdf = pd.DataFrame(

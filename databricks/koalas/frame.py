@@ -17,7 +17,7 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from distutils.version import LooseVersion
 import re
 import warnings
@@ -7970,6 +7970,186 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(exploded_df)
 
+    def stack(self):
+        """
+        Stack the prescribed level(s) from columns to index.
+
+        Return a reshaped DataFrame or Series having a multi-level
+        index with one or more new inner-most levels compared to the current
+        DataFrame. The new inner-most levels are created by pivoting the
+        columns of the current dataframe:
+
+          - if the columns have a single level, the output is a Series;
+          - if the columns have multiple levels, the new index
+            level(s) is (are) taken from the prescribed level(s) and
+            the output is a DataFrame.
+
+        The new index levels are sorted.
+
+        Returns
+        -------
+        DataFrame or Series
+            Stacked dataframe or series.
+
+        See Also
+        --------
+        DataFrame.unstack : Unstack prescribed level(s) from index axis
+            onto column axis.
+        DataFrame.pivot : Reshape dataframe from long format to wide
+            format.
+        DataFrame.pivot_table : Create a spreadsheet-style pivot table
+            as a DataFrame.
+
+        Notes
+        -----
+        The function is named by analogy with a collection of books
+        being reorganized from being side by side on a horizontal
+        position (the columns of the dataframe) to being stacked
+        vertically on top of each other (in the index of the
+        dataframe).
+
+        Examples
+        --------
+        **Single level columns**
+
+        >>> df_single_level_cols = ks.DataFrame([[0, 1], [2, 3]],
+        ...                                     index=['cat', 'dog'],
+        ...                                     columns=['weight', 'height'])
+
+        Stacking a dataframe with a single level column axis returns a Series:
+
+        >>> df_single_level_cols
+             weight  height
+        cat       0       1
+        dog       2       3
+        >>> df_single_level_cols.stack().sort_index()
+        cat  height    1
+             weight    0
+        dog  height    3
+             weight    2
+        Name: 0, dtype: int64
+
+        **Multi level columns: simple case**
+
+        >>> multicol1 = pd.MultiIndex.from_tuples([('weight', 'kg'),
+        ...                                        ('weight', 'pounds')])
+        >>> df_multi_level_cols1 = ks.DataFrame([[1, 2], [2, 4]],
+        ...                                     index=['cat', 'dog'],
+        ...                                     columns=multicol1)
+
+        Stacking a dataframe with a multi-level column axis:
+
+        >>> df_multi_level_cols1  # doctest: +NORMALIZE_WHITESPACE
+            weight
+                kg pounds
+        cat      1      2
+        dog      2      4
+        >>> df_multi_level_cols1.stack().sort_index()
+                    weight
+        cat kg           1
+            pounds       2
+        dog kg           2
+            pounds       4
+
+        **Missing values**
+
+        >>> multicol2 = pd.MultiIndex.from_tuples([('weight', 'kg'),
+        ...                                        ('height', 'm')])
+        >>> df_multi_level_cols2 = ks.DataFrame([[1.0, 2.0], [3.0, 4.0]],
+        ...                                     index=['cat', 'dog'],
+        ...                                     columns=multicol2)
+
+        It is common to have missing values when stacking a dataframe
+        with multi-level columns, as the stacked dataframe typically
+        has more values than the original dataframe. Missing values
+        are filled with NaNs:
+
+        >>> df_multi_level_cols2
+            weight height
+                kg      m
+        cat    1.0    2.0
+        dog    3.0    4.0
+        >>> df_multi_level_cols2.stack().sort_index()  # doctest: +SKIP
+                height  weight
+        cat kg     NaN     1.0
+            m      2.0     NaN
+        dog kg     NaN     3.0
+            m      4.0     NaN
+        """
+        from databricks.koalas.series import _col
+
+        if len(self._internal.column_labels) == 0:
+            return DataFrame(self._internal.with_filter(F.lit(False)))
+
+        column_labels = defaultdict(dict)
+        index_values = set()
+        should_returns_series = False
+        for label in self._internal.column_labels:
+            new_label = label[:-1]
+            if len(new_label) == 0:
+                new_label = ("0",)
+                should_returns_series = True
+            value = label[-1]
+
+            scol = self._internal.scol_for(label)
+            column_labels[new_label][value] = scol
+
+            index_values.add(value)
+
+        column_labels = OrderedDict(sorted(column_labels.items(), key=lambda x: x[0]))
+
+        if self._internal.column_label_names is None:
+            column_label_names = None
+            index_name = None
+        else:
+            column_label_names = self._internal.column_label_names[:-1]
+            if self._internal.column_label_names[-1] is None:
+                index_name = None
+            else:
+                index_name = (self._internal.column_label_names[-1],)
+
+        index_column = SPARK_INDEX_NAME_FORMAT(len(self._internal.index_map))
+        index_map = self._internal.index_map + [(index_column, index_name)]
+        data_columns = [name_like_string(label) for label in column_labels]
+
+        structs = [
+            F.struct(
+                [F.lit(value).alias(index_column)]
+                + [
+                    (
+                        column_labels[label][value]
+                        if value in column_labels[label]
+                        else F.lit(None)
+                    ).alias(name)
+                    for label, name in zip(column_labels, data_columns)
+                ]
+            ).alias(value)
+            for value in index_values
+        ]
+
+        pairs = F.explode(F.array(structs))
+
+        sdf = self._sdf.withColumn("pairs", pairs)
+        sdf = sdf.select(
+            self._internal.index_scols
+            + [sdf["pairs"][index_column].alias(index_column)]
+            + [sdf["pairs"][name].alias(name) for name in data_columns]
+        )
+
+        internal = _InternalFrame(
+            sdf=sdf,
+            index_map=index_map,
+            column_labels=list(column_labels),
+            column_scols=[scol_for(sdf, col) for col in data_columns],
+            column_label_names=column_label_names,
+        )
+        kdf = DataFrame(internal)
+
+        if should_returns_series:
+            return _col(kdf)
+        else:
+            return kdf
+
     def unstack(self):
         """
         Pivot the (necessarily hierarchical) index labels.
@@ -7989,6 +8169,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         DataFrame.pivot : Pivot a table based on column values.
+        DataFrame.stack : Pivot a level of the column labels (inverse operation from unstack).
 
         Examples
         --------
