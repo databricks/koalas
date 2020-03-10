@@ -9291,7 +9291,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             "display.max_info_columns", sys.maxsize, "display.max_info_rows", sys.maxsize
         ):
             try:
-                self._data = self  # hack to use pandas' info as is.
+                # hack to use pandas' info as is.
+                self._data = self
+                count_func = self.count
+                self.count = lambda: count_func().to_pandas()
                 return pd.DataFrame.info(
                     self,
                     verbose=verbose,
@@ -9302,6 +9305,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
             finally:
                 del self._data
+                self.count = count_func
 
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
     def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000):
