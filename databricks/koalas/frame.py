@@ -3848,7 +3848,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...
         dogs    4
         cats    4
-        dtype: int64
+        Name: 0, dtype: int64
 
         >>> df = df.cache()
         >>> df.to_pandas().mean(axis=1)
@@ -5893,7 +5893,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Person    5
         Age       4
         Single    5
-        dtype: int64
+        Name: 0, dtype: int64
 
         >>> df.count(axis=1)
         0    3
