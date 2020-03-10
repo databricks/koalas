@@ -77,8 +77,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx.to_series(), pidx.to_series())
         self.assert_eq(kidx.to_series(name="a"), pidx.to_series(name="a"))
 
-        # FIXME: the index values are not addressed the change. (#1190)
-        # self.assert_eq((kidx + 1).to_series(), (pidx + 1).to_series())
+        self.assert_eq((kidx + 1).to_series(), (pidx + 1).to_series())
 
         pidx = self.pdf.set_index("b", append=True).index
         kidx = self.kdf.set_index("b", append=True).index
@@ -263,7 +262,53 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kdf.index.copy(), pdf.index.copy())
 
+    def test_drop_duplicates(self):
+        pidx = pd.Index([4, 2, 4, 1, 4, 3])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx.drop_duplicates().sort_values(), pidx.drop_duplicates().sort_values())
+        self.assert_eq(
+            (kidx + 1).drop_duplicates().sort_values(), (pidx + 1).drop_duplicates().sort_values()
+        )
+
+    def test_dropna(self):
+        pidx = pd.Index([np.nan, 2, 4, 1, np.nan, 3])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx.dropna(), pidx.dropna())
+        self.assert_eq((kidx + 1).dropna(), (pidx + 1).dropna())
+
     def test_index_symmetric_difference(self):
+        pidx1 = pd.Index([1, 2, 3, 4])
+        pidx2 = pd.Index([2, 3, 4, 5])
+        kidx1 = ks.from_pandas(pidx1)
+        kidx2 = ks.from_pandas(pidx2)
+
+        self.assert_eq(
+            kidx1.symmetric_difference(kidx2).sort_values(),
+            pidx1.symmetric_difference(pidx2).sort_values(),
+        )
+        self.assert_eq(
+            (kidx1 + 1).symmetric_difference(kidx2).sort_values(),
+            (pidx1 + 1).symmetric_difference(pidx2).sort_values(),
+        )
+
+        pmidx1 = pd.MultiIndex(
+            [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 0, 0, 0, 1, 2, 0, 1, 2]],
+        )
+        pmidx2 = pd.MultiIndex(
+            [["koalas", "cow", "falcon"], ["speed", "weight", "length"]],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 0, 0, 0, 1, 2, 0, 1, 2]],
+        )
+        kmidx1 = ks.from_pandas(pmidx1)
+        kmidx2 = ks.from_pandas(pmidx2)
+
+        self.assert_eq(
+            kmidx1.symmetric_difference(kmidx2).sort_values(),
+            pmidx1.symmetric_difference(pmidx2).sort_values(),
+        )
+
         idx = ks.Index(["a", "b", "c"])
         midx = ks.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
 
@@ -894,6 +939,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kidx.repeat(3).sort_values(), pidx.repeat(3).sort_values())
         self.assert_eq(kidx.repeat(0).sort_values(), pidx.repeat(0).sort_values())
+        self.assert_eq((kidx + "x").repeat(3).sort_values(), (pidx + "x").repeat(3).sort_values())
 
         self.assertRaises(ValueError, lambda: kidx.repeat(-1))
         self.assertRaises(ValueError, lambda: kidx.repeat("abc"))

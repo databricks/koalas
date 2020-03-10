@@ -99,26 +99,16 @@ class Index(IndexOpsMixin):
     Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __init__(
-        self,
-        data: Union[DataFrame, list],
-        dtype=None,
-        name=None,
-        scol: Optional[spark.Column] = None,
-    ) -> None:
+    def __init__(self, data: Union[DataFrame, list], dtype=None, name=None) -> None:
         if isinstance(data, DataFrame):
             assert dtype is None
             assert name is None
             kdf = data
         else:
-            assert scol is None
             kdf = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
-        if scol is None:
-            scol = kdf._internal.index_spark_columns[0]
         internal = kdf._internal.copy(
-            spark_column=scol,
+            spark_column=kdf._internal.index_spark_columns[0],
             column_labels=kdf._internal.index_names,
-            data_spark_columns=kdf._internal.index_spark_columns,
             column_label_names=None,
         )
         IndexOpsMixin.__init__(self, internal, kdf)
@@ -130,7 +120,11 @@ class Index(IndexOpsMixin):
         :param scol: the new Spark Column
         :return: the copied Index
         """
-        return Index(self._kdf, scol=scol)
+        sdf = self._internal.spark_frame.select(scol)
+        internal = _InternalFrame(
+            spark_frame=sdf, index_map=OrderedDict(zip(sdf.columns, self._internal.index_names))
+        )
+        return DataFrame(internal).index
 
     # This method is used via `DataFrame.info` API internally.
     def _summary(self, name=None):
@@ -360,15 +354,7 @@ class Index(IndexOpsMixin):
         >>> df['dogs'].index.to_pandas()
         Index(['a', 'b', 'c', 'd'], dtype='object')
         """
-        sdf = self._kdf._sdf.select(self._scol)
-        internal = self._kdf._internal.copy(
-            spark_frame=sdf,
-            index_map=OrderedDict({sdf.schema[0].name: self._kdf._internal.index_names[0]}),
-            column_labels=[],
-            data_spark_columns=[],
-            column_label_names=None,
-        )
-        return DataFrame(internal)._to_internal_pandas().index
+        return self._internal.to_pandas_frame.index
 
     toPandas = to_pandas
 
@@ -639,8 +625,8 @@ class Index(IndexOpsMixin):
 
         >>> idx = ks.Index(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'])
 
-        >>> idx.drop_duplicates() # doctest: +SKIP
-        Index(['lama', 'cow', 'beetle', 'hippo'], dtype='object')
+        >>> idx.drop_duplicates().sort_values()
+        Index(['beetle', 'cow', 'hippo', 'lama'], dtype='object')
         """
         sdf = self._internal.spark_frame.select(
             self._internal.index_spark_columns
@@ -890,8 +876,7 @@ class Index(IndexOpsMixin):
         kdf = self._kdf.copy()
         sdf = kdf._internal.spark_frame.select(self._internal.index_spark_columns).dropna()
         internal = _InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
-        kdf = DataFrame(internal)
-        return Index(kdf) if type(self) == Index else MultiIndex(kdf)
+        return DataFrame(internal).index
 
     def unique(self, level=None):
         """
@@ -998,8 +983,7 @@ class Index(IndexOpsMixin):
         >>> df.index.copy(name='snake')
         Index(['cobra', 'viper', 'sidewinder'], dtype='object', name='snake')
         """
-        internal = self._kdf._internal.copy()
-        result = Index(ks.DataFrame(internal), scol=self._scol)
+        result = Index(self._kdf.copy())
         if name:
             result.name = name
         return result
@@ -1512,9 +1496,9 @@ class Index(IndexOpsMixin):
 
     def repeat(self, repeats: int) -> "Index":
         """
-        Repeat elements of a Index.
+        Repeat elements of a Index/MultiIndex.
 
-        Returns a new Index where each element of the current Index
+        Returns a new Index/MultiIndex where each element of the current Index/MultiIndex
         is repeated consecutively a given number of times.
 
         Parameters
@@ -1526,13 +1510,12 @@ class Index(IndexOpsMixin):
 
         Returns
         -------
-        repeated_index : Index
-            Newly created Index with repeated elements.
+        repeated_index : Index/MultiIndex
+            Newly created Index/MultiIndex with repeated elements.
 
         See Also
         --------
         Series.repeat : Equivalent function for Series.
-        MultiIndex.repeat : Equivalent function for MultiIndex.
 
         Examples
         --------
@@ -1541,15 +1524,34 @@ class Index(IndexOpsMixin):
         Index(['a', 'b', 'c'], dtype='object')
         >>> idx.repeat(2)
         Index(['a', 'b', 'c', 'a', 'b', 'c'], dtype='object')
+
+        For MultiIndex,
+
+        >>> midx = ks.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c')],
+                   )
+        >>> midx.repeat(2)  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c'),
+                    ('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c')],
+                   )
+        >>> midx.repeat(0)  # doctest: +SKIP
+        MultiIndex([], )
         """
         if not isinstance(repeats, int):
             raise ValueError("`repeats` argument must be integer, but got {}".format(type(repeats)))
         elif repeats < 0:
             raise ValueError("negative dimensions are not allowed")
 
-        sdf = self._internal.spark_frame.select(self._internal.spark_column)
+        sdf = self._internal.spark_frame.select(self._internal.index_spark_columns)
         internal = _InternalFrame(
-            spark_frame=sdf, index_map=OrderedDict({sdf.columns[0]: self._internal.index_names[0]})
+            spark_frame=sdf, index_map=OrderedDict(zip(sdf.columns, self._internal.index_names))
         )
         kdf = DataFrame(internal)  # type: DataFrame
         if repeats == 0:
@@ -2040,9 +2042,7 @@ class MultiIndex(Index):
         """
         Make a copy of this object.
         """
-        internal = self._kdf._internal.copy()
-        result = MultiIndex(ks.DataFrame(internal))
-        return result
+        return MultiIndex(self._kdf.copy())
 
     def symmetric_difference(self, other, result_name=None, sort=None):
         """
@@ -2218,64 +2218,6 @@ class MultiIndex(Index):
         False
         """
         return False
-
-    def repeat(self, repeats: int) -> "MultiIndex":
-        """
-        Repeat elements of a MultiIndex.
-
-        Returns a new MultiIndex where each element of the current MultiIndex
-        is repeated consecutively a given number of times.
-
-        Parameters
-        ----------
-        repeats : int
-            The number of repetitions for each element. This should be a
-            non-negative integer. Repeating 0 times will return an empty
-            Index.
-
-        Returns
-        -------
-        repeated_index : MultiIndex
-            Newly created MultiIndex with repeated elements.
-
-        See Also
-        --------
-        Series.repeat : Equivalent function for Series.
-        Index.repeat : Equivalent function for Index.
-
-        Examples
-        --------
-        >>> midx = ks.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
-        >>> midx  # doctest: +SKIP
-        MultiIndex([('x', 'a'),
-                    ('x', 'b'),
-                    ('y', 'c')],
-                   )
-        >>> midx.repeat(2)  # doctest: +SKIP
-        MultiIndex([('x', 'a'),
-                    ('x', 'b'),
-                    ('y', 'c'),
-                    ('x', 'a'),
-                    ('x', 'b'),
-                    ('y', 'c')],
-                   )
-        >>> midx.repeat(0)  # doctest: +SKIP
-        MultiIndex([], )
-        """
-        if not isinstance(repeats, int):
-            raise ValueError("`repeats` argument must be integer, but got {}".format(type(repeats)))
-        elif repeats < 0:
-            raise ValueError("negative dimensions are not allowed")
-
-        sdf = self._internal.spark_frame.select(self._internal.index_spark_columns)
-        internal = _InternalFrame(
-            spark_frame=sdf, index_map=OrderedDict(zip(sdf.columns, self._internal.index_names))
-        )
-        kdf = DataFrame(internal)  # type: DataFrame
-        if repeats == 0:
-            return DataFrame(kdf._internal.with_filter(F.lit(False))).index
-        else:
-            return ks.concat([kdf] * repeats).index
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeMultiIndex, item):

@@ -801,7 +801,6 @@ class iLocIndexer(_LocIndexerLike):
     - A boolean array for column selection.
     - A slice object with ints for column selection, e.g. ``1:7``.
     - A slice object with ints without start and step for row selection, e.g. ``:7``.
-    - A conditional boolean Index for row selection.
 
     Not allowed inputs which pandas allows are:
 
@@ -860,13 +859,6 @@ class iLocIndexer(_LocIndexerLike):
           a     b     c     d
     0     1     2     3     4
     1   100   200   300   400
-    2  1000  2000  3000  4000
-
-    Conditional that returns a boolean Series
-
-    >>> df.iloc[df.index % 2 == 0]
-          a     b     c     d
-    0     1     2     3     4
     2  1000  2000  3000  4000
 
     **Indexing both axes**
