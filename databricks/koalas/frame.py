@@ -8146,7 +8146,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 should_returns_series = True
             value = label[-1]
 
-            scol = self._internal.scol_for(label)
+            scol = self._internal.spark_column_for(label)
             column_labels[new_label][value] = scol
 
             index_values.add(value)
@@ -8164,7 +8164,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 index_name = (self._internal.column_label_names[-1],)
 
         index_column = SPARK_INDEX_NAME_FORMAT(len(self._internal.index_map))
-        index_map = self._internal.index_map + [(index_column, index_name)]
+        index_map = list(self._internal.index_map.items()) + [(index_column, index_name)]
         data_columns = [name_like_string(label) for label in column_labels]
 
         structs = [
@@ -8186,16 +8186,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf.withColumn("pairs", pairs)
         sdf = sdf.select(
-            self._internal.index_scols
+            self._internal.index_spark_columns
             + [sdf["pairs"][index_column].alias(index_column)]
             + [sdf["pairs"][name].alias(name) for name in data_columns]
         )
 
         internal = _InternalFrame(
-            sdf=sdf,
-            index_map=index_map,
+            spark_frame=sdf,
+            index_map=OrderedDict(index_map),
             column_labels=list(column_labels),
-            column_scols=[scol_for(sdf, col) for col in data_columns],
+            data_spark_columns=[scol_for(sdf, col) for col in data_columns],
             column_label_names=column_label_names,
         )
         kdf = DataFrame(internal)
