@@ -464,10 +464,12 @@ class DataFrame(_Frame, Generic[T]):
         """
         from inspect import signature
         from databricks.koalas import Series
+        from databricks.koalas.series import _col
 
         axis = validate_axis(axis)
         if axis == 0:
             exprs = []
+            new_column_labels = []
             num_args = len(signature(sfun).parameters)
             for label in self._internal.column_labels:
                 col_sdf = self._internal.spark_column_for(label)
@@ -491,19 +493,20 @@ class DataFrame(_Frame, Generic[T]):
                         # Pass in both the column and its data type if sfun accepts two args
                         col_sdf = sfun(col_sdf, col_type)
                     exprs.append(col_sdf.alias(name_like_string(label)))
+                    new_column_labels.append(label)
 
             sdf = self._sdf.select(*exprs)
-            pdf = sdf.toPandas()
 
-            if self._internal.column_labels_level > 1:
-                pdf.columns = pd.MultiIndex.from_tuples(self._internal.column_labels)
+            # The data is expected to be small so it's fine to transpose/use default index.
+            kdf = DataFrame(sdf)
+            internal = _InternalFrame(
+                kdf._internal.sdf,
+                index_map=kdf._internal.index_map,
+                column_labels=new_column_labels,
+                column_label_names=self._internal.column_label_names,
+            )
 
-            assert len(pdf) == 1, (sdf, pdf)
-
-            row = pdf.iloc[0]
-            row.name = None
-            # TODO: return Koalas series.
-            return row  # Return first row as a Series
+            return _col(DataFrame(internal).transpose())
 
         elif axis == 1:
             # Here we execute with the first 1000 to get the return type.

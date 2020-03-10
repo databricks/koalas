@@ -1170,7 +1170,7 @@ class _Frame(object):
         >>> df.max()
         a    3.0
         b    0.3
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.max(axis=1)
         0    1.0
