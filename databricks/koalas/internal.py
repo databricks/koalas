@@ -674,14 +674,7 @@ class _InternalFrame(object):
 
     def spark_column_name_for(self, labels: Union[str, Tuple[str, ...]]) -> str:
         """ Return the actual Spark column name for the given column name or index. """
-        column_labels_to_name = dict(zip(self.column_labels, self.data_spark_column_names))
-        if labels in column_labels_to_name:
-            return column_labels_to_name[labels]  # type: ignore
-        else:
-            for index_spark_column_name, index_name in self.index_map.items():
-                if index_name == labels:
-                    return index_spark_column_name
-            raise KeyError(name_like_string(labels))
+        return self._sdf.select(self.spark_column_for(labels)).columns[0]
 
     def spark_column_for(self, labels: Union[str, Tuple[str, ...]]):
         """ Return Spark Column for the given column name or index. """
@@ -689,9 +682,7 @@ class _InternalFrame(object):
         if labels in column_labels_to_scol:
             return column_labels_to_scol[labels]  # type: ignore
         else:
-            if labels not in self.index_spark_column_names:
-                raise KeyError(name_like_string(labels))
-            return scol_for(self._sdf, self.spark_column_name_for(labels))
+            raise KeyError(name_like_string(labels))
 
     def spark_type_for(self, labels: Union[str, Tuple[str, ...]]) -> DataType:
         """ Return DataType for the given column name or index. """
