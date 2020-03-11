@@ -6491,9 +6491,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self,
         right: "DataFrame",
         how: str = "inner",
-        on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
-        left_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
-        right_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+        on: Optional[Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]]] = None,
+        left_on: Optional[Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]]] = None,
+        right_on: Optional[Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]]] = None,
         left_index: bool = False,
         right_index: bool = False,
         suffixes: Tuple[str, str] = ("_x", "_y"),
@@ -6608,7 +6608,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             instead of NaN.
         """
 
-        def to_list(os) -> List[Union[str, Tuple[str, ...]]]:
+        def to_list(
+            os: Optional[Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]]]
+        ) -> List[Tuple[str, ...]]:
             if os is None:
                 return []
             elif isinstance(os, tuple):
@@ -6616,7 +6618,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             elif isinstance(os, str):
                 return [(os,)]
             else:
-                return [o if isinstance(o, tuple) else (o,) for o in os]
+                return [o if isinstance(o, tuple) else (o,) for o in os]  # type: ignore
 
         if isinstance(right, ks.Series):
             right = right.to_frame()
