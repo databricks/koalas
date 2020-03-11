@@ -231,22 +231,3 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         # self.assertEqual(len(kdf.kurtosis(numeric_only=False)),
         #                  len(pdf.kurtosis(numeric_only=False)))
         # self.assertEqual(len(kdf.skew(numeric_only=False)), len(pdf.skew(numeric_only=False)))
-
-
-@unittest.skipIf(
-    LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
-    "transpose() won't work property with PySpark<2.4",
-)
-class StatsTestWithMaxRows(StatsTest):
-    # Some stats APIs such as sum, max, etc. are dependent on 'compute.max_rows' when it
-    # returns a series as it leverages transpose() internally. We should also test with
-    # disabling this shortcut.
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        ks.set_option("compute.max_rows", None)
-
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
-        ks.reset_option("compute.max_rows")

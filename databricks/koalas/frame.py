@@ -498,15 +498,18 @@ class DataFrame(_Frame, Generic[T]):
             sdf = self._sdf.select(*exprs)
 
             # The data is expected to be small so it's fine to transpose/use default index.
-            kdf = DataFrame(sdf)
-            internal = _InternalFrame(
-                kdf._internal.sdf,
-                index_map=kdf._internal.index_map,
-                column_labels=new_column_labels,
-                column_label_names=self._internal.column_label_names,
-            )
+            with ks.option_context(
+                "compute.default_index_type", "distributed", "compute.max_rows", None
+            ):
+                kdf = DataFrame(sdf)
+                internal = _InternalFrame(
+                    kdf._internal.spark_frame,
+                    index_map=kdf._internal.index_map,
+                    column_labels=new_column_labels,
+                    column_label_names=self._internal.column_label_names,
+                )
 
-            return _col(DataFrame(internal).transpose())
+                return _col(DataFrame(internal).transpose())
 
         elif axis == 1:
             # Here we execute with the first 1000 to get the return type.
