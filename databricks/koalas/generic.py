@@ -956,7 +956,7 @@ class _Frame(object):
         >>> df.mean()
         a    2.0
         b    0.2
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.mean(axis=1)
         0    0.55
@@ -1001,7 +1001,7 @@ class _Frame(object):
         >>> df.sum()
         a    6.0
         b    0.6
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.sum(axis=1)
         0    1.1
@@ -1085,7 +1085,7 @@ class _Frame(object):
         >>> df.kurtosis()
         a   -1.5
         b   -1.5
-        dtype: float64
+        Name: 0, dtype: float64
 
         On a Series:
 
@@ -1125,7 +1125,7 @@ class _Frame(object):
         >>> df.min()
         a    1.0
         b    0.1
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.min(axis=1)
         0    0.1
@@ -1170,7 +1170,7 @@ class _Frame(object):
         >>> df.max()
         a    3.0
         b    0.3
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.max(axis=1)
         0    1.0
@@ -1215,7 +1215,7 @@ class _Frame(object):
         >>> df.std()
         a    1.0
         b    0.1
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.std(axis=1)
         0    0.636396
@@ -1260,7 +1260,7 @@ class _Frame(object):
         >>> df.var()
         a    1.00
         b    0.01
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.var(axis=1)
         0    0.405
