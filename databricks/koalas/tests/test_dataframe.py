@@ -397,8 +397,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = ["x", "y"]
         self.assert_eq(kdf.columns, pd.Index(["x", "y"]))
         self.assert_eq(kdf, pdf)
-        self.assert_eq(kdf._internal.data_columns, ["x", "y"])
-        self.assert_eq(kdf._internal.spark_df.columns, ["x", "y"])
+        self.assert_eq(kdf._internal.data_spark_column_names, ["x", "y"])
+        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["x", "y"])
 
         columns = pdf.columns
         columns.name = "lvl_1"
@@ -425,23 +425,23 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.columns = ["x", "y"]
         self.assert_eq(kdf.columns, pd.Index(["x", "y"]))
         self.assert_eq(kdf, pdf)
-        self.assert_eq(kdf._internal.data_columns, ["x", "y"])
-        self.assert_eq(kdf._internal.spark_df.columns, ["x", "y"])
+        self.assert_eq(kdf._internal.data_spark_column_names, ["x", "y"])
+        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["x", "y"])
 
         pdf.columns = columns
         kdf.columns = columns
         self.assert_eq(kdf.columns, columns)
         self.assert_eq(kdf, pdf)
-        self.assert_eq(kdf._internal.data_columns, ["(A, 0)", "(B, 1)"])
-        self.assert_eq(kdf._internal.spark_df.columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf._internal.data_spark_column_names, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["(A, 0)", "(B, 1)"])
 
         columns.names = ["lvl_1", "lvl_2"]
 
         kdf.columns = columns
         self.assert_eq(kdf.columns.names, ["lvl_1", "lvl_2"])
         self.assert_eq(kdf, pdf)
-        self.assert_eq(kdf._internal.data_columns, ["(A, 0)", "(B, 1)"])
-        self.assert_eq(kdf._internal.spark_df.columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf._internal.data_spark_column_names, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["(A, 0)", "(B, 1)"])
 
     def test_rename_dataframe(self):
         kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
