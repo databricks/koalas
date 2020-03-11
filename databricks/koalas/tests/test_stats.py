@@ -45,6 +45,10 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             getattr(kdf.A, funcname)()
             getattr(kdf, funcname)()
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
+        "transpose() doesn't work property with PySpark<2.4",
+    )
     def test_stat_functions(self):
         pdf = pd.DataFrame({"A": [1, 2, 3, 4], "B": [1.0, 2.1, 3, 4]})
         kdf = ks.from_pandas(pdf)
@@ -215,6 +219,10 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(len(kdf.kurtosis(numeric_only=True)), len(pdf.kurtosis(numeric_only=True)))
         self.assertEqual(len(kdf.skew(numeric_only=True)), len(pdf.skew(numeric_only=True)))
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
+        "transpose() doesn't work property with PySpark<2.4",
+    )
     def test_stats_on_non_numeric_columns_should_not_be_discarded_if_numeric_only_is_false(self):
         pdf = pd.DataFrame({"i": [0, 1, 2], "b": [False, False, True], "s": ["x", "y", "z"]})
         kdf = ks.from_pandas(pdf)
