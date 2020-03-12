@@ -4357,7 +4357,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         See Also
         --------
         Index.repeat : Equivalent function for Index.
-        MultiIndex.repeat : Equivalent function for MultiIndex.
 
         Examples
         --------
