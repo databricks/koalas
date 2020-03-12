@@ -28,10 +28,12 @@ Attributes
    Series.name
    Series.spark_type
    Series.shape
+   Series.axes
    Series.size
    Series.empty
    Series.T
    Series.hasnans
+   Series.values
 
 Conversion
 ----------
@@ -48,6 +50,7 @@ Indexing, iteration
    :toctree: api/
 
    Series.at
+   Series.iat
    Series.loc
    Series.iloc
    Series.keys
@@ -179,6 +182,7 @@ Reshaping, sorting, transposing
 
    Series.sort_index
    Series.sort_values
+   Series.repeat
 
 Combining / joining / merging
 -----------------------------

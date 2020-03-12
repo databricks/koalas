@@ -30,11 +30,17 @@ from pyspark.sql import Column
 from pyspark.sql.functions import pandas_udf
 import pyspark.sql.types as types
 
+from pyspark.sql.types import UserDefinedType
+
+try:
+    from pyspark.sql.types import to_arrow_type, from_arrow_type
+except ImportError:
+    from pyspark.sql.pandas.types import to_arrow_type, from_arrow_type
+
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 
 
-__all__ = ['pandas_wraps', 'as_spark_type',
-           'as_python_type', 'infer_pd_series_spark_type']
+__all__ = ["pandas_wraps", "as_spark_type", "as_python_type", "infer_pd_series_spark_type"]
 
 
 # A column of data, with the data type.
@@ -51,8 +57,8 @@ class _DataFrame(object):
         # Seems we cannot specify field names. I currently gave some default names
         # `c0, c1, ... cn`.
         self.tpe = types.StructType(
-            [types.StructField("c%s" % i, tpe[i])
-             for i in range(len(tpe))])  # type: types.StructType
+            [types.StructField("c%s" % i, tpe[i]) for i in range(len(tpe))]
+        )  # type: types.StructType
 
     def __repr__(self):
         return "_DataFrameType[{}]".format(self.tpe)
@@ -101,24 +107,26 @@ def _to_stype(tpe) -> X:
 
 # First element of the list is the python base type
 _base = {
-    types.StringType(): [str, 'str', 'string'],
+    types.StringType(): [str, "str", "string"],
     types.BinaryType(): [bytes],
-    types.ByteType(): [np.int8, 'int8', 'byte'],
-    types.ShortType(): [np.int16, 'int16', 'short'],
-    types.IntegerType(): [int, 'int', np.int, np.int32],
-    types.LongType(): [np.int64, 'int64', 'long', 'bigint'],
-    types.FloatType(): [float, 'float', np.float],
-    types.DoubleType(): [np.float64, 'float64', 'double'],
+    types.ByteType(): [np.int8, "int8", "byte"],
+    types.ShortType(): [np.int16, "int16", "short"],
+    types.IntegerType(): [int, "int", np.int, np.int32],
+    types.LongType(): [np.int64, "int64", "long", "bigint"],
+    types.FloatType(): [float, "float", np.float],
+    types.DoubleType(): [np.float64, "float64", "double"],
     types.TimestampType(): [datetime.datetime, np.datetime64],
     types.DateType(): [datetime.date],
-    types.BooleanType(): [bool, 'boolean', 'bool', np.bool],
-    types.ArrayType(types.StringType()): []
+    types.BooleanType(): [bool, "boolean", "bool", np.bool],
+    types.ArrayType(types.StringType()): [],
 }
 
 
 def _build_type_dict():
-    return dict([(other_type, spark_type) for (spark_type, l) in _base.items() for other_type in l]
-                + [(spark_type, spark_type) for (spark_type, _) in _base.items()])
+    return dict(
+        [(other_type, spark_type) for (spark_type, l) in _base.items() for other_type in l]
+        + [(spark_type, spark_type) for (spark_type, _) in _base.items()]
+    )
 
 
 def _build_py_type_dict():
@@ -147,10 +155,12 @@ def as_spark_type(tpe) -> types.DataType:
 
 def spark_type_to_pandas_dtype(spark_type):
     """ Return the given Spark DataType to pandas dtype. """
-    if isinstance(spark_type, types.TimestampType):
-        return np.dtype('datetime64[ns]')
+    if isinstance(spark_type, UserDefinedType):
+        return np.dtype("object")
+    elif isinstance(spark_type, types.TimestampType):
+        return np.dtype("datetime64[ns]")
     else:
-        return np.dtype(types.to_arrow_type(spark_type).to_pandas_dtype())
+        return np.dtype(to_arrow_type(spark_type).to_pandas_dtype())
 
 
 def as_python_type(spark_tpe):
@@ -164,17 +174,20 @@ def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
     :return: the inferred Spark data type
     """
     dt = s.dtype
-    if dt == np.dtype('object'):
+    if dt == np.dtype("object"):
         if len(s) == 0 or s.isnull().all():
             raise ValueError("can not infer schema from empty or null dataset")
-        return types.from_arrow_type(pa.Array.from_pandas(s).type)
+        elif hasattr(s[0], "__UDT__"):
+            return s[0].__UDT__
+        else:
+            return from_arrow_type(pa.Array.from_pandas(s).type)
     elif is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
         return types.TimestampType()
     else:
-        return types.from_arrow_type(pa.from_numpy_dtype(dt))
+        return from_arrow_type(pa.from_numpy_dtype(dt))
 
 
-def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) -> 'ks.Series':
+def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) -> "ks.Series":
     """
     This function calls the function f while taking into account some of the
     limitations of the pandas UDF support:
@@ -196,6 +209,7 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
     The function is expected to have the following arguments:
     """
     from databricks.koalas.series import Series
+
     # All the arguments.
     # None for columns or the value for non-columns
     frozen_args = []  # type: typing.List[typing.Any]
@@ -206,8 +220,9 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
             frozen_args.append(None)
             col_args.append(arg)
         elif isinstance(arg, Column):
-            raise ValueError('A pyspark column was passed as an argument.'
-                             ' Pass a koalas series instead')
+            raise ValueError(
+                "A pyspark column was passed as an argument." " Pass a koalas series instead"
+            )
         else:
             frozen_args.append(arg)
             col_args.append(None)
@@ -220,13 +235,14 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
         if isinstance(arg, Series):
             col_kwargs.append((key, arg))
         elif isinstance(arg, Column):
-            raise ValueError('A pyspark column was passed as an argument.'
-                             ' Pass a koalas series instead')
+            raise ValueError(
+                "A pyspark column was passed as an argument." " Pass a koalas series instead"
+            )
         else:
             frozen_kwargs.append((key, arg))
 
     col_args_idxs = [idx for (idx, c) in enumerate(col_args) if c is not None]
-    all_indexes = (col_args_idxs + [key for (key, _) in col_kwargs])  # type: ignore
+    all_indexes = col_args_idxs + [key for (key, _) in col_kwargs]  # type: ignore
     if not all_indexes:
         # No argument is related to spark
         # The function is just called through without other considerations.
@@ -236,8 +252,9 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
     kser = _get_kser(args, kwargs)
 
     def clean_fun(*args2):
-        assert len(args2) == len(all_indexes), \
-            "Missing some inputs:{}!={}".format(all_indexes, [str(c) for c in args2])
+        assert len(args2) == len(all_indexes), "Missing some inputs:{}!={}".format(
+            all_indexes, [str(c) for c in args2]
+        )
         full_args = list(frozen_args)
         full_kwargs = dict(frozen_kwargs)
         for (arg, idx) in zip(args2, all_indexes):
@@ -269,8 +286,10 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
 
 def _get_kser(args, kwargs):
     from databricks.koalas.series import Series
-    all_cols = ([arg for arg in args if isinstance(arg, Series)]
-                + [arg for arg in kwargs.values() if isinstance(arg, Series)])
+
+    all_cols = [arg for arg in args if isinstance(arg, Series)] + [
+        arg for arg in kwargs.values() if isinstance(arg, Series)
+    ]
     assert all_cols
     # TODO: check all the anchors
     return all_cols[0]
@@ -361,17 +380,22 @@ def pandas_wraps(function=None, return_col=None, return_scalar=None):
     >>> import sys
     >>> fun(df.col1, arg1=sys.stdout)  # doctest: +SKIP
     """
+
     def function_wrapper(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
             # Extract the signature arguments from this function.
             sig_return = _infer_return_type(f, return_col, return_scalar)
             if not isinstance(sig_return, _Series):
-                raise ValueError("Expected the return type of this function to be of type column,"
-                                 " but found type {}".format(sig_return))
+                raise ValueError(
+                    "Expected the return type of this function to be of type column,"
+                    " but found type {}".format(sig_return)
+                )
             spark_return_type = sig_return.tpe
             return _make_fun(f, spark_return_type, *args, **kwargs)
+
         return wrapper
+
     if callable(function):
         return function_wrapper(function)
     else:
@@ -406,7 +430,8 @@ def _infer_return_type(f, return_col=None, return_scalar=None) -> X:
     if not (return_col or return_sig or return_scalar):
         raise ValueError(
             "Missing type information. It should either be provided as an argument to "
-            "pandas_wraps, or as a python typing hint")
+            "pandas_wraps, or as a python typing hint"
+        )
     if return_col is not None:
         if isinstance(return_col, ks.Series):
             return _to_stype(return_col)
@@ -414,8 +439,10 @@ def _infer_return_type(f, return_col=None, return_scalar=None) -> X:
         return _Series(inner)
     if return_scalar is not None:
         if isinstance(return_scalar, ks.Series):
-            raise ValueError("Column return type {}, you should use 'return_col' to specify"
-                             " it.".format(return_scalar))
+            raise ValueError(
+                "Column return type {}, you should use 'return_col' to specify"
+                " it.".format(return_scalar)
+            )
         inner = as_spark_type(return_scalar)
         return _Scalar(inner)
     if return_sig is not None:

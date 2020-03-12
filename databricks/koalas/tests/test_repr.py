@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import numpy as np
+
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option, option_context
 from databricks.koalas.testing.utils import ReusedSQLTestCase
@@ -81,3 +83,27 @@ class ReprTest(ReusedSQLTestCase):
         with option_context("display.max_rows", None):
             kdf = ks.range(ReprTest.max_display_count + 1)
             self.assertEqual(kdf._repr_html_(), kdf.to_pandas()._repr_html_())
+
+    def test_repr_float_index(self):
+        kdf = ks.DataFrame(
+            {"a": np.random.rand(ReprTest.max_display_count)},
+            index=np.random.rand(ReprTest.max_display_count),
+        )
+        self.assertTrue("Showing only the first" not in repr(kdf))
+        self.assert_eq(repr(kdf), repr(kdf.to_pandas()))
+        self.assertTrue("Showing only the first" not in repr(kdf.a))
+        self.assert_eq(repr(kdf.a), repr(kdf.a.to_pandas()))
+        self.assertTrue("Showing only the first" not in repr(kdf.index))
+        self.assert_eq(repr(kdf.index), repr(kdf.index.to_pandas()))
+
+        self.assertTrue("Showing only the first" not in kdf._repr_html_())
+        self.assertEqual(kdf._repr_html_(), kdf.to_pandas()._repr_html_())
+
+        kdf = ks.DataFrame(
+            {"a": np.random.rand(ReprTest.max_display_count + 1)},
+            index=np.random.rand(ReprTest.max_display_count + 1),
+        )
+        self.assertTrue("Showing only the first" in repr(kdf))
+        self.assertTrue("Showing only the first" in repr(kdf.a))
+        self.assertTrue("Showing only the first" in repr(kdf.index))
+        self.assertTrue("Showing only the first" in kdf._repr_html_())

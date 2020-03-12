@@ -24,6 +24,7 @@ Properties
    Index.has_duplicates
    Index.hasnans
    Index.dtype
+   Index.is_all_dates
    Index.shape
    Index.name
    Index.names
@@ -32,6 +33,7 @@ Properties
    Index.nlevels
    Index.empty
    Index.T
+   Index.values
 
 Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -41,7 +43,11 @@ Modifying and computations
 
    Index.all
    Index.any
+   Index.argmin
+   Index.argmax
    Index.copy
+   Index.equals
+   Index.identical
    Index.is_boolean
    Index.is_categorical
    Index.is_floating
@@ -54,9 +60,18 @@ Modifying and computations
    Index.min
    Index.max
    Index.rename
+   Index.repeat
    Index.unique
    Index.nunique
    Index.value_counts
+
+Compatibility with MultiIndex
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: api/
+
+   Index.set_names
 
 Missing Values
 ~~~~~~~~~~~~~~
@@ -75,6 +90,7 @@ Conversion
 
    Index.astype
    Index.to_series
+   Index.to_frame
    Index.to_numpy
 
 Sorting
@@ -96,6 +112,8 @@ Combining / joining / set operations
 .. autosummary::
    :toctree: api/
 
+   Index.append
+   Index.difference
    Index.symmetric_difference
 
 Selecting
@@ -130,6 +148,7 @@ MultiIndex Properties
 
    MultiIndex.has_duplicates
    MultiIndex.hasnans
+   MultiIndex.is_all_dates
    MultiIndex.shape
    MultiIndex.names
    MultiIndex.ndim
@@ -138,6 +157,14 @@ MultiIndex Properties
    MultiIndex.size
    MultiIndex.nlevels
    MultiIndex.levshape
+   MultiIndex.values
+
+MultiIndex components
+~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.swaplevel
 
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -152,9 +179,12 @@ MultiIndex Modifying and computations
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.equals
+   MultiIndex.identical
    MultiIndex.drop
    MultiIndex.copy
    MultiIndex.rename
+   MultiIndex.repeat
    MultiIndex.min
    MultiIndex.max
    MultiIndex.value_counts
@@ -164,6 +194,8 @@ MultiIndex Combining / joining / set operations
 .. autosummary::
    :toctree: api/
 
+   MultiIndex.append
+   MultiIndex.difference
    MultiIndex.symmetric_difference
 
 MultiIndex Conversion
@@ -172,6 +204,8 @@ MultiIndex Conversion
    :toctree: api/
 
    MultiIndex.astype
+   MultiIndex.to_series
+   MultiIndex.to_frame
    MultiIndex.to_numpy
 
 MultiIndex Sorting
