@@ -4344,6 +4344,24 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         It can also be called using `self @ other` in Python >= 3.5.
 
+        .. note:: The behaviour of this API is slightly different from pandas
+            since its original implementation requires quite expensive operation
+            (It requires sorting & comparing for all index values which is quite
+            expensive and may cause out-of-memory with large dataset).
+            pandas raises ValueError if all values of index are not same, while
+            Koalas just ignoring them as NaN.
+
+            >>> pdf1 = pd.Series([1, 2, 3], index=[0, 1, 2])
+            >>> pdf2 = pd.Series([1, 2, 3], index=[0, 1, 3])
+            >>> pdf1.dot(pdf2)  # doctest: +SKIP
+            ...
+            ValueError: matrices are not aligned
+
+            >>> kdf1 = ks.Series([1, 2, 3], index=[0, 1, 2])
+            >>> kdf2 = ks.Series([1, 2, 3], index=[0, 1, 3])
+            >>> kdf1.dot(kdf2)  # doctest: +SKIP
+            5
+
         Parameters
         ----------
         other : Series, DataFrame.
@@ -4372,9 +4390,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         14
         """
         if self is not other:
-            if len(self.index) != len(other.index) or any(
-                np.sort(self.index.values) != np.sort(other.index.values)
-            ):
+            if len(self.index) != len(other.index):
                 raise ValueError("matrices are not aligned")
 
         if isinstance(other, DataFrame):

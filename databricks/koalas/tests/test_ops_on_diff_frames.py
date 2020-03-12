@@ -664,10 +664,6 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kser_other = ks.Series([90, 91, 85, 100], index=[2, 4, 1, 0])
         with self.assertRaisesRegex(ValueError, "matrices are not aligned"):
             kser.dot(kser_other)
-        # values of index are different
-        kser_other = ks.Series([90, 91, 85], index=[3, 4, 1])
-        with self.assertRaisesRegex(ValueError, "matrices are not aligned"):
-            kser.dot(kser_other)
 
         # with DataFram is not supported for now since performance issue,
         # now we raise ValueError with proper message instead.
