@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-from distutils.version import LooseVersion
+import datetime
 import unittest
 
 import numpy as np
@@ -768,3 +767,59 @@ class IndexingTest(ReusedSQLTestCase):
 
         with self.assertRaisesRegex(IndexError, "out of range"):
             kdf.iloc[:, [5, 6]]
+
+    def test_index_operator_datetime(self):
+        dates = pd.date_range("20130101", periods=6)
+        pdf = pd.DataFrame(np.random.randn(6, 4), index=dates, columns=list("ABCD"))
+        kdf = ks.from_pandas(pdf)
+
+        # Positional iloc search
+        self.assert_eq(kdf[:4], pdf[:4])
+        self.assert_eq(kdf[:3], pdf[:3])
+        self.assert_eq(kdf[3:], pdf[3:])
+        self.assert_eq(kdf[2:], pdf[2:])
+        self.assert_eq(kdf[2:3], pdf[2:3])
+        self.assert_eq(kdf[2:-1], pdf[2:-1])
+        self.assert_eq(kdf[10:3], pdf[10:3])
+
+        # Index loc search
+        self.assert_eq(kdf.A[4], pdf.A[4])
+        self.assert_eq(kdf.A[3], pdf.A[3])
+
+        # Positional iloc search
+        self.assert_eq(kdf.A[:4], pdf.A[:4])
+        self.assert_eq(kdf.A[:3], pdf.A[:3])
+        self.assert_eq(kdf.A[3:], pdf.A[3:])
+        self.assert_eq(kdf.A[2:], pdf.A[2:])
+        self.assert_eq(kdf.A[2:3], pdf.A[2:3])
+        self.assert_eq(kdf.A[2:-1], pdf.A[2:-1])
+        self.assert_eq(kdf.A[10:3], pdf.A[10:3])
+
+        dt1 = datetime.datetime.strptime("2013-01-02", "%Y-%m-%d")
+        dt2 = datetime.datetime.strptime("2013-01-04", "%Y-%m-%d")
+
+        # Index loc search
+        self.assert_eq(kdf[:dt2], pdf[:dt2])
+        self.assert_eq(kdf[dt1:], pdf[dt1:])
+        self.assert_eq(kdf[dt1:dt2], pdf[dt1:dt2])
+        self.assert_eq(kdf.A[dt2], pdf.A[dt2])
+        self.assert_eq(kdf.A[:dt2], pdf.A[:dt2])
+        self.assert_eq(kdf.A[dt1:], pdf.A[dt1:])
+        self.assert_eq(kdf.A[dt1:dt2], pdf.A[dt1:dt2])
+
+    def test_index_operator_int(self):
+        pdf = pd.DataFrame(np.random.randn(6, 4), index=[1, 3, 5, 7, 9, 11], columns=list("ABCD"))
+        kdf = ks.from_pandas(pdf)
+
+        # Positional iloc search
+        self.assert_eq(kdf[:4], pdf[:4])
+        self.assert_eq(kdf[:3], pdf[:3])
+        self.assert_eq(kdf[3:], pdf[3:])
+        self.assert_eq(kdf[2:], pdf[2:])
+        self.assert_eq(kdf[2:3], pdf[2:3])
+        self.assert_eq(kdf[2:-1], pdf[2:-1])
+        self.assert_eq(kdf[10:3], pdf[10:3])
+
+        # Index loc search
+        self.assert_eq(kdf.A[5], pdf.A[5])
+        self.assert_eq(kdf.A[3], pdf.A[3])
