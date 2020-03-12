@@ -4373,7 +4373,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         if self is not other:
             if len(self.index) != len(other.index) or any(
-                self.index.values.sort() != other.index.values.sort()
+                np.sort(self.index.values) != np.sort(other.index.values)
             ):
                 raise ValueError("matrices are not aligned")
 
