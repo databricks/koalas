@@ -33,6 +33,7 @@ Properties
    Index.nlevels
    Index.empty
    Index.T
+   Index.values
 
 Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -59,6 +60,7 @@ Modifying and computations
    Index.min
    Index.max
    Index.rename
+   Index.repeat
    Index.unique
    Index.nunique
    Index.value_counts
@@ -111,6 +113,7 @@ Combining / joining / set operations
    :toctree: api/
 
    Index.append
+   Index.difference
    Index.symmetric_difference
 
 Selecting
@@ -154,6 +157,7 @@ MultiIndex Properties
    MultiIndex.size
    MultiIndex.nlevels
    MultiIndex.levshape
+   MultiIndex.values
 
 MultiIndex components
 ~~~~~~~~~~~~~~~~~~~~~
@@ -180,6 +184,7 @@ MultiIndex Modifying and computations
    MultiIndex.drop
    MultiIndex.copy
    MultiIndex.rename
+   MultiIndex.repeat
    MultiIndex.min
    MultiIndex.max
    MultiIndex.value_counts
@@ -190,6 +195,7 @@ MultiIndex Combining / joining / set operations
    :toctree: api/
 
    MultiIndex.append
+   MultiIndex.difference
    MultiIndex.symmetric_difference
 
 MultiIndex Conversion

@@ -33,7 +33,7 @@ Step-by-step Guide For Code Contributions
 
 4. Implement the functionality, with test cases providing close to 100% statement coverage. Document the functionality.
 
-5. Run existing and new test cases to make sure they still pass. Also run the linter `dev/lint-python`.
+5. Run existing and new test cases to make sure they still pass. Also run `dev/reformat` script to reformat Python files by using `Black <https://github.com/psf/black>`_, and run the linter `dev/lint-python`.
 
 6. Build the docs (`make html` in `docs` directory) and verify the docs related to your change look OK.
 

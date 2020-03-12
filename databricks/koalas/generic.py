@@ -18,7 +18,7 @@
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
 import warnings
-from collections import Counter
+from collections import Counter, OrderedDict
 from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
@@ -34,7 +34,7 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
-from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
+from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for, validate_axis
 from databricks.koalas.window import Rolling, Expanding
 
 
@@ -104,7 +104,7 @@ class _Frame(object):
         2    1.0
         Name: A, dtype: float64
         """
-        return self._cum(F.min, skipna)  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cum(F.min, skipna))  # type: ignore
 
     # TODO: add 'axis' parameter
     def cummax(self, skipna: bool = True):
@@ -165,7 +165,7 @@ class _Frame(object):
         2    1.0
         Name: B, dtype: float64
         """
-        return self._cum(F.max, skipna)  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cum(F.max, skipna))  # type: ignore
 
     # TODO: add 'axis' parameter
     def cumsum(self, skipna: bool = True):
@@ -226,7 +226,7 @@ class _Frame(object):
         2    6.0
         Name: A, dtype: float64
         """
-        return self._cum(F.sum, skipna)  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cum(F.sum, skipna))  # type: ignore
 
     # TODO: add 'axis' parameter
     # TODO: use pandas_udf to support negative values and other options later
@@ -295,19 +295,10 @@ class _Frame(object):
         Name: A, dtype: float64
 
         """
-        from pyspark.sql.functions import pandas_udf
+        return self._apply_series_op(lambda kser: kser._cumprod(skipna))  # type: ignore
 
-        def cumprod(scol):
-            @pandas_udf(returnType=self._kdf._internal.spark_type_for(self.name))
-            def negative_check(s):
-                assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), \
-                    "values should be bigger than 0: %s" % s
-                return s
-
-            return F.sum(F.log(negative_check(scol)))
-
-        return self._cum(cumprod, skipna)  # type: ignore
-
+    # TODO: Although this has removed pandas >= 1.0.0, but we're keeping this as deprecated
+    # since we're using this for `DataFrame.info` internally.
     def get_dtype_counts(self):
         """
         Return counts of unique dtypes in this object.
@@ -346,7 +337,8 @@ class _Frame(object):
             "`get_dtype_counts` has been deprecated and will be "
             "removed in a future version. For DataFrames use "
             "`.dtypes.value_counts()",
-            FutureWarning)
+            FutureWarning,
+        )
         if not isinstance(self.dtypes, Iterable):
             dtypes = [self.dtypes]
         else:
@@ -440,8 +432,7 @@ class _Frame(object):
         if isinstance(func, tuple):
             func, target = func
             if target in kwargs:
-                raise ValueError('%s is both the pipe target and a keyword '
-                                 'argument' % target)
+                raise ValueError("%s is both the pipe target and a keyword " "argument" % target)
             kwargs[target] = self
             return func(*args, **kwargs)
         else:
@@ -457,12 +448,109 @@ class _Frame(object):
         Returns
         -------
         numpy.ndarray
+
+        Examples
+        --------
+        >>> ks.DataFrame({"A": [1, 2], "B": [3, 4]}).to_numpy()
+        array([[1, 3],
+               [2, 4]])
+
+        With heterogeneous data, the lowest common type will have to be used.
+
+        >>> ks.DataFrame({"A": [1, 2], "B": [3.0, 4.5]}).to_numpy()
+        array([[1. , 3. ],
+               [2. , 4.5]])
+
+        For a mix of numeric and non-numeric types, the output array will have object dtype.
+
+        >>> df = ks.DataFrame({"A": [1, 2], "B": [3.0, 4.5], "C": pd.date_range('2000', periods=2)})
+        >>> df.to_numpy()
+        array([[1, 3.0, Timestamp('2000-01-01 00:00:00')],
+               [2, 4.5, Timestamp('2000-01-02 00:00:00')]], dtype=object)
+
+        For Series,
+
+        >>> ks.Series(['a', 'b', 'a']).to_numpy()
+        array(['a', 'b', 'a'], dtype=object)
         """
         return self.to_pandas().values
 
-    def to_csv(self, path=None, sep=',', na_rep='', columns=None, header=True,
-               quotechar='"', date_format=None, escapechar=None, num_files=None,
-               **options):
+    @property
+    def values(self):
+        """
+        Return a Numpy representation of the DataFrame or the Series.
+
+        .. warning:: We recommend using `DataFrame.to_numpy()` or `Series.to_numpy()` instead.
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Returns
+        -------
+        numpy.ndarray
+
+        Examples
+        --------
+        A DataFrame where all columns are the same type (e.g., int64) results in an array of
+        the same type.
+
+        >>> df = ks.DataFrame({'age':    [ 3,  29],
+        ...                    'height': [94, 170],
+        ...                    'weight': [31, 115]})
+        >>> df
+           age  height  weight
+        0    3      94      31
+        1   29     170     115
+        >>> df.dtypes
+        age       int64
+        height    int64
+        weight    int64
+        dtype: object
+        >>> df.values
+        array([[  3,  94,  31],
+               [ 29, 170, 115]])
+
+        A DataFrame with mixed type columns(e.g., str/object, int64, float32) results in an ndarray
+        of the broadest type that accommodates these mixed types (e.g., object).
+
+        >>> df2 = ks.DataFrame([('parrot',   24.0, 'second'),
+        ...                     ('lion',     80.5, 'first'),
+        ...                     ('monkey', np.nan, None)],
+        ...                   columns=('name', 'max_speed', 'rank'))
+        >>> df2.dtypes
+        name          object
+        max_speed    float64
+        rank          object
+        dtype: object
+        >>> df2.values
+        array([['parrot', 24.0, 'second'],
+               ['lion', 80.5, 'first'],
+               ['monkey', nan, None]], dtype=object)
+
+        For Series,
+
+        >>> ks.Series([1, 2, 3]).values
+        array([1, 2, 3])
+
+        >>> ks.Series(list('aabc')).values
+        array(['a', 'a', 'b', 'c'], dtype=object)
+        """
+        warnings.warn("We recommend using `{}.to_numpy()` instead.".format(type(self).__name__))
+        return self.to_numpy()
+
+    def to_csv(
+        self,
+        path=None,
+        sep=",",
+        na_rep="",
+        columns=None,
+        header=True,
+        quotechar='"',
+        date_format=None,
+        escapechar=None,
+        num_files=None,
+        **options
+    ):
         r"""
         Write object to a comma-separated values (csv) file.
 
@@ -557,40 +645,58 @@ class _Frame(object):
         if path is None:
             # If path is none, just collect and use pandas's to_csv.
             kdf_or_ser = self
-            if (LooseVersion("0.24") > LooseVersion(pd.__version__)) and \
-                    isinstance(self, ks.Series):
+            if (LooseVersion("0.24") > LooseVersion(pd.__version__)) and isinstance(
+                self, ks.Series
+            ):
                 # 0.23 seems not having 'columns' parameter in Series' to_csv.
                 return kdf_or_ser.to_pandas().to_csv(
-                    None, sep=sep, na_rep=na_rep, header=header,
-                    date_format=date_format, index=False)
+                    None,
+                    sep=sep,
+                    na_rep=na_rep,
+                    header=header,
+                    date_format=date_format,
+                    index=False,
+                )
             else:
                 return kdf_or_ser.to_pandas().to_csv(
-                    None, sep=sep, na_rep=na_rep, columns=columns,
-                    header=header, quotechar=quotechar,
-                    date_format=date_format, escapechar=escapechar, index=False)
+                    None,
+                    sep=sep,
+                    na_rep=na_rep,
+                    columns=columns,
+                    header=header,
+                    quotechar=quotechar,
+                    date_format=date_format,
+                    escapechar=escapechar,
+                    index=False,
+                )
 
         kdf = self
         if isinstance(self, ks.Series):
             kdf = self.to_frame()
 
         if columns is None:
-            column_index = kdf._internal.column_index
+            column_labels = kdf._internal.column_labels
         elif isinstance(columns, str):
-            column_index = [(columns,)]
+            column_labels = [(columns,)]
         elif isinstance(columns, tuple):
-            column_index = [columns]
+            column_labels = [columns]
         else:
-            column_index = [idx if isinstance(idx, tuple) else (idx,) for idx in columns]
+            column_labels = [label if isinstance(label, tuple) else (label,) for label in columns]
 
-        if header is True and kdf._internal.column_index_level > 1:
-            raise ValueError('to_csv only support one-level index column now')
+        if header is True and kdf._internal.column_labels_level > 1:
+            raise ValueError("to_csv only support one-level index column now")
         elif isinstance(header, list):
             sdf = kdf._sdf.select(
-                [self._internal.scol_for(idx).alias(new_name)
-                 for (idx, new_name) in zip(column_index, header)])
+                [
+                    self._internal.spark_column_for(label).alias(new_name)
+                    for (label, new_name) in zip(column_labels, header)
+                ]
+            )
             header = True
         else:
-            sdf = kdf._sdf.select([kdf._internal.scol_for(idx) for idx in column_index])
+            sdf = kdf._sdf.select(
+                [kdf._internal.spark_column_for(label) for label in column_labels]
+            )
 
         if num_files is not None:
             sdf = sdf.repartition(num_files)
@@ -598,12 +704,17 @@ class _Frame(object):
         builder = sdf.write.mode("overwrite")
         OptionUtils._set_opts(
             builder,
-            path=path, sep=sep, nullValue=na_rep, header=header,
-            quote=quotechar, dateFormat=date_format,
-            charToEscapeQuoteEscaping=escapechar)
+            path=path,
+            sep=sep,
+            nullValue=na_rep,
+            header=header,
+            quote=quotechar,
+            dateFormat=date_format,
+            charToEscapeQuoteEscaping=escapechar,
+        )
         builder.options(**options).format("csv").save(path)
 
-    def to_json(self, path=None, compression='uncompressed', num_files=None, **options):
+    def to_json(self, path=None, compression="uncompressed", num_files=None, **options):
         """
         Convert the object to a JSON string.
 
@@ -672,7 +783,7 @@ class _Frame(object):
                 pdf = pdf.to_frame()
             # To make the format consistent and readable by `read_json`, convert it to pandas' and
             # use 'records' orient for now.
-            return pdf.to_json(orient='records')
+            return pdf.to_json(orient="records")
 
         kdf = self
         if isinstance(self, ks.Series):
@@ -686,10 +797,25 @@ class _Frame(object):
         OptionUtils._set_opts(builder, compression=compression)
         builder.options(**options).format("json").save(path)
 
-    def to_excel(self, excel_writer, sheet_name="Sheet1", na_rep="", float_format=None,
-                 columns=None, header=True, index=True, index_label=None, startrow=0,
-                 startcol=0, engine=None, merge_cells=True, encoding=None, inf_rep="inf",
-                 verbose=True, freeze_panes=None):
+    def to_excel(
+        self,
+        excel_writer,
+        sheet_name="Sheet1",
+        na_rep="",
+        float_format=None,
+        columns=None,
+        header=True,
+        index=True,
+        index_label=None,
+        startrow=0,
+        startcol=0,
+        engine=None,
+        merge_cells=True,
+        encoding=None,
+        inf_rep="inf",
+        verbose=True,
+        freeze_panes=None,
+    ):
         """
         Write object to an Excel sheet.
 
@@ -796,10 +922,12 @@ class _Frame(object):
         elif isinstance(self, ks.Series):
             f = pd.Series.to_excel
         else:
-            raise TypeError('Constructor expects DataFrame or Series; however, '
-                            'got [%s]' % (self,))
+            raise TypeError(
+                "Constructor expects DataFrame or Series; however, " "got [%s]" % (self,)
+            )
         return validate_arguments_and_invoke_function(
-            kdf._to_internal_pandas(), self.to_excel, f, args)
+            kdf._to_internal_pandas(), self.to_excel, f, args
+        )
 
     def mean(self, axis=None, numeric_only=True):
         """
@@ -828,7 +956,7 @@ class _Frame(object):
         >>> df.mean()
         a    2.0
         b    0.2
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.mean(axis=1)
         0    0.55
@@ -843,7 +971,8 @@ class _Frame(object):
         2.0
         """
         return self._reduce_for_stat_function(
-            F.mean, name="mean", numeric_only=numeric_only, axis=axis)
+            F.mean, name="mean", numeric_only=numeric_only, axis=axis
+        )
 
     def sum(self, axis=None, numeric_only=True):
         """
@@ -872,7 +1001,7 @@ class _Frame(object):
         >>> df.sum()
         a    6.0
         b    0.6
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.sum(axis=1)
         0    1.1
@@ -887,7 +1016,8 @@ class _Frame(object):
         6.0
         """
         return self._reduce_for_stat_function(
-            F.sum, name="sum", numeric_only=numeric_only, axis=axis)
+            F.sum, name="sum", numeric_only=numeric_only, axis=axis
+        )
 
     def skew(self, axis=None, numeric_only=True):
         """
@@ -924,7 +1054,8 @@ class _Frame(object):
         0.0
         """
         return self._reduce_for_stat_function(
-            F.skewness, name="skew", numeric_only=numeric_only, axis=axis)
+            F.skewness, name="skew", numeric_only=numeric_only, axis=axis
+        )
 
     def kurtosis(self, axis=None, numeric_only=True):
         """
@@ -954,7 +1085,7 @@ class _Frame(object):
         >>> df.kurtosis()
         a   -1.5
         b   -1.5
-        dtype: float64
+        Name: 0, dtype: float64
 
         On a Series:
 
@@ -962,11 +1093,12 @@ class _Frame(object):
         -1.5
         """
         return self._reduce_for_stat_function(
-            F.kurtosis, name="kurtosis", numeric_only=numeric_only, axis=axis)
+            F.kurtosis, name="kurtosis", numeric_only=numeric_only, axis=axis
+        )
 
     kurt = kurtosis
 
-    def min(self, axis=None, numeric_only=False):
+    def min(self, axis=None, numeric_only=None):
         """
         Return the minimum of the values.
 
@@ -993,7 +1125,7 @@ class _Frame(object):
         >>> df.min()
         a    1.0
         b    0.1
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.min(axis=1)
         0    0.1
@@ -1008,9 +1140,10 @@ class _Frame(object):
         1.0
         """
         return self._reduce_for_stat_function(
-            F.min, name="min", numeric_only=numeric_only, axis=axis)
+            F.min, name="min", numeric_only=numeric_only, axis=axis
+        )
 
-    def max(self, axis=None, numeric_only=False):
+    def max(self, axis=None, numeric_only=None):
         """
         Return the maximum of the values.
 
@@ -1037,7 +1170,7 @@ class _Frame(object):
         >>> df.max()
         a    3.0
         b    0.3
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.max(axis=1)
         0    1.0
@@ -1052,7 +1185,8 @@ class _Frame(object):
         3.0
         """
         return self._reduce_for_stat_function(
-            F.max, name="max", numeric_only=numeric_only, axis=axis)
+            F.max, name="max", numeric_only=numeric_only, axis=axis
+        )
 
     def std(self, axis=None, numeric_only=True):
         """
@@ -1081,7 +1215,7 @@ class _Frame(object):
         >>> df.std()
         a    1.0
         b    0.1
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.std(axis=1)
         0    0.636396
@@ -1096,7 +1230,8 @@ class _Frame(object):
         1.0
         """
         return self._reduce_for_stat_function(
-            F.stddev, name="std", numeric_only=numeric_only, axis=axis)
+            F.stddev, name="std", numeric_only=numeric_only, axis=axis
+        )
 
     def var(self, axis=None, numeric_only=True):
         """
@@ -1125,7 +1260,7 @@ class _Frame(object):
         >>> df.var()
         a    1.00
         b    0.01
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.var(axis=1)
         0    0.405
@@ -1140,7 +1275,8 @@ class _Frame(object):
         1.0
         """
         return self._reduce_for_stat_function(
-            F.variance, name="var", numeric_only=numeric_only, axis=axis)
+            F.variance, name="var", numeric_only=numeric_only, axis=axis
+        )
 
     @property
     def size(self) -> int:
@@ -1172,6 +1308,7 @@ class _Frame(object):
 
         Examples
         --------
+
         Absolute numeric values in a Series.
 
         >>> s = ks.Series([-1.10, 2, -3.33, 4])
@@ -1198,11 +1335,13 @@ class _Frame(object):
         3  7  40   50
         """
         # TODO: The first example above should not have "Name: 0".
-        return _spark_col_apply(self, F.abs)
+        return self._apply_series_op(
+            lambda kser: kser._with_new_scol(F.abs(kser._scol)).rename(kser.name)
+        )
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
     # should be updated when it's supported.
-    def groupby(self, by, as_index: bool = True):
+    def groupby(self, by, axis=0, as_index: bool = True):
         """
         Group DataFrame or Series using a Series of columns.
 
@@ -1218,6 +1357,8 @@ class _Frame(object):
             If Series is passed, the Series or dict VALUES
             will be used to determine the groups. A label or list of
             labels may be passed to group by the columns in ``self``.
+        axis : int, default 0 or 'index'
+            Can only be set to 0 at the moment.
         as_index : bool, default True
             For aggregated output, return object with group labels as the
             index. Only relevant for DataFrame input. as_index=False is
@@ -1246,16 +1387,17 @@ class _Frame(object):
         2  Parrot       24.0
         3  Parrot       26.0
 
-        >>> df.groupby(['Animal']).mean()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby(['Animal']).mean().sort_index()  # doctest: +NORMALIZE_WHITESPACE
                 Max Speed
         Animal
         Falcon      375.0
         Parrot       25.0
 
-        >>> df.groupby(['Animal'], as_index=False).mean()
+        >>> df.groupby(['Animal'], as_index=False).mean().sort_values('Animal')
+        ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
            Animal  Max Speed
-        0  Falcon      375.0
-        1  Parrot       25.0
+        ...Falcon      375.0
+        ...Parrot       25.0
         """
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series
@@ -1288,7 +1430,10 @@ class _Frame(object):
         else:
             raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
         if not len(by):
-            raise ValueError('No group keys passed!')
+            raise ValueError("No group keys passed!")
+        axis = validate_axis(axis)
+        if axis != 0:
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
         if isinstance(df_or_s, DataFrame):
             df = df_or_s  # type: DataFrame
             col_by = [_resolve_col(df, col_or_s) for col_or_s in by]
@@ -1298,8 +1443,9 @@ class _Frame(object):
             anchor = df_or_s._kdf
             col_by = [_resolve_col(anchor, col_or_s) for col_or_s in by]
             return SeriesGroupBy(col, col_by, as_index=as_index)
-        raise TypeError('Constructor expects DataFrame or Series; however, '
-                        'got [%s]' % (df_or_s,))
+        raise TypeError(
+            "Constructor expects DataFrame or Series; however, " "got [%s]" % (df_or_s,)
+        )
 
     def bool(self):
         """
@@ -1340,8 +1486,7 @@ class _Frame(object):
         elif isinstance(self, ks.Series):
             df = self.to_dataframe()
         else:
-            raise TypeError('bool() expects DataFrame or Series; however, '
-                            'got [%s]' % (self,))
+            raise TypeError("bool() expects DataFrame or Series; however, " "got [%s]" % (self,))
         return df.head(2)._to_internal_pandas().bool()
 
     def first_valid_index(self):
@@ -1421,14 +1566,14 @@ class _Frame(object):
         >>> s.first_valid_index()
         ('cow', 'weight')
         """
-        sdf = self._internal.sdf
-        column_scols = self._internal.column_scols
-        cond = reduce(lambda x, y: x & y,
-                      map(lambda x: x.isNotNull(), column_scols))
+        sdf = self._internal.spark_frame
+        data_spark_columns = self._internal.data_spark_columns
+        cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
 
         first_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).first()
-        first_valid_idx = tuple(first_valid_row[idx_col]
-                                for idx_col in self._internal.index_columns)
+        first_valid_idx = tuple(
+            first_valid_row[idx_col] for idx_col in self._internal.index_spark_column_names
+        )
 
         if len(first_valid_idx) == 1:
             first_valid_idx = first_valid_idx[0]
@@ -1515,27 +1660,39 @@ class _Frame(object):
         if isinstance(kdf_or_kser, Series):
             kser = _col(kdf_or_kser.to_frame())
             return kser._reduce_for_stat_function(
-                lambda _: F.expr("approx_percentile(`%s`, 0.5, %s)"
-                                 % (kser._internal.data_columns[0], accuracy)),
-                name="median")
+                lambda _: F.expr(
+                    "approx_percentile(`%s`, 0.5, %s)"
+                    % (kser._internal.data_spark_column_names[0], accuracy)
+                ),
+                name="median",
+            )
         assert isinstance(kdf_or_kser, DataFrame)
 
         # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
         # to get a column name from Spark column but we need it to pass it through `expr`.
         kdf = kdf_or_kser
-        sdf = kdf._sdf.select(kdf._internal.scols)
+        sdf = kdf._sdf.select(kdf._internal.spark_columns)
         median = lambda name: F.expr("approx_percentile(`%s`, 0.5, %s)" % (name, accuracy))
-        sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_columns])
+        sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_spark_column_names])
 
         # Attach a dummy column for index to avoid default index.
-        sdf = sdf.withColumn('__DUMMY__', F.monotonically_increasing_id())
+        sdf = _InternalFrame.attach_distributed_column(sdf, "__DUMMY__")
 
         # This is expected to be small so it's fine to transpose.
-        return DataFrame(kdf._internal.copy(
-            sdf=sdf,
-            index_map=[('__DUMMY__', None)],
-            column_scols=[scol_for(sdf, col) for col in kdf._internal.data_columns])) \
-            ._to_internal_pandas().transpose().iloc[:, 0]
+        return (
+            DataFrame(
+                kdf._internal.copy(
+                    spark_frame=sdf,
+                    index_map=OrderedDict({"__DUMMY__": None}),
+                    data_spark_columns=[
+                        scol_for(sdf, col) for col in kdf._internal.data_spark_column_names
+                    ],
+                )
+            )
+            ._to_internal_pandas()
+            .transpose()
+            .iloc[:, 0]
+        )
 
     # TODO: 'center', 'win_type', 'on', 'axis' parameter should be implemented.
     def rolling(self, window, min_periods=None):
@@ -1681,25 +1838,10 @@ def _resolve_col(kdf, col_like):
         if kdf is not col_like._kdf:
             raise ValueError(
                 "Cannot combine the series because it comes from a different dataframe. "
-                "In order to allow this operation, enable 'compute.ops_on_diff_frames' option.")
+                "In order to allow this operation, enable 'compute.ops_on_diff_frames' option."
+            )
         return col_like
     elif isinstance(col_like, tuple):
         return kdf[col_like]
     else:
         raise ValueError(col_like)
-
-
-def _spark_col_apply(kdf_or_kser, sfun):
-    """
-    Performs a function to all cells on a dataframe, the function being a known sql function.
-    """
-    from databricks.koalas.frame import DataFrame
-    from databricks.koalas.series import Series
-    if isinstance(kdf_or_kser, Series):
-        kser = kdf_or_kser
-        return kser._with_new_scol(sfun(kser._scol))
-    assert isinstance(kdf_or_kser, DataFrame)
-    kdf = kdf_or_kser
-    sdf = kdf._sdf
-    sdf = sdf.select([sfun(kdf._internal.scol_for(col)).alias(col) for col in kdf.columns])
-    return DataFrame(sdf)

@@ -27,9 +27,11 @@ Attributes and underlying data
 
    DataFrame.dtypes
    DataFrame.shape
+   DataFrame.axes
    DataFrame.ndim
    DataFrame.size
    DataFrame.select_dtypes
+   DataFrame.values
 
 Conversion
 ----------
@@ -64,6 +66,7 @@ Indexing, iteration
    DataFrame.get
    DataFrame.where
    DataFrame.mask
+   DataFrame.query
 
 Binary operator functions
 -------------------------
@@ -98,12 +101,14 @@ Function application, GroupBy & Window
 .. autosummary::
    :toctree: api/
 
+   DataFrame.apply
    DataFrame.applymap
    DataFrame.pipe
    DataFrame.agg
    DataFrame.aggregate
    DataFrame.groupby
    DataFrame.transform
+   DataFrame.map_in_pandas
 
 .. _api.dataframe.stats:
 
@@ -179,6 +184,8 @@ Reshaping, sorting, transposing
    DataFrame.sort_values
    DataFrame.nlargest
    DataFrame.nsmallest
+   DataFrame.stack
+   DataFrame.unstack
    DataFrame.melt
    DataFrame.T
    DataFrame.transpose

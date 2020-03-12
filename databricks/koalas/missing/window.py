@@ -18,25 +18,39 @@ from databricks.koalas.missing import _unsupported_function, _unsupported_proper
 
 
 def unsupported_function_expanding(method_name, deprecated=False, reason=""):
-    return _unsupported_function(class_name='pandas.core.window.Expanding', method_name=method_name,
-                                 deprecated=deprecated, reason=reason)
+    return _unsupported_function(
+        class_name="pandas.core.window.Expanding",
+        method_name=method_name,
+        deprecated=deprecated,
+        reason=reason,
+    )
 
 
 def unsupported_property_expanding(property_name, deprecated=False, reason=""):
     return _unsupported_property(
-        class_name='pandas.core.window.Expanding', property_name=property_name,
-        deprecated=deprecated, reason=reason)
+        class_name="pandas.core.window.Expanding",
+        property_name=property_name,
+        deprecated=deprecated,
+        reason=reason,
+    )
 
 
 def unsupported_function_rolling(method_name, deprecated=False, reason=""):
-    return _unsupported_function(class_name='pandas.core.window.Rolling', method_name=method_name,
-                                 deprecated=deprecated, reason=reason)
+    return _unsupported_function(
+        class_name="pandas.core.window.Rolling",
+        method_name=method_name,
+        deprecated=deprecated,
+        reason=reason,
+    )
 
 
 def unsupported_property_rolling(property_name, deprecated=False, reason=""):
     return _unsupported_property(
-        class_name='pandas.core.window.Rolling', property_name=property_name,
-        deprecated=deprecated, reason=reason)
+        class_name="pandas.core.window.Rolling",
+        property_name=property_name,
+        deprecated=deprecated,
+        reason=reason,
+    )
 
 
 class _MissingPandasLikeExpanding(object):
