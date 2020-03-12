@@ -1287,7 +1287,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([90, 91, 85], name="koalas")
         others = (kser, 100, "hello")
         for func in funcs:
-            print(f"func: {func}")
             for other in others:
                 result = getattr(kser, func)(other)
                 self.assert_eq(kser._internal.data_columns[0], result._internal.data_columns[0])
