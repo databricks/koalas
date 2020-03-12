@@ -73,6 +73,13 @@ Compatibility with MultiIndex
 
    Index.set_names
 
+Compatibility with MultiIndex
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.droplevel
+
 Missing Values
 ~~~~~~~~~~~~~~
 .. autosummary::
@@ -165,6 +172,13 @@ MultiIndex components
    :toctree: api/
 
    MultiIndex.swaplevel
+
+MultiIndex components
+~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.droplevel
 
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
