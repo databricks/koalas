@@ -3624,7 +3624,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             if before > after:
                 raise ValueError("Truncate: %s must be after %s" % (after, before))
 
-        result = _col(self.to_frame()[before:after])
+        result = _col(self.to_frame().loc[before:after])
 
         return result.copy() if copy else result
 
