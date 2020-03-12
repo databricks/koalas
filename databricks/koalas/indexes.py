@@ -1007,18 +1007,18 @@ class Index(IndexOpsMixin):
         Examples
         --------
         >>> midx = ks.DataFrame({'a': ['a', 'b']}, index=[['a', 'x'], ['b', 'y'], [1, 2]]).index
-        >>> midx  # doctest: +NORMALIZE_WHITESPACE
+        >>> midx  # doctest: +SKIP
         MultiIndex([('a', 'b', 1),
                     ('x', 'y', 2)],
                    )
-        >>> midx.droplevel([0, 1])  # doctest: +NORMALIZE_WHITESPACE
+        >>> midx.droplevel([0, 1])  # doctest: +SKIP
         Int64Index([1, 2], dtype='int64')
-        >>> midx.droplevel(0)  # doctest: +NORMALIZE_WHITESPACE
+        >>> midx.droplevel(0)  # doctest: +SKIP
         MultiIndex([('b', 1),
                     ('y', 2)],
                    )
         >>> midx.names = [("a", "b"), "b", "c"]
-        >>> midx.droplevel([('a', 'b')])  # doctest: +NORMALIZE_WHITESPACE
+        >>> midx.droplevel([('a', 'b')]  # doctest: +SKIP
         MultiIndex([('b', 1),
                     ('y', 2)],
                    names=['b', 'c'])
