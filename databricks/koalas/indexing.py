@@ -933,19 +933,69 @@ class iLocIndexer(_LocIndexerLike):
             assert isinstance(rows_sel.spark_type, BooleanType), rows_sel.spark_type
             return rows_sel._scol, None, None
         elif isinstance(rows_sel, slice):
-            if rows_sel == slice(None):
-                # If slice is None - select everything, so nothing to do
-                return None, None, None
-            elif (rows_sel.start is not None) or (rows_sel.step is not None):
-                iLocIndexer._raiseNotImplemented("Cannot use start or step with Spark.")
-            elif not isinstance(rows_sel.stop, int):
-                raise TypeError(
-                    "cannot do slice indexing with these indexers [{}] of {}".format(
-                        rows_sel.stop, type(rows_sel.stop)
+
+            def verify_type(i):
+                if not isinstance(i, int):
+                    raise TypeError(
+                        "cannot do slice indexing with these indexers [{}] of {}".format(i, type(i))
                     )
-                )
+
+            has_negative = False
+            start = rows_sel.start
+            if start is not None:
+                verify_type(start)
+                if start == 0:
+                    start = None
+                elif start < 0:
+                    has_negative = True
+            stop = rows_sel.stop
+            if stop is not None:
+                verify_type(stop)
+                if stop == 0:
+                    stop = None
+                elif stop < 0:
+                    has_negative = True
+
+            step = rows_sel.step
+            if step is not None:
+                verify_type(step)
+                if step == 0:
+                    raise ValueError("slice step cannot be zero")
             else:
-                return None, rows_sel.stop, None
+                step = 1
+
+            if start is None and step == 1:
+                return None, stop, None
+
+            sdf = self._internal.spark_frame
+            sequence_scol = sdf[self._sequence_col]
+
+            if has_negative or (step < 0 and start is None):
+                cnt = sdf.count()
+
+            cond = []
+            if start is not None:
+                if start < 0:
+                    start = start + cnt
+                if step >= 0:
+                    cond.append(sequence_scol >= F.lit(start).cast(LongType()))
+                else:
+                    cond.append(sequence_scol <= F.lit(start).cast(LongType()))
+            if stop is not None:
+                if stop < 0:
+                    stop = stop + cnt
+                if step >= 0:
+                    cond.append(sequence_scol < F.lit(stop).cast(LongType()))
+                else:
+                    cond.append(sequence_scol > F.lit(stop).cast(LongType()))
+            if step != 1:
+                if step > 0:
+                    start = start or 0
+                else:
+                    start = start or (cnt - 1)
+                cond.append(((sequence_scol - start) % F.lit(step).cast(LongType())) == F.lit(0))
+
+            return reduce(lambda x, y: x & y, cond), None, None
         elif isinstance(rows_sel, int):
             sdf = self._internal.spark_frame
             return (sdf[self._sequence_col] == rows_sel), None, 0
