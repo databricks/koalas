@@ -660,7 +660,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser.dot(kser_other), pser.dot(pser_other))
 
+        # length of index is different
         kser_other = ks.Series([90, 91, 85, 100], index=[2, 4, 1, 0])
+        with self.assertRaisesRegex(ValueError, "matrices are not aligned"):
+            kser.dot(kser_other)
+        # values of index are different
+        kser_other = ks.Series([90, 91, 85], index=[3, 4, 1])
         with self.assertRaisesRegex(ValueError, "matrices are not aligned"):
             kser.dot(kser_other)
 
