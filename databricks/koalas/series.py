@@ -4389,18 +4389,16 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> s @ s
         14
         """
-        if self is not other:
-            if len(self.index) != len(other.index):
-                raise ValueError("matrices are not aligned")
-
         if isinstance(other, DataFrame):
             raise ValueError(
                 "Series.dot() is currently not supported with DataFrame since "
                 "it will cause expansive calculation as many as the number "
                 "of columns of DataFrame"
             )
-
-        elif isinstance(other, Series):
+        if self._kdf is not other._kdf:
+            if len(self.index) != len(other.index):
+                raise ValueError("matrices are not aligned")
+        if isinstance(other, Series):
             result = (self * other).sum()
 
         return result
