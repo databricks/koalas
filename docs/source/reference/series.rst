@@ -353,6 +353,7 @@ specific plotting methods of the form ``Series.plot.<kind>``.
    Series.plot.bar
    Series.plot.barh
    Series.plot.box
+   Series.plot.density
    Series.plot.hist
    Series.plot.line
    Series.plot.pie
