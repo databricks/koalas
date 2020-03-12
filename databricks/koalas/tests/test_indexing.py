@@ -674,6 +674,27 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kseries.iloc[:1], pseries.iloc[:1])
         self.assert_eq(kseries.iloc[:-1], pseries.iloc[:-1])
 
+    def test_iloc_slice_rows_sel(self):
+        pdf = pd.DataFrame({"A": [1, 2] * 5, "B": [3, 4] * 5, "C": [5, 6] * 5})
+        kdf = ks.from_pandas(pdf)
+
+        for rows_sel in [
+            slice(None),
+            slice(0, 1),
+            slice(1, 2),
+            slice(-3, None),
+            slice(None, -3),
+            slice(None, None, 3),
+            slice(3, 8, 2),
+            slice(None, None, -2),
+            slice(8, 3, -2),
+            slice(8, None, -2),
+            slice(None, 3, -2),
+        ]:
+            with self.subTest(rows_sel=rows_sel):
+                self.assert_eq(kdf.iloc[rows_sel].sort_index(), pdf.iloc[rows_sel].sort_index())
+                self.assert_eq(kdf.A.iloc[rows_sel].sort_index(), pdf.A.iloc[rows_sel].sort_index())
+
     def test_setitem(self):
         pdf = pd.DataFrame(
             [[1, 2], [4, 5], [7, 8]],
@@ -714,16 +735,6 @@ class IndexingTest(ReusedSQLTestCase):
     def test_iloc_raises(self):
         pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})
         kdf = ks.from_pandas(pdf)
-
-        with self.assertRaisesRegex(
-            SparkPandasNotImplementedError, "Cannot use start or step with Spark."
-        ):
-            kdf.iloc[0:]
-
-        with self.assertRaisesRegex(
-            SparkPandasNotImplementedError, "Cannot use start or step with Spark."
-        ):
-            kdf.iloc[:2:2]
 
         with self.assertRaisesRegex(
             SparkPandasNotImplementedError,
