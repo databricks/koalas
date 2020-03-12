@@ -798,15 +798,16 @@ class iLocIndexer(_LocIndexerLike):
     Allowed inputs are:
 
     - An integer for column selection, e.g. ``5``.
+    - A list or array of integers for row selection with distinct index values,
+      e.g. ``[3, 4, 0]``
     - A list or array of integers for column selection, e.g. ``[4, 3, 0]``.
     - A boolean array for column selection.
-    - A slice object with ints for column selection, e.g. ``1:7``.
-    - A slice object with ints without start and step for row selection, e.g. ``:7``.
+    - A slice object with ints for row and column selection, e.g. ``1:7``.
 
     Not allowed inputs which pandas allows are:
 
-    - An integer for row selection, e.g. ``5``.
-    - A list or array of integers for row selection, e.g. ``[4, 3, 0]``.
+    - A list or array of integers for row selection with duplicated indexes,
+      e.g. ``[4, 4, 0]``.
     - A boolean array for row selection.
     - A ``callable`` function with one argument (the calling Series, DataFrame
       or Panel) and that returns valid output for indexing (one of the above).
@@ -847,12 +848,9 @@ class iLocIndexer(_LocIndexerLike):
     d    4
     Name: 0, dtype: int64
 
-    A list of integers for row selection is not allowed.
-
     >>> df.iloc[[0]]
-    Traceback (most recent call last):
-     ...
-    databricks.koalas.exceptions.SparkPandasNotImplementedError: ...
+       a  b  c  d
+    0  1  2  3  4
 
     With a `slice` object.
 
