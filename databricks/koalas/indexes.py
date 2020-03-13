@@ -988,6 +988,69 @@ class Index(IndexOpsMixin):
             result.name = name
         return result
 
+    def droplevel(self, level):
+        """
+        Return index with requested level(s) removed.
+        If resulting index has only 1 level left, the result will be
+        of Index type, not MultiIndex.
+
+        Parameters
+        ----------
+        level : int, str, tuple, or list-like, default 0
+            If a string is given, must be the name of a level
+            If list-like, elements must be names or indexes of levels.
+
+        Returns
+        -------
+        Index or MultiIndex
+
+        Examples
+        --------
+        >>> midx = ks.DataFrame({'a': ['a', 'b']}, index=[['a', 'x'], ['b', 'y'], [1, 2]]).index
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 'b', 1),
+                    ('x', 'y', 2)],
+                   )
+        >>> midx.droplevel([0, 1])  # doctest: +SKIP
+        Int64Index([1, 2], dtype='int64')
+        >>> midx.droplevel(0)  # doctest: +SKIP
+        MultiIndex([('b', 1),
+                    ('y', 2)],
+                   )
+        >>> midx.names = [("a", "b"), "b", "c"]
+        >>> midx.droplevel([('a', 'b')])  # doctest: +SKIP
+        MultiIndex([('b', 1),
+                    ('y', 2)],
+                   names=['b', 'c'])
+        """
+        names = self.names
+        nlevels = self.nlevels
+        if not isinstance(level, (tuple, list)):
+            level = [level]
+
+        for n in level:
+            if isinstance(n, int) and (n > nlevels - 1):
+                raise IndexError(
+                    "Too many levels: Index has only {} levels, not {}".format(nlevels, n + 1)
+                )
+            if isinstance(n, (str, tuple)) and (n not in names):
+                raise KeyError("Level {} not found".format(n))
+
+        if len(level) >= nlevels:
+            raise ValueError(
+                "Cannot remove {} levels from an index with {} "
+                "levels: at least one level must be "
+                "left.".format(len(level), nlevels)
+            )
+
+        int_level = [n if isinstance(n, int) else names.index(n) for n in level]
+        index_map = list(self._internal.index_map.items())
+        index_map = OrderedDict(index_map[c] for c in range(0, nlevels) if c not in int_level)
+        sdf = self._internal.spark_frame
+        sdf = sdf.select(*index_map.keys())
+        result = _InternalFrame(spark_frame=sdf, index_map=index_map)
+        return DataFrame(result).index
+
     def symmetric_difference(self, other, result_name=None, sort=None):
         """
         Compute the symmetric difference of two Index objects.
