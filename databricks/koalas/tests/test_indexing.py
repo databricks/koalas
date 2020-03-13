@@ -695,6 +695,33 @@ class IndexingTest(ReusedSQLTestCase):
                 self.assert_eq(kdf.iloc[rows_sel].sort_index(), pdf.iloc[rows_sel].sort_index())
                 self.assert_eq(kdf.A.iloc[rows_sel].sort_index(), pdf.A.iloc[rows_sel].sort_index())
 
+    def test_iloc_iterable_rows_sel(self):
+        pdf = pd.DataFrame({"A": [1, 2] * 5, "B": [3, 4] * 5, "C": [5, 6] * 5})
+        kdf = ks.from_pandas(pdf)
+
+        for rows_sel in [
+            [],
+            np.array([0, 1]),
+            [1, 2],
+            np.array([-3]),
+            [3],
+            np.array([-2]),
+            [8, 3, -5],
+        ]:
+            with self.subTest(rows_sel=rows_sel):
+                self.assert_eq(kdf.iloc[rows_sel].sort_index(), pdf.iloc[rows_sel].sort_index())
+                self.assert_eq(kdf.A.iloc[rows_sel].sort_index(), pdf.A.iloc[rows_sel].sort_index())
+
+            with self.subTest(rows_sel=rows_sel):
+                self.assert_eq(
+                    kdf.iloc[rows_sel, :].sort_index(), pdf.iloc[rows_sel, :].sort_index()
+                )
+
+            with self.subTest(rows_sel=rows_sel):
+                self.assert_eq(
+                    kdf.iloc[rows_sel, :1].sort_index(), pdf.iloc[rows_sel, :1].sort_index()
+                )
+
     def test_setitem(self):
         pdf = pd.DataFrame(
             [[1, 2], [4, 5], [7, 8]],
@@ -735,18 +762,6 @@ class IndexingTest(ReusedSQLTestCase):
     def test_iloc_raises(self):
         pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})
         kdf = ks.from_pandas(pdf)
-
-        with self.assertRaisesRegex(
-            SparkPandasNotImplementedError,
-            ".iloc requires numeric slice or conditional boolean Index",
-        ):
-            kdf.iloc[[0, 1], :]
-
-        with self.assertRaisesRegex(
-            SparkPandasNotImplementedError,
-            ".iloc requires numeric slice or conditional boolean Index",
-        ):
-            kdf.A.iloc[[0, 1]]
 
         with self.assertRaisesRegex(SparkPandasIndexingError, "Only accepts pairs of candidates"):
             kdf.iloc[[0, 1], [0, 1], [1, 2]]
@@ -824,3 +839,7 @@ class IndexingTest(ReusedSQLTestCase):
         # Index loc search
         self.assert_eq(kdf.A[5], pdf.A[5])
         self.assert_eq(kdf.A[3], pdf.A[3])
+        with self.assertRaisesRegex(
+            NotImplementedError, "Duplicated row selection is not currently supported"
+        ):
+            kdf.iloc[[1, 1]]
