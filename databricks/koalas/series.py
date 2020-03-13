@@ -31,7 +31,7 @@ from pandas.io.formats.printing import pprint_thing
 from databricks.koalas.typedef import as_python_type
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.types import BooleanType, StructType
+from pyspark.sql.types import BooleanType, StructType, LongType, IntegerType
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -3624,7 +3624,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             if before > after:
                 raise ValueError("Truncate: %s must be after %s" % (after, before))
 
-        result = _col(self.to_frame()[before:after])
+        result = _col(self.to_frame().loc[before:after])
 
         return result.copy() if copy else result
 
@@ -4533,6 +4533,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def __getitem__(self, key):
         try:
+            if (isinstance(key, slice) and any(type(n) == int for n in [key.start, key.stop])) or (
+                type(key) == int and not isinstance(self.index.spark_type, (IntegerType, LongType))
+            ):
+                # Seems like pandas Series always uses int as positional search when slicing
+                # with ints, searches based on index values when the value is int.
+                return self.iloc[key]
             return self.loc[key]
         except SparkPandasIndexingError:
             raise KeyError(
