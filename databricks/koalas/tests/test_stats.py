@@ -16,10 +16,7 @@
 
 import numpy as np
 import pandas as pd
-import unittest
 from distutils.version import LooseVersion
-
-import pyspark
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
@@ -45,12 +42,8 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             getattr(kdf.A, funcname)()
             getattr(kdf, funcname)()
 
-    @unittest.skipIf(
-        LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
-        "transpose() doesn't work property with PySpark<2.4",
-    )
     def test_stat_functions(self):
-        pdf = pd.DataFrame({"A": [1, 2, 3, 4], "B": [1.0, 2.1, 3, 4]})
+        pdf = pd.DataFrame({"A": [1, 2, 3, 4], "B": [1, 2, 3, 4]})
         kdf = ks.from_pandas(pdf)
         self._test_stat_functions(pdf, kdf)
 
@@ -182,28 +175,6 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.var(), pser.var(), almost=True)
         self.assert_eq(kser.std(), pser.std(), almost=True)
 
-    @unittest.skip(
-        "PySpark does not allow object type. "
-        "Should we support these case by casting to string? or just disallow?"
-    )
-    def test_some_stats_functions_should_discard_non_numeric_columns_by_default(self):
-        pdf = pd.DataFrame({"i": [0, 1, 2], "b": [False, False, True], "s": ["x", "y", "z"]})
-        kdf = ks.from_pandas(pdf)
-
-        # min and max do not discard non-numeric columns by default
-        self.assertEqual(len(kdf.min()), len(pdf.min()))
-        self.assertEqual(len(kdf.max()), len(pdf.max()))
-        self.assertEqual(len(kdf.sum()), len(pdf.sum()))
-
-        # all the others do
-        self.assertEqual(len(kdf.mean()), len(pdf.mean()))
-
-        self.assertEqual(len(kdf.var()), len(pdf.var()))
-        self.assertEqual(len(kdf.std()), len(pdf.std()))
-
-        self.assertEqual(len(kdf.kurtosis()), len(pdf.kurtosis()))
-        self.assertEqual(len(kdf.skew()), len(pdf.skew()))
-
     def test_stats_on_non_numeric_columns_should_be_discarded_if_numeric_only_is_true(self):
         pdf = pd.DataFrame({"i": [0, 1, 2], "b": [False, False, True], "s": ["x", "y", "z"]})
         kdf = ks.from_pandas(pdf)
@@ -219,23 +190,11 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(len(kdf.kurtosis(numeric_only=True)), len(pdf.kurtosis(numeric_only=True)))
         self.assertEqual(len(kdf.skew(numeric_only=True)), len(pdf.skew(numeric_only=True)))
 
-    @unittest.skipIf(
-        LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
-        "transpose() doesn't work property with PySpark<2.4",
-    )
-    def test_stats_on_non_numeric_columns_should_not_be_discarded_if_numeric_only_is_false(self):
+    def test_numeric_only_unsupported(self):
         pdf = pd.DataFrame({"i": [0, 1, 2], "b": [False, False, True], "s": ["x", "y", "z"]})
         kdf = ks.from_pandas(pdf)
 
-        # the lengths are the same, but the results are different.
-        self.assertEqual(len(kdf.sum(numeric_only=False)), len(pdf.sum(numeric_only=False)))
-
-        # pandas fails belows.
-        # self.assertEqual(len(kdf.mean(numeric_only=False)), len(pdf.mean(numeric_only=False)))
-
-        # self.assertEqual(len(kdf.var(numeric_only=False)), len(pdf.var(numeric_only=False)))
-        # self.assertEqual(len(kdf.std(numeric_only=False)), len(pdf.std(numeric_only=False)))
-
-        # self.assertEqual(len(kdf.kurtosis(numeric_only=False)),
-        #                  len(pdf.kurtosis(numeric_only=False)))
-        # self.assertEqual(len(kdf.skew(numeric_only=False)), len(pdf.skew(numeric_only=False)))
+        with self.assertRaisesRegex(
+            ValueError, "Disabling 'numeric_only' parameter is not supported"
+        ):
+            kdf.sum(numeric_only=False)

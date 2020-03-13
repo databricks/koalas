@@ -937,9 +937,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -982,9 +982,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -1027,9 +1027,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -1066,9 +1066,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -1107,8 +1107,9 @@ class _Frame(object):
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
         numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+            If True, include only float, int, boolean columns. This parameter is mainly for
+            pandas compatibility. False is supported; however, the columns should
+            be all numeric or all non-numeric.
 
         Returns
         -------
@@ -1152,8 +1153,9 @@ class _Frame(object):
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
         numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+            If True, include only float, int, boolean columns. This parameter is mainly for
+            pandas compatibility. False is supported; however, the columns should
+            be all numeric or all non-numeric.
 
         Returns
         -------
@@ -1196,9 +1198,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -1241,9 +1243,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
