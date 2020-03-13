@@ -1007,7 +1007,7 @@ class Index(IndexOpsMixin):
         Examples
         --------
         >>> midx = ks.DataFrame({'a': ['a', 'b']}, index=[['a', 'x'], ['b', 'y'], [1, 2]]).index
-        >>> midx
+        >>> midx  # doctest: +SKIP
         MultiIndex([('a', 'b', 1),
                     ('x', 'y', 2)],
                    )
