@@ -599,7 +599,7 @@ class LocIndexer(_LocIndexerLike):
                 return reduce(lambda x, y: x & y, cond), None, None
             else:
                 index = self._kdf_or_kser.index
-                index_data_type = index.to_series().spark_type
+                index_data_type = [f.dataType for f in index.to_series().spark_type]
 
                 start = rows_sel.start
                 if start is not None:
@@ -631,20 +631,20 @@ class LocIndexer(_LocIndexerLike):
 
                 conds = []
                 if start is not None:
-                    start_scols = self._internal.index_spark_columns[: len(start)]
-                    data_types = [f.dataType for f in index_data_type[: len(start)]]
                     cond = F.lit(True)
-                    for scol, value, dt in list(zip(start_scols, start, data_types))[::-1]:
+                    for scol, value, dt in list(
+                        zip(self._internal.index_spark_columns, start, index_data_type)
+                    )[::-1]:
                         compare = MultiIndex._comparator_for_monotonic_increasing(dt)
                         cond = F.when(scol.eqNullSafe(F.lit(value).cast(dt)), cond).otherwise(
                             compare(scol, F.lit(value).cast(dt), spark.Column.__gt__)
                         )
                     conds.append(cond)
                 if stop is not None:
-                    stop_scols = self._internal.index_spark_columns[: len(stop)]
-                    data_types = [f.dataType for f in index_data_type[: len(stop)]]
                     cond = F.lit(True)
-                    for scol, value, dt in list(zip(stop_scols, stop, data_types))[::-1]:
+                    for scol, value, dt in list(
+                        zip(self._internal.index_spark_columns, stop, index_data_type)
+                    )[::-1]:
                         compare = MultiIndex._comparator_for_monotonic_increasing(dt)
                         cond = F.when(scol.eqNullSafe(F.lit(value).cast(dt)), cond).otherwise(
                             compare(scol, F.lit(value).cast(dt), spark.Column.__lt__)
