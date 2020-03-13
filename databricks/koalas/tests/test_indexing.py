@@ -382,7 +382,8 @@ class IndexingTest(ReusedSQLTestCase):
         pdf = pdf.set_index("b", append=True)
 
         self.assert_eq(kdf.loc[:], pdf.loc[:])
-        self.assertRaises(NotImplementedError, lambda: kdf.loc[5:5])
+        self.assert_eq(kdf.loc[5:5], pdf.loc[5:5])
+        self.assert_eq(kdf.loc[5:9], pdf.loc[5:9])
 
         self.assert_eq(kdf.loc[5], pdf.loc[5])
         self.assert_eq(kdf.loc[9], pdf.loc[9])
@@ -393,6 +394,80 @@ class IndexingTest(ReusedSQLTestCase):
         self.assertTrue((kdf.a.loc[(5, 3)] == pdf.a.loc[(5, 3)]).all())
         self.assert_eq(kdf.a.loc[(9, 0)], pdf.a.loc[(9, 0)])
 
+        # monotonically increasing index test
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5]},
+            index=pd.MultiIndex.from_tuples(
+                [("x", "a"), ("x", "b"), ("y", "c"), ("y", "d"), ("z", "e")]
+            ),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        for rows_sel in [
+            slice(None),
+            slice("y", None),
+            slice(None, "y"),
+            slice(("x", "b"), None),
+            slice(None, ("y", "c")),
+            slice(("x", "b"), ("y", "c")),
+            slice("x", ("y", "c")),
+            slice(("x", "b"), "y"),
+        ]:
+            with self.subTest("monotonically increasing", rows_sel=rows_sel):
+                self.assert_eq(kdf.loc[rows_sel], pdf.loc[rows_sel])
+                self.assert_eq(kdf.a.loc[rows_sel], pdf.a.loc[rows_sel])
+
+        # monotonically increasing first index test
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5]},
+            index=pd.MultiIndex.from_tuples(
+                [("x", "a"), ("x", "b"), ("y", "c"), ("y", "a"), ("z", "e")]
+            ),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        for rows_sel in [
+            slice(None),
+            slice("y", None),
+            slice(None, "y"),
+        ]:
+            with self.subTest("monotonically increasing first index", rows_sel=rows_sel):
+                self.assert_eq(kdf.loc[rows_sel], pdf.loc[rows_sel])
+                self.assert_eq(kdf.a.loc[rows_sel], pdf.a.loc[rows_sel])
+
+        for rows_sel in [
+            slice(("x", "b"), None),
+            slice(None, ("y", "c")),
+            slice(("x", "b"), ("y", "c")),
+            slice("x", ("y", "c")),
+            slice(("x", "b"), "y"),
+        ]:
+            with self.subTest("monotonically increasing first index", rows_sel=rows_sel):
+                self.assertRaises(KeyError, lambda: kdf.loc[rows_sel])
+                self.assertRaises(KeyError, lambda: kdf.a.loc[rows_sel])
+
+        # not monotonically increasing index test
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5]},
+            index=pd.MultiIndex.from_tuples(
+                [("z", "e"), ("y", "d"), ("y", "c"), ("x", "b"), ("x", "a")]
+            ),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        for rows_sel in [
+            slice("y", None),
+            slice(None, "y"),
+            slice(("x", "b"), None),
+            slice(None, ("y", "c")),
+            slice(("x", "b"), ("y", "c")),
+            slice("x", ("y", "c")),
+            slice(("x", "b"), "y"),
+        ]:
+            with self.subTest("monotonically decreasing", rows_sel=rows_sel):
+                self.assertRaises(KeyError, lambda: kdf.loc[rows_sel])
+                self.assertRaises(KeyError, lambda: kdf.a.loc[rows_sel])
+
     def test_loc2d_multiindex(self):
         kdf = self.kdf
         kdf = kdf.set_index("b", append=True)
@@ -401,7 +476,7 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assert_eq(kdf.loc[:, :], pdf.loc[:, :])
         self.assert_eq(kdf.loc[:, "a"], pdf.loc[:, "a"])
-        self.assertRaises(NotImplementedError, lambda: kdf.loc[5:5, "a"])
+        self.assert_eq(kdf.loc[5:5, "a"], pdf.loc[5:5, "a"])
 
     def test_loc2d(self):
         kdf = self.kdf
