@@ -86,6 +86,7 @@ Binary operator functions
    Series.ge
    Series.ne
    Series.eq
+   Series.dot
 
 Function application, GroupBy & Window
 --------------------------------------

@@ -4335,6 +4335,78 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol((scol - prev_row) / prev_row)
 
+    def dot(self, other):
+        """
+        Compute the dot product between the Series and the columns of other.
+
+        This method computes the dot product between the Series and another
+        one, or the Series and each columns of a DataFrame.
+
+        It can also be called using `self @ other` in Python >= 3.5.
+
+        .. note:: This API is slightly different from pandas when indexes from both
+            are not aligned. To match with pandas', it requires to read the whole data for,
+            for example, counting. pandas raises an exception; however, Koalas just proceeds
+            and performs by ignoring mismatches with NaN permissively.
+
+            >>> pdf1 = pd.Series([1, 2, 3], index=[0, 1, 2])
+            >>> pdf2 = pd.Series([1, 2, 3], index=[0, 1, 3])
+            >>> pdf1.dot(pdf2)  # doctest: +SKIP
+            ...
+            ValueError: matrices are not aligned
+
+            >>> kdf1 = ks.Series([1, 2, 3], index=[0, 1, 2])
+            >>> kdf2 = ks.Series([1, 2, 3], index=[0, 1, 3])
+            >>> kdf1.dot(kdf2)  # doctest: +SKIP
+            5
+
+        Parameters
+        ----------
+        other : Series, DataFrame.
+            The other object to compute the dot product with its columns.
+
+        Returns
+        -------
+        scalar, Series
+            Return the dot product of the Series and other if other is a
+            Series, the Series of the dot product of Series and each rows of
+            other if other is a DataFrame.
+
+        Notes
+        -----
+        The Series and other has to share the same index if other is a Series
+        or a DataFrame.
+
+        Examples
+        --------
+        >>> s = ks.Series([0, 1, 2, 3])
+
+        >>> s.dot(s)
+        14
+
+        >>> s @ s
+        14
+        """
+        if isinstance(other, DataFrame):
+            raise ValueError(
+                "Series.dot() is currently not supported with DataFrame since "
+                "it will cause expansive calculation as many as the number "
+                "of columns of DataFrame"
+            )
+        if self._kdf is not other._kdf:
+            if len(self.index) != len(other.index):
+                raise ValueError("matrices are not aligned")
+        if isinstance(other, Series):
+            result = (self * other).sum()
+
+        return result
+
+    def __matmul__(self, other):
+        """
+        Matrix multiplication using binary `@` operator in Python>=3.5.
+        """
+        return self.dot(other)
+
     def repeat(self, repeats: int) -> "Series":
         """
         Repeat elements of a Series.
