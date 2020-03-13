@@ -986,3 +986,16 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assertRaises(ValueError, lambda: kmidx.repeat(-1))
         self.assertRaises(ValueError, lambda: kmidx.repeat("abc"))
+
+    def test_unique(self):
+        pidx = pd.Index(["a", "b", "a"])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx.unique().sort_values(), pidx.unique().sort_values())
+        self.assert_eq(kidx.unique().sort_values(), pidx.unique().sort_values())
+
+        pmidx = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "a")])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(kmidx.unique().sort_values(), pmidx.unique().sort_values())
+        self.assert_eq(kmidx.unique().sort_values(), pmidx.unique().sort_values())
