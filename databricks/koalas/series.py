@@ -4344,12 +4344,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         It can also be called using `self @ other` in Python >= 3.5.
 
-        .. note:: The behaviour of this API is slightly different from pandas
-            since its original implementation requires quite expensive operation
-            (It requires sorting & comparing for all index values which is quite
-            expensive and may cause out-of-memory with large dataset).
-            pandas raises ValueError if all values of index are not same, while
-            Koalas just ignoring them as NaN.
+        .. note:: This API is slightly different from pandas when indexes from both
+            are not aligned. To match with pandas', it requires to read the whole data for,
+            for example, counting. pandas raises an exception; however, Koalas just proceeds
+            and performs by ignoring mismatches with NaN permissively.
 
             >>> pdf1 = pd.Series([1, 2, 3], index=[0, 1, 2])
             >>> pdf2 = pd.Series([1, 2, 3], index=[0, 1, 3])
