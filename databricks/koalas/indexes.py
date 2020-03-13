@@ -1007,7 +1007,7 @@ class Index(IndexOpsMixin):
         Examples
         --------
         >>> midx = ks.DataFrame({'a': ['a', 'b']}, index=[['a', 'x'], ['b', 'y'], [1, 2]]).index
-        >>> midx  # doctest: +SKIP
+        >>> midx
         MultiIndex([('a', 'b', 1),
                     ('x', 'y', 2)],
                    )
@@ -1018,7 +1018,7 @@ class Index(IndexOpsMixin):
                     ('y', 2)],
                    )
         >>> midx.names = [("a", "b"), "b", "c"]
-        >>> midx.droplevel([('a', 'b')]  # doctest: +SKIP
+        >>> midx.droplevel([('a', 'b')])  # doctest: +SKIP
         MultiIndex([('b', 1),
                     ('y', 2)],
                    names=['b', 'c'])
@@ -1047,7 +1047,7 @@ class Index(IndexOpsMixin):
         index_map = list(self._internal.index_map.items())
         index_map = OrderedDict(index_map[c] for c in range(0, nlevels) if c not in int_level)
         sdf = self._internal.spark_frame
-        sdf = sdf.select(self._internal.index_spark_columns)
+        sdf = sdf.select(*index_map.keys())
         result = _InternalFrame(spark_frame=sdf, index_map=index_map)
         return DataFrame(result).index
 
