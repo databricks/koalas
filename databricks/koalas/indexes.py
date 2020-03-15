@@ -893,12 +893,21 @@ class Index(IndexOpsMixin):
 
         >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=['d', 'e', 'e']).index.unique().sort_values()
         Index(['d', 'e'], dtype='object')
+
+        MultiIndex
+
+        >>> ks.MultiIndex.from_tuples([("A", "X"), ("A", "Y"), ("A", "X")]).unique()
+        ... # doctest: +SKIP
+        MultiIndex([('A', 'X'),
+                    ('A', 'Y')],
+                   )
         """
         if level is not None:
             self._validate_index_level(level)
-        sdf = self._kdf._sdf.select(
-            self._scol.alias(self._internal.index_spark_column_names[0])
-        ).distinct()
+        scols = self._internal.index_spark_columns
+        scol_names = self._internal.index_spark_column_names
+        scols = [scol.alias(scol_name) for scol, scol_name in zip(scols, scol_names)]
+        sdf = self._kdf._sdf.select(scols).distinct()
         return DataFrame(
             _InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map)
         ).index
@@ -2093,9 +2102,6 @@ class MultiIndex(Index):
         return self._kdf[[]]._to_internal_pandas().index
 
     toPandas = to_pandas
-
-    def unique(self, level=None):
-        raise PandasNotImplementedError(class_name="MultiIndex", method_name="unique")
 
     def nunique(self, dropna=True):
         raise NotImplementedError("isna is not defined for MultiIndex")

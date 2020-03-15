@@ -199,6 +199,7 @@ MultiIndex Modifying and computations
    MultiIndex.copy
    MultiIndex.rename
    MultiIndex.repeat
+   MultiIndex.unique
    MultiIndex.min
    MultiIndex.max
    MultiIndex.value_counts
