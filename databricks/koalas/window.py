@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from collections import OrderedDict
 from functools import partial
 from typing import Any
 
@@ -634,7 +635,7 @@ class RollingGroupby(Rolling):
 
         super(RollingGroupby, self).__init__(kdf, window, min_periods)
         self._groupby = groupby
-        # NOTE THAT this code intentionally uses `F.col` instead of `scol` in
+        # NOTE THAT this code intentionally uses `F.col` instead of `spark_column` in
         # given series. This is because, in case of series, we convert it into
         # DataFrame. So, if the given `groupkeys` is a series, they end up with
         # being a different series.
@@ -673,10 +674,10 @@ class RollingGroupby(Rolling):
         # Here we need to include grouped key as an index, and shift previous index.
         #   [index_column0, index_column1] -> [grouped key, index_column0, index_column1]
         new_index_scols = []
-        new_index_map = []
+        new_index_map = OrderedDict()
         for groupkey in self._groupkeys:
             new_index_scols.append(
-                # NOTE THAT this code intentionally uses `F.col` instead of `scol` in
+                # NOTE THAT this code intentionally uses `F.col` instead of `spark_column` in
                 # given series. This is because, in case of series, we convert it into
                 # DataFrame. So, if the given `groupkeys` is a series, they end up with
                 # being a different series.
@@ -684,15 +685,17 @@ class RollingGroupby(Rolling):
                     SPARK_INDEX_NAME_FORMAT(len(new_index_scols))
                 )
             )
-            new_index_map.append(
-                (SPARK_INDEX_NAME_FORMAT(len(new_index_map)), groupkey._internal.column_labels[0])
-            )
+            new_index_map[
+                SPARK_INDEX_NAME_FORMAT(len(new_index_map))
+            ] = groupkey._internal.column_labels[0]
 
-        for new_index_scol, index_name in zip(kdf._internal.index_scols, kdf._internal.index_names):
+        for new_index_scol, index_name in zip(
+            kdf._internal.index_spark_columns, kdf._internal.index_names
+        ):
             new_index_scols.append(
                 new_index_scol.alias(SPARK_INDEX_NAME_FORMAT(len(new_index_scols)))
             )
-            new_index_map.append((SPARK_INDEX_NAME_FORMAT(len(new_index_map)), index_name))
+            new_index_map[SPARK_INDEX_NAME_FORMAT(len(new_index_map))] = index_name
 
         applied = []
         for column in kdf.columns:
@@ -707,10 +710,12 @@ class RollingGroupby(Rolling):
         sdf = sdf.select(new_index_scols + [c._scol for c in applied]).filter(cond)
 
         internal = kdf._internal.copy(
-            sdf=sdf,
+            spark_frame=sdf,
             index_map=new_index_map,
             column_labels=[c._internal.column_labels[0] for c in applied],
-            column_scols=[scol_for(sdf, c._internal.data_columns[0]) for c in applied],
+            data_spark_columns=[
+                scol_for(sdf, c._internal.data_spark_column_names[0]) for c in applied
+            ],
         )
 
         ret = DataFrame(internal)
@@ -1396,7 +1401,7 @@ class ExpandingGroupby(Expanding):
 
         super(ExpandingGroupby, self).__init__(kdf, min_periods)
         self._groupby = groupby
-        # NOTE THAT this code intentionally uses `F.col` instead of `scol` in
+        # NOTE THAT this code intentionally uses `F.col` instead of `spark_column` in
         # given series. This is because, in case of series, we convert it into
         # DataFrame. So, if the given `groupkeys` is a series, they end up with
         # being a different series.

@@ -46,7 +46,6 @@ class _MissingPandasLikeSeries(object):
     combine = unsupported_function("combine")
     cov = unsupported_function("cov")
     divmod = unsupported_function("divmod")
-    dot = unsupported_function("dot")
     droplevel = unsupported_function("droplevel")
     ewm = unsupported_function("ewm")
     factorize = unsupported_function("factorize")

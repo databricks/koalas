@@ -18,6 +18,7 @@ from datetime import datetime
 from distutils.version import LooseVersion
 import inspect
 import sys
+import unittest
 
 import numpy as np
 import pandas as pd
@@ -360,6 +361,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.head(2), pdf.head(2))
         self.assert_eq(kdf.head(3), pdf.head(3))
+        self.assert_eq(kdf.head(0), pdf.head(0))
+        self.assert_eq(kdf.head(-3), pdf.head(-3))
+        self.assert_eq(kdf.head(-10), pdf.head(-10))
 
     def test_attributes(self):
         kdf = self.kdf
@@ -393,8 +397,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = ["x", "y"]
         self.assert_eq(kdf.columns, pd.Index(["x", "y"]))
         self.assert_eq(kdf, pdf)
-        self.assert_eq(kdf._internal.data_columns, ["x", "y"])
-        self.assert_eq(kdf._internal.spark_df.columns, ["x", "y"])
+        self.assert_eq(kdf._internal.data_spark_column_names, ["x", "y"])
+        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["x", "y"])
 
         columns = pdf.columns
         columns.name = "lvl_1"
@@ -421,23 +425,23 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.columns = ["x", "y"]
         self.assert_eq(kdf.columns, pd.Index(["x", "y"]))
         self.assert_eq(kdf, pdf)
-        self.assert_eq(kdf._internal.data_columns, ["x", "y"])
-        self.assert_eq(kdf._internal.spark_df.columns, ["x", "y"])
+        self.assert_eq(kdf._internal.data_spark_column_names, ["x", "y"])
+        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["x", "y"])
 
         pdf.columns = columns
         kdf.columns = columns
         self.assert_eq(kdf.columns, columns)
         self.assert_eq(kdf, pdf)
-        self.assert_eq(kdf._internal.data_columns, ["(A, 0)", "(B, 1)"])
-        self.assert_eq(kdf._internal.spark_df.columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf._internal.data_spark_column_names, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["(A, 0)", "(B, 1)"])
 
         columns.names = ["lvl_1", "lvl_2"]
 
         kdf.columns = columns
         self.assert_eq(kdf.columns.names, ["lvl_1", "lvl_2"])
         self.assert_eq(kdf, pdf)
-        self.assert_eq(kdf._internal.data_columns, ["(A, 0)", "(B, 1)"])
-        self.assert_eq(kdf._internal.spark_df.columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf._internal.data_spark_column_names, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["(A, 0)", "(B, 1)"])
 
     def test_rename_dataframe(self):
         kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
@@ -1851,6 +1855,55 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ktable, ptable)
         self.assert_eq(ktable.index, ptable.index)
         self.assert_eq(repr(ktable.index), repr(ptable.index))
+
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
+        "stack won't work property with PySpark<2.4",
+    )
+    def test_stack(self):
+        pdf_single_level_cols = pd.DataFrame(
+            [[0, 1], [2, 3]], index=["cat", "dog"], columns=["weight", "height"]
+        )
+        kdf_single_level_cols = ks.from_pandas(pdf_single_level_cols)
+
+        self.assert_eq(
+            kdf_single_level_cols.stack().sort_index(), pdf_single_level_cols.stack().sort_index()
+        )
+
+        multicol1 = pd.MultiIndex.from_tuples(
+            [("weight", "kg"), ("weight", "pounds")], names=["x", "y"]
+        )
+        pdf_multi_level_cols1 = pd.DataFrame(
+            [[1, 2], [2, 4]], index=["cat", "dog"], columns=multicol1
+        )
+        kdf_multi_level_cols1 = ks.from_pandas(pdf_multi_level_cols1)
+
+        self.assert_eq(
+            kdf_multi_level_cols1.stack().sort_index(), pdf_multi_level_cols1.stack().sort_index()
+        )
+
+        multicol2 = pd.MultiIndex.from_tuples([("weight", "kg"), ("height", "m")])
+        pdf_multi_level_cols2 = pd.DataFrame(
+            [[1.0, 2.0], [3.0, 4.0]], index=["cat", "dog"], columns=multicol2
+        )
+        kdf_multi_level_cols2 = ks.from_pandas(pdf_multi_level_cols2)
+
+        self.assert_eq(
+            kdf_multi_level_cols2.stack().sort_index(), pdf_multi_level_cols2.stack().sort_index()
+        )
+
+        pdf = pd.DataFrame(
+            {
+                ("y", "c"): [True, True],
+                ("x", "b"): [False, False],
+                ("x", "c"): [True, False],
+                ("y", "a"): [False, True],
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.stack().sort_index(), pdf.stack().sort_index(), almost=True)
+        self.assert_eq(kdf[[]].stack().sort_index(), pdf[[]].stack().sort_index(), almost=True)
 
     def test_unstack(self):
         pdf = pd.DataFrame(

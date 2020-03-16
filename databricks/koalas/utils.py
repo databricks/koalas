@@ -74,15 +74,15 @@ def combine_frames(this, *args, how="full"):
 
         # Note that the order of each element in index_map is guaranteed according to the index
         # level.
-        this_and_that_index_map = zip(this_index_map, that_index_map)
+        this_and_that_index_map = zip(this_index_map.items(), that_index_map.items())
 
         # If the same named index is found, that's used.
         for (this_column, this_name), (that_column, that_name) in this_and_that_index_map:
             if this_name == that_name:
                 # We should merge the Spark columns into one
                 # to mimic pandas' behavior.
-                this_scol = this._internal.scol_for(this_column)
-                that_scol = that._internal.scol_for(that_column)
+                this_scol = scol_for(this._sdf, this_column)
+                that_scol = scol_for(that._sdf, that_column)
                 join_scol = this_scol == that_scol
                 join_scols.append(join_scol)
                 merged_index_scols.append(
@@ -98,16 +98,16 @@ def combine_frames(this, *args, how="full"):
         joined_df = joined_df.select(
             merged_index_scols
             + [
-                this[label]._scol.alias("__this_%s" % this._internal.column_name_for(label))
+                this[label]._scol.alias("__this_%s" % this._internal.spark_column_name_for(label))
                 for label in this._internal.column_labels
             ]
             + [
-                that[label]._scol.alias("__that_%s" % that._internal.column_name_for(label))
+                that[label]._scol.alias("__that_%s" % that._internal.spark_column_name_for(label))
                 for label in that._internal.column_labels
             ]
         )
 
-        index_columns = set(this._internal.index_columns)
+        index_columns = set(this._internal.index_spark_column_names)
         new_data_columns = [c for c in joined_df.columns if c not in index_columns]
         level = max(this._internal.column_labels_level, that._internal.column_labels_level)
         column_labels = [
@@ -127,9 +127,9 @@ def combine_frames(this, *args, how="full"):
         )
         return DataFrame(
             this._internal.copy(
-                sdf=joined_df,
+                spark_frame=joined_df,
                 column_labels=column_labels,
-                column_scols=[scol_for(joined_df, col) for col in new_data_columns],
+                data_spark_columns=[scol_for(joined_df, col) for col in new_data_columns],
                 column_label_names=column_label_names,
             )
         )
@@ -192,18 +192,19 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
         - left: `resolve_func` should resolve columns including that columns.
             For instance, if 'this' has columns A, B, C and that has B, C, D, `this_columns` is
             B, C but `that_columns` are B, C, D.
+        - inner: Same as 'full' mode; however, internally performs inner join instead.
     :return: Aligned DataFrame
     """
-    assert how == "full" or how == "left"
+    assert how == "full" or how == "left" or how == "inner"
 
     this_column_labels = this._internal.column_labels
     that_column_labels = that._internal.column_labels
     common_column_labels = set(this_column_labels).intersection(that_column_labels)
 
-    # 1. Full outer join given two dataframes.
+    # 1. Perform the join given two dataframes.
     combined = combine_frames(this, that, how=how)
 
-    # 2. Apply given function to transform the columns in a batch and keep the new columns.
+    # 2. Apply the given function to transform the columns in a batch and keep the new columns.
     combined_column_labels = combined._internal.column_labels
 
     that_columns_to_apply = []
@@ -233,7 +234,7 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
                 columns_to_keep.append(F.lit(None).cast(FloatType()).alias(str(combined_label)))
                 column_labels_to_keep.append(combined_label)
             else:
-                columns_to_keep.append(combined._internal.scol_for(combined_label))
+                columns_to_keep.append(combined._internal.spark_column_for(combined_label))
                 column_labels_to_keep.append(combined_label)
 
     that_columns_to_apply += additional_that_columns
@@ -280,11 +281,14 @@ def align_diff_series(func, this_series, *args, how="full"):
     combined = combine_frames(this_series.to_frame(), *cols, how=how)
 
     scol = func(
-        combined["this"]._internal.column_scols[0], *combined["that"]._internal.column_scols
+        combined["this"]._internal.data_spark_columns[0],
+        *combined["that"]._internal.data_spark_columns
     )
 
     return Series(
-        combined._internal.copy(scol=scol, column_labels=this_series._internal.column_labels),
+        combined._internal.copy(
+            spark_column=scol, column_labels=this_series._internal.column_labels
+        ),
         anchor=combined,
     )
 

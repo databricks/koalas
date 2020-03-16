@@ -105,6 +105,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = self.pser
 
         self.assert_eq(kser.head(3), pser.head(3))
+        self.assert_eq(kser.head(0), pser.head(0))
+        self.assert_eq(kser.head(-3), pser.head(-3))
+        self.assert_eq(kser.head(-10), pser.head(-10))
 
         # TODO: self.assert_eq(kser.tail(3), pser.tail(3))
 

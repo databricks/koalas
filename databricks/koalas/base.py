@@ -17,7 +17,7 @@
 """
 Base and utility classes for Koalas objects.
 """
-
+from collections import OrderedDict
 from functools import wraps, partial
 from typing import Union, Callable, Any
 
@@ -145,9 +145,6 @@ class IndexOpsMixin(object):
 
     :ivar spark_type: Spark data type
     :type spark_type: spark.types.DataType
-
-    def _with_new_scol(self, scol: spark.Column) -> IndexOpsMixin
-        Creates new object with the new column
     """
 
     def __init__(self, internal: _InternalFrame, kdf):
@@ -158,7 +155,7 @@ class IndexOpsMixin(object):
 
     @property
     def _scol(self):
-        return self._internal.scol
+        return self._internal.spark_column
 
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
@@ -1031,7 +1028,7 @@ class IndexOpsMixin(object):
         else:
             sdf_dropna = self._internal._sdf.select(self._scol)
         index_name = SPARK_DEFAULT_INDEX_NAME
-        column_name = self._internal.data_columns[0]
+        column_name = self._internal.data_spark_column_names[0]
         sdf = sdf_dropna.groupby(scol_for(sdf_dropna, column_name).alias(index_name)).count()
         if sort:
             if ascending:
@@ -1046,14 +1043,16 @@ class IndexOpsMixin(object):
         column_labels = self._internal.column_labels
         if (column_labels[0] is None) or (None in column_labels[0]):
             internal = _InternalFrame(
-                sdf=sdf, index_map=[(index_name, None)], column_scols=[scol_for(sdf, "count")]
+                spark_frame=sdf,
+                index_map=OrderedDict({index_name: None}),
+                data_spark_columns=[scol_for(sdf, "count")],
             )
         else:
             internal = _InternalFrame(
-                sdf=sdf,
-                index_map=[(index_name, None)],
+                spark_frame=sdf,
+                index_map=OrderedDict({index_name: None}),
                 column_labels=column_labels,
-                column_scols=[scol_for(sdf, "count")],
+                data_spark_columns=[scol_for(sdf, "count")],
                 column_label_names=self._internal.column_label_names,
             )
 
@@ -1114,7 +1113,7 @@ class IndexOpsMixin(object):
         return res.collect()[0][0]
 
     def _nunique(self, dropna=True, approx=False, rsd=0.05):
-        colname = self._internal.data_columns[0]
+        colname = self._internal.data_spark_column_names[0]
         count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
         if dropna:
             return count_fn(self._scol).alias(colname)

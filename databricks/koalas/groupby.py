@@ -200,15 +200,15 @@ class GroupBy(object):
         else:
             agg_cols = [col.name for col in self._agg_columns]
             func_or_funcs = OrderedDict([(col, func_or_funcs) for col in agg_cols])
-        index_map = [
+        index_map = OrderedDict(
             (SPARK_INDEX_NAME_FORMAT(i), s._internal.column_labels[0])
             for i, s in enumerate(self._groupkeys)
-        ]
+        )
         kdf = DataFrame(
             GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys_scols, index_map)
         )
         if not self._as_index:
-            kdf = kdf.reset_index()
+            kdf = kdf.reset_index(drop=self._should_drop_index)
 
         if relabeling:
             kdf = kdf[order]
@@ -232,7 +232,7 @@ class GroupBy(object):
         for key, value in func.items():
             label = key if isinstance(key, tuple) else (key,)
             for aggfunc in [value] if isinstance(value, str) else value:
-                name = kdf._internal.column_name_for(label)
+                name = kdf._internal.spark_column_name_for(label)
                 data_col = "('{0}', '{1}')".format(name, aggfunc) if multi_aggs else name
                 data_columns.append(data_col)
                 column_labels.append(tuple(list(label) + [aggfunc]) if multi_aggs else label)
@@ -255,9 +255,9 @@ class GroupBy(object):
                     reordered.append(F.expr("{1}(`{0}`) as `{2}`".format(name, aggfunc, data_col)))
         sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
         return _InternalFrame(
-            sdf=sdf,
+            spark_frame=sdf,
             column_labels=column_labels,
-            column_scols=[scol_for(sdf, col) for col in data_columns],
+            data_spark_columns=[scol_for(sdf, col) for col in data_columns],
             index_map=index_map,
         )
 
@@ -528,17 +528,17 @@ class GroupBy(object):
         sdf = self._kdf._sdf
         sdf = sdf.groupby(*groupkey_cols).count()
         if (len(self._agg_columns) > 0) and (self._have_agg_columns):
-            name = self._agg_columns[0]._internal.data_columns[0]
+            name = self._agg_columns[0]._internal.data_spark_column_names[0]
             sdf = sdf.withColumnRenamed("count", name)
         else:
             name = "count"
         internal = _InternalFrame(
-            sdf=sdf,
-            index_map=[
+            spark_frame=sdf,
+            index_map=OrderedDict(
                 (SPARK_INDEX_NAME_FORMAT(i), s._internal.column_labels[0])
                 for i, s in enumerate(groupkeys)
-            ],
-            column_scols=[scol_for(sdf, name)],
+            ),
+            data_spark_columns=[scol_for(sdf, name)],
         )
         return _col(DataFrame(internal))
 
@@ -931,7 +931,7 @@ class GroupBy(object):
             internal = kdf._internal.with_new_sdf(sdf)
         else:
             # Otherwise, it loses index.
-            internal = _InternalFrame(sdf=sdf, index_map=None)
+            internal = _InternalFrame(spark_frame=sdf, index_map=None)
         return DataFrame(internal)
 
     # TODO: implement 'dropna' parameter
@@ -985,13 +985,13 @@ class GroupBy(object):
 
     @staticmethod
     def _spark_group_map_apply(kdf, func, groupkeys_scols, return_schema, retain_index):
-        index_columns = kdf._internal.index_columns
+        index_columns = kdf._internal.index_spark_column_names
         index_names = kdf._internal.index_names
-        data_columns = kdf._internal.data_columns
+        data_columns = kdf._internal.data_spark_column_names
         column_labels = kdf._internal.column_labels
 
         def rename_output(pdf):
-            # TODO: This logic below was borrowed from `DataFrame.pandas_df` to set the index
+            # TODO: This logic below was borrowed from `DataFrame.to_pandas_frame` to set the index
             #   within each pdf properly. we might have to deduplicate it.
             import pandas as pd
 
@@ -1182,11 +1182,11 @@ class GroupBy(object):
             s.alias(SPARK_INDEX_NAME_FORMAT(i)) for i, s in enumerate(self._groupkeys_scols)
         ]
         sdf = self._kdf._sdf
-        index = self._kdf._internal.index_columns[0]
+        index = self._kdf._internal.index_spark_column_names[0]
 
         stat_exprs = []
         for kser, c in zip(self._agg_columns, self._agg_columns_scols):
-            name = kser._internal.data_columns[0]
+            name = kser._internal.data_spark_column_names[0]
 
             if skipna:
                 order_column = Column(c._jc.desc_nulls_last())
@@ -1201,14 +1201,15 @@ class GroupBy(object):
             stat_exprs.append(F.max(scol_for(sdf, name)).alias(name))
         sdf = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
         internal = _InternalFrame(
-            sdf=sdf,
-            index_map=[
+            spark_frame=sdf,
+            index_map=OrderedDict(
                 (SPARK_INDEX_NAME_FORMAT(i), s._internal.column_labels[0])
                 for i, s in enumerate(groupkeys)
-            ],
+            ),
             column_labels=[kser._internal.column_labels[0] for kser in self._agg_columns],
-            column_scols=[
-                scol_for(sdf, kser._internal.data_columns[0]) for kser in self._agg_columns
+            data_spark_columns=[
+                scol_for(sdf, kser._internal.data_spark_column_names[0])
+                for kser in self._agg_columns
             ],
         )
         return DataFrame(internal)
@@ -1258,11 +1259,11 @@ class GroupBy(object):
             s.alias(SPARK_INDEX_NAME_FORMAT(i)) for i, s in enumerate(self._groupkeys_scols)
         ]
         sdf = self._kdf._sdf
-        index = self._kdf._internal.index_columns[0]
+        index = self._kdf._internal.index_spark_column_names[0]
 
         stat_exprs = []
         for kser, c in zip(self._agg_columns, self._agg_columns_scols):
-            name = kser._internal.data_columns[0]
+            name = kser._internal.data_spark_column_names[0]
 
             if skipna:
                 order_column = Column(c._jc.asc_nulls_last())
@@ -1277,14 +1278,15 @@ class GroupBy(object):
             stat_exprs.append(F.max(scol_for(sdf, name)).alias(name))
         sdf = sdf.groupby(*groupkey_cols).agg(*stat_exprs)
         internal = _InternalFrame(
-            sdf=sdf,
-            index_map=[
+            spark_frame=sdf,
+            index_map=OrderedDict(
                 (SPARK_INDEX_NAME_FORMAT(i), s._internal.column_labels[0])
                 for i, s in enumerate(groupkeys)
-            ],
+            ),
             column_labels=[kser._internal.column_labels[0] for kser in self._agg_columns],
-            column_scols=[
-                scol_for(sdf, kser._internal.data_columns[0]) for kser in self._agg_columns
+            data_spark_columns=[
+                scol_for(sdf, kser._internal.data_spark_column_names[0])
+                for kser in self._agg_columns
             ],
         )
         return DataFrame(internal)
@@ -1702,7 +1704,7 @@ class GroupBy(object):
             internal = kdf._internal.with_new_sdf(sdf)
         else:
             return_type = _infer_return_type(func).tpe
-            data_columns = self._kdf._internal.data_columns
+            data_columns = self._kdf._internal.data_spark_column_names
             return_schema = StructType(
                 [StructField(c, return_type) for c in data_columns if c not in input_groupnames]
             )
@@ -1715,7 +1717,7 @@ class GroupBy(object):
                 retain_index=False,
             )
             # Otherwise, it loses index.
-            internal = _InternalFrame(sdf=sdf, index_map=None)
+            internal = _InternalFrame(spark_frame=sdf, index_map=None)
 
         return DataFrame(internal)
 
@@ -1836,7 +1838,7 @@ class GroupBy(object):
             stat_exprs = []
             for kser, c in zip(self._agg_columns, self._agg_columns_scols):
                 spark_type = kser.spark_type
-                name = kser._internal.data_columns[0]
+                name = kser._internal.data_spark_column_names[0]
                 label = kser._internal.column_labels[0]
                 # TODO: we should have a function that takes dataframes and converts the numeric
                 # types. Converting the NaNs is used in a few places, it should be in utils.
@@ -1855,18 +1857,18 @@ class GroupBy(object):
             sdf = sdf.select(*groupkey_cols).distinct()
 
         internal = _InternalFrame(
-            sdf=sdf,
-            index_map=[
+            spark_frame=sdf,
+            index_map=OrderedDict(
                 (SPARK_INDEX_NAME_FORMAT(i), s._internal.column_labels[0])
                 for i, s in enumerate(self._groupkeys)
-            ],
+            ),
             column_labels=column_labels,
-            column_scols=[scol_for(sdf, col) for col in data_columns],
+            data_spark_columns=[scol_for(sdf, col) for col in data_columns],
             column_label_names=self._kdf._internal.column_label_names,
         )
         kdf = DataFrame(internal)
         if not self._as_index:
-            kdf = kdf.reset_index()
+            kdf = kdf.reset_index(drop=self._should_drop_index)
         return kdf
 
 
@@ -1876,12 +1878,14 @@ class DataFrameGroupBy(GroupBy):
         kdf: DataFrame,
         by: List[Series],
         as_index: bool = True,
+        should_drop_index: bool = False,
         agg_columns: List[Union[str, Tuple[str, ...]]] = None,
     ):
         self._kdf = kdf
         self._groupkeys = by
         self._groupkeys_scols = [s._scol for s in self._groupkeys]
         self._as_index = as_index
+        self._should_drop_index = should_drop_index
         self._have_agg_columns = True
 
         if agg_columns is None:
@@ -1917,7 +1921,11 @@ class DataFrameGroupBy(GroupBy):
                     if name in groupkey_names:
                         raise ValueError("cannot insert {}, already exists".format(name))
             return DataFrameGroupBy(
-                self._kdf, self._groupkeys, as_index=self._as_index, agg_columns=item
+                self._kdf,
+                self._groupkeys,
+                as_index=self._as_index,
+                agg_columns=item,
+                should_drop_index=self._should_drop_index,
             )
 
     def _apply_series_op(self, op):
@@ -2015,15 +2023,13 @@ class DataFrameGroupBy(GroupBy):
 
         # Reindex the DataFrame to reflect initial grouping and agg columns.
         internal = _InternalFrame(
-            sdf=sdf,
-            index_map=(
-                [
-                    (s._internal.data_columns[0], s._internal.column_labels[0])
-                    for s in self._groupkeys
-                ]
+            spark_frame=sdf,
+            index_map=OrderedDict(
+                (s._internal.data_spark_column_names[0], s._internal.column_labels[0])
+                for s in self._groupkeys
             ),
             column_labels=column_labels,
-            column_scols=[scol_for(sdf, col) for col in data_columns],
+            data_spark_columns=[scol_for(sdf, col) for col in data_columns],
         )
 
         # Cast columns to ``"float64"`` to match `pandas.DataFrame.groupby`.
@@ -2040,13 +2046,20 @@ class SeriesGroupBy(GroupBy):
         #   `SeriesGroupBy` creates another DataFrame and
         #   internal IDs of the columns become different. Maybe we should refactor the whole
         #   class in the future.
-        self._groupkeys_scols = [F.col(s._internal.data_columns[0]) for s in self._groupkeys]
-        self._agg_columns_scols = [F.col(s._internal.data_columns[0]) for s in self._agg_columns]
+        self._groupkeys_scols = [
+            F.col(s._internal.data_spark_column_names[0]) for s in self._groupkeys
+        ]
+        self._agg_columns_scols = [
+            F.col(s._internal.data_spark_column_names[0]) for s in self._agg_columns
+        ]
 
         if not as_index:
             raise TypeError("as_index=False only valid with DataFrame")
         self._as_index = True
         self._have_agg_columns = True
+
+        # Not used currently. It's a placeholder to match with DataFrameGroupBy.
+        self._should_drop_index = False
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeSeriesGroupBy, item):
@@ -2143,21 +2156,21 @@ class SeriesGroupBy(GroupBy):
         if len(self._kdf._internal.index_names) > 1:
             raise ValueError("nsmallest do not support multi-index now")
         sdf = self._kdf._sdf
-        name = self._agg_columns[0]._internal.data_columns[0]
+        name = self._agg_columns[0]._internal.data_spark_column_names[0]
         window = Window.partitionBy(self._groupkeys_scols).orderBy(
             scol_for(sdf, name), NATURAL_ORDER_COLUMN_NAME
         )
         sdf = sdf.withColumn("rank", F.row_number().over(window)).filter(F.col("rank") <= n)
         internal = _InternalFrame(
-            sdf=sdf.drop(NATURAL_ORDER_COLUMN_NAME),
-            index_map=(
+            spark_frame=sdf.drop(NATURAL_ORDER_COLUMN_NAME),
+            index_map=OrderedDict(
                 [
-                    (s._internal.data_columns[0], s._internal.column_labels[0])
+                    (s._internal.data_spark_column_names[0], s._internal.column_labels[0])
                     for s in self._groupkeys
                 ]
-                + self._kdf._internal.index_map
+                + list(self._kdf._internal.index_map.items())
             ),
-            column_scols=[scol_for(sdf, name)],
+            data_spark_columns=[scol_for(sdf, name)],
         )
         return _col(DataFrame(internal))
 
@@ -2195,21 +2208,21 @@ class SeriesGroupBy(GroupBy):
         if len(self._kdf._internal.index_names) > 1:
             raise ValueError("nlargest do not support multi-index now")
         sdf = self._kdf._sdf
-        name = self._agg_columns[0]._internal.data_columns[0]
+        name = self._agg_columns[0]._internal.data_spark_column_names[0]
         window = Window.partitionBy(self._groupkeys_scols).orderBy(
             F.col(name).desc(), NATURAL_ORDER_COLUMN_NAME
         )
         sdf = sdf.withColumn("rank", F.row_number().over(window)).filter(F.col("rank") <= n)
         internal = _InternalFrame(
-            sdf=sdf.drop(NATURAL_ORDER_COLUMN_NAME),
-            index_map=(
+            spark_frame=sdf.drop(NATURAL_ORDER_COLUMN_NAME),
+            index_map=OrderedDict(
                 [
-                    (s._internal.data_columns[0], s._internal.column_labels[0])
+                    (s._internal.data_spark_column_names[0], s._internal.column_labels[0])
                     for s in self._groupkeys
                 ]
-                + self._kdf._internal.index_map
+                + list(self._kdf._internal.index_map.items())
             ),
-            column_scols=[scol_for(sdf, name)],
+            data_spark_columns=[scol_for(sdf, name)],
         )
         return _col(DataFrame(internal))
 
@@ -2260,7 +2273,7 @@ class SeriesGroupBy(GroupBy):
             for i, s in enumerate(self._groupkeys_scols + self._agg_columns_scols)
         ]
         sdf = self._kdf._sdf
-        agg_column = self._agg_columns[0]._internal.data_columns[0]
+        agg_column = self._agg_columns[0]._internal.data_spark_column_names[0]
         sdf = sdf.groupby(*groupkey_cols).count().withColumnRenamed("count", agg_column)
 
         if sort:
@@ -2270,12 +2283,12 @@ class SeriesGroupBy(GroupBy):
                 sdf = sdf.orderBy(F.col(agg_column).desc())
 
         internal = _InternalFrame(
-            sdf=sdf,
-            index_map=[
+            spark_frame=sdf,
+            index_map=OrderedDict(
                 (SPARK_INDEX_NAME_FORMAT(i), s._internal.column_labels[0])
                 for i, s in enumerate(groupkeys)
-            ],
-            column_scols=[scol_for(sdf, agg_column)],
+            ),
+            data_spark_columns=[scol_for(sdf, agg_column)],
         )
         return _col(DataFrame(internal))
 
