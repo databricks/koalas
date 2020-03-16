@@ -46,6 +46,7 @@ Modifying and computations
    Index.argmin
    Index.argmax
    Index.copy
+   Index.delete
    Index.equals
    Index.identical
    Index.is_boolean
