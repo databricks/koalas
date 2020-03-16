@@ -1299,60 +1299,81 @@ class Index(IndexOpsMixin):
         >>> kidx
         Int64Index([10, 10, 9, 8, 4, 2, 4, 4, 2, 2, 10, 10], dtype='int64')
 
-        >>> kidx.delete(0)
-        Int64Index([10, 9, 8, 4, 2, 4, 4, 2, 2, 10, 10], dtype='int64')
+        >>> kidx.delete(0).sort_values()
+        Int64Index([2, 2, 2, 4, 4, 4, 8, 9, 10, 10, 10], dtype='int64')
 
-        >>> kidx.delete([0, 1, 2, 3, 10, 11])
-        Int64Index([4, 2, 4, 4, 2, 2], dtype='int64')
+        >>> kidx.delete([0, 1, 2, 3, 10, 11]).sort_values()
+        Int64Index([2, 2, 2, 4, 4, 4], dtype='int64')
+
+        MultiIndex
+
+        >>> kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        >>> kidx  # doctest: +SKIP
+        MultiIndex([('a', 'x', 1),
+                    ('b', 'y', 2),
+                    ('c', 'z', 3)],
+                   )
+
+        >>> kidx.delete([0, 2]).sort_values()  # doctest: +SKIP
+        MultiIndex([('b', 'y', 2)],
+                   )
         """
-        if isinstance(self, MultiIndex):
-            raise NotImplementedError("currently doesn't support for MultiIndex")
+        length = len(self)
         if not is_list_like(loc):
-            if not isinstance(self, str) and abs(loc) >= len(self):
+            if not isinstance(self, str) and abs(loc) >= length:
                 raise IndexError(
-                    "index {} is out of bounds for axis 0 with size {}".format(loc, len(self))
+                    "index {} is out of bounds for axis 0 with size {}".format(loc, length)
                 )
             loc = [loc]
         loc = [int(item) for item in loc]
-        loc = [item if item >= 0 else len(self) + item for item in loc]
+        loc = [item if item >= 0 else length + item for item in loc]
 
-        # we need below temporal column 'index_value_columns'
+        # we need temporal column such like '__index_value_0__'
         # since '_InternalFrame.attach_default_index' will be failed
         # when if self._scol has name of '__index_level_0__'
-        index_value_column = "__index_value__"
+        index_value_column_format = "__index_value_{}__"
 
         sdf = self._internal._sdf
-        sdf = sdf.select(self._scol.alias(index_value_column))
+        index_value_column_names = [
+            verify_temp_column_name(sdf, index_value_column_format.format(i))
+            for i in range(len(self._internal.index_spark_columns))
+        ]
+        index_value_columns = [
+            index_scol.alias(index_vcol_name)
+            for index_scol, index_vcol_name in zip(
+                self._internal.index_spark_columns, index_value_column_names
+            )
+        ]
+        sdf = sdf.select(index_value_columns)
 
         sdf = _InternalFrame.attach_default_index(sdf, default_index_type="distributed-sequence")
         # sdf here looks like below
-        # +-----------------+---------------+
-        # |__index_level_0__|__index_value__|
-        # +-----------------+---------------+
-        # |                1|             10|
-        # |                6|              4|
-        # |                3|              8|
-        # |                5|              2|
-        # |                9|              2|
-        # |                4|              4|
-        # |                8|              2|
-        # |                7|              4|
-        # |               10|             10|
-        # |               11|             10|
-        # |                2|              9|
-        # |                0|             10|
-        # +-----------------+---------------+
-
-        conds = [F.col(SPARK_INDEX_NAME_FORMAT(0)) != idx_loc for idx_loc in loc]
-        cond = reduce(lambda x, y: x & y, conds)
+        # +-----------------+-----------------+-----------------+-----------------+
+        # |__index_level_0__|__index_value_0__|__index_value_1__|__index_value_2__|
+        # +-----------------+-----------------+-----------------+-----------------+
+        # |                0|                a|                x|                1|
+        # |                1|                b|                y|                2|
+        # |                2|                c|                z|                3|
+        # +-----------------+-----------------+-----------------+-----------------+
 
         # delete rows which are matched with given `loc`
-        sdf = sdf.where(cond)
-        sdf = sdf.sort(SPARK_INDEX_NAME_FORMAT(0))
+        sdf = sdf.where(~F.col(SPARK_INDEX_NAME_FORMAT(0)).isin(loc))
+        sdf = sdf.select(index_value_column_names)
+        # sdf here looks like below, we should alias them back to origin spark column names
+        # +-----------------+-----------------+-----------------+
+        # |__index_value_0__|__index_value_1__|__index_value_2__|
+        # +-----------------+-----------------+-----------------+
+        # |                c|                z|                3|
+        # +-----------------+-----------------+-----------------+
+        index_origin_columns = [
+            F.col(index_vcol_name).alias(index_scol_name)
+            for index_vcol_name, index_scol_name in zip(
+                index_value_column_names, self._internal.index_spark_column_names
+            )
+        ]
 
         internal = _InternalFrame(
-            spark_frame=sdf.select(index_value_column),
-            index_map=OrderedDict({index_value_column: None}),
+            spark_frame=sdf.select(index_origin_columns), index_map=self._internal.index_map,
         )
 
         return DataFrame(internal).index
