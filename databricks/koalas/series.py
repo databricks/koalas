@@ -4378,12 +4378,20 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             that = "__that_{}".format(other.name)
             with option_context("compute.ops_on_diff_frames", True):
                 combined = combine_frames(self.to_frame(), other)
-        index_scols = combined._internal.index_spark_columns
         sdf = combined._sdf
         # If `self` has missing value, use value of `other`
         cond = F.when(sdf[this].isNull(), sdf[that]).otherwise(sdf[this])
-        sdf = sdf.select(*index_scols, cond.alias(self.name))
-        internal = _InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+        # If `self` and `other` come from same frame, the anchor should be kept
+        if self._kdf is other._kdf:
+            return self._with_new_scol(cond)
+        index_scols = combined._internal.index_spark_columns
+        sdf = sdf.select(*index_scols, cond.alias(self.name)).distinct()
+        internal = _InternalFrame(
+            spark_frame=sdf,
+            index_map=self._internal.index_map,
+            column_labels=self._internal.column_labels,
+            column_label_names=self._internal.column_label_names,
+        )
         return _col(ks.DataFrame(internal))
 
     def dot(self, other):
