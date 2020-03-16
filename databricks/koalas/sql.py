@@ -167,6 +167,7 @@ def _get_ipython_scope():
     """
     try:
         from IPython import get_ipython
+
         shell = get_ipython()
         return shell.user_ns
     except Exception as e:
@@ -177,11 +178,11 @@ def _get_ipython_scope():
 
 # Originally from pymysql package
 _escape_table = [chr(x) for x in range(128)]
-_escape_table[0] = u'\\0'
-_escape_table[ord('\\')] = u'\\\\'
-_escape_table[ord('\n')] = u'\\n'
-_escape_table[ord('\r')] = u'\\r'
-_escape_table[ord('\032')] = u'\\Z'
+_escape_table[0] = u"\\0"
+_escape_table[ord("\\")] = u"\\\\"
+_escape_table[ord("\n")] = u"\\n"
+_escape_table[ord("\r")] = u"\\r"
+_escape_table[ord("\032")] = u"\\Z"
 _escape_table[ord('"')] = u'\\"'
 _escape_table[ord("'")] = u"\\'"
 
@@ -202,7 +203,6 @@ def escape_sql_string(value: str) -> str:
 
 
 class SQLProcessor(object):
-
     def __init__(self, scope: Dict[str, Any], statement: str, session: SparkSession):
         self._scope = scope
         self._statement = statement
@@ -266,8 +266,10 @@ class SQLProcessor(object):
             return self._cached_vars[key]
         # Analyze:
         if key not in self._scope:
-            raise ValueError("The key {} in the SQL statement was not found in global,"
-                             " local or parameters variables".format(key))
+            raise ValueError(
+                "The key {} in the SQL statement was not found in global,"
+                " local or parameters variables".format(key)
+            )
         var = self._scope[key]
         fillin = self._convert_var(var)
         self._cached_vars[key] = fillin

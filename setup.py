@@ -47,13 +47,13 @@ setup(
     },
     python_requires='>=3.5',
     install_requires=[
-        'pandas>=0.23.2,<1.0',
+        'pandas>=0.23.2',
         'pyarrow>=0.10,<0.15',
         'numpy>=1.14',
         'matplotlib>=3.0.0',
     ],
-    maintainer="Databricks",
-    maintainer_email="koalas@databricks.com",
+    author="Databricks",
+    author_email="koalas@databricks.com",
     license='http://www.apache.org/licenses/LICENSE-2.0',
     url="https://github.com/databricks/koalas",
     project_urls={
