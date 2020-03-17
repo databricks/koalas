@@ -45,7 +45,13 @@ from pyspark.sql.types import (
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
-from databricks.koalas.utils import default_session, name_like_string, scol_for, validate_axis
+from databricks.koalas.utils import (
+    default_session,
+    name_like_string,
+    scol_for,
+    validate_axis,
+    align_diff_frames,
+)
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps
@@ -105,6 +111,9 @@ def from_pandas(pobj: Union["pd.DataFrame", "pd.Series"]) -> Union["Series", "Da
         return DataFrame(pd.DataFrame(index=pobj)).index
     else:
         raise ValueError("Unknown data type: {}".format(type(pobj)))
+
+
+_range = range  # built-in range
 
 
 def range(
@@ -1539,11 +1548,11 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     objs : a sequence of Series or DataFrame
         Any None objects will be dropped silently unless
         they are all None in which case a ValueError will be raised
-    axis : {0/'index'}, default 0
+    axis : {0/'index', 1/'columns'}, default 0
         The axis to concatenate along.
     join : {'inner', 'outer'}, default 'outer'
-        How to handle indexes on other axis(es)
-    ignore_index : boolean, default False
+        How to handle indexes on other axis (or axes).
+    ignore_index : bool, default False
         If True, do not use the index values along the concatenation axis. The
         resulting axis will be labeled 0, ..., n - 1. This is useful if you are
         concatenating objects where the concatenation axis does not have
@@ -1552,14 +1561,17 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
 
     Returns
     -------
-    concatenated : object, type of objs
+    object, type of objs
         When concatenating all ``Series`` along the index (axis=0), a
         ``Series`` is returned. When ``objs`` contains at least one
-        ``DataFrame``, a ``DataFrame`` is returned.
+        ``DataFrame``, a ``DataFrame`` is returned. When concatenating along
+        the columns (axis=1), a ``DataFrame`` is returned.
 
     See Also
     --------
-    DataFrame.merge
+    Series.append : Concatenate Series.
+    DataFrame.join : Join DataFrames using indexes.
+    DataFrame.merge : Merge DataFrames by indexes or columns.
 
     Examples
     --------
@@ -1645,6 +1657,17 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     1      b       2
     0      c       3
     1      d       4
+
+    >>> df4 = ks.DataFrame([['bird', 'polly'], ['monkey', 'george']],
+    ...                    columns=['animal', 'name'])
+
+    Combine with column axis.
+
+    >>> ks.concat([df1, df4], axis=1)
+      letter  number  animal    name
+    0      a       1    bird   polly
+    1      b       2  monkey  george
+
     """
     if isinstance(objs, (DataFrame, IndexOpsMixin)) or not isinstance(
         objs, Iterable
@@ -1654,10 +1677,6 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
             "objects, you passed an object of type "
             '"{name}"'.format(name=type(objs).__name__)
         )
-
-    axis = validate_axis(axis)
-    if axis != 0:
-        raise NotImplementedError('axis should be either 0 or "index" currently.')
 
     if len(objs) == 0:
         raise ValueError("No objects to concatenate")
@@ -1673,6 +1692,75 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                 "; only ks.Series "
                 "and ks.DataFrame are valid".format(name=type(objs).__name__)
             )
+
+    axis = validate_axis(axis)
+    if axis == 1:
+        if isinstance(objs[0], ks.Series):
+            concat_kdf = objs[0].to_frame()
+        else:
+            concat_kdf = objs[0]
+
+        with ks.option_context("compute.ops_on_diff_frames", True):
+
+            def assign_columns(kdf, this_column_labels, that_column_labels):
+                duplicated_names = set(
+                    this_column_label[1:] for this_column_label in this_column_labels
+                ).intersection(
+                    set(that_column_label[1:] for that_column_label in that_column_labels)
+                )
+                if len(duplicated_names) > 0:
+                    pretty_names = [
+                        name_like_string(column_label) for column_label in duplicated_names
+                    ]
+                    raise ValueError(
+                        "Labels have to be unique; however, got "
+                        "duplicated labels %s." % pretty_names
+                    )
+
+                # Note that here intentionally uses `zip_longest` that combine
+                # all columns.
+                for this_label, that_label in itertools.zip_longest(
+                    this_column_labels, that_column_labels
+                ):
+                    # duplicated columns will be distinct within `align_diff_frames`.
+                    if this_label is not None:
+                        yield (kdf._kser_for(this_label), this_label)
+                    if that_label is not None:
+                        yield (kdf._kser_for(that_label), that_label)
+
+            for kser_or_kdf in objs[1:]:
+                if isinstance(kser_or_kdf, Series):
+                    # TODO: there is a corner case to optimize - when the series are from
+                    #   the same DataFrame.
+                    that_kdf = kser_or_kdf.to_frame()
+                else:
+                    that_kdf = kser_or_kdf
+
+                this_index_level = concat_kdf._internal.column_labels_level
+                that_index_level = that_kdf._internal.column_labels_level
+
+                if this_index_level > that_index_level:
+                    concat_kdf = that_kdf._index_normalized_frame(concat_kdf)
+                if this_index_level < that_index_level:
+                    that_kdf = concat_kdf._index_normalized_frame(that_kdf)
+
+                if join == "inner":
+                    concat_kdf = align_diff_frames(
+                        assign_columns, concat_kdf, that_kdf, fillna=False, how="inner",
+                    )
+                elif join == "outer":
+                    concat_kdf = align_diff_frames(
+                        assign_columns, concat_kdf, that_kdf, fillna=False, how="full",
+                    )
+                else:
+                    raise ValueError(
+                        "Only can inner (intersect) or outer (union) join the other axis."
+                    )
+
+        if ignore_index:
+            concat_kdf.columns = list(map(str, _range(len(concat_kdf.columns))))
+
+        return concat_kdf
 
     # Series, Series ...
     # We should return Series if objects are all Series.

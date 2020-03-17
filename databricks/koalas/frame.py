@@ -9655,34 +9655,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             isinstance(value, DataFrame) and value is not self
         ):
             # Different Series or DataFrames
-            if isinstance(value, Series):
-                value = value.to_frame()
-            else:
-                assert isinstance(value, DataFrame), type(value)
-                value = value.copy()
-            level = self._internal.column_labels_level
-
-            value.columns = pd.MultiIndex.from_tuples(
-                [
-                    tuple([name_like_string(label)] + ([""] * (level - 1)))
-                    for label in value._internal.column_labels
-                ]
-            )
-
-            if isinstance(key, str):
-                key = [(key,)]
-            elif isinstance(key, tuple):
-                key = [key]
-            else:
-                key = [k if isinstance(k, tuple) else (k,) for k in key]
-
-            if any(len(label) > level for label in key):
-                raise KeyError(
-                    "Key length ({}) exceeds index depth ({})".format(
-                        max(len(label) for label in key), level
-                    )
-                )
-            key = [tuple(list(label) + ([""] * (level - len(label)))) for label in key]
+            key = self._index_normalized_label(key)
+            value = self._index_normalized_frame(value)
 
             def assign_columns(kdf, this_column_labels, that_column_labels):
                 assert len(key) == len(that_column_labels)
@@ -9706,6 +9680,54 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf = self._assign({key: value})
 
         self._internal = kdf._internal
+
+    def _index_normalized_label(self, labels):
+        """
+        Returns a label that is normalized against the current column index level.
+        For example, the key "abc" can be ("abc", "", "") if the current Frame has
+        a multi-index for its column
+        """
+        level = self._internal.column_labels_level
+
+        if isinstance(labels, str):
+            labels = [(labels,)]
+        elif isinstance(labels, tuple):
+            labels = [labels]
+        else:
+            labels = [k if isinstance(k, tuple) else (k,) for k in labels]
+
+        if any(len(label) > level for label in labels):
+            raise KeyError(
+                "Key length ({}) exceeds index depth ({})".format(
+                    max(len(label) for label in labels), level
+                )
+            )
+        return [tuple(list(label) + ([""] * (level - len(label)))) for label in labels]
+
+    def _index_normalized_frame(self, kser_or_kdf):
+        """
+        Returns a frame that is normalized against the current column index level.
+        For example, the name in `pd.Series([...], name="abc")` can be can be
+        ("abc", "", "") if the current DataFrame has a multi-index for its column
+        """
+
+        from databricks.koalas.series import Series
+
+        level = self._internal.column_labels_level
+        if isinstance(kser_or_kdf, Series):
+            kdf = kser_or_kdf.to_frame()
+        else:
+            assert isinstance(kser_or_kdf, DataFrame), type(kser_or_kdf)
+            kdf = kser_or_kdf.copy()
+
+        kdf.columns = pd.MultiIndex.from_tuples(
+            [
+                tuple([name_like_string(label)] + ([""] * (level - 1)))
+                for label in kdf._internal.column_labels
+            ]
+        )
+
+        return kdf
 
     def __getattr__(self, key: str) -> Any:
         if key.startswith("__"):
