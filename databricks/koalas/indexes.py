@@ -1649,7 +1649,7 @@ class Index(IndexOpsMixin):
         Examples
         --------
 
-        Union matching dtypes
+        Index
 
         >>> idx1 = ks.Index([1, 2, 3, 4])
         >>> idx2 = ks.Index([3, 4, 5, 6])
