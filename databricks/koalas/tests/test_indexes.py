@@ -1018,14 +1018,16 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx2.union([1, 2, 3, 4]).sort_values(), pidx2.union([1, 2, 3, 4]).sort_values(),
         )
         # Sorting Index
-        self.assert_eq(kidx1.union(kidx2, sort=None), pidx1.union(pidx2, sort=None))
-        self.assert_eq(kidx2.union(kidx1, sort=None), pidx2.union(pidx1, sort=None))
-        self.assert_eq(
-            kidx1.union([3, 4, 5, 6], sort=None), pidx1.union([3, 4, 5, 6], sort=None),
-        )
-        self.assert_eq(
-            kidx2.union([1, 2, 3, 4], sort=None), pidx2.union([1, 2, 3, 4], sort=None),
-        )
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            # The `sort` argument is added in pandas 0.24.
+            self.assert_eq(kidx1.union(kidx2, sort=None), pidx1.union(pidx2, sort=None))
+            self.assert_eq(kidx2.union(kidx1, sort=None), pidx2.union(pidx1, sort=None))
+            self.assert_eq(
+                kidx1.union([3, 4, 5, 6], sort=None), pidx1.union([3, 4, 5, 6], sort=None),
+            )
+            self.assert_eq(
+                kidx2.union([1, 2, 3, 4], sort=None), pidx2.union([1, 2, 3, 4], sort=None),
+            )
 
         # MultiIndex
         pmidx1 = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")])
@@ -1044,16 +1046,18 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             pmidx2.union([("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")]).sort_values(),
         )
         # Sorting MultiIndex
-        self.assert_eq(kmidx1.union(kmidx2, sort=None), pmidx1.union(pmidx2, sort=None))
-        self.assert_eq(kmidx2.union(kmidx1, sort=None), pmidx2.union(pmidx1, sort=None))
-        self.assert_eq(
-            kmidx1.union([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")], sort=None),
-            pmidx1.union([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")], sort=None),
-        )
-        self.assert_eq(
-            kmidx2.union([("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")], sort=None),
-            pmidx2.union([("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")], sort=None),
-        )
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            # The `sort` argument is added in pandas 0.24.
+            self.assert_eq(kmidx1.union(kmidx2, sort=None), pmidx1.union(pmidx2, sort=None))
+            self.assert_eq(kmidx2.union(kmidx1, sort=None), pmidx2.union(pmidx1, sort=None))
+            self.assert_eq(
+                kmidx1.union([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")], sort=None),
+                pmidx1.union([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")], sort=None),
+            )
+            self.assert_eq(
+                kmidx2.union([("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")], sort=None),
+                pmidx2.union([("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")], sort=None),
+            )
 
         self.assertRaises(NotImplementedError, lambda: kidx1.union(kmidx1))
         self.assertRaises(NotImplementedError, lambda: kmidx1.union(kidx1))
