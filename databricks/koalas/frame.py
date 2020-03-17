@@ -3504,7 +3504,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         dropna: bool = True,
         approx: bool = False,
         rsd: float = 0.05,
-    ) -> pd.Series:
+    ) -> "ks.Series":
         """
         Return number of unique elements in the object.
 
@@ -3527,7 +3527,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        The number of unique values per column as a pandas Series.
+        The number of unique values per column as a koalas Series.
 
         Examples
         --------
@@ -3550,22 +3550,31 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         B    1
         Name: 0, dtype: int64
         """
+        from databricks.koalas.series import _col
+
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
-        res = self._sdf.select(
+        sdf = self._sdf.select(
             [
                 self._kser_for(label)._nunique(dropna, approx, rsd)
                 for label in self._internal.column_labels
             ]
-        ).toPandas()
-        if self._internal.column_labels_level == 1:
-            res.columns = [label[0] for label in self._internal.column_labels]
-        else:
-            res.columns = pd.MultiIndex.from_tuples(self._internal.column_labels)
-        if self._internal.column_label_names is not None:
-            res.columns.names = self._internal.column_label_names
-        return res.T.iloc[:, 0]
+        )
+
+        # The data is expected to be small so it's fine to transpose/use default index.
+        with ks.option_context(
+            "compute.default_index_type", "distributed", "compute.max_rows", None
+        ):
+            kdf = DataFrame(sdf)  # type: ks.DataFrame
+            internal = _InternalFrame(
+                kdf._internal.spark_frame,
+                index_map=kdf._internal.index_map,
+                column_labels=self._internal.column_labels,
+                column_label_names=self._internal.column_label_names,
+            )
+
+            return _col(DataFrame(internal).transpose())
 
     def round(self, decimals=0):
         """
