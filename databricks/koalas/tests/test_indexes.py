@@ -1012,12 +1012,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx1.union(kidx2).sort_values(), pidx1.union(pidx2).sort_values())
         self.assert_eq(kidx2.union(kidx1).sort_values(), pidx2.union(pidx1).sort_values())
         self.assert_eq(
-            kidx1.union([3, 4, 5, 6]).sort_values(),
-            pidx1.union([3, 4, 5, 6]).sort_values(),
+            kidx1.union([3, 4, 5, 6]).sort_values(), pidx1.union([3, 4, 5, 6]).sort_values(),
         )
         self.assert_eq(
-            kidx2.union([1, 2, 3, 4]).sort_values(),
-            pidx2.union([1, 2, 3, 4]).sort_values(),
+            kidx2.union([1, 2, 3, 4]).sort_values(), pidx2.union([1, 2, 3, 4]).sort_values(),
         )
         # Sorting Index
         self.assert_eq(kidx1.union(kidx2, sort=None), pidx1.union(pidx2, sort=None))
@@ -1026,8 +1024,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx1.union([3, 4, 5, 6], sort=None), pidx1.union([3, 4, 5, 6], sort=None),
         )
         self.assert_eq(
-            kidx2.union([1, 2, 3, 4], sort=None),
-            pidx2.union([1, 2, 3, 4], sort=None),
+            kidx2.union([1, 2, 3, 4], sort=None), pidx2.union([1, 2, 3, 4], sort=None),
         )
 
         # MultiIndex
