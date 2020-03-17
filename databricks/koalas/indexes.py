@@ -58,6 +58,7 @@ from databricks.koalas.utils import (
     name_like_string,
     scol_for,
     verify_temp_column_name,
+    validate_bool_kwarg,
 )
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 
@@ -1635,23 +1636,11 @@ class Index(IndexOpsMixin):
         """
         Form the union of two Index objects.
 
-        If the Index objects are incompatible, both Index objects will be
-        cast to dtype('object') first.
-
         Parameters
         ----------
         other : Index or array-like
         sort : bool or None, default None
             Whether to sort the resulting Index.
-
-            * None : Sort the result, except when
-
-              1. `self` and `other` are equal.
-              2. `self` or `other` has length 0.
-              3. Some values in `self` or `other` cannot be compared.
-                 A RuntimeWarning is issued in this case.
-
-            * False : do not sort the result.
 
         Returns
         -------
@@ -1680,6 +1669,8 @@ class Index(IndexOpsMixin):
                     ('x', 'f')],
                    )
         """
+        sort = True if sort is None else sort
+        sort = validate_bool_kwarg(sort, "sort")
         if not isinstance(other, Index) and isinstance(self, MultiIndex):
             if isinstance(other, list) and not all([isinstance(item, tuple) for item in other]):
                 raise TypeError("other must be a MultiIndex or a list of tuples")
@@ -1696,6 +1687,8 @@ class Index(IndexOpsMixin):
         sdf = sdf_self.union(sdf_other.subtract(sdf_self))
         if isinstance(self, MultiIndex):
             sdf = sdf.drop_duplicates()
+        if sort:
+            sdf = sdf.sort(self._internal.index_spark_columns)
         internal = _InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
 
         return DataFrame(internal).index
