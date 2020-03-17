@@ -519,6 +519,7 @@ class LocIndexer(_LocIndexerLike):
         )
 
     def _select_rows(self, rows_sel):
+        from databricks.koalas.indexes import MultiIndex
         from databricks.koalas.series import Series
 
         if isinstance(rows_sel, Series):
@@ -595,10 +596,62 @@ class LocIndexer(_LocIndexerLike):
                         else:
                             raise KeyError(rows_sel.stop)
 
-                if len(cond) > 0:
-                    return reduce(lambda x, y: x & y, cond), None, None
+                return reduce(lambda x, y: x & y, cond), None, None
             else:
-                LocIndexer._raiseNotImplemented("Cannot use slice for MultiIndex with Spark.")
+                index = self._kdf_or_kser.index
+                index_data_type = [f.dataType for f in index.to_series().spark_type]
+
+                start = rows_sel.start
+                if start is not None:
+                    if not isinstance(start, tuple):
+                        start = (start,)
+                    if len(start) == 0:
+                        start = None
+                stop = rows_sel.stop
+                if stop is not None:
+                    if not isinstance(stop, tuple):
+                        stop = (stop,)
+                    if len(stop) == 0:
+                        stop = None
+
+                depth = max(
+                    len(start) if start is not None else 0, len(stop) if stop is not None else 0
+                )
+                if depth == 0:
+                    return None, None, None
+                elif (
+                    depth > len(self._internal.index_map)
+                    or not index.droplevel(
+                        list(range(len(self._internal.index_map))[depth:])
+                    ).is_monotonic
+                ):
+                    raise KeyError(
+                        "Key length ({}) was greater than MultiIndex sort depth".format(depth)
+                    )
+
+                conds = []
+                if start is not None:
+                    cond = F.lit(True)
+                    for scol, value, dt in list(
+                        zip(self._internal.index_spark_columns, start, index_data_type)
+                    )[::-1]:
+                        compare = MultiIndex._comparator_for_monotonic_increasing(dt)
+                        cond = F.when(scol.eqNullSafe(F.lit(value).cast(dt)), cond).otherwise(
+                            compare(scol, F.lit(value).cast(dt), spark.Column.__gt__)
+                        )
+                    conds.append(cond)
+                if stop is not None:
+                    cond = F.lit(True)
+                    for scol, value, dt in list(
+                        zip(self._internal.index_spark_columns, stop, index_data_type)
+                    )[::-1]:
+                        compare = MultiIndex._comparator_for_monotonic_increasing(dt)
+                        cond = F.when(scol.eqNullSafe(F.lit(value).cast(dt)), cond).otherwise(
+                            compare(scol, F.lit(value).cast(dt), spark.Column.__lt__)
+                        )
+                    conds.append(cond)
+
+                return reduce(lambda x, y: x & y, conds), None, None
         elif is_list_like(rows_sel) and not isinstance(rows_sel, tuple):
             rows_sel = list(rows_sel)
             if len(rows_sel) == 0:

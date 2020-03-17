@@ -1923,19 +1923,23 @@ class MultiIndex(Index):
         ).collect()[0]
         return tuple(result)
 
+    @staticmethod
+    def _comparator_for_monotonic_increasing(data_type):
+        if isinstance(data_type, BooleanType):
+            return compare_allow_null
+        else:
+            return compare_null_last
+
     def _is_monotonic(self):
-        col = self._scol
+        scol = self._scol
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        prev = F.lag(col, 1).over(window)
+        prev = F.lag(scol, 1).over(window)
 
         cond = F.lit(True)
         for field in self.spark_type[::-1]:
-            left = col.getField(field.name)
+            left = scol.getField(field.name)
             right = prev.getField(field.name)
-            if isinstance(field.dataType, BooleanType):
-                compare = compare_allow_null
-            else:
-                compare = compare_null_last
+            compare = MultiIndex._comparator_for_monotonic_increasing(field.dataType)
             cond = F.when(left.eqNullSafe(right), cond).otherwise(
                 compare(left, right, spark.Column.__gt__)
             )
@@ -1951,23 +1955,27 @@ class MultiIndex(Index):
 
         return _col(DataFrame(internal))
 
+    @staticmethod
+    def _comparator_for_monotonic_decreasing(data_type):
+        if isinstance(data_type, StringType):
+            return compare_disallow_null
+        elif isinstance(data_type, BooleanType):
+            return compare_allow_null
+        elif isinstance(data_type, NumericType):
+            return compare_null_last
+        else:
+            return compare_null_first
+
     def _is_monotonic_decreasing(self):
-        col = self._scol
+        scol = self._scol
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        prev = F.lag(col, 1).over(window)
+        prev = F.lag(scol, 1).over(window)
 
         cond = F.lit(True)
         for field in self.spark_type[::-1]:
-            left = col.getField(field.name)
+            left = scol.getField(field.name)
             right = prev.getField(field.name)
-            if isinstance(field.dataType, StringType):
-                compare = compare_disallow_null
-            elif isinstance(field.dataType, BooleanType):
-                compare = compare_allow_null
-            elif isinstance(field.dataType, NumericType):
-                compare = compare_null_last
-            else:
-                compare = compare_null_first
+            compare = MultiIndex._comparator_for_monotonic_decreasing(field.dataType)
             cond = F.when(left.eqNullSafe(right), cond).otherwise(
                 compare(left, right, spark.Column.__lt__)
             )

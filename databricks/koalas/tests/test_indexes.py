@@ -878,10 +878,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", None), ("z", "a", "r")])
 
         for data in datas:
-            kmidx = ks.MultiIndex.from_tuples(data)
-            pmidx = kmidx.to_pandas()
-            self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
-            self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+            with self.subTest(data=data):
+                kmidx = ks.MultiIndex.from_tuples(data)
+                pmidx = kmidx.to_pandas()
+                self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
+                self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
 
         # The datas below are showing different result depends on pandas version.
         # Because the behavior of handling null values is changed in pandas >= 1.0.0.
@@ -894,13 +895,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", "q"), ("z", "a", "r")])
 
         for data in datas:
-            kmidx = ks.MultiIndex.from_tuples(data)
-            pmidx = kmidx.to_pandas()
-            expected_increasing_result = pmidx.is_monotonic_increasing
-            if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
-                expected_increasing_result = not expected_increasing_result
-            self.assert_eq(kmidx.is_monotonic_increasing, expected_increasing_result)
-            self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+            with self.subTest(data=data):
+                kmidx = ks.MultiIndex.from_tuples(data)
+                pmidx = kmidx.to_pandas()
+                expected_increasing_result = pmidx.is_monotonic_increasing
+                if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+                    expected_increasing_result = not expected_increasing_result
+                self.assert_eq(kmidx.is_monotonic_increasing, expected_increasing_result)
+                self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
 
     def test_difference(self):
         # Index
