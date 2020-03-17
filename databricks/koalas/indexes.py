@@ -1631,6 +1631,62 @@ class Index(IndexOpsMixin):
         else:
             return ks.concat([kdf] * repeats).index
 
+    def union(self, other, sort=None):
+        """
+        Form the union of two Index objects.
+
+        If the Index objects are incompatible, both Index objects will be
+        cast to dtype('object') first.
+
+        Parameters
+        ----------
+        other : Index or array-like
+        sort : bool or None, default None
+            Whether to sort the resulting Index.
+
+            * None : Sort the result, except when
+
+              1. `self` and `other` are equal.
+              2. `self` or `other` has length 0.
+              3. Some values in `self` or `other` cannot be compared.
+                 A RuntimeWarning is issued in this case.
+
+            * False : do not sort the result.
+
+        Returns
+        -------
+        union : Index
+
+        Examples
+        --------
+
+        Union matching dtypes
+
+        >>> idx1 = ks.Index([1, 2, 3, 4])
+        >>> idx2 = ks.Index([3, 4, 5, 6])
+        >>> idx1.union(idx2).sort_values()
+        Int64Index([1, 2, 3, 4, 5, 6], dtype='int64')
+        """
+        if not isinstance(other, Index) and isinstance(self, MultiIndex):
+            if isinstance(other, list) and not all([isinstance(item, tuple) for item in other]):
+                raise TypeError("other must be a MultiIndex or a list of tuples")
+            other = MultiIndex.from_tuples(other)
+        if not isinstance(other, Index) and not isinstance(self, MultiIndex):
+            other = Index(other)
+        if type(self) is not type(other):
+            # TODO: We can't support different type of values in a single column for now.
+            raise NotImplementedError("Union between Index and MultiIndex is not yet supported")
+        sdf_self = self._internal._sdf.select(self._internal.index_spark_columns)
+        sdf_other = other._internal._sdf.select(
+            other._internal.index_spark_columns
+        ).drop_duplicates()
+        sdf = sdf_self.union(sdf_other.subtract(sdf_self))
+        if isinstance(self, MultiIndex):
+            sdf = sdf.drop_duplicates()
+        internal = _InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+
+        return DataFrame(internal).index
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)

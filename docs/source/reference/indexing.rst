@@ -120,6 +120,7 @@ Combining / joining / set operations
    :toctree: api/
 
    Index.append
+   Index.union
    Index.difference
    Index.symmetric_difference
 
@@ -210,6 +211,7 @@ MultiIndex Combining / joining / set operations
    :toctree: api/
 
    MultiIndex.append
+   MultiIndex.union
    MultiIndex.difference
    MultiIndex.symmetric_difference
 
