@@ -447,7 +447,7 @@ class DataFrame(_Frame, Generic[T]):
         """
         return [self.index, self.columns]
 
-    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=False):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
         number of columns.
@@ -459,12 +459,17 @@ class DataFrame(_Frame, Generic[T]):
             axis: used only for sanity check because series only support index axis.
         name : original pandas API name.
         axis : axis to apply. 0 or 1, or 'index' or 'columns.
-        numeric_only : boolean, default False
-            If True, sfun is applied on numeric columns (including booleans) only.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility. Only 'DataFrame.count' uses this parameter
+            currently.
         """
         from inspect import signature
         from databricks.koalas import Series
         from databricks.koalas.series import _col
+
+        if name not in ("count", "min", "max") and not numeric_only:
+            raise ValueError("Disabling 'numeric_only' parameter is not supported.")
 
         axis = validate_axis(axis)
         if axis == 0:
@@ -9625,6 +9630,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(key, (str, tuple, list)):
             return self.loc[:, key]
         elif isinstance(key, slice):
+            if any(type(n) == int or None for n in [key.start, key.stop]):
+                # Seems like pandas Frame always uses int as positional search when slicing
+                # with ints.
+                return self.iloc[key]
             return self.loc[key]
         elif isinstance(key, Series):
             return self.loc[key.astype(bool)]

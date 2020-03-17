@@ -208,7 +208,7 @@ class GroupBy(object):
             GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys_scols, index_map)
         )
         if not self._as_index:
-            kdf = kdf.reset_index()
+            kdf = kdf.reset_index(drop=self._should_drop_index)
 
         if relabeling:
             kdf = kdf[order]
@@ -1868,7 +1868,7 @@ class GroupBy(object):
         )
         kdf = DataFrame(internal)
         if not self._as_index:
-            kdf = kdf.reset_index()
+            kdf = kdf.reset_index(drop=self._should_drop_index)
         return kdf
 
 
@@ -1878,12 +1878,14 @@ class DataFrameGroupBy(GroupBy):
         kdf: DataFrame,
         by: List[Series],
         as_index: bool = True,
+        should_drop_index: bool = False,
         agg_columns: List[Union[str, Tuple[str, ...]]] = None,
     ):
         self._kdf = kdf
         self._groupkeys = by
         self._groupkeys_scols = [s._scol for s in self._groupkeys]
         self._as_index = as_index
+        self._should_drop_index = should_drop_index
         self._have_agg_columns = True
 
         if agg_columns is None:
@@ -1919,7 +1921,11 @@ class DataFrameGroupBy(GroupBy):
                     if name in groupkey_names:
                         raise ValueError("cannot insert {}, already exists".format(name))
             return DataFrameGroupBy(
-                self._kdf, self._groupkeys, as_index=self._as_index, agg_columns=item
+                self._kdf,
+                self._groupkeys,
+                as_index=self._as_index,
+                agg_columns=item,
+                should_drop_index=self._should_drop_index,
             )
 
     def _apply_series_op(self, op):
@@ -2051,6 +2057,9 @@ class SeriesGroupBy(GroupBy):
             raise TypeError("as_index=False only valid with DataFrame")
         self._as_index = True
         self._have_agg_columns = True
+
+        # Not used currently. It's a placeholder to match with DataFrameGroupBy.
+        self._should_drop_index = False
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeSeriesGroupBy, item):

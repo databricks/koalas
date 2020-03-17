@@ -17,7 +17,7 @@
 """
 A loc indexer for Koalas DataFrame/Series.
 """
-from collections import OrderedDict
+from collections import OrderedDict, Iterable
 from functools import reduce
 
 from pandas.api.types import is_list_like
@@ -25,6 +25,7 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import BooleanType, LongType
 from pyspark.sql.utils import AnalysisException
+import numpy as np
 
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
@@ -797,15 +798,16 @@ class iLocIndexer(_LocIndexerLike):
     Allowed inputs are:
 
     - An integer for column selection, e.g. ``5``.
+    - A list or array of integers for row selection with distinct index values,
+      e.g. ``[3, 4, 0]``
     - A list or array of integers for column selection, e.g. ``[4, 3, 0]``.
     - A boolean array for column selection.
-    - A slice object with ints for column selection, e.g. ``1:7``.
-    - A slice object with ints without start and step for row selection, e.g. ``:7``.
+    - A slice object with ints for row and column selection, e.g. ``1:7``.
 
     Not allowed inputs which pandas allows are:
 
-    - An integer for row selection, e.g. ``5``.
-    - A list or array of integers for row selection, e.g. ``[4, 3, 0]``.
+    - A list or array of integers for row selection with duplicated indexes,
+      e.g. ``[4, 4, 0]``.
     - A boolean array for row selection.
     - A ``callable`` function with one argument (the calling Series, DataFrame
       or Panel) and that returns valid output for indexing (one of the above).
@@ -846,12 +848,9 @@ class iLocIndexer(_LocIndexerLike):
     d    4
     Name: 0, dtype: int64
 
-    A list of integers for row selection is not allowed.
-
     >>> df.iloc[[0]]
-    Traceback (most recent call last):
-     ...
-    databricks.koalas.exceptions.SparkPandasNotImplementedError: ...
+       a  b  c  d
+    0  1  2  3  4
 
     With a `slice` object.
 
@@ -991,10 +990,47 @@ class iLocIndexer(_LocIndexerLike):
         elif isinstance(rows_sel, int):
             sdf = self._internal.spark_frame
             return (sdf[self._sequence_col] == rows_sel), None, 0
+        elif isinstance(rows_sel, Iterable):
+            sdf = self._internal.spark_frame
+
+            if any(
+                isinstance(key, (int, np.int, np.int64, np.int32)) and key < 0 for key in rows_sel
+            ):
+                offset = sdf.count()
+            else:
+                offset = 0
+
+            new_rows_sel = []
+            for key in list(rows_sel):
+                if not isinstance(key, (int, np.int, np.int64, np.int32)):
+                    raise TypeError(
+                        "cannot do positional indexing with these indexers [{}] of {}".format(
+                            key, type(key)
+                        )
+                    )
+                if key < 0:
+                    key = key + offset
+                new_rows_sel.append(key)
+
+            if len(new_rows_sel) != len(set(new_rows_sel)):
+                raise NotImplementedError(
+                    "Duplicated row selection is not currently supported; "
+                    "however, normalised index was [%s]" % new_rows_sel
+                )
+
+            sequence_scol = sdf[self._sequence_col]
+            cond = []
+            for key in new_rows_sel:
+                cond.append(sequence_scol == F.lit(int(key)).cast(LongType()))
+
+            if len(cond) == 0:
+                cond = [F.lit(False)]
+            return reduce(lambda x, y: x | y, cond), None, None
         else:
             iLocIndexer._raiseNotImplemented(
-                ".iloc requires numeric slice or conditional "
-                "boolean Index, got {}".format(type(rows_sel))
+                ".iloc requires numeric slice, conditional "
+                "boolean Index or a sequence of positions as int, "
+                "got {}".format(type(rows_sel))
             )
 
     def _select_cols(self, cols_sel):

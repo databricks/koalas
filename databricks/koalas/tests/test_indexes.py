@@ -505,6 +505,40 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(KeyError, "Level work not found"):
             kidx.swaplevel(0, "work")
 
+    def test_multiindex_droplevel(self):
+        pidx = pd.MultiIndex.from_tuples(
+            [("a", "x", 1), ("b", "y", 2)], names=["level1", "level2", "level3"]
+        )
+        kidx = ks.MultiIndex.from_tuples(
+            [("a", "x", 1), ("b", "y", 2)], names=["level1", "level2", "level3"]
+        )
+        with self.assertRaisesRegex(IndexError, "Too many levels: Index has only 3 levels, not 5"):
+            kidx.droplevel(4)
+
+        with self.assertRaisesRegex(KeyError, "Level level4 not found"):
+            kidx.droplevel("level4")
+
+        with self.assertRaisesRegex(KeyError, "Level.*level3.*level4.*not found"):
+            kidx.droplevel([("level3", "level4")])
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Cannot remove 4 levels from an index with 3 levels: at least one "
+            "level must be left.",
+        ):
+            kidx.droplevel([0, 0, 1, 2])
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Cannot remove 3 levels from an index with 3 levels: at least one "
+            "level must be left.",
+        ):
+            kidx.droplevel([0, 1, 2])
+
+        self.assert_eq(pidx.droplevel(0), kidx.droplevel(0))
+        self.assert_eq(pidx.droplevel([0, 1]), kidx.droplevel([0, 1]))
+        self.assert_eq(pidx.droplevel([0, "level2"]), kidx.droplevel([0, "level2"]))
+
     def test_index_fillna(self):
         pidx = pd.DataFrame({"a": ["a", "b", "c"]}, index=[1, 2, None]).index
         kidx = ks.DataFrame({"a": ["a", "b", "c"]}, index=[1, 2, None]).index
@@ -983,3 +1017,16 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assertRaises(ValueError, lambda: kmidx.repeat(-1))
         self.assertRaises(ValueError, lambda: kmidx.repeat("abc"))
+
+    def test_unique(self):
+        pidx = pd.Index(["a", "b", "a"])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx.unique().sort_values(), pidx.unique().sort_values())
+        self.assert_eq(kidx.unique().sort_values(), pidx.unique().sort_values())
+
+        pmidx = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "a")])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(kmidx.unique().sort_values(), pmidx.unique().sort_values())
+        self.assert_eq(kmidx.unique().sort_values(), pmidx.unique().sort_values())

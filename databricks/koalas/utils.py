@@ -192,18 +192,19 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
         - left: `resolve_func` should resolve columns including that columns.
             For instance, if 'this' has columns A, B, C and that has B, C, D, `this_columns` is
             B, C but `that_columns` are B, C, D.
+        - inner: Same as 'full' mode; however, internally performs inner join instead.
     :return: Aligned DataFrame
     """
-    assert how == "full" or how == "left"
+    assert how == "full" or how == "left" or how == "inner"
 
     this_column_labels = this._internal.column_labels
     that_column_labels = that._internal.column_labels
     common_column_labels = set(this_column_labels).intersection(that_column_labels)
 
-    # 1. Full outer join given two dataframes.
+    # 1. Perform the join given two dataframes.
     combined = combine_frames(this, that, how=how)
 
-    # 2. Apply given function to transform the columns in a batch and keep the new columns.
+    # 2. Apply the given function to transform the columns in a batch and keep the new columns.
     combined_column_labels = combined._internal.column_labels
 
     that_columns_to_apply = []

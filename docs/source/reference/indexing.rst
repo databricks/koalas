@@ -73,6 +73,13 @@ Compatibility with MultiIndex
 
    Index.set_names
 
+Compatibility with MultiIndex
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.droplevel
+
 Missing Values
 ~~~~~~~~~~~~~~
 .. autosummary::
@@ -166,6 +173,13 @@ MultiIndex components
 
    MultiIndex.swaplevel
 
+MultiIndex components
+~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.droplevel
+
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
@@ -185,6 +199,7 @@ MultiIndex Modifying and computations
    MultiIndex.copy
    MultiIndex.rename
    MultiIndex.repeat
+   MultiIndex.unique
    MultiIndex.min
    MultiIndex.max
    MultiIndex.value_counts
