@@ -3527,7 +3527,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        The number of unique values per column as a koalas Series.
+        The number of unique values per column as a Koalas Series.
 
         Examples
         --------
@@ -3568,7 +3568,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ):
             kdf = DataFrame(sdf)  # type: ks.DataFrame
             internal = _InternalFrame(
-                kdf._internal.spark_frame,
+                spark_frame=kdf._internal.spark_frame,
                 index_map=kdf._internal.index_map,
                 column_labels=self._internal.column_labels,
                 column_label_names=self._internal.column_label_names,
