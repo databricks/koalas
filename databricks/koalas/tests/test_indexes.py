@@ -1001,3 +1001,18 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kmidx.unique().sort_values(), pmidx.unique().sort_values())
         self.assert_eq(kmidx.unique().sort_values(), pmidx.unique().sort_values())
+
+    def test_asof(self):
+        pidx = pd.Index(["2013-12-31", "2014-01-02", "2014-01-03"])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx.asof("2014-01-01"), pidx.asof("2014-01-01"))
+        self.assert_eq(kidx.asof("2014-01-02"), pidx.asof("2014-01-02"))
+        self.assert_eq(np.isnan(kidx.asof("1999-01-02")), True)
+        self.assert_eq(np.isnan(pidx.asof("1999-01-02")), True)
+
+        kidx = ks.Index(["2013-12-31", "2015-01-02", "2014-01-03"])
+        self.assertRaises(ValueError, lambda: kidx.asof("2013-12-31"))
+
+        kmidx = ks.MultiIndex.from_tuples([("a", "a"), ("a", "b"), ("a", "c")])
+        self.assertRaises(NotImplementedError, lambda: kmidx.asof(("a", "b")))

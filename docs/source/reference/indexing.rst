@@ -128,6 +128,7 @@ Selecting
 .. autosummary::
    :toctree: api/
 
+   Index.asof
    Index.isin
 
 .. _api.multiindex:

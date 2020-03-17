@@ -39,7 +39,6 @@ class _MissingPandasLikeIndex(object):
 
     # Functions
     argsort = unsupported_function("argsort")
-    asof = unsupported_function("asof")
     asof_locs = unsupported_function("asof_locs")
     delete = unsupported_function("delete")
     factorize = unsupported_function("factorize")
@@ -113,7 +112,6 @@ class _MissingPandasLikeMultiIndex(object):
 
     # Functions
     argsort = unsupported_function("argsort")
-    asof = unsupported_function("asof")
     asof_locs = unsupported_function("asof_locs")
     delete = unsupported_function("delete")
     equal_levels = unsupported_function("equal_levels")
