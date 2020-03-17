@@ -1666,6 +1666,19 @@ class Index(IndexOpsMixin):
         >>> idx2 = ks.Index([3, 4, 5, 6])
         >>> idx1.union(idx2).sort_values()
         Int64Index([1, 2, 3, 4, 5, 6], dtype='int64')
+
+        MultiIndex
+
+        >>> midx1 = ks.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")])
+        >>> midx2 = ks.MultiIndex.from_tuples([("x", "c"), ("x", "d"), ("x", "e"), ("x", "f")])
+        >>> midx1.union(midx2).sort_values()  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('x', 'c'),
+                    ('x', 'd'),
+                    ('x', 'e'),
+                    ('x', 'f')],
+                   )
         """
         if not isinstance(other, Index) and isinstance(self, MultiIndex):
             if isinstance(other, list) and not all([isinstance(item, tuple) for item in other]):
