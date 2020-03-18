@@ -1679,15 +1679,17 @@ class Index(IndexOpsMixin):
                     raise TypeError("other must be a MultiIndex or a list of tuples")
                 other = MultiIndex.from_tuples(other)
             elif type(self) is Index:
+                if isinstance(other, MultiIndex):
+                    # TODO: We can't support different type of values in a single column for now.
+                    raise NotImplementedError(
+                        "Union between Index and MultiIndex is not yet supported"
+                    )
                 if isinstance(other, Series):
                     other = other.to_frame().set_index(other.name).index
                 elif isinstance(other, DataFrame):
                     raise ValueError("Index data must be 1-dimensional")
                 else:
                     other = Index(other)
-            else:
-                # TODO: We can't support different type of values in a single column for now.
-                raise NotImplementedError("Union between Index and MultiIndex is not yet supported")
         sdf_self = self._internal._sdf.select(self._internal.index_spark_columns)
         sdf_other = other._internal._sdf.select(other._internal.index_spark_columns)
         sdf = sdf_self.union(sdf_other.subtract(sdf_self))
