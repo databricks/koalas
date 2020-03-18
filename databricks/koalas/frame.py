@@ -62,6 +62,7 @@ from databricks.koalas.utils import (
     validate_arguments_and_invoke_function,
     align_diff_frames,
     validate_bool_kwarg,
+    verify_temp_column_name,
 )
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import (
@@ -9586,11 +9587,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         the index attribute of the object. We are indexing according to the
         actual position of the element in the object.
 
-        ..note:: This method has some disadvantage in terms of performance since
-            implemented by using :meth:`DataFrame.map_in_pandas`.
-            See the note of :meth:`DataFrame.map_in_pandas` if you want to know
-            about those disadvantage for more detail.
-
         Parameters
         ----------
         indices : array-like
@@ -9634,14 +9630,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         our selected indices 0 and 3. That's because we are selecting the 0th
         and 3rd rows, not rows whose indices equal 0 and 3.
 
-        >>> df.take([0, 3])
+        >>> df.take([0, 3]).sort_index()
              name   class  max_speed
         0  falcon    bird      389.0
         1  monkey  mammal        NaN
 
         Take elements at indices 1 and 2 along the axis 1 (column selection).
 
-        >>> df.take([1, 2], axis=1)
+        >>> df.take([1, 2], axis=1)  # doctest: +SKIP
             class  max_speed
         0    bird      389.0
         2    bird       24.0
@@ -9651,12 +9647,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         We may take elements using negative integers for positive indices,
         starting from the end of the object, just like with Python lists.
 
-        >>> df.take([-1, -2])
+        >>> df.take([-1, -2]).sort_index()
              name   class  max_speed
         1  monkey  mammal        NaN
         3    lion  mammal       80.5
         """
-        return self.map_in_pandas(lambda pdf: pdf.take(indices, axis, **kwargs))
+        length = len(self)
+        indices = [length + idx if idx < 0 else idx for idx in indices]
+        sdf = self._sdf
+        sdf = sdf.select(self._internal.spark_columns)
+        sequence_col = verify_temp_column_name(sdf, "__distributed_sequence__")
+        sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
+        cond = sdf[sequence_col].isin(indices)
+        sdf = sdf.where(cond)
+        return DataFrame(self._internal.copy(spark_frame=sdf.select(self._internal.spark_columns)))
 
     def _to_internal_pandas(self):
         """
