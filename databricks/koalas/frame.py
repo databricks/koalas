@@ -9637,7 +9637,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Take elements at indices 1 and 2 along the axis 1 (column selection).
 
-        >>> df.take([1, 2], axis=1)  # doctest: +SKIP
+        >>> df.take([1, 2], axis=1)
             class  max_speed
         0    bird      389.0
         2    bird       24.0
@@ -9652,15 +9652,30 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  monkey  mammal        NaN
         3    lion  mammal       80.5
         """
-        length = len(self)
-        indices = [length + idx if idx < 0 else idx for idx in indices]
+        axis = validate_axis(axis)
         sdf = self._sdf
-        sdf = sdf.select(self._internal.spark_columns)
-        sequence_col = verify_temp_column_name(sdf, "__distributed_sequence__")
-        sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
-        cond = sdf[sequence_col].isin(indices)
-        sdf = sdf.where(cond)
-        return DataFrame(self._internal.copy(spark_frame=sdf.select(self._internal.spark_columns)))
+        if axis == 0:
+            length = len(self)
+            indices = [length + idx if idx < 0 else idx for idx in indices]
+            sdf = sdf.select(self._internal.spark_columns)
+            sequence_col = verify_temp_column_name(sdf, "__distributed_sequence__")
+            sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
+            cond = sdf[sequence_col].isin(indices)
+            sdf = sdf.where(cond)
+            internal = self._internal.copy(spark_frame=sdf.select(self._internal.spark_columns))
+        elif axis == 1:
+            length = len(self.columns)
+            indices = [length + idx if idx < 0 else idx for idx in indices]
+            data_scols = self._internal.data_spark_columns
+            column_labels = self._internal.column_labels
+            selected_data_scols = [data_scols[index] for index in indices]
+            selected_sdf = sdf.select(self._internal.index_spark_columns + selected_data_scols)
+            internal = _InternalFrame(
+                spark_frame=selected_sdf,
+                index_map=self._internal.index_map,
+                column_labels=[column_labels[index] for index in indices],
+            )
+        return DataFrame(internal)
 
     def _to_internal_pandas(self):
         """
