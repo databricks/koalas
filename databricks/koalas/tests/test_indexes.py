@@ -1142,6 +1142,6 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             )
 
         self.assertRaises(NotImplementedError, lambda: kidx1.union(kmidx1))
-        self.assertRaises(NotImplementedError, lambda: kmidx1.union(kidx1))
+        self.assertRaises(TypeError, lambda: kmidx1.union(kidx1))
         self.assertRaises(TypeError, lambda: kmidx1.union(["x", "a"]))
         self.assertRaises(ValueError, lambda: kidx1.union(ks.range(2)))
