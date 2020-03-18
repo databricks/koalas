@@ -1672,18 +1672,20 @@ class Index(IndexOpsMixin):
         sort = True if sort is None else sort
         sort = validate_bool_kwarg(sort, "sort")
         if not isinstance(other, Index) and isinstance(self, MultiIndex):
-            if isinstance(other, list) and not all([isinstance(item, tuple) for item in other]):
+            if not isinstance(other, list) or not all([isinstance(item, tuple) for item in other]):
                 raise TypeError("other must be a MultiIndex or a list of tuples")
             other = MultiIndex.from_tuples(other)
         if not isinstance(other, Index) and not isinstance(self, MultiIndex):
+            if isinstance(other, Series):
+                other = other.values
+            if isinstance(other, DataFrame):
+                raise ValueError("Index data must be 1-dimensional")
             other = Index(other)
         if type(self) is not type(other):
             # TODO: We can't support different type of values in a single column for now.
             raise NotImplementedError("Union between Index and MultiIndex is not yet supported")
         sdf_self = self._internal._sdf.select(self._internal.index_spark_columns)
-        sdf_other = other._internal._sdf.select(
-            other._internal.index_spark_columns
-        ).drop_duplicates()
+        sdf_other = other._internal._sdf.select(other._internal.index_spark_columns)
         sdf = sdf_self.union(sdf_other.subtract(sdf_self))
         if isinstance(self, MultiIndex):
             sdf = sdf.drop_duplicates()
