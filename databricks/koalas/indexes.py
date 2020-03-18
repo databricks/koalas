@@ -1677,7 +1677,7 @@ class Index(IndexOpsMixin):
             other = MultiIndex.from_tuples(other)
         if not isinstance(other, Index) and not isinstance(self, MultiIndex):
             if isinstance(other, Series):
-                other = other.values
+                other = other.to_numpy()
             if isinstance(other, DataFrame):
                 raise ValueError("Index data must be 1-dimensional")
             other = Index(other)
