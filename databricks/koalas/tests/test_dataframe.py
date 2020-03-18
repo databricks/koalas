@@ -2976,12 +2976,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.take([1, 2]).sort_index(), pdf.take([1, 2]).sort_index())
         self.assert_eq(kdf.take([-1, -2]).sort_index(), pdf.take([-1, -2]).sort_index())
 
-        # self.assert_eq(
-        #     kdf.take([1, 2], axis=1).sort_index(), pdf.take([1, 2], axis=1).sort_index()
-        # )
-        # self.assert_eq(
-        #     kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index()
-        # )
+        # axis=1
+        self.assert_eq(kdf.take([1, 2], axis=1).sort_index(), pdf.take([1, 2], axis=1).sort_index())
+        self.assert_eq(
+            kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index()
+        )
 
         # MultiIndex columns
         columns = pd.MultiIndex.from_tuples([("A", "Z"), ("B", "X"), ("C", "C")])
@@ -2992,12 +2991,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.take([1, 2]).sort_index(), pdf.take([1, 2]).sort_index())
         self.assert_eq(kdf.take([-1, -2]).sort_index(), pdf.take([-1, -2]).sort_index())
 
-        # self.assert_eq(
-        #     kdf.take([1, 2], axis=1).sort_index(), pdf.take([1, 2], axis=1).sort_index()
-        # )
-        # self.assert_eq(
-        #     kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index()
-        # )
+        # axis=1
+        self.assert_eq(kdf.take([1, 2], axis=1).sort_index(), pdf.take([1, 2], axis=1).sort_index())
+        self.assert_eq(
+            kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index()
+        )
 
     def test_axes(self):
         pdf = self.pdf
