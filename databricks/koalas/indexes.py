@@ -1684,7 +1684,7 @@ class Index(IndexOpsMixin):
                     raise NotImplementedError(
                         "Union between Index and MultiIndex is not yet supported"
                     )
-                if isinstance(other, Series):
+                elif isinstance(other, Series):
                     other = other.to_frame().set_index(other.name).index
                 elif isinstance(other, DataFrame):
                     raise ValueError("Index data must be 1-dimensional")
