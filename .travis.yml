@@ -67,8 +67,12 @@ install:
 
   # Test PyPI installation at Python 3.5. This is also because
   # one of the dependency requires Python 3.6 Conda specifically.
+  # Currently PIP with Python 3.5 removes Black in the requirements-dev.txt file
+  # as Black only works with Python 3.6+. This is hacky but we will drop
+  # Python 3.5 soon so it's fine.
   - |
     if [[ $TRAVIS_PYTHON_VERSION == "3.5" ]]; then
+      sed -i '/black/d' requirements-dev.txt && \
       pip install -r requirements-dev.txt && \
       pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION && \
       pip list;

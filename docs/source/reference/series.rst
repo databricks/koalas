@@ -28,10 +28,12 @@ Attributes
    Series.name
    Series.spark_type
    Series.shape
+   Series.axes
    Series.size
    Series.empty
    Series.T
    Series.hasnans
+   Series.values
 
 Conversion
 ----------
@@ -84,6 +86,7 @@ Binary operator functions
    Series.ge
    Series.ne
    Series.eq
+   Series.dot
 
 Function application, GroupBy & Window
 --------------------------------------
@@ -179,6 +182,7 @@ Reshaping, sorting, transposing
 
    Series.sort_index
    Series.sort_values
+   Series.repeat
 
 Combining / joining / merging
 -----------------------------
@@ -350,6 +354,7 @@ specific plotting methods of the form ``Series.plot.<kind>``.
    Series.plot.bar
    Series.plot.barh
    Series.plot.box
+   Series.plot.density
    Series.plot.hist
    Series.plot.line
    Series.plot.pie

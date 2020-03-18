@@ -50,8 +50,9 @@ def combine_frames(this, *args, how="full"):
     from databricks.koalas.config import get_option
 
     if all(isinstance(arg, Series) for arg in args):
-        assert all(arg._kdf is args[0]._kdf for arg in args), \
-            "Currently only one different DataFrame (from given Series) is supported"
+        assert all(
+            arg._kdf is args[0]._kdf for arg in args
+        ), "Currently only one different DataFrame (from given Series) is supported"
         if this is args[0]._kdf:
             return  # We don't need to combine. All series is in this.
         that = args[0]._kdf[list(args)]
@@ -61,8 +62,7 @@ def combine_frames(this, *args, how="full"):
             return  # We don't need to combine. `this` and `that` are same.
         that = args[0]
     else:
-        raise AssertionError("args should be single DataFrame or "
-                             "single/multiple Series")
+        raise AssertionError("args should be single DataFrame or " "single/multiple Series")
 
     if get_option("compute.ops_on_diff_frames"):
         this_index_map = this._internal.index_map
@@ -74,55 +74,70 @@ def combine_frames(this, *args, how="full"):
 
         # Note that the order of each element in index_map is guaranteed according to the index
         # level.
-        this_and_that_index_map = zip(this_index_map, that_index_map)
+        this_and_that_index_map = zip(this_index_map.items(), that_index_map.items())
 
         # If the same named index is found, that's used.
         for (this_column, this_name), (that_column, that_name) in this_and_that_index_map:
             if this_name == that_name:
                 # We should merge the Spark columns into one
                 # to mimic pandas' behavior.
-                this_scol = this._internal.scol_for(this_column)
-                that_scol = that._internal.scol_for(that_column)
+                this_scol = scol_for(this._sdf, this_column)
+                that_scol = scol_for(that._sdf, that_column)
                 join_scol = this_scol == that_scol
                 join_scols.append(join_scol)
                 merged_index_scols.append(
-                    F.when(
-                        this_scol.isNotNull(), this_scol
-                    ).otherwise(that_scol).alias(this_column))
+                    F.when(this_scol.isNotNull(), this_scol).otherwise(that_scol).alias(this_column)
+                )
             else:
                 raise ValueError("Index names must be exactly matched currently.")
 
         assert len(join_scols) > 0, "cannot join with no overlapping index names"
 
-        joined_df = this._sdf.alias("this").join(
-            that._sdf.alias("that"), on=join_scols, how=how)
+        joined_df = this._sdf.alias("this").join(that._sdf.alias("that"), on=join_scols, how=how)
 
         joined_df = joined_df.select(
-            merged_index_scols +
-            [this[label]._scol.alias("__this_%s" % this._internal.column_name_for(label))
-             for label in this._internal.column_labels] +
-            [that[label]._scol.alias("__that_%s" % that._internal.column_name_for(label))
-             for label in that._internal.column_labels])
+            merged_index_scols
+            + [
+                this[label]._scol.alias("__this_%s" % this._internal.spark_column_name_for(label))
+                for label in this._internal.column_labels
+            ]
+            + [
+                that[label]._scol.alias("__that_%s" % that._internal.spark_column_name_for(label))
+                for label in that._internal.column_labels
+            ]
+        )
 
-        index_columns = set(this._internal.index_columns)
+        index_columns = set(this._internal.index_spark_column_names)
         new_data_columns = [c for c in joined_df.columns if c not in index_columns]
         level = max(this._internal.column_labels_level, that._internal.column_labels_level)
-        column_labels = ([tuple(['this'] + ([''] * (level - len(label))) + list(label))
-                         for label in this._internal.column_labels]
-                         + [tuple(['that'] + ([''] * (level - len(label))) + list(label))
-                            for label in that._internal.column_labels])
-        column_label_names = ((([None] * (1 + level - len(this._internal.column_labels_level)))
-                               + this._internal.column_label_names)
-                              if this._internal.column_label_names is not None else None)
+        column_labels = [
+            tuple(["this"] + ([""] * (level - len(label))) + list(label))
+            for label in this._internal.column_labels
+        ] + [
+            tuple(["that"] + ([""] * (level - len(label))) + list(label))
+            for label in that._internal.column_labels
+        ]
+        column_label_names = (
+            (
+                ([None] * (1 + level - len(this._internal.column_labels_level)))
+                + this._internal.column_label_names
+            )
+            if this._internal.column_label_names is not None
+            else None
+        )
         return DataFrame(
-            this._internal.copy(sdf=joined_df,
-                                column_labels=column_labels,
-                                column_scols=[scol_for(joined_df, col) for col in new_data_columns],
-                                column_label_names=column_label_names))
+            this._internal.copy(
+                spark_frame=joined_df,
+                column_labels=column_labels,
+                data_spark_columns=[scol_for(joined_df, col) for col in new_data_columns],
+                column_label_names=column_label_names,
+            )
+        )
     else:
         raise ValueError(
             "Cannot combine the series or dataframe because it comes from a different dataframe. "
-            "In order to allow this operation, enable 'compute.ops_on_diff_frames' option.")
+            "In order to allow this operation, enable 'compute.ops_on_diff_frames' option."
+        )
 
 
 def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
@@ -177,18 +192,19 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
         - left: `resolve_func` should resolve columns including that columns.
             For instance, if 'this' has columns A, B, C and that has B, C, D, `this_columns` is
             B, C but `that_columns` are B, C, D.
+        - inner: Same as 'full' mode; however, internally performs inner join instead.
     :return: Aligned DataFrame
     """
-    assert how == "full" or how == "left"
+    assert how == "full" or how == "left" or how == "inner"
 
     this_column_labels = this._internal.column_labels
     that_column_labels = that._internal.column_labels
     common_column_labels = set(this_column_labels).intersection(that_column_labels)
 
-    # 1. Full outer join given two dataframes.
+    # 1. Perform the join given two dataframes.
     combined = combine_frames(this, that, how=how)
 
-    # 2. Apply given function to transform the columns in a batch and keep the new columns.
+    # 2. Apply the given function to transform the columns in a batch and keep the new columns.
     combined_column_labels = combined._internal.column_labels
 
     that_columns_to_apply = []
@@ -199,15 +215,16 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
 
     for combined_label in combined_column_labels:
         for common_label in common_column_labels:
-            if combined_label == tuple(['this', *common_label]):
+            if combined_label == tuple(["this", *common_label]):
                 this_columns_to_apply.append(combined_label)
                 break
-            elif combined_label == tuple(['that', *common_label]):
+            elif combined_label == tuple(["that", *common_label]):
                 that_columns_to_apply.append(combined_label)
                 break
         else:
-            if how == "left" and \
-                    combined_label in [tuple(['that', *label]) for label in that_column_labels]:
+            if how == "left" and combined_label in [
+                tuple(["that", *label]) for label in that_column_labels
+            ]:
                 # In this case, we will drop `that_columns` in `columns_to_keep` but passes
                 # it later to `func`. `func` should resolve it.
                 # Note that adding this into a separate list (`additional_that_columns`)
@@ -217,7 +234,7 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
                 columns_to_keep.append(F.lit(None).cast(FloatType()).alias(str(combined_label)))
                 column_labels_to_keep.append(combined_label)
             else:
-                columns_to_keep.append(combined._internal.scol_for(combined_label))
+                columns_to_keep.append(combined._internal.spark_column_for(combined_label))
                 column_labels_to_keep.append(combined_label)
 
     that_columns_to_apply += additional_that_columns
@@ -225,8 +242,9 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
     # Should extract columns to apply and do it in a batch in case
     # it adds new columns for example.
     if len(this_columns_to_apply) > 0 or len(that_columns_to_apply) > 0:
-        kser_set, column_labels_applied = \
-            zip(*resolve_func(combined, this_columns_to_apply, that_columns_to_apply))
+        kser_set, column_labels_applied = zip(
+            *resolve_func(combined, this_columns_to_apply, that_columns_to_apply)
+        )
         columns_applied = [c._scol for c in kser_set]
         column_labels_applied = list(column_labels_applied)
     else:
@@ -262,22 +280,25 @@ def align_diff_series(func, this_series, *args, how="full"):
     cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
     combined = combine_frames(this_series.to_frame(), *cols, how=how)
 
-    that_columns = [combined['that'][arg._internal.column_labels[0]]._scol
-                    if isinstance(arg, IndexOpsMixin) else arg for arg in args]
+    scol = func(
+        combined["this"]._internal.data_spark_columns[0],
+        *combined["that"]._internal.data_spark_columns
+    )
 
-    scol = func(combined['this'][this_series._internal.column_labels[0]]._scol,
-                *that_columns)
-
-    return Series(combined._internal.copy(scol=scol,
-                                          column_labels=this_series._internal.column_labels),
-                  anchor=combined)
+    return Series(
+        combined._internal.copy(
+            spark_column=scol, column_labels=this_series._internal.column_labels
+        ),
+        anchor=combined,
+    )
 
 
 def default_session(conf=None):
     if conf is None:
         conf = dict()
-    if LooseVersion(pyarrow.__version__) >= LooseVersion("0.15") and \
-            LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+    if LooseVersion(pyarrow.__version__) >= LooseVersion("0.15") and LooseVersion(
+        pyspark.__version__
+    ) < LooseVersion("3.0"):
         conf["spark.executorEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
         conf["spark.yarn.appMasterEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
         conf["spark.mesos.driverEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
@@ -291,9 +312,12 @@ def default_session(conf=None):
     return builder.getOrCreate()
 
 
-def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],
-                                           koalas_func: Callable, pandas_func: Callable,
-                                           input_args: Dict):
+def validate_arguments_and_invoke_function(
+    pobj: Union[pd.DataFrame, pd.Series],
+    koalas_func: Callable,
+    pandas_func: Callable,
+    input_args: Dict,
+):
     """
     Invokes a pandas function.
 
@@ -321,12 +345,12 @@ def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],
     # Makes a copy since whatever passed in is likely created by locals(), and we can't delete
     # 'self' key from that.
     args = input_args.copy()
-    del args['self']
+    del args["self"]
 
-    if 'kwargs' in args:
+    if "kwargs" in args:
         # explode kwargs
-        kwargs = args['kwargs']
-        del args['kwargs']
+        kwargs = args["kwargs"]
+        del args["kwargs"]
         args = {**args, **kwargs}
 
     koalas_params = inspect.signature(koalas_func).parameters
@@ -338,10 +362,14 @@ def validate_arguments_and_invoke_function(pobj: Union[pd.DataFrame, pd.Series],
                 del args[param.name]
             else:
                 raise TypeError(
-                    ("The pandas version [%s] available does not support parameter '%s' " +
-                     "for function '%s'.") % (pd.__version__, param.name, pandas_func.__name__))
+                    (
+                        "The pandas version [%s] available does not support parameter '%s' "
+                        + "for function '%s'."
+                    )
+                    % (pd.__version__, param.name, pandas_func.__name__)
+                )
 
-    args['self'] = pobj
+    args["self"] = pobj
     return pandas_func(**args)
 
 
@@ -351,7 +379,7 @@ def lazy_property(fn):
 
     Copied from https://stevenloria.com/lazy-properties/
     """
-    attr_name = '_lazy_' + fn.__name__
+    attr_name = "_lazy_" + fn.__name__
 
     @property
     @functools.wraps(fn)
@@ -365,7 +393,7 @@ def lazy_property(fn):
 
 def scol_for(sdf: spark.DataFrame, column_name: str) -> spark.Column:
     """ Return Spark Column for the given column name. """
-    return sdf['`{}`'.format(column_name)]
+    return sdf["`{}`".format(column_name)]
 
 
 def column_labels_level(column_labels: List[Tuple[str, ...]]) -> int:
@@ -400,15 +428,15 @@ def name_like_string(name: Union[str, Tuple]) -> str:
         name = tuple([str(n) for n in name])
     else:
         name = (str(name),)
-    return ('(%s)' % ', '.join(name)) if len(name) > 1 else name[0]
+    return ("(%s)" % ", ".join(name)) if len(name) > 1 else name[0]
 
 
 def validate_axis(axis=0, none_axis=0):
     """ Check the given axis is valid. """
-    if axis not in (0, 1, 'index', 'columns', None):
-        raise ValueError('No axis named {0}'.format(axis))
+    if axis not in (0, 1, "index", "columns", None):
+        raise ValueError("No axis named {0}".format(axis))
     # convert to numeric axis
-    return {None: none_axis, 'index': 0, 'columns': 1}.get(axis, axis)
+    return {None: none_axis, "index": 0, "columns": 1}.get(axis, axis)
 
 
 def validate_bool_kwarg(value, arg_name):
@@ -421,14 +449,45 @@ def validate_bool_kwarg(value, arg_name):
     return value
 
 
+def verify_temp_column_name(sdf: spark.DataFrame, column_name: str) -> str:
+    """
+    Generate a temporaty column name which does not exist in the given Spark DataFrame
+
+    >>> sdf = ks.DataFrame(['a', 'b', 'c']).to_spark().withColumn('__dummy__', F.lit(0))
+    >>> sdf.show()  # doctest: +NORMALIZE_WHITESPACE
+    +---+---------+
+    |  0|__dummy__|
+    +---+---------+
+    |  a|        0|
+    |  b|        0|
+    |  c|        0|
+    +---+---------+
+
+    >>> verify_temp_column_name(sdf, '__tmp__')
+    '__tmp__'
+    >>> verify_temp_column_name(sdf, '__dummy__')
+    Traceback (most recent call last):
+    ...
+    AssertionError: ... `__dummy__` ...: ['0', '__dummy__']
+    """
+    assert (
+        column_name not in sdf.columns
+    ), "The give column name `{}` already exists in the Spark DataFrame: {}".format(
+        column_name, sdf.columns
+    )
+    return column_name
+
+
 def compare_null_first(left, right, comp):
-    return ((left.isNotNull() & right.isNotNull() & comp(left, right))
-            | (left.isNull() & right.isNotNull()))
+    return (left.isNotNull() & right.isNotNull() & comp(left, right)) | (
+        left.isNull() & right.isNotNull()
+    )
 
 
 def compare_null_last(left, right, comp):
-    return ((left.isNotNull() & right.isNotNull() & comp(left, right))
-            | (left.isNotNull() & right.isNull()))
+    return (left.isNotNull() & right.isNotNull() & comp(left, right)) | (
+        left.isNotNull() & right.isNull()
+    )
 
 
 def compare_disallow_null(left, right, comp):

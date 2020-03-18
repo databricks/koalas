@@ -29,10 +29,10 @@ if TYPE_CHECKING:
     import databricks.koalas as ks
 
 
-CORRELATION_OUTPUT_COLUMN = '__correlation_output__'
+CORRELATION_OUTPUT_COLUMN = "__correlation_output__"
 
 
-def corr(kdf: 'ks.DataFrame', method: str = 'pearson') -> pd.DataFrame:
+def corr(kdf: "ks.DataFrame", method: str = "pearson") -> pd.DataFrame:
     """
     The correlation matrix of all the numerical columns of this dataframe.
 
@@ -49,7 +49,7 @@ def corr(kdf: 'ks.DataFrame', method: str = 'pearson') -> pd.DataFrame:
     A  1.0 -1.0
     B -1.0  1.0
     """
-    assert method in ('pearson', 'spearman')
+    assert method in ("pearson", "spearman")
     ndf, column_labels = to_numeric_df(kdf)
     corr = Correlation.corr(ndf, CORRELATION_OUTPUT_COLUMN, method)
     pcorr = corr.toPandas()
@@ -61,7 +61,7 @@ def corr(kdf: 'ks.DataFrame', method: str = 'pearson') -> pd.DataFrame:
     return pd.DataFrame(arr, columns=idx, index=idx)
 
 
-def to_numeric_df(kdf: 'ks.DataFrame') -> Tuple[pyspark.sql.DataFrame, List[Tuple[str, ...]]]:
+def to_numeric_df(kdf: "ks.DataFrame") -> Tuple[pyspark.sql.DataFrame, List[Tuple[str, ...]]]:
     """
     Takes a dataframe and turns it into a dataframe containing a single numerical
     vector of doubles. This dataframe has a single field called '_1'.
@@ -75,11 +75,16 @@ def to_numeric_df(kdf: 'ks.DataFrame') -> Tuple[pyspark.sql.DataFrame, List[Tupl
     (DataFrame[__correlation_output__: vector], [('A',), ('B',)])
     """
     # TODO, it should be more robust.
-    accepted_types = {np.dtype(dt) for dt in [np.int8, np.int16, np.int32, np.int64,
-                                              np.float32, np.float64, np.bool_]}
-    numeric_column_labels = [label for label in kdf._internal.column_labels
-                             if kdf[label].dtype in accepted_types]
-    numeric_df = kdf._sdf.select(*[kdf._internal.scol_for(idx) for idx in numeric_column_labels])
+    accepted_types = {
+        np.dtype(dt)
+        for dt in [np.int8, np.int16, np.int32, np.int64, np.float32, np.float64, np.bool_]
+    }
+    numeric_column_labels = [
+        label for label in kdf._internal.column_labels if kdf[label].dtype in accepted_types
+    ]
+    numeric_df = kdf._sdf.select(
+        *[kdf._internal.spark_column_for(idx) for idx in numeric_column_labels]
+    )
     va = VectorAssembler(inputCols=numeric_df.columns, outputCol=CORRELATION_OUTPUT_COLUMN)
     v = va.transform(numeric_df).select(CORRELATION_OUTPUT_COLUMN)
     return v, numeric_column_labels

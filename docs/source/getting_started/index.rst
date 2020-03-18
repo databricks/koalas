@@ -6,4 +6,5 @@ Getting started
 
    install
    10min
+   videos
 

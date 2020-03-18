@@ -17,7 +17,7 @@ jobs:
       # The name of the directory '.cache' is for Travis CI. Once we remove Travis CI,
       # we should download Spark to a directory with a different name to prevent confusion.
       SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
-      PANDAS_VERSION: 0.23.4
+      PANDAS_VERSION: 0.24.2
       PYARROW_VERSION: 0.10.0
       # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around wtih xvfb-run
       PYTHON_EXECUTABLE: xvfb-run python
@@ -52,6 +52,10 @@ jobs:
         ./dev/download_travis_dependencies.sh
         sudo apt-get install xclip
         pip install setuptools
+        # Currently PIP with Python 3.5 removes Black in the requirements-dev.txt file
+        # as Black only works with Python 3.6+. This is hacky but we will drop
+        # Python 3.5 soon so it's fine.
+        sed -i '/black/d' requirements-dev.txt
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip list
@@ -60,9 +64,7 @@ jobs:
         export SPARK_HOME="$SPARK_CACHE_DIR/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
-    - uses: codecov/codecov-action@v1.0.5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+    - uses: codecov/codecov-action@v1
 
   conda_python:
     name: Conda, Python
@@ -73,12 +75,12 @@ jobs:
         include:
           - python-version: 3.6
             spark-version: 2.4.5
-            pandas-version: 0.24.2
+            pandas-version: 0.25.3
             pyarrow-version: 0.13.0
             logger: databricks.koalas.usage_logging.usage_logger
           - python-version: 3.7
             spark-version: 2.4.5
-            pandas-version: 0.25.3
+            pandas-version: 1.0.2
             pyarrow-version: 0.14.1
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
@@ -134,7 +136,5 @@ jobs:
         export SPARK_HOME="$SPARK_CACHE_DIR/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
-    - uses: codecov/codecov-action@v1.0.5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+    - uses: codecov/codecov-action@v1
 

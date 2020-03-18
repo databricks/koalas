@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from collections import OrderedDict
 
 import pandas as pd
 
@@ -21,43 +22,46 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
 class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
-
     def test_from_pandas(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
 
         internal = _InternalFrame.from_pandas(pdf)
-        sdf = internal.sdf
+        sdf = internal.spark_frame
 
-        self.assert_eq(internal.index_map, [(SPARK_DEFAULT_INDEX_NAME, None)])
-        self.assert_eq(internal.column_labels, [('a', ), ('b', )])
-        self.assert_eq(internal.data_columns, ['a', 'b'])
-        self.assertTrue(internal.scol_for(('a',))._jc.equals(sdf['a']._jc))
-        self.assertTrue(internal.scol_for(('b',))._jc.equals(sdf['b']._jc))
+        self.assert_eq(internal.index_map, OrderedDict({SPARK_DEFAULT_INDEX_NAME: None}))
+        self.assert_eq(internal.column_labels, [("a",), ("b",)])
+        self.assert_eq(internal.data_spark_column_names, ["a", "b"])
+        self.assertTrue(internal.spark_column_for(("a",))._jc.equals(sdf["a"]._jc))
+        self.assertTrue(internal.spark_column_for(("b",))._jc.equals(sdf["b"]._jc))
 
-        self.assert_eq(internal.pandas_df, pdf)
+        self.assert_eq(internal.to_pandas_frame, pdf)
 
         # multi-index
-        pdf.set_index('a', append=True, inplace=True)
+        pdf.set_index("a", append=True, inplace=True)
 
         internal = _InternalFrame.from_pandas(pdf)
-        sdf = internal.sdf
+        sdf = internal.spark_frame
 
-        self.assert_eq(internal.index_map, [(SPARK_DEFAULT_INDEX_NAME, None), ('a', ('a',))])
-        self.assert_eq(internal.column_labels, [('b', )])
-        self.assert_eq(internal.data_columns, ['b'])
-        self.assertTrue(internal.scol_for(('b',))._jc.equals(sdf['b']._jc))
+        self.assert_eq(
+            internal.index_map, OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None), ("a", ("a",))])
+        )
+        self.assert_eq(internal.column_labels, [("b",)])
+        self.assert_eq(internal.data_spark_column_names, ["b"])
+        self.assertTrue(internal.spark_column_for(("b",))._jc.equals(sdf["b"]._jc))
 
-        self.assert_eq(internal.pandas_df, pdf)
+        self.assert_eq(internal.to_pandas_frame, pdf)
 
         # multi-index columns
-        pdf.columns = pd.MultiIndex.from_tuples([('x', 'b')])
+        pdf.columns = pd.MultiIndex.from_tuples([("x", "b")])
 
         internal = _InternalFrame.from_pandas(pdf)
-        sdf = internal.sdf
+        sdf = internal.spark_frame
 
-        self.assert_eq(internal.index_map, [(SPARK_DEFAULT_INDEX_NAME, None), ('a', ('a',))])
-        self.assert_eq(internal.column_labels, [('x', 'b')])
-        self.assert_eq(internal.data_columns, ['(x, b)'])
-        self.assertTrue(internal.scol_for(('x', 'b'))._jc.equals(sdf['(x, b)']._jc))
+        self.assert_eq(
+            internal.index_map, OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None), ("a", ("a",))])
+        )
+        self.assert_eq(internal.column_labels, [("x", "b")])
+        self.assert_eq(internal.data_spark_column_names, ["(x, b)"])
+        self.assertTrue(internal.spark_column_for(("x", "b"))._jc.equals(sdf["(x, b)"]._jc))
 
-        self.assert_eq(internal.pandas_df, pdf)
+        self.assert_eq(internal.to_pandas_frame, pdf)

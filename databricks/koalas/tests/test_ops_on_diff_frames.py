@@ -22,84 +22,89 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
 class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
-
     @classmethod
     def setUpClass(cls):
         super(OpsOnDiffFramesEnabledTest, cls).setUpClass()
-        set_option('compute.ops_on_diff_frames', True)
+        set_option("compute.ops_on_diff_frames", True)
 
     @classmethod
     def tearDownClass(cls):
-        reset_option('compute.ops_on_diff_frames')
+        reset_option("compute.ops_on_diff_frames")
         super(OpsOnDiffFramesEnabledTest, cls).tearDownClass()
 
     @property
     def pdf1(self):
-        return pd.DataFrame({
-            'a': [1, 2, 3, 4, 5, 6, 7, 8, 9],
-            'b': [4, 5, 6, 3, 2, 1, 0, 0, 0],
-        }, index=[0, 1, 3, 5, 6, 8, 9, 10, 11])
+        return pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0],},
+            index=[0, 1, 3, 5, 6, 8, 9, 10, 11],
+        )
 
     @property
     def pdf2(self):
-        return pd.DataFrame({
-            'a': [9, 8, 7, 6, 5, 4, 3, 2, 1],
-            'b': [0, 0, 0, 4, 5, 6, 1, 2, 3],
-        }, index=list(range(9)))
+        return pd.DataFrame(
+            {"a": [9, 8, 7, 6, 5, 4, 3, 2, 1], "b": [0, 0, 0, 4, 5, 6, 1, 2, 3],},
+            index=list(range(9)),
+        )
 
     @property
     def pdf3(self):
-        return pd.DataFrame({
-            'b': [1, 1, 1, 1, 1, 1, 1, 1, 1],
-            'c': [1, 1, 1, 1, 1, 1, 1, 1, 1],
-        }, index=list(range(9)))
+        return pd.DataFrame(
+            {"b": [1, 1, 1, 1, 1, 1, 1, 1, 1], "c": [1, 1, 1, 1, 1, 1, 1, 1, 1],},
+            index=list(range(9)),
+        )
 
     @property
     def pdf4(self):
-        return pd.DataFrame({
-            'e': [2, 2, 2, 2, 2, 2, 2, 2, 2],
-            'f': [2, 2, 2, 2, 2, 2, 2, 2, 2],
-        }, index=list(range(9)))
+        return pd.DataFrame(
+            {"e": [2, 2, 2, 2, 2, 2, 2, 2, 2], "f": [2, 2, 2, 2, 2, 2, 2, 2, 2],},
+            index=list(range(9)),
+        )
 
     @property
     def pdf5(self):
-        return pd.DataFrame({
-            'a': [1, 2, 3, 4, 5, 6, 7, 8, 9],
-            'b': [4, 5, 6, 3, 2, 1, 0, 0, 0],
-            'c': [4, 5, 6, 3, 2, 1, 0, 0, 0],
-        }, index=[0, 1, 3, 5, 6, 8, 9, 10, 11]).set_index(['a', 'b'])
+        return pd.DataFrame(
+            {
+                "a": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+                "b": [4, 5, 6, 3, 2, 1, 0, 0, 0],
+                "c": [4, 5, 6, 3, 2, 1, 0, 0, 0],
+            },
+            index=[0, 1, 3, 5, 6, 8, 9, 10, 11],
+        ).set_index(["a", "b"])
 
     @property
     def pdf6(self):
-        return pd.DataFrame({
-            'a': [9, 8, 7, 6, 5, 4, 3, 2, 1],
-            'b': [0, 0, 0, 4, 5, 6, 1, 2, 3],
-            'c': [9, 8, 7, 6, 5, 4, 3, 2, 1],
-            'e': [4, 5, 6, 3, 2, 1, 0, 0, 0],
-        }, index=list(range(9))).set_index(['a', 'b'])
+        return pd.DataFrame(
+            {
+                "a": [9, 8, 7, 6, 5, 4, 3, 2, 1],
+                "b": [0, 0, 0, 4, 5, 6, 1, 2, 3],
+                "c": [9, 8, 7, 6, 5, 4, 3, 2, 1],
+                "e": [4, 5, 6, 3, 2, 1, 0, 0, 0],
+            },
+            index=list(range(9)),
+        ).set_index(["a", "b"])
 
     @property
     def pser1(self):
-        midx = pd.MultiIndex([['lama', 'cow', 'falcon', 'koala'],
-                              ['speed', 'weight', 'length', 'power']],
-                             [[0, 3, 1, 1, 1, 2, 2, 2],
-                              [0, 2, 0, 3, 2, 0, 1, 3]])
+        midx = pd.MultiIndex(
+            [["lama", "cow", "falcon", "koala"], ["speed", "weight", "length", "power"]],
+            [[0, 3, 1, 1, 1, 2, 2, 2], [0, 2, 0, 3, 2, 0, 1, 3]],
+        )
         return pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1], index=midx)
 
     @property
     def pser2(self):
-        midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
-                              ['speed', 'weight', 'length']],
-                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
-                              [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        midx = pd.MultiIndex(
+            [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
+        )
         return pd.Series([-45, 200, -1.2, 30, -250, 1.5, 320, 1, -0.3], index=midx)
 
     @property
     def pser3(self):
-        midx = pd.MultiIndex([['koalas', 'cow', 'falcon'],
-                              ['speed', 'weight', 'length']],
-                             [[0, 0, 0, 1, 1, 1, 2, 2, 2],
-                              [1, 1, 2, 0, 0, 2, 2, 2, 1]])
+        midx = pd.MultiIndex(
+            [["koalas", "cow", "falcon"], ["speed", "weight", "length"]],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2], [1, 1, 2, 0, 0, 2, 2, 2, 1]],
+        )
         return pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
 
     @property
@@ -141,13 +146,16 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
     def test_ranges(self):
         self.assert_eq(
             (ks.range(10) + ks.range(10)).sort_index(),
-            (ks.DataFrame({'id': list(range(10))})
-             + ks.DataFrame({'id': list(range(10))})).sort_index())
+            (
+                ks.DataFrame({"id": list(range(10))}) + ks.DataFrame({"id": list(range(10))})
+            ).sort_index(),
+        )
 
     def test_no_matched_index(self):
         with self.assertRaisesRegex(ValueError, "Index names must be exactly matched"):
-            ks.DataFrame({'a': [1, 2, 3]}).set_index('a') + \
-                ks.DataFrame({'b': [1, 2, 3]}).set_index('b')
+            ks.DataFrame({"a": [1, 2, 3]}).set_index("a") + ks.DataFrame(
+                {"b": [1, 2, 3]}
+            ).set_index("b")
 
     def test_arithmetic(self):
         kdf1 = self.kdf1
@@ -161,24 +169,24 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Series
         self.assert_eq(
-            (kdf1.a - kdf2.b).sort_index(),
-            (pdf1.a - pdf2.b).rename("a").sort_index(), almost=True)
+            (kdf1.a - kdf2.b).sort_index(), (pdf1.a - pdf2.b).rename("a").sort_index(), almost=True
+        )
 
         self.assert_eq(
-            (kdf1.a * kdf2.a).sort_index(),
-            (pdf1.a * pdf2.a).rename("a").sort_index(), almost=True)
+            (kdf1.a * kdf2.a).sort_index(), (pdf1.a * pdf2.a).rename("a").sort_index(), almost=True
+        )
 
         self.assert_eq(
             (kdf1["a"] / kdf2["a"]).sort_index(),
-            (pdf1["a"] / pdf2["a"]).rename("a").sort_index(), almost=True)
+            (pdf1["a"] / pdf2["a"]).rename("a").sort_index(),
+            almost=True,
+        )
 
         # DataFrame
-        self.assert_eq(
-            (kdf1 + kdf2).sort_index(),
-            (pdf1 + pdf2).sort_index(), almost=True)
+        self.assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index(), almost=True)
 
         # Multi-index columns
-        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b')])
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b")])
         kdf1.columns = columns
         kdf2.columns = columns
         pdf1.columns = columns
@@ -186,38 +194,34 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Series
         self.assert_eq(
-            (kdf1[('x', 'a')] - kdf2[('x', 'b')]).sort_index(),
-            (pdf1[('x', 'a')] - pdf2[('x', 'b')]).rename(('x', 'a')).sort_index(), almost=True)
+            (kdf1[("x", "a")] - kdf2[("x", "b")]).sort_index(),
+            (pdf1[("x", "a")] - pdf2[("x", "b")]).rename(("x", "a")).sort_index(),
+            almost=True,
+        )
 
         self.assert_eq(
-            (kdf1[('x', 'a')] - kdf2['x']['b']).sort_index(),
-            (pdf1[('x', 'a')] - pdf2['x']['b']).rename(('x', 'a')).sort_index(), almost=True)
+            (kdf1[("x", "a")] - kdf2["x"]["b"]).sort_index(),
+            (pdf1[("x", "a")] - pdf2["x"]["b"]).rename(("x", "a")).sort_index(),
+            almost=True,
+        )
 
         self.assert_eq(
-            (kdf1['x']['a'] - kdf2[('x', 'b')]).sort_index(),
-            (pdf1['x']['a'] - pdf2[('x', 'b')]).rename('a').sort_index(), almost=True)
+            (kdf1["x"]["a"] - kdf2[("x", "b")]).sort_index(),
+            (pdf1["x"]["a"] - pdf2[("x", "b")]).rename("a").sort_index(),
+            almost=True,
+        )
 
         # DataFrame
-        self.assert_eq(
-            (kdf1 + kdf2).sort_index(),
-            (pdf1 + pdf2).sort_index(), almost=True)
+        self.assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index(), almost=True)
 
         # MultiIndex Series
-        self.assert_eq(
-            (kser1 + kser2).sort_index(),
-            (pser1 + pser2).sort_index(), almost=True)
+        self.assert_eq((kser1 + kser2).sort_index(), (pser1 + pser2).sort_index(), almost=True)
 
-        self.assert_eq(
-            (kser1 - kser2).sort_index(),
-            (pser1 - pser2).sort_index(), almost=True)
+        self.assert_eq((kser1 - kser2).sort_index(), (pser1 - pser2).sort_index(), almost=True)
 
-        self.assert_eq(
-            (kser1 * kser2).sort_index(),
-            (pser1 * pser2).sort_index(), almost=True)
+        self.assert_eq((kser1 * kser2).sort_index(), (pser1 * pser2).sort_index(), almost=True)
 
-        self.assert_eq(
-            (kser1 / kser2).sort_index(),
-            (pser1 / pser2).sort_index(), almost=True)
+        self.assert_eq((kser1 / kser2).sort_index(), (pser1 / pser2).sort_index(), almost=True)
 
     def test_arithmetic_chain(self):
         kdf1 = self.kdf1
@@ -236,100 +240,113 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         # Series
         self.assert_eq(
             (kdf1.a - kdf2.b - kdf3.c).sort_index(),
-            (pdf1.a - pdf2.b - pdf3.c).rename("a").sort_index(), almost=True)
+            (pdf1.a - pdf2.b - pdf3.c).rename("a").sort_index(),
+            almost=True,
+        )
 
         self.assert_eq(
             (kdf1.a * (kdf2.a * kdf3.c)).sort_index(),
-            (pdf1.a * (pdf2.a * pdf3.c)).rename("a").sort_index(), almost=True)
+            (pdf1.a * (pdf2.a * pdf3.c)).rename("a").sort_index(),
+            almost=True,
+        )
 
         self.assert_eq(
             (kdf1["a"] / kdf2["a"] / kdf3["c"]).sort_index(),
             (pdf1["a"] / pdf2["a"] / pdf3["c"]).rename("a").sort_index(),
-            almost=True)
+            almost=True,
+        )
 
         # DataFrame
         self.assert_eq(
-            (kdf1 + kdf2 - kdf3).sort_index(),
-            (pdf1 + pdf2 - pdf3).sort_index(), almost=True)
+            (kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index(), almost=True
+        )
 
         # Multi-index columns
-        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b')])
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b")])
         kdf1.columns = columns
         kdf2.columns = columns
         pdf1.columns = columns
         pdf2.columns = columns
-        columns = pd.MultiIndex.from_tuples([('x', 'b'), ('y', 'c')])
+        columns = pd.MultiIndex.from_tuples([("x", "b"), ("y", "c")])
         kdf3.columns = columns
         pdf3.columns = columns
 
         # Series
         self.assert_eq(
-            (kdf1[('x', 'a')] - kdf2[('x', 'b')] - kdf3[('y', 'c')]).sort_index(),
-            (pdf1[('x', 'a')] - pdf2[('x', 'b')] - pdf3[('y', 'c')]).rename(('x', 'a'))
+            (kdf1[("x", "a")] - kdf2[("x", "b")] - kdf3[("y", "c")]).sort_index(),
+            (pdf1[("x", "a")] - pdf2[("x", "b")] - pdf3[("y", "c")])
+            .rename(("x", "a"))
             .sort_index(),
-            almost=True)
+            almost=True,
+        )
 
         self.assert_eq(
-            (kdf1[('x', 'a')] * (kdf2[('x', 'b')] * kdf3[('y', 'c')])).sort_index(),
-            (pdf1[('x', 'a')] * (pdf2[('x', 'b')] * pdf3[('y', 'c')])).rename(('x', 'a'))
+            (kdf1[("x", "a")] * (kdf2[("x", "b")] * kdf3[("y", "c")])).sort_index(),
+            (pdf1[("x", "a")] * (pdf2[("x", "b")] * pdf3[("y", "c")]))
+            .rename(("x", "a"))
             .sort_index(),
-            almost=True)
+            almost=True,
+        )
 
         # DataFrame
         self.assert_eq(
-            (kdf1 + kdf2 - kdf3).sort_index(),
-            (pdf1 + pdf2 - pdf3).sort_index(), almost=True)
+            (kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index(), almost=True
+        )
 
         # MultiIndex Series
         self.assert_eq(
-            (kser1 + kser2 - kser3).sort_index(),
-            (pser1 + pser2 - pser3).sort_index(), almost=True)
+            (kser1 + kser2 - kser3).sort_index(), (pser1 + pser2 - pser3).sort_index(), almost=True
+        )
 
         self.assert_eq(
-            (kser1 * kser2 * kser3).sort_index(),
-            (pser1 * pser2 * pser3).sort_index(), almost=True)
+            (kser1 * kser2 * kser3).sort_index(), (pser1 * pser2 * pser3).sort_index(), almost=True
+        )
 
         self.assert_eq(
-            (kser1 - kser2 / kser3).sort_index(),
-            (pser1 - pser2 / pser3).sort_index(), almost=True)
+            (kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index(), almost=True
+        )
 
         self.assert_eq(
-            (kser1 + kser2 * kser3).sort_index(),
-            (pser1 + pser2 * pser3).sort_index(), almost=True)
+            (kser1 + kser2 * kser3).sort_index(), (pser1 + pser2 * pser3).sort_index(), almost=True
+        )
 
     def test_getitem_boolean_series(self):
-        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]},
-                            index=[20, 10, 30, 0, 50])
-        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]},
-                            index=[0, 30, 10, 20, 50])
+        pdf1 = pd.DataFrame(
+            {"A": [0, 1, 2, 3, 4], "B": [100, 200, 300, 400, 500]}, index=[20, 10, 30, 0, 50]
+        )
+        pdf2 = pd.DataFrame(
+            {"A": [0, -1, -2, -3, -4], "B": [-100, -200, -300, -400, -500]},
+            index=[0, 30, 10, 20, 50],
+        )
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(pdf1[pdf2.A > -3].sort_index(),
-                       kdf1[kdf2.A > -3].sort_index())
+        self.assert_eq(pdf1[pdf2.A > -3].sort_index(), kdf1[kdf2.A > -3].sort_index())
 
-        self.assert_eq(pdf1.A[pdf2.A > -3].sort_index(),
-                       kdf1.A[kdf2.A > -3].sort_index())
+        self.assert_eq(pdf1.A[pdf2.A > -3].sort_index(), kdf1.A[kdf2.A > -3].sort_index())
 
-        self.assert_eq((pdf1.A + 1)[pdf2.A > -3].sort_index(),
-                       (kdf1.A + 1)[kdf2.A > -3].sort_index())
+        self.assert_eq(
+            (pdf1.A + 1)[pdf2.A > -3].sort_index(), (kdf1.A + 1)[kdf2.A > -3].sort_index()
+        )
 
     def test_loc_getitem_boolean_series(self):
-        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]},
-                            index=[20, 10, 30, 0, 50])
-        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]},
-                            index=[20, 10, 30, 0, 50])
+        pdf1 = pd.DataFrame(
+            {"A": [0, 1, 2, 3, 4], "B": [100, 200, 300, 400, 500]}, index=[20, 10, 30, 0, 50]
+        )
+        pdf2 = pd.DataFrame(
+            {"A": [0, -1, -2, -3, -4], "B": [-100, -200, -300, -400, -500]},
+            index=[20, 10, 30, 0, 50],
+        )
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(pdf1.loc[pdf2.A > -3].sort_index(),
-                       kdf1.loc[kdf2.A > -3].sort_index())
+        self.assert_eq(pdf1.loc[pdf2.A > -3].sort_index(), kdf1.loc[kdf2.A > -3].sort_index())
 
-        self.assert_eq(pdf1.A.loc[pdf2.A > -3].sort_index(),
-                       kdf1.A.loc[kdf2.A > -3].sort_index())
+        self.assert_eq(pdf1.A.loc[pdf2.A > -3].sort_index(), kdf1.A.loc[kdf2.A > -3].sort_index())
 
-        self.assert_eq((pdf1.A + 1).loc[pdf2.A > -3].sort_index(),
-                       (kdf1.A + 1).loc[kdf2.A > -3].sort_index())
+        self.assert_eq(
+            (pdf1.A + 1).loc[pdf2.A > -3].sort_index(), (kdf1.A + 1).loc[kdf2.A > -3].sort_index()
+        )
 
     def test_bitwise(self):
         pser1 = pd.Series([True, False, True, False, np.nan, np.nan, True, False, np.nan])
@@ -340,8 +357,8 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser1 | pser2, (kser1 | kser2).sort_index())
         self.assert_eq(pser1 & pser2, (kser1 & kser2).sort_index())
 
-        pser1 = pd.Series([True, False, np.nan], index=list('ABC'))
-        pser2 = pd.Series([False, True, np.nan], index=list('DEF'))
+        pser1 = pd.Series([True, False, np.nan], index=list("ABC"))
+        pser2 = pd.Series([False, True, np.nan], index=list("DEF"))
         kser1 = ks.from_pandas(pser1)
         kser2 = ks.from_pandas(pser2)
 
@@ -354,87 +371,83 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf1 = self.pdf1
         pdf4 = self.pdf4
 
-        self.assert_eq(
-            (kdf1 + kdf4).sort_index(),
-            (pdf1 + pdf4).sort_index(), almost=True)
+        self.assert_eq((kdf1 + kdf4).sort_index(), (pdf1 + pdf4).sort_index(), almost=True)
 
         # Multi-index columns
-        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b')])
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b")])
         kdf1.columns = columns
         pdf1.columns = columns
-        columns = pd.MultiIndex.from_tuples([('z', 'e'), ('z', 'f')])
+        columns = pd.MultiIndex.from_tuples([("z", "e"), ("z", "f")])
         kdf4.columns = columns
         pdf4.columns = columns
 
-        self.assert_eq(
-            (kdf1 + kdf4).sort_index(),
-            (pdf1 + pdf4).sort_index(), almost=True)
+        self.assert_eq((kdf1 + kdf4).sort_index(), (pdf1 + pdf4).sort_index(), almost=True)
 
     def test_assignment_series(self):
         kdf = ks.from_pandas(self.pdf1)
         pdf = self.pdf1
-        kdf['a'] = self.kdf2.a
-        pdf['a'] = self.pdf2.a
+        kdf["a"] = self.kdf2.a
+        pdf["a"] = self.pdf2.a
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
         kdf = ks.from_pandas(self.pdf1)
         pdf = self.pdf1
-        kdf['a'] = self.kdf2.b
-        pdf['a'] = self.pdf2.b
+        kdf["a"] = self.kdf2.b
+        pdf["a"] = self.pdf2.b
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
         kdf = ks.from_pandas(self.pdf1)
         pdf = self.pdf1
-        kdf['c'] = self.kdf2.a
-        pdf['c'] = self.pdf2.a
+        kdf["c"] = self.kdf2.a
+        pdf["c"] = self.pdf2.a
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
         # Multi-index columns
         kdf = ks.from_pandas(self.pdf1)
         pdf = self.pdf1
-        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b')])
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b")])
         kdf.columns = columns
         pdf.columns = columns
-        kdf[('y', 'c')] = self.kdf2.a
-        pdf[('y', 'c')] = self.pdf2.a
+        kdf[("y", "c")] = self.kdf2.a
+        pdf[("y", "c")] = self.pdf2.a
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
     def test_assignment_frame(self):
         kdf = ks.from_pandas(self.pdf1)
         pdf = self.pdf1
-        kdf[['a', 'b']] = self.kdf1
-        pdf[['a', 'b']] = self.pdf1
+        kdf[["a", "b"]] = self.kdf1
+        pdf[["a", "b"]] = self.pdf1
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
         # 'c' does not exist in `kdf`.
         kdf = ks.from_pandas(self.pdf1)
         pdf = self.pdf1
-        kdf[['b', 'c']] = self.kdf1
-        pdf[['b', 'c']] = self.pdf1
+        kdf[["b", "c"]] = self.kdf1
+        pdf[["b", "c"]] = self.pdf1
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
         # 'c' and 'd' do not exist in `kdf`.
         kdf = ks.from_pandas(self.pdf1)
         pdf = self.pdf1
-        kdf[['c', 'd']] = self.kdf1
-        pdf[['c', 'd']] = self.pdf1
+        kdf[["c", "d"]] = self.kdf1
+        pdf[["c", "d"]] = self.pdf1
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
         # Multi-index columns
-        columns = pd.MultiIndex.from_tuples([('x', 'a'), ('x', 'b')])
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b")])
         kdf = ks.from_pandas(self.pdf1)
         pdf = self.pdf1
         kdf.columns = columns
         pdf.columns = columns
-        kdf[[('y', 'c'), ('z', 'd')]] = self.kdf1
-        pdf[[('y', 'c'), ('z', 'd')]] = self.pdf1
+        kdf[[("y", "c"), ("z", "d")]] = self.kdf1
+        pdf[[("y", "c"), ("z", "d")]] = self.pdf1
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
@@ -444,36 +457,36 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf1 = self.pdf1
         kdf1.columns = columns
         pdf1.columns = columns
-        kdf[['c', 'd']] = kdf1
-        pdf[['c', 'd']] = pdf1
+        kdf[["c", "d"]] = kdf1
+        pdf[["c", "d"]] = pdf1
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
     def test_assignment_series_chain(self):
         kdf = ks.from_pandas(self.pdf1)
         pdf = self.pdf1
-        kdf['a'] = self.kdf1.a
-        pdf['a'] = self.pdf1.a
+        kdf["a"] = self.kdf1.a
+        pdf["a"] = self.pdf1.a
 
-        kdf['a'] = self.kdf2.b
-        pdf['a'] = self.pdf2.b
+        kdf["a"] = self.kdf2.b
+        pdf["a"] = self.pdf2.b
 
-        kdf['d'] = self.kdf3.c
-        pdf['d'] = self.pdf3.c
+        kdf["d"] = self.kdf3.c
+        pdf["d"] = self.pdf3.c
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
     def test_assignment_frame_chain(self):
         kdf = ks.from_pandas(self.pdf1)
         pdf = self.pdf1
-        kdf[['a', 'b']] = self.kdf1
-        pdf[['a', 'b']] = self.pdf1
+        kdf[["a", "b"]] = self.kdf1
+        pdf[["a", "b"]] = self.pdf1
 
-        kdf[['e', 'f']] = self.kdf3
-        pdf[['e', 'f']] = self.pdf3
+        kdf[["e", "f"]] = self.kdf3
+        pdf[["e", "f"]] = self.pdf3
 
-        kdf[['b', 'c']] = self.kdf2
-        pdf[['b', 'c']] = self.pdf2
+        kdf[["b", "c"]] = self.kdf2
+        pdf[["b", "c"]] = self.pdf2
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
@@ -485,184 +498,228 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Series
         self.assert_eq(
-            (kdf5.c - kdf6.e).sort_index(),
-            (pdf5.c - pdf6.e).rename("c").sort_index(), almost=True)
+            (kdf5.c - kdf6.e).sort_index(), (pdf5.c - pdf6.e).rename("c").sort_index(), almost=True
+        )
 
         self.assert_eq(
             (kdf5["c"] / kdf6["e"]).sort_index(),
-            (pdf5["c"] / pdf6["e"]).rename("c").sort_index(), almost=True)
+            (pdf5["c"] / pdf6["e"]).rename("c").sort_index(),
+            almost=True,
+        )
 
         # DataFrame
-        self.assert_eq(
-            (kdf5 + kdf6).sort_index(),
-            (pdf5 + pdf6).sort_index(), almost=True)
+        self.assert_eq((kdf5 + kdf6).sort_index(), (pdf5 + pdf6).sort_index(), almost=True)
 
     def test_multi_index_assignment_series(self):
         kdf = ks.from_pandas(self.pdf5)
         pdf = self.pdf5
-        kdf['x'] = self.kdf6.e
-        pdf['x'] = self.pdf6.e
+        kdf["x"] = self.kdf6.e
+        pdf["x"] = self.pdf6.e
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
         kdf = ks.from_pandas(self.pdf5)
         pdf = self.pdf5
-        kdf['e'] = self.kdf6.e
-        pdf['e'] = self.pdf6.e
+        kdf["e"] = self.kdf6.e
+        pdf["e"] = self.pdf6.e
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
         kdf = ks.from_pandas(self.pdf5)
         pdf = self.pdf5
-        kdf['c'] = self.kdf6.e
-        pdf['c'] = self.pdf6.e
+        kdf["c"] = self.kdf6.e
+        pdf["c"] = self.pdf6.e
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
     def test_multi_index_assignment_frame(self):
         kdf = ks.from_pandas(self.pdf5)
         pdf = self.pdf5
-        kdf[['c']] = self.kdf5
-        pdf[['c']] = self.pdf5
+        kdf[["c"]] = self.kdf5
+        pdf[["c"]] = self.pdf5
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
         kdf = ks.from_pandas(self.pdf5)
         pdf = self.pdf5
-        kdf[['x']] = self.kdf5
-        pdf[['x']] = self.pdf5
+        kdf[["x"]] = self.kdf5
+        pdf[["x"]] = self.pdf5
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
         kdf = ks.from_pandas(self.pdf6)
         pdf = self.pdf6
-        kdf[['x', 'y']] = self.kdf6
-        pdf[['x', 'y']] = self.pdf6
+        kdf[["x", "y"]] = self.kdf6
+        pdf[["x", "y"]] = self.pdf6
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
     def test_loc_setitem(self):
         pdf = pd.DataFrame(
             [[1, 2], [4, 5], [7, 8]],
-            index=['cobra', 'viper', 'sidewinder'],
-            columns=['max_speed', 'shield'])
+            index=["cobra", "viper", "sidewinder"],
+            columns=["max_speed", "shield"],
+        )
         kdf = ks.DataFrame(pdf)
         another_kdf = ks.DataFrame(pdf)
 
-        kdf.loc[['viper', 'sidewinder'], ['shield']] = another_kdf.max_speed
-        pdf.loc[['viper', 'sidewinder'], ['shield']] = pdf.max_speed
+        kdf.loc[["viper", "sidewinder"], ["shield"]] = another_kdf.max_speed
+        pdf.loc[["viper", "sidewinder"], ["shield"]] = pdf.max_speed
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
     def test_where(self):
-        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
-        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
+        pdf1 = pd.DataFrame({"A": [0, 1, 2, 3, 4], "B": [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame({"A": [0, -1, -2, -3, -4], "B": [-100, -200, -300, -400, -500]})
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(repr(pdf1.where(pdf2 > 100)),
-                       repr(kdf1.where(kdf2 > 100).sort_index()))
+        self.assert_eq(repr(pdf1.where(pdf2 > 100)), repr(kdf1.where(kdf2 > 100).sort_index()))
 
-        pdf1 = pd.DataFrame({'A': [-1, -2, -3, -4, -5], 'B': [-100, -200, -300, -400, -500]})
-        pdf2 = pd.DataFrame({'A': [-10, -20, -30, -40, -50], 'B': [-5, -4, -3, -2, -1]})
+        pdf1 = pd.DataFrame({"A": [-1, -2, -3, -4, -5], "B": [-100, -200, -300, -400, -500]})
+        pdf2 = pd.DataFrame({"A": [-10, -20, -30, -40, -50], "B": [-5, -4, -3, -2, -1]})
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(repr(pdf1.where(pdf2 < -250)),
-                       repr(kdf1.where(kdf2 < -250).sort_index()))
+        self.assert_eq(repr(pdf1.where(pdf2 < -250)), repr(kdf1.where(kdf2 < -250).sort_index()))
 
         # multi-index columns
-        pdf1 = pd.DataFrame({('X', 'A'): [0, 1, 2, 3, 4],
-                             ('X', 'B'): [100, 200, 300, 400, 500]})
-        pdf2 = pd.DataFrame({('X', 'A'): [0, -1, -2, -3, -4],
-                             ('X', 'B'): [-100, -200, -300, -400, -500]})
+        pdf1 = pd.DataFrame({("X", "A"): [0, 1, 2, 3, 4], ("X", "B"): [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame(
+            {("X", "A"): [0, -1, -2, -3, -4], ("X", "B"): [-100, -200, -300, -400, -500]}
+        )
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(repr(pdf1.where(pdf2 > 100)),
-                       repr(kdf1.where(kdf2 > 100).sort_index()))
+        self.assert_eq(repr(pdf1.where(pdf2 > 100)), repr(kdf1.where(kdf2 > 100).sort_index()))
 
     def test_mask(self):
-        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
-        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
+        pdf1 = pd.DataFrame({"A": [0, 1, 2, 3, 4], "B": [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame({"A": [0, -1, -2, -3, -4], "B": [-100, -200, -300, -400, -500]})
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(repr(pdf1.mask(pdf2 < 100)),
-                       repr(kdf1.mask(kdf2 < 100).sort_index()))
+        self.assert_eq(repr(pdf1.mask(pdf2 < 100)), repr(kdf1.mask(kdf2 < 100).sort_index()))
 
-        pdf1 = pd.DataFrame({'A': [-1, -2, -3, -4, -5], 'B': [-100, -200, -300, -400, -500]})
-        pdf2 = pd.DataFrame({'A': [-10, -20, -30, -40, -50], 'B': [-5, -4, -3, -2, -1]})
+        pdf1 = pd.DataFrame({"A": [-1, -2, -3, -4, -5], "B": [-100, -200, -300, -400, -500]})
+        pdf2 = pd.DataFrame({"A": [-10, -20, -30, -40, -50], "B": [-5, -4, -3, -2, -1]})
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(repr(pdf1.mask(pdf2 > -250)),
-                       repr(kdf1.mask(kdf2 > -250).sort_index()))
+        self.assert_eq(repr(pdf1.mask(pdf2 > -250)), repr(kdf1.mask(kdf2 > -250).sort_index()))
 
         # multi-index columns
-        pdf1 = pd.DataFrame({('X', 'A'): [0, 1, 2, 3, 4],
-                             ('X', 'B'): [100, 200, 300, 400, 500]})
-        pdf2 = pd.DataFrame({('X', 'A'): [0, -1, -2, -3, -4],
-                             ('X', 'B'): [-100, -200, -300, -400, -500]})
+        pdf1 = pd.DataFrame({("X", "A"): [0, 1, 2, 3, 4], ("X", "B"): [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame(
+            {("X", "A"): [0, -1, -2, -3, -4], ("X", "B"): [-100, -200, -300, -400, -500]}
+        )
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(repr(pdf1.mask(pdf2 < 100)),
-                       repr(kdf1.mask(kdf2 < 100).sort_index()))
+        self.assert_eq(repr(pdf1.mask(pdf2 < 100)), repr(kdf1.mask(kdf2 < 100).sort_index()))
 
     def test_multi_index_column_assignment_frame(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3, 2], 'b': [4.0, 2.0, 3.0, 1.0]})
-        pdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('a', 'y')])
+        pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y")])
         kdf = ks.DataFrame(pdf)
 
-        kdf['c'] = ks.Series([10, 20, 30, 20])
-        pdf['c'] = pd.Series([10, 20, 30, 20])
+        kdf["c"] = ks.Series([10, 20, 30, 20])
+        pdf["c"] = pd.Series([10, 20, 30, 20])
 
-        kdf[('d', 'x')] = ks.Series([100, 200, 300, 200], name='1')
-        pdf[('d', 'x')] = pd.Series([100, 200, 300, 200], name='1')
+        kdf[("d", "x")] = ks.Series([100, 200, 300, 200], name="1")
+        pdf[("d", "x")] = pd.Series([100, 200, 300, 200], name="1")
 
-        kdf[('d', 'y')] = ks.Series([1000, 2000, 3000, 2000], name=('1', '2'))
-        pdf[('d', 'y')] = pd.Series([1000, 2000, 3000, 2000], name=('1', '2'))
+        kdf[("d", "y")] = ks.Series([1000, 2000, 3000, 2000], name=("1", "2"))
+        pdf[("d", "y")] = pd.Series([1000, 2000, 3000, 2000], name=("1", "2"))
 
-        kdf['e'] = ks.Series([10000, 20000, 30000, 20000], name=('1', '2', '3'))
-        pdf['e'] = pd.Series([10000, 20000, 30000, 20000], name=('1', '2', '3'))
+        kdf["e"] = ks.Series([10000, 20000, 30000, 20000], name=("1", "2", "3"))
+        pdf["e"] = pd.Series([10000, 20000, 30000, 20000], name=("1", "2", "3"))
 
-        kdf[[('f', 'x'), ('f', 'y')]] = ks.DataFrame({'1': [100000, 200000, 300000, 200000],
-                                                      '2': [1000000, 2000000, 3000000, 2000000]})
-        pdf[[('f', 'x'), ('f', 'y')]] = pd.DataFrame({'1': [100000, 200000, 300000, 200000],
-                                                      '2': [1000000, 2000000, 3000000, 2000000]})
+        kdf[[("f", "x"), ("f", "y")]] = ks.DataFrame(
+            {"1": [100000, 200000, 300000, 200000], "2": [1000000, 2000000, 3000000, 2000000]}
+        )
+        pdf[[("f", "x"), ("f", "y")]] = pd.DataFrame(
+            {"1": [100000, 200000, 300000, 200000], "2": [1000000, 2000000, 3000000, 2000000]}
+        )
 
         self.assert_eq(repr(kdf.sort_index()), repr(pdf))
 
-        with self.assertRaisesRegex(KeyError, 'Key length \\(3\\) exceeds index depth \\(2\\)'):
-            kdf[('1', '2', '3')] = ks.Series([100, 200, 300, 200])
+        with self.assertRaisesRegex(KeyError, "Key length \\(3\\) exceeds index depth \\(2\\)"):
+            kdf[("1", "2", "3")] = ks.Series([100, 200, 300, 200])
+
+    def test_dot(self):
+        kser = ks.Series([90, 91, 85], index=[2, 4, 1])
+        pser = kser.to_pandas()
+        kser_other = ks.Series([90, 91, 85], index=[2, 4, 1])
+        pser_other = kser_other.to_pandas()
+
+        self.assert_eq(kser.dot(kser_other), pser.dot(pser_other))
+
+        kser_other = ks.Series([90, 91, 85], index=[1, 2, 4])
+        pser_other = pd.Series([90, 91, 85], index=[1, 2, 4])
+
+        self.assert_eq(kser.dot(kser_other), pser.dot(pser_other))
+
+        # length of index is different
+        kser_other = ks.Series([90, 91, 85, 100], index=[2, 4, 1, 0])
+        with self.assertRaisesRegex(ValueError, "matrices are not aligned"):
+            kser.dot(kser_other)
+
+        # with DataFram is not supported for now since performance issue,
+        # now we raise ValueError with proper message instead.
+        kdf = ks.DataFrame([[0, 1], [-2, 3], [4, -5]], index=[2, 4, 1])
+
+        with self.assertRaisesRegex(ValueError, r"Series\.dot\(\) is currently not supported*"):
+            kser.dot(kdf)
+
+        # for MultiIndex
+        midx = pd.MultiIndex(
+            [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
+        )
+        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        pser = kser.to_pandas()
+        kser_other = ks.Series([-450, 20, 12, -30, -250, 15, -320, 100, 3], index=midx)
+        pser_other = kser_other.to_pandas()
+
+        self.assert_eq(kser.dot(kser_other), pser.dot(pser_other))
+
+    def test_to_series_comparison(self):
+        kidx1 = ks.Index([1, 2, 3, 4, 5])
+        kidx2 = ks.Index([1, 2, 3, 4, 5])
+
+        self.assert_eq((kidx1.to_series() == kidx2.to_series()).all(), True)
+
+        kidx1.name = "koalas"
+        kidx2.name = "koalas"
+
+        self.assert_eq((kidx1.to_series() == kidx2.to_series()).all(), True)
 
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
-
     @classmethod
     def setUpClass(cls):
         super(OpsOnDiffFramesDisabledTest, cls).setUpClass()
-        set_option('compute.ops_on_diff_frames', False)
+        set_option("compute.ops_on_diff_frames", False)
 
     @classmethod
     def tearDownClass(cls):
-        reset_option('compute.ops_on_diff_frames')
+        reset_option("compute.ops_on_diff_frames")
         super(OpsOnDiffFramesDisabledTest, cls).tearDownClass()
 
     @property
     def pdf1(self):
-        return pd.DataFrame({
-            'a': [1, 2, 3, 4, 5, 6, 7, 8, 9],
-            'b': [4, 5, 6, 3, 2, 1, 0, 0, 0],
-        }, index=[0, 1, 3, 5, 6, 8, 9, 9, 9])
+        return pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0],},
+            index=[0, 1, 3, 5, 6, 8, 9, 9, 9],
+        )
 
     @property
     def pdf2(self):
-        return pd.DataFrame({
-            'a': [9, 8, 7, 6, 5, 4, 3, 2, 1],
-            'b': [0, 0, 0, 4, 5, 6, 1, 2, 3],
-        }, index=list(range(9)))
+        return pd.DataFrame(
+            {"a": [9, 8, 7, 6, 5, 4, 3, 2, 1], "b": [0, 0, 0, 4, 5, 6, 1, 2, 3],},
+            index=list(range(9)),
+        )
 
     @property
     def kdf1(self):
@@ -688,53 +745,52 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     def test_assignment(self):
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf = ks.from_pandas(self.pdf1)
-            kdf['c'] = self.kdf1.a
+            kdf["c"] = self.kdf1.a
 
     def test_loc_setitem(self):
         pdf = pd.DataFrame(
             [[1, 2], [4, 5], [7, 8]],
-            index=['cobra', 'viper', 'sidewinder'],
-            columns=['max_speed', 'shield'])
+            index=["cobra", "viper", "sidewinder"],
+            columns=["max_speed", "shield"],
+        )
         kdf = ks.DataFrame(pdf)
         another_kdf = ks.DataFrame(pdf)
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
-            kdf.loc[['viper', 'sidewinder'], ['shield']] = another_kdf.max_speed
+            kdf.loc[["viper", "sidewinder"], ["shield"]] = another_kdf.max_speed
 
     def test_where(self):
-        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
-        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
+        pdf1 = pd.DataFrame({"A": [0, 1, 2, 3, 4], "B": [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame({"A": [0, -1, -2, -3, -4], "B": [-100, -200, -300, -400, -500]})
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
-            self.assert_eq(repr(pdf1.where(pdf2 > 100)),
-                           repr(kdf1.where(kdf2 > 100).sort_index()))
+            self.assert_eq(repr(pdf1.where(pdf2 > 100)), repr(kdf1.where(kdf2 > 100).sort_index()))
 
-        pdf1 = pd.DataFrame({'A': [-1, -2, -3, -4, -5], 'B': [-100, -200, -300, -400, -500]})
-        pdf2 = pd.DataFrame({'A': [-10, -20, -30, -40, -50], 'B': [-5, -4, -3, -2, -1]})
+        pdf1 = pd.DataFrame({"A": [-1, -2, -3, -4, -5], "B": [-100, -200, -300, -400, -500]})
+        pdf2 = pd.DataFrame({"A": [-10, -20, -30, -40, -50], "B": [-5, -4, -3, -2, -1]})
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
-            self.assert_eq(repr(pdf1.where(pdf2 < -250)),
-                           repr(kdf1.where(kdf2 < -250).sort_index()))
+            self.assert_eq(
+                repr(pdf1.where(pdf2 < -250)), repr(kdf1.where(kdf2 < -250).sort_index())
+            )
 
     def test_mask(self):
-        pdf1 = pd.DataFrame({'A': [0, 1, 2, 3, 4], 'B': [100, 200, 300, 400, 500]})
-        pdf2 = pd.DataFrame({'A': [0, -1, -2, -3, -4], 'B': [-100, -200, -300, -400, -500]})
+        pdf1 = pd.DataFrame({"A": [0, 1, 2, 3, 4], "B": [100, 200, 300, 400, 500]})
+        pdf2 = pd.DataFrame({"A": [0, -1, -2, -3, -4], "B": [-100, -200, -300, -400, -500]})
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
-            self.assert_eq(repr(pdf1.mask(pdf2 < 100)),
-                           repr(kdf1.mask(kdf2 < 100).sort_index()))
+            self.assert_eq(repr(pdf1.mask(pdf2 < 100)), repr(kdf1.mask(kdf2 < 100).sort_index()))
 
-        pdf1 = pd.DataFrame({'A': [-1, -2, -3, -4, -5], 'B': [-100, -200, -300, -400, -500]})
-        pdf2 = pd.DataFrame({'A': [-10, -20, -30, -40, -50], 'B': [-5, -4, -3, -2, -1]})
+        pdf1 = pd.DataFrame({"A": [-1, -2, -3, -4, -5], "B": [-100, -200, -300, -400, -500]})
+        pdf2 = pd.DataFrame({"A": [-10, -20, -30, -40, -50], "B": [-5, -4, -3, -2, -1]})
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
-            self.assert_eq(repr(pdf1.mask(pdf2 > -250)),
-                           repr(kdf1.mask(kdf2 > -250).sort_index()))
+            self.assert_eq(repr(pdf1.mask(pdf2 > -250)), repr(kdf1.mask(kdf2 > -250).sort_index()))
