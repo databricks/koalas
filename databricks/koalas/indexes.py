@@ -1672,13 +1672,13 @@ class Index(IndexOpsMixin):
         sort = True if sort is None else sort
         sort = validate_bool_kwarg(sort, "sort")
         if type(self) is not type(other):
-            if type(self) is MultiIndex:
+            if isinstance(self, MultiIndex):
                 if not isinstance(other, list) or not all(
                     [isinstance(item, tuple) for item in other]
                 ):
                     raise TypeError("other must be a MultiIndex or a list of tuples")
                 other = MultiIndex.from_tuples(other)
-            elif type(self) is Index:
+            else:
                 if isinstance(other, MultiIndex):
                     # TODO: We can't support different type of values in a single column for now.
                     raise NotImplementedError(

@@ -1017,6 +1017,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kidx2.union([1, 2, 3, 4]), pidx2.union([1, 2, 3, 4]),
         )
+        self.assert_eq(
+            kidx1.union(ks.Series([3, 4, 5, 6])), pidx1.union(pd.Series([3, 4, 5, 6])),
+        )
+        self.assert_eq(
+            kidx2.union(ks.Series([1, 2, 3, 4])), pidx2.union(pd.Series([1, 2, 3, 4])),
+        )
 
         # Testing if the result is correct after sort=False.
         # The `sort` argument is added in pandas 0.24.
