@@ -1671,11 +1671,11 @@ class Index(IndexOpsMixin):
         """
         sort = True if sort is None else sort
         sort = validate_bool_kwarg(sort, "sort")
-        if not isinstance(other, Index) and isinstance(self, MultiIndex):
+        if type(self) is MultiIndex and not isinstance(other, Index):
             if not isinstance(other, list) or not all([isinstance(item, tuple) for item in other]):
                 raise TypeError("other must be a MultiIndex or a list of tuples")
             other = MultiIndex.from_tuples(other)
-        if not isinstance(other, Index) and not isinstance(self, MultiIndex):
+        elif type(self) is Index and not isinstance(other, Index):
             if isinstance(other, Series):
                 other = other.to_frame().set_index(other.name).index
             elif isinstance(other, DataFrame):
