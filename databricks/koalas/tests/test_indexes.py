@@ -683,7 +683,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pidx, kidx)
 
     def test_multiindex_from_tuples(self):
-        tuples = [(1, 'red'), (1, 'blue'), (2, 'red'), (2, 'blue')]
+        tuples = [(1, "red"), (1, "blue"), (2, "red"), (2, "blue")]
         pidx = pd.MultiIndex.from_tuples(tuples)
         kidx = ks.MultiIndex.from_tuples(tuples)
 
