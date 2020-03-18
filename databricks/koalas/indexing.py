@@ -568,30 +568,19 @@ class LocIndexer(_LocIndexerLike):
                 if (start is None and rows_sel.start is not None) or (
                     stop is None and rows_sel.stop is not None
                 ):
-                    inc, dec = (
-                        sdf.select(
-                            index_column._is_monotonic()._scol.alias("__increasing__"),
-                            index_column._is_monotonic_decreasing()._scol.alias("__decreasing__"),
-                        )
-                        .select(
-                            F.min(F.coalesce("__increasing__", F.lit(True))),
-                            F.min(F.coalesce("__decreasing__", F.lit(True))),
-                        )
-                        .first()
-                    )
                     if start is None and rows_sel.start is not None:
                         start = rows_sel.start
-                        if inc is not False:
+                        if index_column.is_monotonic_increasing is not False:
                             cond.append(index_column._scol >= F.lit(start).cast(index_data_type))
-                        elif dec is not False:
+                        elif index_column.is_monotonic_decreasing is not False:
                             cond.append(index_column._scol <= F.lit(start).cast(index_data_type))
                         else:
                             raise KeyError(rows_sel.start)
                     if stop is None and rows_sel.stop is not None:
                         stop = rows_sel.stop
-                        if inc is not False:
+                        if index_column.is_monotonic_increasing is not False:
                             cond.append(index_column._scol <= F.lit(stop).cast(index_data_type))
-                        elif dec is not False:
+                        elif index_column.is_monotonic_decreasing is not False:
                             cond.append(index_column._scol >= F.lit(stop).cast(index_data_type))
                         else:
                             raise KeyError(rows_sel.stop)
