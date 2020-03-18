@@ -1043,6 +1043,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 kidx2.union([1, 2, 3, 4], sort=False).sort_values(),
                 pidx2.union([1, 2, 3, 4], sort=False).sort_values(),
             )
+            self.assert_eq(
+                kidx1.union(ks.Series([3, 4, 5, 6]), sort=False).sort_values(),
+                pidx1.union(pd.Series([3, 4, 5, 6]), sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kidx2.union(ks.Series([1, 2, 3, 4]), sort=False).sort_values(),
+                pidx2.union(pd.Series([1, 2, 3, 4]), sort=False).sort_values(),
+            )
 
         # Duplicated values for Index is supported in pandas >= 1.0.0
         if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
