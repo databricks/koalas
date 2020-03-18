@@ -478,6 +478,10 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kdf.loc[:, "a"], pdf.loc[:, "a"])
         self.assert_eq(kdf.loc[5:5, "a"], pdf.loc[5:5, "a"])
 
+        self.assert_eq(kdf.loc[:, "a":"a"], pdf.loc[:, "a":"a"])
+        self.assert_eq(kdf.loc[:, "a":"c"], pdf.loc[:, "a":"c"])
+        self.assert_eq(kdf.loc[:, "b":"c"], pdf.loc[:, "b":"c"], almost=True)
+
     def test_loc2d(self):
         kdf = self.kdf
         pdf = self.pdf
@@ -509,6 +513,10 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kdf.loc[5, ["a"]], pdf.loc[5, ["a"]])
         self.assert_eq(kdf.loc[9, ["a"]], pdf.loc[9, ["a"]])
 
+        self.assert_eq(kdf.loc[:, "a":"a"], pdf.loc[:, "a":"a"])
+        self.assert_eq(kdf.loc[:, "a":"d"], pdf.loc[:, "a":"d"])
+        self.assert_eq(kdf.loc[:, "c":"d"], pdf.loc[:, "c":"d"], almost=True)
+
     def test_loc2d_multiindex_columns(self):
         arrays = [np.array(["bar", "bar", "baz", "baz"]), np.array(["one", "two", "one", "two"])]
 
@@ -517,6 +525,33 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assert_eq(kdf.loc["B":"B", "bar"], pdf.loc["B":"B", "bar"])
         self.assert_eq(kdf.loc["B":"B", ["bar"]], pdf.loc["B":"B", ["bar"]])
+
+        self.assert_eq(kdf.loc[:, "bar":"bar"], pdf.loc[:, "bar":"bar"])
+        self.assert_eq(kdf.loc[:, "bar":("baz", "one")], pdf.loc[:, "bar":("baz", "one")])
+        self.assert_eq(
+            kdf.loc[:, ("bar", "two"):("baz", "one")], pdf.loc[:, ("bar", "two"):("baz", "one")]
+        )
+        self.assert_eq(kdf.loc[:, ("bar", "two"):"bar"], pdf.loc[:, ("bar", "two"):"bar"])
+        self.assert_eq(kdf.loc[:, "a":"bax"], pdf.loc[:, "a":"bax"])
+        self.assert_eq(
+            kdf.loc[:, ("bar", "x"):("baz", "a")],
+            pdf.loc[:, ("bar", "x"):("baz", "a")],
+            almost=True,
+        )
+
+        pdf = pd.DataFrame(
+            np.random.randn(3, 4),
+            index=["A", "B", "C"],
+            columns=pd.MultiIndex.from_tuples(
+                [("bar", "two"), ("bar", "one"), ("baz", "one"), ("baz", "two")]
+            ),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.loc[:, "bar":"baz"], pdf.loc[:, "bar":"baz"])
+
+        self.assertRaises(KeyError, lambda: kdf.loc[:, "bar":("baz", "one")])
+        self.assertRaises(KeyError, lambda: kdf.loc[:, ("bar", "two"):"bar"])
 
     def test_loc2d_with_known_divisions(self):
         pdf = pd.DataFrame(

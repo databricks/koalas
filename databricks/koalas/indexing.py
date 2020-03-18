@@ -725,20 +725,19 @@ class LocIndexer(_LocIndexerLike):
 
         returns_series = False
 
-        if isinstance(cols_sel, slice):
-            if cols_sel == slice(None):
-                cols_sel = None
-            else:
-                raise LocIndexer._raiseNotImplemented(
-                    "Can only select columns either by name or reference or all"
-                )
-        elif isinstance(cols_sel, (Series, spark.Column)):
+        if isinstance(cols_sel, (Series, spark.Column)):
             returns_series = True
             cols_sel = [cols_sel]
 
-        if cols_sel is None:
+        if cols_sel is None or cols_sel == slice(None):
             column_labels = self._internal.column_labels
             data_spark_columns = self._internal.data_spark_columns
+        elif isinstance(cols_sel, slice):
+            start, stop = self._kdf_or_kser.columns.slice_locs(
+                start=cols_sel.start, end=cols_sel.stop
+            )
+            column_labels = self._internal.column_labels[start:stop]
+            data_spark_columns = self._internal.data_spark_columns[start:stop]
         elif isinstance(cols_sel, (str, tuple)):
             if isinstance(cols_sel, str):
                 cols_sel = (cols_sel,)
