@@ -565,7 +565,18 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         )
         self.assert_eq(pidx.drop("a"), kidx.drop("a"))
         self.assert_eq(pidx.drop(["a", "b"]), kidx.drop(["a", "b"]))
+        self.assert_eq(pidx.drop(["a", "b"], level=1), kidx.drop(["a", "b"], level=1))
         self.assert_eq(pidx.drop(["x", "y"], level="level2"), kidx.drop(["x", "y"], level="level2"))
+
+        pidx.names = ["lv1", "lv2"]
+        kidx.names = ["lv1", "lv2"]
+        self.assert_eq(pidx.drop(["x", "y"], level="lv2"), kidx.drop(["x", "y"], level="lv2"))
+
+        self.assertRaises(IndexError, lambda: kidx.drop(["a", "b"], level=2))
+        self.assertRaises(KeyError, lambda: kidx.drop(["a", "b"], level="level"))
+
+        kidx.names = ["lv", "lv"]
+        self.assertRaises(ValueError, lambda: kidx.drop(["x", "y"], level="lv"))
 
     def test_sort_values(self):
         pidx = pd.Index([-10, -100, 200, 100])

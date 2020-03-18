@@ -2244,8 +2244,24 @@ class MultiIndex(Index):
         index_scols = self._internal.index_spark_columns
         if level is None:
             scol = index_scols[0]
+        elif isinstance(level, int):
+            scol = index_scols[level]
         else:
-            scol = index_scols[level] if isinstance(level, int) else sdf[level]
+            spark_column_name = None
+            for index_spark_column_name, index_name in self._internal.index_map.items():
+                if not isinstance(level, tuple):
+                    level = (level,)
+                if level == index_name:
+                    if spark_column_name is not None:
+                        raise ValueError(
+                            "The name {} occurs multiple times, use a level number".format(
+                                name_like_string(level)
+                            )
+                        )
+                    spark_column_name = index_spark_column_name
+            if spark_column_name is None:
+                raise KeyError("Level {} not found".format(name_like_string(level)))
+            scol = scol_for(sdf, spark_column_name)
         sdf = sdf[~scol.isin(codes)]
         return MultiIndex(
             DataFrame(_InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map))
