@@ -1677,10 +1677,11 @@ class Index(IndexOpsMixin):
             other = MultiIndex.from_tuples(other)
         if not isinstance(other, Index) and not isinstance(self, MultiIndex):
             if isinstance(other, Series):
-                other = other.to_numpy()
-            if isinstance(other, DataFrame):
+                other = other.to_frame().set_index(other.name).index
+            elif isinstance(other, DataFrame):
                 raise ValueError("Index data must be 1-dimensional")
-            other = Index(other)
+            else:
+                other = Index(other)
         if type(self) is not type(other):
             # TODO: We can't support different type of values in a single column for now.
             raise NotImplementedError("Union between Index and MultiIndex is not yet supported")
