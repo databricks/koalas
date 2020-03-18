@@ -565,7 +565,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         )
         self.assert_eq(pidx.drop("a"), kidx.drop("a"))
         self.assert_eq(pidx.drop(["a", "b"]), kidx.drop(["a", "b"]))
-        self.assert_eq(pidx.drop(["a", "b"], level=1), kidx.drop(["a", "b"], level=1))
+        self.assert_eq(pidx.drop(["x", "y"], level=1), kidx.drop(["x", "y"], level=1))
         self.assert_eq(pidx.drop(["x", "y"], level="level2"), kidx.drop(["x", "y"], level="level2"))
 
         pidx.names = ["lv1", "lv2"]
