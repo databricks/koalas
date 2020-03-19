@@ -62,7 +62,6 @@ from databricks.koalas.utils import (
     validate_arguments_and_invoke_function,
     align_diff_frames,
     validate_bool_kwarg,
-    verify_temp_column_name,
 )
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import (
