@@ -1193,8 +1193,6 @@ class IndexOpsMixin(object):
         """
         if isinstance(self, ks.Series):
             result = self.iloc[indices]
-        elif isinstance(self, ks.MultiIndex):
+        elif isinstance(self, ks.Index):
             result = self._kdf.iloc[indices].index
-        else:
-            result = self.to_series().iloc[indices].index
         return result
