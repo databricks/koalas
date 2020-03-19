@@ -1169,3 +1169,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(TypeError, lambda: kmidx1.union(kidx1))
         self.assertRaises(TypeError, lambda: kmidx1.union(["x", "a"]))
         self.assertRaises(ValueError, lambda: kidx1.union(ks.range(2)))
+
+    def test_take(self):
+        # Index
+        pidx = pd.Index([100, 200, 300, 400, 500], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx.take([0, 2, 4]).sort_values(), pidx.take([0, 2, 4]).sort_values())
+        self.assert_eq(kidx.take([0, 2, 4]).sort_values(), pidx.take([0, 2, 4]).sort_values())
+        self.assert_eq(kidx.take([-0, -2, -4]).sort_values(), pidx.take([-0, -2, -4]).sort_values())
+        self.assert_eq(kidx.take([-0, -2, -4]).sort_values(), pidx.take([-0, -2, -4]).sort_values())
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c")])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(kmidx.take([0, 2]).sort_values(), pmidx.take([0, 2]).sort_values())
+        self.assert_eq(kmidx.take([0, 2]).sort_values(), pmidx.take([0, 2]).sort_values())
+        self.assert_eq(kmidx.take([-0, -2]).sort_values(), pmidx.take([-0, -2]).sort_values())
+        self.assert_eq(kmidx.take([-0, -2]).sort_values(), pmidx.take([-0, -2]).sort_values())

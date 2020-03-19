@@ -1303,3 +1303,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(ValueError, lambda: kser.repeat(-1))
         self.assertRaises(ValueError, lambda: kser.repeat("abc"))
+
+    def test_take(self):
+        pser = pd.Series([100, 200, 300, 400, 500], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.take([0, 2, 4]).sort_values(), pser.take([0, 2, 4]).sort_values())
+        self.assert_eq(kser.take([0, 2, 4]).sort_values(), pser.take([0, 2, 4]).sort_values())
+        self.assert_eq(kser.take([-0, -2, -4]).sort_values(), pser.take([-0, -2, -4]).sort_values())
+        self.assert_eq(kser.take([-0, -2, -4]).sort_values(), pser.take([-0, -2, -4]).sort_values())
