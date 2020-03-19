@@ -1181,7 +1181,9 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx.take([-0, -2, -4]).sort_values(), pidx.take([-0, -2, -4]).sort_values())
 
         # MultiIndex
-        pmidx = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c")])
+        pmidx = pd.MultiIndex.from_tuples(
+            [("x", "a"), ("x", "b"), ("x", "c")], names=["hello", "Koalas"]
+        )
         kmidx = ks.from_pandas(pmidx)
 
         self.assert_eq(kmidx.take([0, 2]).sort_values(), pmidx.take([0, 2]).sort_values())
