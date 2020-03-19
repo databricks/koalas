@@ -3051,6 +3051,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index(),
         )
 
+        # Checking the type of indices.
+        self.assertRaises(ValueError, lambda: kdf.take(1))
+        self.assertRaises(ValueError, lambda: kdf.take("1"))
+        self.assertRaises(ValueError, lambda: kdf.take({1, 2}))
+        self.assertRaises(ValueError, lambda: kdf.take({1: None, 2: None}))
+
     def test_axes(self):
         pdf = self.pdf
         kdf = ks.from_pandas(pdf)

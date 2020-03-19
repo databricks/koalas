@@ -9652,6 +9652,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3    lion  mammal       80.5
         """
         axis = validate_axis(axis)
+        if not is_list_like(indices) or isinstance(indices, (dict, set)):
+            raise ValueError("`indices` must be a list-like except dict or set")
         if axis == 0:
             return self.iloc[indices, :]
         elif axis == 1:
