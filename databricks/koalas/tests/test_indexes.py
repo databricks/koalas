@@ -1176,9 +1176,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.from_pandas(pidx)
 
         self.assert_eq(kidx.take([0, 2, 4]).sort_values(), pidx.take([0, 2, 4]).sort_values())
-        self.assert_eq(kidx.take([0, 2, 4]).sort_values(), pidx.take([0, 2, 4]).sort_values())
-        self.assert_eq(kidx.take([-0, -2, -4]).sort_values(), pidx.take([-0, -2, -4]).sort_values())
-        self.assert_eq(kidx.take([-0, -2, -4]).sort_values(), pidx.take([-0, -2, -4]).sort_values())
+        self.assert_eq(
+            kidx.take(range(0, 5, 2)).sort_values(), pidx.take(range(0, 5, 2)).sort_values()
+        )
+        self.assert_eq(kidx.take([-4, -2, 0]).sort_values(), pidx.take([-4, -2, 0]).sort_values())
+        self.assert_eq(
+            kidx.take(range(-4, 1, 2)).sort_values(), pidx.take(range(-4, 1, 2)).sort_values()
+        )
 
         # MultiIndex
         pmidx = pd.MultiIndex.from_tuples(
@@ -1187,6 +1191,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kmidx = ks.from_pandas(pmidx)
 
         self.assert_eq(kmidx.take([0, 2]).sort_values(), pmidx.take([0, 2]).sort_values())
-        self.assert_eq(kmidx.take([0, 2]).sort_values(), pmidx.take([0, 2]).sort_values())
-        self.assert_eq(kmidx.take([-0, -2]).sort_values(), pmidx.take([-0, -2]).sort_values())
-        self.assert_eq(kmidx.take([-0, -2]).sort_values(), pmidx.take([-0, -2]).sort_values())
+        self.assert_eq(
+            kmidx.take(range(0, 4, 2)).sort_values(), pmidx.take(range(0, 4, 2)).sort_values()
+        )
+        self.assert_eq(kmidx.take([-2, 0]).sort_values(), pmidx.take([-2, 0]).sort_values())
+        self.assert_eq(
+            kmidx.take(range(-2, 1, 2)).sort_values(), pmidx.take(range(-2, 1, 2)).sort_values()
+        )

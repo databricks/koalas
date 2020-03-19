@@ -1309,6 +1309,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
 
         self.assert_eq(kser.take([0, 2, 4]).sort_values(), pser.take([0, 2, 4]).sort_values())
-        self.assert_eq(kser.take([0, 2, 4]).sort_values(), pser.take([0, 2, 4]).sort_values())
-        self.assert_eq(kser.take([-0, -2, -4]).sort_values(), pser.take([-0, -2, -4]).sort_values())
-        self.assert_eq(kser.take([-0, -2, -4]).sort_values(), pser.take([-0, -2, -4]).sort_values())
+        self.assert_eq(
+            kser.take(range(0, 5, 2)).sort_values(), pser.take(range(0, 5, 2)).sort_values()
+        )
+        self.assert_eq(kser.take([-4, -2, 0]).sort_values(), pser.take([-4, -2, 0]).sort_values())
+        self.assert_eq(
+            kser.take(range(-2, 1, 2)).sort_values(), pser.take(range(-2, 1, 2)).sort_values()
+        )
