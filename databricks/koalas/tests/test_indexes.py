@@ -1011,3 +1011,161 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kmidx.unique().sort_values(), pmidx.unique().sort_values())
         self.assert_eq(kmidx.unique().sort_values(), pmidx.unique().sort_values())
+
+    def test_union(self):
+        # Index
+        pidx1 = pd.Index([1, 2, 3, 4])
+        pidx2 = pd.Index([3, 4, 5, 6])
+        kidx1 = ks.from_pandas(pidx1)
+        kidx2 = ks.from_pandas(pidx2)
+
+        self.assert_eq(kidx1.union(kidx2), pidx1.union(pidx2))
+        self.assert_eq(kidx2.union(kidx1), pidx2.union(pidx1))
+        self.assert_eq(
+            kidx1.union([3, 4, 5, 6]), pidx1.union([3, 4, 5, 6]),
+        )
+        self.assert_eq(
+            kidx2.union([1, 2, 3, 4]), pidx2.union([1, 2, 3, 4]),
+        )
+        self.assert_eq(
+            kidx1.union(ks.Series([3, 4, 5, 6])), pidx1.union(pd.Series([3, 4, 5, 6])),
+        )
+        self.assert_eq(
+            kidx2.union(ks.Series([1, 2, 3, 4])), pidx2.union(pd.Series([1, 2, 3, 4])),
+        )
+
+        # Testing if the result is correct after sort=False.
+        # The `sort` argument is added in pandas 0.24.
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            self.assert_eq(
+                kidx1.union(kidx2, sort=False).sort_values(),
+                pidx1.union(pidx2, sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kidx2.union(kidx1, sort=False).sort_values(),
+                pidx2.union(pidx1, sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kidx1.union([3, 4, 5, 6], sort=False).sort_values(),
+                pidx1.union([3, 4, 5, 6], sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kidx2.union([1, 2, 3, 4], sort=False).sort_values(),
+                pidx2.union([1, 2, 3, 4], sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kidx1.union(ks.Series([3, 4, 5, 6]), sort=False).sort_values(),
+                pidx1.union(pd.Series([3, 4, 5, 6]), sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kidx2.union(ks.Series([1, 2, 3, 4]), sort=False).sort_values(),
+                pidx2.union(pd.Series([1, 2, 3, 4]), sort=False).sort_values(),
+            )
+
+        # Duplicated values for Index is supported in pandas >= 1.0.0
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            pidx1 = pd.Index([1, 2, 3, 4, 3, 4, 3, 4])
+            pidx2 = pd.Index([3, 4, 3, 4, 5, 6])
+            kidx1 = ks.from_pandas(pidx1)
+            kidx2 = ks.from_pandas(pidx2)
+
+            self.assert_eq(kidx1.union(kidx2), pidx1.union(pidx2))
+            self.assert_eq(kidx2.union(kidx1), pidx2.union(pidx1))
+            self.assert_eq(
+                kidx1.union([3, 4, 3, 3, 5, 6]), pidx1.union([3, 4, 3, 4, 5, 6]),
+            )
+            self.assert_eq(
+                kidx2.union([1, 2, 3, 4, 3, 4, 3, 4]), pidx2.union([1, 2, 3, 4, 3, 4, 3, 4]),
+            )
+            self.assert_eq(
+                kidx1.union(ks.Series([3, 4, 3, 3, 5, 6])),
+                pidx1.union(pd.Series([3, 4, 3, 4, 5, 6])),
+            )
+            self.assert_eq(
+                kidx2.union(ks.Series([1, 2, 3, 4, 3, 4, 3, 4])),
+                pidx2.union(pd.Series([1, 2, 3, 4, 3, 4, 3, 4])),
+            )
+
+        # MultiIndex
+        pmidx1 = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")])
+        pmidx2 = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")])
+        pmidx3 = pd.MultiIndex.from_tuples([(1, 1), (1, 2), (1, 3), (1, 4), (1, 3), (1, 4)])
+        pmidx4 = pd.MultiIndex.from_tuples([(1, 3), (1, 4), (1, 5), (1, 6)])
+        kmidx1 = ks.from_pandas(pmidx1)
+        kmidx2 = ks.from_pandas(pmidx2)
+        kmidx3 = ks.from_pandas(pmidx3)
+        kmidx4 = ks.from_pandas(pmidx4)
+
+        self.assert_eq(kmidx1.union(kmidx2), pmidx1.union(pmidx2))
+        self.assert_eq(kmidx2.union(kmidx1), pmidx2.union(pmidx1))
+        self.assert_eq(kmidx3.union(kmidx4), pmidx3.union(pmidx4))
+        self.assert_eq(kmidx4.union(kmidx3), pmidx4.union(pmidx3))
+        self.assert_eq(
+            kmidx1.union([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")]),
+            pmidx1.union([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")]),
+        )
+        self.assert_eq(
+            kmidx2.union([("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")]),
+            pmidx2.union([("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")]),
+        )
+        self.assert_eq(
+            kmidx3.union([(1, 3), (1, 4), (1, 5), (1, 6)]),
+            pmidx3.union([(1, 3), (1, 4), (1, 5), (1, 6)]),
+        )
+        self.assert_eq(
+            kmidx4.union([(1, 1), (1, 2), (1, 3), (1, 4), (1, 3), (1, 4)]),
+            pmidx4.union([(1, 1), (1, 2), (1, 3), (1, 4), (1, 3), (1, 4)]),
+        )
+
+        # Testing if the result is correct after sort=False.
+        # The `sort` argument is added in pandas 0.24.
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            self.assert_eq(
+                kmidx1.union(kmidx2, sort=False).sort_values(),
+                pmidx1.union(pmidx2, sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kmidx2.union(kmidx1, sort=False).sort_values(),
+                pmidx2.union(pmidx1, sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kmidx3.union(kmidx4, sort=False).sort_values(),
+                pmidx3.union(pmidx4, sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kmidx4.union(kmidx3, sort=False).sort_values(),
+                pmidx4.union(pmidx3, sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kmidx1.union(
+                    [("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")], sort=False
+                ).sort_values(),
+                pmidx1.union(
+                    [("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")], sort=False
+                ).sort_values(),
+            )
+            self.assert_eq(
+                kmidx2.union(
+                    [("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")], sort=False
+                ).sort_values(),
+                pmidx2.union(
+                    [("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")], sort=False
+                ).sort_values(),
+            )
+            self.assert_eq(
+                kmidx3.union([(1, 3), (1, 4), (1, 5), (1, 6)], sort=False).sort_values(),
+                pmidx3.union([(1, 3), (1, 4), (1, 5), (1, 6)], sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kmidx4.union(
+                    [(1, 1), (1, 2), (1, 3), (1, 4), (1, 3), (1, 4)], sort=False
+                ).sort_values(),
+                pmidx4.union(
+                    [(1, 1), (1, 2), (1, 3), (1, 4), (1, 3), (1, 4)], sort=False
+                ).sort_values(),
+            )
+
+        self.assertRaises(NotImplementedError, lambda: kidx1.union(kmidx1))
+        self.assertRaises(TypeError, lambda: kmidx1.union(kidx1))
+        self.assertRaises(TypeError, lambda: kmidx1.union(["x", "a"]))
+        self.assertRaises(ValueError, lambda: kidx1.union(ks.range(2)))

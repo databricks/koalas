@@ -58,6 +58,7 @@ from databricks.koalas.utils import (
     name_like_string,
     scol_for,
     verify_temp_column_name,
+    validate_bool_kwarg,
 )
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 
@@ -1630,6 +1631,75 @@ class Index(IndexOpsMixin):
             return DataFrame(kdf._internal.with_filter(F.lit(False))).index
         else:
             return ks.concat([kdf] * repeats).index
+
+    def union(self, other, sort=None):
+        """
+        Form the union of two Index objects.
+
+        Parameters
+        ----------
+        other : Index or array-like
+        sort : bool or None, default None
+            Whether to sort the resulting Index.
+
+        Returns
+        -------
+        union : Index
+
+        Examples
+        --------
+
+        Index
+
+        >>> idx1 = ks.Index([1, 2, 3, 4])
+        >>> idx2 = ks.Index([3, 4, 5, 6])
+        >>> idx1.union(idx2).sort_values()
+        Int64Index([1, 2, 3, 4, 5, 6], dtype='int64')
+
+        MultiIndex
+
+        >>> midx1 = ks.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")])
+        >>> midx2 = ks.MultiIndex.from_tuples([("x", "c"), ("x", "d"), ("x", "e"), ("x", "f")])
+        >>> midx1.union(midx2).sort_values()  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('x', 'c'),
+                    ('x', 'd'),
+                    ('x', 'e'),
+                    ('x', 'f')],
+                   )
+        """
+        sort = True if sort is None else sort
+        sort = validate_bool_kwarg(sort, "sort")
+        if type(self) is not type(other):
+            if isinstance(self, MultiIndex):
+                if not isinstance(other, list) or not all(
+                    [isinstance(item, tuple) for item in other]
+                ):
+                    raise TypeError("other must be a MultiIndex or a list of tuples")
+                other = MultiIndex.from_tuples(other)
+            else:
+                if isinstance(other, MultiIndex):
+                    # TODO: We can't support different type of values in a single column for now.
+                    raise NotImplementedError(
+                        "Union between Index and MultiIndex is not yet supported"
+                    )
+                elif isinstance(other, Series):
+                    other = other.to_frame().set_index(other.name).index
+                elif isinstance(other, DataFrame):
+                    raise ValueError("Index data must be 1-dimensional")
+                else:
+                    other = Index(other)
+        sdf_self = self._internal._sdf.select(self._internal.index_spark_columns)
+        sdf_other = other._internal._sdf.select(other._internal.index_spark_columns)
+        sdf = sdf_self.union(sdf_other.subtract(sdf_self))
+        if isinstance(self, MultiIndex):
+            sdf = sdf.drop_duplicates()
+        if sort:
+            sdf = sdf.sort(self._internal.index_spark_columns)
+        internal = _InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+
+        return DataFrame(internal).index
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
