@@ -1179,6 +1179,7 @@ class IndexOpsMixin(object):
         Int64Index([100, 300, 500], dtype='int64')
 
         MultiIndex
+
         >>> kmidx = ks.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c")])
         >>> kmidx  # doctest: +SKIP
         MultiIndex([('x', 'a'),
