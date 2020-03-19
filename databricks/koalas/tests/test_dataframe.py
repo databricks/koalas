@@ -2975,11 +2975,38 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # axis=0 (default)
         self.assert_eq(kdf.take([1, 2]).sort_index(), pdf.take([1, 2]).sort_index())
         self.assert_eq(kdf.take([-1, -2]).sort_index(), pdf.take([-1, -2]).sort_index())
+        self.assert_eq(
+            kdf.take(range(100, 110)).sort_index(), pdf.take(range(100, 110)).sort_index()
+        )
+        self.assert_eq(
+            kdf.take(range(-110, -100)).sort_index(), pdf.take(range(-110, -100)).sort_index()
+        )
+        self.assert_eq(
+            kdf.take([10, 100, 1000, 10000]).sort_index(),
+            pdf.take([10, 100, 1000, 10000]).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([-10, -100, -1000, -10000]).sort_index(),
+            pdf.take([-10, -100, -1000, -10000]).sort_index(),
+        )
 
         # axis=1
         self.assert_eq(kdf.take([1, 2], axis=1).sort_index(), pdf.take([1, 2], axis=1).sort_index())
         self.assert_eq(
             kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index()
+        )
+        self.assert_eq(
+            kdf.take(range(1, 3), axis=1).sort_index(), pdf.take(range(1, 3), axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take(range(-1, -3), axis=1).sort_index(),
+            pdf.take(range(-1, -3), axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([2, 1], axis=1).sort_index(), pdf.take([2, 1], axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index(),
         )
 
         # MultiIndex columns
@@ -2990,11 +3017,38 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # MultiIndex columns with axis=0 (default)
         self.assert_eq(kdf.take([1, 2]).sort_index(), pdf.take([1, 2]).sort_index())
         self.assert_eq(kdf.take([-1, -2]).sort_index(), pdf.take([-1, -2]).sort_index())
+        self.assert_eq(
+            kdf.take(range(100, 110)).sort_index(), pdf.take(range(100, 110)).sort_index()
+        )
+        self.assert_eq(
+            kdf.take(range(-110, -100)).sort_index(), pdf.take(range(-110, -100)).sort_index()
+        )
+        self.assert_eq(
+            kdf.take([10, 100, 1000, 10000]).sort_index(),
+            pdf.take([10, 100, 1000, 10000]).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([-10, -100, -1000, -10000]).sort_index(),
+            pdf.take([-10, -100, -1000, -10000]).sort_index(),
+        )
 
         # axis=1
         self.assert_eq(kdf.take([1, 2], axis=1).sort_index(), pdf.take([1, 2], axis=1).sort_index())
         self.assert_eq(
             kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index()
+        )
+        self.assert_eq(
+            kdf.take(range(1, 3), axis=1).sort_index(), pdf.take(range(1, 3), axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take(range(-1, -3), axis=1).sort_index(),
+            pdf.take(range(-1, -3), axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([2, 1], axis=1).sort_index(), pdf.take([2, 1], axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index(),
         )
 
     def test_axes(self):
