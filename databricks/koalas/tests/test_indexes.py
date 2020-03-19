@@ -1198,3 +1198,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kmidx.take(range(-2, 1, 2)).sort_values(), pmidx.take(range(-2, 1, 2)).sort_values()
         )
+
+        # Checking the type of indices.
+        self.assertRaises(ValueError, lambda: kidx.take(1))
+        self.assertRaises(ValueError, lambda: kidx.take("1"))
+        self.assertRaises(ValueError, lambda: kidx.take({1, 2}))
+        self.assertRaises(ValueError, lambda: kidx.take({1: None, 2: None}))
+        self.assertRaises(ValueError, lambda: kmidx.take(1))
+        self.assertRaises(ValueError, lambda: kmidx.take("1"))
+        self.assertRaises(ValueError, lambda: kmidx.take({1, 2}))
+        self.assertRaises(ValueError, lambda: kmidx.take({1: None, 2: None}))

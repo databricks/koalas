@@ -1316,3 +1316,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             kser.take(range(-2, 1, 2)).sort_values(), pser.take(range(-2, 1, 2)).sort_values()
         )
+
+        # Checking the type of indices.
+        self.assertRaises(ValueError, lambda: kser.take(1))
+        self.assertRaises(ValueError, lambda: kser.take("1"))
+        self.assertRaises(ValueError, lambda: kser.take({1, 2}))
+        self.assertRaises(ValueError, lambda: kser.take({1: None, 2: None}))
