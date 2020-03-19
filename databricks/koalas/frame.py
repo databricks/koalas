@@ -9653,29 +9653,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3    lion  mammal       80.5
         """
         axis = validate_axis(axis)
-        sdf = self._sdf
         if axis == 0:
-            length = len(self)
-            indices = [length + idx if idx < 0 else idx for idx in indices]
-            sdf = sdf.select(self._internal.spark_columns)
-            sequence_col = verify_temp_column_name(sdf, "__distributed_sequence__")
-            sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
-            cond = sdf[sequence_col].isin(indices)
-            sdf = sdf.where(cond)
-            internal = self._internal.copy(spark_frame=sdf.select(self._internal.spark_columns))
+            return self.iloc[indices, :]
         elif axis == 1:
-            length = len(self.columns)
-            indices = [length + idx if idx < 0 else idx for idx in indices]
-            data_scols = self._internal.data_spark_columns
-            column_labels = self._internal.column_labels
-            selected_data_scols = [data_scols[index] for index in indices]
-            selected_sdf = sdf.select(self._internal.index_spark_columns + selected_data_scols)
-            internal = _InternalFrame(
-                spark_frame=selected_sdf,
-                index_map=self._internal.index_map,
-                column_labels=[column_labels[index] for index in indices],
-            )
-        return DataFrame(internal)
+            return self.iloc[:, indices]
 
     def _to_internal_pandas(self):
         """
