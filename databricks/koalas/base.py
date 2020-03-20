@@ -1124,3 +1124,78 @@ class IndexOpsMixin(object):
                     0
                 )
             ).alias(colname)
+
+    def take(self, indices):
+        """
+        Return the elements in the given *positional* indices along an axis.
+
+        This means that we are not indexing according to actual values in
+        the index attribute of the object. We are indexing according to the
+        actual position of the element in the object.
+
+        Parameters
+        ----------
+        indices : array-like
+            An array of ints indicating which positions to take.
+
+        Returns
+        -------
+        taken : same type as caller
+            An array-like containing the elements taken from the object.
+
+        See Also
+        --------
+        DataFrame.loc : Select a subset of a DataFrame by labels.
+        DataFrame.iloc : Select a subset of a DataFrame by positions.
+        numpy.take : Take elements from an array along an axis.
+
+        Examples
+        --------
+
+        Series
+
+        >>> kser = ks.Series([100, 200, 300, 400, 500])
+        >>> kser
+        0    100
+        1    200
+        2    300
+        3    400
+        4    500
+        Name: 0, dtype: int64
+
+        >>> kser.take([0, 2, 4]).sort_index()
+        0    100
+        2    300
+        4    500
+        Name: 0, dtype: int64
+
+        Index
+
+        >>> kidx = ks.Index([100, 200, 300, 400, 500])
+        >>> kidx
+        Int64Index([100, 200, 300, 400, 500], dtype='int64')
+
+        >>> kidx.take([0, 2, 4]).sort_values()
+        Int64Index([100, 300, 500], dtype='int64')
+
+        MultiIndex
+
+        >>> kmidx = ks.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c")])
+        >>> kmidx  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('x', 'c')],
+                   )
+
+        >>> kmidx.take([0, 2])  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'c')],
+                   )
+        """
+        if not is_list_like(indices) or isinstance(indices, (dict, set)):
+            raise ValueError("`indices` must be a list-like except dict or set")
+        if isinstance(self, ks.Series):
+            result = self.iloc[indices]
+        elif isinstance(self, ks.Index):
+            result = self._kdf.iloc[indices].index
+        return result

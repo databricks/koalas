@@ -77,7 +77,6 @@ class _MissingPandasLikeSeries(object):
     swapaxes = unsupported_function("swapaxes")
     swaplevel = unsupported_function("swaplevel")
     tail = unsupported_function("tail")
-    take = unsupported_function("take")
     to_hdf = unsupported_function("to_hdf")
     to_period = unsupported_function("to_period")
     to_sql = unsupported_function("to_sql")
