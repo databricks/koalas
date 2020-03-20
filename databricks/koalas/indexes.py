@@ -1632,6 +1632,58 @@ class Index(IndexOpsMixin):
         else:
             return ks.concat([kdf] * repeats).index
 
+    def asof(self, label):
+        """
+        Return the label from the index, or, if not present, the previous one.
+
+        Assuming that the index is sorted, return the passed index label if it
+        is in the index, or return the previous index label if the passed one
+        is not in the index.
+
+        .. note:: This API is dependent on :meth:`Index.is_monotonic_increasing`
+            which can be expensive.
+
+        Parameters
+        ----------
+        label : object
+            The label up to which the method returns the latest index label.
+
+        Returns
+        -------
+        object
+            The passed label if it is in the index. The previous label if the
+            passed label is not in the sorted index or `NaN` if there is no
+            such label.
+
+        Examples
+        --------
+        `Index.asof` returns the latest index label up to the passed label.
+
+        >>> idx = ks.Index(['2013-12-31', '2014-01-02', '2014-01-03'])
+        >>> idx.asof('2014-01-01')
+        '2013-12-31'
+
+        If the label is in the index, the method returns the passed label.
+
+        >>> idx.asof('2014-01-02')
+        '2014-01-02'
+
+        If all of the labels in the index are later than the passed label,
+        NaN is returned.
+
+        >>> idx.asof('1999-01-02')
+        nan
+        """
+        sdf = self._internal._sdf
+        if self.is_monotonic_increasing:
+            sdf = sdf.select(self._scol).where(self._scol <= label).select(F.max(self._scol))
+        elif self.is_monotonic_decreasing:
+            sdf = sdf.select(self._scol).where(self._scol >= label).select(F.min(self._scol))
+        else:
+            raise ValueError("index must be monotonic increasing or decreasing")
+        result = sdf.head()[0]
+        return result if result is not None else np.nan
+
     def union(self, other, sort=None):
         """
         Form the union of two Index objects.
@@ -2365,6 +2417,11 @@ class MultiIndex(Index):
 
     def argmin(self):
         raise TypeError("reduction operation 'argmin' not allowed for this dtype")
+
+    def asof(self, label):
+        raise NotImplementedError(
+            "only the default get_loc method is currently supported for MultiIndex"
+        )
 
     @property
     def is_all_dates(self):
