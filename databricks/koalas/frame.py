@@ -30,7 +30,7 @@ from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_list_like, is_dict_like
+from pandas.api.types import is_list_like, is_dict_like, is_scalar
 
 if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
     from pandas.core.dtypes.common import infer_dtype_from_object
@@ -4324,9 +4324,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         from databricks.koalas.series import Series
 
         for k, v in kwargs.items():
-            if not (
-                isinstance(v, (Series, spark.Column)) or callable(v) or pd.api.types.is_scalar(v)
-            ):
+            if not (isinstance(v, (Series, spark.Column)) or callable(v) or is_scalar(v)):
                 raise TypeError(
                     "Column assignment doesn't support type " "{0}".format(type(v).__name__)
                 )
@@ -9658,6 +9656,119 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return self.iloc[indices, :]
         elif axis == 1:
             return self.iloc[:, indices]
+
+    def eval(self, expr, inplace=False):
+        """
+        Evaluate a string describing operations on DataFrame columns.
+
+        Operates on columns only, not specific rows or elements. This allows
+        `eval` to run arbitrary code, which can make you vulnerable to code
+        injection if you pass user input to this function.
+
+        Parameters
+        ----------
+        expr : str
+            The expression string to evaluate.
+        inplace : bool, default False
+            If the expression contains an assignment, whether to perform the
+            operation inplace and mutate the existing DataFrame. Otherwise,
+            a new DataFrame is returned.
+
+        Returns
+        -------
+        The result of the evaluation.
+
+        See Also
+        --------
+        DataFrame.query : Evaluates a boolean expression to query the columns
+            of a frame.
+        DataFrame.assign : Can evaluate an expression or function to create new
+            values for a column.
+        eval : Evaluate a Python expression as a string using various
+            backends.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': range(1, 6), 'B': range(10, 0, -2)})
+        >>> df
+           A   B
+        0  1  10
+        1  2   8
+        2  3   6
+        3  4   4
+        4  5   2
+        >>> df.eval('A + B')
+        0    11
+        1    10
+        2     9
+        3     8
+        4     7
+        Name: 0, dtype: int64
+
+        Assignment is allowed though by default the original DataFrame is not
+        modified.
+
+        >>> df.eval('C = A + B')
+           A   B   C
+        0  1  10  11
+        1  2   8  10
+        2  3   6   9
+        3  4   4   8
+        4  5   2   7
+        >>> df
+           A   B
+        0  1  10
+        1  2   8
+        2  3   6
+        3  4   4
+        4  5   2
+
+        Use ``inplace=True`` to modify the original DataFrame.
+
+        >>> df.eval('C = A + B', inplace=True)
+        >>> df
+           A   B   C
+        0  1  10  11
+        1  2   8  10
+        2  3   6   9
+        3  4   4   8
+        4  5   2   7
+        """
+        if isinstance(self.columns, pd.MultiIndex):
+            raise ValueError("`eval` is not supported for multi-index columns")
+        expr = expr
+        inplace = validate_bool_kwarg(inplace, "inplace")
+        is_series = False
+        is_scalar_ = False
+
+        # TODO: Cannot operate `inplace=True` if there is not assignment in `expr`.
+        # There is no way to check now, so leave it to pandas for now with minimum data.
+        if inplace:
+            self.head(0).to_pandas().eval(expr, inplace)
+
+        def eval_func(pdf):
+            nonlocal is_series
+            nonlocal is_scalar_
+            result_inner = pdf.eval(expr)
+            if isinstance(result_inner, pd.Series):
+                is_series = True
+                result_inner = result_inner.to_frame()
+            elif is_scalar(result_inner):
+                is_scalar_ = True
+                result_inner = pd.Series(result_inner).to_frame()
+            return result_inner
+
+        result = self.map_in_pandas(eval_func)
+        if inplace:
+            self._internal = result._internal
+        else:
+            if is_series:
+                series_name = result._internal.column_labels[0][0]
+                result = result[series_name]
+            elif is_scalar_:
+                series_name = result._internal.column_labels[0][0]
+                result = result[series_name][0]
+            return result
 
     def _to_internal_pandas(self):
         """

@@ -3080,3 +3080,34 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         else:
             kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf, pdf)
+
+    def test_eval(self):
+        pdf = pd.DataFrame({"A": range(1, 6), "B": range(10, 0, -2)})
+        kdf = ks.from_pandas(pdf)
+
+        # operation between columns (returns Series)
+        self.assert_eq(pdf.eval("A + B"), kdf.eval("A + B"))
+        self.assert_eq(pdf.eval("A + A"), kdf.eval("A + A"))
+        # assignment (returns DataFrame)
+        self.assert_eq(pdf.eval("C = A + B"), kdf.eval("C = A + B"))
+        self.assert_eq(pdf.eval("A = A + A"), kdf.eval("A = A + A"))
+        # operation between scalars (returns scalar)
+        self.assert_eq(pdf.eval("1 + 1"), kdf.eval("1 + 1"))
+        # complicated operations with assignment
+        self.assert_eq(
+            pdf.eval("B = A + B // (100 + 200) * (500 - B) - 10.5"),
+            kdf.eval("B = A + B // (100 + 200) * (500 - B) - 10.5"),
+        )
+
+        # inplace=1 (only support for assignment)
+        pdf.eval("C = A + B", inplace=True)
+        kdf.eval("C = A + B", inplace=True)
+        self.assert_eq(pdf, kdf)
+        pdf.eval("A = B + C", inplace=True)
+        kdf.eval("A = B + C", inplace=True)
+        self.assert_eq(pdf, kdf)
+
+        # doesn't support for multi-index columns
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b"), ("z", "c")])
+        kdf.columns = columns
+        self.assertRaises(ValueError, lambda: kdf.eval("x.a + y.b"))
