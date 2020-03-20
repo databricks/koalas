@@ -48,6 +48,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.utils import default_session, name_like_string, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
+from databricks.koalas.indexes import Index
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.series import Series, _col
@@ -81,7 +82,7 @@ __all__ = [
 ]
 
 
-def from_pandas(pobj: Union["pd.DataFrame", "pd.Series"]) -> Union["Series", "DataFrame"]:
+def from_pandas(pobj: Union[pd.DataFrame, pd.Series, pd.Index]) -> Union[Series, DataFrame, Index]:
     """Create a Koalas DataFrame or Series from a pandas DataFrame or Series.
 
     This is similar to Spark's `SparkSession.createDataFrame()` with pandas DataFrame,
@@ -363,7 +364,7 @@ def read_csv(
     return kdf
 
 
-def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **options):
+def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **options) -> DataFrame:
     """
     Convert a JSON string to pandas object.
 
@@ -401,7 +402,7 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
         return read_spark_io(path, format="json", index_col=index_col, **options)
     except Py4JJavaError:
         pdf = pd.read_json(path, **options)
-        return from_pandas(pdf)
+        return from_pandas(pdf)  # type: ignore
 
 
 def read_delta(
@@ -605,7 +606,7 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
             sdf = default_session().read.parquet(path)
         except Py4JJavaError:
             pdf = pd.read_parquet(path, columns=columns, **options)
-            return from_pandas(pdf)
+            return from_pandas(pdf)  # type: ignore
         if columns is not None:
             fields = [field.name for field in sdf.schema]
             cols = [col for col in columns if col in fields]
