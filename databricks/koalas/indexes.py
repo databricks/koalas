@@ -1640,6 +1640,9 @@ class Index(IndexOpsMixin):
         is in the index, or return the previous index label if the passed one
         is not in the index.
 
+        .. note:: This API is dependent on :meth:`Index.is_monotonic_increasing`
+            which can be expensive.
+
         Parameters
         ----------
         label : object
