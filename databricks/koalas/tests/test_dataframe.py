@@ -3099,7 +3099,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.eval("B = A + B // (100 + 200) * (500 - B) - 10.5"),
         )
 
-        # inplace=1 (only support for assignment)
+        # inplace=True (only support for assignment)
         pdf.eval("C = A + B", inplace=True)
         kdf.eval("C = A + B", inplace=True)
         self.assert_eq(pdf, kdf)
