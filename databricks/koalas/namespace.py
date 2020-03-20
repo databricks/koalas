@@ -1702,31 +1702,19 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
 
         with ks.option_context("compute.ops_on_diff_frames", True):
 
-            def assign_columns(kdf, this_column_labels, that_column_labels):
+            def resolve_func(kdf, this_column_labels, that_column_labels):
                 duplicated_names = set(
                     this_column_label[1:] for this_column_label in this_column_labels
                 ).intersection(
                     set(that_column_label[1:] for that_column_label in that_column_labels)
                 )
-                if len(duplicated_names) > 0:
-                    pretty_names = [
-                        name_like_string(column_label) for column_label in duplicated_names
-                    ]
-                    raise ValueError(
-                        "Labels have to be unique; however, got "
-                        "duplicated labels %s." % pretty_names
-                    )
-
-                # Note that here intentionally uses `zip_longest` that combine
-                # all columns.
-                for this_label, that_label in itertools.zip_longest(
-                    this_column_labels, that_column_labels
-                ):
-                    # duplicated columns will be distinct within `align_diff_frames`.
-                    if this_label is not None:
-                        yield (kdf._kser_for(this_label), this_label)
-                    if that_label is not None:
-                        yield (kdf._kser_for(that_label), that_label)
+                assert (
+                    len(duplicated_names) > 0
+                ), "inner or full join type does not include non-common columns"
+                pretty_names = [name_like_string(column_label) for column_label in duplicated_names]
+                raise ValueError(
+                    "Labels have to be unique; however, got " "duplicated labels %s." % pretty_names
+                )
 
             for kser_or_kdf in objs[1:]:
                 if isinstance(kser_or_kdf, Series):
@@ -1746,11 +1734,11 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
 
                 if join == "inner":
                     concat_kdf = align_diff_frames(
-                        assign_columns, concat_kdf, that_kdf, fillna=False, how="inner",
+                        resolve_func, concat_kdf, that_kdf, fillna=False, how="inner",
                     )
                 elif join == "outer":
                     concat_kdf = align_diff_frames(
-                        assign_columns, concat_kdf, that_kdf, fillna=False, how="full",
+                        resolve_func, concat_kdf, that_kdf, fillna=False, how="full",
                     )
                 else:
                     raise ValueError(
