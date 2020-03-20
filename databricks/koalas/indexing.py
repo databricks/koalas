@@ -568,19 +568,24 @@ class LocIndexer(_LocIndexerLike):
                 if (start is None and rows_sel.start is not None) or (
                     stop is None and rows_sel.stop is not None
                 ):
+
+                    inc = index_column.is_monotonic_increasing
+                    if inc is False:
+                        dec = index_column.is_monotonic_decreasing
+
                     if start is None and rows_sel.start is not None:
                         start = rows_sel.start
-                        if index_column.is_monotonic_increasing is not False:
+                        if inc is not False:
                             cond.append(index_column._scol >= F.lit(start).cast(index_data_type))
-                        elif index_column.is_monotonic_decreasing is not False:
+                        elif dec is not False:
                             cond.append(index_column._scol <= F.lit(start).cast(index_data_type))
                         else:
                             raise KeyError(rows_sel.start)
                     if stop is None and rows_sel.stop is not None:
                         stop = rows_sel.stop
-                        if index_column.is_monotonic_increasing is not False:
+                        if inc is not False:
                             cond.append(index_column._scol <= F.lit(stop).cast(index_data_type))
-                        elif index_column.is_monotonic_decreasing is not False:
+                        elif dec is not False:
                             cond.append(index_column._scol >= F.lit(stop).cast(index_data_type))
                         else:
                             raise KeyError(rows_sel.stop)
