@@ -17,11 +17,13 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union, List, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
+from contextlib import contextmanager
 from functools import reduce
 import itertools
+from typing import Optional, Union, List, Tuple
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -162,6 +164,23 @@ def range(
     return DataFrame(sdf)
 
 
+@contextmanager
+def _fallback_to_pandas(e):
+    err = "Spark DataFrameReader failed to read by the reason: '{}'".format(
+        e.java_exception.toString().split(": ", 1)[1]
+    )
+    if ks.options.io.read.fallback.pandas:
+        warnings.warn(
+            err + "\nAttempting reading using pandas as 'io.read.fallback.pandas' is set to True."
+        )
+        yield
+    else:
+        warnings.warn(
+            err + "\nYou can try to read using pandas by setting 'io.read.fallback.pandas' to True."
+        )
+        raise e
+
+
 def read_csv(
     path,
     sep=",",
@@ -283,26 +302,27 @@ def read_csv(
                     sdf = sdf.selectExpr(
                         *["`%s` as `%s`" % (field.name, i) for i, field in enumerate(sdf.schema)]
                     )
-        except Py4JJavaError:
-            if quotechar is None:
-                quotechar = '"'
-            pdf = pd.read_csv(
-                path,
-                sep=sep,
-                header=header,
-                names=names,
-                index_col=index_col,
-                usecols=usecols,
-                squeeze=squeeze,
-                mangle_dupe_cols=mangle_dupe_cols,
-                dtype=dtype,
-                parse_dates=parse_dates,
-                quotechar=quotechar,
-                escapechar=escapechar,
-                comment=comment,
-                **options
-            )
-            return from_pandas(pdf)
+        except Py4JJavaError as e:
+            with _fallback_to_pandas(e):
+                if quotechar is None:
+                    quotechar = '"'
+                pdf = pd.read_csv(
+                    path,
+                    sep=sep,
+                    header=header,
+                    names=names,
+                    index_col=index_col,
+                    usecols=usecols,
+                    squeeze=squeeze,
+                    mangle_dupe_cols=mangle_dupe_cols,
+                    dtype=dtype,
+                    parse_dates=parse_dates,
+                    quotechar=quotechar,
+                    escapechar=escapechar,
+                    comment=comment,
+                    **options
+                )
+                return from_pandas(pdf)
         if isinstance(names, list):
             names = list(names)
             if len(set(names)) != len(names):
@@ -400,9 +420,10 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
     """
     try:
         return read_spark_io(path, format="json", index_col=index_col, **options)
-    except Py4JJavaError:
-        pdf = pd.read_json(path, **options)
-        return from_pandas(pdf)  # type: ignore
+    except Py4JJavaError as e:
+        with _fallback_to_pandas(e):
+            pdf = pd.read_json(path, **options)
+            return from_pandas(pdf)  # type: ignore
 
 
 def read_delta(
@@ -604,9 +625,10 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
     if columns is None or len(columns) > 0:
         try:
             sdf = default_session().read.parquet(path)
-        except Py4JJavaError:
-            pdf = pd.read_parquet(path, columns=columns, **options)
-            return from_pandas(pdf)  # type: ignore
+        except Py4JJavaError as e:
+            with _fallback_to_pandas(e):
+                pdf = pd.read_parquet(path, columns=columns, **options)
+                return from_pandas(pdf)  # type: ignore
         if columns is not None:
             fields = [field.name for field in sdf.schema]
             cols = [col for col in columns if col in fields]

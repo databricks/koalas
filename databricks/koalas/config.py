@@ -193,6 +193,18 @@ _options = [
         types=bool,
     ),
     Option(
+        key="io.read.fallback.pandas",
+        doc=(
+            "'io.read.fallback.pandas' sets whether or not to fallback to pandas when Spark "
+            "DataFrameReader throws an exception assuming it is caused by unsupported protocol "
+            "like 'http', 'https', and so on. If 'io.read.fallback.pandas' is set to True, "
+            "Koalas will try to fallback to read using pandas, but it could cause "
+            "an out-of-memory error."
+        ),
+        default=False,
+        types=bool,
+    ),
+    Option(
         key="plotting.max_rows",
         doc=(
             "'plotting.max_rows' sets the visual limit on top-n-based plots such as `plot.bar` "
@@ -201,10 +213,7 @@ _options = [
         ),
         default=1000,
         types=int,
-        check_func=(
-            lambda v: v is v >= 0,
-            "'plotting.max_rows' should be greater than or equal to 0.",
-        ),
+        check_func=(lambda v: v >= 0, "'plotting.max_rows' should be greater than or equal to 0.",),
     ),
     Option(
         key="plotting.sample_ratio",

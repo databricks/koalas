@@ -255,6 +255,13 @@ compute.ordered_head            False          'compute.ordered_head' sets wheth
                                                'compute.ordered_head' is set to True, Koalas
                                                performs natural ordering beforehand, but it will
                                                cause a performance overhead.
+io.read.fallback.pandas         False          'io.read.fallback.pandas' sets whether or not to
+                                               fallback to pandas when Spark DataFrameReader throws
+                                               an exception assuming it is caused by unsupported
+                                               protocol like 'http', 'https', and so on. If
+                                               'io.read.fallback.pandas' is set to True, Koalas will
+                                               try to fallback to read using pandas, but it could
+                                               cause an out-of-memory error.
 plotting.max_rows               1000           'plotting.max_rows' sets the visual limit on top-n-
                                                based plots such as `plot.bar` and `plot.pie`. If it
                                                is set to 1000, the first 1000 data points will be
