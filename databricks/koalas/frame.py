@@ -9736,7 +9736,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if isinstance(self.columns, pd.MultiIndex):
             raise ValueError("`eval` is not supported for multi-index columns")
-        expr = expr
         inplace = validate_bool_kwarg(inplace, "inplace")
         is_series = False
         is_scalar_ = False
