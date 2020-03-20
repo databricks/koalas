@@ -80,7 +80,7 @@ jobs:
             logger: databricks.koalas.usage_logging.usage_logger
           - python-version: 3.7
             spark-version: 2.4.5
-            pandas-version: 1.0.1
+            pandas-version: 1.0.2
             pyarrow-version: 0.14.1
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}

@@ -319,10 +319,10 @@ class IndexOpsMixin(object):
         """
         Return boolean if values in the object are monotonically increasing.
 
-        .. note:: the current implementation of is_monotonic_increasing uses Spark's
-            Window without specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
+        .. note:: the current implementation of is_monotonic requires to shuffle
+            and aggregate multiple times to check the order locally and globally,
+            which is potentially expensive. In case of multi-index, all data are
+            transferred to single node which can easily cause out-of-memory error currently.
 
         Returns
         -------
@@ -385,12 +385,7 @@ class IndexOpsMixin(object):
         >>> midx.is_monotonic
         False
         """
-        return self._is_monotonic().all()
-
-    def _is_monotonic(self):
-        col = self._scol
-        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull())
+        return self._is_monotonic("increasing")
 
     is_monotonic_increasing = is_monotonic
 
@@ -399,10 +394,10 @@ class IndexOpsMixin(object):
         """
         Return boolean if values in the object are monotonically decreasing.
 
-        .. note:: the current implementation of is_monotonic_decreasing uses Spark's
-            Window without specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
+        .. note:: the current implementation of is_monotonic_decreasing requires to shuffle
+            and aggregate multiple times to check the order locally and globally,
+            which is potentially expensive. In case of multi-index, all data are transferred
+            to single node which can easily cause out-of-memory error currently.
 
         Returns
         -------
@@ -465,12 +460,80 @@ class IndexOpsMixin(object):
         >>> midx.is_monotonic_decreasing
         True
         """
-        return self._is_monotonic_decreasing().all()
+        return self._is_monotonic("decreasing")
 
-    def _is_monotonic_decreasing(self):
-        col = self._scol
-        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull())
+    def _is_locally_monotonic_spark_column(self, order):
+        window = (
+            Window.partitionBy(F.col("__partition_id"))
+            .orderBy(NATURAL_ORDER_COLUMN_NAME)
+            .rowsBetween(-1, -1)
+        )
+
+        if order == "increasing":
+            return (F.col("__origin") >= F.lag(F.col("__origin"), 1).over(window)) & F.col(
+                "__origin"
+            ).isNotNull()
+        else:
+            return (F.col("__origin") <= F.lag(F.col("__origin"), 1).over(window)) & F.col(
+                "__origin"
+            ).isNotNull()
+
+    def _is_monotonic(self, order):
+        assert order in ("increasing", "decreasing")
+
+        sdf = self._internal.spark_frame
+
+        sdf = (
+            sdf.select(
+                F.spark_partition_id().alias(
+                    "__partition_id"
+                ),  # Make sure we use the same partition id in the whole job.
+                F.col(NATURAL_ORDER_COLUMN_NAME),
+                self._scol.alias("__origin"),
+            )
+            .select(
+                F.col("__partition_id"),
+                F.col("__origin"),
+                self._is_locally_monotonic_spark_column(order).alias(
+                    "__comparison_within_partition"
+                ),
+            )
+            .groupby(F.col("__partition_id"))
+            .agg(
+                F.min(F.col("__origin")).alias("__partition_min"),
+                F.max(F.col("__origin")).alias("__partition_max"),
+                F.min(F.coalesce(F.col("__comparison_within_partition"), F.lit(True))).alias(
+                    "__comparison_within_partition"
+                ),
+            )
+        )
+
+        # Now we're windowing the aggregation results without partition specification.
+        # The number of rows here will be as the same of partitions, which is expected
+        # to be small.
+        window = Window.orderBy(F.col("__partition_id")).rowsBetween(-1, -1)
+        if order == "increasing":
+            comparison_col = F.col("__partition_min") >= F.lag(F.col("__partition_max"), 1).over(
+                window
+            )
+        else:
+            comparison_col = F.col("__partition_min") <= F.lag(F.col("__partition_max"), 1).over(
+                window
+            )
+
+        sdf = sdf.select(
+            comparison_col.alias("__comparison_between_partitions"),
+            F.col("__comparison_within_partition"),
+        )
+
+        ret = sdf.select(
+            F.min(F.coalesce(F.col("__comparison_between_partitions"), F.lit(True)))
+            & F.min(F.coalesce(F.col("__comparison_within_partition"), F.lit(True)))
+        ).collect()[0][0]
+        if ret is None:
+            return True
+        else:
+            return ret
 
     @property
     def ndim(self):
@@ -1124,3 +1187,78 @@ class IndexOpsMixin(object):
                     0
                 )
             ).alias(colname)
+
+    def take(self, indices):
+        """
+        Return the elements in the given *positional* indices along an axis.
+
+        This means that we are not indexing according to actual values in
+        the index attribute of the object. We are indexing according to the
+        actual position of the element in the object.
+
+        Parameters
+        ----------
+        indices : array-like
+            An array of ints indicating which positions to take.
+
+        Returns
+        -------
+        taken : same type as caller
+            An array-like containing the elements taken from the object.
+
+        See Also
+        --------
+        DataFrame.loc : Select a subset of a DataFrame by labels.
+        DataFrame.iloc : Select a subset of a DataFrame by positions.
+        numpy.take : Take elements from an array along an axis.
+
+        Examples
+        --------
+
+        Series
+
+        >>> kser = ks.Series([100, 200, 300, 400, 500])
+        >>> kser
+        0    100
+        1    200
+        2    300
+        3    400
+        4    500
+        Name: 0, dtype: int64
+
+        >>> kser.take([0, 2, 4]).sort_index()
+        0    100
+        2    300
+        4    500
+        Name: 0, dtype: int64
+
+        Index
+
+        >>> kidx = ks.Index([100, 200, 300, 400, 500])
+        >>> kidx
+        Int64Index([100, 200, 300, 400, 500], dtype='int64')
+
+        >>> kidx.take([0, 2, 4]).sort_values()
+        Int64Index([100, 300, 500], dtype='int64')
+
+        MultiIndex
+
+        >>> kmidx = ks.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c")])
+        >>> kmidx  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('x', 'c')],
+                   )
+
+        >>> kmidx.take([0, 2])  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'c')],
+                   )
+        """
+        if not is_list_like(indices) or isinstance(indices, (dict, set)):
+            raise ValueError("`indices` must be a list-like except dict or set")
+        if isinstance(self, ks.Series):
+            result = self.iloc[indices]
+        elif isinstance(self, ks.Index):
+            result = self._kdf.iloc[indices].index
+        return result

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import itertools
 
 import pandas as pd
 
@@ -92,10 +93,6 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaisesRegex(ValueError, "All objects passed", lambda: ks.concat([None, None]))
 
-        self.assertRaisesRegex(
-            NotImplementedError, "axis should be either 0 or", lambda: ks.concat([kdf, kdf], axis=1)
-        )
-
         pdf3 = pdf.copy()
         kdf3 = kdf.copy()
 
@@ -128,3 +125,82 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
             r"Only can inner \(intersect\) or outer \(union\) join the other axis.",
             lambda: ks.concat([kdf, kdf4], join=""),
         )
+
+        self.assertRaisesRegex(
+            ValueError,
+            r"Only can inner \(intersect\) or outer \(union\) join the other axis.",
+            lambda: ks.concat([kdf, kdf4], join="", axis=1),
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            r"Only can inner \(intersect\) or outer \(union\) join the other axis.",
+            lambda: ks.concat([kdf.A, kdf4.B], join="", axis=1),
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            r"Labels have to be unique; however, got duplicated labels \['A'\].",
+            lambda: ks.concat([kdf.A, kdf4.A], join="inner", axis=1),
+        )
+
+    def test_concat_column_axis(self):
+        pdf1 = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5]}, index=[1, 2, 3])
+        pdf2 = pd.DataFrame({"C": [1, 2, 3], "D": [4, 5, 6]}, index=[1, 3, 5])
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        kdf3 = kdf1.copy()
+        kdf4 = kdf2.copy()
+        pdf3 = pdf1.copy()
+        pdf4 = pdf2.copy()
+
+        columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B")])
+        pdf3.columns = columns
+        kdf3.columns = columns
+
+        columns = pd.MultiIndex.from_tuples([("X", "C"), ("X", "D")])
+        pdf4.columns = columns
+        kdf4.columns = columns
+
+        pdf5 = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5]}, index=[1, 2, 3])
+        pdf6 = pd.DataFrame({"C": [1, 2, 3]}, index=[1, 3, 5])
+        kdf5 = ks.from_pandas(pdf5)
+        kdf6 = ks.from_pandas(pdf6)
+
+        ignore_indexes = [True, False]
+        joins = ["inner", "outer"]
+
+        objs = [
+            ([kdf1.A, kdf2.C], [pdf1.A, pdf2.C]),
+            ([kdf1, kdf2.C], [pdf1, pdf2.C]),
+            ([kdf1.A, kdf2], [pdf1.A, pdf2]),
+            ([kdf1.A, kdf2.C], [pdf1.A, pdf2.C]),
+            ([kdf1.A, kdf1.A.rename("B")], [pdf1.A, pdf1.A.rename("B")]),
+            ([kdf3[("X", "A")], kdf4[("X", "C")]], [pdf3[("X", "A")], pdf4[("X", "C")]]),
+            ([kdf3, kdf4[("X", "C")]], [pdf3, pdf4[("X", "C")]]),
+            ([kdf3[("X", "A")], kdf4], [pdf3[("X", "A")], pdf4]),
+            ([kdf3, kdf4], [pdf3, pdf4]),
+            ([kdf3[("X", "A")], kdf3[("X", "B")]], [pdf3[("X", "A")], pdf3[("X", "B")]],),
+            (
+                [kdf3[("X", "A")], kdf3[("X", "B")].rename("ABC")],
+                [pdf3[("X", "A")], pdf3[("X", "B")].rename("ABC")],
+            ),
+            (
+                [kdf3[("X", "A")].rename("ABC"), kdf3[("X", "B")]],
+                [pdf3[("X", "A")].rename("ABC"), pdf3[("X", "B")]],
+            ),
+            ([kdf5, kdf6], [pdf5, pdf6]),
+            ([kdf6, kdf5], [pdf6, pdf5]),
+        ]
+
+        for ignore_index, join in itertools.product(ignore_indexes, joins):
+            for obj in objs:
+                kdfs, pdfs = obj
+                with self.subTest(ignore_index=ignore_index, join=join, objs=obj):
+                    actual = ks.concat(kdfs, axis=1, ignore_index=ignore_index, join=join)
+                    expected = pd.concat(pdfs, axis=1, ignore_index=ignore_index, join=join)
+                    self.assert_eq(
+                        repr(actual.sort_values(list(actual.columns)).reset_index(drop=True)),
+                        repr(expected.sort_values(list(expected.columns)).reset_index(drop=True)),
+                    )

@@ -58,6 +58,7 @@ from databricks.koalas.utils import (
     name_like_string,
     scol_for,
     verify_temp_column_name,
+    validate_bool_kwarg,
 )
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 
@@ -1680,6 +1681,75 @@ class Index(IndexOpsMixin):
         result = sdf.head()[0]
         return result if result is not None else np.nan
 
+    def union(self, other, sort=None):
+        """
+        Form the union of two Index objects.
+
+        Parameters
+        ----------
+        other : Index or array-like
+        sort : bool or None, default None
+            Whether to sort the resulting Index.
+
+        Returns
+        -------
+        union : Index
+
+        Examples
+        --------
+
+        Index
+
+        >>> idx1 = ks.Index([1, 2, 3, 4])
+        >>> idx2 = ks.Index([3, 4, 5, 6])
+        >>> idx1.union(idx2).sort_values()
+        Int64Index([1, 2, 3, 4, 5, 6], dtype='int64')
+
+        MultiIndex
+
+        >>> midx1 = ks.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")])
+        >>> midx2 = ks.MultiIndex.from_tuples([("x", "c"), ("x", "d"), ("x", "e"), ("x", "f")])
+        >>> midx1.union(midx2).sort_values()  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('x', 'c'),
+                    ('x', 'd'),
+                    ('x', 'e'),
+                    ('x', 'f')],
+                   )
+        """
+        sort = True if sort is None else sort
+        sort = validate_bool_kwarg(sort, "sort")
+        if type(self) is not type(other):
+            if isinstance(self, MultiIndex):
+                if not isinstance(other, list) or not all(
+                    [isinstance(item, tuple) for item in other]
+                ):
+                    raise TypeError("other must be a MultiIndex or a list of tuples")
+                other = MultiIndex.from_tuples(other)
+            else:
+                if isinstance(other, MultiIndex):
+                    # TODO: We can't support different type of values in a single column for now.
+                    raise NotImplementedError(
+                        "Union between Index and MultiIndex is not yet supported"
+                    )
+                elif isinstance(other, Series):
+                    other = other.to_frame().set_index(other.name).index
+                elif isinstance(other, DataFrame):
+                    raise ValueError("Index data must be 1-dimensional")
+                else:
+                    other = Index(other)
+        sdf_self = self._internal._sdf.select(self._internal.index_spark_columns)
+        sdf_other = other._internal._sdf.select(other._internal.index_spark_columns)
+        sdf = sdf_self.union(sdf_other.subtract(sdf_self))
+        if isinstance(self, MultiIndex):
+            sdf = sdf.drop_duplicates()
+        if sort:
+            sdf = sdf.sort(self._internal.index_spark_columns)
+        internal = _InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+
+        return DataFrame(internal).index
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)
@@ -1979,7 +2049,13 @@ class MultiIndex(Index):
         else:
             return compare_null_last
 
-    def _is_monotonic(self):
+    def _is_monotonic(self, order):
+        if order == "increasing":
+            return self._is_monotonic_increasing().all()
+        else:
+            return self._is_monotonic_decreasing().all()
+
+    def _is_monotonic_increasing(self):
         scol = self._scol
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
         prev = F.lag(scol, 1).over(window)
@@ -2293,8 +2369,24 @@ class MultiIndex(Index):
         index_scols = self._internal.index_spark_columns
         if level is None:
             scol = index_scols[0]
+        elif isinstance(level, int):
+            scol = index_scols[level]
         else:
-            scol = index_scols[level] if isinstance(level, int) else sdf[level]
+            spark_column_name = None
+            for index_spark_column_name, index_name in self._internal.index_map.items():
+                if not isinstance(level, tuple):
+                    level = (level,)
+                if level == index_name:
+                    if spark_column_name is not None:
+                        raise ValueError(
+                            "The name {} occurs multiple times, use a level number".format(
+                                name_like_string(level)
+                            )
+                        )
+                    spark_column_name = index_spark_column_name
+            if spark_column_name is None:
+                raise KeyError("Level {} not found".format(name_like_string(level)))
+            scol = scol_for(sdf, spark_column_name)
         sdf = sdf[~scol.isin(codes)]
         return MultiIndex(
             DataFrame(_InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map))

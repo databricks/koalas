@@ -3504,7 +3504,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         dropna: bool = True,
         approx: bool = False,
         rsd: float = 0.05,
-    ) -> pd.Series:
+    ) -> "ks.Series":
         """
         Return number of unique elements in the object.
 
@@ -3527,7 +3527,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        The number of unique values per column as a pandas Series.
+        The number of unique values per column as a Koalas Series.
 
         Examples
         --------
@@ -3550,22 +3550,31 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         B    1
         Name: 0, dtype: int64
         """
+        from databricks.koalas.series import _col
+
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
-        res = self._sdf.select(
+        sdf = self._sdf.select(
             [
                 self._kser_for(label)._nunique(dropna, approx, rsd)
                 for label in self._internal.column_labels
             ]
-        ).toPandas()
-        if self._internal.column_labels_level == 1:
-            res.columns = [label[0] for label in self._internal.column_labels]
-        else:
-            res.columns = pd.MultiIndex.from_tuples(self._internal.column_labels)
-        if self._internal.column_label_names is not None:
-            res.columns.names = self._internal.column_label_names
-        return res.T.iloc[:, 0]
+        )
+
+        # The data is expected to be small so it's fine to transpose/use default index.
+        with ks.option_context(
+            "compute.default_index_type", "distributed", "compute.max_rows", None
+        ):
+            kdf = DataFrame(sdf)  # type: ks.DataFrame
+            internal = _InternalFrame(
+                spark_frame=kdf._internal.spark_frame,
+                index_map=kdf._internal.index_map,
+                column_labels=self._internal.column_labels,
+                column_label_names=self._internal.column_label_names,
+            )
+
+            return _col(DataFrame(internal).transpose())
 
     def round(self, decimals=0):
         """
@@ -9569,6 +9578,87 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         self._internal.to_internal_spark_frame.explain(extended)
 
+    def take(self, indices, axis=0, **kwargs):
+        """
+        Return the elements in the given *positional* indices along an axis.
+
+        This means that we are not indexing according to actual values in
+        the index attribute of the object. We are indexing according to the
+        actual position of the element in the object.
+
+        Parameters
+        ----------
+        indices : array-like
+            An array of ints indicating which positions to take.
+        axis : {0 or 'index', 1 or 'columns', None}, default 0
+            The axis on which to select elements. ``0`` means that we are
+            selecting rows, ``1`` means that we are selecting columns.
+        **kwargs
+            For compatibility with :meth:`numpy.take`. Has no effect on the
+            output.
+
+        Returns
+        -------
+        taken : same type as caller
+            An array-like containing the elements taken from the object.
+
+        See Also
+        --------
+        DataFrame.loc : Select a subset of a DataFrame by labels.
+        DataFrame.iloc : Select a subset of a DataFrame by positions.
+        numpy.take : Take elements from an array along an axis.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([('falcon', 'bird', 389.0),
+        ...                    ('parrot', 'bird', 24.0),
+        ...                    ('lion', 'mammal', 80.5),
+        ...                    ('monkey', 'mammal', np.nan)],
+        ...                   columns=['name', 'class', 'max_speed'],
+        ...                   index=[0, 2, 3, 1])
+        >>> df
+             name   class  max_speed
+        0  falcon    bird      389.0
+        2  parrot    bird       24.0
+        3    lion  mammal       80.5
+        1  monkey  mammal        NaN
+
+        Take elements at positions 0 and 3 along the axis 0 (default).
+
+        Note how the actual indices selected (0 and 1) do not correspond to
+        our selected indices 0 and 3. That's because we are selecting the 0th
+        and 3rd rows, not rows whose indices equal 0 and 3.
+
+        >>> df.take([0, 3]).sort_index()
+             name   class  max_speed
+        0  falcon    bird      389.0
+        1  monkey  mammal        NaN
+
+        Take elements at indices 1 and 2 along the axis 1 (column selection).
+
+        >>> df.take([1, 2], axis=1)
+            class  max_speed
+        0    bird      389.0
+        2    bird       24.0
+        3  mammal       80.5
+        1  mammal        NaN
+
+        We may take elements using negative integers for positive indices,
+        starting from the end of the object, just like with Python lists.
+
+        >>> df.take([-1, -2]).sort_index()
+             name   class  max_speed
+        1  monkey  mammal        NaN
+        3    lion  mammal       80.5
+        """
+        axis = validate_axis(axis)
+        if not is_list_like(indices) or isinstance(indices, (dict, set)):
+            raise ValueError("`indices` must be a list-like except dict or set")
+        if axis == 0:
+            return self.iloc[indices, :]
+        elif axis == 1:
+            return self.iloc[:, indices]
+
     def _to_internal_pandas(self):
         """
         Return a pandas DataFrame directly from _internal to avoid overhead of copy.
@@ -9646,34 +9736,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             isinstance(value, DataFrame) and value is not self
         ):
             # Different Series or DataFrames
-            if isinstance(value, Series):
-                value = value.to_frame()
-            else:
-                assert isinstance(value, DataFrame), type(value)
-                value = value.copy()
-            level = self._internal.column_labels_level
-
-            value.columns = pd.MultiIndex.from_tuples(
-                [
-                    tuple([name_like_string(label)] + ([""] * (level - 1)))
-                    for label in value._internal.column_labels
-                ]
-            )
-
-            if isinstance(key, str):
-                key = [(key,)]
-            elif isinstance(key, tuple):
-                key = [key]
-            else:
-                key = [k if isinstance(k, tuple) else (k,) for k in key]
-
-            if any(len(label) > level for label in key):
-                raise KeyError(
-                    "Key length ({}) exceeds index depth ({})".format(
-                        max(len(label) for label in key), level
-                    )
-                )
-            key = [tuple(list(label) + ([""] * (level - len(label)))) for label in key]
+            key = self._index_normalized_label(key)
+            value = self._index_normalized_frame(value)
 
             def assign_columns(kdf, this_column_labels, that_column_labels):
                 assert len(key) == len(that_column_labels)
@@ -9697,6 +9761,54 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf = self._assign({key: value})
 
         self._internal = kdf._internal
+
+    def _index_normalized_label(self, labels):
+        """
+        Returns a label that is normalized against the current column index level.
+        For example, the key "abc" can be ("abc", "", "") if the current Frame has
+        a multi-index for its column
+        """
+        level = self._internal.column_labels_level
+
+        if isinstance(labels, str):
+            labels = [(labels,)]
+        elif isinstance(labels, tuple):
+            labels = [labels]
+        else:
+            labels = [k if isinstance(k, tuple) else (k,) for k in labels]
+
+        if any(len(label) > level for label in labels):
+            raise KeyError(
+                "Key length ({}) exceeds index depth ({})".format(
+                    max(len(label) for label in labels), level
+                )
+            )
+        return [tuple(list(label) + ([""] * (level - len(label)))) for label in labels]
+
+    def _index_normalized_frame(self, kser_or_kdf):
+        """
+        Returns a frame that is normalized against the current column index level.
+        For example, the name in `pd.Series([...], name="abc")` can be can be
+        ("abc", "", "") if the current DataFrame has a multi-index for its column
+        """
+
+        from databricks.koalas.series import Series
+
+        level = self._internal.column_labels_level
+        if isinstance(kser_or_kdf, Series):
+            kdf = kser_or_kdf.to_frame()
+        else:
+            assert isinstance(kser_or_kdf, DataFrame), type(kser_or_kdf)
+            kdf = kser_or_kdf.copy()
+
+        kdf.columns = pd.MultiIndex.from_tuples(
+            [
+                tuple([name_like_string(label)] + ([""] * (level - 1)))
+                for label in kdf._internal.column_labels
+            ]
+        )
+
+        return kdf
 
     def __getattr__(self, key: str) -> Any:
         if key.startswith("__"):

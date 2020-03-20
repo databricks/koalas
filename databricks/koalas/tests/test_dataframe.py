@@ -2966,6 +2966,97 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "Doesn't support for MultiIndex columns"):
             kdf.query("('A', 'Z') > ('B', 'X')")
 
+    def test_take(self):
+        kdf = ks.DataFrame(
+            {"A": range(0, 50000), "B": range(100000, 0, -2), "C": range(100000, 50000, -1)}
+        )
+        pdf = kdf.to_pandas()
+
+        # axis=0 (default)
+        self.assert_eq(kdf.take([1, 2]).sort_index(), pdf.take([1, 2]).sort_index())
+        self.assert_eq(kdf.take([-1, -2]).sort_index(), pdf.take([-1, -2]).sort_index())
+        self.assert_eq(
+            kdf.take(range(100, 110)).sort_index(), pdf.take(range(100, 110)).sort_index()
+        )
+        self.assert_eq(
+            kdf.take(range(-110, -100)).sort_index(), pdf.take(range(-110, -100)).sort_index()
+        )
+        self.assert_eq(
+            kdf.take([10, 100, 1000, 10000]).sort_index(),
+            pdf.take([10, 100, 1000, 10000]).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([-10, -100, -1000, -10000]).sort_index(),
+            pdf.take([-10, -100, -1000, -10000]).sort_index(),
+        )
+
+        # axis=1
+        self.assert_eq(kdf.take([1, 2], axis=1).sort_index(), pdf.take([1, 2], axis=1).sort_index())
+        self.assert_eq(
+            kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index()
+        )
+        self.assert_eq(
+            kdf.take(range(1, 3), axis=1).sort_index(), pdf.take(range(1, 3), axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take(range(-1, -3), axis=1).sort_index(),
+            pdf.take(range(-1, -3), axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([2, 1], axis=1).sort_index(), pdf.take([2, 1], axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index(),
+        )
+
+        # MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([("A", "Z"), ("B", "X"), ("C", "C")])
+        kdf.columns = columns
+        pdf.columns = columns
+
+        # MultiIndex columns with axis=0 (default)
+        self.assert_eq(kdf.take([1, 2]).sort_index(), pdf.take([1, 2]).sort_index())
+        self.assert_eq(kdf.take([-1, -2]).sort_index(), pdf.take([-1, -2]).sort_index())
+        self.assert_eq(
+            kdf.take(range(100, 110)).sort_index(), pdf.take(range(100, 110)).sort_index()
+        )
+        self.assert_eq(
+            kdf.take(range(-110, -100)).sort_index(), pdf.take(range(-110, -100)).sort_index()
+        )
+        self.assert_eq(
+            kdf.take([10, 100, 1000, 10000]).sort_index(),
+            pdf.take([10, 100, 1000, 10000]).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([-10, -100, -1000, -10000]).sort_index(),
+            pdf.take([-10, -100, -1000, -10000]).sort_index(),
+        )
+
+        # axis=1
+        self.assert_eq(kdf.take([1, 2], axis=1).sort_index(), pdf.take([1, 2], axis=1).sort_index())
+        self.assert_eq(
+            kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index()
+        )
+        self.assert_eq(
+            kdf.take(range(1, 3), axis=1).sort_index(), pdf.take(range(1, 3), axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take(range(-1, -3), axis=1).sort_index(),
+            pdf.take(range(-1, -3), axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([2, 1], axis=1).sort_index(), pdf.take([2, 1], axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index(),
+        )
+
+        # Checking the type of indices.
+        self.assertRaises(ValueError, lambda: kdf.take(1))
+        self.assertRaises(ValueError, lambda: kdf.take("1"))
+        self.assertRaises(ValueError, lambda: kdf.take({1, 2}))
+        self.assertRaises(ValueError, lambda: kdf.take({1: None, 2: None}))
+
     def test_axes(self):
         pdf = self.pdf
         kdf = ks.from_pandas(pdf)

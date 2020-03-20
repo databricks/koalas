@@ -67,10 +67,8 @@ class _MissingPandasLikeIndex(object):
     slice_indexer = unsupported_function("slice_indexer")
     slice_locs = unsupported_function("slice_locs")
     sortlevel = unsupported_function("sortlevel")
-    take = unsupported_function("take")
     to_flat_index = unsupported_function("to_flat_index")
     to_native_types = unsupported_function("to_native_types")
-    union = unsupported_function("union")
     view = unsupported_function("view")
     where = unsupported_function("where")
 
@@ -148,11 +146,9 @@ class _MissingPandasLikeMultiIndex(object):
     slice_indexer = unsupported_function("slice_indexer")
     slice_locs = unsupported_function("slice_locs")
     sortlevel = unsupported_function("sortlevel")
-    take = unsupported_function("take")
     to_flat_index = unsupported_function("to_flat_index")
     to_native_types = unsupported_function("to_native_types")
     truncate = unsupported_function("truncate")
-    union = unsupported_function("union")
     view = unsupported_function("view")
     where = unsupported_function("where")
 
