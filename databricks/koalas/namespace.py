@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union, List, Tuple, Dict
+from typing import Optional, Union, List, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
@@ -42,6 +42,7 @@ from pyspark.sql.types import (
     DateType,
     StructType,
 )
+from py4j.protocol import Py4JJavaError
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
@@ -272,14 +273,35 @@ def read_csv(
 
         reader.options(**options)
 
-        if isinstance(names, str):
-            sdf = reader.schema(names).csv(path)
-        else:
-            sdf = reader.csv(path)
-            if header is None:
-                sdf = sdf.selectExpr(
-                    *["`%s` as `%s`" % (field.name, i) for i, field in enumerate(sdf.schema)]
-                )
+        try:
+            if isinstance(names, str):
+                sdf = reader.schema(names).csv(path)
+            else:
+                sdf = reader.csv(path)
+                if header is None:
+                    sdf = sdf.selectExpr(
+                        *["`%s` as `%s`" % (field.name, i) for i, field in enumerate(sdf.schema)]
+                    )
+        except Py4JJavaError:
+            if quotechar is None:
+                quotechar = '"'
+            pdf = pd.read_csv(
+                path,
+                sep=sep,
+                header=header,
+                names=names,
+                index_col=index_col,
+                usecols=usecols,
+                squeeze=squeeze,
+                mangle_dupe_cols=mangle_dupe_cols,
+                dtype=dtype,
+                parse_dates=parse_dates,
+                quotechar=quotechar,
+                escapechar=escapechar,
+                comment=comment,
+                **options
+            )
+            return from_pandas(pdf)
         if isinstance(names, list):
             names = list(names)
             if len(set(names)) != len(names):
@@ -375,7 +397,11 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
     0     a     b
     1     c     d
     """
-    return read_spark_io(path, format="json", index_col=index_col, **options)
+    try:
+        return read_spark_io(path, format="json", index_col=index_col, **options)
+    except Py4JJavaError:
+        pdf = pd.read_json(path, **options)
+        return from_pandas(pdf)
 
 
 def read_delta(
@@ -542,7 +568,7 @@ def read_spark_io(
     return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
-def read_parquet(path, columns=None, index_col=None) -> DataFrame:
+def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
     """Load a parquet object from the file path, returning a DataFrame.
 
     Parameters
@@ -575,7 +601,11 @@ def read_parquet(path, columns=None, index_col=None) -> DataFrame:
     if columns is not None:
         columns = list(columns)
     if columns is None or len(columns) > 0:
-        sdf = default_session().read.parquet(path)
+        try:
+            sdf = default_session().read.parquet(path)
+        except Py4JJavaError:
+            pdf = pd.read_parquet(path, columns=columns, **options)
+            return from_pandas(pdf)
         if columns is not None:
             fields = [field.name for field in sdf.schema]
             cols = [col for col in columns if col in fields]
