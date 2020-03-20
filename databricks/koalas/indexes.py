@@ -2000,7 +2000,13 @@ class MultiIndex(Index):
         else:
             return compare_null_last
 
-    def _is_monotonic(self):
+    def _is_monotonic(self, order):
+        if order == "increasing":
+            return self._is_monotonic_increasing().all()
+        else:
+            return self._is_monotonic_decreasing().all()
+
+    def _is_monotonic_increasing(self):
         scol = self._scol
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
         prev = F.lag(scol, 1).over(window)

@@ -568,17 +568,11 @@ class LocIndexer(_LocIndexerLike):
                 if (start is None and rows_sel.start is not None) or (
                     stop is None and rows_sel.stop is not None
                 ):
-                    inc, dec = (
-                        sdf.select(
-                            index_column._is_monotonic()._scol.alias("__increasing__"),
-                            index_column._is_monotonic_decreasing()._scol.alias("__decreasing__"),
-                        )
-                        .select(
-                            F.min(F.coalesce("__increasing__", F.lit(True))),
-                            F.min(F.coalesce("__decreasing__", F.lit(True))),
-                        )
-                        .first()
-                    )
+
+                    inc = index_column.is_monotonic_increasing
+                    if inc is False:
+                        dec = index_column.is_monotonic_decreasing
+
                     if start is None and rows_sel.start is not None:
                         start = rows_sel.start
                         if inc is not False:
