@@ -529,7 +529,7 @@ class KoalasHistPlot(HistPlot):
 
         for i, label in enumerate(self.data._internal.column_labels):
             # 'y' is a Spark DataFrame that selects one column.
-            y = sdf.select(self.data._internal.scol_for(label))
+            y = sdf.select(self.data._internal.spark_column_for(label))
             ax = self._get_ax(i)
 
             kwds = self.kwds.copy()
@@ -689,7 +689,7 @@ class KoalasKdePlot(KdePlot):
 
         for i, label in enumerate(self.data._internal.column_labels):
             # 'y' is a Spark DataFrame that selects one column.
-            y = sdf.select(self.data._internal.scol_for(label))
+            y = sdf.select(self.data._internal.spark_column_for(label))
             ax = self._get_ax(i)
 
             kwds = self.kwds.copy()

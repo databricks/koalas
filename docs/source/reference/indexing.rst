@@ -60,6 +60,8 @@ Modifying and computations
    Index.min
    Index.max
    Index.rename
+   Index.repeat
+   Index.take
    Index.unique
    Index.nunique
    Index.value_counts
@@ -71,6 +73,13 @@ Compatibility with MultiIndex
    :toctree: api/
 
    Index.set_names
+
+Compatibility with MultiIndex
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   Index.droplevel
 
 Missing Values
 ~~~~~~~~~~~~~~
@@ -112,6 +121,8 @@ Combining / joining / set operations
    :toctree: api/
 
    Index.append
+   Index.union
+   Index.difference
    Index.symmetric_difference
 
 Selecting
@@ -119,6 +130,7 @@ Selecting
 .. autosummary::
    :toctree: api/
 
+   Index.asof
    Index.isin
 
 .. _api.multiindex:
@@ -164,6 +176,13 @@ MultiIndex components
 
    MultiIndex.swaplevel
 
+MultiIndex components
+~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.droplevel
+
 MultiIndex Missing Values
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
@@ -182,6 +201,9 @@ MultiIndex Modifying and computations
    MultiIndex.drop
    MultiIndex.copy
    MultiIndex.rename
+   MultiIndex.repeat
+   MultiIndex.take
+   MultiIndex.unique
    MultiIndex.min
    MultiIndex.max
    MultiIndex.value_counts
@@ -192,6 +214,8 @@ MultiIndex Combining / joining / set operations
    :toctree: api/
 
    MultiIndex.append
+   MultiIndex.union
+   MultiIndex.difference
    MultiIndex.symmetric_difference
 
 MultiIndex Conversion

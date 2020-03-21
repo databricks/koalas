@@ -17,7 +17,7 @@
 """
 Base and utility classes for Koalas objects.
 """
-
+from collections import OrderedDict
 from functools import wraps, partial
 from typing import Union, Callable, Any
 
@@ -145,9 +145,6 @@ class IndexOpsMixin(object):
 
     :ivar spark_type: Spark data type
     :type spark_type: spark.types.DataType
-
-    def _with_new_scol(self, scol: spark.Column) -> IndexOpsMixin
-        Creates new object with the new column
     """
 
     def __init__(self, internal: _InternalFrame, kdf):
@@ -158,7 +155,7 @@ class IndexOpsMixin(object):
 
     @property
     def _scol(self):
-        return self._internal.scol
+        return self._internal.spark_column
 
     # arithmetic operators
     __neg__ = _column_op(spark.Column.__neg__)
@@ -322,10 +319,10 @@ class IndexOpsMixin(object):
         """
         Return boolean if values in the object are monotonically increasing.
 
-        .. note:: the current implementation of is_monotonic_increasing uses Spark's
-            Window without specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
+        .. note:: the current implementation of is_monotonic requires to shuffle
+            and aggregate multiple times to check the order locally and globally,
+            which is potentially expensive. In case of multi-index, all data are
+            transferred to single node which can easily cause out-of-memory error currently.
 
         Returns
         -------
@@ -388,12 +385,7 @@ class IndexOpsMixin(object):
         >>> midx.is_monotonic
         False
         """
-        return self._is_monotonic().all()
-
-    def _is_monotonic(self):
-        col = self._scol
-        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        return self._with_new_scol((col >= F.lag(col, 1).over(window)) & col.isNotNull())
+        return self._is_monotonic("increasing")
 
     is_monotonic_increasing = is_monotonic
 
@@ -402,10 +394,10 @@ class IndexOpsMixin(object):
         """
         Return boolean if values in the object are monotonically decreasing.
 
-        .. note:: the current implementation of is_monotonic_decreasing uses Spark's
-            Window without specifying partition specification. This leads to move all data into
-            single partition in single machine and could cause serious
-            performance degradation. Avoid this method against very large dataset.
+        .. note:: the current implementation of is_monotonic_decreasing requires to shuffle
+            and aggregate multiple times to check the order locally and globally,
+            which is potentially expensive. In case of multi-index, all data are transferred
+            to single node which can easily cause out-of-memory error currently.
 
         Returns
         -------
@@ -468,12 +460,80 @@ class IndexOpsMixin(object):
         >>> midx.is_monotonic_decreasing
         True
         """
-        return self._is_monotonic_decreasing().all()
+        return self._is_monotonic("decreasing")
 
-    def _is_monotonic_decreasing(self):
-        col = self._scol
-        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        return self._with_new_scol((col <= F.lag(col, 1).over(window)) & col.isNotNull())
+    def _is_locally_monotonic_spark_column(self, order):
+        window = (
+            Window.partitionBy(F.col("__partition_id"))
+            .orderBy(NATURAL_ORDER_COLUMN_NAME)
+            .rowsBetween(-1, -1)
+        )
+
+        if order == "increasing":
+            return (F.col("__origin") >= F.lag(F.col("__origin"), 1).over(window)) & F.col(
+                "__origin"
+            ).isNotNull()
+        else:
+            return (F.col("__origin") <= F.lag(F.col("__origin"), 1).over(window)) & F.col(
+                "__origin"
+            ).isNotNull()
+
+    def _is_monotonic(self, order):
+        assert order in ("increasing", "decreasing")
+
+        sdf = self._internal.spark_frame
+
+        sdf = (
+            sdf.select(
+                F.spark_partition_id().alias(
+                    "__partition_id"
+                ),  # Make sure we use the same partition id in the whole job.
+                F.col(NATURAL_ORDER_COLUMN_NAME),
+                self._scol.alias("__origin"),
+            )
+            .select(
+                F.col("__partition_id"),
+                F.col("__origin"),
+                self._is_locally_monotonic_spark_column(order).alias(
+                    "__comparison_within_partition"
+                ),
+            )
+            .groupby(F.col("__partition_id"))
+            .agg(
+                F.min(F.col("__origin")).alias("__partition_min"),
+                F.max(F.col("__origin")).alias("__partition_max"),
+                F.min(F.coalesce(F.col("__comparison_within_partition"), F.lit(True))).alias(
+                    "__comparison_within_partition"
+                ),
+            )
+        )
+
+        # Now we're windowing the aggregation results without partition specification.
+        # The number of rows here will be as the same of partitions, which is expected
+        # to be small.
+        window = Window.orderBy(F.col("__partition_id")).rowsBetween(-1, -1)
+        if order == "increasing":
+            comparison_col = F.col("__partition_min") >= F.lag(F.col("__partition_max"), 1).over(
+                window
+            )
+        else:
+            comparison_col = F.col("__partition_min") <= F.lag(F.col("__partition_max"), 1).over(
+                window
+            )
+
+        sdf = sdf.select(
+            comparison_col.alias("__comparison_between_partitions"),
+            F.col("__comparison_within_partition"),
+        )
+
+        ret = sdf.select(
+            F.min(F.coalesce(F.col("__comparison_between_partitions"), F.lit(True)))
+            & F.min(F.coalesce(F.col("__comparison_within_partition"), F.lit(True)))
+        ).collect()[0][0]
+        if ret is None:
+            return True
+        else:
+            return ret
 
     @property
     def ndim(self):
@@ -1031,7 +1091,7 @@ class IndexOpsMixin(object):
         else:
             sdf_dropna = self._internal._sdf.select(self._scol)
         index_name = SPARK_DEFAULT_INDEX_NAME
-        column_name = self._internal.data_columns[0]
+        column_name = self._internal.data_spark_column_names[0]
         sdf = sdf_dropna.groupby(scol_for(sdf_dropna, column_name).alias(index_name)).count()
         if sort:
             if ascending:
@@ -1046,14 +1106,16 @@ class IndexOpsMixin(object):
         column_labels = self._internal.column_labels
         if (column_labels[0] is None) or (None in column_labels[0]):
             internal = _InternalFrame(
-                sdf=sdf, index_map=[(index_name, None)], column_scols=[scol_for(sdf, "count")]
+                spark_frame=sdf,
+                index_map=OrderedDict({index_name: None}),
+                data_spark_columns=[scol_for(sdf, "count")],
             )
         else:
             internal = _InternalFrame(
-                sdf=sdf,
-                index_map=[(index_name, None)],
+                spark_frame=sdf,
+                index_map=OrderedDict({index_name: None}),
                 column_labels=column_labels,
-                column_scols=[scol_for(sdf, "count")],
+                data_spark_columns=[scol_for(sdf, "count")],
                 column_label_names=self._internal.column_label_names,
             )
 
@@ -1114,7 +1176,7 @@ class IndexOpsMixin(object):
         return res.collect()[0][0]
 
     def _nunique(self, dropna=True, approx=False, rsd=0.05):
-        colname = self._internal.data_columns[0]
+        colname = self._internal.data_spark_column_names[0]
         count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
         if dropna:
             return count_fn(self._scol).alias(colname)
@@ -1125,3 +1187,78 @@ class IndexOpsMixin(object):
                     0
                 )
             ).alias(colname)
+
+    def take(self, indices):
+        """
+        Return the elements in the given *positional* indices along an axis.
+
+        This means that we are not indexing according to actual values in
+        the index attribute of the object. We are indexing according to the
+        actual position of the element in the object.
+
+        Parameters
+        ----------
+        indices : array-like
+            An array of ints indicating which positions to take.
+
+        Returns
+        -------
+        taken : same type as caller
+            An array-like containing the elements taken from the object.
+
+        See Also
+        --------
+        DataFrame.loc : Select a subset of a DataFrame by labels.
+        DataFrame.iloc : Select a subset of a DataFrame by positions.
+        numpy.take : Take elements from an array along an axis.
+
+        Examples
+        --------
+
+        Series
+
+        >>> kser = ks.Series([100, 200, 300, 400, 500])
+        >>> kser
+        0    100
+        1    200
+        2    300
+        3    400
+        4    500
+        Name: 0, dtype: int64
+
+        >>> kser.take([0, 2, 4]).sort_index()
+        0    100
+        2    300
+        4    500
+        Name: 0, dtype: int64
+
+        Index
+
+        >>> kidx = ks.Index([100, 200, 300, 400, 500])
+        >>> kidx
+        Int64Index([100, 200, 300, 400, 500], dtype='int64')
+
+        >>> kidx.take([0, 2, 4]).sort_values()
+        Int64Index([100, 300, 500], dtype='int64')
+
+        MultiIndex
+
+        >>> kmidx = ks.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c")])
+        >>> kmidx  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('x', 'c')],
+                   )
+
+        >>> kmidx.take([0, 2])  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'c')],
+                   )
+        """
+        if not is_list_like(indices) or isinstance(indices, (dict, set)):
+            raise ValueError("`indices` must be a list-like except dict or set")
+        if isinstance(self, ks.Series):
+            result = self.iloc[indices]
+        elif isinstance(self, ks.Index):
+            result = self._kdf.iloc[indices].index
+        return result

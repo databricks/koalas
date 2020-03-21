@@ -26,16 +26,16 @@ import matplotlib
 
 matplotlib.use("agg")
 from matplotlib import pyplot as plt
-import pyspark
 import numpy as np
 import pandas as pd
+import pyspark
+from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
 from databricks.koalas import Series
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import _MissingPandasLikeSeries
-from databricks.koalas.utils import default_session
 
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
@@ -105,6 +105,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = self.pser
 
         self.assert_eq(kser.head(3), pser.head(3))
+        self.assert_eq(kser.head(0), pser.head(0))
+        self.assert_eq(kser.head(-3), pser.head(-3))
+        self.assert_eq(kser.head(-10), pser.head(-10))
 
         # TODO: self.assert_eq(kser.tail(3), pser.tail(3))
 
@@ -510,15 +513,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             )
 
     def test_value_counts(self):
-        if (
-            LooseVersion(pyspark.__version__) < LooseVersion("2.4")
-            and default_session().conf.get("spark.sql.execution.arrow.enabled") == "true"
-        ):
-            default_session().conf.set("spark.sql.execution.arrow.enabled", "false")
-            try:
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
                 self._test_value_counts()
-            finally:
-                default_session().conf.set("spark.sql.execution.arrow.enabled", "true")
             self.assertRaises(
                 RuntimeError,
                 lambda: ks.MultiIndex.from_tuples([("x", "a"), ("x", "b")]).value_counts(),
@@ -1283,3 +1280,45 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
         pser = kser.to_pandas()
         self.assert_list_eq(kser.axes, pser.axes)
+
+    def test_udt(self):
+        sparse_values = {0: 0.1, 1: 1.1}
+        sparse_vector = SparseVector(len(sparse_values), sparse_values)
+        pser = pd.Series([sparse_vector])
+
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+                kser = ks.from_pandas(pser)
+                self.assert_eq(kser, pser)
+        else:
+            kser = ks.from_pandas(pser)
+            self.assert_eq(kser, pser)
+
+    def test_repeat(self):
+        pser = pd.Series(["a", "b", "c"], name="0", index=np.random.rand(3))
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.repeat(3).sort_index(), pser.repeat(3).sort_index())
+        self.assert_eq(kser.repeat(0).sort_index(), pser.repeat(0).sort_index())
+
+        self.assertRaises(ValueError, lambda: kser.repeat(-1))
+        self.assertRaises(ValueError, lambda: kser.repeat("abc"))
+
+    def test_take(self):
+        pser = pd.Series([100, 200, 300, 400, 500], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.take([0, 2, 4]).sort_values(), pser.take([0, 2, 4]).sort_values())
+        self.assert_eq(
+            kser.take(range(0, 5, 2)).sort_values(), pser.take(range(0, 5, 2)).sort_values()
+        )
+        self.assert_eq(kser.take([-4, -2, 0]).sort_values(), pser.take([-4, -2, 0]).sort_values())
+        self.assert_eq(
+            kser.take(range(-2, 1, 2)).sort_values(), pser.take(range(-2, 1, 2)).sort_values()
+        )
+
+        # Checking the type of indices.
+        self.assertRaises(ValueError, lambda: kser.take(1))
+        self.assertRaises(ValueError, lambda: kser.take("1"))
+        self.assertRaises(ValueError, lambda: kser.take({1, 2}))
+        self.assertRaises(ValueError, lambda: kser.take({1: None, 2: None}))

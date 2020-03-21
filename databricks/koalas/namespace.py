@@ -17,8 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union, List
-from typing import Optional, Union, List, Tuple
+from typing import Optional, Union, List, Tuple, Dict
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
@@ -46,9 +45,15 @@ from pyspark.sql.types import (
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
-from databricks.koalas.utils import default_session, name_like_string, scol_for, validate_axis
+from databricks.koalas.utils import (
+    default_session,
+    name_like_string,
+    scol_for,
+    validate_axis,
+    align_diff_frames,
+)
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.internal import _InternalFrame, IndexMap
+from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.series import Series, _col
 
@@ -106,6 +111,9 @@ def from_pandas(pobj: Union["pd.DataFrame", "pd.Series"]) -> Union["Series", "Da
         return DataFrame(pd.DataFrame(index=pobj)).index
     else:
         raise ValueError("Unknown data type: {}".format(type(pobj)))
+
+
+_range = range  # built-in range
 
 
 def range(
@@ -327,7 +335,7 @@ def read_csv(
         sdf = default_session().createDataFrame([], schema=StructType())
 
     index_map = _get_index_map(sdf, index_col)
-    kdf = DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    kdf = DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
     if dtype is not None:
         if isinstance(dtype, dict):
@@ -478,7 +486,7 @@ def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> 
     sdf = default_session().read.table(name)
     index_map = _get_index_map(sdf, index_col)
 
-    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 def read_spark_io(
@@ -540,7 +548,7 @@ def read_spark_io(
     sdf = default_session().read.load(path=path, format=format, schema=schema, **options)
     index_map = _get_index_map(sdf, index_col)
 
-    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 def read_parquet(path, columns=None, index_col=None) -> DataFrame:
@@ -589,7 +597,7 @@ def read_parquet(path, columns=None, index_col=None) -> DataFrame:
 
     index_map = _get_index_map(sdf, index_col)
 
-    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 def read_clipboard(sep=r"\s+", **kwargs):
@@ -1055,7 +1063,7 @@ def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, *
     reader.options(**options)
     sdf = reader.format("jdbc").load()
     index_map = _get_index_map(sdf, index_col)
-    kdf = DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    kdf = DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
     if columns is not None:
         if isinstance(columns, str):
             columns = [columns]
@@ -1106,7 +1114,7 @@ def read_sql_query(sql, con, index_col=None, **options):
     reader.options(**options)
     sdf = reader.format("jdbc").load()
     index_map = _get_index_map(sdf, index_col)
-    return DataFrame(_InternalFrame(sdf=sdf, index_map=index_map))
+    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 # TODO: add `coerce_float`, `params`, and 'parse_dates' parameters
@@ -1504,7 +1512,7 @@ def get_dummies(
         )
 
     all_values = _reduce_spark_multi(
-        kdf._sdf, [F.collect_set(kdf._internal.scol_for(label)) for label in column_labels]
+        kdf._sdf, [F.collect_set(kdf._internal.spark_column_for(label)) for label in column_labels]
     )
     for i, label in enumerate(column_labels):
         values = sorted(all_values[i])
@@ -1540,11 +1548,11 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     objs : a sequence of Series or DataFrame
         Any None objects will be dropped silently unless
         they are all None in which case a ValueError will be raised
-    axis : {0/'index'}, default 0
+    axis : {0/'index', 1/'columns'}, default 0
         The axis to concatenate along.
     join : {'inner', 'outer'}, default 'outer'
-        How to handle indexes on other axis(es)
-    ignore_index : boolean, default False
+        How to handle indexes on other axis (or axes).
+    ignore_index : bool, default False
         If True, do not use the index values along the concatenation axis. The
         resulting axis will be labeled 0, ..., n - 1. This is useful if you are
         concatenating objects where the concatenation axis does not have
@@ -1553,14 +1561,17 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
 
     Returns
     -------
-    concatenated : object, type of objs
+    object, type of objs
         When concatenating all ``Series`` along the index (axis=0), a
         ``Series`` is returned. When ``objs`` contains at least one
-        ``DataFrame``, a ``DataFrame`` is returned.
+        ``DataFrame``, a ``DataFrame`` is returned. When concatenating along
+        the columns (axis=1), a ``DataFrame`` is returned.
 
     See Also
     --------
-    DataFrame.merge
+    Series.append : Concatenate Series.
+    DataFrame.join : Join DataFrames using indexes.
+    DataFrame.merge : Merge DataFrames by indexes or columns.
 
     Examples
     --------
@@ -1646,6 +1657,17 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     1      b       2
     0      c       3
     1      d       4
+
+    >>> df4 = ks.DataFrame([['bird', 'polly'], ['monkey', 'george']],
+    ...                    columns=['animal', 'name'])
+
+    Combine with column axis.
+
+    >>> ks.concat([df1, df4], axis=1)
+      letter  number  animal    name
+    0      a       1    bird   polly
+    1      b       2  monkey  george
+
     """
     if isinstance(objs, (DataFrame, IndexOpsMixin)) or not isinstance(
         objs, Iterable
@@ -1655,10 +1677,6 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
             "objects, you passed an object of type "
             '"{name}"'.format(name=type(objs).__name__)
         )
-
-    axis = validate_axis(axis)
-    if axis != 0:
-        raise NotImplementedError('axis should be either 0 or "index" currently.')
 
     if len(objs) == 0:
         raise ValueError("No objects to concatenate")
@@ -1674,6 +1692,63 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                 "; only ks.Series "
                 "and ks.DataFrame are valid".format(name=type(objs).__name__)
             )
+
+    axis = validate_axis(axis)
+    if axis == 1:
+        if isinstance(objs[0], ks.Series):
+            concat_kdf = objs[0].to_frame()
+        else:
+            concat_kdf = objs[0]
+
+        with ks.option_context("compute.ops_on_diff_frames", True):
+
+            def resolve_func(kdf, this_column_labels, that_column_labels):
+                duplicated_names = set(
+                    this_column_label[1:] for this_column_label in this_column_labels
+                ).intersection(
+                    set(that_column_label[1:] for that_column_label in that_column_labels)
+                )
+                assert (
+                    len(duplicated_names) > 0
+                ), "inner or full join type does not include non-common columns"
+                pretty_names = [name_like_string(column_label) for column_label in duplicated_names]
+                raise ValueError(
+                    "Labels have to be unique; however, got " "duplicated labels %s." % pretty_names
+                )
+
+            for kser_or_kdf in objs[1:]:
+                if isinstance(kser_or_kdf, Series):
+                    # TODO: there is a corner case to optimize - when the series are from
+                    #   the same DataFrame.
+                    that_kdf = kser_or_kdf.to_frame()
+                else:
+                    that_kdf = kser_or_kdf
+
+                this_index_level = concat_kdf._internal.column_labels_level
+                that_index_level = that_kdf._internal.column_labels_level
+
+                if this_index_level > that_index_level:
+                    concat_kdf = that_kdf._index_normalized_frame(concat_kdf)
+                if this_index_level < that_index_level:
+                    that_kdf = concat_kdf._index_normalized_frame(that_kdf)
+
+                if join == "inner":
+                    concat_kdf = align_diff_frames(
+                        resolve_func, concat_kdf, that_kdf, fillna=False, how="inner",
+                    )
+                elif join == "outer":
+                    concat_kdf = align_diff_frames(
+                        resolve_func, concat_kdf, that_kdf, fillna=False, how="full",
+                    )
+                else:
+                    raise ValueError(
+                        "Only can inner (intersect) or outer (union) join the other axis."
+                    )
+
+        if ignore_index:
+            concat_kdf.columns = list(map(str, _range(len(concat_kdf.columns))))
+
+        return concat_kdf
 
     # Series, Series ...
     # We should return Series if objects are all Series.
@@ -1747,14 +1822,14 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                 for label in columns_to_add:
                     sdf = sdf.withColumn(name_like_string(label), F.lit(None))
 
-                data_columns = kdf._internal.data_columns + [
+                data_columns = kdf._internal.data_spark_column_names + [
                     name_like_string(label) for label in columns_to_add
                 ]
                 kdf = DataFrame(
                     kdf._internal.copy(
-                        sdf=sdf,
+                        spark_frame=sdf,
                         column_labels=(kdf._internal.column_labels + columns_to_add),
-                        column_scols=[scol_for(sdf, col) for col in data_columns],
+                        data_spark_columns=[scol_for(sdf, col) for col in data_columns],
                     )
                 )
 
@@ -1763,19 +1838,22 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
             raise ValueError("Only can inner (intersect) or outer (union) join the other axis.")
 
     if ignore_index:
-        sdfs = [kdf._sdf.select(kdf._internal.column_scols) for kdf in kdfs]
+        sdfs = [kdf._sdf.select(kdf._internal.data_spark_columns) for kdf in kdfs]
     else:
         sdfs = [
-            kdf._sdf.select(kdf._internal.index_scols + kdf._internal.column_scols) for kdf in kdfs
+            kdf._sdf.select(kdf._internal.index_spark_columns + kdf._internal.data_spark_columns)
+            for kdf in kdfs
         ]
     concatenated = reduce(lambda x, y: x.union(y), sdfs)
 
     index_map = None if ignore_index else kdfs[0]._internal.index_map
     result_kdf = DataFrame(
         kdfs[0]._internal.copy(
-            sdf=concatenated,
+            spark_frame=concatenated,
             index_map=index_map,
-            column_scols=[scol_for(concatenated, col) for col in kdfs[0]._internal.data_columns],
+            data_spark_columns=[
+                scol_for(concatenated, col) for col in kdfs[0]._internal.data_spark_column_names
+            ],
         )
     )
 
@@ -2145,7 +2223,7 @@ def to_numeric(arg):
     1.0
     """
     if isinstance(arg, Series):
-        return arg._with_new_scol(arg._internal.scol.cast("float"))
+        return arg._with_new_scol(arg._internal.spark_column.cast("float"))
     else:
         return pd.to_numeric(arg)
 
@@ -2192,9 +2270,9 @@ def _get_index_map(sdf: spark.DataFrame, index_col: Optional[Union[str, List[str
         for col in index_col:
             if col not in sdf_columns:
                 raise KeyError(col)
-        index_map = [(col, (col,)) for col in index_col]  # type: Optional[List[IndexMap]]
+        index_map = OrderedDict((col, (col,)) for col in index_col)
     else:
-        index_map = None
+        index_map = None  # type: ignore
 
     return index_map
 

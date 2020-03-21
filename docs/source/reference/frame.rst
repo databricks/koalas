@@ -158,6 +158,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.head
    DataFrame.reset_index
    DataFrame.set_index
+   DataFrame.take
    DataFrame.isin
    DataFrame.sample
 
@@ -184,6 +185,7 @@ Reshaping, sorting, transposing
    DataFrame.sort_values
    DataFrame.nlargest
    DataFrame.nsmallest
+   DataFrame.stack
    DataFrame.unstack
    DataFrame.melt
    DataFrame.T

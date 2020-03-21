@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from distutils.version import LooseVersion
+import datetime
 import unittest
 
 import numpy as np
@@ -382,7 +382,8 @@ class IndexingTest(ReusedSQLTestCase):
         pdf = pdf.set_index("b", append=True)
 
         self.assert_eq(kdf.loc[:], pdf.loc[:])
-        self.assertRaises(NotImplementedError, lambda: kdf.loc[5:5])
+        self.assert_eq(kdf.loc[5:5], pdf.loc[5:5])
+        self.assert_eq(kdf.loc[5:9], pdf.loc[5:9])
 
         self.assert_eq(kdf.loc[5], pdf.loc[5])
         self.assert_eq(kdf.loc[9], pdf.loc[9])
@@ -393,6 +394,80 @@ class IndexingTest(ReusedSQLTestCase):
         self.assertTrue((kdf.a.loc[(5, 3)] == pdf.a.loc[(5, 3)]).all())
         self.assert_eq(kdf.a.loc[(9, 0)], pdf.a.loc[(9, 0)])
 
+        # monotonically increasing index test
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5]},
+            index=pd.MultiIndex.from_tuples(
+                [("x", "a"), ("x", "b"), ("y", "c"), ("y", "d"), ("z", "e")]
+            ),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        for rows_sel in [
+            slice(None),
+            slice("y", None),
+            slice(None, "y"),
+            slice(("x", "b"), None),
+            slice(None, ("y", "c")),
+            slice(("x", "b"), ("y", "c")),
+            slice("x", ("y", "c")),
+            slice(("x", "b"), "y"),
+        ]:
+            with self.subTest("monotonically increasing", rows_sel=rows_sel):
+                self.assert_eq(kdf.loc[rows_sel], pdf.loc[rows_sel])
+                self.assert_eq(kdf.a.loc[rows_sel], pdf.a.loc[rows_sel])
+
+        # monotonically increasing first index test
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5]},
+            index=pd.MultiIndex.from_tuples(
+                [("x", "a"), ("x", "b"), ("y", "c"), ("y", "a"), ("z", "e")]
+            ),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        for rows_sel in [
+            slice(None),
+            slice("y", None),
+            slice(None, "y"),
+        ]:
+            with self.subTest("monotonically increasing first index", rows_sel=rows_sel):
+                self.assert_eq(kdf.loc[rows_sel], pdf.loc[rows_sel])
+                self.assert_eq(kdf.a.loc[rows_sel], pdf.a.loc[rows_sel])
+
+        for rows_sel in [
+            slice(("x", "b"), None),
+            slice(None, ("y", "c")),
+            slice(("x", "b"), ("y", "c")),
+            slice("x", ("y", "c")),
+            slice(("x", "b"), "y"),
+        ]:
+            with self.subTest("monotonically increasing first index", rows_sel=rows_sel):
+                self.assertRaises(KeyError, lambda: kdf.loc[rows_sel])
+                self.assertRaises(KeyError, lambda: kdf.a.loc[rows_sel])
+
+        # not monotonically increasing index test
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5]},
+            index=pd.MultiIndex.from_tuples(
+                [("z", "e"), ("y", "d"), ("y", "c"), ("x", "b"), ("x", "a")]
+            ),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        for rows_sel in [
+            slice("y", None),
+            slice(None, "y"),
+            slice(("x", "b"), None),
+            slice(None, ("y", "c")),
+            slice(("x", "b"), ("y", "c")),
+            slice("x", ("y", "c")),
+            slice(("x", "b"), "y"),
+        ]:
+            with self.subTest("monotonically decreasing", rows_sel=rows_sel):
+                self.assertRaises(KeyError, lambda: kdf.loc[rows_sel])
+                self.assertRaises(KeyError, lambda: kdf.a.loc[rows_sel])
+
     def test_loc2d_multiindex(self):
         kdf = self.kdf
         kdf = kdf.set_index("b", append=True)
@@ -401,7 +476,11 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assert_eq(kdf.loc[:, :], pdf.loc[:, :])
         self.assert_eq(kdf.loc[:, "a"], pdf.loc[:, "a"])
-        self.assertRaises(NotImplementedError, lambda: kdf.loc[5:5, "a"])
+        self.assert_eq(kdf.loc[5:5, "a"], pdf.loc[5:5, "a"])
+
+        self.assert_eq(kdf.loc[:, "a":"a"], pdf.loc[:, "a":"a"])
+        self.assert_eq(kdf.loc[:, "a":"c"], pdf.loc[:, "a":"c"])
+        self.assert_eq(kdf.loc[:, "b":"c"], pdf.loc[:, "b":"c"], almost=True)
 
     def test_loc2d(self):
         kdf = self.kdf
@@ -434,6 +513,10 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kdf.loc[5, ["a"]], pdf.loc[5, ["a"]])
         self.assert_eq(kdf.loc[9, ["a"]], pdf.loc[9, ["a"]])
 
+        self.assert_eq(kdf.loc[:, "a":"a"], pdf.loc[:, "a":"a"])
+        self.assert_eq(kdf.loc[:, "a":"d"], pdf.loc[:, "a":"d"])
+        self.assert_eq(kdf.loc[:, "c":"d"], pdf.loc[:, "c":"d"], almost=True)
+
     def test_loc2d_multiindex_columns(self):
         arrays = [np.array(["bar", "bar", "baz", "baz"]), np.array(["one", "two", "one", "two"])]
 
@@ -442,6 +525,33 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assert_eq(kdf.loc["B":"B", "bar"], pdf.loc["B":"B", "bar"])
         self.assert_eq(kdf.loc["B":"B", ["bar"]], pdf.loc["B":"B", ["bar"]])
+
+        self.assert_eq(kdf.loc[:, "bar":"bar"], pdf.loc[:, "bar":"bar"])
+        self.assert_eq(kdf.loc[:, "bar":("baz", "one")], pdf.loc[:, "bar":("baz", "one")])
+        self.assert_eq(
+            kdf.loc[:, ("bar", "two"):("baz", "one")], pdf.loc[:, ("bar", "two"):("baz", "one")]
+        )
+        self.assert_eq(kdf.loc[:, ("bar", "two"):"bar"], pdf.loc[:, ("bar", "two"):"bar"])
+        self.assert_eq(kdf.loc[:, "a":"bax"], pdf.loc[:, "a":"bax"])
+        self.assert_eq(
+            kdf.loc[:, ("bar", "x"):("baz", "a")],
+            pdf.loc[:, ("bar", "x"):("baz", "a")],
+            almost=True,
+        )
+
+        pdf = pd.DataFrame(
+            np.random.randn(3, 4),
+            index=["A", "B", "C"],
+            columns=pd.MultiIndex.from_tuples(
+                [("bar", "two"), ("bar", "one"), ("baz", "one"), ("baz", "two")]
+            ),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.loc[:, "bar":"baz"], pdf.loc[:, "bar":"baz"])
+
+        self.assertRaises(KeyError, lambda: kdf.loc[:, "bar":("baz", "one")])
+        self.assertRaises(KeyError, lambda: kdf.loc[:, ("bar", "two"):"bar"])
 
     def test_loc2d_with_known_divisions(self):
         pdf = pd.DataFrame(
@@ -650,7 +760,7 @@ class IndexingTest(ReusedSQLTestCase):
             self.assert_eq(kdf.iloc[:, indexer], pdf.iloc[:, indexer])
             self.assert_eq(kdf.iloc[:1, indexer], pdf.iloc[:1, indexer])
             self.assert_eq(kdf.iloc[:-1, indexer], pdf.iloc[:-1, indexer])
-            self.assert_eq(kdf.iloc[kdf.index == 2, indexer], pdf.iloc[pdf.index == 2, indexer])
+            # self.assert_eq(kdf.iloc[kdf.index == 2, indexer], pdf.iloc[pdf.index == 2, indexer])
 
     def test_iloc_multiindex_columns(self):
         arrays = [np.array(["bar", "bar", "baz", "baz"]), np.array(["one", "two", "one", "two"])]
@@ -662,7 +772,8 @@ class IndexingTest(ReusedSQLTestCase):
             self.assert_eq(kdf.iloc[:, indexer], pdf.iloc[:, indexer])
             self.assert_eq(kdf.iloc[:1, indexer], pdf.iloc[:1, indexer])
             self.assert_eq(kdf.iloc[:-1, indexer], pdf.iloc[:-1, indexer])
-            self.assert_eq(kdf.iloc[kdf.index == "B", indexer], pdf.iloc[pdf.index == "B", indexer])
+            # self.assert_eq(kdf.iloc[kdf.index == "B", indexer],
+            #                pdf.iloc[pdf.index == "B", indexer])
 
     def test_iloc_series(self):
         pseries = pd.Series([1, 2, 3])
@@ -672,6 +783,54 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kseries.iloc[:], pseries.iloc[:])
         self.assert_eq(kseries.iloc[:1], pseries.iloc[:1])
         self.assert_eq(kseries.iloc[:-1], pseries.iloc[:-1])
+
+    def test_iloc_slice_rows_sel(self):
+        pdf = pd.DataFrame({"A": [1, 2] * 5, "B": [3, 4] * 5, "C": [5, 6] * 5})
+        kdf = ks.from_pandas(pdf)
+
+        for rows_sel in [
+            slice(None),
+            slice(0, 1),
+            slice(1, 2),
+            slice(-3, None),
+            slice(None, -3),
+            slice(None, None, 3),
+            slice(3, 8, 2),
+            slice(None, None, -2),
+            slice(8, 3, -2),
+            slice(8, None, -2),
+            slice(None, 3, -2),
+        ]:
+            with self.subTest(rows_sel=rows_sel):
+                self.assert_eq(kdf.iloc[rows_sel].sort_index(), pdf.iloc[rows_sel].sort_index())
+                self.assert_eq(kdf.A.iloc[rows_sel].sort_index(), pdf.A.iloc[rows_sel].sort_index())
+
+    def test_iloc_iterable_rows_sel(self):
+        pdf = pd.DataFrame({"A": [1, 2] * 5, "B": [3, 4] * 5, "C": [5, 6] * 5})
+        kdf = ks.from_pandas(pdf)
+
+        for rows_sel in [
+            [],
+            np.array([0, 1]),
+            [1, 2],
+            np.array([-3]),
+            [3],
+            np.array([-2]),
+            [8, 3, -5],
+        ]:
+            with self.subTest(rows_sel=rows_sel):
+                self.assert_eq(kdf.iloc[rows_sel].sort_index(), pdf.iloc[rows_sel].sort_index())
+                self.assert_eq(kdf.A.iloc[rows_sel].sort_index(), pdf.A.iloc[rows_sel].sort_index())
+
+            with self.subTest(rows_sel=rows_sel):
+                self.assert_eq(
+                    kdf.iloc[rows_sel, :].sort_index(), pdf.iloc[rows_sel, :].sort_index()
+                )
+
+            with self.subTest(rows_sel=rows_sel):
+                self.assert_eq(
+                    kdf.iloc[rows_sel, :1].sort_index(), pdf.iloc[rows_sel, :1].sort_index()
+                )
 
     def test_setitem(self):
         pdf = pd.DataFrame(
@@ -714,28 +873,6 @@ class IndexingTest(ReusedSQLTestCase):
         pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})
         kdf = ks.from_pandas(pdf)
 
-        with self.assertRaisesRegex(
-            SparkPandasNotImplementedError, "Cannot use start or step with Spark."
-        ):
-            kdf.iloc[0:]
-
-        with self.assertRaisesRegex(
-            SparkPandasNotImplementedError, "Cannot use start or step with Spark."
-        ):
-            kdf.iloc[:2:2]
-
-        with self.assertRaisesRegex(
-            SparkPandasNotImplementedError,
-            ".iloc requires numeric slice or conditional boolean Index",
-        ):
-            kdf.iloc[[0, 1], :]
-
-        with self.assertRaisesRegex(
-            SparkPandasNotImplementedError,
-            ".iloc requires numeric slice or conditional boolean Index",
-        ):
-            kdf.A.iloc[[0, 1]]
-
         with self.assertRaisesRegex(SparkPandasIndexingError, "Only accepts pairs of candidates"):
             kdf.iloc[[0, 1], [0, 1], [1, 2]]
 
@@ -756,3 +893,63 @@ class IndexingTest(ReusedSQLTestCase):
 
         with self.assertRaisesRegex(IndexError, "out of range"):
             kdf.iloc[:, [5, 6]]
+
+    def test_index_operator_datetime(self):
+        dates = pd.date_range("20130101", periods=6)
+        pdf = pd.DataFrame(np.random.randn(6, 4), index=dates, columns=list("ABCD"))
+        kdf = ks.from_pandas(pdf)
+
+        # Positional iloc search
+        self.assert_eq(kdf[:4], pdf[:4])
+        self.assert_eq(kdf[:3], pdf[:3])
+        self.assert_eq(kdf[3:], pdf[3:])
+        self.assert_eq(kdf[2:], pdf[2:])
+        self.assert_eq(kdf[2:3], pdf[2:3])
+        self.assert_eq(kdf[2:-1], pdf[2:-1])
+        self.assert_eq(kdf[10:3], pdf[10:3])
+
+        # Index loc search
+        self.assert_eq(kdf.A[4], pdf.A[4])
+        self.assert_eq(kdf.A[3], pdf.A[3])
+
+        # Positional iloc search
+        self.assert_eq(kdf.A[:4], pdf.A[:4])
+        self.assert_eq(kdf.A[:3], pdf.A[:3])
+        self.assert_eq(kdf.A[3:], pdf.A[3:])
+        self.assert_eq(kdf.A[2:], pdf.A[2:])
+        self.assert_eq(kdf.A[2:3], pdf.A[2:3])
+        self.assert_eq(kdf.A[2:-1], pdf.A[2:-1])
+        self.assert_eq(kdf.A[10:3], pdf.A[10:3])
+
+        dt1 = datetime.datetime.strptime("2013-01-02", "%Y-%m-%d")
+        dt2 = datetime.datetime.strptime("2013-01-04", "%Y-%m-%d")
+
+        # Index loc search
+        self.assert_eq(kdf[:dt2], pdf[:dt2])
+        self.assert_eq(kdf[dt1:], pdf[dt1:])
+        self.assert_eq(kdf[dt1:dt2], pdf[dt1:dt2])
+        self.assert_eq(kdf.A[dt2], pdf.A[dt2])
+        self.assert_eq(kdf.A[:dt2], pdf.A[:dt2])
+        self.assert_eq(kdf.A[dt1:], pdf.A[dt1:])
+        self.assert_eq(kdf.A[dt1:dt2], pdf.A[dt1:dt2])
+
+    def test_index_operator_int(self):
+        pdf = pd.DataFrame(np.random.randn(6, 4), index=[1, 3, 5, 7, 9, 11], columns=list("ABCD"))
+        kdf = ks.from_pandas(pdf)
+
+        # Positional iloc search
+        self.assert_eq(kdf[:4], pdf[:4])
+        self.assert_eq(kdf[:3], pdf[:3])
+        self.assert_eq(kdf[3:], pdf[3:])
+        self.assert_eq(kdf[2:], pdf[2:])
+        self.assert_eq(kdf[2:3], pdf[2:3])
+        self.assert_eq(kdf[2:-1], pdf[2:-1])
+        self.assert_eq(kdf[10:3], pdf[10:3])
+
+        # Index loc search
+        self.assert_eq(kdf.A[5], pdf.A[5])
+        self.assert_eq(kdf.A[3], pdf.A[3])
+        with self.assertRaisesRegex(
+            NotImplementedError, "Duplicated row selection is not currently supported"
+        ):
+            kdf.iloc[[1, 1]]

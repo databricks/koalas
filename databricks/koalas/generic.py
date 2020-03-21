@@ -18,7 +18,7 @@
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
 import warnings
-from collections import Counter
+from collections import Counter, OrderedDict
 from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
@@ -34,7 +34,12 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
-from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for, validate_axis
+from databricks.koalas.utils import (
+    validate_arguments_and_invoke_function,
+    scol_for,
+    validate_axis,
+    align_diff_frames,
+)
 from databricks.koalas.window import Rolling, Expanding
 
 
@@ -688,13 +693,15 @@ class _Frame(object):
         elif isinstance(header, list):
             sdf = kdf._sdf.select(
                 [
-                    self._internal.scol_for(label).alias(new_name)
+                    self._internal.spark_column_for(label).alias(new_name)
                     for (label, new_name) in zip(column_labels, header)
                 ]
             )
             header = True
         else:
-            sdf = kdf._sdf.select([kdf._internal.scol_for(label) for label in column_labels])
+            sdf = kdf._sdf.select(
+                [kdf._internal.spark_column_for(label) for label in column_labels]
+            )
 
         if num_files is not None:
             sdf = sdf.repartition(num_files)
@@ -935,9 +942,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -954,7 +961,7 @@ class _Frame(object):
         >>> df.mean()
         a    2.0
         b    0.2
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.mean(axis=1)
         0    0.55
@@ -980,9 +987,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -999,7 +1006,7 @@ class _Frame(object):
         >>> df.sum()
         a    6.0
         b    0.6
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.sum(axis=1)
         0    1.1
@@ -1025,9 +1032,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -1064,9 +1071,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -1083,7 +1090,7 @@ class _Frame(object):
         >>> df.kurtosis()
         a   -1.5
         b   -1.5
-        dtype: float64
+        Name: 0, dtype: float64
 
         On a Series:
 
@@ -1105,8 +1112,9 @@ class _Frame(object):
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
         numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+            If True, include only float, int, boolean columns. This parameter is mainly for
+            pandas compatibility. False is supported; however, the columns should
+            be all numeric or all non-numeric.
 
         Returns
         -------
@@ -1123,7 +1131,7 @@ class _Frame(object):
         >>> df.min()
         a    1.0
         b    0.1
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.min(axis=1)
         0    0.1
@@ -1150,8 +1158,9 @@ class _Frame(object):
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
         numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+            If True, include only float, int, boolean columns. This parameter is mainly for
+            pandas compatibility. False is supported; however, the columns should
+            be all numeric or all non-numeric.
 
         Returns
         -------
@@ -1168,7 +1177,7 @@ class _Frame(object):
         >>> df.max()
         a    3.0
         b    0.3
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.max(axis=1)
         0    1.0
@@ -1194,9 +1203,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -1213,7 +1222,7 @@ class _Frame(object):
         >>> df.std()
         a    1.0
         b    0.1
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.std(axis=1)
         0    0.636396
@@ -1239,9 +1248,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -1258,7 +1267,7 @@ class _Frame(object):
         >>> df.var()
         a    1.00
         b    0.01
-        dtype: float64
+        Name: 0, dtype: float64
 
         >>> df.var(axis=1)
         0    0.405
@@ -1397,34 +1406,32 @@ class _Frame(object):
         ...Falcon      375.0
         ...Parrot       25.0
         """
-        from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series
         from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 
         df_or_s = self
-        if isinstance(by, DataFrame):
+        if isinstance(by, ks.DataFrame):
             raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
         elif isinstance(by, str):
-            if isinstance(df_or_s, Series):
+            if isinstance(df_or_s, ks.Series):
                 raise KeyError(by)
             by = [(by,)]
         elif isinstance(by, tuple):
-            if isinstance(df_or_s, Series):
+            if isinstance(df_or_s, ks.Series):
                 for key in by:
                     if isinstance(key, str):
                         raise KeyError(key)
             for key in by:
-                if isinstance(key, DataFrame):
+                if isinstance(key, ks.DataFrame):
                     raise ValueError("Grouper for '{}' not 1-dimensional".format(type(key)))
             by = [by]
-        elif isinstance(by, Series):
+        elif isinstance(by, ks.Series):
             by = [by]
         elif isinstance(by, Iterable):
-            if isinstance(df_or_s, Series):
+            if isinstance(df_or_s, ks.Series):
                 for key in by:
                     if isinstance(key, str):
                         raise KeyError(key)
-            by = [key if isinstance(key, (tuple, Series)) else (key,) for key in by]
+            by = [key if isinstance(key, (tuple, ks.Series)) else (key,) for key in by]
         else:
             raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
         if not len(by):
@@ -1432,18 +1439,61 @@ class _Frame(object):
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
-        if isinstance(df_or_s, DataFrame):
-            df = df_or_s  # type: DataFrame
-            col_by = [_resolve_col(df, col_or_s) for col_or_s in by]
-            return DataFrameGroupBy(df_or_s, col_by, as_index=as_index)
-        if isinstance(df_or_s, Series):
-            col = df_or_s  # type: Series
-            anchor = df_or_s._kdf
-            col_by = [_resolve_col(anchor, col_or_s) for col_or_s in by]
+
+        if isinstance(df_or_s, ks.DataFrame):
+            df = df_or_s  # type: ks.DataFrame
+
+            # This is to match the output with pandas'. Pandas seems returning different results
+            # when given series is from different dataframes. It only applies when as_index is
+            # False.
+            should_drop_index = any(
+                isinstance(col_or_s, ks.Series) and df is not col_or_s._kdf for col_or_s in by
+            )
+
+            kdf, col_by = self._resolve_grouping_series(by)
+            return DataFrameGroupBy(
+                kdf, col_by, as_index=as_index, should_drop_index=should_drop_index
+            )
+        if isinstance(df_or_s, ks.Series):
+            col = df_or_s  # type: ks.Series
+            _, col_by = self._resolve_grouping_series(by)
             return SeriesGroupBy(col, col_by, as_index=as_index)
         raise TypeError(
             "Constructor expects DataFrame or Series; however, " "got [%s]" % (df_or_s,)
         )
+
+    def _resolve_grouping_series(self, by):
+        should_use_name = False
+        if isinstance(self, ks.Series):
+            kdf = self._kdf
+        else:
+            kdf = self
+        for col_or_s in by:
+            if isinstance(col_or_s, ks.Series) and kdf is not col_or_s._kdf:
+
+                def assign_columns(kdf, this_column_labels, that_column_labels):
+                    raise NotImplementedError(
+                        "Duplicated labels with groupby() and "
+                        "'compute.ops_on_diff_frames' option are not supported currently "
+                        "Please use unique labels in series and frames."
+                    )
+
+                kdf = align_diff_frames(assign_columns, kdf, col_or_s, fillna=False, how="inner")
+                # Should use name to search series because now the anchor is different
+                should_use_name = True
+
+        new_by_series = []
+        for col_or_s in by:
+            if isinstance(col_or_s, ks.Series) and should_use_name:
+                new_by_series.append(kdf[col_or_s.name])
+            elif isinstance(col_or_s, ks.Series):
+                new_by_series.append(col_or_s)
+            elif isinstance(col_or_s, tuple):
+                new_by_series.append(kdf[col_or_s])
+            else:
+                raise ValueError(col_or_s)
+
+        return kdf, new_by_series
 
     def bool(self):
         """
@@ -1564,13 +1614,13 @@ class _Frame(object):
         >>> s.first_valid_index()
         ('cow', 'weight')
         """
-        sdf = self._internal.sdf
-        column_scols = self._internal.column_scols
-        cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), column_scols))
+        sdf = self._internal.spark_frame
+        data_spark_columns = self._internal.data_spark_columns
+        cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
 
         first_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).first()
         first_valid_idx = tuple(
-            first_valid_row[idx_col] for idx_col in self._internal.index_columns
+            first_valid_row[idx_col] for idx_col in self._internal.index_spark_column_names
         )
 
         if len(first_valid_idx) == 1:
@@ -1659,7 +1709,8 @@ class _Frame(object):
             kser = _col(kdf_or_kser.to_frame())
             return kser._reduce_for_stat_function(
                 lambda _: F.expr(
-                    "approx_percentile(`%s`, 0.5, %s)" % (kser._internal.data_columns[0], accuracy)
+                    "approx_percentile(`%s`, 0.5, %s)"
+                    % (kser._internal.data_spark_column_names[0], accuracy)
                 ),
                 name="median",
             )
@@ -1668,9 +1719,9 @@ class _Frame(object):
         # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
         # to get a column name from Spark column but we need it to pass it through `expr`.
         kdf = kdf_or_kser
-        sdf = kdf._sdf.select(kdf._internal.scols)
+        sdf = kdf._sdf.select(kdf._internal.spark_columns)
         median = lambda name: F.expr("approx_percentile(`%s`, 0.5, %s)" % (name, accuracy))
-        sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_columns])
+        sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_spark_column_names])
 
         # Attach a dummy column for index to avoid default index.
         sdf = _InternalFrame.attach_distributed_column(sdf, "__DUMMY__")
@@ -1679,9 +1730,11 @@ class _Frame(object):
         return (
             DataFrame(
                 kdf._internal.copy(
-                    sdf=sdf,
-                    index_map=[("__DUMMY__", None)],
-                    column_scols=[scol_for(sdf, col) for col in kdf._internal.data_columns],
+                    spark_frame=sdf,
+                    index_map=OrderedDict({"__DUMMY__": None}),
+                    data_spark_columns=[
+                        scol_for(sdf, col) for col in kdf._internal.data_spark_column_names
+                    ],
                 )
             )
             ._to_internal_pandas()
@@ -1826,17 +1879,3 @@ class _Frame(object):
             return F.count(F.nanvl(col, F.lit(None)))
         else:
             return F.count(col)
-
-
-def _resolve_col(kdf, col_like):
-    if isinstance(col_like, ks.Series):
-        if kdf is not col_like._kdf:
-            raise ValueError(
-                "Cannot combine the series because it comes from a different dataframe. "
-                "In order to allow this operation, enable 'compute.ops_on_diff_frames' option."
-            )
-        return col_like
-    elif isinstance(col_like, tuple):
-        return kdf[col_like]
-    else:
-        raise ValueError(col_like)
