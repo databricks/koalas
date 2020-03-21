@@ -3551,9 +3551,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Truncates a sorted Series before and/or after some particular index value.
         Series should have sorted index.
 
-        .. note:: the current implementation of truncate uses is_monotonic_increasing internally
-            This leads to move all data into single partition in single machine and could cause
-            serious performance degradation. Avoid this method against very large dataset.
+        .. note:: This API is dependent on :meth:`Index.is_monotonic_increasing`
+            which can be expensive.
 
         Parameters
         ----------

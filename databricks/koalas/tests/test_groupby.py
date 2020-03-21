@@ -1082,8 +1082,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby(["a", "b"]).apply(lambda x: x * x).sort_index(),
         )
         self.assert_eq(
-            kdf.groupby(["b"])["c"].apply(lambda x: x).sort_index(),
-            pdf.groupby(["b"])["c"].apply(lambda x: x).sort_index(),
+            kdf.groupby(["b"])["c"].apply(lambda x: 1).sort_index(),
+            pdf.groupby(["b"])["c"].apply(lambda x: 1).sort_index(),
         )
 
         with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
@@ -1095,13 +1095,24 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf.columns = columns
 
         self.assert_eq(
-            kdf.groupby(("x", "b")).apply(lambda x: x + 1).sort_index(),
-            pdf.groupby(("x", "b")).apply(lambda x: x + 1).sort_index(),
+            kdf.groupby(("x", "b")).apply(lambda x: 1).sort_index(),
+            pdf.groupby(("x", "b")).apply(lambda x: 1).sort_index(),
         )
         self.assert_eq(
             kdf.groupby([("x", "a"), ("x", "b")]).apply(lambda x: x * x).sort_index(),
             pdf.groupby([("x", "a"), ("x", "b")]).apply(lambda x: x * x).sort_index(),
         )
+
+    def test_apply_without_shortcut(self):
+        with option_context("compute.shortcut_limit", 0):
+            self.test_apply()
+
+    def test_apply_negative(self):
+        def func(_) -> ks.Series[int]:
+            return pd.Series([1])
+
+        with self.assertRaisesRegex(TypeError, "Series as a return type hint at frame groupby"):
+            ks.range(10).groupby("id").apply(func)
 
     def test_apply_with_new_dataframe(self):
         pdf = pd.DataFrame(
@@ -1146,6 +1157,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             .sort_index(),
         )
 
+    def test_apply_with_new_dataframe_without_shortcut(self):
+        with option_context("compute.shortcut_limit", 0):
+            self.test_apply_with_new_dataframe()
+
     def test_transform(self):
         pdf = pd.DataFrame(
             {"a": [1, 2, 3, 4, 5, 6], "b": [1, 1, 2, 3, 5, 8], "c": [1, 4, 9, 16, 25, 36]},
@@ -1179,44 +1194,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby([("x", "a"), ("x", "b")]).transform(lambda x: x * x).sort_index(),
         )
 
-        with option_context("compute.shortcut_limit", 1000):
-            pdf = pd.DataFrame(
-                {
-                    "a": [1, 2, 3, 4, 5, 6] * 300,
-                    "b": [1, 1, 2, 3, 5, 8] * 300,
-                    "c": [1, 4, 9, 16, 25, 36] * 300,
-                },
-                columns=["a", "b", "c"],
-            )
-            kdf = ks.from_pandas(pdf)
-            self.assert_eq(
-                kdf.groupby("b").transform(lambda x: x + 1).sort_index(),
-                pdf.groupby("b").transform(lambda x: x + 1).sort_index(),
-            )
-            self.assert_eq(
-                kdf.groupby(["a", "b"]).transform(lambda x: x * x).sort_index(),
-                pdf.groupby(["a", "b"]).transform(lambda x: x * x).sort_index(),
-            )
-            self.assert_eq(
-                kdf.groupby(["b"])["a"].transform(lambda x: x).sort_index(),
-                pdf.groupby(["b"])["a"].transform(lambda x: x).sort_index(),
-            )
-            with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
-                kdf.groupby("b").transform(1)
-
-            # multi-index columns
-            columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
-            pdf.columns = columns
-            kdf.columns = columns
-
-            self.assert_eq(
-                kdf.groupby(("x", "b")).transform(lambda x: x + 1).sort_index(),
-                pdf.groupby(("x", "b")).transform(lambda x: x + 1).sort_index(),
-            )
-            self.assert_eq(
-                kdf.groupby([("x", "a"), ("x", "b")]).transform(lambda x: x * x).sort_index(),
-                pdf.groupby([("x", "a"), ("x", "b")]).transform(lambda x: x * x).sort_index(),
-            )
+    def test_transform_without_shortcut(self):
+        with option_context("compute.shortcut_limit", 0):
+            self.test_transform()
 
     def test_filter(self):
         pdf = pd.DataFrame(
