@@ -4466,7 +4466,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             combined[that] = other
 
         sdf = combined._sdf
-        index_scols = combined._internal.index_scols
+        index_scols = combined._internal.index_spark_columns
 
         if fill_value not in (None, np.nan):
             sdf = sdf.fillna(fill_value, subset=[this, that])
@@ -4474,7 +4474,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         # applying spark_udf
         sdf = sdf.select(*index_scols, spark_udf(this, that).alias(name))
 
-        internal = _InternalFrame(sdf=sdf, index_map=self._internal.index_map)
+        internal = _InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
 
         return _col(ks.DataFrame(internal))
 
