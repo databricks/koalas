@@ -9740,15 +9740,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         is_series = False
         is_scalar_ = False
 
-        # TODO: Cannot operate `inplace=True` if there is not assignment in `expr`.
-        # There is no way to check now, so leave it to pandas for now with minimum data.
-        if inplace:
-            self.head(0).to_pandas().eval(expr, inplace)
-
+        # Since `eva_func` doesn't have a type hint, inferring the schema is always preformed
+        # in the `map_in_pandas`. Hence, the variables `is_seires` and `is_scalar_` can be updated.
         def eval_func(pdf):
             nonlocal is_series
             nonlocal is_scalar_
-            result_inner = pdf.eval(expr)
+            result_inner = pdf.eval(expr, inplace=inplace)
+            if inplace:
+                result_inner = pdf
             if isinstance(result_inner, pd.Series):
                 is_series = True
                 result_inner = result_inner.to_frame()
