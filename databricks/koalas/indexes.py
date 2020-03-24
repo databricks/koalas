@@ -386,6 +386,8 @@ class Index(IndexOpsMixin):
         array([0, 1, 2, 3])
         >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[[1, 2, 3], [4, 5, 6]]).index.to_numpy()
         array([(1, 4), (2, 5), (3, 6)], dtype=object)
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[[1, 2, 3], [4, 5, 6]]).index.to_numpy(copy=True)
+        array([(1, 4), (2, 5), (3, 6)], dtype=object)
         """
         result = np.asarray(self.to_pandas()._values, dtype=dtype)
         if copy:
