@@ -47,7 +47,6 @@ class _MissingPandasLikeDataFrame(object):
     cov = unsupported_function("cov")
     dot = unsupported_function("dot")
     droplevel = unsupported_function("droplevel")
-    eval = unsupported_function("eval")
     ewm = unsupported_function("ewm")
     first = unsupported_function("first")
     infer_objects = unsupported_function("infer_objects")

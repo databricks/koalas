@@ -143,6 +143,7 @@ Computations / Descriptive Stats
    DataFrame.cumprod
    DataFrame.round
    DataFrame.diff
+   DataFrame.eval
 
 Reindexing / Selection / Label manipulation
 -------------------------------------------
