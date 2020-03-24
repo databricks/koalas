@@ -4686,6 +4686,9 @@ def _unpack_scalar(sdf):
 
 
 def _col(df):
+    """
+    Takes a DataFrame and returns the first column of the DataFrame as a Series
+    """
     assert isinstance(df, (DataFrame, pd.DataFrame)), type(df)
     if isinstance(df, DataFrame):
         return df._kser_for(df._internal.column_labels[0])

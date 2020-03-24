@@ -9734,38 +9734,41 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  4   4   8
         4  5   2   7
         """
+        from databricks.koalas.series import _col
+
         if isinstance(self.columns, pd.MultiIndex):
             raise ValueError("`eval` is not supported for multi-index columns")
         inplace = validate_bool_kwarg(inplace, "inplace")
-        is_series = False
-        is_scalar_ = False
+        should_return_series = False
+        should_return_scalar = False
 
         # Since `eva_func` doesn't have a type hint, inferring the schema is always preformed
         # in the `map_in_pandas`. Hence, the variables `is_seires` and `is_scalar_` can be updated.
         def eval_func(pdf):
-            nonlocal is_series
-            nonlocal is_scalar_
+            nonlocal should_return_series
+            nonlocal should_return_scalar
             result_inner = pdf.eval(expr, inplace=inplace)
             if inplace:
                 result_inner = pdf
             if isinstance(result_inner, pd.Series):
-                is_series = True
+                should_return_series = True
                 result_inner = result_inner.to_frame()
             elif is_scalar(result_inner):
-                is_scalar_ = True
+                should_return_scalar = True
                 result_inner = pd.Series(result_inner).to_frame()
             return result_inner
 
         result = self.map_in_pandas(eval_func)
         if inplace:
+            # Here, the result is always a frame because the error is thrown during schema inference
+            # from pandas.
             self._internal = result._internal
+        elif should_return_series:
+            return _col(result)
+        elif should_return_scalar:
+            return _col(result)[0]
         else:
-            if is_series:
-                series_name = result._internal.column_labels[0][0]
-                result = result[series_name]
-            elif is_scalar_:
-                series_name = result._internal.column_labels[0][0]
-                result = result[series_name][0]
+            # Returns a frame
             return result
 
     def _to_internal_pandas(self):
