@@ -2140,6 +2140,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                     pdf.drop_duplicates(["a", "b"], keep=keep).sort_index(),
                     kdf.drop_duplicates(["a", "b"], keep=keep).sort_index(),
                 )
+                self.assert_eq(
+                    pdf.set_index("a", append=True).drop_duplicates(keep=keep).sort_index(),
+                    kdf.set_index("a", append=True).drop_duplicates(keep=keep).sort_index(),
+                )
+                self.assert_eq(
+                    pdf.set_index("a", append=True).drop_duplicates("b", keep=keep).sort_index(),
+                    kdf.set_index("a", append=True).drop_duplicates("b", keep=keep).sort_index(),
+                )
 
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b")])
         pdf.columns = columns
@@ -2540,27 +2548,19 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_duplicated(self):
         pdf = pd.DataFrame(
-            {"a": [1, 1, 1, 3], "b": [1, 1, 1, 4], "c": [1, 1, 1, 5]}, index=np.random.rand(4)
+            {"a": [1, 1, 2, 3], "b": [1, 1, 1, 4], "c": [1, 1, 1, 5]}, index=np.random.rand(4)
         )
         kdf = ks.from_pandas(pdf)
 
+        self.assert_eq(pdf.duplicated().sort_index(), kdf.duplicated().sort_index())
         self.assert_eq(
-            pd.Series(pdf.duplicated(), name="0").sort_index(), kdf.duplicated().sort_index()
+            pdf.duplicated(keep="last").sort_index(), kdf.duplicated(keep="last").sort_index(),
         )
         self.assert_eq(
-            pd.Series(pdf.duplicated(), name="0").sort_index(), kdf.duplicated().sort_index()
+            pdf.duplicated(keep=False).sort_index(), kdf.duplicated(keep=False).sort_index(),
         )
         self.assert_eq(
-            pd.Series(pdf.duplicated(keep="last"), name="0").sort_index(),
-            kdf.duplicated(keep="last").sort_index(),
-        )
-        self.assert_eq(
-            pd.Series(pdf.duplicated(keep=False), name="0").sort_index(),
-            kdf.duplicated(keep=False).sort_index(),
-        )
-        self.assert_eq(
-            pd.Series(pdf.duplicated(subset=["b"]), name="0").sort_index(),
-            kdf.duplicated(subset=["b"]).sort_index(),
+            pdf.duplicated(subset=["b"]).sort_index(), kdf.duplicated(subset=["b"]).sort_index(),
         )
         with self.assertRaisesRegex(ValueError, "'keep' only supports 'first', 'last' and False"):
             kdf.duplicated(keep="false")
@@ -2569,8 +2569,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         pdf.index.name = "x"
         kdf.index.name = "x"
+        self.assert_eq(pdf.duplicated().sort_index(), kdf.duplicated().sort_index())
+
+        # multi-index
         self.assert_eq(
-            pd.Series(pdf.duplicated(), name="x").sort_index(), kdf.duplicated().sort_index()
+            pdf.set_index("a", append=True).duplicated().sort_index(),
+            kdf.set_index("a", append=True).duplicated().sort_index(),
+        )
+        self.assert_eq(
+            pdf.set_index("a", append=True).duplicated(keep=False).sort_index(),
+            kdf.set_index("a", append=True).duplicated(keep=False).sort_index(),
+        )
+        self.assert_eq(
+            pdf.set_index("a", append=True).duplicated(subset=["b"]).sort_index(),
+            kdf.set_index("a", append=True).duplicated(subset=["b"]).sort_index(),
         )
 
         # mutli-index columns

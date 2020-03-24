@@ -73,7 +73,13 @@ from databricks.koalas.internal import (
 )
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.utils import column_labels_level, name_like_string, scol_for, validate_axis
+from databricks.koalas.utils import (
+    column_labels_level,
+    name_like_string,
+    scol_for,
+    validate_axis,
+    verify_temp_column_name,
+)
 from databricks.koalas.typedef import _infer_return_type, as_spark_type, as_python_type
 from databricks.koalas.plot import KoalasFramePlotMethods
 from databricks.koalas.config import get_option
@@ -3659,9 +3665,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._apply_series_op(op)
 
     def _mark_duplicates(self, subset=None, keep="first"):
-        if len(self._internal.index_names) > 1:
-            raise ValueError("We don't support multi-index yet.")
-
         if subset is None:
             subset = self._internal.column_labels
         else:
@@ -3676,13 +3679,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise KeyError(", ".join([str(d) if len(d) > 1 else d[0] for d in diff]))
         group_cols = [self._internal.spark_column_name_for(label) for label in subset]
 
-        if self._internal.index_names[0] is not None:
-            name = self._internal.index_names[0]
-        else:
-            name = ("0",)
-        column = "__duplicated__"
-
         sdf = self._sdf
+
+        column = verify_temp_column_name(sdf, "__duplicated__")
 
         if keep == "first" or keep == "last":
             if keep == "first":
@@ -3702,7 +3701,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.withColumn(column, F.count("*").over(window) > 1)
         else:
             raise ValueError("'keep' only supports 'first', 'last' and False")
-        return name, name_like_string(name), sdf
+        return sdf, column
 
     def duplicated(self, subset=None, keep="first"):
         """
@@ -3760,19 +3759,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.series import _col
 
-        name, column, sdf = self._mark_duplicates(subset, keep)
-        index_column = self._internal.index_spark_column_names[0]
+        sdf, column = self._mark_duplicates(subset, keep)
+        column_label = ("0",)
 
-        sdf = sdf.withColumn(column, F.col("__duplicated__"))
-
-        sdf = sdf.select(scol_for(sdf, index_column), scol_for(sdf, column))
+        sdf = sdf.select(
+            self._internal.index_spark_columns
+            + [scol_for(sdf, column).alias(name_like_string(column_label))]
+        )
         return _col(
             DataFrame(
                 _InternalFrame(
                     spark_frame=sdf,
-                    index_map=OrderedDict({index_column: self._internal.index_names[0]}),
-                    column_labels=[name],
-                    data_spark_columns=[scol_for(sdf, column)],
+                    index_map=self._internal.index_map,
+                    column_labels=[column_label],
+                    data_spark_columns=[scol_for(sdf, name_like_string(column_label))],
                 )
             )
         )
@@ -7601,9 +7601,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
 
-        sdf = self._mark_duplicates(subset, keep)[-1]
+        sdf, column = self._mark_duplicates(subset, keep)
 
-        sdf = sdf.where(~F.col("__duplicated__")).drop("__duplicated__")
+        sdf = sdf.where(~scol_for(sdf, column)).drop(column)
         internal = self._internal.with_new_sdf(sdf)
         if inplace:
             self._internal = internal
