@@ -83,6 +83,7 @@ __all__ = [
     "read_json",
     "merge",
     "to_numeric",
+    "broadcast",
 ]
 
 
@@ -2226,6 +2227,44 @@ def to_numeric(arg):
         return arg._with_new_scol(arg._internal.spark_column.cast("float"))
     else:
         return pd.to_numeric(arg)
+
+
+def broadcast(obj):
+    """
+    Marks a DataFrame as small enough for use in broadcast joins.
+
+    Parameters
+    ----------
+    obj : DataFrame
+
+    Returns
+    -------
+    ret : DataFrame with broadcast hint.
+
+    See Also
+    --------
+    DataFrame.merge : Merge DataFrame objects with a database-style join.
+    DataFrame.join : Join columns of another DataFrame.
+    DataFrame.update : Modify in place using non-NA values from another DataFrame.
+
+    Examples
+    --------
+        >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
+        ...                     'value': [1, 2, 3, 5]},
+        ...                    columns=['lkey', 'value'])
+        >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+        ...                     'value': [5, 6, 7, 8]},
+        ...                    columns=['rkey', 'value'])
+        >>> merged = df1.merge(ks.broadcast(df2), left_on='lkey', right_on='rkey')
+        >>> merged.explain()  # doctest: +ELLIPSIS
+        == Physical Plan ==
+        ...
+        ...BroadcastHashJoin...
+        ...
+    """
+    if not isinstance(obj, DataFrame):
+        raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj)))
+    return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._sdf)))
 
 
 # @pandas_wraps(return_col=np.datetime64)

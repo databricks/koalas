@@ -6563,6 +6563,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         DataFrame
             A DataFrame of the two merged objects.
 
+        See Also
+        --------
+        broadcast : Marks a DataFrame as small enough for use in broadcast joins.
+
         Examples
         --------
         >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
@@ -6850,6 +6854,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         DataFrame.merge: For column(s)-on-columns(s) operations.
+        broadcast : Marks a DataFrame as small enough for use in broadcast joins.
 
         Notes
         -----
@@ -7020,6 +7025,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         DataFrame.merge : For column(s)-on-columns(s) operations.
+        broadcast : Marks a DataFrame as small enough for use in broadcast joins.
 
         Examples
         --------
