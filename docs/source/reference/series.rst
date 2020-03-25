@@ -201,6 +201,7 @@ Time series-related
 .. autosummary::
    :toctree: api/
 
+   Series.asof
    Series.shift
    Series.first_valid_index
 
