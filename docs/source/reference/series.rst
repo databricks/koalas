@@ -80,6 +80,7 @@ Binary operator functions
    Series.rmod
    Series.floordiv
    Series.rfloordiv
+   Series.combine_first
    Series.lt
    Series.gt
    Series.le
