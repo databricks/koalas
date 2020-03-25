@@ -327,6 +327,40 @@ class _LocIndexerLike(_IndexerLike):
         else:
             return kdf_or_kser
 
+    # TODO: support key and value as Series from different DataFrames.
+    def __setitem__(self, key, value):
+        from databricks.koalas.series import Series
+
+        if self._is_series:
+            cond, limit, remaining_index = self._select_rows(key)
+            if cond is None:
+                cond = F.lit(True)
+            if limit is not None:
+                cond = cond & (self._internal.spark_frame[self._sequence_col] < F.lit(limit))
+
+            if isinstance(value, Series):
+                if remaining_index is not None and remaining_index == 0:
+                    raise ValueError("No axis named {} for object type {}".format(key, type(value)))
+                value = value._scol
+            else:
+                value = F.lit(value)
+            scol = (
+                F.when(cond, value)
+                .otherwise(self._internal.spark_column)
+                .alias(name_like_string(self._kdf_or_kser.name or "0"))
+            )
+            internal = self._internal.copy(spark_column=scol)
+            self._kdf_or_kser._internal = internal
+        else:
+            assert self._is_df
+
+            # TODO: support DataFrame.
+            raise SparkPandasNotImplementedError(
+                description="Assignment to DataFrame with the iloc indexer is not supported yet",
+                pandas_function=".{}[..., ...] = ...".format(type(self).__name__[:-7].lower()),
+                spark_target_function="withColumn, select",
+            )
+
 
 class LocIndexer(_LocIndexerLike):
     """
@@ -773,11 +807,8 @@ class LocIndexer(_LocIndexerLike):
         from databricks.koalas.series import Series, _col
 
         if self._is_series:
-            raise SparkPandasNotImplementedError(
-                description="Can only assign value to dataframes",
-                pandas_function=".loc[..., ...] = ...",
-                spark_target_function="withColumn, select",
-            )
+            super(LocIndexer, self).__setitem__(key, value)
+            return
 
         if (not isinstance(key, tuple)) or (len(key) != 2):
             raise SparkPandasNotImplementedError(
@@ -1131,3 +1162,31 @@ class iLocIndexer(_LocIndexerLike):
             )
 
         return column_labels, data_spark_columns, returns_series
+
+    def __setitem__(self, key, value):
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import _col
+
+        super(iLocIndexer, self).__setitem__(key, value)
+
+        if self._is_series:
+            internal = self._kdf_or_kser._internal
+            sdf = internal.spark_frame.select(
+                internal.index_spark_columns + [internal.spark_column]
+            )
+            internal = internal.copy(
+                spark_frame=sdf,
+                data_spark_columns=[scol_for(sdf, internal.data_spark_column_names[0])],
+                spark_column=None,
+            )
+            kser = _col(DataFrame(internal))
+
+            self._kdf_or_kser._internal = kser._internal
+            self._kdf_or_kser._kdf = kser._kdf
+        else:
+            assert self._is_df
+
+            # TODO: support DataFrame.
+
+        delattr(self, "_lazy__internal")
+        delattr(self, "_lazy__sequence_col")
