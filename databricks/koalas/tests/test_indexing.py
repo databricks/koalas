@@ -809,6 +809,9 @@ class IndexingTest(ReusedSQLTestCase):
             with self.subTest(rows_sel=rows_sel):
                 self.assert_eq(kdf.iloc[rows_sel].sort_index(), pdf.iloc[rows_sel].sort_index())
                 self.assert_eq(kdf.A.iloc[rows_sel].sort_index(), pdf.A.iloc[rows_sel].sort_index())
+                self.assert_eq(
+                    (kdf.A + 1).iloc[rows_sel].sort_index(), (pdf.A + 1).iloc[rows_sel].sort_index()
+                )
 
     def test_iloc_iterable_rows_sel(self):
         pdf = pd.DataFrame({"A": [1, 2] * 5, "B": [3, 4] * 5, "C": [5, 6] * 5})
@@ -826,6 +829,9 @@ class IndexingTest(ReusedSQLTestCase):
             with self.subTest(rows_sel=rows_sel):
                 self.assert_eq(kdf.iloc[rows_sel].sort_index(), pdf.iloc[rows_sel].sort_index())
                 self.assert_eq(kdf.A.iloc[rows_sel].sort_index(), pdf.A.iloc[rows_sel].sort_index())
+                self.assert_eq(
+                    (kdf.A + 1).iloc[rows_sel].sort_index(), (pdf.A + 1).iloc[rows_sel].sort_index()
+                )
 
             with self.subTest(rows_sel=rows_sel):
                 self.assert_eq(
