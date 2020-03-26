@@ -15,6 +15,7 @@
 #
 
 import datetime
+from distutils.version import LooseVersion
 import unittest
 
 import numpy as np
@@ -843,7 +844,7 @@ class IndexingTest(ReusedSQLTestCase):
                     kdf.iloc[rows_sel, :1].sort_index(), pdf.iloc[rows_sel, :1].sort_index()
                 )
 
-    def test_setitem(self):
+    def test_frame_loc_setitem(self):
         pdf = pd.DataFrame(
             [[1, 2], [4, 5], [7, 8]],
             index=["cobra", "viper", "sidewinder"],
@@ -865,8 +866,6 @@ class IndexingTest(ReusedSQLTestCase):
             ValueError, "only column names or list of column names can be assigned"
         ):
             kdf.loc[["viper"], ("max_speed", "shield")] = 10
-        msg = """Can only assign value to the whole dataframe, the row index
-        has to be `slice(None)` or `:`"""
         msg = "Can only assign value to the whole dataframe, the row index"
         with self.assertRaisesRegex(SparkPandasNotImplementedError, msg):
             kdf.loc["viper", "max_speed"] = 10
@@ -879,6 +878,86 @@ class IndexingTest(ReusedSQLTestCase):
         pdf.loc[:, "max_speed"] = pdf
         kdf.loc[:, "max_speed"] = kdf
         self.assert_eq(kdf, pdf)
+
+    def test_series_loc_setitem(self):
+        pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
+        kser = ks.from_pandas(pser)
+
+        pser.loc[pser % 2 == 1] = -pser
+        kser.loc[kser % 2 == 1] = -kser
+        self.assert_eq(kser, pser)
+
+        for key, value in [
+            (["viper", "sidewinder"], 10),
+            ("viper", 50),
+            (slice(None), 10),
+            (slice(None, "viper"), 20),
+            (slice("viper", None), 30),
+        ]:
+            with self.subTest(key=key, value=value):
+                pser.loc[key] = value
+                kser.loc[key] = value
+                self.assert_eq(kser, pser)
+
+        with self.assertRaises(ValueError):
+            kser.loc["viper"] = -kser
+
+        # multiindex
+        pser = pd.Series(
+            [1, 2, 3],
+            index=pd.MultiIndex.from_tuples([("x", "cobra"), ("x", "viper"), ("y", "sidewinder")]),
+        )
+        kser = ks.from_pandas(pser)
+
+        pser.loc["x"] = pser * 10
+        kser.loc["x"] = kser * 10
+        self.assert_eq(kser, pser)
+
+        if LooseVersion(pd.__version__) < LooseVersion("1.0"):
+            # TODO: seems like a pandas' bug in pandas>=1.0.0?
+            pser.loc[("x", "viper"):"y"] = pser * 20
+            kser.loc[("x", "viper"):"y"] = kser * 20
+            self.assert_eq(kser, pser)
+
+    def test_series_iloc_setitem(self):
+        pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
+        kser = ks.from_pandas(pser)
+
+        pser1 = pser + 1
+        kser1 = kser + 1
+
+        for key, value in [
+            ([1, 2], 10),
+            (1, 50),
+            (slice(None), 10),
+            (slice(None, 1), 20),
+            (slice(1, None), 30),
+        ]:
+            with self.subTest(key=key, value=value):
+                pser.iloc[key] = value
+                kser.iloc[key] = value
+                self.assert_eq(kser, pser)
+
+                pser1.iloc[key] = value
+                kser1.iloc[key] = value
+                self.assert_eq(kser1, pser1)
+
+        with self.assertRaises(ValueError):
+            kser.iloc[1] = -kser
+
+        pser = pd.Index([1, 2, 3]).to_series()
+        kser = ks.Index([1, 2, 3]).to_series()
+
+        pser1 = pser + 1
+        kser1 = kser + 1
+
+        pser.iloc[0] = 10
+        kser.iloc[0] = 10
+        self.assert_eq(kser, pser)
+
+        pser1.iloc[0] = 20
+        kser1.iloc[0] = 20
+        self.assert_eq(kser1, pser1)
 
     def test_iloc_raises(self):
         pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})
