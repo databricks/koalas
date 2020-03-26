@@ -935,9 +935,9 @@ class IndexingTest(ReusedSQLTestCase):
                 kser.iloc[key] = value
                 self.assert_eq(kser, pser)
 
-                # pser1.iloc[key] = value
-                # kser1.iloc[key] = value
-                # self.assert_eq(kser1, pser1)
+                pser1.iloc[key] = value
+                kser1.iloc[key] = value
+                self.assert_eq(kser1, pser1)
 
         with self.assertRaises(ValueError):
             kser.iloc[1] = -kser
@@ -952,9 +952,9 @@ class IndexingTest(ReusedSQLTestCase):
         kser.iloc[0] = 10
         self.assert_eq(kser, pser)
 
-        # pser1.iloc[0] = 20
-        # kser1.iloc[0] = 20
-        # self.assert_eq(kser1, pser1)
+        pser1.iloc[0] = 20
+        kser1.iloc[0] = 20
+        self.assert_eq(kser1, pser1)
 
     def test_iloc_raises(self):
         pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})
