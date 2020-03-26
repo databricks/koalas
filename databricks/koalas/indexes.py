@@ -1676,9 +1676,9 @@ class Index(IndexOpsMixin):
         """
         sdf = self._internal._sdf
         if self.is_monotonic_increasing:
-            sdf = sdf.select(self._scol).where(self._scol <= label).select(F.max(self._scol))
+            sdf = sdf.where(self._scol <= label).select(F.max(self._scol))
         elif self.is_monotonic_decreasing:
-            sdf = sdf.select(self._scol).where(self._scol >= label).select(F.min(self._scol))
+            sdf = sdf.where(self._scol >= label).select(F.min(self._scol))
         else:
             raise ValueError("index must be monotonic increasing or decreasing")
         result = sdf.head()[0]
