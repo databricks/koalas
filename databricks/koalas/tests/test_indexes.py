@@ -1019,8 +1019,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kidx.asof("2014-01-01"), pidx.asof("2014-01-01"))
         self.assert_eq(kidx.asof("2014-01-02"), pidx.asof("2014-01-02"))
-        self.assert_eq(np.isnan(kidx.asof("1999-01-02")), True)
-        self.assert_eq(np.isnan(pidx.asof("1999-01-02")), True)
+        self.assert_eq(repr(kidx.asof("1999-01-02")), repr(pidx.asof("1999-01-02")))
 
         # Decreasing values
         pidx = pd.Index(["2014-01-03", "2014-01-02", "2013-12-31"])
@@ -1029,8 +1028,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx.asof("2014-01-01"), pidx.asof("2014-01-01"))
         self.assert_eq(kidx.asof("2014-01-02"), pidx.asof("2014-01-02"))
         self.assert_eq(kidx.asof("1999-01-02"), pidx.asof("1999-01-02"))
-        self.assert_eq(np.isnan(kidx.asof("2015-01-02")), True)
-        self.assert_eq(np.isnan(pidx.asof("2015-01-02")), True)
+        self.assert_eq(repr(kidx.asof("2015-01-02")), repr(pidx.asof("2015-01-02")))
 
         # Not increasing, neither decreasing (ValueError)
         kidx = ks.Index(["2013-12-31", "2015-01-02", "2014-01-03"])
