@@ -776,13 +776,18 @@ class IndexingTest(ReusedSQLTestCase):
             #                pdf.iloc[pdf.index == "B", indexer])
 
     def test_iloc_series(self):
-        pseries = pd.Series([1, 2, 3])
-        kseries = ks.from_pandas(pseries)
+        pser = pd.Series([1, 2, 3])
+        kser = ks.from_pandas(pser)
 
-        self.assert_eq(kseries.iloc[0], pseries.iloc[0])
-        self.assert_eq(kseries.iloc[:], pseries.iloc[:])
-        self.assert_eq(kseries.iloc[:1], pseries.iloc[:1])
-        self.assert_eq(kseries.iloc[:-1], pseries.iloc[:-1])
+        self.assert_eq(kser.iloc[0], pser.iloc[0])
+        self.assert_eq(kser.iloc[:], pser.iloc[:])
+        self.assert_eq(kser.iloc[:1], pser.iloc[:1])
+        self.assert_eq(kser.iloc[:-1], pser.iloc[:-1])
+
+        self.assert_eq((kser + 1).iloc[0], (pser + 1).iloc[0])
+        self.assert_eq((kser + 1).iloc[:], (pser + 1).iloc[:])
+        self.assert_eq((kser + 1).iloc[:1], (pser + 1).iloc[:1])
+        self.assert_eq((kser + 1).iloc[:-1], (pser + 1).iloc[:-1])
 
     def test_iloc_slice_rows_sel(self):
         pdf = pd.DataFrame({"A": [1, 2] * 5, "B": [3, 4] * 5, "C": [5, 6] * 5})
@@ -804,6 +809,9 @@ class IndexingTest(ReusedSQLTestCase):
             with self.subTest(rows_sel=rows_sel):
                 self.assert_eq(kdf.iloc[rows_sel].sort_index(), pdf.iloc[rows_sel].sort_index())
                 self.assert_eq(kdf.A.iloc[rows_sel].sort_index(), pdf.A.iloc[rows_sel].sort_index())
+                self.assert_eq(
+                    (kdf.A + 1).iloc[rows_sel].sort_index(), (pdf.A + 1).iloc[rows_sel].sort_index()
+                )
 
     def test_iloc_iterable_rows_sel(self):
         pdf = pd.DataFrame({"A": [1, 2] * 5, "B": [3, 4] * 5, "C": [5, 6] * 5})
@@ -821,6 +829,9 @@ class IndexingTest(ReusedSQLTestCase):
             with self.subTest(rows_sel=rows_sel):
                 self.assert_eq(kdf.iloc[rows_sel].sort_index(), pdf.iloc[rows_sel].sort_index())
                 self.assert_eq(kdf.A.iloc[rows_sel].sort_index(), pdf.A.iloc[rows_sel].sort_index())
+                self.assert_eq(
+                    (kdf.A + 1).iloc[rows_sel].sort_index(), (pdf.A + 1).iloc[rows_sel].sort_index()
+                )
 
             with self.subTest(rows_sel=rows_sel):
                 self.assert_eq(
