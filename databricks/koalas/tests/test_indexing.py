@@ -909,6 +909,9 @@ class IndexingTest(ReusedSQLTestCase):
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
         kser = ks.from_pandas(pser)
 
+        pser1 = pser + 1
+        kser1 = kser + 1
+
         for key, value in [
             ([1, 2], 10),
             (1, 50),
@@ -921,8 +924,26 @@ class IndexingTest(ReusedSQLTestCase):
                 kser.iloc[key] = value
                 self.assert_eq(kser, pser)
 
+                # pser1.iloc[key] = value
+                # kser1.iloc[key] = value
+                # self.assert_eq(kser1, pser1)
+
         with self.assertRaises(ValueError):
             kser.iloc[1] = -kser
+
+        pser = pd.Index([1, 2, 3]).to_series()
+        kser = ks.Index([1, 2, 3]).to_series()
+
+        pser1 = pser + 1
+        kser1 = kser + 1
+
+        pser.iloc[0] = 10
+        kser.iloc[0] = 10
+        self.assert_eq(kser, pser)
+
+        # pser1.iloc[0] = 20
+        # kser1.iloc[0] = 20
+        # self.assert_eq(kser1, pser1)
 
     def test_iloc_raises(self):
         pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})

@@ -1176,6 +1176,7 @@ class iLocIndexer(_LocIndexerLike):
             )
             internal = internal.copy(
                 spark_frame=sdf,
+                column_labels=[internal.column_labels[0] or ("0",)],
                 data_spark_columns=[scol_for(sdf, internal.data_spark_column_names[0])],
                 spark_column=None,
             )
