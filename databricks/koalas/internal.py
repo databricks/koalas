@@ -845,6 +845,8 @@ class _InternalFrame(object):
             If None, the original one is used.
         :return: the copied _InternalFrame.
         """
+        assert self.spark_column is None
+
         if data_columns is None:
             data_columns = self.data_spark_column_names
         else:

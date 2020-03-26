@@ -35,7 +35,7 @@ from pyspark.sql.types import BooleanType, StructType, LongType, IntegerType
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.config import get_option
+from databricks.koalas.config import get_option, option_context
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.exceptions import SparkPandasIndexingError
 from databricks.koalas.frame import DataFrame
@@ -4333,6 +4333,65 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         prev_row = F.lag(scol, periods).over(window)
 
         return self._with_new_scol((scol - prev_row) / prev_row)
+
+    def combine_first(self, other):
+        """
+        Combine Series values, choosing the calling Series's values first.
+
+        Parameters
+        ----------
+        other : Series
+            The value(s) to be combined with the `Series`.
+
+        Returns
+        -------
+        Series
+            The result of combining the Series with the other object.
+
+        See Also
+        --------
+        Series.combine : Perform elementwise operation on two Series
+            using a given function.
+
+        Notes
+        -----
+        Result index will be the union of the two indexes.
+
+        Examples
+        --------
+        >>> s1 = ks.Series([1, np.nan])
+        >>> s2 = ks.Series([3, 4])
+        >>> s1.combine_first(s2)
+        0    1.0
+        1    4.0
+        Name: 0, dtype: float64
+        """
+        if not isinstance(other, ks.Series):
+            raise ValueError("`combine_first` only allows `Series` for parameter `other`")
+        if self._kdf is other._kdf:
+            this = self.name
+            that = other.name
+            combined = self._kdf
+        else:
+            this = "__this_{}".format(self.name)
+            that = "__that_{}".format(other.name)
+            with option_context("compute.ops_on_diff_frames", True):
+                combined = combine_frames(self.to_frame(), other)
+        sdf = combined._sdf
+        # If `self` has missing value, use value of `other`
+        cond = F.when(sdf[this].isNull(), sdf[that]).otherwise(sdf[this])
+        # If `self` and `other` come from same frame, the anchor should be kept
+        if self._kdf is other._kdf:
+            return self._with_new_scol(cond)
+        index_scols = combined._internal.index_spark_columns
+        sdf = sdf.select(*index_scols, cond.alias(self.name)).distinct()
+        internal = _InternalFrame(
+            spark_frame=sdf,
+            index_map=self._internal.index_map,
+            column_labels=self._internal.column_labels,
+            column_label_names=self._internal.column_label_names,
+        )
+        return _col(ks.DataFrame(internal))
 
     def dot(self, other):
         """
