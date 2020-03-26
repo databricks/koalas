@@ -15,6 +15,7 @@
 #
 
 import datetime
+from distutils.version import LooseVersion
 import unittest
 
 import numpy as np
@@ -912,9 +913,11 @@ class IndexingTest(ReusedSQLTestCase):
         kser.loc["x"] = kser * 10
         self.assert_eq(kser, pser)
 
-        pser.loc[("x", "viper"):"y"] = pser * 20
-        kser.loc[("x", "viper"):"y"] = kser * 20
-        self.assert_eq(kser, pser)
+        if LooseVersion(pd.__version__) < LooseVersion("1.0"):
+            # TODO: seems like a pandas' bug in pandas>=1.0.0?
+            pser.loc[("x", "viper"):"y"] = pser * 20
+            kser.loc[("x", "viper"):"y"] = kser * 20
+            self.assert_eq(kser, pser)
 
     def test_series_iloc_setitem(self):
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
