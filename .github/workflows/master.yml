@@ -21,6 +21,8 @@ jobs:
       PYARROW_VERSION: 0.10.0
       # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around wtih xvfb-run
       PYTHON_EXECUTABLE: xvfb-run python
+      # Github token is required to auto-generate the release notes from Github release notes
+      GITHUB_OAUTH_KEY: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-java@v1
@@ -93,6 +95,8 @@ jobs:
       # The name of the directory '.cache' is for Travis CI. Once we remove Travis CI,
       # we should download Spark to a directory with a different name to prevent confusion.
       SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
+      # Github token is required to auto-generate the release notes from Github release notes
+      GITHUB_OAUTH_KEY: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-java@v1
