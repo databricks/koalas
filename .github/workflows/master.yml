@@ -9,16 +9,26 @@ on:
       - master
 
 jobs:
-  pip_python35:
-    name: PIP, Python (3.5)
+  pip_build:
+    name: PIP (Python, Spark, pandas, PyArrow)
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - python-version: 3.5
+            spark-version: 2.3.4
+            pandas-version: 0.23.4
+            pyarrow-version: 0.10.0
+          - python-version: 3.5
+            spark-version: 2.3.4
+            pandas-version: 0.24.2
+            pyarrow-version: 0.10.0
     env:
-      SPARK_VERSION: 2.3.4
-      # The name of the directory '.cache' is for Travis CI. Once we remove Travis CI,
-      # we should download Spark to a directory with a different name to prevent confusion.
+      PYTHON_VERSION: ${{ matrix.python-version }}
+      SPARK_VERSION: ${{ matrix.spark-version }}
+      PANDAS_VERSION: ${{ matrix.pandas-version }}
+      PYARROW_VERSION: ${{ matrix.pyarrow-version }}
       SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
-      PANDAS_VERSION: 0.24.2
-      PYARROW_VERSION: 0.10.0
       # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around wtih xvfb-run
       PYTHON_EXECUTABLE: xvfb-run python
       # Github token is required to auto-generate the release notes from Github release notes
@@ -51,7 +61,7 @@ jobs:
         echo "::add-path::/home/runner/.local/bin"
     - name: Install dependencies
       run: |
-        ./dev/download_travis_dependencies.sh
+        ./dev/download_spark.sh
         sudo apt-get install xclip
         pip install setuptools
         # Currently PIP with Python 3.5 removes Black in the requirements-dev.txt file
@@ -68,17 +78,25 @@ jobs:
         ./dev/pytest
     - uses: codecov/codecov-action@v1
 
-  conda_python:
-    name: Conda, Python
+  conda_build:
+    name: Conda (Python, Spark, pandas, PyArrow)
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
           - python-version: 3.6
             spark-version: 2.4.5
-            pandas-version: 0.25.3
+            pandas-version: 0.24.2
             pyarrow-version: 0.13.0
             logger: databricks.koalas.usage_logging.usage_logger
+          - python-version: 3.6
+            spark-version: 2.4.5
+            pandas-version: 0.25.3
+            pyarrow-version: 0.13.0
+          - python-version: 3.7
+            spark-version: 2.4.5
+            pandas-version: 0.25.3
+            pyarrow-version: 0.14.1
           - python-version: 3.7
             spark-version: 2.4.5
             pandas-version: 1.0.2
@@ -92,8 +110,6 @@ jobs:
       DISPLAY: 0.0
       QT_QPA_PLATFORM: offscreen
       KOALAS_USAGE_LOGGER: ${{ matrix.logger }}
-      # The name of the directory '.cache' is for Travis CI. Once we remove Travis CI,
-      # we should download Spark to a directory with a different name to prevent confusion.
       SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
       # Github token is required to auto-generate the release notes from Github release notes
       GITHUB_OAUTH_KEY: ${{ secrets.GITHUB_TOKEN }}
@@ -108,7 +124,7 @@ jobs:
         key: ${{ runner.os }}-koalas-spark-${{ env.SPARK_VERSION }}
     - name: Install dependencies
       run: |
-        ./dev/download_travis_dependencies.sh
+        ./dev/download_spark.sh
         curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
         bash miniconda.sh -b -p $HOME/miniconda
         # See also https://github.com/conda/conda/issues/7980
