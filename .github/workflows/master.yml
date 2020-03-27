@@ -9,8 +9,8 @@ on:
       - master
 
 jobs:
-  pip_python35:
-    name: PIP, Python (3.5)
+  pip_build:
+    name: PIP (Python, Spark, pandas, PyArrow)
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -78,8 +78,8 @@ jobs:
         ./dev/pytest
     - uses: codecov/codecov-action@v1
 
-  conda_python:
-    name: Conda, Python
+  conda_build:
+    name: Conda (Python, Spark, pandas, PyArrow)
     runs-on: ubuntu-latest
     strategy:
       matrix:
