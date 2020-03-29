@@ -1161,6 +1161,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         with option_context("compute.shortcut_limit", 0):
             self.test_apply_with_new_dataframe()
 
+    def test_apply_key_handling(self):
+        pdf = pd.DataFrame({'d': [1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 'v': [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]})
+
+        self.assert_eq(
+            pdf.groupby('d').sum(),
+            pdf.groupby('d').apply(sum).drop(['d'], axis=1)
+        )
+        self.assert_eq(
+            ks.from_pandas(pdf).groupby('d').sum(),
+            ks.from_pandas(pdf).groupby('d').apply(sum)
+        )
+
     def test_transform(self):
         pdf = pd.DataFrame(
             {"a": [1, 2, 3, 4, 5, 6], "b": [1, 1, 2, 3, 5, 8], "c": [1, 4, 9, 16, 25, 36]},

@@ -928,6 +928,15 @@ class GroupBy(object):
                 pser_or_pdf = pdf.groupby(input_groupnames)[name].apply(func)
             else:
                 pser_or_pdf = pdf.groupby(input_groupnames).apply(func)
+                keys = set(input_groupnames)
+                should_drop_columns = (
+                    isinstance(pser_or_pdf, pd.DataFrame)
+                    and keys.issubset(set(pser_or_pdf.index.names))
+                    and keys.issubset(set(pser_or_pdf.columns))
+                )
+                if should_drop_columns:
+                    pser_or_pdf = pser_or_pdf.drop(input_groupnames, axis=1)
+
             kser_or_kdf = ks.from_pandas(pser_or_pdf)
             if len(pdf) <= limit:
                 return kser_or_kdf
