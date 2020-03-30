@@ -4519,7 +4519,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return _col(ks.concat([kdf] * repeats))
 
-    def asof(self, where, subset=None):
+    def asof(self, where):
         """
         Return the last row(s) without any NaNs before `where`.
 
@@ -4531,7 +4531,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Parameters
         ----------
         where : index or array-like of indices
-        subset : str or array-like of str, default `None`
 
         Returns
         -------
