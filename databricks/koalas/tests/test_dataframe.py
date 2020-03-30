@@ -3123,3 +3123,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b"), ("z", "c")])
         kdf.columns = columns
         self.assertRaises(ValueError, lambda: kdf.eval("x.a + y.b"))
+
+    def test_to_markdown(self):
+        pdf = pd.DataFrame(data={"animal_1": ["elk", "pig"], "animal_2": ["dog", "quetzal"]})
+        kdf = ks.from_pandas(pdf)
+
+        # `to_markdown()` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            self.assertRaises(NotImplementedError, lambda: kdf.to_markdown())
+        else:
+            self.assert_eq(pdf.to_markdown(), kdf.to_markdown())
