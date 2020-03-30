@@ -3123,3 +3123,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b"), ("z", "c")])
         kdf.columns = columns
         self.assertRaises(ValueError, lambda: kdf.eval("x.a + y.b"))
+
+    def test_to_markdown(self):
+        pdf = pd.DataFrame(data={"animal_1": ["elk", "pig"], "animal_2": ["dog", "quetzal"]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.to_markdown(), kdf.to_markdown())
