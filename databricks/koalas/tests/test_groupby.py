@@ -1165,11 +1165,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame(
             {"d": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0], "v": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]}
         )
+        kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pdf.groupby("d").sum(), pdf.groupby("d").apply(sum).drop(["d"], axis=1))
-        self.assert_eq(
-            ks.from_pandas(pdf).groupby("d").sum(), ks.from_pandas(pdf).groupby("d").apply(sum)
-        )
+        self.assert_eq(pdf.groupby("d").apply(sum).drop(["d"], axis=1), kdf.groupby("d").apply(sum))
 
     def test_transform(self):
         pdf = pd.DataFrame(
