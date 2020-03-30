@@ -204,3 +204,15 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
                         repr(actual.sort_values(list(actual.columns)).reset_index(drop=True)),
                         repr(expected.sort_values(list(expected.columns)).reset_index(drop=True)),
                     )
+
+    # test dataframes equality with broadcast hint.
+    def test_broadcast(self):
+        kdf = ks.DataFrame(
+            {"key": ["K0", "K1", "K2", "K3"], "A": ["A0", "A1", "A2", "A3"]}, columns=["key", "A"]
+        )
+        self.assert_eq(kdf, ks.broadcast(kdf))
+
+        kser = ks.Series([1, 2, 3])
+        expected_error_message = "Invalid type : expected DataFrame got {}".format(type(kser))
+        with self.assertRaisesRegex(ValueError, expected_error_message):
+            ks.broadcast(kser)
