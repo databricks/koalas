@@ -11,7 +11,7 @@ mlflow>=1.0
 protobuf<3.9.0
 
 # Documentation build
-sphinx==2.0.1
+sphinx
 nbsphinx
 numpydoc==0.8
 pypandoc
