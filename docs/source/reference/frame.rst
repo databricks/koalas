@@ -220,6 +220,7 @@ Cache
 
    DataFrame.cache
    DataFrame.persist
+   DataFrame.unpersist
 
 Serialization / IO / Conversion
 -------------------------------
