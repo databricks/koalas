@@ -31,7 +31,7 @@ from databricks.koalas.config import option_context
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
-from databricks.koalas.frame import DataFrame, _CachedDataFrame
+from databricks.koalas.frame import _CachedDataFrame
 
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
