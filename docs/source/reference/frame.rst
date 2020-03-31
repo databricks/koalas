@@ -219,6 +219,7 @@ Cache
    :toctree: api/
 
    DataFrame.cache
+   DataFrame.persist
 
 Serialization / IO / Conversion
 -------------------------------
