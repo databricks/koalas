@@ -3144,6 +3144,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         with kdf.cache() as cached_df:
             self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+            self.assert_eq(
+                repr(cached_df.storage_level), repr(StorageLevel(True, True, False, True))
+            )
 
     def test_persist(self):
         pdf = pd.DataFrame(
@@ -3160,5 +3163,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         for storage_level in storage_levels:
             with kdf.persist(storage_level) as cached_df:
                 self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+                self.assert_eq(repr(cached_df.storage_level), repr(storage_level))
 
         self.assertRaises(TypeError, lambda: kdf.persist("DISK_ONLY"))
