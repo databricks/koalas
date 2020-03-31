@@ -23,6 +23,7 @@ import unittest
 import numpy as np
 import pandas as pd
 import pyspark
+from pyspark import StorageLevel
 from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
@@ -30,6 +31,7 @@ from databricks.koalas.config import option_context
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
+from databricks.koalas.frame import DataFrame, _CachedDataFrame
 
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
@@ -3133,3 +3135,30 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertRaises(NotImplementedError, lambda: kdf.to_markdown())
         else:
             self.assert_eq(pdf.to_markdown(), kdf.to_markdown())
+
+    def test_cache(self):
+        pdf = pd.DataFrame(
+            [(0.2, 0.3), (0.0, 0.6), (0.6, 0.0), (0.2, 0.1)], columns=["dogs", "cats"]
+        )
+        kdf = ks.from_pandas(pdf)
+
+        with kdf.cache() as cached_df:
+            self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+
+    def test_persist(self):
+        pdf = pd.DataFrame(
+            [(0.2, 0.3), (0.0, 0.6), (0.6, 0.0), (0.2, 0.1)], columns=["dogs", "cats"]
+        )
+        kdf = ks.from_pandas(pdf)
+        storage_levels = [
+            StorageLevel.DISK_ONLY,
+            StorageLevel.MEMORY_AND_DISK,
+            StorageLevel.MEMORY_ONLY,
+            StorageLevel.OFF_HEAP,
+        ]
+
+        for storage_level in storage_levels:
+            with kdf.persist(storage_level) as cached_df:
+                self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+
+        self.assertRaises(TypeError, lambda: kdf.persist("DISK_ONLY"))
