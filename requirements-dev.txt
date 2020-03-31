@@ -21,7 +21,7 @@ ipython
 mypy
 flake8
 
-# Code formatter
+# Code formatter. Only support Python 3.6+
 black==19.10b0
 
 # Test
