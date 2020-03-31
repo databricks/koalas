@@ -22,6 +22,7 @@ from collections import Counter, OrderedDict
 from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
+from typing import Optional, Union, List
 
 import numpy as np
 import pandas as pd
@@ -39,6 +40,7 @@ from databricks.koalas.utils import (
     scol_for,
     validate_axis,
     align_diff_frames,
+    name_like_string,
 )
 from databricks.koalas.window import Rolling, Expanding
 
@@ -554,6 +556,7 @@ class _Frame(object):
         date_format=None,
         escapechar=None,
         num_files=None,
+        index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
         r"""
@@ -589,6 +592,9 @@ class _Frame(object):
             when appropriate.
         num_files : the number of files to be written in `path` directory when
             this is a path.
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options: keyword arguments for additional options specific to PySpark.
             This kwargs are specific to PySpark's CSV options to pass. Check
             the options in PySpark's API documentation for spark.write.csv(...).
@@ -646,6 +652,22 @@ class _Frame(object):
         ... 2012-01-31 12:00:00
         ... 2012-02-29 12:00:00
         ... 2012-03-31 12:00:00
+
+        You can preserve the index in the roundtrip as below.
+
+        >>> df.set_index("country", append=True, inplace=True)
+        >>> df.date.to_csv(
+        ...     path=r'%s/to_csv/bar.csv' % path,
+        ...     num_files=1,
+        ...     index_col=["index1", "index2"])
+        >>> ks.read_csv(
+        ...     path=r'%s/to_csv/bar.csv' % path, index_col=["index1", "index2"]
+        ... ).sort_values(by="date")  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+                                     date
+        index1 index2
+        ...    ...    2012-01-31 12:00:00
+        ...    ...    2012-02-29 12:00:00
+        ...    ...    2012-03-31 12:00:00
         """
         if path is None:
             # If path is none, just collect and use pandas's to_csv.
@@ -654,7 +676,7 @@ class _Frame(object):
                 self, ks.Series
             ):
                 # 0.23 seems not having 'columns' parameter in Series' to_csv.
-                return kdf_or_ser.to_pandas().to_csv(
+                return kdf_or_ser.to_pandas().to_csv(  # type: ignore
                     None,
                     sep=sep,
                     na_rep=na_rep,
@@ -663,7 +685,7 @@ class _Frame(object):
                     index=False,
                 )
             else:
-                return kdf_or_ser.to_pandas().to_csv(
+                return kdf_or_ser.to_pandas().to_csv(  # type: ignore
                     None,
                     sep=sep,
                     na_rep=na_rep,
@@ -686,21 +708,34 @@ class _Frame(object):
         elif isinstance(columns, tuple):
             column_labels = [columns]
         else:
-            column_labels = [label if isinstance(label, tuple) else (label,) for label in columns]
+            column_labels = [
+                lb if isinstance(lb, tuple) else (lb,) for lb in columns  # type: ignore
+            ]
+
+        if isinstance(index_col, str):
+            index_cols = [index_col]
+        elif index_col is None:
+            index_cols = []
+        else:
+            index_cols = index_col
 
         if header is True and kdf._internal.column_labels_level > 1:
             raise ValueError("to_csv only support one-level index column now")
         elif isinstance(header, list):
-            sdf = kdf._sdf.select(
-                [
+            sdf = kdf.to_spark(index_col)  # type: ignore
+            sdf = sdf.select(
+                [scol_for(sdf, name_like_string(label)) for label in index_cols]
+                + [
                     self._internal.spark_column_for(label).alias(new_name)
                     for (label, new_name) in zip(column_labels, header)
                 ]
             )
             header = True
         else:
-            sdf = kdf._sdf.select(
-                [kdf._internal.spark_column_for(label) for label in column_labels]
+            sdf = kdf.to_spark(index_col)  # type: ignore
+            sdf = sdf.select(
+                [scol_for(sdf, name_like_string(label)) for label in index_cols]
+                + [kdf._internal.spark_column_for(label) for label in column_labels]
             )
 
         if num_files is not None:
@@ -719,7 +754,14 @@ class _Frame(object):
         )
         builder.options(**options).format("csv").save(path)
 
-    def to_json(self, path=None, compression="uncompressed", num_files=None, **options):
+    def to_json(
+        self,
+        path=None,
+        compression="uncompressed",
+        num_files=None,
+        index_col: Optional[Union[str, List[str]]] = None,
+        **options
+    ):
         """
         Convert the object to a JSON string.
 
@@ -748,6 +790,9 @@ class _Frame(object):
             compression is inferred from the filename.
         num_files : the number of files to be written in `path` directory when
             this is a path.
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options: keyword arguments for additional options specific to PySpark.
             It is specific to PySpark's JSON options to pass. Check
             the options in PySpark's API documentation for `spark.write.json(...)`.
@@ -772,18 +817,19 @@ class _Frame(object):
         0     a     b
         1     c     d
 
-        >>> df['col 1'].to_json(path=r'%s/to_json/foo.json' % path, num_files=1)
+        >>> df['col 1'].to_json(path=r'%s/to_json/foo.json' % path, num_files=1, index_col="index")
         >>> ks.read_json(
-        ...     path=r'%s/to_json/foo.json' % path
-        ... ).sort_values(by="col 1")
-          col 1
-        0     a
-        1     c
+        ...     path=r'%s/to_json/foo.json' % path, index_col="index"
+        ... ).sort_values(by="col 1")  # doctest: +NORMALIZE_WHITESPACE
+              col 1
+        index
+        0         a
+        1         c
         """
         if path is None:
             # If path is none, just collect and use pandas's to_json.
             kdf_or_ser = self
-            pdf = kdf_or_ser.to_pandas()
+            pdf = kdf_or_ser.to_pandas()  # type: ignore
             if isinstance(self, ks.Series):
                 pdf = pdf.to_frame()
             # To make the format consistent and readable by `read_json`, convert it to pandas' and
@@ -793,7 +839,7 @@ class _Frame(object):
         kdf = self
         if isinstance(self, ks.Series):
             kdf = self.to_frame()
-        sdf = kdf.to_spark()
+        sdf = kdf.to_spark(index_col=index_col)  # type: ignore
 
         if num_files is not None:
             sdf = sdf.repartition(num_files)

@@ -42,6 +42,7 @@ from pyspark import StorageLevel
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf
+from pyspark.sql.readwriter import OptionUtils
 from pyspark.sql.types import (
     BooleanType,
     ByteType,
@@ -4009,6 +4010,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         format: Optional[str] = None,
         mode: str = "overwrite",
         partition_cols: Union[str, List[str], None] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
         """
@@ -4038,6 +4040,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         partition_cols : str or list of str, optional, default None
             Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options
             Additional options passed directly to Spark.
 
@@ -4061,7 +4066,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.to_table('%s.my_table' % db, partition_cols='date')
         """
-        self.to_spark().write.saveAsTable(
+        self.to_spark(index_col=index_col).write.saveAsTable(
             name=name, format=format, mode=mode, partitionBy=partition_cols, **options
         )
 
@@ -4070,6 +4075,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         path: str,
         mode: str = "overwrite",
         partition_cols: Union[str, List[str], None] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
         """
@@ -4090,6 +4096,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         partition_cols : str or list of str, optional, default None
             Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options : dict
             All other options passed directly into Delta Lake.
 
@@ -4127,7 +4136,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...             mode='overwrite', replaceWhere='date >= "2012-01-01"')
         """
         self.to_spark_io(
-            path=path, mode=mode, format="delta", partition_cols=partition_cols, **options
+            path=path,
+            mode=mode,
+            format="delta",
+            partition_cols=partition_cols,
+            index_col=index_col,
+            **options
         )
 
     def to_parquet(
@@ -4136,6 +4150,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         mode: str = "overwrite",
         partition_cols: Union[str, List[str], None] = None,
         compression: Optional[str] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
+        **options
     ):
         """
         Write the DataFrame out as a Parquet file or directory.
@@ -4158,6 +4174,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         compression : str {'none', 'uncompressed', 'snappy', 'gzip', 'lzo', 'brotli', 'lz4', 'zstd'}
             Compression codec to use when saving to file. If None is set, it uses the
             value specified in `spark.sql.parquet.compression.codec`.
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
+        options : dict
+            All other options passed directly into Spark's data source.
 
         See Also
         --------
@@ -4185,9 +4206,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...     mode = 'overwrite',
         ...     partition_cols=['date', 'country'])
         """
-        self.to_spark().write.parquet(
-            path=path, mode=mode, partitionBy=partition_cols, compression=compression
+        builder = self.to_spark(index_col=index_col).write.mode(mode)
+        OptionUtils._set_opts(
+            builder, mode=mode, partitionBy=partition_cols, compression=compression
         )
+        builder.options(**options).format("parquet").save(path)
 
     def to_spark_io(
         self,
@@ -4195,6 +4218,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         format: Optional[str] = None,
         mode: str = "overwrite",
         partition_cols: Union[str, List[str], None] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
         """Write the DataFrame out to a Spark data source.
@@ -4220,6 +4244,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             - 'error' or 'errorifexists': Throw an exception if data already exists.
         partition_cols : str or list of str, optional
             Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options : dict
             All other options passed directly into Spark's data source.
 
@@ -4244,7 +4271,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.to_spark_io(path='%s/to_spark_io/foo.json' % path, format='json')
         """
-        self.to_spark().write.save(
+        self.to_spark(index_col=index_col).write.save(
             path=path, format=format, mode=mode, partitionBy=partition_cols, **options
         )
 
