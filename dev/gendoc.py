@@ -159,10 +159,42 @@ def retry(f, num=3, args=(), **kwargs):
             raise exception
 
 
+def is_exe(path):
+    """
+    Check if a given path is an executable file.
+    From: http://stackoverflow.com/a/377028
+    """
+
+    return os.path.isfile(path) and os.access(path, os.X_OK)
+
+
+def which(program):
+    """
+    Find and return the given program by its absolute path or 'None' if the program cannot be found.
+    From: http://stackoverflow.com/a/377028
+    """
+
+    fpath = os.path.split(program)[0]
+
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ.get("PATH").split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+    return None
+
+
 def download_pandoc_if_needed(path):
     """
     Download pandoc that is used by pypandoc.
     """
+    if which("pandoc"):
+        print("* Pandoc executable was found in your path, skipping installing pandoc...")
+        return
 
     # This is to patch https://github.com/bebraw/pypandoc/pull/154.
     # We can remove when pypandoc is upgraded.
@@ -215,14 +247,15 @@ def download_pandoc_if_needed(path):
     prev = os.getcwd()
     os.chdir(path)
     try:
-        if not os.path.isfile(filename):
+        if not os.path.isfile(filename) or not os.path.isfile("pandoc"):
             def download_pandoc():
                 try:
                     pandoc_download._handle_linux = _handle_linux
                     return pandoc_download.download_pandoc(targetfolder=path, version="latest")
-                finally:
+                except Exception as e:
                     if os.path.isfile(filename):
                         os.remove(filename)
+                    raise e
 
             retry(download_pandoc)
     finally:
