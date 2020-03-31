@@ -3905,7 +3905,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         DataFrame.persist
-        DataFrame.unpersist
 
         Examples
         --------
@@ -3950,7 +3949,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         DataFrame.cache
-        DataFrame.unpersist
 
         Examples
         --------
@@ -10173,11 +10171,6 @@ class _CachedDataFrame(DataFrame):
         """
         The `unpersist` function is used to uncache the Koalas DataFrame when it
         is not used with `with` statement.
-
-        See Also
-        --------
-        DataFrame.cache
-        DataFrame.persist
 
         Examples
         --------
