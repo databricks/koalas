@@ -982,16 +982,10 @@ class iLocIndexer(_LocIndexerLike):
     @lazy_property
     def _internal(self):
         internal = super(iLocIndexer, self)._internal
-        if self._is_series:
-            sdf = internal.spark_frame.select(
-                internal.index_spark_columns + [internal.spark_column]
-            )
-            scol = scol_for(sdf, internal.data_spark_column_names[0])
-        else:
-            sdf = internal.spark_frame
-            scol = None
-        sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=self._sequence_col)
-        return internal.copy(spark_frame=sdf.orderBy(NATURAL_ORDER_COLUMN_NAME), spark_column=scol)
+        sdf = _InternalFrame.attach_distributed_sequence_column(
+            internal.spark_frame, column_name=self._sequence_col
+        )
+        return internal.copy(spark_frame=sdf.orderBy(NATURAL_ORDER_COLUMN_NAME))
 
     @lazy_property
     def _sequence_col(self):
