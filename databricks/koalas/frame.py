@@ -3966,8 +3966,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Set the StorageLevel to `MEMORY_ONLY`.
 
         >>> with df.persist(pyspark.StorageLevel.MEMORY_ONLY) as cached_df:
+        ...     print(cached_df.storage_level)
         ...     print(cached_df.count())
         ...
+        Memory Serialized 1x Replicated
         dogs    4
         cats    4
         Name: 0, dtype: int64
@@ -3975,8 +3977,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Set the StorageLevel to `DISK_ONLY`.
 
         >>> with df.persist(pyspark.StorageLevel.DISK_ONLY) as cached_df:
+        ...     print(cached_df.storage_level)
         ...     print(cached_df.count())
         ...
+        Disk Serialized 1x Replicated
         dogs    4
         cats    4
         Name: 0, dtype: int64
@@ -3984,8 +3988,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         If a StorageLevel is not given, it uses `MEMORY_AND_DISK` by default.
 
         >>> with df.persist() as cached_df:
+        ...     print(cached_df.storage_level)
         ...     print(cached_df.count())
         ...
+        Disk Memory Serialized 1x Replicated
         dogs    4
         cats    4
         Name: 0, dtype: int64
@@ -10193,6 +10199,37 @@ class _CachedDataFrame(DataFrame):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.unpersist()
+
+    @property
+    def storage_level(self):
+        """
+        Return the storage level of this cache.
+
+        Examples
+        --------
+        >>> import pyspark
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'])
+        >>> df
+           dogs  cats
+        0   0.2   0.3
+        1   0.0   0.6
+        2   0.6   0.0
+        3   0.2   0.1
+
+        >>> with df.cache() as cached_df:
+        ...     print(cached_df.storage_level)
+        ...
+        Disk Memory Deserialized 1x Replicated
+
+        Set the StorageLevel to `MEMORY_ONLY`.
+
+        >>> with df.persist(pyspark.StorageLevel.MEMORY_ONLY) as cached_df:
+        ...     print(cached_df.storage_level)
+        ...
+        Memory Serialized 1x Replicated
+        """
+        return self._cached.storageLevel
 
     def unpersist(self):
         """
