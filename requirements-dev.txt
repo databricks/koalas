@@ -30,3 +30,6 @@ pytest-cov
 scikit-learn
 openpyxl
 xlrd
+
+# For Read the docs
+install-jdk
