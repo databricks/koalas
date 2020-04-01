@@ -17,6 +17,7 @@ import importlib.util
 import errno
 
 from databricks import koalas
+from databricks.koalas import utils
 sys.path.insert(0, os.path.abspath('.'))
 
 # Remove previously generated rst files. Ignore errors just in case it stops generating whole docs.
@@ -38,6 +39,10 @@ if "READTHEDOCS" in os.environ:
     java_home = "%s/%s" % (jdk._JRE_DIR, os.listdir(jdk._JRE_DIR)[0])
     os.environ["JAVA_HOME"] = java_home
     os.environ["PATH"] = "%s/bin:%s" % (java_home, os.environ["PATH"])
+
+
+# Lower the number of partitions to speed up documentation build
+utils.default_session({"spark.sql.shuffle.partitions": "4"})
 
 
 def gendoc():
