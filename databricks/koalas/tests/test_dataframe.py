@@ -3166,3 +3166,41 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 self.assert_eq(repr(cached_df.storage_level), repr(storage_level))
 
         self.assertRaises(TypeError, lambda: kdf.persist("DISK_ONLY"))
+
+    def test_squeeze(self):
+        axises = [None, 0, 1, "rows", "index", "columns"]
+
+        # Multiple columns
+        pdf = pd.DataFrame([[1, 2], [3, 4]], columns=["a", "b"])
+        kdf = ks.from_pandas(pdf)
+        for axis in axises:
+            self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+        # Multiple columns with MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([("A", "Z"), ("B", "X")])
+        pdf.columns = columns
+        kdf.columns = columns
+        for axis in axises:
+            self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+
+        # Single column with single value
+        pdf = pd.DataFrame([[1]], columns=["a"])
+        kdf = ks.from_pandas(pdf)
+        for axis in axises:
+            self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+        # Single column with single value with MultiIndex column
+        columns = pd.MultiIndex.from_tuples([("A", "Z")])
+        pdf.columns = columns
+        kdf.columns = columns
+        for axis in axises:
+            self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+
+        # Single column with multiple values
+        pdf = pd.DataFrame([1, 2, 3, 4], columns=["a"])
+        kdf = ks.from_pandas(pdf)
+        for axis in axises:
+            self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+        # Single column with multiple values with MultiIndex column
+        pdf.columns = columns
+        kdf.columns = columns
+        for axis in axises:
+            self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
