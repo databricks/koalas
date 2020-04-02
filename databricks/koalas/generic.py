@@ -2004,7 +2004,6 @@ class _Frame(object):
             series_from_column = self[self.columns[0]]
             has_single_value = len(series_from_column) == 1
             # If DataFrame has only a single value, use pandas API directly.
-            # Otherwise, return the Series from the first(and only) column.
             if has_single_value:
                 result = self._to_internal_pandas().squeeze(axis)
                 return ks.Series(result) if isinstance(result, pd.Series) else result
