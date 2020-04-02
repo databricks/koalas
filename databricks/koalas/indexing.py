@@ -329,7 +329,8 @@ class _LocIndexerLike(_IndexerLike):
 
     # TODO: support key and value as Series from different DataFrames.
     def __setitem__(self, key, value):
-        from databricks.koalas.series import Series
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series, _col
 
         if self._is_series:
             if (isinstance(key, Series) and key._kdf is not self._kdf_or_kser._kdf) or (
@@ -355,6 +356,9 @@ class _LocIndexerLike(_IndexerLike):
                 self._kdf_or_kser._kdf = kser._kdf
                 return
 
+            if isinstance(value, DataFrame):
+                raise ValueError("Incompatible indexer with DataFrame")
+
             cond, limit, remaining_index = self._select_rows(key)
             if cond is None:
                 cond = F.lit(True)
@@ -377,12 +381,70 @@ class _LocIndexerLike(_IndexerLike):
         else:
             assert self._is_df
 
-            # TODO: support DataFrame.
-            raise SparkPandasNotImplementedError(
-                description="Assignment to DataFrame with the iloc indexer is not supported yet",
-                pandas_function=".{}[..., ...] = ...".format(type(self).__name__[:-7].lower()),
-                spark_target_function="withColumn, select",
-            )
+            if isinstance(key, tuple):
+                if len(key) != 2:
+                    raise SparkPandasIndexingError("Only accepts pairs of candidates")
+                rows_sel, cols_sel = key
+            else:
+                rows_sel = key
+                cols_sel = None
+
+            if isinstance(value, DataFrame):
+                if len(value.columns) == 1:
+                    value = _col(value)
+                else:
+                    raise ValueError("Only a dataframe with one column can be assigned")
+
+            if (isinstance(rows_sel, Series) and rows_sel._kdf is not self._kdf_or_kser) or (
+                    isinstance(value, Series) and value._kdf is not self._kdf_or_kser
+            ):
+                kdf = self._kdf_or_kser.copy()
+                kdf["__temp_natural_order__"] = F.monotonically_increasing_id()
+                if isinstance(rows_sel, Series):
+                    kdf["__temp_rows_sel_col__"] = rows_sel
+                if isinstance(value, Series):
+                    kdf["__temp_value_col__"] = value
+                kdf = kdf.sort_values("__temp_natural_order__")
+
+                if isinstance(rows_sel, Series):
+                    rows_sel = kdf["__temp_rows_sel_col__"]
+                if isinstance(value, Series):
+                    value = kdf["__temp_value_col__"]
+
+                type(self)(kdf)[rows_sel, cols_sel] = value
+
+                self._kdf_or_kser._internal = kdf[list(self._kdf_or_kser.columns)]._internal
+                return
+
+            cond, limit, remaining_index = self._select_rows(rows_sel)
+            _, data_spark_columns, _ = self._select_cols(cols_sel)
+
+            if cond is None:
+                cond = F.lit(True)
+            if limit is not None:
+                cond = cond & (self._internal.spark_frame[self._sequence_col] < F.lit(limit))
+
+            if isinstance(value, Series):
+                if remaining_index is not None and remaining_index == 0:
+                    raise ValueError("Incompatible indexer with Series")
+                if len(data_spark_columns) > 1:
+                    raise ValueError("shape mismatch")
+                value = value._scol
+            else:
+                value = F.lit(value)
+
+            new_data_spark_columns = []
+            for new_scol, spark_column_name in zip(
+                self._internal.data_spark_columns, self._internal.data_spark_column_names
+            ):
+                for scol in data_spark_columns:
+                    if new_scol._jc.equals(scol._jc):
+                        new_scol = F.when(cond, value).otherwise(scol).alias(spark_column_name)
+                        break
+                new_data_spark_columns.append(new_scol)
+
+            internal = self._internal.with_new_columns(new_data_spark_columns)
+            self._kdf_or_kser._internal = internal
 
 
 class LocIndexer(_LocIndexerLike):
@@ -510,19 +572,21 @@ class LocIndexer(_LocIndexerLike):
     viper               4      50
     sidewinder          7      50
 
-    Setting value for an entire row is not allowed
+    Setting value for an entire row
 
     >>> df.loc['cobra'] = 10
-    Traceback (most recent call last):
-     ...
-    databricks.koalas.exceptions.SparkPandasNotImplementedError: ...
+    >>> df
+                max_speed  shield
+    cobra              10      10
+    viper               4      50
+    sidewinder          7      50
 
     Set value for an entire column
 
     >>> df.loc[:, 'max_speed'] = 30
     >>> df
                 max_speed  shield
-    cobra              30       2
+    cobra              30      10
     viper              30      50
     sidewinder         30      50
 
@@ -825,68 +889,6 @@ class LocIndexer(_LocIndexerLike):
 
         return column_labels, data_spark_columns, returns_series
 
-    def __setitem__(self, key, value):
-        from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series, _col
-
-        if self._is_series:
-            super(LocIndexer, self).__setitem__(key, value)
-            return
-
-        if (not isinstance(key, tuple)) or (len(key) != 2):
-            raise SparkPandasNotImplementedError(
-                description="Only accepts pairs of candidates",
-                pandas_function=".loc[..., ...] = ...",
-                spark_target_function="withColumn, select",
-            )
-
-        rows_sel, cols_sel = key
-
-        if (not isinstance(rows_sel, slice)) or (rows_sel != slice(None)):
-            if isinstance(rows_sel, list):
-                if isinstance(cols_sel, str):
-                    cols_sel = [cols_sel]
-                kdf = self._kdf_or_kser.copy()
-                for col_sel in cols_sel:
-                    # Uses `kdf` to allow operations on different DataFrames.
-                    # TODO: avoid temp column name or declare `__` prefix is
-                    #  reserved for Koalas' internal columns.
-                    kdf["__indexing_temp_col__"] = value
-                    new_col = kdf["__indexing_temp_col__"]._scol
-                    kdf[col_sel] = Series(
-                        kdf[col_sel]._internal.copy(
-                            spark_column=F.when(
-                                kdf._internal.index_spark_columns[0].isin(rows_sel), new_col
-                            ).otherwise(kdf[col_sel]._scol)
-                        ),
-                        anchor=kdf,
-                    )
-                    kdf = kdf.drop(labels=["__indexing_temp_col__"])
-
-                self._kdf_or_kser._internal = kdf._internal.copy()
-            else:
-                raise SparkPandasNotImplementedError(
-                    description="""Can only assign value to the whole dataframe, the row index
-                    has to be `slice(None)` or `:`""",
-                    pandas_function=".loc[..., ...] = ...",
-                    spark_target_function="withColumn, select",
-                )
-
-        if not isinstance(cols_sel, (str, list)):
-            raise ValueError("""only column names or list of column names can be assigned""")
-
-        if isinstance(value, DataFrame):
-            if len(value.columns) == 1:
-                self._kdf_or_kser[cols_sel] = _col(value)
-            else:
-                raise ValueError("Only a dataframe with one column can be assigned")
-        else:
-            if isinstance(cols_sel, str):
-                cols_sel = [cols_sel]
-            if (not isinstance(rows_sel, list)) and (isinstance(cols_sel, list)):
-                for col_sel in cols_sel:
-                    self._kdf_or_kser[col_sel] = value
-
 
 class iLocIndexer(_LocIndexerLike):
     """
@@ -992,6 +994,53 @@ class iLocIndexer(_LocIndexerLike):
     0     1     3
     1   100   300
     2  1000  3000
+
+    **Setting values**
+
+    Setting value for all items matching the list of labels.
+
+    >>> df.iloc[[1, 2], [1]] = 50
+    >>> df
+          a   b     c     d
+    0     1   2     3     4
+    1   100  50   300   400
+    2  1000  50  3000  4000
+
+    Setting value for an entire row
+
+    >>> df.iloc[0] = 10
+    >>> df
+          a   b     c     d
+    0    10  10    10    10
+    1   100  50   300   400
+    2  1000  50  3000  4000
+
+    Set value for an entire column
+
+    >>> df.iloc[:, 2] = 30
+    >>> df
+          a   b   c     d
+    0    10  10  30    10
+    1   100  50  30   400
+    2  1000  50  30  4000
+
+    Set value for an entire list of columns
+
+    >>> df.iloc[:, [2, 3]] = 100
+    >>> df
+          a   b    c    d
+    0    10  10  100  100
+    1   100  50  100  100
+    2  1000  50  100  100
+
+    Set value with Series
+
+    >>> df.iloc[:, 3] = df.iloc[:, 3] * 2
+    >>> df
+          a   b    c    d
+    0    10  10  100  200
+    1   100  50  100  200
+    2  1000  50  100  200
     """
 
     @staticmethod
@@ -1209,8 +1258,6 @@ class iLocIndexer(_LocIndexerLike):
             self._kdf_or_kser._kdf = kser._kdf
         else:
             assert self._is_df
-
-            # TODO: support DataFrame.
 
         # Clean up implicitly cached properties to be able to reuse the indexer.
         del self._internal
