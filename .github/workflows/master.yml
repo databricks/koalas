@@ -69,9 +69,6 @@ jobs:
         # as Black only works with Python 3.6+. This is hacky but we will drop
         # Python 3.5 soon so it's fine.
         sed -i '/black/d' requirements-dev.txt
-        # 'install-jdk' does not support Python 3.5. This is hacky but we will remove
-        # once Spark 3.0 is released. See also https://github.com/databricks/koalas/pull/1387
-        sed -i '/install-jdk/d' requirements-dev.txt
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         pip list
@@ -147,9 +144,6 @@ jobs:
         conda config --env --add pinned_packages pandas==$PANDAS_VERSION
         conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
         conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
-        # 'install-jdk' does not exist in Conda. This is hacky but we will remove
-        # once Spark 3.0 is released. See also https://github.com/databricks/koalas/pull/1387
-        sed -i '/install-jdk/d' requirements-dev.txt
         conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
         conda list
     - name: Run tests
