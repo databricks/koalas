@@ -388,6 +388,12 @@ def lazy_property(fn):
             setattr(self, attr_name, fn(self))
         return getattr(self, attr_name)
 
+    def deleter(self):
+        if hasattr(self, attr_name):
+            delattr(self, attr_name)
+
+    _lazy_property = _lazy_property.deleter(deleter)
+
     return _lazy_property
 
 

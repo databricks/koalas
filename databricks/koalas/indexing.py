@@ -1213,6 +1213,5 @@ class iLocIndexer(_LocIndexerLike):
             # TODO: support DataFrame.
 
         # Clean up implicitly cached properties to be able to reuse the indexer.
-        for attr in ["_lazy__internal", "_lazy__sequence_col"]:
-            if hasattr(self, attr):
-                delattr(self, attr)
+        del self._internal
+        del self._sequence_col
