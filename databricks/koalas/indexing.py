@@ -341,7 +341,7 @@ class _LocIndexerLike(_IndexerLike):
                     kdf["__temp_key_col__"] = key
                 if isinstance(value, Series):
                     kdf["__temp_value_col__"] = value
-                kdf = kdf.sort_values("__temp_natural_order__")
+                kdf = kdf.sort_values("__temp_natural_order__").drop("__temp_natural_order__")
 
                 kser = kdf[self._kdf_or_kser.name]
                 if isinstance(key, Series):

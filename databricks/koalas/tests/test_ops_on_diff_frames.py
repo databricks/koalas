@@ -577,37 +577,37 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         kser.loc[kser % 2 == 1] = -kser_another
         pser.loc[pser % 2 == 1] = -pser_another
-        self.assert_eq(kser.sort_index(), pser.sort_index())
+        self.assert_eq(kser, pser)
 
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
         kser = ks.from_pandas(pser)
         kser.loc[kser_another % 2 == 1] = -kser
         pser.loc[pser_another % 2 == 1] = -pser
-        self.assert_eq(kser.sort_index(), pser.sort_index())
+        self.assert_eq(kser, pser)
 
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
         kser = ks.from_pandas(pser)
         kser.loc[kser_another % 2 == 1] = -kser
         pser.loc[pser_another % 2 == 1] = -pser
-        self.assert_eq(kser.sort_index(), pser.sort_index())
+        self.assert_eq(kser, pser)
 
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
         kser = ks.from_pandas(pser)
         kser.loc[kser_another % 2 == 1] = -kser_another
         pser.loc[pser_another % 2 == 1] = -pser_another
-        self.assert_eq(kser.sort_index(), pser.sort_index())
+        self.assert_eq(kser, pser)
 
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
         kser = ks.from_pandas(pser)
         kser.loc[["viper", "sidewinder"]] = -kser_another
         pser.loc[["viper", "sidewinder"]] = -pser_another
-        self.assert_eq(kser.sort_index(), pser.sort_index())
+        self.assert_eq(kser, pser)
 
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
         kser = ks.from_pandas(pser)
         kser.loc[kser_another % 2 == 1] = 10
         pser.loc[pser_another % 2 == 1] = 10
-        self.assert_eq(kser.sort_index(), pser.sort_index())
+        self.assert_eq(kser, pser)
 
     def test_series_iloc_setitem(self):
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
@@ -621,15 +621,15 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         kser.iloc[[1, 2]] = -kser_another
         pser.iloc[[1, 2]] = -pser_another
-        self.assert_eq(kser.sort_index(), pser.sort_index())
+        self.assert_eq(kser, pser)
 
         kser.iloc[[0]] = 10 * kser_another
         pser.iloc[[0]] = 10 * pser_another
-        self.assert_eq(kser.sort_index(), pser.sort_index())
+        self.assert_eq(kser, pser)
 
         kser1.iloc[[1, 2]] = -kser_another
         pser1.iloc[[1, 2]] = -pser_another
-        self.assert_eq(kser1.sort_index(), pser1.sort_index())
+        self.assert_eq(kser1, pser1)
 
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
         kser = ks.from_pandas(pser)
@@ -639,11 +639,11 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         kiloc[[1, 2]] = -kser_another
         piloc[[1, 2]] = -pser_another
-        self.assert_eq(kser.sort_index(), pser.sort_index())
+        self.assert_eq(kser, pser)
 
         kiloc[[0]] = 10 * kser_another
         piloc[[0]] = 10 * pser_another
-        self.assert_eq(kser.sort_index(), pser.sort_index())
+        self.assert_eq(kser, pser)
 
     def test_where(self):
         pdf1 = pd.DataFrame({"A": [0, 1, 2, 3, 4], "B": [100, 200, 300, 400, 500]})
