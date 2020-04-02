@@ -623,9 +623,27 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pser.iloc[[1, 2]] = -pser_another
         self.assert_eq(kser.sort_index(), pser.sort_index())
 
+        kser.iloc[[0]] = 10 * kser_another
+        pser.iloc[[0]] = 10 * pser_another
+        self.assert_eq(kser.sort_index(), pser.sort_index())
+
         kser1.iloc[[1, 2]] = -kser_another
         pser1.iloc[[1, 2]] = -pser_another
         self.assert_eq(kser1.sort_index(), pser1.sort_index())
+
+        pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
+        kser = ks.from_pandas(pser)
+
+        piloc = pser.iloc
+        kiloc = kser.iloc
+
+        kiloc[[1, 2]] = -kser_another
+        piloc[[1, 2]] = -pser_another
+        self.assert_eq(kser.sort_index(), pser.sort_index())
+
+        kiloc[[0]] = 10 * kser_another
+        piloc[[0]] = 10 * pser_another
+        self.assert_eq(kser.sort_index(), pser.sort_index())
 
     def test_where(self):
         pdf1 = pd.DataFrame({"A": [0, 1, 2, 3, 4], "B": [100, 200, 300, 400, 500]})

@@ -923,6 +923,9 @@ class IndexingTest(ReusedSQLTestCase):
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
         kser = ks.from_pandas(pser)
 
+        piloc = pser.iloc
+        kiloc = kser.iloc
+
         pser1 = pser + 1
         kser1 = kser + 1
 
@@ -936,6 +939,10 @@ class IndexingTest(ReusedSQLTestCase):
             with self.subTest(key=key, value=value):
                 pser.iloc[key] = value
                 kser.iloc[key] = value
+                self.assert_eq(kser, pser)
+
+                piloc[key] = -value
+                kiloc[key] = -value
                 self.assert_eq(kser, pser)
 
                 pser1.iloc[key] = value
