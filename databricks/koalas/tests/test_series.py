@@ -1381,8 +1381,17 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(repr(kser.asof([5, 20]).sort_index()), repr(pser.asof([5, 20]).sort_index()))
         self.assert_eq(repr(kser.asof(100)), repr(pser.asof(100)))
         self.assert_eq(repr(kser.asof(-100)), repr(pser.asof(-100)))
+        self.assert_eq(repr(kser.asof(-100)), repr(pser.asof(-100)))
         self.assert_eq(
             repr(kser.asof([-100, 100]).sort_index()), repr(pser.asof([-100, 100]).sort_index())
+        )
+        self.assert_eq(
+            repr(kser.asof(ks.Index([-100, 100])).sort_index()),
+            repr(pser.asof(pd.Index([-100, 100])).sort_index()),
+        )
+        self.assert_eq(
+            repr(kser.asof(ks.Series([-100, 100])).sort_index()),
+            repr(pser.asof(pd.Series([-100, 100], name=0)).sort_index()),
         )
 
         # where cannot be a DataFrame

@@ -4587,6 +4587,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if not is_list_like(where):
             should_return_series = False
             where = [where]
+        elif isinstance(where, (ks.Index, ks.Series)):
+            # Expecting the the given Index or Series is small enough.
+            where = where.to_pandas()
         sdf = self._internal._sdf
         index_scol = self._internal.index_spark_columns[0]
         results = [
