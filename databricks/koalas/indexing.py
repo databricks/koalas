@@ -332,6 +332,29 @@ class _LocIndexerLike(_IndexerLike):
         from databricks.koalas.series import Series
 
         if self._is_series:
+            if (isinstance(key, Series) and key._kdf is not self._kdf_or_kser._kdf) or (
+                isinstance(value, Series) and value._kdf is not self._kdf_or_kser._kdf
+            ):
+                kdf = self._kdf_or_kser.to_frame()
+                kdf["__temp_natural_order__"] = F.monotonically_increasing_id()
+                if isinstance(key, Series):
+                    kdf["__temp_key_col__"] = key
+                if isinstance(value, Series):
+                    kdf["__temp_value_col__"] = value
+                kdf = kdf.sort_values("__temp_natural_order__")
+
+                kser = kdf[self._kdf_or_kser.name]
+                if isinstance(key, Series):
+                    key = kdf["__temp_key_col__"]
+                if isinstance(value, Series):
+                    value = kdf["__temp_value_col__"]
+
+                type(self)(kser)[key] = value
+
+                self._kdf_or_kser._internal = kser._internal
+                self._kdf_or_kser._kdf = kser._kdf
+                return
+
             cond, limit, remaining_index = self._select_rows(key)
             if cond is None:
                 cond = F.lit(True)
@@ -1189,5 +1212,7 @@ class iLocIndexer(_LocIndexerLike):
 
             # TODO: support DataFrame.
 
-        delattr(self, "_lazy__internal")
-        delattr(self, "_lazy__sequence_col")
+        # Clean up implicitly cached properties to be able to reuse the indexer.
+        for attr in ["_lazy__internal", "_lazy__sequence_col"]:
+            if hasattr(self, attr):
+                delattr(self, attr)
