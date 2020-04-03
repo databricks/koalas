@@ -4599,7 +4599,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             result_values = list(result_row.asDict().values())
         else:
             # In Python < 3.6, the order of values are not kept after `asDict`.
-            # So, using pandas API directly to keep an order of values.
+            # So, using pandas API directly to keep an order of the values in Python 3.5.
             result_values = sdf.select(cond).toPandas().values.tolist()[0]
 
         if should_return_series:
