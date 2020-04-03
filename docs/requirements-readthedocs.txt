@@ -1,0 +1,2 @@
+# Dependencies for Read the Docs.
+install-jdk
