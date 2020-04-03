@@ -22,6 +22,7 @@ import inspect
 from collections import Iterable, OrderedDict
 from functools import partial, wraps, reduce
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -4593,8 +4594,13 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = self._internal._sdf
         index_scol = self._internal.index_spark_columns[0]
         cond = [F.max(F.when(index_scol <= index, self._scol)) for index in where]
-        result_row = sdf.select(cond).head(1)[0]
-        result_values = list(result_row.asDict().values())
+        if LooseVersion(pd.__version__) >= LooseVersion("3.6"):
+            result_row = sdf.select(cond).head(1)[0]
+            result_values = list(result_row.asDict().values())
+        else:
+            # In Python < 3.6, the order of values are not kept after `asDict`.
+            # So, using pandas API directly to keep an order of values.
+            result_values = sdf.select(cond).toPandas().values.tolist()[0]
 
         if should_return_series:
             return ks.Series(result_values, index=where, name=self.name)
