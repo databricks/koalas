@@ -4588,18 +4588,18 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             should_return_series = False
             where = [where]
         elif isinstance(where, (ks.Index, ks.Series)):
-            # Expecting the the given Index or Series is small enough.
+            # Expecting the given Index or Series is small enough.
             where = where.to_pandas()
         sdf = self._internal._sdf
         index_scol = self._internal.index_spark_columns[0]
-        results = [
-            sdf.where(index_scol <= index).select(F.max(self._scol)).head()[0] for index in where
-        ]
+        cond = [F.max(F.when(index_scol <= index, self._scol)) for index in where]
+        result_row = sdf.select(cond).head(1)[0]
+        result_values = list(result_row.asDict().values())
 
         if should_return_series:
-            return ks.Series(results, index=where, name=self.name)
+            return ks.Series(result_values, index=where, name=self.name)
         else:
-            result = results[0]
+            result = result_values[0]
             return result if result is not None else np.nan
 
     def _cum(self, func, skipna, part_cols=()):
