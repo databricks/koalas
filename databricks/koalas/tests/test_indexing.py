@@ -868,12 +868,34 @@ class IndexingTest(ReusedSQLTestCase):
         kdf.loc[kdf.max_speed < 5, "max_speed"] = -kdf.max_speed
         self.assert_eq(kdf, pdf)
 
+        pdf.loc[:, "min_speed"] = 0
+        kdf.loc[:, "min_speed"] = 0
+        self.assert_eq(kdf, pdf, almost=True)
+
         with self.assertRaisesRegex(ValueError, "Incompatible indexer with Series"):
             kdf.loc["cobra", "max_speed"] = -kdf.max_speed
         with self.assertRaisesRegex(ValueError, "shape mismatch"):
             kdf.loc[:, ["shield", "max_speed"]] = -kdf.max_speed
         with self.assertRaisesRegex(ValueError, "Only a dataframe with one column can be assigned"):
             kdf.loc[:, "max_speed"] = kdf
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples(
+            [("x", "max_speed"), ("x", "shield"), ("y", "min_speed")]
+        )
+        pdf.columns = columns
+        kdf.columns = columns
+
+        pdf.loc[:, ("y", "shield")] = -pdf[("x", "shield")]
+        kdf.loc[:, ("y", "shield")] = -kdf[("x", "shield")]
+        self.assert_eq(kdf, pdf, almost=True)
+
+        pdf.loc[:, "z"] = 100
+        kdf.loc[:, "z"] = 100
+        self.assert_eq(kdf, pdf, almost=True)
+
+        with self.assertRaisesRegex(KeyError, "Key length \\(3\\) exceeds index depth \\(2\\)"):
+            kdf.loc[:, [("x", "max_speed", "foo")]] = -kdf[("x", "shield")]
 
         pdf = pd.DataFrame(
             [[1], [4], [7]], index=["cobra", "viper", "sidewinder"], columns=["max_speed"]

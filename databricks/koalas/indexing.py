@@ -417,7 +417,8 @@ class _LocIndexerLike(_IndexerLike):
                 return
 
             cond, limit, remaining_index = self._select_rows(rows_sel)
-            _, data_spark_columns, _ = self._select_cols(cols_sel)
+            missing_keys = []
+            _, data_spark_columns, _ = self._select_cols(cols_sel, missing_keys=missing_keys)
 
             if cond is None:
                 cond = F.lit(True)
@@ -443,7 +444,24 @@ class _LocIndexerLike(_IndexerLike):
                         break
                 new_data_spark_columns.append(new_scol)
 
-            internal = self._internal.with_new_columns(new_data_spark_columns)
+            column_labels = self._internal.column_labels.copy()
+            for label in missing_keys:
+                if isinstance(label, str):
+                    label = (label,)
+                if len(label) < self._internal.column_labels_level:
+                    label = tuple(
+                        list(label) + ([""] * (self._internal.column_labels_level - len(label)))
+                    )
+                elif len(label) > self._internal.column_labels_level:
+                    raise KeyError(
+                        "Key length ({}) exceeds index depth ({})".format(
+                            len(label), self._internal.column_labels_level
+                        )
+                    )
+                column_labels.append(label)
+                new_data_spark_columns.append(F.when(cond, value).alias(name_like_string(label)))
+
+            internal = self._internal.with_new_columns(new_data_spark_columns, column_labels)
             self._kdf_or_kser._internal = internal
 
 
@@ -803,7 +821,7 @@ class LocIndexer(_LocIndexerLike):
                 len(self._internal.index_map) - len(rows_sel),
             )
 
-    def _get_from_multiindex_column(self, key, labels=None):
+    def _get_from_multiindex_column(self, key, missing_keys, labels=None):
         """ Select columns from multi-index columns.
 
         :param key: the multi-index column keys represented by tuple
@@ -815,12 +833,16 @@ class LocIndexer(_LocIndexerLike):
         for k in key:
             labels = [(label, lbl[1:]) for label, lbl in labels if lbl[0] == k]
             if len(labels) == 0:
-                raise KeyError(k)
+                if missing_keys is None:
+                    raise KeyError(k)
+                else:
+                    missing_keys.append(key)
+                    return [], [], False
 
         if all(len(lbl) > 0 and lbl[0] == "" for _, lbl in labels):
             # If the head is '', drill down recursively.
             labels = [(label, tuple([str(key), *lbl[1:]])) for i, (label, lbl) in enumerate(labels)]
-            return self._get_from_multiindex_column((str(key),), labels)
+            return self._get_from_multiindex_column((str(key),), missing_keys, labels)
         else:
             returns_series = all(len(lbl) == 0 for _, lbl in labels)
             if returns_series:
@@ -835,7 +857,7 @@ class LocIndexer(_LocIndexerLike):
 
         return column_labels, data_spark_columns, returns_series
 
-    def _select_cols(self, cols_sel):
+    def _select_cols(self, cols_sel, missing_keys=None):
         from databricks.koalas.series import Series
 
         returns_series = False
@@ -856,7 +878,7 @@ class LocIndexer(_LocIndexerLike):
         elif isinstance(cols_sel, (str, tuple)):
             if isinstance(cols_sel, str):
                 cols_sel = (cols_sel,)
-            return self._get_from_multiindex_column(cols_sel)
+            return self._get_from_multiindex_column(cols_sel, missing_keys)
         elif all(isinstance(key, Series) for key in cols_sel):
             column_labels = [key._internal.column_labels[0] for key in cols_sel]
             data_spark_columns = [key._scol for key in cols_sel]
@@ -870,7 +892,7 @@ class LocIndexer(_LocIndexerLike):
         ):
             raise TypeError("Expected tuple, got str")
         else:
-            if all(isinstance(key, tuple) for key in cols_sel):
+            if missing_keys is None and all(isinstance(key, tuple) for key in cols_sel):
                 level = self._internal.column_labels_level
                 if any(len(key) != level for key in cols_sel):
                     raise ValueError("All the key level should be the same as column index level.")
@@ -885,7 +907,10 @@ class LocIndexer(_LocIndexerLike):
                         data_spark_columns.append(self._internal.spark_column_for(label))
                         found = True
                 if not found:
-                    raise KeyError("['{}'] not in index".format(name_like_string(key)))
+                    if missing_keys is None:
+                        raise KeyError("['{}'] not in index".format(name_like_string(key)))
+                    else:
+                        missing_keys.append(key)
 
         return column_labels, data_spark_columns, returns_series
 
@@ -1182,7 +1207,7 @@ class iLocIndexer(_LocIndexerLike):
                 "got {}".format(type(rows_sel))
             )
 
-    def _select_cols(self, cols_sel):
+    def _select_cols(self, cols_sel, missing_keys=None):
         from databricks.koalas.series import Series
 
         returns_series = cols_sel is not None and isinstance(cols_sel, (Series, int))
