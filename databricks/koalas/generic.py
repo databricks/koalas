@@ -2002,7 +2002,7 @@ class _Frame(object):
             if not is_squeezable:
                 return self
             series_from_column = self[self.columns[0]]
-            has_single_value = len(series_from_column) == 1
+            has_single_value = len(series_from_column.head(2)) == 1
             # If DataFrame has only a single value, use pandas API directly.
             if has_single_value:
                 result = self._to_internal_pandas().squeeze(axis)
