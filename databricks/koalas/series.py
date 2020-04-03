@@ -22,7 +22,6 @@ import inspect
 from collections import Iterable, OrderedDict
 from functools import partial, wraps, reduce
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
-from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -4596,18 +4595,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         sdf = self._internal._sdf
         index_scol = self._internal.index_spark_columns[0]
         cond = [F.max(F.when(index_scol <= index, self._scol)) for index in where]
-        if LooseVersion(pd.__version__) >= LooseVersion("3.6"):
-            result_row = sdf.select(cond).head(1)[0]
-            result_values = list(result_row.asDict().values())
-        else:
-            # In Python < 3.6, the order of values are not kept after `asDict`.
-            # So, using pandas API directly to keep an order of the values in Python 3.5.
-            result_values = sdf.select(cond).toPandas().values.tolist()[0]
+        sdf = sdf.select(cond)
+        # The data is expected to be small so it's fine to transpose.
+        kdf = ks.DataFrame(sdf)
+        kdf.columns = pd.Index(where)
+        result_series = _col(kdf.transpose())
 
         if should_return_series:
-            return ks.Series(result_values, index=where, name=self.name)
+            result_series.name = self.name
+            return result_series
         else:
-            result = result_values[0]
+            result = result_series.iloc[0]
             return result if result is not None else np.nan
 
     def _cum(self, func, skipna, part_cols=()):
