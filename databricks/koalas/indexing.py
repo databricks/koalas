@@ -396,7 +396,7 @@ class _LocIndexerLike(_IndexerLike):
                     raise ValueError("Only a dataframe with one column can be assigned")
 
             if (isinstance(rows_sel, Series) and rows_sel._kdf is not self._kdf_or_kser) or (
-                    isinstance(value, Series) and value._kdf is not self._kdf_or_kser
+                isinstance(value, Series) and value._kdf is not self._kdf_or_kser
             ):
                 kdf = self._kdf_or_kser.copy()
                 kdf["__temp_natural_order__"] = F.monotonically_increasing_id()
