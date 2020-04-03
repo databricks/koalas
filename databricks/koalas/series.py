@@ -4529,6 +4529,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         If there is no good value, NaN is returned.
 
+        .. note:: This API is dependent on :meth:`Index.is_monotonic_increasing`
+            which can be expensive.
+
         Parameters
         ----------
         where : index or array-like of indices
@@ -4589,8 +4592,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             should_return_series = False
             where = [where]
         elif isinstance(where, (ks.Index, ks.Series)):
-            # Expecting the given Index or Series is small enough.
-            where = where.to_pandas()
+            where = list(map(lambda x: x.item(), where.values))
         sdf = self._internal._sdf
         index_scol = self._internal.index_spark_columns[0]
         cond = [F.max(F.when(index_scol <= index, self._scol)) for index in where]

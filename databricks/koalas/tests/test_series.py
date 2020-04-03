@@ -1391,7 +1391,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         self.assert_eq(
             repr(kser.asof(ks.Series([-100, 100])).sort_index()),
-            repr(pser.asof(pd.Series([-100, 100], name=0)).sort_index()),
+            repr(pser.asof(pd.Series([-100, 100])).sort_index()),
         )
 
         # where cannot be a DataFrame
