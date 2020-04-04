@@ -327,7 +327,6 @@ class _LocIndexerLike(_IndexerLike):
         else:
             return kdf_or_kser
 
-    # TODO: support key and value as Series from different DataFrames.
     def __setitem__(self, key, value):
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series, _col
