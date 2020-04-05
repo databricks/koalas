@@ -4583,21 +4583,22 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         should_return_series = True
         if isinstance(self.index, ks.MultiIndex):
             raise ValueError("asof is not supported for a MultiIndex")
-        if isinstance(where, ks.DataFrame):
-            raise ValueError("where cannot be a DataFrame")
+        if isinstance(where, (ks.Index, ks.Series, ks.DataFrame)):
+            raise ValueError("where cannot be an Index, Series or a DataFrame")
         if not self.index.is_monotonic_increasing:
             raise ValueError("asof requires a sorted index")
         if not is_list_like(where):
             should_return_series = False
             where = [where]
-        elif isinstance(where, (ks.Index, ks.Series)):
-            where = list(map(lambda x: x.item(), where.values))
         sdf = self._internal._sdf
         index_scol = self._internal.index_spark_columns[0]
         cond = [F.max(F.when(index_scol <= index, self._scol)) for index in where]
         sdf = sdf.select(cond)
-        # The data is expected to be small so it's fine to transpose.
-        kdf = ks.DataFrame(sdf)
+        # The data is expected to be small so it's fine to transpose/use default index.
+        with ks.option_context(
+            "compute.default_index_type", "distributed", "compute.max_rows", None
+        ):
+            kdf = ks.DataFrame(sdf)
         kdf.columns = pd.Index(where)
         result_series = _col(kdf.transpose())
 

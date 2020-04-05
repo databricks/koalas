@@ -1385,16 +1385,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             repr(kser.asof([-100, 100]).sort_index()), repr(pser.asof([-100, 100]).sort_index())
         )
-        self.assert_eq(
-            repr(kser.asof(ks.Index([-100, 100])).sort_index()),
-            repr(pser.asof(pd.Index([-100, 100])).sort_index()),
-        )
-        self.assert_eq(
-            repr(kser.asof(ks.Series([-100, 100])).sort_index()),
-            repr(pser.asof(pd.Series([-100, 100])).sort_index()),
-        )
 
-        # where cannot be a DataFrame
+        # where cannot be an Index, Series or a DataFrame
+        self.assertRaises(ValueError, lambda: kser.asof(ks.Index([-100, 100])))
+        self.assertRaises(ValueError, lambda: kser.asof(ks.Series([-100, 100])))
         self.assertRaises(ValueError, lambda: kser.asof(ks.DataFrame({"A": [1, 2, 3]})))
         # asof is not supported for a MultiIndex
         pser.index = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c"), ("y", "d")])
