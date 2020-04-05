@@ -1997,11 +1997,13 @@ class _Frame(object):
             axis = validate_axis(axis)
 
         if isinstance(self, ks.DataFrame):
+            from databricks.koalas.series import _col
+
             is_squeezable = len(self.columns[:2]) == 1
             # If DataFrame has multiple columns, there is no change.
             if not is_squeezable:
                 return self
-            series_from_column = self[self.columns[0]]
+            series_from_column = _col(self)
             has_single_value = len(series_from_column.head(2)) == 1
             # If DataFrame has only a single value, use pandas API directly.
             if has_single_value:
