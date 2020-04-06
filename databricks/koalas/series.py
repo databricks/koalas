@@ -55,6 +55,7 @@ from databricks.koalas.utils import (
     name_like_string,
     validate_axis,
     validate_bool_kwarg,
+    verify_temp_column_name,
 )
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
@@ -4089,8 +4090,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if should_try_ops_on_diff_frame:
             # Try to perform it with 'compute.ops_on_diff_frame' option.
             kdf = self.to_frame()
-            kdf["__tmp_cond_col__"] = cond
-            kdf["__tmp_other_col__"] = other
+            tmp_cond_col = verify_temp_column_name(kdf, "__tmp_cond_col__")
+            tmp_other_col = verify_temp_column_name(kdf, "__tmp_other_col__")
+
+            kdf[tmp_cond_col] = cond
+            kdf[tmp_other_col] = other
 
             # above logic makes a Spark DataFrame looks like below:
             # +-----------------+---+----------------+-----------------+
@@ -4103,8 +4107,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             # |                4|  4|            true|              500|
             # +-----------------+---+----------------+-----------------+
             condition = (
-                F.when(kdf["__tmp_cond_col__"]._scol, kdf[self._internal.column_labels[0]]._scol)
-                .otherwise(kdf["__tmp_other_col__"]._scol)
+                F.when(kdf[tmp_cond_col]._scol, kdf[self._internal.column_labels[0]]._scol)
+                .otherwise(kdf[tmp_other_col]._scol)
                 .alias(self._internal.data_spark_column_names[0])
             )
 

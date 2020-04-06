@@ -455,31 +455,59 @@ def validate_bool_kwarg(value, arg_name):
     return value
 
 
-def verify_temp_column_name(sdf: spark.DataFrame, column_name: str) -> str:
+def verify_temp_column_name(df: Union["ks.DataFrame", spark.DataFrame], column_name: str) -> str:
     """
     Generate a temporaty column name which does not exist in the given Spark DataFrame
 
-    >>> sdf = ks.DataFrame(['a', 'b', 'c']).to_spark().withColumn('__dummy__', F.lit(0))
-    >>> sdf.show()  # doctest: +NORMALIZE_WHITESPACE
-    +---+---------+
-    |  0|__dummy__|
-    +---+---------+
-    |  a|        0|
-    |  b|        0|
-    |  c|        0|
-    +---+---------+
+    >>> kdf = ks.DataFrame({("x", "a"): ['a', 'b', 'c']})
+    >>> kdf["__dummy__"] = 0
+    >>> kdf  # doctest: +NORMALIZE_WHITESPACE
+       x __dummy__
+       a
+    0  a         0
+    1  b         0
+    2  c         0
+
+    >>> verify_temp_column_name(kdf, '__tmp__')
+    '__tmp__'
+    >>> verify_temp_column_name(kdf, '__dummy__')
+    Traceback (most recent call last):
+    ...
+    AssertionError: ... `(__dummy__, )` ...
+
+    >>> sdf = kdf._internal.spark_frame
+    >>> sdf.select(kdf._internal.data_spark_columns).show()  # doctest: +NORMALIZE_WHITESPACE
+    +------+---------+
+    |(x, a)|__dummy__|
+    +------+---------+
+    |     a|        0|
+    |     b|        0|
+    |     c|        0|
+    +------+---------+
 
     >>> verify_temp_column_name(sdf, '__tmp__')
     '__tmp__'
     >>> verify_temp_column_name(sdf, '__dummy__')
     Traceback (most recent call last):
     ...
-    AssertionError: ... `__dummy__` ...: ['0', '__dummy__']
+    AssertionError: ... `__dummy__` ... '(x, a)', '__dummy__', ...
     """
+    from databricks.koalas.frame import DataFrame
+
+    if isinstance(df, DataFrame):
+        label = tuple([column_name] + ([""] * (df._internal.column_labels_level - 1)))
+        assert (
+            label not in df._internal.column_labels
+        ), "The give column name `{}` already exists in the Koalas DataFrame: {}".format(
+            name_like_string(label), df.columns
+        )
+        df = df._internal.spark_frame
+
+    assert isinstance(df, spark.DataFrame), type(df)
     assert (
-        column_name not in sdf.columns
+        column_name not in df.columns
     ), "The give column name `{}` already exists in the Spark DataFrame: {}".format(
-        column_name, sdf.columns
+        column_name, df.columns
     )
     return column_name
 
