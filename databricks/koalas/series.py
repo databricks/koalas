@@ -4599,8 +4599,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             "compute.default_index_type", "distributed", "compute.max_rows", None
         ):
             kdf = ks.DataFrame(sdf)
-        kdf.columns = pd.Index(where)
-        result_series = _col(kdf.transpose())
+            kdf.columns = pd.Index(where)
+            result_series = _col(kdf.transpose())
 
         if should_return_series:
             result_series.name = self.name
