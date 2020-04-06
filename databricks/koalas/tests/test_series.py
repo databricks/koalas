@@ -1372,3 +1372,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: kser.take("1"))
         self.assertRaises(ValueError, lambda: kser.take({1, 2}))
         self.assertRaises(ValueError, lambda: kser.take({1: None, 2: None}))
+
+    def test_divmod(self):
+        kser = ks.Series([100, None, 300, None, 500], name="Koalas")
+
+        others = [-100, 0, 100, None, np.nan]
+        for other in others:
+            result_div, result_mod = kser.divmod(other)
+            self.assert_eq(repr(result_div), repr(kser.div(other)))
+            self.assert_eq(repr(result_mod), repr(kser.mod(other)))
+
+    def test_rdivmod(self):
+        kser = ks.Series([100, None, 300, None, 500], name="Koalas")
+
+        others = [-100, 0, 100, None, np.nan]
+        for other in others:
+            result_rdiv, result_rmod = kser.rdivmod(other)
+            self.assert_eq(repr(result_rdiv), repr(kser.rdiv(other)))
+            self.assert_eq(repr(result_rmod), repr(kser.rmod(other)))
