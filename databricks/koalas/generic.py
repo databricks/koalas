@@ -2017,9 +2017,9 @@ class _Frame(object):
             # The case of Series is simple.
             # If Series has only a single value, just return it as a scalar.
             # Otherwise, there is no change.
-            self = self.head(2)
-            has_single_value = len(self) == 1
-            return self[0] if has_single_value else self
+            self_top_two = self.head(2)
+            has_single_value = len(self_top_two) == 1
+            return self_top_two[0] if has_single_value else self
 
     @property
     def at(self):
