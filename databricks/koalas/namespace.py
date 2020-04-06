@@ -384,6 +384,17 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
       col 1 col 2
     0     a     b
     1     c     d
+
+    You can preserve the index in the roundtrip as below.
+
+    >>> df.to_json(path=r'%s/read_json/bar.json' % path, num_files=1, index_col="index")
+    >>> ks.read_json(
+    ...     path=r'%s/read_json/bar.json' % path, index_col="index"
+    ... ).sort_values(by="col 1")  # doctest: +NORMALIZE_WHITESPACE
+          col 1 col 2
+    index
+    0         a     b
+    1         c     d
     """
     return read_spark_io(path, format="json", index_col=index_col, **options)
 
@@ -446,6 +457,20 @@ def read_delta(
     >>> ks.read_delta('%s/read_delta/foo' % path, version=0)
        id
     0   0
+
+    You can preserve the index in the roundtrip as below.
+
+    >>> ks.range(10, 15, num_partitions=1).to_delta(
+    ...     '%s/read_delta/bar' % path, index_col="index")
+    >>> ks.read_delta('%s/read_delta/bar' % path, index_col="index")
+    ... # doctest: +NORMALIZE_WHITESPACE
+           id
+    index
+    0      10
+    1      11
+    2      12
+    3      13
+    4      14
     """
     if version is not None:
         options["versionAsOf"] = version
@@ -483,6 +508,12 @@ def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> 
     >>> ks.read_table('%s.my_table' % db)
        id
     0   0
+
+    >>> ks.range(1).to_table('%s.my_table' % db, index_col="index")
+    >>> ks.read_table('%s.my_table' % db, index_col="index")  # doctest: +NORMALIZE_WHITESPACE
+           id
+    index
+    0       0
     """
     sdf = default_session().read.table(name)
     index_map = _get_index_map(sdf, index_col)
@@ -545,6 +576,21 @@ def read_spark_io(
     2  12
     3  13
     4  14
+
+    You can preserve the index in the roundtrip as below.
+
+    >>> ks.range(10, 15, num_partitions=1).to_spark_io('%s/read_spark_io/data.orc' % path,
+    ...                                                format='orc', index_col="index")
+    >>> ks.read_spark_io(
+    ...     path=r'%s/read_spark_io/data.orc' % path, format="orc", index_col="index")
+    ... # doctest: +NORMALIZE_WHITESPACE
+           id
+    index
+    0      10
+    1      11
+    2      12
+    3      13
+    4      14
     """
     sdf = default_session().read.load(path=path, format=format, schema=schema, **options)
     index_map = _get_index_map(sdf, index_col)
@@ -552,7 +598,7 @@ def read_spark_io(
     return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
-def read_parquet(path, columns=None, index_col=None) -> DataFrame:
+def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
     """Load a parquet object from the file path, returning a DataFrame.
 
     Parameters
@@ -563,6 +609,8 @@ def read_parquet(path, columns=None, index_col=None) -> DataFrame:
         If not None, only these columns will be read from the file.
     index_col : str or list of str, optional, default: None
         Index column of table in Spark.
+    options : dict
+        All other options passed directly into Spark's data source.
 
     Returns
     -------
@@ -581,24 +629,31 @@ def read_parquet(path, columns=None, index_col=None) -> DataFrame:
     >>> ks.read_parquet('%s/read_spark_io/data.parquet' % path, columns=['id'])
        id
     0   0
+
+    You can preserve the index in the roundtrip as below.
+
+    >>> ks.range(1).to_parquet('%s/read_spark_io/data.parquet' % path, index_col="index")
+    >>> ks.read_parquet('%s/read_spark_io/data.parquet' % path, columns=['id'], index_col="index")
+    ... # doctest: +NORMALIZE_WHITESPACE
+           id
+    index
+    0       0
     """
     if columns is not None:
         columns = list(columns)
-    if columns is None or len(columns) > 0:
-        sdf = default_session().read.parquet(path)
-        if columns is not None:
-            fields = [field.name for field in sdf.schema]
-            cols = [col for col in columns if col in fields]
-            if len(cols) > 0:
-                sdf = sdf.select(cols)
-            else:
-                sdf = default_session().createDataFrame([], schema=StructType())
-    else:
-        sdf = default_session().createDataFrame([], schema=StructType())
 
-    index_map = _get_index_map(sdf, index_col)
+    kdf = read_spark_io(path=path, format="parquet", options=options, index_col=index_col)
 
-    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+    if columns is not None:
+        new_columns = [c for c in columns if c in kdf.columns]
+        if len(new_columns) > 0:
+            kdf = kdf[new_columns]
+        else:
+            sdf = default_session().createDataFrame([], schema=StructType())
+            index_map = _get_index_map(sdf, index_col)
+            return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+
+    return kdf
 
 
 def read_clipboard(sep=r"\s+", **kwargs):

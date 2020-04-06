@@ -38,9 +38,11 @@ else:
     from pandas.core.dtypes.common import _get_dtype_from_object as infer_dtype_from_object
 from pandas.core.accessor import CachedAccessor
 from pandas.core.dtypes.inference import is_sequence
+from pyspark import StorageLevel
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf
+from pyspark.sql.readwriter import OptionUtils
 from pyspark.sql.types import (
     BooleanType,
     ByteType,
@@ -1760,6 +1762,56 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf = self
         return validate_arguments_and_invoke_function(
             kdf._to_internal_pandas(), self.to_latex, pd.DataFrame.to_latex, args
+        )
+
+    def to_markdown(self, buf=None, mode=None, max_rows=None):
+        """
+        Print DataFrame in Markdown-friendly format.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory. If the input
+                  is large, set max_rows parameter.
+
+        Parameters
+        ----------
+        buf : writable buffer, defaults to sys.stdout
+            Where to send the output. By default, the output is printed to
+            sys.stdout. Pass a writable buffer if you need to further process
+            the output.
+        mode : str, optional
+            Mode in which file is opened.
+        **kwargs
+            These parameters will be passed to `tabulate`.
+
+        Returns
+        -------
+        str
+            DataFrame in Markdown-friendly format.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(
+        ...     data={"animal_1": ["elk", "pig"], "animal_2": ["dog", "quetzal"]}
+        ... )
+        >>> print(df.to_markdown())  # doctest: +SKIP
+        |    | animal_1   | animal_2   |
+        |---:|:-----------|:-----------|
+        |  0 | elk        | dog        |
+        |  1 | pig        | quetzal    |
+        """
+        # `to_markdown` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            raise NotImplementedError(
+                "`to_markdown()` only supported in Kaoals with pandas >= 1.0.0"
+            )
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        if max_rows is not None:
+            kdf = self.head(max_rows)
+        else:
+            kdf = self
+        return validate_arguments_and_invoke_function(
+            kdf._to_internal_pandas(), self.to_markdown, pd.DataFrame.to_markdown, args
         )
 
     # TODO: enable doctests once we drop Spark 2.3.x (due to type coercion logic
@@ -3849,6 +3901,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         The Koalas DataFrame is yielded as a protected resource and its corresponding
         data is cached which gets uncached after execution goes of the context.
 
+        If you want to specify the StorageLevel manually, use :meth:`DataFrame.persist`
+
+        See Also
+        --------
+        DataFrame.persist
+
         Examples
         --------
         >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
@@ -3881,12 +3939,84 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return _CachedDataFrame(self._internal)
 
+    def persist(self, storage_level=StorageLevel.MEMORY_AND_DISK):
+        """
+        Yields and caches the current DataFrame with a specific StorageLevel.
+        If a StogeLevel is not given, the `MEMORY_AND_DISK` level is used by default like PySpark.
+
+        The Koalas DataFrame is yielded as a protected resource and its corresponding
+        data is cached which gets uncached after execution goes of the context.
+
+        See Also
+        --------
+        DataFrame.cache
+
+        Examples
+        --------
+        >>> import pyspark
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'])
+        >>> df
+           dogs  cats
+        0   0.2   0.3
+        1   0.0   0.6
+        2   0.6   0.0
+        3   0.2   0.1
+
+        Set the StorageLevel to `MEMORY_ONLY`.
+
+        >>> with df.persist(pyspark.StorageLevel.MEMORY_ONLY) as cached_df:
+        ...     print(cached_df.storage_level)
+        ...     print(cached_df.count())
+        ...
+        Memory Serialized 1x Replicated
+        dogs    4
+        cats    4
+        Name: 0, dtype: int64
+
+        Set the StorageLevel to `DISK_ONLY`.
+
+        >>> with df.persist(pyspark.StorageLevel.DISK_ONLY) as cached_df:
+        ...     print(cached_df.storage_level)
+        ...     print(cached_df.count())
+        ...
+        Disk Serialized 1x Replicated
+        dogs    4
+        cats    4
+        Name: 0, dtype: int64
+
+        If a StorageLevel is not given, it uses `MEMORY_AND_DISK` by default.
+
+        >>> with df.persist() as cached_df:
+        ...     print(cached_df.storage_level)
+        ...     print(cached_df.count())
+        ...
+        Disk Memory Serialized 1x Replicated
+        dogs    4
+        cats    4
+        Name: 0, dtype: int64
+
+        >>> df = df.persist()
+        >>> df.to_pandas().mean(axis=1)
+        0    0.25
+        1    0.30
+        2    0.30
+        3    0.15
+        dtype: float64
+
+        To uncache the dataframe, use `unpersist` function
+
+        >>> df.unpersist()
+        """
+        return _CachedDataFrame(self._internal, storage_level=storage_level)
+
     def to_table(
         self,
         name: str,
         format: Optional[str] = None,
         mode: str = "overwrite",
         partition_cols: Union[str, List[str], None] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
         """
@@ -3916,6 +4046,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         partition_cols : str or list of str, optional, default None
             Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options
             Additional options passed directly to Spark.
 
@@ -3939,7 +4072,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.to_table('%s.my_table' % db, partition_cols='date')
         """
-        self.to_spark().write.saveAsTable(
+        self.to_spark(index_col=index_col).write.saveAsTable(
             name=name, format=format, mode=mode, partitionBy=partition_cols, **options
         )
 
@@ -3948,6 +4081,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         path: str,
         mode: str = "overwrite",
         partition_cols: Union[str, List[str], None] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
         """
@@ -3968,6 +4102,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         partition_cols : str or list of str, optional, default None
             Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options : dict
             All other options passed directly into Delta Lake.
 
@@ -4005,7 +4142,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...             mode='overwrite', replaceWhere='date >= "2012-01-01"')
         """
         self.to_spark_io(
-            path=path, mode=mode, format="delta", partition_cols=partition_cols, **options
+            path=path,
+            mode=mode,
+            format="delta",
+            partition_cols=partition_cols,
+            index_col=index_col,
+            **options
         )
 
     def to_parquet(
@@ -4014,6 +4156,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         mode: str = "overwrite",
         partition_cols: Union[str, List[str], None] = None,
         compression: Optional[str] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
+        **options
     ):
         """
         Write the DataFrame out as a Parquet file or directory.
@@ -4036,6 +4180,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         compression : str {'none', 'uncompressed', 'snappy', 'gzip', 'lzo', 'brotli', 'lz4', 'zstd'}
             Compression codec to use when saving to file. If None is set, it uses the
             value specified in `spark.sql.parquet.compression.codec`.
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
+        options : dict
+            All other options passed directly into Spark's data source.
 
         See Also
         --------
@@ -4063,9 +4212,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...     mode = 'overwrite',
         ...     partition_cols=['date', 'country'])
         """
-        self.to_spark().write.parquet(
-            path=path, mode=mode, partitionBy=partition_cols, compression=compression
+        builder = self.to_spark(index_col=index_col).write.mode(mode)
+        OptionUtils._set_opts(
+            builder, mode=mode, partitionBy=partition_cols, compression=compression
         )
+        builder.options(**options).format("parquet").save(path)
 
     def to_spark_io(
         self,
@@ -4073,6 +4224,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         format: Optional[str] = None,
         mode: str = "overwrite",
         partition_cols: Union[str, List[str], None] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
         """Write the DataFrame out to a Spark data source.
@@ -4098,6 +4250,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             - 'error' or 'errorifexists': Throw an exception if data already exists.
         partition_cols : str or list of str, optional
             Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options : dict
             All other options passed directly into Spark's data source.
 
@@ -4122,7 +4277,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.to_spark_io(path='%s/to_spark_io/foo.json' % path, format='json')
         """
-        self.to_spark().write.save(
+        self.to_spark(index_col=index_col).write.save(
             path=path, format=format, mode=mode, partitionBy=partition_cols, **options
         )
 
@@ -10028,8 +10183,15 @@ class _CachedDataFrame(DataFrame):
     it caches the corresponding Spark DataFrame.
     """
 
-    def __init__(self, internal):
-        self._cached = internal._sdf.cache()
+    def __init__(self, internal, storage_level=None):
+        if storage_level is None:
+            self._cached = internal._sdf.cache()
+        elif isinstance(storage_level, StorageLevel):
+            self._cached = internal._sdf.persist(storage_level)
+        else:
+            raise TypeError(
+                "Only a valid pyspark.StorageLevel type is acceptable for the `storage_level`"
+            )
         super(_CachedDataFrame, self).__init__(internal)
 
     def __enter__(self):
@@ -10037,6 +10199,37 @@ class _CachedDataFrame(DataFrame):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.unpersist()
+
+    @property
+    def storage_level(self):
+        """
+        Return the storage level of this cache.
+
+        Examples
+        --------
+        >>> import pyspark
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'])
+        >>> df
+           dogs  cats
+        0   0.2   0.3
+        1   0.0   0.6
+        2   0.6   0.0
+        3   0.2   0.1
+
+        >>> with df.cache() as cached_df:
+        ...     print(cached_df.storage_level)
+        ...
+        Disk Memory Deserialized 1x Replicated
+
+        Set the StorageLevel to `MEMORY_ONLY`.
+
+        >>> with df.persist(pyspark.StorageLevel.MEMORY_ONLY) as cached_df:
+        ...     print(cached_df.storage_level)
+        ...
+        Memory Serialized 1x Replicated
+        """
+        return self._cached.storageLevel
 
     def unpersist(self):
         """

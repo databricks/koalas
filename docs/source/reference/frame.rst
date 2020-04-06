@@ -219,6 +219,7 @@ Cache
    :toctree: api/
 
    DataFrame.cache
+   DataFrame.persist
 
 Serialization / IO / Conversion
 -------------------------------
@@ -242,6 +243,7 @@ Serialization / IO / Conversion
    DataFrame.to_dict
    DataFrame.to_excel
    DataFrame.to_clipboard
+   DataFrame.to_markdown
    DataFrame.to_records
    DataFrame.to_latex
    DataFrame.style

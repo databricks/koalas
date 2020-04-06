@@ -4,6 +4,32 @@ Koalas talks
 
 Watch videos and webinars for the open-source Koalas project.
 
+Webinar @ Databricks (Mar 27, 2020)
+-----------------------------------
+
+Reducing Time-To-Insight for Virgin Hyperloop's Data
+====================================================
+
+.. raw:: html
+
+    <iframe width="560" height="315" src="https://player.vimeo.com/video/397032070" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen"="" allowfullscreen=""></iframe>
+
+https://databricks.com/p/webinar/reducing-time-to-insight-for-hyperloop-data
+
+
+PyData New York 2019 (Nov 4, 2019)
+----------------------------------
+
+Pandas vs Koalas: The Ultimate Showdown
+=======================================
+
+.. raw:: html
+
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/xcGEQUURAuk?start=1470" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+https://pyvideo.org/pydata-new-york-city-2019/pandas-vs-koalas-the-ultimate-showdown.html
+
+
 Spark + AI Summit Europe 2019 (Oct 16, 2019)
 --------------------------------------------
 
@@ -33,6 +59,18 @@ Koalas: Pandas on Apache Spark
     <iframe width="560" height="315" src="https://www.youtube.com/embed/NpAMbzerAp0" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 https://databricks.com/session_eu19/koalas-pandas-on-apache-spark
+
+
+PyBay 2019 (Aug 17, 2019)
+-------------------------
+
+Koalas Easy Transition from pandas to Apache Spark
+==================================================
+
+.. raw:: html
+
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/cMDLoGkidEE?v=xcGEQUURAuk?start=1470" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 
 Spark + AI Summit 2019 (Apr 24, 2019)
 -------------------------------------

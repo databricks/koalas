@@ -23,6 +23,7 @@ import unittest
 import numpy as np
 import pandas as pd
 import pyspark
+from pyspark import StorageLevel
 from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
@@ -30,6 +31,7 @@ from databricks.koalas.config import option_context
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
+from databricks.koalas.frame import _CachedDataFrame
 
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
@@ -3123,3 +3125,44 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b"), ("z", "c")])
         kdf.columns = columns
         self.assertRaises(ValueError, lambda: kdf.eval("x.a + y.b"))
+
+    def test_to_markdown(self):
+        pdf = pd.DataFrame(data={"animal_1": ["elk", "pig"], "animal_2": ["dog", "quetzal"]})
+        kdf = ks.from_pandas(pdf)
+
+        # `to_markdown()` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            self.assertRaises(NotImplementedError, lambda: kdf.to_markdown())
+        else:
+            self.assert_eq(pdf.to_markdown(), kdf.to_markdown())
+
+    def test_cache(self):
+        pdf = pd.DataFrame(
+            [(0.2, 0.3), (0.0, 0.6), (0.6, 0.0), (0.2, 0.1)], columns=["dogs", "cats"]
+        )
+        kdf = ks.from_pandas(pdf)
+
+        with kdf.cache() as cached_df:
+            self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+            self.assert_eq(
+                repr(cached_df.storage_level), repr(StorageLevel(True, True, False, True))
+            )
+
+    def test_persist(self):
+        pdf = pd.DataFrame(
+            [(0.2, 0.3), (0.0, 0.6), (0.6, 0.0), (0.2, 0.1)], columns=["dogs", "cats"]
+        )
+        kdf = ks.from_pandas(pdf)
+        storage_levels = [
+            StorageLevel.DISK_ONLY,
+            StorageLevel.MEMORY_AND_DISK,
+            StorageLevel.MEMORY_ONLY,
+            StorageLevel.OFF_HEAP,
+        ]
+
+        for storage_level in storage_levels:
+            with kdf.persist(storage_level) as cached_df:
+                self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+                self.assert_eq(repr(cached_df.storage_level), repr(storage_level))
+
+        self.assertRaises(TypeError, lambda: kdf.persist("DISK_ONLY"))
