@@ -29,7 +29,6 @@ jobs:
       SPARK_VERSION: ${{ matrix.spark-version }}
       PANDAS_VERSION: ${{ matrix.pandas-version }}
       PYARROW_VERSION: ${{ matrix.pyarrow-version }}
-      SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
       # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around wtih xvfb-run
       PYTHON_EXECUTABLE: xvfb-run python
       # Github token is required to auto-generate the release notes from Github release notes
@@ -45,10 +44,6 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    - uses: actions/cache@v1
-      with:
-        path: ${{ env.SPARK_CACHE_DIR }}
-        key: ${{ runner.os }}-koalas-spark-${{ env.SPARK_VERSION }}
     # Setup Python 3.5 via `apt-get install` since the dafault Python 3.5 from `actions/setup-python`
     # seems to have some problems with Tkinter, so we should manually install the python3.5-tk.
     # For this, we should use the Python manually installed, not the default one from `actions/setup-python`
@@ -62,7 +57,6 @@ jobs:
         echo "::add-path::/home/runner/.local/bin"
     - name: Install dependencies
       run: |
-        ./dev/download_spark.sh
         sudo apt-get install xclip
         pip install setuptools
         # Currently PIP with Python 3.5 removes Black in the requirements-dev.txt file
@@ -70,11 +64,10 @@ jobs:
         # Python 3.5 soon so it's fine.
         sed -i '/black/d' requirements-dev.txt
         pip install -r requirements-dev.txt
-        pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
+        pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION pyspark==$SPARK_VERSION
         pip list
     - name: Run tests
       run: |
-        export SPARK_HOME="$SPARK_CACHE_DIR/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
     - uses: codecov/codecov-action@v1
@@ -112,7 +105,6 @@ jobs:
       DISPLAY: 0.0
       QT_QPA_PLATFORM: offscreen
       KOALAS_USAGE_LOGGER: ${{ matrix.logger }}
-      SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
       # Github token is required to auto-generate the release notes from Github release notes
       GITHUB_OAUTH_KEY: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -120,13 +112,8 @@ jobs:
     - uses: actions/setup-java@v1
       with:
         java-version: 1.8
-    - uses: actions/cache@v1
-      with:
-        path: ${{ env.SPARK_CACHE_DIR }}
-        key: ${{ runner.os }}-koalas-spark-${{ env.SPARK_VERSION }}
     - name: Install dependencies
       run: |
-        ./dev/download_spark.sh
         curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
         bash miniconda.sh -b -p $HOME/miniconda
         # See also https://github.com/conda/conda/issues/7980
@@ -143,7 +130,8 @@ jobs:
         conda config --env --add pinned_packages python=$PYTHON_VERSION
         conda config --env --add pinned_packages pandas==$PANDAS_VERSION
         conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
-        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
+        conda config --env --add pinned_packages pyspark==$SPARK_VERSION
+        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION pyspark==$SPARK_VERSION
         conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
         conda list
     - name: Run tests
@@ -154,7 +142,6 @@ jobs:
         . $HOME/miniconda/etc/profile.d/conda.sh
         conda config --prepend envs_dirs $HOME/miniconda/envs
         conda activate test-environment
-        export SPARK_HOME="$SPARK_CACHE_DIR/spark-$SPARK_VERSION-bin-hadoop2.7"
         ./dev/lint-python
         ./dev/pytest
     - uses: codecov/codecov-action@v1
