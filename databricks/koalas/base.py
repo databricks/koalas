@@ -86,6 +86,12 @@ def _column_op(f):
             args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self._scol, *args)
             scol = booleanize_null(self._scol, scol, f)
+            # PySpark and pandas have a different way to calculate modulo operation.
+            # Below lines are needed for closing the gap.
+            if f is spark.Column.__mod__:
+                scol = F.when((self._scol * args[0] < 0), scol + args[0]).otherwise(scol)
+            elif f is spark.Column.__rmod__:
+                scol = F.when((self._scol * args[0] < 0), scol + self._scol).otherwise(scol)
 
             return self._with_new_scol(scol)
         else:

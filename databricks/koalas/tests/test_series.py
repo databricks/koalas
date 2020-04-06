@@ -1372,3 +1372,15 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: kser.take("1"))
         self.assertRaises(ValueError, lambda: kser.take({1, 2}))
         self.assertRaises(ValueError, lambda: kser.take({1: None, 2: None}))
+
+    def test_mod(self):
+        pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(repr(kser.mod(-150)), repr(pser.mod(-150)))
+
+    def test_rmod(self):
+        pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(repr(kser.rmod(-150)), repr(pser.rmod(-150)))
