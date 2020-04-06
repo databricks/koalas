@@ -473,7 +473,7 @@ def verify_temp_column_name(df: Union["ks.DataFrame", spark.DataFrame], column_n
     >>> verify_temp_column_name(kdf, '__dummy__')
     Traceback (most recent call last):
     ...
-    AssertionError: ... `(__dummy__, )` ...
+    AssertionError: ... `__dummy__` ...: MultiIndex([(        'x', 'a'),... ('__dummy__',  '')],...
 
     >>> sdf = kdf._internal.spark_frame
     >>> sdf.select(kdf._internal.data_spark_columns).show()  # doctest: +NORMALIZE_WHITESPACE
@@ -495,11 +495,10 @@ def verify_temp_column_name(df: Union["ks.DataFrame", spark.DataFrame], column_n
     from databricks.koalas.frame import DataFrame
 
     if isinstance(df, DataFrame):
-        label = tuple([column_name] + ([""] * (df._internal.column_labels_level - 1)))
-        assert (
-            label not in df._internal.column_labels
+        assert all(
+            column_name != label[0] for label in df._internal.column_labels
         ), "The give column name `{}` already exists in the Koalas DataFrame: {}".format(
-            name_like_string(label), df.columns
+            column_name, df.columns
         )
         df = df._internal.spark_frame
 
