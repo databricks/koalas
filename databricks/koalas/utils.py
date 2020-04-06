@@ -457,7 +457,7 @@ def validate_bool_kwarg(value, arg_name):
 
 def verify_temp_column_name(df: Union["ks.DataFrame", spark.DataFrame], column_name: str) -> str:
     """
-    Generate a temporaty column name which does not exist in the given Spark DataFrame
+    Verify that the given column name does not exist in the given Koalas or Spark DataFrame.
 
     >>> kdf = ks.DataFrame({("x", "a"): ['a', 'b', 'c']})
     >>> kdf["__dummy__"] = 0
