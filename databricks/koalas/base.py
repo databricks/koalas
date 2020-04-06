@@ -89,9 +89,13 @@ def _column_op(f):
             # PySpark and pandas have a different way to calculate modulo operation.
             # Below lines are needed for closing the gap.
             if f is spark.Column.__mod__:
-                scol = F.when((self._scol * args[0] < 0), scol + args[0]).otherwise(scol)
+                scol = F.when((self._scol * args[0] < 0) & (scol != 0), scol + args[0]).otherwise(
+                    scol
+                )
             elif f is spark.Column.__rmod__:
-                scol = F.when((self._scol * args[0] < 0), scol + self._scol).otherwise(scol)
+                scol = F.when(
+                    (self._scol * args[0] < 0) & (scol != 0), scol + self._scol
+                ).otherwise(scol)
 
             return self._with_new_scol(scol)
         else:
