@@ -1373,6 +1373,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: kser.take({1, 2}))
         self.assertRaises(ValueError, lambda: kser.take({1: None, 2: None}))
 
+<<<<<<< HEAD
     def test_asof(self):
         pser = pd.Series([1, 2, np.nan, 4], index=[10, 20, 30, 40], name="Koalas")
         kser = ks.from_pandas(pser)
@@ -1399,3 +1400,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: kser.asof(20))
         kser = ks.Series([1, 2, np.nan, 4], index=[40, 30, 20, 10], name="Koalas")
         self.assertRaises(ValueError, lambda: kser.asof(20))
+
+    def test_squeeze(self):
+        # Single value
+        kser = ks.Series([90])
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
+
+        # Single value with MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "b", "c")])
+        kser = ks.Series([90], index=midx)
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
+
+        # Multiple values
+        kser = ks.Series([90, 91, 85])
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
+
+        # Multiple values with MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kser = ks.Series([90, 91, 85], index=midx)
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
