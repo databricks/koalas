@@ -1372,3 +1372,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: kser.take("1"))
         self.assertRaises(ValueError, lambda: kser.take({1, 2}))
         self.assertRaises(ValueError, lambda: kser.take({1: None, 2: None}))
+
+    def test_squeeze(self):
+        # Single value
+        kser = ks.Series([90])
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
+
+        # Single value with MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "b", "c")])
+        kser = ks.Series([90], index=midx)
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
+
+        # Multiple values
+        kser = ks.Series([90, 91, 85])
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
+
+        # Multiple values with MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kser = ks.Series([90, 91, 85], index=midx)
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
