@@ -218,8 +218,10 @@ class _LocIndexerLike(_IndexerLike):
         if self._is_series:
             if isinstance(key, Series) and key._kdf is not self._kdf_or_kser._kdf:
                 kdf = self._kdf_or_kser.to_frame()
-                kdf["__temp_col__"] = key
-                return type(self)(kdf[self._kdf_or_kser.name])[kdf["__temp_col__"]]
+                temp_col = verify_temp_column_name(kdf, "__temp_col__")
+
+                kdf[temp_col] = key
+                return type(self)(kdf[self._kdf_or_kser.name])[kdf[temp_col]]
 
             cond, limit, remaining_index = self._select_rows(key)
             if cond is None and limit is None:
@@ -240,10 +242,10 @@ class _LocIndexerLike(_IndexerLike):
 
             if isinstance(rows_sel, Series) and rows_sel._kdf is not self._kdf_or_kser:
                 kdf = self._kdf_or_kser.copy()
-                kdf["__temp_col__"] = rows_sel
-                return type(self)(kdf)[kdf["__temp_col__"], cols_sel][
-                    list(self._kdf_or_kser.columns)
-                ]
+                temp_col = verify_temp_column_name(kdf, "__temp_col__")
+
+                kdf[temp_col] = rows_sel
+                return type(self)(kdf)[kdf[temp_col], cols_sel][list(self._kdf_or_kser.columns)]
 
             cond, limit, remaining_index = self._select_rows(rows_sel)
             column_labels, data_spark_columns, returns_series = self._select_cols(cols_sel)
@@ -336,18 +338,22 @@ class _LocIndexerLike(_IndexerLike):
                 isinstance(value, Series) and value._kdf is not self._kdf_or_kser._kdf
             ):
                 kdf = self._kdf_or_kser.to_frame()
-                kdf["__temp_natural_order__"] = F.monotonically_increasing_id()
+                temp_natural_order = verify_temp_column_name(kdf, "__temp_natural_order__")
+                temp_key_col = verify_temp_column_name(kdf, "__temp_key_col__")
+                temp_value_col = verify_temp_column_name(kdf, "__temp_value_col__")
+
+                kdf[temp_natural_order] = F.monotonically_increasing_id()
                 if isinstance(key, Series):
-                    kdf["__temp_key_col__"] = key
+                    kdf[temp_key_col] = key
                 if isinstance(value, Series):
-                    kdf["__temp_value_col__"] = value
-                kdf = kdf.sort_values("__temp_natural_order__").drop("__temp_natural_order__")
+                    kdf[temp_value_col] = value
+                kdf = kdf.sort_values(temp_natural_order).drop(temp_natural_order)
 
                 kser = kdf[self._kdf_or_kser.name]
                 if isinstance(key, Series):
-                    key = kdf["__temp_key_col__"]
+                    key = kdf[temp_key_col]
                 if isinstance(value, Series):
-                    value = kdf["__temp_value_col__"]
+                    value = kdf[temp_value_col]
 
                 type(self)(kser)[key] = value
 
@@ -398,17 +404,21 @@ class _LocIndexerLike(_IndexerLike):
                 isinstance(value, Series) and value._kdf is not self._kdf_or_kser
             ):
                 kdf = self._kdf_or_kser.copy()
-                kdf["__temp_natural_order__"] = F.monotonically_increasing_id()
+                temp_natural_order = verify_temp_column_name(kdf, "__temp_natural_order__")
+                temp_key_col = verify_temp_column_name(kdf, "__temp_key_col__")
+                temp_value_col = verify_temp_column_name(kdf, "__temp_value_col__")
+
+                kdf[temp_natural_order] = F.monotonically_increasing_id()
                 if isinstance(rows_sel, Series):
-                    kdf["__temp_rows_sel_col__"] = rows_sel
+                    kdf[temp_key_col] = rows_sel
                 if isinstance(value, Series):
-                    kdf["__temp_value_col__"] = value
-                kdf = kdf.sort_values("__temp_natural_order__")
+                    kdf[temp_value_col] = value
+                kdf = kdf.sort_values(temp_natural_order)
 
                 if isinstance(rows_sel, Series):
-                    rows_sel = kdf["__temp_rows_sel_col__"]
+                    rows_sel = kdf[temp_key_col]
                 if isinstance(value, Series):
-                    value = kdf["__temp_value_col__"]
+                    value = kdf[temp_value_col]
 
                 type(self)(kdf)[rows_sel, cols_sel] = value
 
