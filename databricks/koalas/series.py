@@ -4594,6 +4594,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         index_scol = self._internal.index_spark_columns[0]
         cond = [F.max(F.when(index_scol <= index, self._scol)) for index in where]
         sdf = sdf.select(cond)
+        if not should_return_series:
+            result = sdf.head()[0]
+            return result if result is not None else np.nan
+
         # The data is expected to be small so it's fine to transpose/use default index.
         with ks.option_context(
             "compute.default_index_type", "distributed", "compute.max_rows", None
@@ -4602,12 +4606,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             kdf.columns = pd.Index(where)
             result_series = _col(kdf.transpose())
 
-        if should_return_series:
-            result_series.name = self.name
-            return result_series
-        else:
-            result = result_series.iloc[0]
-            return result if result is not None else np.nan
+        result_series.name = self.name
+        return result_series
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
