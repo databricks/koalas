@@ -20,7 +20,7 @@ Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 from collections import OrderedDict
 from distutils.version import LooseVersion
 from functools import partial
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Tuple, Union
 import warnings
 
 import pandas as pd

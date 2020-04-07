@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union, List, Tuple, Dict
+from typing import Optional, Union, List, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
