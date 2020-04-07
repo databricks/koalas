@@ -459,6 +459,9 @@ def verify_temp_column_name(df: Union["ks.DataFrame", spark.DataFrame], column_n
     """
     Verify that the given column name does not exist in the given Koalas or Spark DataFrame.
 
+    The temporary column names should start and end with `__`. In addition, `column_name` only
+    expects a single string instead of labels when `df` is a Koalas DataFrame.
+
     >>> kdf = ks.DataFrame({("x", "a"): ['a', 'b', 'c']})
     >>> kdf["__dummy__"] = 0
     >>> kdf  # doctest: +NORMALIZE_WHITESPACE
@@ -494,10 +497,14 @@ def verify_temp_column_name(df: Union["ks.DataFrame", spark.DataFrame], column_n
     """
     from databricks.koalas.frame import DataFrame
 
+    assert column_name.startswith("__") and column_name.endswith(
+        "__"
+    ), "The temporary column name should start and end with `__`."
+
     if isinstance(df, DataFrame):
         assert all(
             column_name != label[0] for label in df._internal.column_labels
-        ), "The give column name `{}` already exists in the Koalas DataFrame: {}".format(
+        ), "The given column name `{}` already exists in the Koalas DataFrame: {}".format(
             column_name, df.columns
         )
         df = df._internal.spark_frame
@@ -505,7 +512,7 @@ def verify_temp_column_name(df: Union["ks.DataFrame", spark.DataFrame], column_n
     assert isinstance(df, spark.DataFrame), type(df)
     assert (
         column_name not in df.columns
-    ), "The give column name `{}` already exists in the Spark DataFrame: {}".format(
+    ), "The given column name `{}` already exists in the Spark DataFrame: {}".format(
         column_name, df.columns
     )
     return column_name
