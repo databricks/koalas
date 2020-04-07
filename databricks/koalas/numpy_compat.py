@@ -182,7 +182,7 @@ def maybe_dispatch_ufunc_to_dunder_op(
 
 # See also https://docs.scipy.org/doc/numpy/reference/arrays.classes.html#standard-array-subclasses
 def maybe_dispatch_ufunc_to_spark_func(
-    ufunc: Callable, method: str, *inputs, **kwargs: Any
+    ser_or_index, ufunc: Callable, method: str, *inputs, **kwargs: Any
 ):
     from databricks.koalas.base import _column_op
 
