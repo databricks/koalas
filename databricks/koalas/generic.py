@@ -670,7 +670,7 @@ class _Frame(object):
         ...    ...    2012-03-31 12:00:00
         """
         if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
-            options = options.get("options")
+            options = options.get("options")  # type: ignore
 
         if path is None:
             # If path is none, just collect and use pandas's to_csv.
@@ -830,7 +830,7 @@ class _Frame(object):
         1         c
         """
         if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
-            options = options.get("options")
+            options = options.get("options")  # type: ignore
 
         if path is None:
             # If path is none, just collect and use pandas's to_json.

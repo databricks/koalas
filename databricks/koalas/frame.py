@@ -4073,7 +4073,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.to_table('%s.my_table' % db, partition_cols='date')
         """
         if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
-            options = options.get("options")
+            options = options.get("options")  # type: ignore
 
         self.to_spark(index_col=index_col).write.saveAsTable(
             name=name, format=format, mode=mode, partitionBy=partition_cols, **options
@@ -4145,7 +4145,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...             mode='overwrite', replaceWhere='date >= "2012-01-01"')
         """
         if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
-            options = options.get("options")
+            options = options.get("options")  # type: ignore
 
         self.to_spark_io(
             path=path,
@@ -4219,7 +4219,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...     partition_cols=['date', 'country'])
         """
         if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
-            options = options.get("options")
+            options = options.get("options")  # type: ignore
 
         builder = self.to_spark(index_col=index_col).write.mode(mode)
         OptionUtils._set_opts(
@@ -4287,7 +4287,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.to_spark_io(path='%s/to_spark_io/foo.json' % path, format='json')
         """
         if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
-            options = options.get("options")
+            options = options.get("options")  # type: ignore
 
         self.to_spark(index_col=index_col).write.save(
             path=path, format=format, mode=mode, partitionBy=partition_cols, **options
