@@ -184,7 +184,6 @@ def maybe_dispatch_ufunc_to_dunder_op(
 def maybe_dispatch_ufunc_to_spark_func(
     ser_or_index, ufunc: Callable, method: str, *inputs, **kwargs: Any
 ):
-    from databricks.koalas import Series
     from databricks.koalas.base import _column_op
 
     op_name = ufunc.__name__
