@@ -1373,7 +1373,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: kser.take({1, 2}))
         self.assertRaises(ValueError, lambda: kser.take({1: None, 2: None}))
 
-<<<<<<< HEAD
     def test_asof(self):
         pser = pd.Series([1, 2, np.nan, 4], index=[10, 20, 30, 40], name="Koalas")
         kser = ks.from_pandas(pser)
