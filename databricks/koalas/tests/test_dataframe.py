@@ -3204,3 +3204,92 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.columns = columns
         for axis in axises:
             self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+
+    def test_truncate(self):
+        pdf1 = pd.DataFrame(
+            {
+                "A": ["a", "b", "c", "d", "e", "f", "g"],
+                "B": ["h", "i", "j", "k", "l", "m", "n"],
+                "C": ["o", "p", "q", "r", "s", "t", "u"],
+            },
+            index=[-500, -20, -1, 0, 400, 550, 1000],
+        )
+        kdf1 = ks.from_pandas(pdf1)
+        pdf2 = pd.DataFrame(
+            {
+                "A": ["a", "b", "c", "d", "e", "f", "g"],
+                "B": ["h", "i", "j", "k", "l", "m", "n"],
+                "C": ["o", "p", "q", "r", "s", "t", "u"],
+            },
+            index=[1000, 550, 400, 0, -1, -20, -500],
+        )
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(kdf1.truncate(), pdf1.truncate())
+        self.assert_eq(kdf1.truncate(before=-20), pdf1.truncate(before=-20))
+        self.assert_eq(kdf1.truncate(after=400), pdf1.truncate(after=400))
+        self.assert_eq(kdf1.truncate(copy=False), pdf1.truncate(copy=False))
+        self.assert_eq(kdf1.truncate(-20, 400, copy=False), pdf1.truncate(-20, 400, copy=False))
+        self.assert_eq(kdf2.truncate(0, 550), pdf2.truncate(0, 550))
+        self.assert_eq(kdf2.truncate(0, 550, copy=False), pdf2.truncate(0, 550, copy=False))
+        # axis = 1
+        self.assert_eq(kdf1.truncate(axis=1), pdf1.truncate(axis=1))
+        self.assert_eq(kdf1.truncate(before="B", axis=1), pdf1.truncate(before="B", axis=1))
+        self.assert_eq(kdf1.truncate(after="A", axis=1), pdf1.truncate(after="A", axis=1))
+        self.assert_eq(kdf1.truncate(copy=False, axis=1), pdf1.truncate(copy=False, axis=1))
+        self.assert_eq(kdf2.truncate("B", "C", axis=1), pdf2.truncate("B", "C", axis=1))
+        self.assert_eq(
+            kdf1.truncate("B", "C", copy=False, axis=1), pdf1.truncate("B", "C", copy=False, axis=1)
+        )
+
+        # MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([("A", "Z"), ("B", "X"), ("C", "Z")])
+        pdf1.columns = columns
+        kdf1.columns = columns
+        pdf2.columns = columns
+        kdf2.columns = columns
+
+        self.assert_eq(kdf1.truncate(), pdf1.truncate())
+        self.assert_eq(kdf1.truncate(before=-20), pdf1.truncate(before=-20))
+        self.assert_eq(kdf1.truncate(after=400), pdf1.truncate(after=400))
+        self.assert_eq(kdf1.truncate(copy=False), pdf1.truncate(copy=False))
+        self.assert_eq(kdf1.truncate(-20, 400, copy=False), pdf1.truncate(-20, 400, copy=False))
+        self.assert_eq(kdf2.truncate(0, 550), pdf2.truncate(0, 550))
+        self.assert_eq(kdf2.truncate(0, 550, copy=False), pdf2.truncate(0, 550, copy=False))
+        # axis = 1
+        self.assert_eq(kdf1.truncate(axis=1), pdf1.truncate(axis=1))
+        self.assert_eq(kdf1.truncate(before="B", axis=1), pdf1.truncate(before="B", axis=1))
+        self.assert_eq(kdf1.truncate(after="A", axis=1), pdf1.truncate(after="A", axis=1))
+        self.assert_eq(kdf1.truncate(copy=False, axis=1), pdf1.truncate(copy=False, axis=1))
+        self.assert_eq(kdf2.truncate("B", "C", axis=1), pdf2.truncate("B", "C", axis=1))
+        self.assert_eq(
+            kdf1.truncate("B", "C", copy=False, axis=1), pdf1.truncate("B", "C", copy=False, axis=1)
+        )
+
+        # Exceptions
+        kdf = ks.DataFrame(
+            {
+                "A": ["a", "b", "c", "d", "e", "f", "g"],
+                "B": ["h", "i", "j", "k", "l", "m", "n"],
+                "C": ["o", "p", "q", "r", "s", "t", "u"],
+            },
+            index=[-500, 100, 400, 0, -1, 550, -20],
+        )
+        msg = "truncate requires a sorted index"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.truncate()
+
+        kdf = ks.DataFrame(
+            {
+                "A": ["a", "b", "c", "d", "e", "f", "g"],
+                "B": ["h", "i", "j", "k", "l", "m", "n"],
+                "C": ["o", "p", "q", "r", "s", "t", "u"],
+            },
+            index=[-500, -20, -1, 0, 400, 550, 1000],
+        )
+        msg = "Truncate: -20 must be after 400"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.truncate(400, -20)
+        msg = "Truncate: B must be after C"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.truncate("C", "B", axis=1)

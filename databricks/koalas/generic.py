@@ -2027,6 +2027,140 @@ class _Frame(object):
             has_single_value = len(self_top_two) == 1
             return self_top_two[0] if has_single_value else self
 
+    def truncate(self, before=None, after=None, axis=None, copy=True):
+        """
+        Truncate a Series or DataFrame before and after some index value.
+
+        This is a useful shorthand for boolean indexing based on index
+        values above or below certain thresholds.
+
+        .. note:: This API is dependent on :meth:`Index.is_monotonic_increasing`
+            which can be expensive.
+
+        Parameters
+        ----------
+        before : date, str, int
+            Truncate all rows before this index value.
+        after : date, str, int
+            Truncate all rows after this index value.
+        axis : {0 or 'index', 1 or 'columns'}, optional
+            Axis to truncate. Truncates the index (rows) by default.
+        copy : bool, default is True,
+            Return a copy of the truncated section.
+
+        Returns
+        -------
+        type of caller
+            The truncated Series or DataFrame.
+
+        See Also
+        --------
+        DataFrame.loc : Select a subset of a DataFrame by label.
+        DataFrame.iloc : Select a subset of a DataFrame by position.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': ['a', 'b', 'c', 'd', 'e'],
+        ...                    'B': ['f', 'g', 'h', 'i', 'j'],
+        ...                    'C': ['k', 'l', 'm', 'n', 'o']},
+        ...                   index=[1, 2, 3, 4, 5])
+        >>> df
+           A  B  C
+        1  a  f  k
+        2  b  g  l
+        3  c  h  m
+        4  d  i  n
+        5  e  j  o
+
+        >>> df.truncate(before=2, after=4)
+           A  B  C
+        2  b  g  l
+        3  c  h  m
+        4  d  i  n
+
+        The columns of a DataFrame can be truncated.
+
+        >>> df.truncate(before="A", after="B", axis="columns")
+           A  B
+        1  a  f
+        2  b  g
+        3  c  h
+        4  d  i
+        5  e  j
+
+        For Series, only rows can be truncated.
+
+        >>> df['A'].truncate(before=2, after=4)
+        2    b
+        3    c
+        4    d
+        Name: A, dtype: object
+
+        A Series has index that sorted integers.
+
+        >>> s = ks.Series([10, 20, 30, 40, 50, 60, 70],
+        ...               index=[1, 2, 3, 4, 5, 6, 7])
+        >>> s
+        1    10
+        2    20
+        3    30
+        4    40
+        5    50
+        6    60
+        7    70
+        Name: 0, dtype: int64
+
+        >>> s.truncate(2, 5)
+        2    20
+        3    30
+        4    40
+        5    50
+        Name: 0, dtype: int64
+
+        A Series has index that sorted strings.
+
+        >>> s = ks.Series([10, 20, 30, 40, 50, 60, 70],
+        ...               index=['a', 'b', 'c', 'd', 'e', 'f', 'g'])
+        >>> s
+        a    10
+        b    20
+        c    30
+        d    40
+        e    50
+        f    60
+        g    70
+        Name: 0, dtype: int64
+
+        >>> s.truncate('b', 'e')
+        b    20
+        c    30
+        d    40
+        e    50
+        Name: 0, dtype: int64
+        """
+        from databricks.koalas.series import _col
+
+        axis = validate_axis(axis)
+        indexes = self.index
+        indexes_increasing = indexes.is_monotonic_increasing
+        if not indexes_increasing and not indexes.is_monotonic_decreasing:
+            raise ValueError("truncate requires a sorted index")
+        if (before is None) and (after is None):
+            return self.copy() if copy else self
+        if (before is not None) and (after is not None):
+            if before > after:
+                raise ValueError("Truncate: %s must be after %s" % (after, before))
+
+        if isinstance(self, ks.Series):
+            result = _col(self.to_frame().loc[before:after])
+        elif isinstance(self, ks.DataFrame):
+            if axis == 0:
+                result = self.loc[before:after]
+            elif axis == 1:
+                result = self.loc[:, before:after]
+
+        return result.copy() if copy else result
+
     @property
     def at(self):
         return AtIndexer(self)
