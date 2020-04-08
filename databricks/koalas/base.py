@@ -23,7 +23,7 @@ from typing import Union, Callable, Any
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_list_like
+from pandas.api.types import is_list_like, is_scalar
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
 from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType
@@ -188,8 +188,11 @@ class IndexOpsMixin(object):
     __truediv__ = _numpy_column_op(spark.Column.__truediv__)
 
     def __mod__(self, other):
-        scol = (self._scol % other + other) % other
-        return self._with_new_scol(scol)
+        if is_scalar(other):
+            return self._with_new_scol((self._scol % other + other) % other)
+        else:
+            result_spark = _column_op(spark.Column.__mod__)(self, other)
+            return _column_op(spark.Column.__mod__)(result_spark + other, other)
 
     def __radd__(self, other):
         # Handle 'literal' + df['col']
@@ -212,10 +215,6 @@ class IndexOpsMixin(object):
         return self._with_new_scol(
             F.floor(_numpy_column_op(spark.Column.__rdiv__)(self, other)._scol)
         )
-
-    def __rmod__(self, other):
-        scol = (other % self._scol + self._scol) % self._scol
-        return self._with_new_scol(scol)
 
     __pow__ = _column_op(spark.Column.__pow__)
     __rpow__ = _column_op(spark.Column.__rpow__)
