@@ -201,13 +201,6 @@ class IndexOpsMixin(object):
         else:
             return _column_op(spark.Column.__radd__)(self, other)
 
-    def __rmod__(self, other):
-        if is_scalar(other):
-            return self._with_new_scol(other % (other % self._scol + other))
-        else:
-            result_spark = _column_op(spark.Column.__mod__)(other, self)
-            return _column_op(spark.Column.__mod__)(other, result_spark + other)
-
     __rsub__ = _column_op(spark.Column.__rsub__)
     __rmul__ = _column_op(spark.Column.__rmul__)
     __rdiv__ = _numpy_column_op(spark.Column.__rdiv__)
@@ -222,6 +215,13 @@ class IndexOpsMixin(object):
         return self._with_new_scol(
             F.floor(_numpy_column_op(spark.Column.__rdiv__)(self, other)._scol)
         )
+
+    def __rmod__(self, other):
+        if is_scalar(other):
+            return self._with_new_scol(other % (other % self._scol + other))
+        else:
+            result_spark = _column_op(spark.Column.__mod__)(other, self)
+            return _column_op(spark.Column.__mod__)(other, result_spark + other)
 
     __pow__ = _column_op(spark.Column.__pow__)
     __rpow__ = _column_op(spark.Column.__rpow__)
