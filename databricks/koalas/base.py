@@ -218,10 +218,10 @@ class IndexOpsMixin(object):
 
     def __rmod__(self, other):
         if is_scalar(other):
-            return self._with_new_scol(other % (other % self._scol + other))
+            return self._with_new_scol((other % self._scol + self._scol) % self._scol)
         else:
             result_spark = _column_op(spark.Column.__mod__)(other, self)
-            return _column_op(spark.Column.__mod__)(other, result_spark + other)
+            return _column_op(spark.Column.__mod__)(result_spark + self, self)
 
     __pow__ = _column_op(spark.Column.__pow__)
     __rpow__ = _column_op(spark.Column.__rpow__)
