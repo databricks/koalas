@@ -50,6 +50,8 @@ jobs:
     - name: Setup Python 3.5
       run: |
         sudo add-apt-repository ppa:deadsnakes/ppa
+        # To avoid error such as "Unable to fetch some archives, maybe run apt-get update or try with --fix-missing?"
+        sudo apt-get update
         sudo apt-get install tk-dev python3.5-tk python3.5
         sudo rm /usr/bin/python
         sudo ln -s /usr/bin/python3.5 /usr/bin/python
