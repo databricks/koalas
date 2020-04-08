@@ -310,6 +310,38 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             (kser1 + kser2 * kser3).sort_index(), (pser1 + pser2 * pser3).sort_index(), almost=True
         )
 
+    def test_mod(self):
+        pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
+        pser_other = pd.Series([-150] * 6)
+        kser = ks.from_pandas(pser)
+        kser_other = ks.from_pandas(pser_other)
+
+        self.assert_eq(
+            repr(kser.mod(kser_other).sort_index()), repr(pser.mod(pser_other).rename("Koalas"))
+        )
+        self.assert_eq(
+            repr(kser.mod(kser_other).sort_index()), repr(pser.mod(pser_other).rename("Koalas"))
+        )
+        self.assert_eq(
+            repr(kser.mod(kser_other).sort_index()), repr(pser.mod(pser_other).rename("Koalas"))
+        )
+
+    def test_rmod(self):
+        pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
+        pser_other = pd.Series([-150] * 6)
+        kser = ks.from_pandas(pser)
+        kser_other = ks.from_pandas(pser_other)
+
+        self.assert_eq(
+            repr(kser.rmod(kser_other).sort_index()), repr(pser.rmod(pser_other).rename("Koalas"))
+        )
+        self.assert_eq(
+            repr(kser.rmod(kser_other).sort_index()), repr(pser.rmod(pser_other).rename("Koalas"))
+        )
+        self.assert_eq(
+            repr(kser.rmod(kser_other).sort_index()), repr(pser.rmod(pser_other).rename("Koalas"))
+        )
+
     def test_getitem_boolean_series(self):
         pdf1 = pd.DataFrame(
             {"A": [0, 1, 2, 3, 4], "B": [100, 200, 300, 400, 500]}, index=[20, 10, 30, 0, 50]
