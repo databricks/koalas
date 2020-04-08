@@ -1388,3 +1388,53 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(repr(kser.rmod(-150)), repr(pser.rmod(-150)))
         self.assert_eq(repr(kser.rmod(0)), repr(pser.rmod(0)))
         self.assert_eq(repr(kser.rmod(150)), repr(pser.rmod(150)))
+
+    def test_asof(self):
+        pser = pd.Series([1, 2, np.nan, 4], index=[10, 20, 30, 40], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(repr(kser.asof(20)), repr(pser.asof(20)))
+        self.assert_eq(repr(kser.asof([5, 20]).sort_index()), repr(pser.asof([5, 20]).sort_index()))
+        self.assert_eq(repr(kser.asof(100)), repr(pser.asof(100)))
+        self.assert_eq(repr(kser.asof(-100)), repr(pser.asof(-100)))
+        self.assert_eq(repr(kser.asof(-100)), repr(pser.asof(-100)))
+        self.assert_eq(
+            repr(kser.asof([-100, 100]).sort_index()), repr(pser.asof([-100, 100]).sort_index())
+        )
+
+        # where cannot be an Index, Series or a DataFrame
+        self.assertRaises(ValueError, lambda: kser.asof(ks.Index([-100, 100])))
+        self.assertRaises(ValueError, lambda: kser.asof(ks.Series([-100, 100])))
+        self.assertRaises(ValueError, lambda: kser.asof(ks.DataFrame({"A": [1, 2, 3]})))
+        # asof is not supported for a MultiIndex
+        pser.index = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c"), ("y", "d")])
+        kser = ks.from_pandas(pser)
+        self.assertRaises(ValueError, lambda: kser.asof(20))
+        # asof requires a sorted index (More precisely, should be a monotonic increasing)
+        kser = ks.Series([1, 2, np.nan, 4], index=[10, 30, 20, 40], name="Koalas")
+        self.assertRaises(ValueError, lambda: kser.asof(20))
+        kser = ks.Series([1, 2, np.nan, 4], index=[40, 30, 20, 10], name="Koalas")
+        self.assertRaises(ValueError, lambda: kser.asof(20))
+
+    def test_squeeze(self):
+        # Single value
+        kser = ks.Series([90])
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
+
+        # Single value with MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "b", "c")])
+        kser = ks.Series([90], index=midx)
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
+
+        # Multiple values
+        kser = ks.Series([90, 91, 85])
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
+
+        # Multiple values with MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kser = ks.Series([90, 91, 85], index=midx)
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())

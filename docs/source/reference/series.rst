@@ -185,6 +185,7 @@ Reshaping, sorting, transposing
    Series.sort_index
    Series.sort_values
    Series.repeat
+   Series.squeeze
 
 Combining / joining / merging
 -----------------------------
@@ -201,6 +202,7 @@ Time series-related
 .. autosummary::
    :toctree: api/
 
+   Series.asof
    Series.shift
    Series.first_valid_index
 

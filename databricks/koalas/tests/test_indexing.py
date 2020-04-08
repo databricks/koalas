@@ -860,15 +860,42 @@ class IndexingTest(ReusedSQLTestCase):
         kdf.loc[["viper", "sidewinder"], "shield"] = 50
         self.assert_eq(kdf, pdf)
 
+        pdf.loc["cobra", "max_speed"] = 30
+        kdf.loc["cobra", "max_speed"] = 30
+        self.assert_eq(kdf, pdf)
+
+        pdf.loc[pdf.max_speed < 5, "max_speed"] = -pdf.max_speed
+        kdf.loc[kdf.max_speed < 5, "max_speed"] = -kdf.max_speed
+        self.assert_eq(kdf, pdf)
+
+        pdf.loc[:, "min_speed"] = 0
+        kdf.loc[:, "min_speed"] = 0
+        self.assert_eq(kdf, pdf, almost=True)
+
+        with self.assertRaisesRegex(ValueError, "Incompatible indexer with Series"):
+            kdf.loc["cobra", "max_speed"] = -kdf.max_speed
+        with self.assertRaisesRegex(ValueError, "shape mismatch"):
+            kdf.loc[:, ["shield", "max_speed"]] = -kdf.max_speed
         with self.assertRaisesRegex(ValueError, "Only a dataframe with one column can be assigned"):
             kdf.loc[:, "max_speed"] = kdf
-        with self.assertRaisesRegex(
-            ValueError, "only column names or list of column names can be assigned"
-        ):
-            kdf.loc[["viper"], ("max_speed", "shield")] = 10
-        msg = "Can only assign value to the whole dataframe, the row index"
-        with self.assertRaisesRegex(SparkPandasNotImplementedError, msg):
-            kdf.loc["viper", "max_speed"] = 10
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples(
+            [("x", "max_speed"), ("x", "shield"), ("y", "min_speed")]
+        )
+        pdf.columns = columns
+        kdf.columns = columns
+
+        pdf.loc[:, ("y", "shield")] = -pdf[("x", "shield")]
+        kdf.loc[:, ("y", "shield")] = -kdf[("x", "shield")]
+        self.assert_eq(kdf, pdf, almost=True)
+
+        pdf.loc[:, "z"] = 100
+        kdf.loc[:, "z"] = 100
+        self.assert_eq(kdf, pdf, almost=True)
+
+        with self.assertRaisesRegex(KeyError, "Key length \\(3\\) exceeds index depth \\(2\\)"):
+            kdf.loc[:, [("x", "max_speed", "foo")]] = -kdf[("x", "shield")]
 
         pdf = pd.DataFrame(
             [[1], [4], [7]], index=["cobra", "viper", "sidewinder"], columns=["max_speed"]
@@ -877,6 +904,38 @@ class IndexingTest(ReusedSQLTestCase):
 
         pdf.loc[:, "max_speed"] = pdf
         kdf.loc[:, "max_speed"] = kdf
+        self.assert_eq(kdf, pdf)
+
+    def test_frame_iloc_setitem(self):
+        pdf = pd.DataFrame(
+            [[1, 2], [4, 5], [7, 8]],
+            index=["cobra", "viper", "sidewinder"],
+            columns=["max_speed", "shield"],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        pdf.iloc[[1, 2], [1, 0]] = 10
+        kdf.iloc[[1, 2], [1, 0]] = 10
+        self.assert_eq(kdf, pdf)
+
+        pdf.iloc[0, 1] = 50
+        kdf.iloc[0, 1] = 50
+        self.assert_eq(kdf, pdf)
+
+        with self.assertRaisesRegex(ValueError, "Incompatible indexer with Series"):
+            kdf.iloc[0, 0] = -kdf.max_speed
+        with self.assertRaisesRegex(ValueError, "shape mismatch"):
+            kdf.iloc[:, [1, 0]] = -kdf.max_speed
+        with self.assertRaisesRegex(ValueError, "Only a dataframe with one column can be assigned"):
+            kdf.iloc[:, 0] = kdf
+
+        pdf = pd.DataFrame(
+            [[1], [4], [7]], index=["cobra", "viper", "sidewinder"], columns=["max_speed"]
+        )
+        kdf = ks.from_pandas(pdf)
+
+        pdf.iloc[:, 0] = pdf
+        kdf.iloc[:, 0] = kdf
         self.assert_eq(kdf, pdf)
 
     def test_series_loc_setitem(self):
@@ -975,6 +1034,9 @@ class IndexingTest(ReusedSQLTestCase):
         pser.iloc[[1]] = -pdf.b
         kser.iloc[[1]] = -kdf.b
         self.assert_eq(kser, pser)
+
+        with self.assertRaisesRegex(ValueError, "Incompatible indexer with DataFrame"):
+            kser.iloc[1] = kdf[["b"]]
 
     def test_iloc_raises(self):
         pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})

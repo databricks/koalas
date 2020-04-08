@@ -17,8 +17,6 @@ from collections import OrderedDict
 from functools import partial
 from typing import Any
 
-import pandas as pd
-
 from databricks.koalas.internal import SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.utils import name_like_string
 from pyspark.sql import Window
