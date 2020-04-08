@@ -669,6 +669,9 @@ class _Frame(object):
         ...    ...    2012-02-29 12:00:00
         ...    ...    2012-03-31 12:00:00
         """
+        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+            options = options.get("options")  # type: ignore
+
         if path is None:
             # If path is none, just collect and use pandas's to_csv.
             kdf_or_ser = self
@@ -826,6 +829,9 @@ class _Frame(object):
         0         a
         1         c
         """
+        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+            options = options.get("options")  # type: ignore
+
         if path is None:
             # If path is none, just collect and use pandas's to_json.
             kdf_or_ser = self

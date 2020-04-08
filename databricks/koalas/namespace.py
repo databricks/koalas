@@ -249,6 +249,9 @@ def read_csv(
     --------
     >>> ks.read_csv('data.csv')  # doctest: +SKIP
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     if mangle_dupe_cols is not True:
         raise ValueError("mangle_dupe_cols can only be `True`: %s" % mangle_dupe_cols)
     if parse_dates is not False:
@@ -396,6 +399,9 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
     0         a     b
     1         c     d
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     return read_spark_io(path, format="json", index_col=index_col, **options)
 
 
@@ -472,6 +478,9 @@ def read_delta(
     3      13
     4      14
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     if version is not None:
         options["versionAsOf"] = version
     if timestamp is not None:
@@ -592,6 +601,9 @@ def read_spark_io(
     3      13
     4      14
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     sdf = default_session().read.load(path=path, format=format, schema=schema, **options)
     index_map = _get_index_map(sdf, index_col)
 
@@ -639,6 +651,9 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
     index
     0       0
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     if columns is not None:
         columns = list(columns)
 
@@ -1111,6 +1126,9 @@ def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, *
     --------
     >>> ks.read_sql_table('table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     reader = default_session().read
     reader.option("dbtable", table_name)
     reader.option("url", con)
@@ -1164,6 +1182,9 @@ def read_sql_query(sql, con, index_col=None, **options):
     --------
     >>> ks.read_sql_query('SELECT * FROM table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     reader = default_session().read
     reader.option("query", sql)
     reader.option("url", con)
@@ -1218,6 +1239,9 @@ def read_sql(sql, con, index_col=None, columns=None, **options):
     >>> ks.read_sql('table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
     >>> ks.read_sql('SELECT * FROM table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     striped = sql.strip()
     if " " not in striped:  # TODO: identify the table name or not more precisely.
         return read_sql_table(sql, con, index_col=index_col, columns=columns, **options)
