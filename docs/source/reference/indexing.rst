@@ -62,6 +62,7 @@ Modifying and computations
    Index.max
    Index.rename
    Index.repeat
+   Index.take
    Index.unique
    Index.nunique
    Index.value_counts
@@ -121,6 +122,7 @@ Combining / joining / set operations
    :toctree: api/
 
    Index.append
+   Index.union
    Index.difference
    Index.symmetric_difference
 
@@ -129,6 +131,7 @@ Selecting
 .. autosummary::
    :toctree: api/
 
+   Index.asof
    Index.isin
 
 .. _api.multiindex:
@@ -201,6 +204,7 @@ MultiIndex Modifying and computations
    MultiIndex.delete
    MultiIndex.rename
    MultiIndex.repeat
+   MultiIndex.take
    MultiIndex.unique
    MultiIndex.min
    MultiIndex.max
@@ -212,6 +216,7 @@ MultiIndex Combining / joining / set operations
    :toctree: api/
 
    MultiIndex.append
+   MultiIndex.union
    MultiIndex.difference
    MultiIndex.symmetric_difference
 

@@ -28,7 +28,6 @@ This project is currently in beta and is rapidly evolving, with a bi-weekly rele
 Try the Koalas 10 minutes tutorial on a live Jupyter notebook [here](https://mybinder.org/v2/gh/databricks/koalas/master?filepath=docs%2Fsource%2Fgetting_started%2F10min.ipynb). The initial launch can take up to several minutes.
 
 [![Github Actions](https://github.com/databricks/koalas/workflows/master/badge.svg)](https://github.com/databricks/koalas/actions)
-[![Travis CI](https://travis-ci.com/databricks/koalas.svg?token=Rzzgd1itxsPZRuhKGnhD&branch=master)](https://travis-ci.com/databricks/koalas)
 [![codecov](https://codecov.io/gh/databricks/koalas/branch/master/graph/badge.svg)](https://codecov.io/gh/databricks/koalas)
 [![Documentation Status](https://readthedocs.org/projects/koalas/badge/?version=latest)](https://koalas.readthedocs.io/en/latest/?badge=latest)
 [![Latest Release](https://img.shields.io/pypi/v/koalas.svg)](https://pypi.org/project/koalas/)
@@ -95,7 +94,10 @@ See [Best Practices](https://koalas.readthedocs.io/en/latest/user_guide/best_pra
 
 See [Koalas talks](https://koalas.readthedocs.io/en/latest/getting_started/videos.html) in the official documentation.
 
+- [Reducing Time-To-Insight for Virgin Hyperloop's Data](https://databricks.com/p/webinar/reducing-time-to-insight-for-hyperloop-data) - Webinar @ Databricks (Mar 27, 2020)
+- [Pandas vs Koalas: The Ultimate Showdown](https://pyvideo.org/pydata-new-york-city-2019/pandas-vs-koalas-the-ultimate-showdown.html) - PyData New York 2019 (Nov 4, 2019)
 - [New Developments in the Open Source Ecosystem: Apache Spark 3.0, Delta Lake, and Koalas](https://databricks.com/session_eu19/new-developments-in-the-open-source-ecosystem-apache-spark-3-0-delta-lake-and-koalas) - Spark + AI Summit Europe 2019 (Oct 16, 2019)
 - [Koalas: Making an Easy Transition from Pandas to Apache Spark](https://databricks.com/session_eu19/koalas-making-an-easy-transition-from-pandas-to-apache-spark) - Spark + AI Summit Europe 2019 (Oct 16, 2019)
 - [Koalas: Pandas on Apache Spark](https://databricks.com/session_eu19/koalas-pandas-on-apache-spark) - Spark + AI Summit Europe 2019 (Oct 16, 2019)
+- [Koalas Easy Transition from pandas to Apache Spark](https://www.youtube.com/watch?v=cMDLoGkidEE) - PyBay 2019 (Aug 17, 2019)
 - [Official Announcement of Koalas Open Source Project](https://databricks.com/session/official-announcement-of-koalas-open-source-project) - Spark + AI Summit 2019 (Apr 24, 2019)

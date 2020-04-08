@@ -30,7 +30,7 @@ from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_list_like, is_dict_like
+from pandas.api.types import is_list_like, is_dict_like, is_scalar
 
 if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
     from pandas.core.dtypes.common import infer_dtype_from_object
@@ -38,9 +38,11 @@ else:
     from pandas.core.dtypes.common import _get_dtype_from_object as infer_dtype_from_object
 from pandas.core.accessor import CachedAccessor
 from pandas.core.dtypes.inference import is_sequence
+from pyspark import StorageLevel
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf
+from pyspark.sql.readwriter import OptionUtils
 from pyspark.sql.types import (
     BooleanType,
     ByteType,
@@ -73,7 +75,13 @@ from databricks.koalas.internal import (
 )
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.utils import column_labels_level, name_like_string, scol_for, validate_axis
+from databricks.koalas.utils import (
+    column_labels_level,
+    name_like_string,
+    scol_for,
+    validate_axis,
+    verify_temp_column_name,
+)
 from databricks.koalas.typedef import _infer_return_type, as_spark_type, as_python_type
 from databricks.koalas.plot import KoalasFramePlotMethods
 from databricks.koalas.config import get_option
@@ -1754,6 +1762,56 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf = self
         return validate_arguments_and_invoke_function(
             kdf._to_internal_pandas(), self.to_latex, pd.DataFrame.to_latex, args
+        )
+
+    def to_markdown(self, buf=None, mode=None, max_rows=None):
+        """
+        Print DataFrame in Markdown-friendly format.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory. If the input
+                  is large, set max_rows parameter.
+
+        Parameters
+        ----------
+        buf : writable buffer, defaults to sys.stdout
+            Where to send the output. By default, the output is printed to
+            sys.stdout. Pass a writable buffer if you need to further process
+            the output.
+        mode : str, optional
+            Mode in which file is opened.
+        **kwargs
+            These parameters will be passed to `tabulate`.
+
+        Returns
+        -------
+        str
+            DataFrame in Markdown-friendly format.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(
+        ...     data={"animal_1": ["elk", "pig"], "animal_2": ["dog", "quetzal"]}
+        ... )
+        >>> print(df.to_markdown())  # doctest: +SKIP
+        |    | animal_1   | animal_2   |
+        |---:|:-----------|:-----------|
+        |  0 | elk        | dog        |
+        |  1 | pig        | quetzal    |
+        """
+        # `to_markdown` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            raise NotImplementedError(
+                "`to_markdown()` only supported in Kaoals with pandas >= 1.0.0"
+            )
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        if max_rows is not None:
+            kdf = self.head(max_rows)
+        else:
+            kdf = self
+        return validate_arguments_and_invoke_function(
+            kdf._to_internal_pandas(), self.to_markdown, pd.DataFrame.to_markdown, args
         )
 
     # TODO: enable doctests once we drop Spark 2.3.x (due to type coercion logic
@@ -3504,7 +3562,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         dropna: bool = True,
         approx: bool = False,
         rsd: float = 0.05,
-    ) -> pd.Series:
+    ) -> "ks.Series":
         """
         Return number of unique elements in the object.
 
@@ -3527,7 +3585,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        The number of unique values per column as a pandas Series.
+        The number of unique values per column as a Koalas Series.
 
         Examples
         --------
@@ -3550,22 +3608,31 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         B    1
         Name: 0, dtype: int64
         """
+        from databricks.koalas.series import _col
+
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
-        res = self._sdf.select(
+        sdf = self._sdf.select(
             [
                 self._kser_for(label)._nunique(dropna, approx, rsd)
                 for label in self._internal.column_labels
             ]
-        ).toPandas()
-        if self._internal.column_labels_level == 1:
-            res.columns = [label[0] for label in self._internal.column_labels]
-        else:
-            res.columns = pd.MultiIndex.from_tuples(self._internal.column_labels)
-        if self._internal.column_label_names is not None:
-            res.columns.names = self._internal.column_label_names
-        return res.T.iloc[:, 0]
+        )
+
+        # The data is expected to be small so it's fine to transpose/use default index.
+        with ks.option_context(
+            "compute.default_index_type", "distributed", "compute.max_rows", None
+        ):
+            kdf = DataFrame(sdf)  # type: ks.DataFrame
+            internal = _InternalFrame(
+                spark_frame=kdf._internal.spark_frame,
+                index_map=kdf._internal.index_map,
+                column_labels=self._internal.column_labels,
+                column_label_names=self._internal.column_label_names,
+            )
+
+            return _col(DataFrame(internal).transpose())
 
     def round(self, decimals=0):
         """
@@ -3650,9 +3717,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._apply_series_op(op)
 
     def _mark_duplicates(self, subset=None, keep="first"):
-        if len(self._internal.index_names) > 1:
-            raise ValueError("We don't support multi-index yet.")
-
         if subset is None:
             subset = self._internal.column_labels
         else:
@@ -3667,13 +3731,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise KeyError(", ".join([str(d) if len(d) > 1 else d[0] for d in diff]))
         group_cols = [self._internal.spark_column_name_for(label) for label in subset]
 
-        if self._internal.index_names[0] is not None:
-            name = self._internal.index_names[0]
-        else:
-            name = ("0",)
-        column = "__duplicated__"
-
         sdf = self._sdf
+
+        column = verify_temp_column_name(sdf, "__duplicated__")
 
         if keep == "first" or keep == "last":
             if keep == "first":
@@ -3693,7 +3753,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = sdf.withColumn(column, F.count("*").over(window) > 1)
         else:
             raise ValueError("'keep' only supports 'first', 'last' and False")
-        return name, name_like_string(name), sdf
+        return sdf, column
 
     def duplicated(self, subset=None, keep="first"):
         """
@@ -3751,19 +3811,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.series import _col
 
-        name, column, sdf = self._mark_duplicates(subset, keep)
-        index_column = self._internal.index_spark_column_names[0]
+        sdf, column = self._mark_duplicates(subset, keep)
+        column_label = ("0",)
 
-        sdf = sdf.withColumn(column, F.col("__duplicated__"))
-
-        sdf = sdf.select(scol_for(sdf, index_column), scol_for(sdf, column))
+        sdf = sdf.select(
+            self._internal.index_spark_columns
+            + [scol_for(sdf, column).alias(name_like_string(column_label))]
+        )
         return _col(
             DataFrame(
                 _InternalFrame(
                     spark_frame=sdf,
-                    index_map=OrderedDict({index_column: self._internal.index_names[0]}),
-                    column_labels=[name],
-                    data_spark_columns=[scol_for(sdf, column)],
+                    index_map=self._internal.index_map,
+                    column_labels=[column_label],
+                    data_spark_columns=[scol_for(sdf, name_like_string(column_label))],
                 )
             )
         )
@@ -3840,6 +3901,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         The Koalas DataFrame is yielded as a protected resource and its corresponding
         data is cached which gets uncached after execution goes of the context.
 
+        If you want to specify the StorageLevel manually, use :meth:`DataFrame.persist`
+
+        See Also
+        --------
+        DataFrame.persist
+
         Examples
         --------
         >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
@@ -3872,12 +3939,84 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return _CachedDataFrame(self._internal)
 
+    def persist(self, storage_level=StorageLevel.MEMORY_AND_DISK):
+        """
+        Yields and caches the current DataFrame with a specific StorageLevel.
+        If a StogeLevel is not given, the `MEMORY_AND_DISK` level is used by default like PySpark.
+
+        The Koalas DataFrame is yielded as a protected resource and its corresponding
+        data is cached which gets uncached after execution goes of the context.
+
+        See Also
+        --------
+        DataFrame.cache
+
+        Examples
+        --------
+        >>> import pyspark
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'])
+        >>> df
+           dogs  cats
+        0   0.2   0.3
+        1   0.0   0.6
+        2   0.6   0.0
+        3   0.2   0.1
+
+        Set the StorageLevel to `MEMORY_ONLY`.
+
+        >>> with df.persist(pyspark.StorageLevel.MEMORY_ONLY) as cached_df:
+        ...     print(cached_df.storage_level)
+        ...     print(cached_df.count())
+        ...
+        Memory Serialized 1x Replicated
+        dogs    4
+        cats    4
+        Name: 0, dtype: int64
+
+        Set the StorageLevel to `DISK_ONLY`.
+
+        >>> with df.persist(pyspark.StorageLevel.DISK_ONLY) as cached_df:
+        ...     print(cached_df.storage_level)
+        ...     print(cached_df.count())
+        ...
+        Disk Serialized 1x Replicated
+        dogs    4
+        cats    4
+        Name: 0, dtype: int64
+
+        If a StorageLevel is not given, it uses `MEMORY_AND_DISK` by default.
+
+        >>> with df.persist() as cached_df:
+        ...     print(cached_df.storage_level)
+        ...     print(cached_df.count())
+        ...
+        Disk Memory Serialized 1x Replicated
+        dogs    4
+        cats    4
+        Name: 0, dtype: int64
+
+        >>> df = df.persist()
+        >>> df.to_pandas().mean(axis=1)
+        0    0.25
+        1    0.30
+        2    0.30
+        3    0.15
+        dtype: float64
+
+        To uncache the dataframe, use `unpersist` function
+
+        >>> df.unpersist()
+        """
+        return _CachedDataFrame(self._internal, storage_level=storage_level)
+
     def to_table(
         self,
         name: str,
         format: Optional[str] = None,
         mode: str = "overwrite",
         partition_cols: Union[str, List[str], None] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
         """
@@ -3907,6 +4046,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         partition_cols : str or list of str, optional, default None
             Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options
             Additional options passed directly to Spark.
 
@@ -3930,7 +4072,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.to_table('%s.my_table' % db, partition_cols='date')
         """
-        self.to_spark().write.saveAsTable(
+        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+            options = options.get("options")  # type: ignore
+
+        self.to_spark(index_col=index_col).write.saveAsTable(
             name=name, format=format, mode=mode, partitionBy=partition_cols, **options
         )
 
@@ -3939,6 +4084,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         path: str,
         mode: str = "overwrite",
         partition_cols: Union[str, List[str], None] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
         """
@@ -3959,6 +4105,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         partition_cols : str or list of str, optional, default None
             Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options : dict
             All other options passed directly into Delta Lake.
 
@@ -3995,8 +4144,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.to_delta('%s/to_delta/bar' % path,
         ...             mode='overwrite', replaceWhere='date >= "2012-01-01"')
         """
+        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+            options = options.get("options")  # type: ignore
+
         self.to_spark_io(
-            path=path, mode=mode, format="delta", partition_cols=partition_cols, **options
+            path=path,
+            mode=mode,
+            format="delta",
+            partition_cols=partition_cols,
+            index_col=index_col,
+            **options
         )
 
     def to_parquet(
@@ -4005,6 +4162,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         mode: str = "overwrite",
         partition_cols: Union[str, List[str], None] = None,
         compression: Optional[str] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
+        **options
     ):
         """
         Write the DataFrame out as a Parquet file or directory.
@@ -4027,6 +4186,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         compression : str {'none', 'uncompressed', 'snappy', 'gzip', 'lzo', 'brotli', 'lz4', 'zstd'}
             Compression codec to use when saving to file. If None is set, it uses the
             value specified in `spark.sql.parquet.compression.codec`.
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
+        options : dict
+            All other options passed directly into Spark's data source.
 
         See Also
         --------
@@ -4054,9 +4218,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...     mode = 'overwrite',
         ...     partition_cols=['date', 'country'])
         """
-        self.to_spark().write.parquet(
-            path=path, mode=mode, partitionBy=partition_cols, compression=compression
+        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+            options = options.get("options")  # type: ignore
+
+        builder = self.to_spark(index_col=index_col).write.mode(mode)
+        OptionUtils._set_opts(
+            builder, mode=mode, partitionBy=partition_cols, compression=compression
         )
+        builder.options(**options).format("parquet").save(path)
 
     def to_spark_io(
         self,
@@ -4064,6 +4233,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         format: Optional[str] = None,
         mode: str = "overwrite",
         partition_cols: Union[str, List[str], None] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
         """Write the DataFrame out to a Spark data source.
@@ -4089,6 +4259,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             - 'error' or 'errorifexists': Throw an exception if data already exists.
         partition_cols : str or list of str, optional
             Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options : dict
             All other options passed directly into Spark's data source.
 
@@ -4113,7 +4286,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.to_spark_io(path='%s/to_spark_io/foo.json' % path, format='json')
         """
-        self.to_spark().write.save(
+        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+            options = options.get("options")  # type: ignore
+
+        self.to_spark(index_col=index_col).write.save(
             path=path, format=format, mode=mode, partitionBy=partition_cols, **options
         )
 
@@ -4315,9 +4491,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         from databricks.koalas.series import Series
 
         for k, v in kwargs.items():
-            if not (
-                isinstance(v, (Series, spark.Column)) or callable(v) or pd.api.types.is_scalar(v)
-            ):
+            if not (isinstance(v, (Series, spark.Column)) or callable(v) or is_scalar(v)):
                 raise TypeError(
                     "Column assignment doesn't support type " "{0}".format(type(v).__name__)
                 )
@@ -6556,6 +6730,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         DataFrame
             A DataFrame of the two merged objects.
 
+        See Also
+        --------
+        broadcast : Marks a DataFrame as small enough for use in broadcast joins.
+
         Examples
         --------
         >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
@@ -6843,6 +7021,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         DataFrame.merge: For column(s)-on-columns(s) operations.
+        broadcast : Marks a DataFrame as small enough for use in broadcast joins.
 
         Notes
         -----
@@ -7013,6 +7192,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         DataFrame.merge : For column(s)-on-columns(s) operations.
+        broadcast : Marks a DataFrame as small enough for use in broadcast joins.
 
         Examples
         --------
@@ -7592,9 +7772,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
 
-        sdf = self._mark_duplicates(subset, keep)[-1]
+        sdf, column = self._mark_duplicates(subset, keep)
 
-        sdf = sdf.where(~F.col("__duplicated__")).drop("__duplicated__")
+        sdf = sdf.where(~scol_for(sdf, column)).drop(column)
         internal = self._internal.with_new_sdf(sdf)
         if inplace:
             self._internal = internal
@@ -9569,6 +9749,201 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         self._internal.to_internal_spark_frame.explain(extended)
 
+    def take(self, indices, axis=0, **kwargs):
+        """
+        Return the elements in the given *positional* indices along an axis.
+
+        This means that we are not indexing according to actual values in
+        the index attribute of the object. We are indexing according to the
+        actual position of the element in the object.
+
+        Parameters
+        ----------
+        indices : array-like
+            An array of ints indicating which positions to take.
+        axis : {0 or 'index', 1 or 'columns', None}, default 0
+            The axis on which to select elements. ``0`` means that we are
+            selecting rows, ``1`` means that we are selecting columns.
+        **kwargs
+            For compatibility with :meth:`numpy.take`. Has no effect on the
+            output.
+
+        Returns
+        -------
+        taken : same type as caller
+            An array-like containing the elements taken from the object.
+
+        See Also
+        --------
+        DataFrame.loc : Select a subset of a DataFrame by labels.
+        DataFrame.iloc : Select a subset of a DataFrame by positions.
+        numpy.take : Take elements from an array along an axis.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([('falcon', 'bird', 389.0),
+        ...                    ('parrot', 'bird', 24.0),
+        ...                    ('lion', 'mammal', 80.5),
+        ...                    ('monkey', 'mammal', np.nan)],
+        ...                   columns=['name', 'class', 'max_speed'],
+        ...                   index=[0, 2, 3, 1])
+        >>> df
+             name   class  max_speed
+        0  falcon    bird      389.0
+        2  parrot    bird       24.0
+        3    lion  mammal       80.5
+        1  monkey  mammal        NaN
+
+        Take elements at positions 0 and 3 along the axis 0 (default).
+
+        Note how the actual indices selected (0 and 1) do not correspond to
+        our selected indices 0 and 3. That's because we are selecting the 0th
+        and 3rd rows, not rows whose indices equal 0 and 3.
+
+        >>> df.take([0, 3]).sort_index()
+             name   class  max_speed
+        0  falcon    bird      389.0
+        1  monkey  mammal        NaN
+
+        Take elements at indices 1 and 2 along the axis 1 (column selection).
+
+        >>> df.take([1, 2], axis=1)
+            class  max_speed
+        0    bird      389.0
+        2    bird       24.0
+        3  mammal       80.5
+        1  mammal        NaN
+
+        We may take elements using negative integers for positive indices,
+        starting from the end of the object, just like with Python lists.
+
+        >>> df.take([-1, -2]).sort_index()
+             name   class  max_speed
+        1  monkey  mammal        NaN
+        3    lion  mammal       80.5
+        """
+        axis = validate_axis(axis)
+        if not is_list_like(indices) or isinstance(indices, (dict, set)):
+            raise ValueError("`indices` must be a list-like except dict or set")
+        if axis == 0:
+            return self.iloc[indices, :]
+        elif axis == 1:
+            return self.iloc[:, indices]
+
+    def eval(self, expr, inplace=False):
+        """
+        Evaluate a string describing operations on DataFrame columns.
+
+        Operates on columns only, not specific rows or elements. This allows
+        `eval` to run arbitrary code, which can make you vulnerable to code
+        injection if you pass user input to this function.
+
+        Parameters
+        ----------
+        expr : str
+            The expression string to evaluate.
+        inplace : bool, default False
+            If the expression contains an assignment, whether to perform the
+            operation inplace and mutate the existing DataFrame. Otherwise,
+            a new DataFrame is returned.
+
+        Returns
+        -------
+        The result of the evaluation.
+
+        See Also
+        --------
+        DataFrame.query : Evaluates a boolean expression to query the columns
+            of a frame.
+        DataFrame.assign : Can evaluate an expression or function to create new
+            values for a column.
+        eval : Evaluate a Python expression as a string using various
+            backends.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': range(1, 6), 'B': range(10, 0, -2)})
+        >>> df
+           A   B
+        0  1  10
+        1  2   8
+        2  3   6
+        3  4   4
+        4  5   2
+        >>> df.eval('A + B')
+        0    11
+        1    10
+        2     9
+        3     8
+        4     7
+        Name: 0, dtype: int64
+
+        Assignment is allowed though by default the original DataFrame is not
+        modified.
+
+        >>> df.eval('C = A + B')
+           A   B   C
+        0  1  10  11
+        1  2   8  10
+        2  3   6   9
+        3  4   4   8
+        4  5   2   7
+        >>> df
+           A   B
+        0  1  10
+        1  2   8
+        2  3   6
+        3  4   4
+        4  5   2
+
+        Use ``inplace=True`` to modify the original DataFrame.
+
+        >>> df.eval('C = A + B', inplace=True)
+        >>> df
+           A   B   C
+        0  1  10  11
+        1  2   8  10
+        2  3   6   9
+        3  4   4   8
+        4  5   2   7
+        """
+        from databricks.koalas.series import _col
+
+        if isinstance(self.columns, pd.MultiIndex):
+            raise ValueError("`eval` is not supported for multi-index columns")
+        inplace = validate_bool_kwarg(inplace, "inplace")
+        should_return_series = False
+        should_return_scalar = False
+
+        # Since `eva_func` doesn't have a type hint, inferring the schema is always preformed
+        # in the `map_in_pandas`. Hence, the variables `is_seires` and `is_scalar_` can be updated.
+        def eval_func(pdf):
+            nonlocal should_return_series
+            nonlocal should_return_scalar
+            result_inner = pdf.eval(expr, inplace=inplace)
+            if inplace:
+                result_inner = pdf
+            if isinstance(result_inner, pd.Series):
+                should_return_series = True
+                result_inner = result_inner.to_frame()
+            elif is_scalar(result_inner):
+                should_return_scalar = True
+                result_inner = pd.Series(result_inner).to_frame()
+            return result_inner
+
+        result = self.map_in_pandas(eval_func)
+        if inplace:
+            # Here, the result is always a frame because the error is thrown during schema inference
+            # from pandas.
+            self._internal = result._internal
+        elif should_return_series:
+            return _col(result)
+        elif should_return_scalar:
+            return _col(result)[0]
+        else:
+            # Returns a frame
+            return result
+
     def _to_internal_pandas(self):
         """
         Return a pandas DataFrame directly from _internal to avoid overhead of copy.
@@ -9646,34 +10021,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             isinstance(value, DataFrame) and value is not self
         ):
             # Different Series or DataFrames
-            if isinstance(value, Series):
-                value = value.to_frame()
-            else:
-                assert isinstance(value, DataFrame), type(value)
-                value = value.copy()
-            level = self._internal.column_labels_level
-
-            value.columns = pd.MultiIndex.from_tuples(
-                [
-                    tuple([name_like_string(label)] + ([""] * (level - 1)))
-                    for label in value._internal.column_labels
-                ]
-            )
-
-            if isinstance(key, str):
-                key = [(key,)]
-            elif isinstance(key, tuple):
-                key = [key]
-            else:
-                key = [k if isinstance(k, tuple) else (k,) for k in key]
-
-            if any(len(label) > level for label in key):
-                raise KeyError(
-                    "Key length ({}) exceeds index depth ({})".format(
-                        max(len(label) for label in key), level
-                    )
-                )
-            key = [tuple(list(label) + ([""] * (level - len(label)))) for label in key]
+            key = self._index_normalized_label(key)
+            value = self._index_normalized_frame(value)
 
             def assign_columns(kdf, this_column_labels, that_column_labels):
                 assert len(key) == len(that_column_labels)
@@ -9697,6 +10046,54 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf = self._assign({key: value})
 
         self._internal = kdf._internal
+
+    def _index_normalized_label(self, labels):
+        """
+        Returns a label that is normalized against the current column index level.
+        For example, the key "abc" can be ("abc", "", "") if the current Frame has
+        a multi-index for its column
+        """
+        level = self._internal.column_labels_level
+
+        if isinstance(labels, str):
+            labels = [(labels,)]
+        elif isinstance(labels, tuple):
+            labels = [labels]
+        else:
+            labels = [k if isinstance(k, tuple) else (k,) for k in labels]
+
+        if any(len(label) > level for label in labels):
+            raise KeyError(
+                "Key length ({}) exceeds index depth ({})".format(
+                    max(len(label) for label in labels), level
+                )
+            )
+        return [tuple(list(label) + ([""] * (level - len(label)))) for label in labels]
+
+    def _index_normalized_frame(self, kser_or_kdf):
+        """
+        Returns a frame that is normalized against the current column index level.
+        For example, the name in `pd.Series([...], name="abc")` can be can be
+        ("abc", "", "") if the current DataFrame has a multi-index for its column
+        """
+
+        from databricks.koalas.series import Series
+
+        level = self._internal.column_labels_level
+        if isinstance(kser_or_kdf, Series):
+            kdf = kser_or_kdf.to_frame()
+        else:
+            assert isinstance(kser_or_kdf, DataFrame), type(kser_or_kdf)
+            kdf = kser_or_kdf.copy()
+
+        kdf.columns = pd.MultiIndex.from_tuples(
+            [
+                tuple([name_like_string(label)] + ([""] * (level - 1)))
+                for label in kdf._internal.column_labels
+            ]
+        )
+
+        return kdf
 
     def __getattr__(self, key: str) -> Any:
         if key.startswith("__"):
@@ -9798,8 +10195,15 @@ class _CachedDataFrame(DataFrame):
     it caches the corresponding Spark DataFrame.
     """
 
-    def __init__(self, internal):
-        self._cached = internal._sdf.cache()
+    def __init__(self, internal, storage_level=None):
+        if storage_level is None:
+            self._cached = internal._sdf.cache()
+        elif isinstance(storage_level, StorageLevel):
+            self._cached = internal._sdf.persist(storage_level)
+        else:
+            raise TypeError(
+                "Only a valid pyspark.StorageLevel type is acceptable for the `storage_level`"
+            )
         super(_CachedDataFrame, self).__init__(internal)
 
     def __enter__(self):
@@ -9807,6 +10211,37 @@ class _CachedDataFrame(DataFrame):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.unpersist()
+
+    @property
+    def storage_level(self):
+        """
+        Return the storage level of this cache.
+
+        Examples
+        --------
+        >>> import pyspark
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'])
+        >>> df
+           dogs  cats
+        0   0.2   0.3
+        1   0.0   0.6
+        2   0.6   0.0
+        3   0.2   0.1
+
+        >>> with df.cache() as cached_df:
+        ...     print(cached_df.storage_level)
+        ...
+        Disk Memory Deserialized 1x Replicated
+
+        Set the StorageLevel to `MEMORY_ONLY`.
+
+        >>> with df.persist(pyspark.StorageLevel.MEMORY_ONLY) as cached_df:
+        ...     print(cached_df.storage_level)
+        ...
+        Memory Serialized 1x Replicated
+        """
+        return self._cached.storageLevel
 
     def unpersist(self):
         """

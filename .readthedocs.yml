@@ -32,10 +32,8 @@ python:
   version: 3.6
   install:
     - requirements: requirements-dev.txt
+    - requirements: docs/requirements-readthedocs.txt
     - method: pip
       path: .
       extra_requirements:
         - spark
-conda:
-  environment: dev/readthedocs-environment.yml
-

@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union, List, Tuple, Dict
+from typing import Optional, Union, List, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
@@ -45,7 +45,13 @@ from pyspark.sql.types import (
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
-from databricks.koalas.utils import default_session, name_like_string, scol_for, validate_axis
+from databricks.koalas.utils import (
+    default_session,
+    name_like_string,
+    scol_for,
+    validate_axis,
+    align_diff_frames,
+)
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import _InternalFrame
 from databricks.koalas.typedef import pandas_wraps
@@ -77,6 +83,7 @@ __all__ = [
     "read_json",
     "merge",
     "to_numeric",
+    "broadcast",
 ]
 
 
@@ -105,6 +112,9 @@ def from_pandas(pobj: Union["pd.DataFrame", "pd.Series"]) -> Union["Series", "Da
         return DataFrame(pd.DataFrame(index=pobj)).index
     else:
         raise ValueError("Unknown data type: {}".format(type(pobj)))
+
+
+_range = range  # built-in range
 
 
 def range(
@@ -239,6 +249,9 @@ def read_csv(
     --------
     >>> ks.read_csv('data.csv')  # doctest: +SKIP
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     if mangle_dupe_cols is not True:
         raise ValueError("mangle_dupe_cols can only be `True`: %s" % mangle_dupe_cols)
     if parse_dates is not False:
@@ -374,7 +387,21 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
       col 1 col 2
     0     a     b
     1     c     d
+
+    You can preserve the index in the roundtrip as below.
+
+    >>> df.to_json(path=r'%s/read_json/bar.json' % path, num_files=1, index_col="index")
+    >>> ks.read_json(
+    ...     path=r'%s/read_json/bar.json' % path, index_col="index"
+    ... ).sort_values(by="col 1")  # doctest: +NORMALIZE_WHITESPACE
+          col 1 col 2
+    index
+    0         a     b
+    1         c     d
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     return read_spark_io(path, format="json", index_col=index_col, **options)
 
 
@@ -436,7 +463,24 @@ def read_delta(
     >>> ks.read_delta('%s/read_delta/foo' % path, version=0)
        id
     0   0
+
+    You can preserve the index in the roundtrip as below.
+
+    >>> ks.range(10, 15, num_partitions=1).to_delta(
+    ...     '%s/read_delta/bar' % path, index_col="index")
+    >>> ks.read_delta('%s/read_delta/bar' % path, index_col="index")
+    ... # doctest: +NORMALIZE_WHITESPACE
+           id
+    index
+    0      10
+    1      11
+    2      12
+    3      13
+    4      14
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     if version is not None:
         options["versionAsOf"] = version
     if timestamp is not None:
@@ -473,6 +517,12 @@ def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> 
     >>> ks.read_table('%s.my_table' % db)
        id
     0   0
+
+    >>> ks.range(1).to_table('%s.my_table' % db, index_col="index")
+    >>> ks.read_table('%s.my_table' % db, index_col="index")  # doctest: +NORMALIZE_WHITESPACE
+           id
+    index
+    0       0
     """
     sdf = default_session().read.table(name)
     index_map = _get_index_map(sdf, index_col)
@@ -535,14 +585,32 @@ def read_spark_io(
     2  12
     3  13
     4  14
+
+    You can preserve the index in the roundtrip as below.
+
+    >>> ks.range(10, 15, num_partitions=1).to_spark_io('%s/read_spark_io/data.orc' % path,
+    ...                                                format='orc', index_col="index")
+    >>> ks.read_spark_io(
+    ...     path=r'%s/read_spark_io/data.orc' % path, format="orc", index_col="index")
+    ... # doctest: +NORMALIZE_WHITESPACE
+           id
+    index
+    0      10
+    1      11
+    2      12
+    3      13
+    4      14
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     sdf = default_session().read.load(path=path, format=format, schema=schema, **options)
     index_map = _get_index_map(sdf, index_col)
 
     return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
-def read_parquet(path, columns=None, index_col=None) -> DataFrame:
+def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
     """Load a parquet object from the file path, returning a DataFrame.
 
     Parameters
@@ -553,6 +621,8 @@ def read_parquet(path, columns=None, index_col=None) -> DataFrame:
         If not None, only these columns will be read from the file.
     index_col : str or list of str, optional, default: None
         Index column of table in Spark.
+    options : dict
+        All other options passed directly into Spark's data source.
 
     Returns
     -------
@@ -571,24 +641,34 @@ def read_parquet(path, columns=None, index_col=None) -> DataFrame:
     >>> ks.read_parquet('%s/read_spark_io/data.parquet' % path, columns=['id'])
        id
     0   0
+
+    You can preserve the index in the roundtrip as below.
+
+    >>> ks.range(1).to_parquet('%s/read_spark_io/data.parquet' % path, index_col="index")
+    >>> ks.read_parquet('%s/read_spark_io/data.parquet' % path, columns=['id'], index_col="index")
+    ... # doctest: +NORMALIZE_WHITESPACE
+           id
+    index
+    0       0
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     if columns is not None:
         columns = list(columns)
-    if columns is None or len(columns) > 0:
-        sdf = default_session().read.parquet(path)
-        if columns is not None:
-            fields = [field.name for field in sdf.schema]
-            cols = [col for col in columns if col in fields]
-            if len(cols) > 0:
-                sdf = sdf.select(cols)
-            else:
-                sdf = default_session().createDataFrame([], schema=StructType())
-    else:
-        sdf = default_session().createDataFrame([], schema=StructType())
 
-    index_map = _get_index_map(sdf, index_col)
+    kdf = read_spark_io(path=path, format="parquet", options=options, index_col=index_col)
 
-    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+    if columns is not None:
+        new_columns = [c for c in columns if c in kdf.columns]
+        if len(new_columns) > 0:
+            kdf = kdf[new_columns]
+        else:
+            sdf = default_session().createDataFrame([], schema=StructType())
+            index_map = _get_index_map(sdf, index_col)
+            return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+
+    return kdf
 
 
 def read_clipboard(sep=r"\s+", **kwargs):
@@ -1046,6 +1126,9 @@ def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, *
     --------
     >>> ks.read_sql_table('table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     reader = default_session().read
     reader.option("dbtable", table_name)
     reader.option("url", con)
@@ -1099,6 +1182,9 @@ def read_sql_query(sql, con, index_col=None, **options):
     --------
     >>> ks.read_sql_query('SELECT * FROM table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     reader = default_session().read
     reader.option("query", sql)
     reader.option("url", con)
@@ -1153,6 +1239,9 @@ def read_sql(sql, con, index_col=None, columns=None, **options):
     >>> ks.read_sql('table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
     >>> ks.read_sql('SELECT * FROM table_name', 'jdbc:postgresql:db_name')  # doctest: +SKIP
     """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
     striped = sql.strip()
     if " " not in striped:  # TODO: identify the table name or not more precisely.
         return read_sql_table(sql, con, index_col=index_col, columns=columns, **options)
@@ -1539,11 +1628,11 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     objs : a sequence of Series or DataFrame
         Any None objects will be dropped silently unless
         they are all None in which case a ValueError will be raised
-    axis : {0/'index'}, default 0
+    axis : {0/'index', 1/'columns'}, default 0
         The axis to concatenate along.
     join : {'inner', 'outer'}, default 'outer'
-        How to handle indexes on other axis(es)
-    ignore_index : boolean, default False
+        How to handle indexes on other axis (or axes).
+    ignore_index : bool, default False
         If True, do not use the index values along the concatenation axis. The
         resulting axis will be labeled 0, ..., n - 1. This is useful if you are
         concatenating objects where the concatenation axis does not have
@@ -1552,14 +1641,17 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
 
     Returns
     -------
-    concatenated : object, type of objs
+    object, type of objs
         When concatenating all ``Series`` along the index (axis=0), a
         ``Series`` is returned. When ``objs`` contains at least one
-        ``DataFrame``, a ``DataFrame`` is returned.
+        ``DataFrame``, a ``DataFrame`` is returned. When concatenating along
+        the columns (axis=1), a ``DataFrame`` is returned.
 
     See Also
     --------
-    DataFrame.merge
+    Series.append : Concatenate Series.
+    DataFrame.join : Join DataFrames using indexes.
+    DataFrame.merge : Merge DataFrames by indexes or columns.
 
     Examples
     --------
@@ -1645,6 +1737,17 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     1      b       2
     0      c       3
     1      d       4
+
+    >>> df4 = ks.DataFrame([['bird', 'polly'], ['monkey', 'george']],
+    ...                    columns=['animal', 'name'])
+
+    Combine with column axis.
+
+    >>> ks.concat([df1, df4], axis=1)
+      letter  number  animal    name
+    0      a       1    bird   polly
+    1      b       2  monkey  george
+
     """
     if isinstance(objs, (DataFrame, IndexOpsMixin)) or not isinstance(
         objs, Iterable
@@ -1654,10 +1757,6 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
             "objects, you passed an object of type "
             '"{name}"'.format(name=type(objs).__name__)
         )
-
-    axis = validate_axis(axis)
-    if axis != 0:
-        raise NotImplementedError('axis should be either 0 or "index" currently.')
 
     if len(objs) == 0:
         raise ValueError("No objects to concatenate")
@@ -1673,6 +1772,63 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                 "; only ks.Series "
                 "and ks.DataFrame are valid".format(name=type(objs).__name__)
             )
+
+    axis = validate_axis(axis)
+    if axis == 1:
+        if isinstance(objs[0], ks.Series):
+            concat_kdf = objs[0].to_frame()
+        else:
+            concat_kdf = objs[0]
+
+        with ks.option_context("compute.ops_on_diff_frames", True):
+
+            def resolve_func(kdf, this_column_labels, that_column_labels):
+                duplicated_names = set(
+                    this_column_label[1:] for this_column_label in this_column_labels
+                ).intersection(
+                    set(that_column_label[1:] for that_column_label in that_column_labels)
+                )
+                assert (
+                    len(duplicated_names) > 0
+                ), "inner or full join type does not include non-common columns"
+                pretty_names = [name_like_string(column_label) for column_label in duplicated_names]
+                raise ValueError(
+                    "Labels have to be unique; however, got " "duplicated labels %s." % pretty_names
+                )
+
+            for kser_or_kdf in objs[1:]:
+                if isinstance(kser_or_kdf, Series):
+                    # TODO: there is a corner case to optimize - when the series are from
+                    #   the same DataFrame.
+                    that_kdf = kser_or_kdf.to_frame()
+                else:
+                    that_kdf = kser_or_kdf
+
+                this_index_level = concat_kdf._internal.column_labels_level
+                that_index_level = that_kdf._internal.column_labels_level
+
+                if this_index_level > that_index_level:
+                    concat_kdf = that_kdf._index_normalized_frame(concat_kdf)
+                if this_index_level < that_index_level:
+                    that_kdf = concat_kdf._index_normalized_frame(that_kdf)
+
+                if join == "inner":
+                    concat_kdf = align_diff_frames(
+                        resolve_func, concat_kdf, that_kdf, fillna=False, how="inner",
+                    )
+                elif join == "outer":
+                    concat_kdf = align_diff_frames(
+                        resolve_func, concat_kdf, that_kdf, fillna=False, how="full",
+                    )
+                else:
+                    raise ValueError(
+                        "Only can inner (intersect) or outer (union) join the other axis."
+                    )
+
+        if ignore_index:
+            concat_kdf.columns = list(map(str, _range(len(concat_kdf.columns))))
+
+        return concat_kdf
 
     # Series, Series ...
     # We should return Series if objects are all Series.
@@ -2150,6 +2306,44 @@ def to_numeric(arg):
         return arg._with_new_scol(arg._internal.spark_column.cast("float"))
     else:
         return pd.to_numeric(arg)
+
+
+def broadcast(obj):
+    """
+    Marks a DataFrame as small enough for use in broadcast joins.
+
+    Parameters
+    ----------
+    obj : DataFrame
+
+    Returns
+    -------
+    ret : DataFrame with broadcast hint.
+
+    See Also
+    --------
+    DataFrame.merge : Merge DataFrame objects with a database-style join.
+    DataFrame.join : Join columns of another DataFrame.
+    DataFrame.update : Modify in place using non-NA values from another DataFrame.
+
+    Examples
+    --------
+        >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
+        ...                     'value': [1, 2, 3, 5]},
+        ...                    columns=['lkey', 'value'])
+        >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+        ...                     'value': [5, 6, 7, 8]},
+        ...                    columns=['rkey', 'value'])
+        >>> merged = df1.merge(ks.broadcast(df2), left_on='lkey', right_on='rkey')
+        >>> merged.explain()  # doctest: +ELLIPSIS
+        == Physical Plan ==
+        ...
+        ...BroadcastHashJoin...
+        ...
+    """
+    if not isinstance(obj, DataFrame):
+        raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj)))
+    return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._sdf)))
 
 
 # @pandas_wraps(return_col=np.datetime64)

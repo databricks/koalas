@@ -26,6 +26,7 @@ Data manipulations and SQL
    get_dummies
    concat
    sql
+   broadcast
 
 Top-level missing data
 ----------------------

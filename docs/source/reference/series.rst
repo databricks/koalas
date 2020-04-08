@@ -80,6 +80,7 @@ Binary operator functions
    Series.rmod
    Series.floordiv
    Series.rfloordiv
+   Series.combine_first
    Series.lt
    Series.gt
    Series.le
@@ -159,6 +160,7 @@ Reindexing / Selection / Label manipulation
    Series.rename
    Series.reset_index
    Series.sample
+   Series.take
    Series.where
    Series.mask
    Series.truncate
@@ -183,6 +185,7 @@ Reshaping, sorting, transposing
    Series.sort_index
    Series.sort_values
    Series.repeat
+   Series.squeeze
 
 Combining / joining / merging
 -----------------------------
@@ -199,6 +202,7 @@ Time series-related
 .. autosummary::
    :toctree: api/
 
+   Series.asof
    Series.shift
    Series.first_valid_index
 

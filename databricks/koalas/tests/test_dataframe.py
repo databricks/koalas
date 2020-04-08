@@ -23,6 +23,7 @@ import unittest
 import numpy as np
 import pandas as pd
 import pyspark
+from pyspark import StorageLevel
 from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
@@ -30,6 +31,7 @@ from databricks.koalas.config import option_context
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
+from databricks.koalas.frame import _CachedDataFrame
 
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
@@ -2140,6 +2142,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                     pdf.drop_duplicates(["a", "b"], keep=keep).sort_index(),
                     kdf.drop_duplicates(["a", "b"], keep=keep).sort_index(),
                 )
+                self.assert_eq(
+                    pdf.set_index("a", append=True).drop_duplicates(keep=keep).sort_index(),
+                    kdf.set_index("a", append=True).drop_duplicates(keep=keep).sort_index(),
+                )
+                self.assert_eq(
+                    pdf.set_index("a", append=True).drop_duplicates("b", keep=keep).sort_index(),
+                    kdf.set_index("a", append=True).drop_duplicates("b", keep=keep).sort_index(),
+                )
 
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b")])
         pdf.columns = columns
@@ -2540,27 +2550,19 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_duplicated(self):
         pdf = pd.DataFrame(
-            {"a": [1, 1, 1, 3], "b": [1, 1, 1, 4], "c": [1, 1, 1, 5]}, index=np.random.rand(4)
+            {"a": [1, 1, 2, 3], "b": [1, 1, 1, 4], "c": [1, 1, 1, 5]}, index=np.random.rand(4)
         )
         kdf = ks.from_pandas(pdf)
 
+        self.assert_eq(pdf.duplicated().sort_index(), kdf.duplicated().sort_index())
         self.assert_eq(
-            pd.Series(pdf.duplicated(), name="0").sort_index(), kdf.duplicated().sort_index()
+            pdf.duplicated(keep="last").sort_index(), kdf.duplicated(keep="last").sort_index(),
         )
         self.assert_eq(
-            pd.Series(pdf.duplicated(), name="0").sort_index(), kdf.duplicated().sort_index()
+            pdf.duplicated(keep=False).sort_index(), kdf.duplicated(keep=False).sort_index(),
         )
         self.assert_eq(
-            pd.Series(pdf.duplicated(keep="last"), name="0").sort_index(),
-            kdf.duplicated(keep="last").sort_index(),
-        )
-        self.assert_eq(
-            pd.Series(pdf.duplicated(keep=False), name="0").sort_index(),
-            kdf.duplicated(keep=False).sort_index(),
-        )
-        self.assert_eq(
-            pd.Series(pdf.duplicated(subset=["b"]), name="0").sort_index(),
-            kdf.duplicated(subset=["b"]).sort_index(),
+            pdf.duplicated(subset=["b"]).sort_index(), kdf.duplicated(subset=["b"]).sort_index(),
         )
         with self.assertRaisesRegex(ValueError, "'keep' only supports 'first', 'last' and False"):
             kdf.duplicated(keep="false")
@@ -2569,8 +2571,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         pdf.index.name = "x"
         kdf.index.name = "x"
+        self.assert_eq(pdf.duplicated().sort_index(), kdf.duplicated().sort_index())
+
+        # multi-index
         self.assert_eq(
-            pd.Series(pdf.duplicated(), name="x").sort_index(), kdf.duplicated().sort_index()
+            pdf.set_index("a", append=True).duplicated().sort_index(),
+            kdf.set_index("a", append=True).duplicated().sort_index(),
+        )
+        self.assert_eq(
+            pdf.set_index("a", append=True).duplicated(keep=False).sort_index(),
+            kdf.set_index("a", append=True).duplicated(keep=False).sort_index(),
+        )
+        self.assert_eq(
+            pdf.set_index("a", append=True).duplicated(subset=["b"]).sort_index(),
+            kdf.set_index("a", append=True).duplicated(subset=["b"]).sort_index(),
         )
 
         # mutli-index columns
@@ -2966,6 +2980,97 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "Doesn't support for MultiIndex columns"):
             kdf.query("('A', 'Z') > ('B', 'X')")
 
+    def test_take(self):
+        kdf = ks.DataFrame(
+            {"A": range(0, 50000), "B": range(100000, 0, -2), "C": range(100000, 50000, -1)}
+        )
+        pdf = kdf.to_pandas()
+
+        # axis=0 (default)
+        self.assert_eq(kdf.take([1, 2]).sort_index(), pdf.take([1, 2]).sort_index())
+        self.assert_eq(kdf.take([-1, -2]).sort_index(), pdf.take([-1, -2]).sort_index())
+        self.assert_eq(
+            kdf.take(range(100, 110)).sort_index(), pdf.take(range(100, 110)).sort_index()
+        )
+        self.assert_eq(
+            kdf.take(range(-110, -100)).sort_index(), pdf.take(range(-110, -100)).sort_index()
+        )
+        self.assert_eq(
+            kdf.take([10, 100, 1000, 10000]).sort_index(),
+            pdf.take([10, 100, 1000, 10000]).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([-10, -100, -1000, -10000]).sort_index(),
+            pdf.take([-10, -100, -1000, -10000]).sort_index(),
+        )
+
+        # axis=1
+        self.assert_eq(kdf.take([1, 2], axis=1).sort_index(), pdf.take([1, 2], axis=1).sort_index())
+        self.assert_eq(
+            kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index()
+        )
+        self.assert_eq(
+            kdf.take(range(1, 3), axis=1).sort_index(), pdf.take(range(1, 3), axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take(range(-1, -3), axis=1).sort_index(),
+            pdf.take(range(-1, -3), axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([2, 1], axis=1).sort_index(), pdf.take([2, 1], axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index(),
+        )
+
+        # MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([("A", "Z"), ("B", "X"), ("C", "C")])
+        kdf.columns = columns
+        pdf.columns = columns
+
+        # MultiIndex columns with axis=0 (default)
+        self.assert_eq(kdf.take([1, 2]).sort_index(), pdf.take([1, 2]).sort_index())
+        self.assert_eq(kdf.take([-1, -2]).sort_index(), pdf.take([-1, -2]).sort_index())
+        self.assert_eq(
+            kdf.take(range(100, 110)).sort_index(), pdf.take(range(100, 110)).sort_index()
+        )
+        self.assert_eq(
+            kdf.take(range(-110, -100)).sort_index(), pdf.take(range(-110, -100)).sort_index()
+        )
+        self.assert_eq(
+            kdf.take([10, 100, 1000, 10000]).sort_index(),
+            pdf.take([10, 100, 1000, 10000]).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([-10, -100, -1000, -10000]).sort_index(),
+            pdf.take([-10, -100, -1000, -10000]).sort_index(),
+        )
+
+        # axis=1
+        self.assert_eq(kdf.take([1, 2], axis=1).sort_index(), pdf.take([1, 2], axis=1).sort_index())
+        self.assert_eq(
+            kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index()
+        )
+        self.assert_eq(
+            kdf.take(range(1, 3), axis=1).sort_index(), pdf.take(range(1, 3), axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take(range(-1, -3), axis=1).sort_index(),
+            pdf.take(range(-1, -3), axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([2, 1], axis=1).sort_index(), pdf.take([2, 1], axis=1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.take([-1, -2], axis=1).sort_index(), pdf.take([-1, -2], axis=1).sort_index(),
+        )
+
+        # Checking the type of indices.
+        self.assertRaises(ValueError, lambda: kdf.take(1))
+        self.assertRaises(ValueError, lambda: kdf.take("1"))
+        self.assertRaises(ValueError, lambda: kdf.take({1, 2}))
+        self.assertRaises(ValueError, lambda: kdf.take({1: None, 2: None}))
+
     def test_axes(self):
         pdf = self.pdf
         kdf = ks.from_pandas(pdf)
@@ -2989,3 +3094,113 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         else:
             kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf, pdf)
+
+    def test_eval(self):
+        pdf = pd.DataFrame({"A": range(1, 6), "B": range(10, 0, -2)})
+        kdf = ks.from_pandas(pdf)
+
+        # operation between columns (returns Series)
+        self.assert_eq(pdf.eval("A + B"), kdf.eval("A + B"))
+        self.assert_eq(pdf.eval("A + A"), kdf.eval("A + A"))
+        # assignment (returns DataFrame)
+        self.assert_eq(pdf.eval("C = A + B"), kdf.eval("C = A + B"))
+        self.assert_eq(pdf.eval("A = A + A"), kdf.eval("A = A + A"))
+        # operation between scalars (returns scalar)
+        self.assert_eq(pdf.eval("1 + 1"), kdf.eval("1 + 1"))
+        # complicated operations with assignment
+        self.assert_eq(
+            pdf.eval("B = A + B // (100 + 200) * (500 - B) - 10.5"),
+            kdf.eval("B = A + B // (100 + 200) * (500 - B) - 10.5"),
+        )
+
+        # inplace=True (only support for assignment)
+        pdf.eval("C = A + B", inplace=True)
+        kdf.eval("C = A + B", inplace=True)
+        self.assert_eq(pdf, kdf)
+        pdf.eval("A = B + C", inplace=True)
+        kdf.eval("A = B + C", inplace=True)
+        self.assert_eq(pdf, kdf)
+
+        # doesn't support for multi-index columns
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b"), ("z", "c")])
+        kdf.columns = columns
+        self.assertRaises(ValueError, lambda: kdf.eval("x.a + y.b"))
+
+    def test_to_markdown(self):
+        pdf = pd.DataFrame(data={"animal_1": ["elk", "pig"], "animal_2": ["dog", "quetzal"]})
+        kdf = ks.from_pandas(pdf)
+
+        # `to_markdown()` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            self.assertRaises(NotImplementedError, lambda: kdf.to_markdown())
+        else:
+            self.assert_eq(pdf.to_markdown(), kdf.to_markdown())
+
+    def test_cache(self):
+        pdf = pd.DataFrame(
+            [(0.2, 0.3), (0.0, 0.6), (0.6, 0.0), (0.2, 0.1)], columns=["dogs", "cats"]
+        )
+        kdf = ks.from_pandas(pdf)
+
+        with kdf.cache() as cached_df:
+            self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+            self.assert_eq(
+                repr(cached_df.storage_level), repr(StorageLevel(True, True, False, True))
+            )
+
+    def test_persist(self):
+        pdf = pd.DataFrame(
+            [(0.2, 0.3), (0.0, 0.6), (0.6, 0.0), (0.2, 0.1)], columns=["dogs", "cats"]
+        )
+        kdf = ks.from_pandas(pdf)
+        storage_levels = [
+            StorageLevel.DISK_ONLY,
+            StorageLevel.MEMORY_AND_DISK,
+            StorageLevel.MEMORY_ONLY,
+            StorageLevel.OFF_HEAP,
+        ]
+
+        for storage_level in storage_levels:
+            with kdf.persist(storage_level) as cached_df:
+                self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+                self.assert_eq(repr(cached_df.storage_level), repr(storage_level))
+
+        self.assertRaises(TypeError, lambda: kdf.persist("DISK_ONLY"))
+
+    def test_squeeze(self):
+        axises = [None, 0, 1, "rows", "index", "columns"]
+
+        # Multiple columns
+        pdf = pd.DataFrame([[1, 2], [3, 4]], columns=["a", "b"])
+        kdf = ks.from_pandas(pdf)
+        for axis in axises:
+            self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+        # Multiple columns with MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([("A", "Z"), ("B", "X")])
+        pdf.columns = columns
+        kdf.columns = columns
+        for axis in axises:
+            self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+
+        # Single column with single value
+        pdf = pd.DataFrame([[1]], columns=["a"])
+        kdf = ks.from_pandas(pdf)
+        for axis in axises:
+            self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+        # Single column with single value with MultiIndex column
+        columns = pd.MultiIndex.from_tuples([("A", "Z")])
+        pdf.columns = columns
+        kdf.columns = columns
+        for axis in axises:
+            self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+
+        # Single column with multiple values
+        pdf = pd.DataFrame([1, 2, 3, 4], columns=["a"])
+        kdf = ks.from_pandas(pdf)
+        for axis in axises:
+            self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+        # Single column with multiple values with MultiIndex column
+        pdf.columns = columns
+        kdf.columns = columns
+        for axis in axises:
+            self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))

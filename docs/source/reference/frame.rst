@@ -143,6 +143,7 @@ Computations / Descriptive Stats
    DataFrame.cumprod
    DataFrame.round
    DataFrame.diff
+   DataFrame.eval
 
 Reindexing / Selection / Label manipulation
 -------------------------------------------
@@ -158,6 +159,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.head
    DataFrame.reset_index
    DataFrame.set_index
+   DataFrame.take
    DataFrame.isin
    DataFrame.sample
 
@@ -187,6 +189,7 @@ Reshaping, sorting, transposing
    DataFrame.stack
    DataFrame.unstack
    DataFrame.melt
+   DataFrame.squeeze
    DataFrame.T
    DataFrame.transpose
    DataFrame.reindex
@@ -217,6 +220,7 @@ Cache
    :toctree: api/
 
    DataFrame.cache
+   DataFrame.persist
 
 Serialization / IO / Conversion
 -------------------------------
@@ -240,6 +244,7 @@ Serialization / IO / Conversion
    DataFrame.to_dict
    DataFrame.to_excel
    DataFrame.to_clipboard
+   DataFrame.to_markdown
    DataFrame.to_records
    DataFrame.to_latex
    DataFrame.style

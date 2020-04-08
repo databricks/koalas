@@ -19,8 +19,8 @@ Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 """
 from collections import OrderedDict
 from distutils.version import LooseVersion
-from functools import partial, reduce
-from typing import Any, List, Optional, Tuple, Union
+from functools import partial
+from typing import Any, List, Tuple, Union
 import warnings
 
 import pandas as pd
@@ -58,6 +58,7 @@ from databricks.koalas.utils import (
     name_like_string,
     scol_for,
     verify_temp_column_name,
+    validate_bool_kwarg,
 )
 from databricks.koalas.internal import (
     _InternalFrame,
@@ -1731,6 +1732,127 @@ class Index(IndexOpsMixin):
         else:
             return ks.concat([kdf] * repeats).index
 
+    def asof(self, label):
+        """
+        Return the label from the index, or, if not present, the previous one.
+
+        Assuming that the index is sorted, return the passed index label if it
+        is in the index, or return the previous index label if the passed one
+        is not in the index.
+
+        .. note:: This API is dependent on :meth:`Index.is_monotonic_increasing`
+            which can be expensive.
+
+        Parameters
+        ----------
+        label : object
+            The label up to which the method returns the latest index label.
+
+        Returns
+        -------
+        object
+            The passed label if it is in the index. The previous label if the
+            passed label is not in the sorted index or `NaN` if there is no
+            such label.
+
+        Examples
+        --------
+        `Index.asof` returns the latest index label up to the passed label.
+
+        >>> idx = ks.Index(['2013-12-31', '2014-01-02', '2014-01-03'])
+        >>> idx.asof('2014-01-01')
+        '2013-12-31'
+
+        If the label is in the index, the method returns the passed label.
+
+        >>> idx.asof('2014-01-02')
+        '2014-01-02'
+
+        If all of the labels in the index are later than the passed label,
+        NaN is returned.
+
+        >>> idx.asof('1999-01-02')
+        nan
+        """
+        sdf = self._internal._sdf
+        if self.is_monotonic_increasing:
+            sdf = sdf.where(self._scol <= label).select(F.max(self._scol))
+        elif self.is_monotonic_decreasing:
+            sdf = sdf.where(self._scol >= label).select(F.min(self._scol))
+        else:
+            raise ValueError("index must be monotonic increasing or decreasing")
+        result = sdf.head()[0]
+        return result if result is not None else np.nan
+
+    def union(self, other, sort=None):
+        """
+        Form the union of two Index objects.
+
+        Parameters
+        ----------
+        other : Index or array-like
+        sort : bool or None, default None
+            Whether to sort the resulting Index.
+
+        Returns
+        -------
+        union : Index
+
+        Examples
+        --------
+
+        Index
+
+        >>> idx1 = ks.Index([1, 2, 3, 4])
+        >>> idx2 = ks.Index([3, 4, 5, 6])
+        >>> idx1.union(idx2).sort_values()
+        Int64Index([1, 2, 3, 4, 5, 6], dtype='int64')
+
+        MultiIndex
+
+        >>> midx1 = ks.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")])
+        >>> midx2 = ks.MultiIndex.from_tuples([("x", "c"), ("x", "d"), ("x", "e"), ("x", "f")])
+        >>> midx1.union(midx2).sort_values()  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('x', 'c'),
+                    ('x', 'd'),
+                    ('x', 'e'),
+                    ('x', 'f')],
+                   )
+        """
+        sort = True if sort is None else sort
+        sort = validate_bool_kwarg(sort, "sort")
+        if type(self) is not type(other):
+            if isinstance(self, MultiIndex):
+                if not isinstance(other, list) or not all(
+                    [isinstance(item, tuple) for item in other]
+                ):
+                    raise TypeError("other must be a MultiIndex or a list of tuples")
+                other = MultiIndex.from_tuples(other)
+            else:
+                if isinstance(other, MultiIndex):
+                    # TODO: We can't support different type of values in a single column for now.
+                    raise NotImplementedError(
+                        "Union between Index and MultiIndex is not yet supported"
+                    )
+                elif isinstance(other, Series):
+                    other = other.to_frame().set_index(other.name).index
+                elif isinstance(other, DataFrame):
+                    raise ValueError("Index data must be 1-dimensional")
+                else:
+                    other = Index(other)
+        sdf_self = self._internal._sdf.select(self._internal.index_spark_columns)
+        sdf_other = other._internal._sdf.select(other._internal.index_spark_columns)
+        sdf = sdf_self.union(sdf_other.subtract(sdf_self))
+        if isinstance(self, MultiIndex):
+            sdf = sdf.drop_duplicates()
+        if sort:
+            sdf = sdf.sort(self._internal.index_spark_columns)
+        internal = _InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+
+        return DataFrame(internal).index
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeIndex, item):
             property_or_func = getattr(_MissingPandasLikeIndex, item)
@@ -2023,19 +2145,29 @@ class MultiIndex(Index):
         ).collect()[0]
         return tuple(result)
 
-    def _is_monotonic(self):
-        col = self._scol
+    @staticmethod
+    def _comparator_for_monotonic_increasing(data_type):
+        if isinstance(data_type, BooleanType):
+            return compare_allow_null
+        else:
+            return compare_null_last
+
+    def _is_monotonic(self, order):
+        if order == "increasing":
+            return self._is_monotonic_increasing().all()
+        else:
+            return self._is_monotonic_decreasing().all()
+
+    def _is_monotonic_increasing(self):
+        scol = self._scol
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        prev = F.lag(col, 1).over(window)
+        prev = F.lag(scol, 1).over(window)
 
         cond = F.lit(True)
         for field in self.spark_type[::-1]:
-            left = col.getField(field.name)
+            left = scol.getField(field.name)
             right = prev.getField(field.name)
-            if isinstance(field.dataType, BooleanType):
-                compare = compare_allow_null
-            else:
-                compare = compare_null_last
+            compare = MultiIndex._comparator_for_monotonic_increasing(field.dataType)
             cond = F.when(left.eqNullSafe(right), cond).otherwise(
                 compare(left, right, spark.Column.__gt__)
             )
@@ -2051,23 +2183,27 @@ class MultiIndex(Index):
 
         return _col(DataFrame(internal))
 
+    @staticmethod
+    def _comparator_for_monotonic_decreasing(data_type):
+        if isinstance(data_type, StringType):
+            return compare_disallow_null
+        elif isinstance(data_type, BooleanType):
+            return compare_allow_null
+        elif isinstance(data_type, NumericType):
+            return compare_null_last
+        else:
+            return compare_null_first
+
     def _is_monotonic_decreasing(self):
-        col = self._scol
+        scol = self._scol
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        prev = F.lag(col, 1).over(window)
+        prev = F.lag(scol, 1).over(window)
 
         cond = F.lit(True)
         for field in self.spark_type[::-1]:
-            left = col.getField(field.name)
+            left = scol.getField(field.name)
             right = prev.getField(field.name)
-            if isinstance(field.dataType, StringType):
-                compare = compare_disallow_null
-            elif isinstance(field.dataType, BooleanType):
-                compare = compare_allow_null
-            elif isinstance(field.dataType, NumericType):
-                compare = compare_null_last
-            else:
-                compare = compare_null_first
+            compare = MultiIndex._comparator_for_monotonic_decreasing(field.dataType)
             cond = F.when(left.eqNullSafe(right), cond).otherwise(
                 compare(left, right, spark.Column.__lt__)
             )
@@ -2336,8 +2472,24 @@ class MultiIndex(Index):
         index_scols = self._internal.index_spark_columns
         if level is None:
             scol = index_scols[0]
+        elif isinstance(level, int):
+            scol = index_scols[level]
         else:
-            scol = index_scols[level] if isinstance(level, int) else sdf[level]
+            spark_column_name = None
+            for index_spark_column_name, index_name in self._internal.index_map.items():
+                if not isinstance(level, tuple):
+                    level = (level,)
+                if level == index_name:
+                    if spark_column_name is not None:
+                        raise ValueError(
+                            "The name {} occurs multiple times, use a level number".format(
+                                name_like_string(level)
+                            )
+                        )
+                    spark_column_name = index_spark_column_name
+            if spark_column_name is None:
+                raise KeyError("Level {} not found".format(name_like_string(level)))
+            scol = scol_for(sdf, spark_column_name)
         sdf = sdf[~scol.isin(codes)]
         return MultiIndex(
             DataFrame(_InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map))
@@ -2365,6 +2517,11 @@ class MultiIndex(Index):
 
     def argmin(self):
         raise TypeError("reduction operation 'argmin' not allowed for this dtype")
+
+    def asof(self, label):
+        raise NotImplementedError(
+            "only the default get_loc method is currently supported for MultiIndex"
+        )
 
     @property
     def is_all_dates(self):

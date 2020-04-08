@@ -233,7 +233,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_multi_index_levshape(self):
         pidx = pd.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2)])
-        kidx = ks.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2)])
+        kidx = ks.from_pandas(pidx)
         self.assertEqual(pidx.levshape, kidx.levshape)
 
     def test_index_unique(self):
@@ -483,15 +483,15 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_multiindex_swaplevel(self):
         pidx = pd.MultiIndex.from_arrays([["a", "b"], [1, 2]])
-        kidx = ks.MultiIndex.from_arrays([["a", "b"], [1, 2]])
+        kidx = ks.from_pandas(pidx)
         self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
 
         pidx = pd.MultiIndex.from_arrays([["a", "b"], [1, 2]], names=["word", "number"])
-        kidx = ks.MultiIndex.from_arrays([["a", "b"], [1, 2]], names=["word", "number"])
+        kidx = ks.from_pandas(pidx)
         self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
 
         pidx = pd.MultiIndex.from_arrays([["a", "b"], [1, 2]], names=["word", None])
-        kidx = ks.MultiIndex.from_arrays([["a", "b"], [1, 2]], names=["word", None])
+        kidx = ks.from_pandas(pidx)
         self.assert_eq(pidx.swaplevel(-2, -1), kidx.swaplevel(-2, -1))
         self.assert_eq(pidx.swaplevel(0, 1), kidx.swaplevel(0, 1))
         self.assert_eq(pidx.swaplevel("word", 1), kidx.swaplevel("word", 1))
@@ -509,9 +509,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pd.MultiIndex.from_tuples(
             [("a", "x", 1), ("b", "y", 2)], names=["level1", "level2", "level3"]
         )
-        kidx = ks.MultiIndex.from_tuples(
-            [("a", "x", 1), ("b", "y", 2)], names=["level1", "level2", "level3"]
-        )
+        kidx = ks.from_pandas(pidx)
         with self.assertRaisesRegex(IndexError, "Too many levels: Index has only 3 levels, not 5"):
             kidx.droplevel(4)
 
@@ -540,8 +538,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pidx.droplevel([0, "level2"]), kidx.droplevel([0, "level2"]))
 
     def test_index_fillna(self):
-        pidx = pd.DataFrame({"a": ["a", "b", "c"]}, index=[1, 2, None]).index
-        kidx = ks.DataFrame({"a": ["a", "b", "c"]}, index=[1, 2, None]).index
+        pidx = pd.Index([1, 2, None])
+        kidx = ks.from_pandas(pidx)
 
         self.assert_eq(pidx.fillna(0), kidx.fillna(0))
         self.assert_eq(pidx.rename("name").fillna(0), kidx.rename("name").fillna(0))
@@ -550,8 +548,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx.fillna([1, 2])
 
     def test_index_drop(self):
-        pidx = pd.DataFrame({"a": ["a", "b", "c"]}, index=[1, 2, 3]).index
-        kidx = ks.DataFrame({"a": ["a", "b", "c"]}, index=[1, 2, 3]).index
+        pidx = pd.Index([1, 2, 3])
+        kidx = ks.from_pandas(pidx)
 
         self.assert_eq(pidx.drop(1), kidx.drop(1))
         self.assert_eq(pidx.drop([1, 2]), kidx.drop([1, 2]))
@@ -560,16 +558,25 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pd.MultiIndex.from_tuples(
             [("a", "x"), ("b", "y"), ("c", "z")], names=["level1", "level2"]
         )
-        kidx = ks.MultiIndex.from_tuples(
-            [("a", "x"), ("b", "y"), ("c", "z")], names=["level1", "level2"]
-        )
+        kidx = ks.from_pandas(pidx)
         self.assert_eq(pidx.drop("a"), kidx.drop("a"))
         self.assert_eq(pidx.drop(["a", "b"]), kidx.drop(["a", "b"]))
+        self.assert_eq(pidx.drop(["x", "y"], level=1), kidx.drop(["x", "y"], level=1))
         self.assert_eq(pidx.drop(["x", "y"], level="level2"), kidx.drop(["x", "y"], level="level2"))
+
+        pidx.names = ["lv1", "lv2"]
+        kidx.names = ["lv1", "lv2"]
+        self.assert_eq(pidx.drop(["x", "y"], level="lv2"), kidx.drop(["x", "y"], level="lv2"))
+
+        self.assertRaises(IndexError, lambda: kidx.drop(["a", "b"], level=2))
+        self.assertRaises(KeyError, lambda: kidx.drop(["a", "b"], level="level"))
+
+        kidx.names = ["lv", "lv"]
+        self.assertRaises(ValueError, lambda: kidx.drop(["x", "y"], level="lv"))
 
     def test_sort_values(self):
         pidx = pd.Index([-10, -100, 200, 100])
-        kidx = ks.Index([-10, -100, 200, 100])
+        kidx = ks.from_pandas(pidx)
 
         self.assert_eq(pidx.sort_values(), kidx.sort_values())
         self.assert_eq(pidx.sort_values(ascending=False), kidx.sort_values(ascending=False))
@@ -581,7 +588,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pidx.sort_values(ascending=False), kidx.sort_values(ascending=False))
 
         pidx = pd.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
-        kidx = ks.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
+        kidx = ks.from_pandas(pidx)
 
         pidx.names = ["hello", "koalas", "goodbye"]
         kidx.names = ["hello", "koalas", "goodbye"]
@@ -591,11 +598,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_index_drop_duplicates(self):
         pidx = pd.Index([1, 1, 2])
-        kidx = ks.Index([1, 1, 2])
+        kidx = ks.from_pandas(pidx)
         self.assert_eq(pidx.drop_duplicates().sort_values(), kidx.drop_duplicates().sort_values())
 
         pidx = pd.MultiIndex.from_tuples([(1, 1), (1, 1), (2, 2)], names=["level1", "level2"])
-        kidx = ks.MultiIndex.from_tuples([(1, 1), (1, 1), (2, 2)], names=["level1", "level2"])
+        kidx = ks.from_pandas(pidx)
         self.assert_eq(pidx.drop_duplicates().sort_values(), kidx.drop_duplicates().sort_values())
 
     def test_index_sort(self):
@@ -628,7 +635,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_index_nunique(self):
         pidx = pd.Index([1, 1, 2, None])
-        kidx = ks.Index([1, 1, 2, None])
+        kidx = ks.from_pandas(pidx)
 
         self.assert_eq(pidx.nunique(), kidx.nunique())
         self.assert_eq(pidx.nunique(dropna=True), kidx.nunique(dropna=True))
@@ -640,7 +647,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_multiindex_rename(self):
         pidx = pd.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
-        kidx = ks.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
+        kidx = ks.from_pandas(pidx)
 
         pidx = pidx.rename(list("ABC"))
         kidx = kidx.rename(list("ABC"))
@@ -652,7 +659,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_multiindex_set_names(self):
         pidx = pd.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
-        kidx = ks.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
+        kidx = ks.from_pandas(pidx)
 
         pidx = pidx.set_names(["set", "new", "names"])
         kidx = kidx.set_names(["set", "new", "names"])
@@ -686,6 +693,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx.set_names("third", level=2, inplace=True)
         self.assert_eq(pidx, kidx)
 
+    def test_multiindex_from_tuples(self):
+        tuples = [(1, "red"), (1, "blue"), (2, "red"), (2, "blue")]
+        pidx = pd.MultiIndex.from_tuples(tuples)
+        kidx = ks.MultiIndex.from_tuples(tuples)
+
+        self.assert_eq(pidx, kidx)
+
     def test_multiindex_from_product(self):
         iterables = [[0, 1, 2], ["green", "purple"]]
         pidx = pd.MultiIndex.from_product(iterables)
@@ -702,7 +716,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_len(self):
         pidx = pd.Index(range(10000))
-        kidx = ks.Index(range(10000))
+        kidx = ks.from_pandas(pidx)
 
         self.assert_eq(len(pidx), len(kidx))
 
@@ -738,15 +752,15 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
     def test_append(self):
         # Index
         pidx = pd.Index(range(10000))
-        kidx = ks.Index(range(10000))
+        kidx = ks.from_pandas(pidx)
 
         self.assert_eq(pidx.append(pidx), kidx.append(kidx))
 
         # Index with name
         pidx1 = pd.Index(range(10000), name="a")
         pidx2 = pd.Index(range(10000), name="b")
-        kidx1 = ks.Index(range(10000), name="a")
-        kidx2 = ks.Index(range(10000), name="b")
+        kidx1 = ks.from_pandas(pidx1)
+        kidx2 = ks.from_pandas(pidx2)
 
         self.assert_eq(pidx1.append(pidx2), kidx1.append(kidx2))
 
@@ -786,7 +800,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         # MultiIndex
         pmidx = pd.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
-        kmidx = ks.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
+        kmidx = ks.from_pandas(pmidx)
 
         self.assert_eq(pmidx.append(pmidx), kmidx.append(kmidx))
 
@@ -797,12 +811,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pmidx2 = pd.MultiIndex.from_tuples(
             [("a", "x", 1), ("b", "y", 2), ("c", "z", 3)], names=["p", "q", "r"]
         )
-        kmidx1 = ks.MultiIndex.from_tuples(
-            [("a", "x", 1), ("b", "y", 2), ("c", "z", 3)], names=["x", "y", "z"]
-        )
-        kmidx2 = ks.MultiIndex.from_tuples(
-            [("a", "x", 1), ("b", "y", 2), ("c", "z", 3)], names=["p", "q", "r"]
-        )
+        kmidx1 = ks.from_pandas(pmidx1)
+        kmidx2 = ks.from_pandas(pmidx2)
 
         self.assert_eq(pmidx1.append(pmidx2), kmidx1.append(kmidx2))
 
@@ -821,7 +831,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_argmin(self):
         pidx = pd.Index([100, 50, 10, 20, 30, 60, 0, 50, 0, 100, 100, 100, 20, 0, 0])
-        kidx = ks.Index([100, 50, 10, 20, 30, 60, 0, 50, 0, 100, 100, 100, 20, 0, 0])
+        kidx = ks.from_pandas(pidx)
 
         self.assert_eq(pidx.argmin(), kidx.argmin())
 
@@ -834,7 +844,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_argmax(self):
         pidx = pd.Index([100, 50, 10, 20, 30, 60, 0, 50, 0, 100, 100, 100, 20, 0, 0])
-        kidx = ks.Index([100, 50, 10, 20, 30, 60, 0, 50, 0, 100, 100, 100, 20, 0, 0])
+        kidx = ks.from_pandas(pidx)
 
         self.assert_eq(pidx.argmax(), kidx.argmax())
 
@@ -902,10 +912,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", None), ("z", "a", "r")])
 
         for data in datas:
-            kmidx = ks.MultiIndex.from_tuples(data)
-            pmidx = kmidx.to_pandas()
-            self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
-            self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+            with self.subTest(data=data):
+                pmidx = pd.MultiIndex.from_tuples(data)
+                kmidx = ks.from_pandas(pmidx)
+                self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
+                self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
 
         # The datas below are showing different result depends on pandas version.
         # Because the behavior of handling null values is changed in pandas >= 1.0.0.
@@ -918,13 +929,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", "q"), ("z", "a", "r")])
 
         for data in datas:
-            kmidx = ks.MultiIndex.from_tuples(data)
-            pmidx = kmidx.to_pandas()
-            expected_increasing_result = pmidx.is_monotonic_increasing
-            if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
-                expected_increasing_result = not expected_increasing_result
-            self.assert_eq(kmidx.is_monotonic_increasing, expected_increasing_result)
-            self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+            with self.subTest(data=data):
+                pmidx = pd.MultiIndex.from_tuples(data)
+                kmidx = ks.from_pandas(pmidx)
+                expected_increasing_result = pmidx.is_monotonic_increasing
+                if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+                    expected_increasing_result = not expected_increasing_result
+                self.assert_eq(kmidx.is_monotonic_increasing, expected_increasing_result)
+                self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
 
     def test_difference(self):
         # Index
@@ -1023,3 +1035,225 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kmidx.unique().sort_values(), pmidx.unique().sort_values())
         self.assert_eq(kmidx.unique().sort_values(), pmidx.unique().sort_values())
+
+    def test_asof(self):
+        # Increasing values
+        pidx = pd.Index(["2013-12-31", "2014-01-02", "2014-01-03"])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx.asof("2014-01-01"), pidx.asof("2014-01-01"))
+        self.assert_eq(kidx.asof("2014-01-02"), pidx.asof("2014-01-02"))
+        self.assert_eq(repr(kidx.asof("1999-01-02")), repr(pidx.asof("1999-01-02")))
+
+        # Decreasing values
+        pidx = pd.Index(["2014-01-03", "2014-01-02", "2013-12-31"])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx.asof("2014-01-01"), pidx.asof("2014-01-01"))
+        self.assert_eq(kidx.asof("2014-01-02"), pidx.asof("2014-01-02"))
+        self.assert_eq(kidx.asof("1999-01-02"), pidx.asof("1999-01-02"))
+        self.assert_eq(repr(kidx.asof("2015-01-02")), repr(pidx.asof("2015-01-02")))
+
+        # Not increasing, neither decreasing (ValueError)
+        kidx = ks.Index(["2013-12-31", "2015-01-02", "2014-01-03"])
+        self.assertRaises(ValueError, lambda: kidx.asof("2013-12-31"))
+
+        kmidx = ks.MultiIndex.from_tuples([("a", "a"), ("a", "b"), ("a", "c")])
+        self.assertRaises(NotImplementedError, lambda: kmidx.asof(("a", "b")))
+
+    def test_union(self):
+        # Index
+        pidx1 = pd.Index([1, 2, 3, 4])
+        pidx2 = pd.Index([3, 4, 5, 6])
+        kidx1 = ks.from_pandas(pidx1)
+        kidx2 = ks.from_pandas(pidx2)
+
+        self.assert_eq(kidx1.union(kidx2), pidx1.union(pidx2))
+        self.assert_eq(kidx2.union(kidx1), pidx2.union(pidx1))
+        self.assert_eq(
+            kidx1.union([3, 4, 5, 6]), pidx1.union([3, 4, 5, 6]),
+        )
+        self.assert_eq(
+            kidx2.union([1, 2, 3, 4]), pidx2.union([1, 2, 3, 4]),
+        )
+        self.assert_eq(
+            kidx1.union(ks.Series([3, 4, 5, 6])), pidx1.union(pd.Series([3, 4, 5, 6])),
+        )
+        self.assert_eq(
+            kidx2.union(ks.Series([1, 2, 3, 4])), pidx2.union(pd.Series([1, 2, 3, 4])),
+        )
+
+        # Testing if the result is correct after sort=False.
+        # The `sort` argument is added in pandas 0.24.
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            self.assert_eq(
+                kidx1.union(kidx2, sort=False).sort_values(),
+                pidx1.union(pidx2, sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kidx2.union(kidx1, sort=False).sort_values(),
+                pidx2.union(pidx1, sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kidx1.union([3, 4, 5, 6], sort=False).sort_values(),
+                pidx1.union([3, 4, 5, 6], sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kidx2.union([1, 2, 3, 4], sort=False).sort_values(),
+                pidx2.union([1, 2, 3, 4], sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kidx1.union(ks.Series([3, 4, 5, 6]), sort=False).sort_values(),
+                pidx1.union(pd.Series([3, 4, 5, 6]), sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kidx2.union(ks.Series([1, 2, 3, 4]), sort=False).sort_values(),
+                pidx2.union(pd.Series([1, 2, 3, 4]), sort=False).sort_values(),
+            )
+
+        # Duplicated values for Index is supported in pandas >= 1.0.0
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            pidx1 = pd.Index([1, 2, 3, 4, 3, 4, 3, 4])
+            pidx2 = pd.Index([3, 4, 3, 4, 5, 6])
+            kidx1 = ks.from_pandas(pidx1)
+            kidx2 = ks.from_pandas(pidx2)
+
+            self.assert_eq(kidx1.union(kidx2), pidx1.union(pidx2))
+            self.assert_eq(kidx2.union(kidx1), pidx2.union(pidx1))
+            self.assert_eq(
+                kidx1.union([3, 4, 3, 3, 5, 6]), pidx1.union([3, 4, 3, 4, 5, 6]),
+            )
+            self.assert_eq(
+                kidx2.union([1, 2, 3, 4, 3, 4, 3, 4]), pidx2.union([1, 2, 3, 4, 3, 4, 3, 4]),
+            )
+            self.assert_eq(
+                kidx1.union(ks.Series([3, 4, 3, 3, 5, 6])),
+                pidx1.union(pd.Series([3, 4, 3, 4, 5, 6])),
+            )
+            self.assert_eq(
+                kidx2.union(ks.Series([1, 2, 3, 4, 3, 4, 3, 4])),
+                pidx2.union(pd.Series([1, 2, 3, 4, 3, 4, 3, 4])),
+            )
+
+        # MultiIndex
+        pmidx1 = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")])
+        pmidx2 = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")])
+        pmidx3 = pd.MultiIndex.from_tuples([(1, 1), (1, 2), (1, 3), (1, 4), (1, 3), (1, 4)])
+        pmidx4 = pd.MultiIndex.from_tuples([(1, 3), (1, 4), (1, 5), (1, 6)])
+        kmidx1 = ks.from_pandas(pmidx1)
+        kmidx2 = ks.from_pandas(pmidx2)
+        kmidx3 = ks.from_pandas(pmidx3)
+        kmidx4 = ks.from_pandas(pmidx4)
+
+        self.assert_eq(kmidx1.union(kmidx2), pmidx1.union(pmidx2))
+        self.assert_eq(kmidx2.union(kmidx1), pmidx2.union(pmidx1))
+        self.assert_eq(kmidx3.union(kmidx4), pmidx3.union(pmidx4))
+        self.assert_eq(kmidx4.union(kmidx3), pmidx4.union(pmidx3))
+        self.assert_eq(
+            kmidx1.union([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")]),
+            pmidx1.union([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")]),
+        )
+        self.assert_eq(
+            kmidx2.union([("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")]),
+            pmidx2.union([("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")]),
+        )
+        self.assert_eq(
+            kmidx3.union([(1, 3), (1, 4), (1, 5), (1, 6)]),
+            pmidx3.union([(1, 3), (1, 4), (1, 5), (1, 6)]),
+        )
+        self.assert_eq(
+            kmidx4.union([(1, 1), (1, 2), (1, 3), (1, 4), (1, 3), (1, 4)]),
+            pmidx4.union([(1, 1), (1, 2), (1, 3), (1, 4), (1, 3), (1, 4)]),
+        )
+
+        # Testing if the result is correct after sort=False.
+        # The `sort` argument is added in pandas 0.24.
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            self.assert_eq(
+                kmidx1.union(kmidx2, sort=False).sort_values(),
+                pmidx1.union(pmidx2, sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kmidx2.union(kmidx1, sort=False).sort_values(),
+                pmidx2.union(pmidx1, sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kmidx3.union(kmidx4, sort=False).sort_values(),
+                pmidx3.union(pmidx4, sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kmidx4.union(kmidx3, sort=False).sort_values(),
+                pmidx4.union(pmidx3, sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kmidx1.union(
+                    [("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")], sort=False
+                ).sort_values(),
+                pmidx1.union(
+                    [("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")], sort=False
+                ).sort_values(),
+            )
+            self.assert_eq(
+                kmidx2.union(
+                    [("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")], sort=False
+                ).sort_values(),
+                pmidx2.union(
+                    [("x", "a"), ("x", "b"), ("x", "a"), ("x", "b")], sort=False
+                ).sort_values(),
+            )
+            self.assert_eq(
+                kmidx3.union([(1, 3), (1, 4), (1, 5), (1, 6)], sort=False).sort_values(),
+                pmidx3.union([(1, 3), (1, 4), (1, 5), (1, 6)], sort=False).sort_values(),
+            )
+            self.assert_eq(
+                kmidx4.union(
+                    [(1, 1), (1, 2), (1, 3), (1, 4), (1, 3), (1, 4)], sort=False
+                ).sort_values(),
+                pmidx4.union(
+                    [(1, 1), (1, 2), (1, 3), (1, 4), (1, 3), (1, 4)], sort=False
+                ).sort_values(),
+            )
+
+        self.assertRaises(NotImplementedError, lambda: kidx1.union(kmidx1))
+        self.assertRaises(TypeError, lambda: kmidx1.union(kidx1))
+        self.assertRaises(TypeError, lambda: kmidx1.union(["x", "a"]))
+        self.assertRaises(ValueError, lambda: kidx1.union(ks.range(2)))
+
+    def test_take(self):
+        # Index
+        pidx = pd.Index([100, 200, 300, 400, 500], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx.take([0, 2, 4]).sort_values(), pidx.take([0, 2, 4]).sort_values())
+        self.assert_eq(
+            kidx.take(range(0, 5, 2)).sort_values(), pidx.take(range(0, 5, 2)).sort_values()
+        )
+        self.assert_eq(kidx.take([-4, -2, 0]).sort_values(), pidx.take([-4, -2, 0]).sort_values())
+        self.assert_eq(
+            kidx.take(range(-4, 1, 2)).sort_values(), pidx.take(range(-4, 1, 2)).sort_values()
+        )
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples(
+            [("x", "a"), ("x", "b"), ("x", "c")], names=["hello", "Koalas"]
+        )
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(kmidx.take([0, 2]).sort_values(), pmidx.take([0, 2]).sort_values())
+        self.assert_eq(
+            kmidx.take(range(0, 4, 2)).sort_values(), pmidx.take(range(0, 4, 2)).sort_values()
+        )
+        self.assert_eq(kmidx.take([-2, 0]).sort_values(), pmidx.take([-2, 0]).sort_values())
+        self.assert_eq(
+            kmidx.take(range(-2, 1, 2)).sort_values(), pmidx.take(range(-2, 1, 2)).sort_values()
+        )
+
+        # Checking the type of indices.
+        self.assertRaises(ValueError, lambda: kidx.take(1))
+        self.assertRaises(ValueError, lambda: kidx.take("1"))
+        self.assertRaises(ValueError, lambda: kidx.take({1, 2}))
+        self.assertRaises(ValueError, lambda: kidx.take({1: None, 2: None}))
+        self.assertRaises(ValueError, lambda: kmidx.take(1))
+        self.assertRaises(ValueError, lambda: kmidx.take("1"))
+        self.assertRaises(ValueError, lambda: kmidx.take({1, 2}))
+        self.assertRaises(ValueError, lambda: kmidx.take({1: None, 2: None}))

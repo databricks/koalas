@@ -17,6 +17,7 @@ import importlib.util
 import errno
 
 from databricks import koalas
+from databricks.koalas import utils
 sys.path.insert(0, os.path.abspath('.'))
 
 # Remove previously generated rst files. Ignore errors just in case it stops generating whole docs.
@@ -26,6 +27,22 @@ try:
 except OSError as e:
     if e.errno != errno.EEXIST:
         raise
+
+
+if "READTHEDOCS" in os.environ:
+    # For Read the Docs, it has JDK 11 by default. Spark 2.x only supports JDK 8 at most.
+    # Once Spark 3.0 is released, we can remove this as Spark 3.0 supports JDK 11.
+    # For now, we should manually install JDK 8.
+    import jdk
+    if not os.path.isdir(jdk._JRE_DIR):
+        jdk.install("8", jre=True)
+    java_home = "%s/%s" % (jdk._JRE_DIR, os.listdir(jdk._JRE_DIR)[0])
+    os.environ["JAVA_HOME"] = java_home
+    os.environ["PATH"] = "%s/bin:%s" % (java_home, os.environ["PATH"])
+
+
+# Lower the number of partitions to speed up documentation build
+utils.default_session({"spark.sql.shuffle.partitions": "4"})
 
 
 def gendoc():

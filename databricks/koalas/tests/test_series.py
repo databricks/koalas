@@ -914,9 +914,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(repr(pser.cumprod()), repr(kser.cumprod()))
         self.assertEqual(repr(pser.cumprod(skipna=False)), repr(kser.cumprod(skipna=False)))
 
-        # TODO: due to unknown reason, this test passes in Travis CI. Unable to reproduce in local.
-        # with self.assertRaisesRegex(Exception, "values should be bigger than 0"):
-        #     repr(ks.Series([0, 1]).cumprod())
+        with self.assertRaisesRegex(Exception, "values should be bigger than 0"):
+            repr(ks.Series([0, 1]).cumprod())
 
     def test_median(self):
         with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
@@ -1281,6 +1280,57 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = kser.to_pandas()
         self.assert_list_eq(kser.axes, pser.axes)
 
+    def test_combine_first(self):
+        kser1 = ks.Series({"falcon": 330.0, "eagle": 160.0})
+        kser2 = ks.Series({"falcon": 345.0, "eagle": 200.0, "duck": 30.0})
+        pser1 = kser1.to_pandas()
+        pser2 = kser2.to_pandas()
+
+        self.assert_eq(
+            repr(kser1.combine_first(kser2).sort_index()),
+            repr(pser1.combine_first(pser2).sort_index()),
+        )
+        with self.assertRaisesRegex(
+            ValueError, "`combine_first` only allows `Series` for parameter `other`"
+        ):
+            kser1.combine_first(50)
+
+        # MultiIndex
+        midx1 = pd.MultiIndex(
+            [["lama", "cow", "falcon", "koala"], ["speed", "weight", "length", "power"]],
+            [[0, 3, 1, 1, 1, 2, 2, 2], [0, 2, 0, 3, 2, 0, 1, 3]],
+        )
+        midx2 = pd.MultiIndex(
+            [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
+        )
+        kser1 = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1], index=midx1)
+        kser2 = ks.Series([-45, 200, -1.2, 30, -250, 1.5, 320, 1, -0.3], index=midx2)
+        pser1 = kser1.to_pandas()
+        pser2 = kser2.to_pandas()
+
+        self.assert_eq(
+            repr(kser1.combine_first(kser2).sort_index()),
+            repr(pser1.combine_first(pser2).sort_index()),
+        )
+
+        # Series come from same DataFrame
+        kdf = ks.DataFrame(
+            {
+                "A": {"falcon": 330.0, "eagle": 160.0},
+                "B": {"falcon": 345.0, "eagle": 200.0, "duck": 30.0},
+            }
+        )
+        kser1 = kdf.A
+        kser2 = kdf.B
+        pser1 = kser1.to_pandas()
+        pser2 = kser2.to_pandas()
+
+        self.assert_eq(
+            repr(kser1.combine_first(kser2).sort_index()),
+            repr(pser1.combine_first(pser2).sort_index()),
+        )
+
     def test_udt(self):
         sparse_values = {0: 0.1, 1: 1.1}
         sparse_vector = SparseVector(len(sparse_values), sparse_values)
@@ -1303,3 +1353,72 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(ValueError, lambda: kser.repeat(-1))
         self.assertRaises(ValueError, lambda: kser.repeat("abc"))
+
+    def test_take(self):
+        pser = pd.Series([100, 200, 300, 400, 500], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.take([0, 2, 4]).sort_values(), pser.take([0, 2, 4]).sort_values())
+        self.assert_eq(
+            kser.take(range(0, 5, 2)).sort_values(), pser.take(range(0, 5, 2)).sort_values()
+        )
+        self.assert_eq(kser.take([-4, -2, 0]).sort_values(), pser.take([-4, -2, 0]).sort_values())
+        self.assert_eq(
+            kser.take(range(-2, 1, 2)).sort_values(), pser.take(range(-2, 1, 2)).sort_values()
+        )
+
+        # Checking the type of indices.
+        self.assertRaises(ValueError, lambda: kser.take(1))
+        self.assertRaises(ValueError, lambda: kser.take("1"))
+        self.assertRaises(ValueError, lambda: kser.take({1, 2}))
+        self.assertRaises(ValueError, lambda: kser.take({1: None, 2: None}))
+
+    def test_asof(self):
+        pser = pd.Series([1, 2, np.nan, 4], index=[10, 20, 30, 40], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(repr(kser.asof(20)), repr(pser.asof(20)))
+        self.assert_eq(repr(kser.asof([5, 20]).sort_index()), repr(pser.asof([5, 20]).sort_index()))
+        self.assert_eq(repr(kser.asof(100)), repr(pser.asof(100)))
+        self.assert_eq(repr(kser.asof(-100)), repr(pser.asof(-100)))
+        self.assert_eq(repr(kser.asof(-100)), repr(pser.asof(-100)))
+        self.assert_eq(
+            repr(kser.asof([-100, 100]).sort_index()), repr(pser.asof([-100, 100]).sort_index())
+        )
+
+        # where cannot be an Index, Series or a DataFrame
+        self.assertRaises(ValueError, lambda: kser.asof(ks.Index([-100, 100])))
+        self.assertRaises(ValueError, lambda: kser.asof(ks.Series([-100, 100])))
+        self.assertRaises(ValueError, lambda: kser.asof(ks.DataFrame({"A": [1, 2, 3]})))
+        # asof is not supported for a MultiIndex
+        pser.index = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c"), ("y", "d")])
+        kser = ks.from_pandas(pser)
+        self.assertRaises(ValueError, lambda: kser.asof(20))
+        # asof requires a sorted index (More precisely, should be a monotonic increasing)
+        kser = ks.Series([1, 2, np.nan, 4], index=[10, 30, 20, 40], name="Koalas")
+        self.assertRaises(ValueError, lambda: kser.asof(20))
+        kser = ks.Series([1, 2, np.nan, 4], index=[40, 30, 20, 10], name="Koalas")
+        self.assertRaises(ValueError, lambda: kser.asof(20))
+
+    def test_squeeze(self):
+        # Single value
+        kser = ks.Series([90])
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
+
+        # Single value with MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "b", "c")])
+        kser = ks.Series([90], index=midx)
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
+
+        # Multiple values
+        kser = ks.Series([90, 91, 85])
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
+
+        # Multiple values with MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kser = ks.Series([90, 91, 85], index=midx)
+        pser = kser.to_pandas()
+        self.assert_eq(kser.squeeze(), pser.squeeze())
