@@ -124,6 +124,10 @@ jobs:
       run: |
         curl -s https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
         bash miniconda.sh -b -p $HOME/miniconda
+        ls -al $HOME/miniconda
+        ls -al $HOME/miniconda/etc
+        ls -al $HOME/miniconda/etc/profile.d
+        
         # See also https://github.com/conda/conda/issues/7980
         . $HOME/miniconda/etc/profile.d/conda.sh
         hash -r
