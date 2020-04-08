@@ -86,16 +86,6 @@ def _column_op(f):
             args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self._scol, *args)
             scol = booleanize_null(self._scol, scol, f)
-            # PySpark and pandas have a different way to calculate modulo operation.
-            # Below lines are needed for closing the gap.
-            if f is spark.Column.__mod__:
-                scol = F.when((self._scol * args[0] < 0) & (scol != 0), scol + args[0]).otherwise(
-                    scol
-                )
-            elif f is spark.Column.__rmod__:
-                scol = F.when(
-                    (self._scol * args[0] < 0) & (scol != 0), scol + self._scol
-                ).otherwise(scol)
 
             return self._with_new_scol(scol)
         else:
@@ -196,7 +186,10 @@ class IndexOpsMixin(object):
     __mul__ = _column_op(spark.Column.__mul__)
     __div__ = _numpy_column_op(spark.Column.__div__)
     __truediv__ = _numpy_column_op(spark.Column.__truediv__)
-    __mod__ = _column_op(spark.Column.__mod__)
+
+    def __mod__(self, other):
+        scol = (self._scol % other + other) % other
+        return self._with_new_scol(scol)
 
     def __radd__(self, other):
         # Handle 'literal' + df['col']
@@ -220,7 +213,10 @@ class IndexOpsMixin(object):
             F.floor(_numpy_column_op(spark.Column.__rdiv__)(self, other)._scol)
         )
 
-    __rmod__ = _column_op(spark.Column.__rmod__)
+    def __rmod__(self, other):
+        scol = (other % self._scol + self._scol) % self._scol
+        return self._with_new_scol(scol)
+
     __pow__ = _column_op(spark.Column.__pow__)
     __rpow__ = _column_op(spark.Column.__rpow__)
 
