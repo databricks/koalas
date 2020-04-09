@@ -2147,9 +2147,8 @@ class _Frame(object):
             raise ValueError("truncate requires a sorted index")
         if (before is None) and (after is None):
             return self.copy() if copy else self
-        if (before is not None) and (after is not None):
-            if before > after:
-                raise ValueError("Truncate: %s must be after %s" % (after, before))
+        if (before is not None and after is not None) and before > after:
+            raise ValueError("Truncate: %s must be after %s" % (after, before))
 
         if isinstance(self, ks.Series):
             result = _col(self.to_frame().loc[before:after])
