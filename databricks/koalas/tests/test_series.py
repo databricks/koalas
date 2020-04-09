@@ -1446,3 +1446,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([90, 91, 85], index=midx)
         pser = kser.to_pandas()
         self.assert_eq(kser.squeeze(), pser.squeeze())
+
+    def test_div_zero(self):
+        pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(repr(pser.div(0)), repr(kser.div(0)))
+        self.assert_eq(repr(pser.truediv(0)), repr(kser.truediv(0)))
+        self.assert_eq(repr(pser.floordiv(0)), repr(kser.floordiv(0)))
+        self.assert_eq(repr(pser / 0), repr(kser / 0))
+        self.assert_eq(repr(pser // 0), repr(kser // 0))
