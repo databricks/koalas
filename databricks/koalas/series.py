@@ -27,6 +27,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
+from pandas.api.types import is_list_like
 
 from databricks.koalas.typedef import as_python_type
 from pyspark import sql as spark
@@ -55,6 +56,7 @@ from databricks.koalas.utils import (
     name_like_string,
     validate_axis,
     validate_bool_kwarg,
+    verify_temp_column_name,
 )
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.strings import StringMethods
@@ -732,7 +734,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         --------
         Series.rdivmod
         """
-        return (self.div(other), self.mod(other))
+        return (self.floordiv(other), self.mod(other))
 
     def rdivmod(self, other):
         """
@@ -752,7 +754,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         --------
         Series.divmod
         """
-        return (self.rdiv(other), self.rmod(other))
+        return (self.rfloorrdiv(other), self.rmod(other))
 
     def between(self, left, right, inclusive=True):
         """
@@ -4129,8 +4131,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if should_try_ops_on_diff_frame:
             # Try to perform it with 'compute.ops_on_diff_frame' option.
             kdf = self.to_frame()
-            kdf["__tmp_cond_col__"] = cond
-            kdf["__tmp_other_col__"] = other
+            tmp_cond_col = verify_temp_column_name(kdf, "__tmp_cond_col__")
+            tmp_other_col = verify_temp_column_name(kdf, "__tmp_other_col__")
+
+            kdf[tmp_cond_col] = cond
+            kdf[tmp_other_col] = other
 
             # above logic makes a Spark DataFrame looks like below:
             # +-----------------+---+----------------+-----------------+
@@ -4143,8 +4148,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             # |                4|  4|            true|              500|
             # +-----------------+---+----------------+-----------------+
             condition = (
-                F.when(kdf["__tmp_cond_col__"]._scol, kdf[self._internal.column_labels[0]]._scol)
-                .otherwise(kdf["__tmp_other_col__"]._scol)
+                F.when(kdf[tmp_cond_col]._scol, kdf[self._internal.column_labels[0]]._scol)
+                .otherwise(kdf[tmp_other_col]._scol)
                 .alias(self._internal.data_spark_column_names[0])
             )
 
@@ -4557,6 +4562,96 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             return _col(DataFrame(kdf._internal.with_filter(F.lit(False))))
         else:
             return _col(ks.concat([kdf] * repeats))
+
+    def asof(self, where):
+        """
+        Return the last row(s) without any NaNs before `where`.
+
+        The last row (for each element in `where`, if list) without any
+        NaN is taken.
+
+        If there is no good value, NaN is returned.
+
+        .. note:: This API is dependent on :meth:`Index.is_monotonic_increasing`
+            which can be expensive.
+
+        Parameters
+        ----------
+        where : index or array-like of indices
+
+        Returns
+        -------
+        scalar or Series
+
+            The return can be:
+
+            * scalar : when `self` is a Series and `where` is a scalar
+            * Series: when `self` is a Series and `where` is an array-like
+
+            Return scalar or Series
+
+        Notes
+        -----
+        Indices are assumed to be sorted. Raises if this is not the case.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, np.nan, 4], index=[10, 20, 30, 40])
+        >>> s
+        10    1.0
+        20    2.0
+        30    NaN
+        40    4.0
+        Name: 0, dtype: float64
+
+        A scalar `where`.
+
+        >>> s.asof(20)
+        2.0
+
+        For a sequence `where`, a Series is returned. The first value is
+        NaN, because the first element of `where` is before the first
+        index value.
+
+        >>> s.asof([5, 20]).sort_index()
+        5     NaN
+        20    2.0
+        Name: 0, dtype: float64
+
+        Missing values are not considered. The following is ``2.0``, not
+        NaN, even though NaN is at the index location for ``30``.
+
+        >>> s.asof(30)
+        2.0
+        """
+        should_return_series = True
+        if isinstance(self.index, ks.MultiIndex):
+            raise ValueError("asof is not supported for a MultiIndex")
+        if isinstance(where, (ks.Index, ks.Series, ks.DataFrame)):
+            raise ValueError("where cannot be an Index, Series or a DataFrame")
+        if not self.index.is_monotonic_increasing:
+            raise ValueError("asof requires a sorted index")
+        if not is_list_like(where):
+            should_return_series = False
+            where = [where]
+        sdf = self._internal._sdf
+        index_scol = self._internal.index_spark_columns[0]
+        cond = [F.max(F.when(index_scol <= index, self._scol)) for index in where]
+        sdf = sdf.select(cond)
+        if not should_return_series:
+            result = sdf.head()[0]
+            return result if result is not None else np.nan
+
+        # The data is expected to be small so it's fine to transpose/use default index.
+        with ks.option_context(
+            "compute.default_index_type", "distributed", "compute.max_rows", None
+        ):
+            kdf = ks.DataFrame(sdf)
+            kdf.columns = pd.Index(where)
+            result_series = _col(kdf.transpose())
+
+        result_series.name = self.name
+        return result_series
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.

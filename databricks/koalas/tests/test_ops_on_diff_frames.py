@@ -310,6 +310,38 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             (kser1 + kser2 * kser3).sort_index(), (pser1 + pser2 * pser3).sort_index(), almost=True
         )
 
+    def test_mod(self):
+        pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
+        pser_other = pd.Series([-150] * 6)
+        kser = ks.from_pandas(pser)
+        kser_other = ks.from_pandas(pser_other)
+
+        self.assert_eq(
+            repr(kser.mod(kser_other).sort_index()), repr(pser.mod(pser_other).rename("Koalas"))
+        )
+        self.assert_eq(
+            repr(kser.mod(kser_other).sort_index()), repr(pser.mod(pser_other).rename("Koalas"))
+        )
+        self.assert_eq(
+            repr(kser.mod(kser_other).sort_index()), repr(pser.mod(pser_other).rename("Koalas"))
+        )
+
+    def test_rmod(self):
+        pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
+        pser_other = pd.Series([-150] * 6)
+        kser = ks.from_pandas(pser)
+        kser_other = ks.from_pandas(pser_other)
+
+        self.assert_eq(
+            repr(kser.rmod(kser_other).sort_index()), repr(pser.rmod(pser_other).rename("Koalas"))
+        )
+        self.assert_eq(
+            repr(kser.rmod(kser_other).sort_index()), repr(pser.rmod(pser_other).rename("Koalas"))
+        )
+        self.assert_eq(
+            repr(kser.rmod(kser_other).sort_index()), repr(pser.rmod(pser_other).rename("Koalas"))
+        )
+
     def test_getitem_boolean_series(self):
         pdf1 = pd.DataFrame(
             {"A": [0, 1, 2, 3, 4], "B": [100, 200, 300, 400, 500]}, index=[20, 10, 30, 0, 50]
@@ -555,6 +587,34 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
     def test_frame_loc_setitem(self):
+        pdf_orig = pd.DataFrame(
+            [[1, 2], [4, 5], [7, 8]],
+            index=["cobra", "viper", "sidewinder"],
+            columns=["max_speed", "shield"],
+        )
+        kdf_orig = ks.DataFrame(pdf_orig)
+
+        pdf = pdf_orig.copy()
+        kdf = kdf_orig.copy()
+        another_kdf = ks.DataFrame(pdf_orig)
+
+        kdf.loc[["viper", "sidewinder"], ["shield"]] = -another_kdf.max_speed
+        pdf.loc[["viper", "sidewinder"], ["shield"]] = -pdf.max_speed
+        self.assert_eq(kdf, pdf)
+
+        pdf = pdf_orig.copy()
+        kdf = kdf_orig.copy()
+        kdf.loc[another_kdf.max_speed < 5, ["shield"]] = -kdf.max_speed
+        pdf.loc[pdf.max_speed < 5, ["shield"]] = -pdf.max_speed
+        self.assert_eq(kdf, pdf)
+
+        pdf = pdf_orig.copy()
+        kdf = kdf_orig.copy()
+        kdf.loc[another_kdf.max_speed < 5, ["shield"]] = -another_kdf.max_speed
+        pdf.loc[pdf.max_speed < 5, ["shield"]] = -pdf.max_speed
+        self.assert_eq(kdf, pdf)
+
+    def test_frame_iloc_setitem(self):
         pdf = pd.DataFrame(
             [[1, 2], [4, 5], [7, 8]],
             index=["cobra", "viper", "sidewinder"],
@@ -563,10 +623,13 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame(pdf)
         another_kdf = ks.DataFrame(pdf)
 
-        kdf.loc[["viper", "sidewinder"], ["shield"]] = another_kdf.max_speed
-        pdf.loc[["viper", "sidewinder"], ["shield"]] = pdf.max_speed
+        kdf.iloc[[1, 2], [1]] = -another_kdf.max_speed
+        pdf.iloc[[1, 2], [1]] = -pdf.max_speed
+        self.assert_eq(kdf, pdf)
 
-        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+        kdf.iloc[[0], 1] = 10 * another_kdf.max_speed
+        pdf.iloc[[0], 1] = 10 * pdf.max_speed
+        self.assert_eq(kdf, pdf)
 
     def test_series_loc_setitem(self):
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
@@ -835,6 +898,24 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf.loc[["viper", "sidewinder"], ["shield"]] = another_kdf.max_speed
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kdf.loc[another_kdf.max_speed < 5, ["shield"]] = -kdf.max_speed
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kdf.loc[another_kdf.max_speed < 5, ["shield"]] = -another_kdf.max_speed
+
+    def test_frame_iloc_setitem(self):
+        pdf = pd.DataFrame(
+            [[1, 2], [4, 5], [7, 8]],
+            index=["cobra", "viper", "sidewinder"],
+            columns=["max_speed", "shield"],
+        )
+        kdf = ks.DataFrame(pdf)
+        another_kdf = ks.DataFrame(pdf)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kdf.iloc[[1, 2], [1]] = another_kdf.max_speed
 
     def test_series_loc_setitem(self):
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])

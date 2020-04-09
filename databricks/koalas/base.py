@@ -186,7 +186,12 @@ class IndexOpsMixin(object):
     __mul__ = _column_op(spark.Column.__mul__)
     __div__ = _numpy_column_op(spark.Column.__div__)
     __truediv__ = _numpy_column_op(spark.Column.__truediv__)
-    __mod__ = _column_op(spark.Column.__mod__)
+
+    def __mod__(self, other):
+        def mod(left, right):
+            return ((left % right) + right) % right
+
+        return _column_op(mod)(self, other)
 
     def __radd__(self, other):
         # Handle 'literal' + df['col']
@@ -210,7 +215,12 @@ class IndexOpsMixin(object):
             F.floor(_numpy_column_op(spark.Column.__rdiv__)(self, other)._scol)
         )
 
-    __rmod__ = _column_op(spark.Column.__rmod__)
+    def __rmod__(self, other):
+        def rmod(left, right):
+            return ((right % left) + left) % left
+
+        return _column_op(rmod)(self, other)
+
     __pow__ = _column_op(spark.Column.__pow__)
     __rpow__ = _column_op(spark.Column.__rpow__)
 
