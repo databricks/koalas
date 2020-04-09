@@ -18,7 +18,6 @@ Commonly used utils in Koalas.
 """
 
 import functools
-import os
 from collections import OrderedDict
 from distutils.version import LooseVersion
 from typing import Callable, Dict, List, Tuple, Union
@@ -331,7 +330,7 @@ def default_session(conf=None):
                 "both driver and executor sides. Check your spark.executorEnv.*, "
                 "spark.yarn.appMasterEnv.*, spark.mesos.driverEnv.* and "
                 "spark.kubernetes.driverEnv.* configurations. It is required to set this "
-                "environment variable only when you use pyarrow>=0.15 and pyspark<=3.0."
+                "environment variable only when you use pyarrow>=0.15 and pyspark<3.0."
             )
     return session
 
