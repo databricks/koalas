@@ -20,7 +20,7 @@ Commonly used utils in Koalas.
 import functools
 from collections import OrderedDict
 from distutils.version import LooseVersion
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union, TYPE_CHECKING
 
 import pyarrow
 import pyspark
@@ -31,6 +31,10 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+
+if TYPE_CHECKING:
+    # This is required in old Python 3.5 to prevent circular reference.
+    from databricks.koalas.frame import DataFrame
 
 
 def combine_frames(this, *args, how="full"):
@@ -455,7 +459,7 @@ def validate_bool_kwarg(value, arg_name):
     return value
 
 
-def verify_temp_column_name(df: Union["ks.DataFrame", spark.DataFrame], column_name: str) -> str:
+def verify_temp_column_name(df: Union["DataFrame", spark.DataFrame], column_name: str) -> str:
     """
     Verify that the given column name does not exist in the given Koalas or Spark DataFrame.
 
