@@ -1381,6 +1381,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(repr(kser.mod(0)), repr(pser.mod(0)))
         self.assert_eq(repr(kser.mod(150)), repr(pser.mod(150)))
 
+        pdf = pd.DataFrame({"a": [100, None, -300, None, 500, -700], "b": [150] * 6})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(repr(kdf.a.mod(kdf.b)), repr(pdf.a.mod(pdf.b).rename("a")))
+
     def test_rmod(self):
         pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
         kser = ks.from_pandas(pser)
@@ -1388,6 +1392,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(repr(kser.rmod(-150)), repr(pser.rmod(-150)))
         self.assert_eq(repr(kser.rmod(0)), repr(pser.rmod(0)))
         self.assert_eq(repr(kser.rmod(150)), repr(pser.rmod(150)))
+
+        pdf = pd.DataFrame({"a": [100, None, -300, None, 500, -700], "b": [150] * 6})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(repr(kdf.a.rmod(kdf.b)), repr(pdf.a.rmod(pdf.b).rename("a")))
 
     def test_asof(self):
         pser = pd.Series([1, 2, np.nan, 4], index=[10, 20, 30, 40], name="Koalas")

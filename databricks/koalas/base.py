@@ -23,7 +23,7 @@ from typing import Union, Callable, Any
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_list_like, is_scalar
+from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
 from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType
@@ -188,11 +188,10 @@ class IndexOpsMixin(object):
     __truediv__ = _numpy_column_op(spark.Column.__truediv__)
 
     def __mod__(self, other):
-        if is_scalar(other):
-            return self._with_new_scol((self._scol % other + other) % other)
-        else:
-            result_spark = _column_op(spark.Column.__mod__)(self, other)
-            return _column_op(spark.Column.__mod__)(result_spark + other, other)
+        def mod(left, right):
+            return ((left % right) + right) % right
+
+        return _column_op(mod)(self, other)
 
     def __radd__(self, other):
         # Handle 'literal' + df['col']
@@ -217,11 +216,10 @@ class IndexOpsMixin(object):
         )
 
     def __rmod__(self, other):
-        if is_scalar(other):
-            return self._with_new_scol((other % self._scol + self._scol) % self._scol)
-        else:
-            result_spark = _column_op(spark.Column.__mod__)(other, self)
-            return _column_op(spark.Column.__mod__)(result_spark + self, self)
+        def rmod(left, right):
+            return ((right % left) + left) % left
+
+        return _column_op(rmod)(self, other)
 
     __pow__ = _column_op(spark.Column.__pow__)
     __rpow__ = _column_op(spark.Column.__rpow__)
