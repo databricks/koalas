@@ -20,7 +20,7 @@ Commonly used utils in Koalas.
 import functools
 from collections import OrderedDict
 from distutils.version import LooseVersion
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union, TYPE_CHECKING
 
 import pyarrow
 import pyspark
@@ -30,7 +30,8 @@ from pyspark.sql.types import FloatType
 import pandas as pd
 from pandas.api.types import is_list_like
 
-from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+if TYPE_CHECKING:
+    from databricks import koalas as ks
 
 
 def combine_frames(this, *args, how="full"):
