@@ -162,6 +162,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.take
    DataFrame.isin
    DataFrame.sample
+   DataFrame.truncate
 
 .. _api.dataframe.missing:
 

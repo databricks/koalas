@@ -59,11 +59,16 @@ from pyspark.sql.types import (
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.config import option_context
+from databricks.koalas.config import option_context, get_option
 from databricks.koalas.utils import (
     validate_arguments_and_invoke_function,
     align_diff_frames,
     validate_bool_kwarg,
+    column_labels_level,
+    name_like_string,
+    scol_for,
+    validate_axis,
+    verify_temp_column_name,
 )
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import (
@@ -75,16 +80,8 @@ from databricks.koalas.internal import (
 )
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.utils import (
-    column_labels_level,
-    name_like_string,
-    scol_for,
-    validate_axis,
-    verify_temp_column_name,
-)
 from databricks.koalas.typedef import _infer_return_type, as_spark_type, as_python_type
 from databricks.koalas.plot import KoalasFramePlotMethods
-from databricks.koalas.config import get_option
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
