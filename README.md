@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/databricks/koalas/master/Koalas-logo.png" width="140"/>
+  <img src="https://raw.githubusercontent.com/databricks/koalas/master/icons/koalas-logo.png" width="140"/>
 </p>
 
 <p align="center">

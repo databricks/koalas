@@ -57,6 +57,8 @@ We recommend setting up a Conda environment for development:
     conda activate koalas-dev-env
     conda install -c conda-forge pyspark=2.4
     conda install -c conda-forge --yes --file requirements-dev.txt
+    # We need pydata-sphinx-theme but it only supports PIP at this moment.
+    pip install git+https://github.com/pandas-dev/pydata-sphinx-theme.git@master
     pip install -e .  # installs koalas from current checkout
 
 Once setup, make sure you switch to `koalas-dev-env` before development:
@@ -68,11 +70,12 @@ Once setup, make sure you switch to `koalas-dev-env` before development:
 pip
 ---
 
-You can use `pip` alternatively if your Python is 3.5+.
+You can use `pip` alternatively if your Python is 3.6+.
 
 .. code-block:: bash
 
     pip install pyspark==2.4
+    pip install git+https://github.com/pandas-dev/pydata-sphinx-theme.git@master
     pip install -r requirements-dev.txt
     pip install -e .  # installs koalas from current checkout
 
