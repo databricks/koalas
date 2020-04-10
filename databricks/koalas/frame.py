@@ -3274,7 +3274,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 idx = []
                 for l in level:
                     try:
-                        i = self._internal.index_spark_column_names.index(l)
+                        i = self._internal.index_names.index((l,))
                         idx.append(i)
                     except ValueError:
                         if multi_index:
@@ -3282,7 +3282,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         else:
                             raise KeyError(
                                 "Level unknown must be same as name ({})".format(
-                                    self._internal.index_spark_column_names[0]
+                                    name_like_string(self._internal.index_names[0])
                                 )
                             )
             else:
