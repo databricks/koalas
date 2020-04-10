@@ -52,7 +52,7 @@ dbutils.library.installPyPI("koalas")
 dbutils.library.restartPython()
 ```
 
-or using `conda` for Databricks Runtime for Machine Learning 6.0 and above.
+or using `conda` with `--no-deps` option for Databricks Runtime for Machine Learning 6.0 and above, which provides all the required libraries.
 
 ```sh
 %sh
