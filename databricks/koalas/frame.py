@@ -4007,6 +4007,40 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return _CachedDataFrame(self._internal, storage_level=storage_level)
 
+    def hint(self, name: str, *parameters) -> "DataFrame":
+        """
+        Specifies some hint on the current DataFrame.
+
+        Parameters
+        ----------
+        name : A name of the hint.
+        parameters : Optional parameters.
+
+        Returns
+        -------
+        ret : DataFrame with the hint.
+
+        See Also
+        --------
+        broadcast : Marks a DataFrame as small enough for use in broadcast joins.
+
+        Examples
+        --------
+        >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
+        ...                     'value': [1, 2, 3, 5]},
+        ...                    columns=['lkey', 'value'])
+        >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+        ...                     'value': [5, 6, 7, 8]},
+        ...                    columns=['rkey', 'value'])
+        >>> merged = df1.merge(df2.hint("broadcast"), left_on='lkey', right_on='rkey')
+        >>> merged.explain()  # doctest: +ELLIPSIS
+        == Physical Plan ==
+        ...
+        ...BroadcastHashJoin...
+        ...
+        """
+        return DataFrame(self._internal.with_new_sdf(self._sdf.hint(name, *parameters)))
+
     def to_table(
         self,
         name: str,
@@ -6729,6 +6763,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         See Also
         --------
+        DataFrame.join : Join columns of another DataFrame.
+        DataFrame.update : Modify in place using non-NA values from another DataFrame.
+        DataFrame.hint : Specifies some hint on the current DataFrame.
         broadcast : Marks a DataFrame as small enough for use in broadcast joins.
 
         Examples
@@ -7018,6 +7055,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         DataFrame.merge: For column(s)-on-columns(s) operations.
+        DataFrame.update : Modify in place using non-NA values from another DataFrame.
+        DataFrame.hint : Specifies some hint on the current DataFrame.
         broadcast : Marks a DataFrame as small enough for use in broadcast joins.
 
         Notes
@@ -7189,6 +7228,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         DataFrame.merge : For column(s)-on-columns(s) operations.
+        DataFrame.join : Join columns of another DataFrame.
+        DataFrame.hint : Specifies some hint on the current DataFrame.
         broadcast : Marks a DataFrame as small enough for use in broadcast joins.
 
         Examples
