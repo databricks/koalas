@@ -1072,7 +1072,9 @@ class GroupBy(object):
                 # https://github.com/databricks/koalas/issues/628.
 
                 # TODO: deduplicate this logic with _InternalFrame.from_pandas
-                new_index_columns = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(index_names))]
+                new_index_columns = [
+                    SPARK_INDEX_NAME_FORMAT(i) for i in range(len(pdf.index.names))
+                ]
                 new_data_columns = [name_like_string(col) for col in pdf.columns]
 
                 pdf.index.names = new_index_columns
