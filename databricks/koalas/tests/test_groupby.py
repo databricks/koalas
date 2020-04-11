@@ -1171,6 +1171,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby("d").apply(sum).sort_index(), pdf.groupby("d").apply(sum).sort_index()
         )
 
+        with ks.option_context("compute.shortcut_limit", 1):
+            self.assert_eq(
+                kdf.groupby("d").apply(sum).sort_index(), pdf.groupby("d").apply(sum).sort_index()
+            )
+
     def test_transform(self):
         pdf = pd.DataFrame(
             {"a": [1, 2, 3, 4, 5, 6], "b": [1, 1, 2, 3, 5, 8], "c": [1, 4, 9, 16, 25, 36]},

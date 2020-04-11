@@ -1073,32 +1073,10 @@ class GroupBy(object):
                 # https://github.com/databricks/koalas/issues/628.
 
                 # TODO: deduplicate this logic with _InternalFrame.from_pandas
-                columns = pdf.columns
+                new_index_columns = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(index_names))]
+                new_data_columns = [name_like_string(col) for col in pdf.columns]
 
-                index = pdf.index
-
-                index_map = []
-                if isinstance(index, pd.MultiIndex):
-                    if index.names is None:
-                        index_map = [
-                            (SPARK_INDEX_NAME_FORMAT(i), None) for i in range(len(index.levels))
-                        ]
-                    else:
-                        index_map = [
-                            (SPARK_INDEX_NAME_FORMAT(i) if name is None else name, name)
-                            for i, name in enumerate(index.names)
-                        ]
-                else:
-                    index_map = [
-                        (
-                            index.name if index.name is not None else SPARK_DEFAULT_INDEX_NAME,
-                            index.name,
-                        )
-                    ]
-
-                new_index_columns = [index_column for index_column, _ in index_map]
-                new_data_columns = [str(col) for col in columns]
-
+                pdf.index.names = new_index_columns
                 reset_index = pdf.reset_index()
                 reset_index.columns = new_index_columns + new_data_columns
                 for name, col in reset_index.iteritems():
