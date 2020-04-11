@@ -45,11 +45,18 @@ conda install koalas -c conda-forge
 
 You can use not only Conda but also multiple ways to install Koalas. See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for full instructions to install Koalas.
 
-If you are a Databricks Runtime user, you can install Koalas using the Libraries tab on the cluster UI, or using `dbutils` in a notebook as below, for the regular Databricks Runtime.
+If you are a Databricks Runtime user, you can install Koalas using the Libraries tab on the cluster UI, or using `dbutils` in a notebook as below for the regular Databricks Runtime,
 
 ```python
 dbutils.library.installPyPI("koalas")
 dbutils.library.restartPython()
+```
+
+or using `conda` with `--no-deps` option for Databricks Runtime for Machine Learning 6.0 and above, which provides all the required libraries.
+
+```sh
+%sh
+conda install koalas -c conda-forge --no-deps
 ```
 
 Note that Koalas requires Databricks Runtime 5.x or above. In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and Databricks Runtime for Machine Learning.
