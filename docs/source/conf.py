@@ -62,7 +62,7 @@ gendoc()
 # -- Project information -----------------------------------------------------
 
 project = 'Koalas'
-copyright = '2019, Databricks'
+copyright = '2020, Databricks'
 author = 'The Koalas Team'
 
 # The full version, including alpha/beta/rc tags
