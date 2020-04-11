@@ -49,7 +49,6 @@ from databricks.koalas.internal import (
     HIDDEN_COLUMNS,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_INDEX_NAME_FORMAT,
-    SPARK_DEFAULT_INDEX_NAME,
 )
 from databricks.koalas.missing.groupby import (
     _MissingPandasLikeDataFrameGroupBy,
