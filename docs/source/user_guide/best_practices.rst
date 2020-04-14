@@ -172,14 +172,13 @@ See `Operations on different DataFrames <options.rst#operations-on-different-dat
 
 
 Use Koalas APIs directly whenever possible
----------------------------------------------------
+------------------------------------------
 
-While Koalas has similar APIs with pandas, some APIs are not explicitly supported. 
-For example, Python built-in functions such as ``min``, ``max``, ``sum``, etc.
-require the given argument to be iterable. 
-Koalas does not implement ``__iter__()`` yet to prevent users to collect
-all data into the client (driver) side from the cluster. 
-See the example below:
+Although Koalas has most of the pandas-equivalent APIs with pandas, there are several APIs not implemented yet or explicitly unsupported.
+
+As an example, Koalas does not implement ``__iter__()`` to prevent users to collect all data into the client (driver) side from the whole cluster.
+Unfortunately, many external APIs such as Python built-in functions such as min, max, sum, etc. require the given argument to be iterable.
+In case of pandas, it works properly out of the box as below:
 
 .. code-block:: python
 
@@ -191,10 +190,11 @@ See the example below:
    >>> sum(pd.Series([1, 2, 3]))
    6
 
-Pandas dataset live in the local and is iterable because the entire dataset is designed
-to be acceptable on a single client machine.
-Koalas performes operation in a distributed manner.
-So with Koalas built-in functions, you can do the same operation on multiple machines.
+pandas dataset lives in the single machine, and is naturally iterable locally within the same machine.
+However, Koalas dataset lives across multiple machines, and they are computed in a distributed manner.
+It is difficult to be locally iterable and it is very likely users collect the entire data into the client side without knowing it.
+Therefore, it is best to stick to using Koalas APIs.
+The examples above can be converted as below:
 
 .. code-block:: python
 
@@ -206,33 +206,36 @@ So with Koalas built-in functions, you can do the same operation on multiple mac
    >>> ks.Series([1, 2, 3]).sum()
    6
 
-Another common pattern from pandas users is to rely on list or generator comprehensions.
-In Python, any value that can follow the ``in`` keyword in a ``for`` statement is iterable.
-For instance, see below:
+Another common pattern from pandas users might be to rely on list comprehension or generator expression.
+However, it also assumes the dataset is locally iterable under the hood.
+Therefore, it works seamlessly in pandas as below:
 
 .. code-block:: python
 
    >>> import pandas as pd
    >>> data = []
-   >>> pser = pd.Series([1, 2, 3])
-   >>> for v in pser:
-   ...     data.append(v + 1)
+   >>> pser = pd.Series([20, 21, 12],
+   ...                  index=['London', 'New York', 'Helsinki'])
+   >>> for temperature in pser:
+   ...     data.append(temperature ** 2)
    ...
    >>> pd.Series(data)
-   0    2
-   1    3
-   2    4
+   0    400
+   1    441
+   2    144
    dtype: int64
 
-In Koalas, you can do it via:
+However, for Koalas it does not work as the same reason above.
+The example above can be also changed to directly using Koalas APIs as below:
 
 .. code-block:: python
 
    >>> import databricks.koalas as ks
-   >>> kser = ks.Series([1, 2, 3])
-   >>> kser.apply(lambda x: x + 1)
-   0    2
-   1    3
-   2    4
-   Name: 0, dtype: int64
+   >>> kser = ks.Series([20, 21, 12],
+   ...                  index=['London', 'New York', 'Helsinki'])
+   >>> kser.apply(lambda x: x ** 2)
+   0    400
+   1    441
+   2    144
+   dtype: int64
 
