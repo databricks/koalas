@@ -170,3 +170,69 @@ this operation should be avoided.
 
 See `Operations on different DataFrames <options.rst#operations-on-different-dataframes>`_ for more details.
 
+
+Use Koalas APIs directly whenever possible
+---------------------------------------------------
+
+While Koalas has similar APIs with pandas, some APIs are not explicitly supported. 
+For example, Python built-in functions such as ``min``, ``max``, ``sum``, etc.
+require the given argument to be iterable. 
+Koalas does not implement ``__iter__()`` yet to prevent users to collect
+all data into the client (driver) side from the cluster. 
+See the example below:
+
+.. code-block:: python
+
+   >>> import pandas as pd
+   >>> max(pd.Series([1, 2, 3]))
+   3
+   >>> min(pd.Series([1, 2, 3]))
+   1
+   >>> sum(pd.Series([1, 2, 3]))
+   6
+
+Pandas dataset live in the local and is iterable because the entire dataset is designed
+to be acceptable on a single client machine.
+Koalas performes operation in a distributed manner.
+So with Koalas built-in functions, you can do the same operation on multiple machines.
+
+.. code-block:: python
+
+   >>> import databricks.koalas as ks
+   >>> ks.Series([1, 2, 3]).max()
+   3
+   >>> ks.Series([1, 2, 3]).min()
+   1
+   >>> ks.Series([1, 2, 3]).sum()
+   6
+
+Another common pattern from pandas users is to rely on list or generator comprehensions.
+In Python, any value that can follow the ``in`` keyword in a ``for`` statement is iterable.
+For instance, see below:
+
+.. code-block:: python
+
+   >>> import pandas as pd
+   >>> data = []
+   >>> pser = pd.Series([1, 2, 3])
+   >>> for v in pser:
+   ...     data.append(v + 1)
+   ...
+   >>> pd.Series(data)
+   0    2
+   1    3
+   2    4
+   dtype: int64
+
+In Koalas, you can do it via:
+
+.. code-block:: python
+
+   >>> import databricks.koalas as ks
+   >>> kser = ks.Series([1, 2, 3])
+   >>> kser.apply(lambda x: x + 1)
+   0    2
+   1    3
+   2    4
+   Name: 0, dtype: int64
+
