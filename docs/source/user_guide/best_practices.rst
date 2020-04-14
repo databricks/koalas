@@ -217,6 +217,9 @@ Therefore, it works seamlessly in pandas as below:
    >>> countries = ['London', 'New York', 'Helsinki']
    >>> pser = pd.Series([20., 21., 12.], index=countries)
    >>> for temperature in pser:
+   ...     assert temperature > 0
+   ...     if temperature > 1000:
+   ...             temperature = None
    ...     data.append(temperature ** 2)
    ...
    >>> pd.Series(data, index=countries)
