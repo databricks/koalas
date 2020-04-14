@@ -214,16 +214,16 @@ Therefore, it works seamlessly in pandas as below:
 
    >>> import pandas as pd
    >>> data = []
-   >>> pser = pd.Series([20, 21, 12],
-   ...                  index=['London', 'New York', 'Helsinki'])
+   >>> countries = ['London', 'New York', 'Helsinki']
+   >>> pser = pd.Series([20., 21., 12.], index=countries)
    >>> for temperature in pser:
    ...     data.append(temperature ** 2)
    ...
-   >>> pd.Series(data)
-   0    400
-   1    441
-   2    144
-   dtype: int64
+   >>> pd.Series(data, index=countries)
+   London      400.0
+   New York    441.0
+   Helsinki    144.0
+   dtype: float64
 
 However, for Koalas it does not work as the same reason above.
 The example above can be also changed to directly using Koalas APIs as below:
@@ -231,11 +231,15 @@ The example above can be also changed to directly using Koalas APIs as below:
 .. code-block:: python
 
    >>> import databricks.koalas as ks
-   >>> kser = ks.Series([20, 21, 12],
-   ...                  index=['London', 'New York', 'Helsinki'])
-   >>> kser.apply(lambda x: x ** 2)
-   0    400
-   1    441
-   2    144
-   dtype: int64
+   >>> import numpy as np
+   >>> countries = ['London', 'New York', 'Helsinki']
+   >>> kser = ks.Series([20., 21., 12.], index=countries)
+   >>> def square(x) -> np.float64:
+   ...     return x ** 2
+   ...
+   >>> kser.apply(square)
+   London      400.0
+   New York    441.0
+   Helsinki    144.0
+   Name: 0, dtype: float64
 
