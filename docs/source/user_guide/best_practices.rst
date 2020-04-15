@@ -174,9 +174,9 @@ See `Operations on different DataFrames <options.rst#operations-on-different-dat
 Use Koalas APIs directly whenever possible
 ------------------------------------------
 
-Although Koalas has most of the pandas-equivalent APIs with pandas, there are several APIs not implemented yet or explicitly unsupported.
+Although Koalas has most of the pandas-equivalent APIs, there are several APIs not implemented yet or explicitly unsupported.
 
-As an example, Koalas does not implement ``__iter__()`` to prevent users to collect all data into the client (driver) side from the whole cluster.
+As an example, Koalas does not implement ``__iter__()`` to prevent users from collecting all data into the client (driver) side from the whole cluster.
 Unfortunately, many external APIs such as Python built-in functions such as min, max, sum, etc. require the given argument to be iterable.
 In case of pandas, it works properly out of the box as below:
 
@@ -219,7 +219,7 @@ Therefore, it works seamlessly in pandas as below:
    >>> for temperature in pser:
    ...     assert temperature > 0
    ...     if temperature > 1000:
-   ...             temperature = None
+   ...         temperature = None
    ...     data.append(temperature ** 2)
    ...
    >>> pd.Series(data, index=countries)
@@ -237,8 +237,11 @@ The example above can be also changed to directly using Koalas APIs as below:
    >>> import numpy as np
    >>> countries = ['London', 'New York', 'Helsinki']
    >>> kser = ks.Series([20., 21., 12.], index=countries)
-   >>> def square(x) -> np.float64:
-   ...     return x ** 2
+   >>> def square(temperature) -> np.float64:
+   ...     assert temperature > 0
+   ...     if temperature > 1000:
+   ...         temperature = None
+   ...     return temperature ** 2
    ...
    >>> kser.apply(square)
    London      400.0
