@@ -4702,7 +4702,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf._to_internal_pandas(), self.to_records, pd.DataFrame.to_records, args
         )
 
-    def copy(self, *args, **kwargs) -> "DataFrame":
+    def copy(self, deep=None) -> "DataFrame":
         """
         Make a copy of this object's indices and data.
 
