@@ -961,7 +961,7 @@ class Index(IndexOpsMixin):
                 "Requested level ({}) does not match index name ({})".format(level, self.name)
             )
 
-    def copy(self, name=None):
+    def copy(self, name=None, deep=None):
         """
         Make a copy of this object. name sets those attributes on the new object.
 
@@ -969,6 +969,8 @@ class Index(IndexOpsMixin):
         ----------
         name : string, optional
             to set name of index
+        deep : None
+            this parameter is not supported but just dummy parameter to match pandas.
 
         Examples
         --------

@@ -4706,6 +4706,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Make a copy of this object's indices and data.
 
+        Parameters
+        ----------
+        deep : None
+            this parameter is not supported but just dummy parameter to match pandas.
+
         Returns
         -------
         copy : DataFrame
