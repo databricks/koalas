@@ -2245,9 +2245,35 @@ class MultiIndex(Index):
         raise NotImplementedError("isna is not defined for MultiIndex")
 
     # TODO: add 'name' parameter after pd.MultiIndex.name is implemented
-    def copy(self):
+    def copy(self, deep=None):
         """
         Make a copy of this object.
+
+        Parameters
+        ----------
+        deep : None
+            this parameter is not supported but just dummy parameter to match pandas.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'],
+        ...                   index=[list('abcd'), list('efgh')])
+        >>> df['dogs'].index  # doctest: +SKIP
+        MultiIndex([('a', 'e'),
+                    ('b', 'f'),
+                    ('c', 'g'),
+                    ('d', 'h')],
+                   )
+
+        Copy index
+
+        >>> df.index.copy()  # doctest: +SKIP
+        MultiIndex([('a', 'e'),
+                    ('b', 'f'),
+                    ('c', 'g'),
+                    ('d', 'h')],
+                   )
         """
         return MultiIndex(self._kdf.copy())
 
