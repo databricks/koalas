@@ -187,8 +187,8 @@ class IndexOpsMixin(object):
 
     def __truediv__(self, other):
         def truediv(left, right):
-            return F.when(F.lit(right) == 0, F.lit(np.inf).__div__(F.lit(left))).otherwise(
-                F.lit(left).__truediv__(F.lit(right))
+            return F.when(F.lit(right == 0), F.lit(np.inf).__div__(left)).otherwise(
+                left.__truediv__(right)
             )
 
         return _numpy_column_op(truediv)(self, other)
@@ -211,24 +211,24 @@ class IndexOpsMixin(object):
 
     def __rtruediv__(self, other):
         def rtruediv(left, right):
-            return F.when(F.lit(left) == 0, F.lit(np.inf).__div__(F.lit(right))).otherwise(
-                F.lit(right).__truediv__(F.lit(left))
+            return F.when(left == 0, F.lit(np.inf).__div__(right)).otherwise(
+                F.lit(right).__truediv__(left)
             )
 
         return _numpy_column_op(rtruediv)(self, other)
 
     def __floordiv__(self, other):
         def floordiv(left, right):
-            return F.when(F.lit(right) == 0, F.lit(np.inf).__div__(F.lit(left))).otherwise(
-                F.floor(F.lit(left).__div__(F.lit(right)))
+            return F.when(F.lit(right == 0), F.lit(np.inf).__div__(left)).otherwise(
+                F.floor(left.__div__(right))
             )
 
         return _numpy_column_op(floordiv)(self, other)
 
     def __rfloordiv__(self, other):
         def rfloordiv(left, right):
-            return F.when(F.lit(left) == 0, F.lit(np.inf).__div__(F.lit(right))).otherwise(
-                F.floor(F.lit(right).__div__(F.lit(left)))
+            return F.when(F.lit(left == 0), F.lit(np.inf).__div__(right)).otherwise(
+                F.floor(F.lit(right).__div__(left))
             )
 
         return _numpy_column_op(rfloordiv)(self, other)
