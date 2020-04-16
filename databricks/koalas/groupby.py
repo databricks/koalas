@@ -2161,16 +2161,15 @@ class SeriesGroupBy(GroupBy):
 
         See Also
         --------
-        Series.nsmallest
-        DataFrame.nsmallest
         databricks.koalas.Series.nsmallest
+        databricks.koalas.DataFrame.nsmallest
 
         Examples
         --------
         >>> df = ks.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
         ...                    'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
 
-        >>> df.groupby(['a'])['b'].nsmallest(1).sort_index() # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby(['a'])['b'].nsmallest(1).sort_index()  # doctest: +NORMALIZE_WHITESPACE
         a
         1  0    1
         2  3    2
@@ -2213,16 +2212,15 @@ class SeriesGroupBy(GroupBy):
 
         See Also
         --------
-        Series.nlargest
-        DataFrame.nlargest
         databricks.koalas.Series.nlargest
+        databricks.koalas.DataFrame.nlargest
 
         Examples
         --------
         >>> df = ks.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
         ...                    'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
 
-        >>> df.groupby(['a'])['b'].nlargest(1).sort_index() # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby(['a'])['b'].nlargest(1).sort_index()  # doctest: +NORMALIZE_WHITESPACE
         a
         1  1    2
         2  4    3
@@ -2315,6 +2313,31 @@ class SeriesGroupBy(GroupBy):
             data_spark_columns=[scol_for(sdf, agg_column)],
         )
         return _col(DataFrame(internal))
+
+    def unique(self):
+        """
+        Return unique values in group.
+
+        Uniques are returned in order of unknown. It does NOT sort.
+
+        See Also
+        --------
+        databricks.koalas.Series.unique
+        databricks.koalas.Index.unique
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+        ...                    'b': [1, 2, 2, 2, 3, 3, 3, 4, 4]}, columns=['a', 'b'])
+
+        >>> df.groupby(['a'])['b'].unique().sort_index()  # doctest: +SKIP
+        a
+        1    [1, 2]
+        2    [2, 3]
+        3    [3, 4]
+        Name: b, dtype: object
+        """
+        return self._reduce_for_stat_function(F.collect_set, only_numeric=False)
 
 
 def _is_multi_agg_with_relabel(**kwargs):
