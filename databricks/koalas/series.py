@@ -3525,9 +3525,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return _col(DataFrame(internal))
 
-    def copy(self) -> "Series":
+    def copy(self, deep=None) -> "Series":
         """
         Make a copy of this object's indices and data.
+
+        Parameters
+        ----------
+        deep : None
+            this parameter is not supported but just dummy parameter to match pandas.
 
         Returns
         -------
