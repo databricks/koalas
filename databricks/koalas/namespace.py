@@ -2325,21 +2325,22 @@ def broadcast(obj):
     DataFrame.merge : Merge DataFrame objects with a database-style join.
     DataFrame.join : Join columns of another DataFrame.
     DataFrame.update : Modify in place using non-NA values from another DataFrame.
+    DataFrame.hint : Specifies some hint on the current DataFrame.
 
     Examples
     --------
-        >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
-        ...                     'value': [1, 2, 3, 5]},
-        ...                    columns=['lkey', 'value'])
-        >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
-        ...                     'value': [5, 6, 7, 8]},
-        ...                    columns=['rkey', 'value'])
-        >>> merged = df1.merge(ks.broadcast(df2), left_on='lkey', right_on='rkey')
-        >>> merged.explain()  # doctest: +ELLIPSIS
-        == Physical Plan ==
-        ...
-        ...BroadcastHashJoin...
-        ...
+    >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
+    ...                     'value': [1, 2, 3, 5]},
+    ...                    columns=['lkey', 'value'])
+    >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+    ...                     'value': [5, 6, 7, 8]},
+    ...                    columns=['rkey', 'value'])
+    >>> merged = df1.merge(ks.broadcast(df2), left_on='lkey', right_on='rkey')
+    >>> merged.explain()  # doctest: +ELLIPSIS
+    == Physical Plan ==
+    ...
+    ...BroadcastHashJoin...
+    ...
     """
     if not isinstance(obj, DataFrame):
         raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj)))

@@ -5,7 +5,7 @@ Koalas Talks and Blogs
 Blog Posts
 ----------
 
-- `10 Minutes from pandas to Koalas on Apache Spark (Mar31, 2020) <https://databricks.com/blog/2020/03/31/10-minutes-from-pandas-to-koalas-on-apache-spark.html>`_
+- `10 Minutes from pandas to Koalas on Apache Spark (Mar 31, 2020) <https://databricks.com/blog/2020/03/31/10-minutes-from-pandas-to-koalas-on-apache-spark.html>`_
 - `Guest Blog: How Virgin Hyperloop One Reduced Processing Time from Hours to Minutes with Koalas (Aug 22, 2019) <https://databricks.com/blog/2019/08/22/guest-blog-how-virgin-hyperloop-one-reduced-processing-time-from-hours-to-minutes-with-koalas.html>`_
 - `Koalas: Easy Transition from pandas to Apache Spark (Apr 24, 2019) <https://databricks.com/blog/2019/04/24/koalas-easy-transition-from-pandas-to-apache-spark.html>`_
 

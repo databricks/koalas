@@ -59,11 +59,16 @@ from pyspark.sql.types import (
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.config import option_context
+from databricks.koalas.config import option_context, get_option
 from databricks.koalas.utils import (
     validate_arguments_and_invoke_function,
     align_diff_frames,
     validate_bool_kwarg,
+    column_labels_level,
+    name_like_string,
+    scol_for,
+    validate_axis,
+    verify_temp_column_name,
 )
 from databricks.koalas.generic import _Frame
 from databricks.koalas.internal import (
@@ -75,16 +80,8 @@ from databricks.koalas.internal import (
 )
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.utils import (
-    column_labels_level,
-    name_like_string,
-    scol_for,
-    validate_axis,
-    verify_temp_column_name,
-)
 from databricks.koalas.typedef import _infer_return_type, as_spark_type, as_python_type
 from databricks.koalas.plot import KoalasFramePlotMethods
-from databricks.koalas.config import get_option
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
@@ -3277,7 +3274,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 idx = []
                 for l in level:
                     try:
-                        i = self._internal.index_spark_column_names.index(l)
+                        i = self._internal.index_names.index((l,))
                         idx.append(i)
                     except ValueError:
                         if multi_index:
@@ -3285,7 +3282,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         else:
                             raise KeyError(
                                 "Level unknown must be same as name ({})".format(
-                                    self._internal.index_spark_column_names[0]
+                                    name_like_string(self._internal.index_names[0])
                                 )
                             )
             else:
@@ -4009,6 +4006,40 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.unpersist()
         """
         return _CachedDataFrame(self._internal, storage_level=storage_level)
+
+    def hint(self, name: str, *parameters) -> "DataFrame":
+        """
+        Specifies some hint on the current DataFrame.
+
+        Parameters
+        ----------
+        name : A name of the hint.
+        parameters : Optional parameters.
+
+        Returns
+        -------
+        ret : DataFrame with the hint.
+
+        See Also
+        --------
+        broadcast : Marks a DataFrame as small enough for use in broadcast joins.
+
+        Examples
+        --------
+        >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
+        ...                     'value': [1, 2, 3, 5]},
+        ...                    columns=['lkey', 'value'])
+        >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+        ...                     'value': [5, 6, 7, 8]},
+        ...                    columns=['rkey', 'value'])
+        >>> merged = df1.merge(df2.hint("broadcast"), left_on='lkey', right_on='rkey')
+        >>> merged.explain()  # doctest: +ELLIPSIS
+        == Physical Plan ==
+        ...
+        ...BroadcastHashJoin...
+        ...
+        """
+        return DataFrame(self._internal.with_new_sdf(self._sdf.hint(name, *parameters)))
 
     def to_table(
         self,
@@ -6732,6 +6763,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         See Also
         --------
+        DataFrame.join : Join columns of another DataFrame.
+        DataFrame.update : Modify in place using non-NA values from another DataFrame.
+        DataFrame.hint : Specifies some hint on the current DataFrame.
         broadcast : Marks a DataFrame as small enough for use in broadcast joins.
 
         Examples
@@ -7021,6 +7055,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         DataFrame.merge: For column(s)-on-columns(s) operations.
+        DataFrame.update : Modify in place using non-NA values from another DataFrame.
+        DataFrame.hint : Specifies some hint on the current DataFrame.
         broadcast : Marks a DataFrame as small enough for use in broadcast joins.
 
         Notes
@@ -7192,6 +7228,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         See Also
         --------
         DataFrame.merge : For column(s)-on-columns(s) operations.
+        DataFrame.join : Join columns of another DataFrame.
+        DataFrame.hint : Specifies some hint on the current DataFrame.
         broadcast : Marks a DataFrame as small enough for use in broadcast joins.
 
         Examples

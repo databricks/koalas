@@ -10,3 +10,4 @@ cd jdk1.8.0_131
 echo "export JAVA_HOME="`pwd` >> ~/.profile
 cd bin
 echo "export PATH="`pwd`":$PATH" >> ~/.profile
+echo "export ARROW_PRE_0_15_IPC_FORMAT=1" >> ~/.profile

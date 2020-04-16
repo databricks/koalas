@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/databricks/koalas/master/Koalas-logo.png" width="140"/>
+  <img src="https://raw.githubusercontent.com/databricks/koalas/master/icons/koalas-logo.png" width="140"/>
 </p>
 
 <p align="center">
@@ -45,14 +45,24 @@ conda install koalas -c conda-forge
 
 You can use not only Conda but also multiple ways to install Koalas. See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for full instructions to install Koalas.
 
-If you are a Databricks Runtime user, you can install Koalas using the Libraries tab on the cluster UI, or using `dbutils` in a notebook as below, for the regular Databricks Runtime.
+If you are a Databricks Runtime user, you can install Koalas using the Libraries tab on the cluster UI, or using `dbutils` in a notebook as below for the regular Databricks Runtime,
 
 ```python
 dbutils.library.installPyPI("koalas")
 dbutils.library.restartPython()
 ```
 
+or using `conda` with `--no-deps` option for Databricks Runtime for Machine Learning 6.0 and above, which provides all the required libraries.
+
+```sh
+%sh
+conda install koalas -c conda-forge --no-deps
+```
+
 Note that Koalas requires Databricks Runtime 5.x or above. In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and Databricks Runtime for Machine Learning.
+
+Lastly, note that if your PyArrow version is 0.15+ and your PySpark version is lower than 3.0, it is best for you to set `ARROW_PRE_0_15_IPC_FORMAT` environment variable to `1` manually.
+Koalas will try its best to set it for you but it is impossible to set it if there is a Spark context already launched.
 
 Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
 

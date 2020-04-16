@@ -170,3 +170,82 @@ this operation should be avoided.
 
 See `Operations on different DataFrames <options.rst#operations-on-different-dataframes>`_ for more details.
 
+
+Use Koalas APIs directly whenever possible
+------------------------------------------
+
+Although Koalas has most of the pandas-equivalent APIs, there are several APIs not implemented yet or explicitly unsupported.
+
+As an example, Koalas does not implement ``__iter__()`` to prevent users from collecting all data into the client (driver) side from the whole cluster.
+Unfortunately, many external APIs such as Python built-in functions such as min, max, sum, etc. require the given argument to be iterable.
+In case of pandas, it works properly out of the box as below:
+
+.. code-block:: python
+
+   >>> import pandas as pd
+   >>> max(pd.Series([1, 2, 3]))
+   3
+   >>> min(pd.Series([1, 2, 3]))
+   1
+   >>> sum(pd.Series([1, 2, 3]))
+   6
+
+pandas dataset lives in the single machine, and is naturally iterable locally within the same machine.
+However, Koalas dataset lives across multiple machines, and they are computed in a distributed manner.
+It is difficult to be locally iterable and it is very likely users collect the entire data into the client side without knowing it.
+Therefore, it is best to stick to using Koalas APIs.
+The examples above can be converted as below:
+
+.. code-block:: python
+
+   >>> import databricks.koalas as ks
+   >>> ks.Series([1, 2, 3]).max()
+   3
+   >>> ks.Series([1, 2, 3]).min()
+   1
+   >>> ks.Series([1, 2, 3]).sum()
+   6
+
+Another common pattern from pandas users might be to rely on list comprehension or generator expression.
+However, it also assumes the dataset is locally iterable under the hood.
+Therefore, it works seamlessly in pandas as below:
+
+.. code-block:: python
+
+   >>> import pandas as pd
+   >>> data = []
+   >>> countries = ['London', 'New York', 'Helsinki']
+   >>> pser = pd.Series([20., 21., 12.], index=countries)
+   >>> for temperature in pser:
+   ...     assert temperature > 0
+   ...     if temperature > 1000:
+   ...         temperature = None
+   ...     data.append(temperature ** 2)
+   ...
+   >>> pd.Series(data, index=countries)
+   London      400.0
+   New York    441.0
+   Helsinki    144.0
+   dtype: float64
+
+However, for Koalas it does not work as the same reason above.
+The example above can be also changed to directly using Koalas APIs as below:
+
+.. code-block:: python
+
+   >>> import databricks.koalas as ks
+   >>> import numpy as np
+   >>> countries = ['London', 'New York', 'Helsinki']
+   >>> kser = ks.Series([20., 21., 12.], index=countries)
+   >>> def square(temperature) -> np.float64:
+   ...     assert temperature > 0
+   ...     if temperature > 1000:
+   ...         temperature = None
+   ...     return temperature ** 2
+   ...
+   >>> kser.apply(square)
+   London      400.0
+   New York    441.0
+   Helsinki    144.0
+   Name: 0, dtype: float64
+

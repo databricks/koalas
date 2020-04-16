@@ -62,7 +62,7 @@ gendoc()
 # -- Project information -----------------------------------------------------
 
 project = 'Koalas'
-copyright = '2019, Databricks'
+copyright = '2020, Databricks'
 author = 'The Koalas Team'
 
 # The full version, including alpha/beta/rc tags
@@ -123,15 +123,23 @@ autosummary_generate = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'nature_with_gtoc'
+html_theme = "pydata_sphinx_theme"
+
+# The name of an image file (relative to this directory) to place at the top
+# of the sidebar.
+html_logo = "../../icons/koalas-logo-docs.png"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+html_static_path = ['_static']
+
+html_css_files = [
+    'css/koalas.css',
+]
 
 # Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = ['themes']
+# html_theme_path = ['themes']
 
 # If false, no index is generated.
 html_use_index = False
@@ -142,7 +150,7 @@ html_domain_indices = False
 # The name of an image file (relative to this directory) to use as a favicon of
 # the docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = 'favicon.ico'
+html_favicon = '../../icons/koalas-favicon.ico'
 
 
 # -- Options for manual page output ---------------------------------------
