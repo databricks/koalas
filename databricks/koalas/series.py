@@ -2533,6 +2533,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         -------
         Series
 
+        See Also
+        --------
+        Series.aggregate : Only perform aggregating type operations.
+        Series.transform : Only perform transforming type operations.
+        DataFrame.apply : The equivalent function for DataFrame.
+
         Examples
         --------
         Create a Series with typical summer temperatures for each city.
@@ -2655,8 +2661,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         See Also
         --------
-        databricks.koalas.Series.apply
-        databricks.koalas.Series.transform
+        Series.apply : Invoke function on a Series.
+        Series.transform : Only perform transforming type operations.
+        Series.groupby : Perform operations over groups.
+        DataFrame.aggregate : The equivalent function for DataFrame.
 
         Examples
         --------
@@ -2735,7 +2743,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         See Also
         --------
+        Series.aggregate : Only perform aggregating type operations.
         Series.apply : Invoke function on Series.
+        DataFrame.transform : The equivalent function for DataFrame.
 
         Examples
         --------
