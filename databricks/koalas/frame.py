@@ -1003,8 +1003,10 @@ class DataFrame(_Frame, Generic[T]):
 
         See Also
         --------
-        databricks.koalas.Series.groupby
-        databricks.koalas.DataFrame.groupby
+        DataFrame.apply : Invoke function on DataFrame.
+        DataFrame.transform : Only perform transforming type operations.
+        DataFrame.groupby : Perform operations over groups.
+        Series.aggregate : The equivalent function for Series.
 
         Examples
         --------
@@ -2212,9 +2214,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         See Also
         --------
-        DataFrame.applymap: For elementwise operations.
-        DataFrame.aggregate: Only perform aggregating type operations.
-        DataFrame.transform: Only perform transforming type operations.
+        DataFrame.applymap : For elementwise operations.
+        DataFrame.aggregate : Only perform aggregating type operations.
+        DataFrame.transform : Only perform transforming type operations.
+        Series.apply : The equivalent function for Series.
 
         Examples
         --------
@@ -2406,6 +2409,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Raises
         ------
         Exception : If the returned DataFrame has a different length than self.
+
+        See Also
+        --------
+        DataFrame.aggregate : Only perform aggregating type operations.
+        DataFrame.apply : Invoke function on DataFrame.
+        Series.transform : The equivalent function for Series.
 
         Examples
         --------
