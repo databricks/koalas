@@ -238,7 +238,7 @@ circle        0.0     36.0
 triangle      0.0     18.0
 rectangle     0.0     36.0
 
->>> df.rfloordiv(10)
+>>> df.rfloordiv(10)  # doctest: +SKIP
            angles  degrees
 circle        inf      0.0
 triangle      3.0      0.0

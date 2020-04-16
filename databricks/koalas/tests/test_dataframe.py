@@ -3204,3 +3204,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.columns = columns
         for axis in axises:
             self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+
+    def test_rfloordiv(self):
+        pdf = pd.DataFrame(
+            {"angles": [0, 3, 4], "degrees": [360, 180, 360]},
+            index=["circle", "triangle", "rectangle"],
+            columns=["angles", "degrees"],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.rfloordiv(10), kdf.rfloordiv(10))
