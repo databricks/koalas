@@ -3213,7 +3213,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pdf.rfloordiv(10), kdf.rfloordiv(10))
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0") and LooseVersion(
+            pd.__version__
+        ) >= LooseVersion("0.24.0"):
+            expected_result = ks.DataFrame(
+                {"angles": [np.inf, 3.0, 2.0], "degrees": [0.0, 0.0, 0.0]},
+                index=["circle", "triangle", "rectangle"],
+                columns=["angles", "degrees"],
+            )
+        else:
+            expected_result = pdf.rfloordiv(10)
+
+        self.assert_eq(kdf.rfloordiv(10), expected_result)
 
     def test_truncate(self):
         pdf1 = pd.DataFrame(
