@@ -3216,7 +3216,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         if LooseVersion(pd.__version__) < LooseVersion("1.0.0") and LooseVersion(
             pd.__version__
         ) >= LooseVersion("0.24.0"):
-            expected_result = ks.DataFrame(
+            expected_result = pd.DataFrame(
                 {"angles": [np.inf, 3.0, 2.0], "degrees": [0.0, 0.0, 0.0]},
                 index=["circle", "triangle", "rectangle"],
                 columns=["angles", "degrees"],
