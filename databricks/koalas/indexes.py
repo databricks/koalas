@@ -891,7 +891,7 @@ class Index(IndexOpsMixin):
 
         Returns
         -------
-        Index without deuplicates
+        Index without duplicates
 
         See Also
         --------
