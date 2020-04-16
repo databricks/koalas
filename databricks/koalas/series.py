@@ -1887,7 +1887,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         -------
         Returns the unique values as a Series.
 
-        See Examples section.
+        See Also
+        --------
+        Index.unique
+        groupby.SeriesGroupBy.unique
 
         Examples
         --------

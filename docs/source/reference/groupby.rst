@@ -66,6 +66,7 @@ The following methods are available only for `SeriesGroupBy` objects.
    SeriesGroupBy.nsmallest
    SeriesGroupBy.nlargest
    SeriesGroupBy.value_counts
+   SeriesGroupBy.unique
 
 The following methods are available only for `DataFrameGroupBy` objects.
 

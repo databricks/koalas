@@ -882,10 +882,21 @@ class Index(IndexOpsMixin):
     def unique(self, level=None):
         """
         Return unique values in the index.
+
         Be aware the order of unique values might be different than pandas.Index.unique
 
-        :param level: int or str, optional, default is None
-        :return: Index without deuplicates
+        Parameters
+        ----------
+        level : int or str, optional, default is None
+
+        Returns
+        -------
+        Index without deuplicates
+
+        See Also
+        --------
+        Series.unique
+        groupby.SeriesGroupBy.unique
 
         Examples
         --------
