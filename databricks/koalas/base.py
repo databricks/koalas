@@ -184,8 +184,14 @@ class IndexOpsMixin(object):
             return _column_op(spark.Column.__sub__)(self, other)
 
     __mul__ = _column_op(spark.Column.__mul__)
-    __div__ = _numpy_column_op(spark.Column.__div__)
-    __truediv__ = _numpy_column_op(spark.Column.__truediv__)
+
+    def __truediv__(self, other):
+        def truediv(left, right):
+            return F.when(F.lit(right == 0), F.lit(np.inf).__div__(left)).otherwise(
+                left.__truediv__(right)
+            )
+
+        return _numpy_column_op(truediv)(self, other)
 
     def __mod__(self, other):
         def mod(left, right):
@@ -202,18 +208,30 @@ class IndexOpsMixin(object):
 
     __rsub__ = _column_op(spark.Column.__rsub__)
     __rmul__ = _column_op(spark.Column.__rmul__)
-    __rdiv__ = _numpy_column_op(spark.Column.__rdiv__)
-    __rtruediv__ = _numpy_column_op(spark.Column.__rtruediv__)
+
+    def __rtruediv__(self, other):
+        def rtruediv(left, right):
+            return F.when(left == 0, F.lit(np.inf).__div__(right)).otherwise(
+                F.lit(right).__truediv__(left)
+            )
+
+        return _numpy_column_op(rtruediv)(self, other)
 
     def __floordiv__(self, other):
-        return self._with_new_scol(
-            F.floor(_numpy_column_op(spark.Column.__div__)(self, other)._scol)
-        )
+        def floordiv(left, right):
+            return F.when(F.lit(right == 0), F.lit(np.inf).__div__(left)).otherwise(
+                F.floor(left.__div__(right))
+            )
+
+        return _numpy_column_op(floordiv)(self, other)
 
     def __rfloordiv__(self, other):
-        return self._with_new_scol(
-            F.floor(_numpy_column_op(spark.Column.__rdiv__)(self, other)._scol)
-        )
+        def rfloordiv(left, right):
+            return F.when(F.lit(left == 0), F.lit(np.inf).__div__(right)).otherwise(
+                F.floor(F.lit(right).__div__(left))
+            )
+
+        return _numpy_column_op(rfloordiv)(self, other)
 
     def __rmod__(self, other):
         def rmod(left, right):

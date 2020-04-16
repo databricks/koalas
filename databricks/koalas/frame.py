@@ -165,7 +165,7 @@ rectangle     0.4     36.0
 
 >>> df.rdiv(10)
              angles   degrees
-circle          NaN  0.027778
+circle          inf  0.027778
 triangle   3.333333  0.055556
 rectangle  2.500000  0.027778
 
@@ -177,7 +177,7 @@ rectangle     0.4     36.0
 
 >>> df.rtruediv(10)
              angles   degrees
-circle          NaN  0.027778
+circle          inf  0.027778
 triangle   3.333333  0.055556
 rectangle  2.500000  0.027778
 
@@ -225,21 +225,21 @@ Floor Divide by constant with reverse version.
 
 >>> df // 10
            angles  degrees
-circle          0       36
-triangle        0       18
-rectangle       0       36
+circle        0.0     36.0
+triangle      0.0     18.0
+rectangle     0.0     36.0
 
 >>> df.floordiv(10)
            angles  degrees
-circle          0       36
-triangle        0       18
-rectangle       0       36
+circle        0.0     36.0
+triangle      0.0     18.0
+rectangle     0.0     36.0
 
->>> df.rfloordiv(10)
+>>> df.rfloordiv(10)  # doctest: +SKIP
            angles  degrees
-circle        NaN        0
-triangle      3.0        0
-rectangle     2.0        0
+circle        inf      0.0
+triangle      3.0      0.0
+rectangle     2.0      0.0
 
 Mod by constant with reverse version.
 

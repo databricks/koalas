@@ -3205,6 +3205,27 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         for axis in axises:
             self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
 
+    def test_rfloordiv(self):
+        pdf = pd.DataFrame(
+            {"angles": [0, 3, 4], "degrees": [360, 180, 360]},
+            index=["circle", "triangle", "rectangle"],
+            columns=["angles", "degrees"],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0") and LooseVersion(
+            pd.__version__
+        ) >= LooseVersion("0.24.0"):
+            expected_result = pd.DataFrame(
+                {"angles": [np.inf, 3.0, 2.0], "degrees": [0.0, 0.0, 0.0]},
+                index=["circle", "triangle", "rectangle"],
+                columns=["angles", "degrees"],
+            )
+        else:
+            expected_result = pdf.rfloordiv(10)
+
+        self.assert_eq(kdf.rfloordiv(10), expected_result)
+
     def test_truncate(self):
         pdf1 = pd.DataFrame(
             {

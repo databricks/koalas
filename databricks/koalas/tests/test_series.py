@@ -1446,3 +1446,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([90, 91, 85], index=midx)
         pser = kser.to_pandas()
         self.assert_eq(kser.squeeze(), pser.squeeze())
+
+    def test_div_zero(self):
+        pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(repr(pser.div(0)), repr(kser.div(0)))
+        self.assert_eq(repr(pser.truediv(0)), repr(kser.truediv(0)))
+        self.assert_eq(repr(pser / 0), repr(kser / 0))
+
+        # floordiv has different behavior in pandas > 1.0.0
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(repr(pser.floordiv(0)), repr(kser.floordiv(0)))
+            self.assert_eq(repr(pser // 0), repr(kser // 0))
+        else:
+            result = pd.Series([np.inf, np.nan, -np.inf, np.nan, np.inf, -np.inf], name="Koalas")
+            self.assert_eq(repr(kser.floordiv(0)), repr(result))
+            self.assert_eq(repr(kser // 0), repr(result))
