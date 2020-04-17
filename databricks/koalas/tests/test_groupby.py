@@ -552,6 +552,27 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
         )
 
+    def test_unique(self):
+        for pdf in [
+            pd.DataFrame(
+                {"a": [1, 1, 1, 1, 1, 0, 0, 0, 0, 0], "b": [2, 2, 2, 3, 3, 4, 4, 5, 5, 5]}
+            ),
+            pd.DataFrame(
+                {
+                    "a": [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                    "b": ["w", "w", "w", "x", "x", "y", "y", "z", "z", "z"],
+                }
+            ),
+        ]:
+            with self.subTest(pdf=pdf):
+                kdf = ks.from_pandas(pdf)
+
+                actual = kdf.groupby("a")["b"].unique().sort_index().to_pandas()
+                expect = pdf.groupby("a")["b"].unique().sort_index()
+                self.assert_eq(len(actual), len(expect))
+                for act, exp in zip(actual, expect):
+                    self.assertTrue(sorted(act) == sorted(exp))
+
     def test_value_counts(self):
         pdf = pd.DataFrame({"A": [1, 2, 2, 3, 3, 3], "B": [1, 1, 2, 3, 3, 3]}, columns=["A", "B"])
         kdf = ks.from_pandas(pdf)
@@ -1160,6 +1181,21 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
     def test_apply_with_new_dataframe_without_shortcut(self):
         with option_context("compute.shortcut_limit", 0):
             self.test_apply_with_new_dataframe()
+
+    def test_apply_key_handling(self):
+        pdf = pd.DataFrame(
+            {"d": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0], "v": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]}
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            kdf.groupby("d").apply(sum).sort_index(), pdf.groupby("d").apply(sum).sort_index()
+        )
+
+        with ks.option_context("compute.shortcut_limit", 1):
+            self.assert_eq(
+                kdf.groupby("d").apply(sum).sort_index(), pdf.groupby("d").apply(sum).sort_index()
+            )
 
     def test_transform(self):
         pdf = pd.DataFrame(

@@ -88,7 +88,6 @@ class _MissingPandasLikeSeriesGroupBy(object):
     quantile = unsupported_property("quantile")
     skew = unsupported_property("skew")
     tshift = unsupported_property("tshift")
-    unique = unsupported_property("unique")
 
     # Deprecated properties
     take = unsupported_property("take", deprecated=True)

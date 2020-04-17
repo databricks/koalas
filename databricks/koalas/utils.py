@@ -20,7 +20,7 @@ Commonly used utils in Koalas.
 import functools
 from collections import OrderedDict
 from distutils.version import LooseVersion
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union, TYPE_CHECKING
 
 import pyarrow
 import pyspark
@@ -31,6 +31,10 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+
+if TYPE_CHECKING:
+    # This is required in old Python 3.5 to prevent circular reference.
+    from databricks.koalas.frame import DataFrame
 
 
 def combine_frames(this, *args, how="full"):
@@ -296,6 +300,7 @@ def align_diff_series(func, this_series, *args, how="full"):
 def default_session(conf=None):
     if conf is None:
         conf = dict()
+    should_use_legacy_ipc = False
     if LooseVersion(pyarrow.__version__) >= LooseVersion("0.15") and LooseVersion(
         pyspark.__version__
     ) < LooseVersion("3.0"):
@@ -303,13 +308,35 @@ def default_session(conf=None):
         conf["spark.yarn.appMasterEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
         conf["spark.mesos.driverEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
         conf["spark.kubernetes.driverEnv.ARROW_PRE_0_15_IPC_FORMAT"] = "1"
+        should_use_legacy_ipc = True
+
     builder = spark.SparkSession.builder.appName("Koalas")
     for key, value in conf.items():
         builder = builder.config(key, value)
     # Currently, Koalas is dependent on such join due to 'compute.ops_on_diff_frames'
     # configuration. This is needed with Spark 3.0+.
     builder.config("spark.sql.analyzer.failAmbiguousSelfJoin.enabled", False)
-    return builder.getOrCreate()
+    session = builder.getOrCreate()
+
+    if not should_use_legacy_ipc:
+        is_legacy_ipc_set = any(
+            v == "1"
+            for v in [
+                session.conf.get("spark.executorEnv.ARROW_PRE_0_15_IPC_FORMAT", None),
+                session.conf.get("spark.yarn.appMasterEnv.ARROW_PRE_0_15_IPC_FORMAT", None),
+                session.conf.get("spark.mesos.driverEnv.ARROW_PRE_0_15_IPC_FORMAT", None),
+                session.conf.get("spark.kubernetes.driverEnv.ARROW_PRE_0_15_IPC_FORMAT", None),
+            ]
+        )
+        if is_legacy_ipc_set:
+            raise RuntimeError(
+                "Please explicitly unset 'ARROW_PRE_0_15_IPC_FORMAT' environment variable in "
+                "both driver and executor sides. Check your spark.executorEnv.*, "
+                "spark.yarn.appMasterEnv.*, spark.mesos.driverEnv.* and "
+                "spark.kubernetes.driverEnv.* configurations. It is required to set this "
+                "environment variable only when you use pyarrow>=0.15 and pyspark<3.0."
+            )
+    return session
 
 
 def validate_arguments_and_invoke_function(
@@ -455,7 +482,7 @@ def validate_bool_kwarg(value, arg_name):
     return value
 
 
-def verify_temp_column_name(df: Union["ks.DataFrame", spark.DataFrame], column_name: str) -> str:
+def verify_temp_column_name(df: Union["DataFrame", spark.DataFrame], column_name: str) -> str:
     """
     Verify that the given column name does not exist in the given Koalas or Spark DataFrame.
 

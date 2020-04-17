@@ -446,16 +446,17 @@ class _InternalFrame(object):
         >>> internal = kdf[('a', 'y')]._internal
 
         >>> internal._sdf.show()  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
-        +-----------+-----------+------+------+------+...
-        |row_index_a|row_index_b|(a, x)|(a, y)|(b, z)|...
-        +-----------+-----------+------+------+------+...
-        |        foo|        bar|     1|     2|     3|...
-        |        foo|        bar|     4|     5|     6|...
-        |        zoo|        bar|     7|     8|     9|...
-        +-----------+-----------+------+------+------+...
+        +-----------------+-----------------+------+------+------+...
+        |__index_level_0__|__index_level_1__|(a, x)|(a, y)|(b, z)|...
+        +-----------------+-----------------+------+------+------+...
+        |              foo|              bar|     1|     2|     3|...
+        |              foo|              bar|     4|     5|     6|...
+        |              zoo|              bar|     7|     8|     9|...
+        +-----------------+-----------------+------+------+------+...
 
         >>> internal._index_map  # doctest: +NORMALIZE_WHITESPACE
-        OrderedDict([('row_index_a', ('row_index_a',)), ('row_index_b', ('row_index_b',)),
+        OrderedDict([('__index_level_0__', ('row_index_a',)),
+         ('__index_level_1__', ('row_index_b',)),
          ('(a, x)', ('a', 'x'))])
 
         >>> internal._column_labels
@@ -991,43 +992,19 @@ class _InternalFrame(object):
             column_labels = None
         column_label_names = columns.names
 
-        index = pdf.index
+        index_names = [
+            name if name is None or isinstance(name, tuple) else (name,) for name in pdf.index.names
+        ]
+        index_columns = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(index_names))]
 
-        index_map = []  # type: ignore
-        if isinstance(index, pd.MultiIndex):
-            if index.names is None:
-                index_map = [(SPARK_INDEX_NAME_FORMAT(i), None) for i in range(len(index.levels))]
-            else:
-                index_map = [
-                    (
-                        SPARK_INDEX_NAME_FORMAT(i)  # type: ignore
-                        if name is None
-                        else name_like_string(name),
-                        name if name is None or isinstance(name, tuple) else (name,),
-                    )
-                    for i, name in enumerate(index.names)
-                ]
-        else:
-            name = index.name
-            index_map = [
-                (
-                    name_like_string(name)  # type: ignore
-                    if name is not None
-                    else SPARK_DEFAULT_INDEX_NAME,
-                    name if name is None or isinstance(name, tuple) else (name,),
-                )
-            ]
-
-        index_columns = [index_column for index_column, _ in index_map]
-
+        pdf = pdf.copy()
+        pdf.index.names = index_columns
         reset_index = pdf.reset_index()
         reset_index.columns = index_columns + data_columns
         schema = StructType(
             [
                 StructField(
-                    name_like_string(name),
-                    infer_pd_series_spark_type(col),
-                    nullable=bool(col.isnull().any()),
+                    name, infer_pd_series_spark_type(col), nullable=bool(col.isnull().any()),
                 )
                 for name, col in reset_index.iteritems()
             ]
@@ -1040,7 +1017,7 @@ class _InternalFrame(object):
         sdf = default_session().createDataFrame(reset_index, schema=schema)
         return _InternalFrame(
             spark_frame=sdf,
-            index_map=OrderedDict(index_map),
+            index_map=OrderedDict(zip(index_columns, index_names)),
             column_labels=column_labels,
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
             column_label_names=column_label_names,

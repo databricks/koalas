@@ -1927,7 +1927,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         -------
         Returns the unique values as a Series.
 
-        See Examples section.
+        See Also
+        --------
+        Index.unique
+        groupby.SeriesGroupBy.unique
 
         Examples
         --------
@@ -2570,6 +2573,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         -------
         Series
 
+        See Also
+        --------
+        Series.aggregate : Only perform aggregating type operations.
+        Series.transform : Only perform transforming type operations.
+        DataFrame.apply : The equivalent function for DataFrame.
+
         Examples
         --------
         Create a Series with typical summer temperatures for each city.
@@ -2692,8 +2701,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         See Also
         --------
-        databricks.koalas.Series.apply
-        databricks.koalas.Series.transform
+        Series.apply : Invoke function on a Series.
+        Series.transform : Only perform transforming type operations.
+        Series.groupby : Perform operations over groups.
+        DataFrame.aggregate : The equivalent function for DataFrame.
 
         Examples
         --------
@@ -2772,7 +2783,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         See Also
         --------
+        Series.aggregate : Only perform aggregating type operations.
         Series.apply : Invoke function on Series.
+        DataFrame.transform : The equivalent function for DataFrame.
 
         Examples
         --------
@@ -3565,9 +3578,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return _col(DataFrame(internal))
 
-    def copy(self) -> "Series":
+    def copy(self, deep=None) -> "Series":
         """
         Make a copy of this object's indices and data.
+
+        Parameters
+        ----------
+        deep : None
+            this parameter is not supported but just dummy parameter to match pandas.
 
         Returns
         -------
@@ -3587,87 +3605,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: int64
         """
         return _col(DataFrame(self._internal.copy()))
-
-    def truncate(self, before=None, after=None, copy=True):
-        """
-        Truncates a sorted Series before and/or after some particular index value.
-        Series should have sorted index.
-
-        .. note:: This API is dependent on :meth:`Index.is_monotonic_increasing`
-            which can be expensive.
-
-        Parameters
-        ----------
-        before : string, int
-            Truncate all rows before this index value
-        after : string, int
-            Truncate all rows after this index value
-        copy : boolean, default is True,
-            return a copy of the truncated section
-
-        Returns
-        -------
-        truncated : Series
-
-        Examples
-        --------
-
-
-        A Series has index that sorted integers.
-
-        >>> s = ks.Series([10, 20, 30, 40, 50, 60, 70],
-        ...               index=[1, 2, 3, 4, 5, 6, 7])
-        >>> s
-        1    10
-        2    20
-        3    30
-        4    40
-        5    50
-        6    60
-        7    70
-        Name: 0, dtype: int64
-
-        >>> s.truncate(2, 5)
-        2    20
-        3    30
-        4    40
-        5    50
-        Name: 0, dtype: int64
-
-        A Series has index that sorted strings.
-
-        >>> s = ks.Series([10, 20, 30, 40, 50, 60, 70],
-        ...               index=['a', 'b', 'c', 'd', 'e', 'f', 'g'])
-        >>> s
-        a    10
-        b    20
-        c    30
-        d    40
-        e    50
-        f    60
-        g    70
-        Name: 0, dtype: int64
-
-        >>> s.truncate('b', 'e')
-        b    20
-        c    30
-        d    40
-        e    50
-        Name: 0, dtype: int64
-        """
-        indexes = self.index
-        indexes_increasing = indexes.is_monotonic_increasing
-        if not indexes_increasing and not indexes.is_monotonic_decreasing:
-            raise ValueError("truncate requires a sorted index")
-        if (before is None) and (after is None):
-            return self.copy() if copy else self
-        if (before is not None) and (after is not None):
-            if before > after:
-                raise ValueError("Truncate: %s must be after %s" % (after, before))
-
-        result = _col(self.to_frame().loc[before:after])
-
-        return result.copy() if copy else result
 
     def mode(self, dropna=True) -> "Series":
         """
