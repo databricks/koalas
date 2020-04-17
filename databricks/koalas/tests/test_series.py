@@ -1025,6 +1025,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_astype(self):
         pser = pd.Series([10, 20, 15, 30, 45], name="x")
         kser = ks.Series(pser)
+
+        self.assert_eq(kser.astype(int), pser.astype(int))
+        self.assert_eq(kser.astype(bool), pser.astype(bool))
+
+        pser = pd.Series([10, 20, 15, 30, 45, None, np.nan], name="x")
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser.astype(bool), pser.astype(bool))
+
+        pser = pd.Series(["hi", "hi ", " ", " \t", "", None], name="x")
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser.astype(bool), pser.astype(bool))
+        self.assert_eq(kser.str.strip().astype(bool), pser.str.strip().astype(bool))
+
+        pser = pd.Series([True, False, None], name="x")
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser.astype(bool), pser.astype(bool))
+
         with self.assertRaisesRegex(ValueError, "Type int63 not understood"):
             kser.astype("int63")
 
