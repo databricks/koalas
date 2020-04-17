@@ -1463,3 +1463,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             result = pd.Series([np.inf, np.nan, -np.inf, np.nan, np.inf, -np.inf], name="Koalas")
             self.assert_eq(repr(kser.floordiv(0)), repr(result))
             self.assert_eq(repr(kser // 0), repr(result))
+
+    def test_floordiv_nan(self):
+        pser = pd.Series([-100, 0, 100, None, np.nan], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(repr(pser.floordiv(np.nan)), repr(kser.floordiv(np.nan)))
