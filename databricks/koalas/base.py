@@ -220,7 +220,7 @@ class IndexOpsMixin(object):
     def __floordiv__(self, other):
         def floordiv(left, right):
             return F.when(F.lit(right == 0), F.lit(np.inf).__div__(left)).otherwise(
-                F.floor(left.__div__(right))
+                F.when(F.lit(right) == "NaN", np.nan).otherwise(F.floor(left.__div__(right)))
             )
 
         return _numpy_column_op(floordiv)(self, other)
@@ -228,7 +228,7 @@ class IndexOpsMixin(object):
     def __rfloordiv__(self, other):
         def rfloordiv(left, right):
             return F.when(F.lit(left == 0), F.lit(np.inf).__div__(right)).otherwise(
-                F.floor(F.lit(right).__div__(left))
+                F.when(F.lit(left) == "NaN", np.nan).otherwise(F.floor(F.lit(right).__div__(left)))
             )
 
         return _numpy_column_op(rfloordiv)(self, other)
