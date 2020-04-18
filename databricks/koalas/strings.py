@@ -17,7 +17,7 @@
 """
 String functions on Koalas Series
 """
-from typing import TYPE_CHECKING
+from typing import Union, TYPE_CHECKING
 
 import numpy as np
 
@@ -1156,9 +1156,16 @@ class StringMethods(object):
             Series with list entries concatenated by intervening occurrences of
             the delimiter.
 
+        See Also
+        --------
+        str.split : Split strings around given separator/delimiter.
+        str.rsplit : Splits string around given separator/delimiter,
+            starting from the right.
+
         Examples
         --------
         Example with a list that contains a None element.
+
         >>> s = ks.Series([['lion', 'elephant', 'zebra'],
         ...                ['cat', None, 'dog']])
         >>> s
@@ -1167,6 +1174,7 @@ class StringMethods(object):
         Name: 0, dtype: object
 
         Join all lists using a ‘-‘. The list containing None will produce None.
+
         >>> s.str.join('-')
         0    lion-elephant-zebra
         1                   None
@@ -1776,7 +1784,7 @@ class StringMethods(object):
             self, lambda x: x.str.slice_replace(start, stop, repl), StringType()
         ).alias(self.name)
 
-    def split(self, pat=None, n=-1, expand=False) -> "ks.Series":
+    def split(self, pat=None, n=-1, expand=False) -> Union["ks.Series", "ks.DataFrame"]:
         """
         Split strings around given separator/delimiter.
 
@@ -1791,13 +1799,38 @@ class StringMethods(object):
         n : int, default -1 (all)
             Limit number of splits in output. None, 0 and -1 will be
             interpreted as return all splits.
-        expand : bool, currently only False supported
+        expand : bool, default False
             Expand the splitted strings into separate columns.
+
+            * If ``True``, `n` must be a positive integer, and return DataFrame expanding
+              dimensionality.
+            * If ``False``, return Series, containing lists of strings.
 
         Returns
         -------
-        Series of object
-            Series with split strings.
+        Series, DataFrame
+            Type matches caller unless `expand=True` (see Notes).
+
+        See Also
+        --------
+        str.rsplit : Splits string around given separator/delimiter,
+            starting from the right.
+        str.join : Join lists contained as elements in the Series/Index
+            with passed delimiter.
+
+        Notes
+        -----
+        The handling of the `n` keyword depends on the number of found splits:
+
+        - If found splits > `n`,  make first `n` splits only
+        - If found splits <= `n`, make all splits
+        - If for a certain row the number of found splits < `n`,
+          append `None` for padding up to `n` if ``expand=True``
+
+        If using ``expand=True``, Series callers return DataFrame objects with `n + 1` columns.
+
+        .. note:: Even if `n` is much larger than found splits, the number of columns does NOT
+            shrink unlike pandas.
 
         Examples
         --------
@@ -1843,15 +1876,54 @@ class StringMethods(object):
         1    [https:, , docs.python.org, 3, tutorial, index...
         2                                                 None
         Name: 0, dtype: object
-        """
-        if expand:
-            raise NotImplementedError("expand=True is currently not supported.")
 
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.split(pat, n, expand), ArrayType(StringType(), containsNull=True)
+        When using ``expand=True``, the split elements will expand out into
+        separate columns. If NaN is present, it is propagated throughout
+        the columns during the split.
+
+        >>> s.str.split(n=4, expand=True)
+                                                       0     1     2        3         4
+        0                                           this    is     a  regular  sentence
+        1  https://docs.python.org/3/tutorial/index.html  None  None     None      None
+        2                                           None  None  None     None      None
+
+        For slightly more complex use cases like splitting the html document name
+        from a url, a combination of parameter settings can be used.
+
+        >>> s.str.rsplit("/", n=1, expand=True)
+                                            0           1
+        0          this is a regular sentence        None
+        1  https://docs.python.org/3/tutorial  index.html
+        2                                None        None
+
+        Remember to escape special characters when explicitly using regular
+        expressions.
+
+        >>> s = pd.Series(["1+1=2"])
+        >>> s.str.split(r"\\+|=", n=2, expand=True)
+           0  1  2
+        0  1  1  2
+        """
+        from databricks.koalas.frame import DataFrame
+
+        if expand and n <= 0:
+            raise NotImplementedError("expand=True is currently only supported with n > 0.")
+
+        kser = _wrap_accessor_pandas(
+            self, lambda x: x.str.split(pat, n), ArrayType(StringType(), containsNull=True)
         ).alias(self.name)
 
-    def rsplit(self, pat=None, n=-1, expand=False) -> "ks.Series":
+        if expand:
+            kdf = kser.to_frame()
+            scol = kdf._internal.data_spark_columns[0]
+            spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
+            column_labels = [(str(i),) for i in range(n + 1)]
+            internal = kdf._internal.with_new_columns(spark_columns, column_labels)
+            return DataFrame(internal)
+        else:
+            return kser
+
+    def rsplit(self, pat=None, n=-1, expand=False) -> Union["ks.Series", "ks.DataFrame"]:
         """
         Split strings around given separator/delimiter.
 
@@ -1866,13 +1938,37 @@ class StringMethods(object):
         n : int, default -1 (all)
             Limit number of splits in output. None, 0 and -1 will be
             interpreted as return all splits.
-        expand : bool, currently only False supported
+        expand : bool, default False
             Expand the splitted strings into separate columns.
+
+            * If ``True``, `n` must be a positive integer, and return DataFrame expanding
+              dimensionality.
+            * If ``False``, return Series, containing lists of strings.
 
         Returns
         -------
-        Series of object
-            Series with split strings.
+        Series, DataFrame
+            Type matches caller unless `expand=True` (see Notes).
+
+        See Also
+        --------
+        str.split : Split strings around given separator/delimiter.
+        str.join : Join lists contained as elements in the Series/Index
+            with passed delimiter.
+
+        Notes
+        -----
+        The handling of the `n` keyword depends on the number of found splits:
+
+        - If found splits > `n`,  make first `n` splits only
+        - If found splits <= `n`, make all splits
+        - If for a certain row the number of found splits < `n`,
+          append `None` for padding up to `n` if ``expand=True``
+
+        If using ``expand=True``, Series callers return DataFrame objects with `n + 1` columns.
+
+        .. note:: Even if `n` is much larger than found splits, the number of columns does NOT
+            shrink unlike pandas.
 
         Examples
         --------
@@ -1910,13 +2006,52 @@ class StringMethods(object):
         1    [https://docs.python.org/3/tutorial/index.html]
         2                                               None
         Name: 0, dtype: object
-        """
-        if expand:
-            raise NotImplementedError("expand=True is currently not supported.")
 
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.rsplit(pat, n, expand), ArrayType(StringType(), containsNull=True)
+        When using ``expand=True``, the split elements will expand out into
+        separate columns. If NaN is present, it is propagated throughout
+        the columns during the split.
+
+        >>> s.str.split(n=4, expand=True)
+                                                       0     1     2        3         4
+        0                                           this    is     a  regular  sentence
+        1  https://docs.python.org/3/tutorial/index.html  None  None     None      None
+        2                                           None  None  None     None      None
+
+        For slightly more complex use cases like splitting the html document name
+        from a url, a combination of parameter settings can be used.
+
+        >>> s.str.rsplit("/", n=1, expand=True)
+                                            0           1
+        0          this is a regular sentence        None
+        1  https://docs.python.org/3/tutorial  index.html
+        2                                None        None
+
+        Remember to escape special characters when explicitly using regular
+        expressions.
+
+        >>> s = pd.Series(["1+1=2"])
+        >>> s.str.split(r"\\+|=", n=2, expand=True)
+           0  1  2
+        0  1  1  2
+        """
+        from databricks.koalas.frame import DataFrame
+
+        if expand and n <= 0:
+            raise NotImplementedError("expand=True is currently only supported with n > 0.")
+
+        kser = _wrap_accessor_pandas(
+            self, lambda x: x.str.rsplit(pat, n), ArrayType(StringType(), containsNull=True)
         ).alias(self.name)
+
+        if expand:
+            kdf = kser.to_frame()
+            scol = kdf._internal.data_spark_columns[0]
+            spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
+            column_labels = [(str(i),) for i in range(n + 1)]
+            internal = kdf._internal.with_new_columns(spark_columns, column_labels)
+            return DataFrame(internal)
+        else:
+            return kser
 
     def translate(self, table) -> "ks.Series":
         """

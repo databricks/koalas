@@ -45,9 +45,14 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
     def check_func(self, func):
         self.check_func_on_series(func, self.pser)
 
-    def check_func_on_series(self, func, pser):
+    def check_func_on_series(self, func, pser, result_is_dataframe=False):
         kser = ks.from_pandas(pser)
-        mt.assert_series_equal(func(kser).toPandas(), func(pser), check_names=False)
+        if result_is_dataframe:
+            mt.assert_frame_equal(
+                func(kser).to_pandas(), func(pser).rename(columns=str), check_names=False
+            )
+        else:
+            mt.assert_series_equal(func(kser).to_pandas(), func(pser), check_names=False)
 
     def test_string_add_str_num(self):
         pdf = pd.DataFrame(dict(col1=["a"], col2=[1]))
@@ -291,6 +296,9 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series(["This is a sentence.", "This-is-a-long-word."])
         self.check_func_on_series(lambda x: x.str.split(n=2), pser)
         self.check_func_on_series(lambda x: x.str.split(pat="-", n=2), pser)
+        self.check_func_on_series(
+            lambda x: x.str.split(n=2, expand=True), pser, result_is_dataframe=True,
+        )
         with self.assertRaises(NotImplementedError):
             self.check_func(lambda x: x.str.split(expand=True))
 
@@ -300,6 +308,9 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series(["This is a sentence.", "This-is-a-long-word."])
         self.check_func_on_series(lambda x: x.str.rsplit(n=2), pser)
         self.check_func_on_series(lambda x: x.str.rsplit(pat="-", n=2), pser)
+        self.check_func_on_series(
+            lambda x: x.str.rsplit(n=2, expand=True), pser, result_is_dataframe=True
+        )
         with self.assertRaises(NotImplementedError):
             self.check_func(lambda x: x.str.rsplit(expand=True))
 
