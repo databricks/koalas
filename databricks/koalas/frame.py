@@ -38,6 +38,7 @@ else:
     from pandas.core.dtypes.common import _get_dtype_from_object as infer_dtype_from_object
 from pandas.core.accessor import CachedAccessor
 from pandas.core.dtypes.inference import is_sequence
+import pyspark
 from pyspark import StorageLevel
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
@@ -9772,7 +9773,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(internal)
 
-    def explain(self, extended: bool = False):
+    def explain(self, extended: Optional[bool] = None, mode: Optional[str] = None):
         """
         Prints the underlying (logical and physical) Spark plans to the console for debugging
         purpose.
@@ -9781,6 +9782,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ----------
         extended : boolean, default ``False``.
             If ``False``, prints only the physical plan.
+        mode : string, default ``None``.
+            The expected output format of plans.
 
         Examples
         --------
@@ -9798,8 +9801,35 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...
         == Physical Plan ==
         ...
+
+        >>> df.explain(mode="extended")  # doctest: +ELLIPSIS
+        == Parsed Logical Plan ==
+        ...
+        == Analyzed Logical Plan ==
+        ...
+        == Optimized Logical Plan ==
+        ...
+        == Physical Plan ==
+        ...
         """
-        self._internal.to_internal_spark_frame.explain(extended)
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+            if mode is not None:
+                if extended is not None:
+                    raise Exception("extended and mode can not be specified simultaneously")
+                elif mode == "simple":
+                    extended = False
+                elif mode == "extended":
+                    extended = True
+                else:
+                    raise ValueError(
+                        "Unknown explain mode: {}. Accepted explain modes are "
+                        "'simple', 'extended'.".format(mode)
+                    )
+            if extended is None:
+                extended = False
+            self._internal.to_internal_spark_frame.explain(extended)
+        else:
+            self._internal.to_internal_spark_frame.explain(extended, mode)
 
     def take(self, indices, axis=0, **kwargs):
         """
