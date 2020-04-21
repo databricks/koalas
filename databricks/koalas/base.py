@@ -35,7 +35,7 @@ from databricks.koalas.internal import (
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
 )
-from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
+from databricks.koalas.typedef import spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
 
@@ -114,23 +114,6 @@ def _numpy_column_op(f):
         return _column_op(f)(self, *new_args)
 
     return wrapper
-
-
-def _wrap_accessor_spark(accessor, fn, return_type=None):
-    """
-    Wrap an accessor property or method, e.g., Series.dt.date with a spark function.
-    """
-    if return_type:
-        return _column_op(lambda col: fn(col).cast(return_type))(accessor._data)
-    else:
-        return _column_op(fn)(accessor._data)
-
-
-def _wrap_accessor_pandas(accessor, fn, return_type):
-    """
-    Wrap an accessor property or method, e.g, Series.dt.date with a pandas function.
-    """
-    return pandas_wraps(fn, return_col=return_type)(accessor._data)
 
 
 class IndexOpsMixin(object):

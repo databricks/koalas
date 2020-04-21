@@ -42,7 +42,7 @@ from pyspark.sql.types import (
 from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.typedef import _infer_return_type
+from databricks.koalas.typedef import infer_return_type
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import (
     _InternalFrame,
@@ -944,7 +944,7 @@ class GroupBy(object):
                     "currently; however got [%s]. Use DataFrame type hint instead." % return_sig
                 )
 
-            return_schema = _infer_return_type(func).tpe
+            return_schema = infer_return_type(func).tpe
             if not isinstance(return_schema, StructType):
                 should_return_series = True
                 if is_series_groupby:
@@ -1034,6 +1034,21 @@ class GroupBy(object):
 
     @staticmethod
     def _spark_group_map_apply(kdf, func, groupkeys_scols, return_schema, retain_index):
+        output_func = GroupBy._make_pandas_df_builder_func(kdf, func, return_schema, retain_index)
+        grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(output_func)
+        sdf = kdf._sdf.drop(*HIDDEN_COLUMNS)
+        input_groupkeys = [s for s in groupkeys_scols]
+        sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
+
+        return sdf
+
+    @staticmethod
+    def _make_pandas_df_builder_func(kdf, func, return_schema, retain_index):
+        """
+        Creates a function that can be used inside the pandas UDF. This function can construct
+        the same pandas DataFrame as if the Koalas DataFrame is collected to driver side.
+        The index, column labels, etc. are re-constructed within the function.
+        """
         index_columns = kdf._internal.index_spark_column_names
         index_names = kdf._internal.index_names
         data_columns = kdf._internal.data_spark_column_names
@@ -1092,13 +1107,7 @@ class GroupBy(object):
 
             return pdf
 
-        grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(rename_output)
-
-        sdf = kdf._sdf.drop(*HIDDEN_COLUMNS)
-        input_groupkeys = [s for s in groupkeys_scols]
-        sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
-
-        return sdf
+        return rename_output
 
     def rank(self, method="average", ascending=True):
         """
@@ -1732,7 +1741,7 @@ class GroupBy(object):
             # If schema is inferred, we can restore indexes too.
             internal = kdf._internal.with_new_sdf(sdf)
         else:
-            return_type = _infer_return_type(func).tpe
+            return_type = infer_return_type(func).tpe
             data_columns = self._kdf._internal.data_spark_column_names
             return_schema = StructType(
                 [StructField(c, return_type) for c in data_columns if c not in input_groupnames]
