@@ -220,6 +220,21 @@ class _LocIndexerLike(_IndexerLike, metaclass=ABCMeta):
     def _select_rows(
         self, rows_sel: Any
     ) -> Tuple[Optional[spark.Column], Optional[int], Optional[int]]:
+        """
+        Dispatch the logic for select rows to more specific methods by `rows_sel` argument types.
+
+        Parameters
+        ----------
+        rows_sel : the key specified to select rows.
+
+        Returns
+        -------
+        Tuple of Spark column, int, int:
+
+            * The Spark column for the condition to filter the rows.
+            * The number of rows when the selection can be simplified by limit.
+            * The remaining index rows if the result index size is shrunk.
+        """
         from databricks.koalas.series import Series
 
         if rows_sel is None:
@@ -243,6 +258,21 @@ class _LocIndexerLike(_IndexerLike, metaclass=ABCMeta):
     def _select_cols(
         self, cols_sel: Any, missing_keys: Optional[List[Tuple[str, ...]]] = None
     ) -> Tuple[List[Tuple[str, ...]], Optional[List[spark.Column]], bool]:
+        """
+        Dispatch the logic for select columns to more specific methods by `cols_sel` argument types.
+
+        Parameters
+        ----------
+        cols_sel : the key specified to select columns.
+
+        Returns
+        -------
+        Tuple of list of column label, list of Spark columns, bool:
+
+            * The column labels selected.
+            * The Spark columns selected.
+            * The boolean value whether Series should be returned or not.
+        """
         from databricks.koalas.series import Series
 
         if cols_sel is None:
@@ -273,30 +303,35 @@ class _LocIndexerLike(_IndexerLike, metaclass=ABCMeta):
     def _select_rows_by_series(
         self, rows_sel: "Series"
     ) -> Tuple[Optional[spark.Column], Optional[int], Optional[int]]:
+        """ Select rows by `Series` type key. """
         pass
 
     @abstractmethod
     def _select_rows_by_spark_column(
         self, rows_sel: spark.column
     ) -> Tuple[Optional[spark.Column], Optional[int], Optional[int]]:
+        """ Select rows by Spark `Column` type key. """
         pass
 
     @abstractmethod
     def _select_rows_by_slice(
         self, rows_sel: slice
     ) -> Tuple[Optional[spark.Column], Optional[int], Optional[int]]:
+        """ Select rows by `slice` type key. """
         pass
 
     @abstractmethod
     def _select_rows_by_iterable(
         self, rows_sel: Iterable
     ) -> Tuple[Optional[spark.Column], Optional[int], Optional[int]]:
+        """ Select rows by `Iterable` type key. """
         pass
 
     @abstractmethod
     def _select_rows_else(
         self, rows_sel: Any
     ) -> Tuple[Optional[spark.Column], Optional[int], Optional[int]]:
+        """ Select rows by other type key. """
         pass
 
     # Methods for col selection
@@ -305,30 +340,35 @@ class _LocIndexerLike(_IndexerLike, metaclass=ABCMeta):
     def _select_cols_by_series(
         self, cols_sel: "Series", missing_keys: Optional[List[Tuple[str, ...]]]
     ) -> Tuple[List[Tuple[str, ...]], Optional[List[spark.Column]], bool]:
+        """ Select columns by `Series` type key. """
         pass
 
     @abstractmethod
     def _select_cols_by_spark_column(
         self, cols_sel: spark.Column, missing_keys: Optional[List[Tuple[str, ...]]]
     ) -> Tuple[List[Tuple[str, ...]], Optional[List[spark.Column]], bool]:
+        """ Select columns by Spark `Column` type key. """
         pass
 
     @abstractmethod
     def _select_cols_by_slice(
         self, cols_sel: slice, missing_keys: Optional[List[Tuple[str, ...]]]
     ) -> Tuple[List[Tuple[str, ...]], Optional[List[spark.Column]], bool]:
+        """ Select columns by `slice` type key. """
         pass
 
     @abstractmethod
     def _select_cols_by_iterable(
         self, cols_sel: Iterable, missing_keys: Optional[List[Tuple[str, ...]]]
     ) -> Tuple[List[Tuple[str, ...]], Optional[List[spark.Column]], bool]:
+        """ Select columns by `Iterable` type key. """
         pass
 
     @abstractmethod
     def _select_cols_else(
         self, cols_sel: Any, missing_keys: Optional[List[Tuple[str, ...]]]
     ) -> Tuple[List[Tuple[str, ...]], Optional[List[spark.Column]], bool]:
+        """ Select columns by other type key. """
         pass
 
     def __getitem__(self, key):
@@ -963,11 +1003,7 @@ class LocIndexer(_LocIndexerLike):
     def _get_from_multiindex_column(
         self, key, missing_keys, labels=None
     ) -> Tuple[List[Tuple[str, ...]], Optional[List[spark.Column]], bool]:
-        """ Select columns from multi-index columns.
-
-        :param key: the multi-index column keys represented by tuple
-        :return: DataFrame or Series
-        """
+        """ Select columns from multi-index columns. """
         assert isinstance(key, tuple)
         if labels is None:
             labels = [(label, label) for label in self._internal.column_labels]
