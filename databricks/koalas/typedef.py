@@ -280,7 +280,7 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
     series = kser._with_new_scol(scol=col)  # type: 'ks.Series'
     all_name_tokens = name_tokens + sorted(kw_name_tokens)
     name = "{}({})".format(f.__name__, ", ".join(all_name_tokens))
-    series = series.astype(return_type).rename(name)
+    series = series.rename(name)
     return series
 
 

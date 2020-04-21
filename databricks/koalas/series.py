@@ -32,7 +32,15 @@ from pandas.api.types import is_list_like
 from databricks.koalas.typedef import as_python_type
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.types import BooleanType, StructType, LongType, IntegerType
+from pyspark.sql.types import (
+    BooleanType,
+    DoubleType,
+    FloatType,
+    StringType,
+    StructType,
+    LongType,
+    IntegerType,
+)
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -958,7 +966,20 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
-        return self._with_new_scol(self._scol.cast(spark_type))
+        if isinstance(spark_type, BooleanType):
+            if isinstance(self.spark_type, StringType):
+                scol = F.when(self._scol.isNull(), F.lit(False)).otherwise(F.length(self._scol) > 0)
+            elif isinstance(self.spark_type, (FloatType, DoubleType)):
+                scol = F.when(self._scol.isNull() | F.isnan(self._scol), F.lit(True)).otherwise(
+                    self._scol.cast(spark_type)
+                )
+            else:
+                scol = F.when(self._scol.isNull(), F.lit(False)).otherwise(
+                    self._scol.cast(spark_type)
+                )
+        else:
+            scol = self._scol.cast(spark_type)
+        return self._with_new_scol(scol)
 
     def getField(self, name):
         if not isinstance(self.spark_type, StructType):
