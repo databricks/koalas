@@ -435,7 +435,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             describe_pdf = pdf.groupby("a").describe().sort_index()
             self.assertRaises(NotImplementedError, lambda: kdf.groupby("a").describe().sort_index())
 
-    @unittest.skipIf(pd.__version__ < "0.25.2", "not supported before pandas 0.25.2")
+    @unittest.skipIf(pd.__version__ < "1.0.0", "not supported before pandas 1.0.0")
     def test_aggregate_relabel_multiindex(self):
         pdf = pd.DataFrame({"group": ["a", "a", "b", "b"], "A": [0, 1, 2, 3], "B": [5, 6, 7, 8]})
         pdf.columns = pd.MultiIndex.from_tuples([("x", "group"), ("y", "A"), ("y", "B")])
