@@ -14,6 +14,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# The current directory of the script.
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+FWDIR="$( cd "$DIR"/.. && pwd )"
+cd "$FWDIR"
+
 BLACK_BUILD="python -m black"
 BLACK_VERSION="19.10b0"
 $BLACK_BUILD 2> /dev/null
