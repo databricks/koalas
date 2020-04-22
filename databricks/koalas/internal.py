@@ -468,7 +468,7 @@ class _InternalFrame(object):
         >>> list(internal._column_label_names)
         ['column_labels_a', 'column_labels_b']
 
-        >>> internal._scol
+        >>> internal.spark_column
         Column<b'(a, y)'>
         """
 
@@ -509,7 +509,7 @@ class _InternalFrame(object):
 
         self._sdf = spark_frame  # type: spark.DataFrame
         self._index_map = index_map  # type: Dict[str, Optional[Tuple[str, ...]]]
-        self._scol = spark_column  # type: Optional[spark.Column]
+        self._spark_column = spark_column  # type: Optional[spark.Column]
         if spark_column is not None:
             self._data_spark_columns = [spark_column]
         elif data_spark_columns is None:
@@ -697,7 +697,7 @@ class _InternalFrame(object):
     @property
     def spark_column(self) -> Optional[spark.Column]:
         """ Return the managed Spark Column. """
-        return self._scol
+        return self._spark_column
 
     @lazy_property
     def data_spark_column_names(self) -> List[str]:
@@ -930,7 +930,7 @@ class _InternalFrame(object):
 
         if isinstance(pred, Series):
             assert isinstance(pred.spark_type, BooleanType), pred.spark_type
-            pred = pred._scol
+            pred = pred.spark_column
         else:
             spark_type = self._sdf.select(pred).schema[0].dataType
             assert isinstance(spark_type, BooleanType), spark_type
@@ -967,7 +967,7 @@ class _InternalFrame(object):
         if column_label_names is _NoValue:
             column_label_names = self._column_label_names
         if spark_column is _NoValue:
-            spark_column = self._scol
+            spark_column = self.spark_column
         return _InternalFrame(
             spark_frame,
             index_map=index_map,

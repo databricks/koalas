@@ -152,7 +152,7 @@ class Rolling(_RollingAndExpanding):
 
     def _apply_as_series_or_frame(self, func):
         return self.kdf_or_kser._apply_series_op(
-            lambda kser: kser._with_new_scol(func(kser._scol)).rename(kser.name)
+            lambda kser: kser._with_new_scol(func(kser.spark_column)).rename(kser.name)
         )
 
     def count(self):
@@ -698,14 +698,14 @@ class RollingGroupby(Rolling):
         applied = []
         for column in kdf.columns:
             applied.append(
-                kdf[column]._with_new_scol(func(kdf[column]._scol)).rename(kdf[column].name)
+                kdf[column]._with_new_scol(func(kdf[column].spark_column)).rename(kdf[column].name)
             )
 
         # Seems like pandas filters out when grouped key is NA.
-        cond = self._groupkeys[0]._scol.isNotNull()
+        cond = self._groupkeys[0].spark_column.isNotNull()
         for c in self._groupkeys:
-            cond = cond | c._scol.isNotNull()
-        sdf = sdf.select(new_index_scols + [c._scol for c in applied]).filter(cond)
+            cond = cond | c.spark_column.isNotNull()
+        sdf = sdf.select(new_index_scols + [c.spark_column for c in applied]).filter(cond)
 
         internal = kdf._internal.copy(
             spark_frame=sdf,

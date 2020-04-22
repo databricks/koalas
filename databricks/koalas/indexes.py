@@ -142,7 +142,7 @@ class Index(IndexOpsMixin):
         String with a summarized representation of the index
         """
         head, tail, total_count = self._kdf._sdf.select(
-            F.first(self._scol), F.last(self._scol), F.count(F.expr("*"))
+            F.first(self.spark_column), F.last(self.spark_column), F.count(F.expr("*"))
         ).first()
 
         if total_count > 0:
@@ -440,7 +440,7 @@ class Index(IndexOpsMixin):
         >>> kdf.index.has_duplicates
         True
         """
-        df = self._kdf._sdf.select(self._scol)
+        df = self._kdf._sdf.select(self.spark_column)
         col = df.columns[0]
 
         return df.select(F.count(col) != F.countDistinct(col)).first()[0]
@@ -554,7 +554,7 @@ class Index(IndexOpsMixin):
         )
 
         idx = kdf.index
-        idx._internal._scol = self._scol
+        idx._internal = idx._internal.copy(spark_column=self.spark_column)
         if inplace:
             self._internal = idx._internal
         else:
@@ -664,7 +664,7 @@ class Index(IndexOpsMixin):
         Name: 0, dtype: object
         """
         kdf = self._kdf
-        scol = self._scol
+        scol = self.spark_column
         if name is not None:
             scol = scol.alias(name_like_string(name))
         column_labels = [None] if len(kdf._internal.index_map) > 1 else kdf._internal.index_names
@@ -731,7 +731,7 @@ class Index(IndexOpsMixin):
                 name = self._internal.index_names[0]
         elif isinstance(name, str):
             name = (name,)
-        scol = self._scol.alias(name_like_string(name))
+        scol = self.spark_column.alias(name_like_string(name))
 
         sdf = self._internal.spark_frame.select(scol, NATURAL_ORDER_COLUMN_NAME)
 
@@ -1370,7 +1370,7 @@ class Index(IndexOpsMixin):
         >>> kidx.argmax()
         4
         """
-        sdf = self._internal.spark_frame.select(self._scol)
+        sdf = self._internal.spark_frame.select(self.spark_column)
         sequence_col = verify_temp_column_name(sdf, "__distributed_sequence_column__")
         sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
         # spark_frame here looks like below
@@ -1388,7 +1388,7 @@ class Index(IndexOpsMixin):
         # |                1|              9|
         # +-----------------+---------------+
 
-        return sdf.orderBy(self._scol.desc(), F.col(sequence_col).asc()).first()[0]
+        return sdf.orderBy(self.spark_column.desc(), F.col(sequence_col).asc()).first()[0]
 
     def argmin(self):
         """
@@ -1411,11 +1411,11 @@ class Index(IndexOpsMixin):
         >>> kidx.argmin()
         7
         """
-        sdf = self._internal.spark_frame.select(self._scol)
+        sdf = self._internal.spark_frame.select(self.spark_column)
         sequence_col = verify_temp_column_name(sdf, "__distributed_sequence_column__")
         sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
 
-        return sdf.orderBy(self._scol.asc(), F.col(sequence_col).asc()).first()[0]
+        return sdf.orderBy(self.spark_column.asc(), F.col(sequence_col).asc()).first()[0]
 
     def set_names(self, names, level=None, inplace=False):
         """
@@ -1689,9 +1689,9 @@ class Index(IndexOpsMixin):
         """
         sdf = self._internal._sdf
         if self.is_monotonic_increasing:
-            sdf = sdf.where(self._scol <= label).select(F.max(self._scol))
+            sdf = sdf.where(self.spark_column <= label).select(F.max(self.spark_column))
         elif self.is_monotonic_decreasing:
-            sdf = sdf.where(self._scol >= label).select(F.min(self._scol))
+            sdf = sdf.where(self.spark_column >= label).select(F.min(self.spark_column))
         else:
             raise ValueError("index must be monotonic increasing or decreasing")
         result = sdf.head()[0]
@@ -1780,7 +1780,11 @@ class Index(IndexOpsMixin):
         if max_display_count is None:
             return repr(self.to_pandas())
 
-        pindex = self._kdf.head(max_display_count + 1).index._with_new_scol(self._scol).to_pandas()
+        pindex = (
+            self._kdf.head(max_display_count + 1)
+            .index._with_new_scol(self.spark_column)
+            .to_pandas()
+        )
 
         pindex_length = len(pindex)
         repr_string = repr(pindex[:max_display_count])
@@ -2072,7 +2076,7 @@ class MultiIndex(Index):
             return self._is_monotonic_decreasing().all()
 
     def _is_monotonic_increasing(self):
-        scol = self._scol
+        scol = self.spark_column
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
         prev = F.lag(scol, 1).over(window)
 
@@ -2108,7 +2112,7 @@ class MultiIndex(Index):
             return compare_null_first
 
     def _is_monotonic_decreasing(self):
-        scol = self._scol
+        scol = self.spark_column
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
         prev = F.lag(scol, 1).over(window)
 

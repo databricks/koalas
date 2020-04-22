@@ -34,6 +34,7 @@ Attributes
    Series.T
    Series.hasnans
    Series.values
+   Series.spark_column
 
 Conversion
 ----------

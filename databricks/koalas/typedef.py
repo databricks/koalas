@@ -270,11 +270,11 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
     spark_col_args = []
     for col in col_args:
         if col is not None:
-            spark_col_args.append(col._scol)
+            spark_col_args.append(col.spark_column)
             name_tokens.append(str(col.name))
     kw_name_tokens = []
     for (key, col) in col_kwargs:
-        spark_col_args.append(col._scol)
+        spark_col_args.append(col.spark_column)
         kw_name_tokens.append("{}={}".format(key, col.name))
     col = wrapped_udf(*spark_col_args)
     series = kser._with_new_scol(scol=col)  # type: 'ks.Series'
