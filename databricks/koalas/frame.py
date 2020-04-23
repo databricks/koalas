@@ -2858,10 +2858,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for label in self._internal.column_labels:
             data_spark_columns.append(
                 F.when(
-                    kdf[tmp_cond_col_name(name_like_string(label))]._scol,
+                    kdf[tmp_cond_col_name(name_like_string(label))].spark_column,
                     kdf._internal.spark_column_for(label),
                 )
-                .otherwise(kdf[tmp_other_col_name(name_like_string(label))]._scol)
+                .otherwise(kdf[tmp_other_col_name(name_like_string(label))].spark_column)
                 .alias(kdf._internal.spark_column_name_for(label))
             )
 
@@ -3715,7 +3715,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         def op(kser):
             label = kser._internal.column_labels[0]
             if label in decimals:
-                return F.round(kser._scol, decimals[label]).alias(
+                return F.round(kser.spark_column, decimals[label]).alias(
                     kser._internal.data_spark_column_names[0]
                 )
             else:
@@ -4541,7 +4541,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         pairs = {
             (k if isinstance(k, tuple) else (k,)): (
-                v._scol if isinstance(v, Series) else v if isinstance(v, spark.Column) else F.lit(v)
+                v.spark_column
+                if isinstance(v, Series)
+                else v
+                if isinstance(v, spark.Column)
+                else F.lit(v)
             )
             for k, v in kwargs.items()
         }
@@ -4842,7 +4846,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             cnt = reduce(
                 lambda x, y: x + y,
-                [F.when(self._kser_for(label).notna()._scol, 1).otherwise(0) for label in labels],
+                [
+                    F.when(self._kser_for(label).notna().spark_column, 1).otherwise(0)
+                    for label in labels
+                ],
                 F.lit(0),
             )
             if thresh is not None:
@@ -5315,7 +5322,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         def op(kser):
             if isinstance(kser.spark_type, numeric_types):
-                scol = kser._scol
+                scol = kser.spark_column
                 if lower is not None:
                     scol = F.when(scol < lower, lower).otherwise(scol)
                 if upper is not None:
@@ -6374,7 +6381,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     "The column %s is not unique. For a multi-index, the label must be a tuple "
                     "with elements corresponding to each level." % name_like_string(colname)
                 )
-            new_by.append(ser._scol)
+            new_by.append(ser.spark_column)
 
         return self._sort(by=new_by, ascending=ascending, inplace=inplace, na_position=na_position)
 
@@ -8036,7 +8043,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index_column = self._internal.index_spark_column_names[0]
 
         kser = ks.Series(list(index))
-        labels = kser._internal._sdf.select(kser._scol.alias(index_column))
+        labels = kser._internal._sdf.select(kser.spark_column.alias(index_column))
 
         joined_df = self._sdf.drop(NATURAL_ORDER_COLUMN_NAME).join(
             labels, on=index_column, how="right"
@@ -9275,8 +9282,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-periods, -periods)
 
         def op(kser):
-            prev_row = F.lag(kser._scol, periods).over(window)
-            return ((kser._scol - prev_row) / prev_row).alias(
+            prev_row = F.lag(kser.spark_column, periods).over(window)
+            return ((kser.spark_column - prev_row) / prev_row).alias(
                 kser._internal.data_spark_column_names[0]
             )
 

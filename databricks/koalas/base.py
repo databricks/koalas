@@ -83,9 +83,9 @@ def _column_op(f):
         cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
         if all(self._kdf is col._kdf for col in cols):
             # Same DataFrame anchors
-            args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
-            scol = f(self._scol, *args)
-            scol = booleanize_null(self._scol, scol, f)
+            args = [arg.spark_column if isinstance(arg, IndexOpsMixin) else arg for arg in args]
+            scol = f(self.spark_column, *args)
+            scol = booleanize_null(self.spark_column, scol, f)
 
             return self._with_new_scol(scol)
         else:
@@ -154,7 +154,13 @@ class IndexOpsMixin(object):
         self._kdf = kdf
 
     @property
-    def _scol(self):
+    def spark_column(self):
+        """
+        Spark Column object representing the Series/Index.
+
+        .. note:: This Spark Column object is strictly stick to its base DataFrame the Series/Index
+            was derived from.
+        """
         return self._internal.spark_column
 
     # arithmetic operators
@@ -202,7 +208,7 @@ class IndexOpsMixin(object):
     def __radd__(self, other):
         # Handle 'literal' + df['col']
         if isinstance(self.spark_type, StringType) and isinstance(other, str):
-            return self._with_new_scol(F.concat(F.lit(other), self._scol))
+            return self._with_new_scol(F.concat(F.lit(other), self.spark_column))
         else:
             return _column_op(spark.Column.__radd__)(self, other)
 
@@ -336,8 +342,8 @@ class IndexOpsMixin(object):
         >>> ks.Series([1, 2, 3]).rename("a").to_frame().set_index("a").index.hasnans
         False
         """
-        sdf = self._internal._sdf.select(self._scol)
-        col = self._scol
+        sdf = self._internal._sdf.select(self.spark_column)
+        col = self.spark_column
 
         ret = sdf.select(F.max(col.isNull() | F.isnan(col))).collect()[0][0]
         return ret
@@ -517,7 +523,7 @@ class IndexOpsMixin(object):
                     "__partition_id"
                 ),  # Make sure we use the same partition id in the whole job.
                 F.col(NATURAL_ORDER_COLUMN_NAME),
-                self._scol.alias("__origin"),
+                self.spark_column.alias("__origin"),
             )
             .select(
                 F.col("__partition_id"),
@@ -635,7 +641,7 @@ class IndexOpsMixin(object):
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
-        return self._with_new_scol(self._scol.cast(spark_type))
+        return self._with_new_scol(self.spark_column.cast(spark_type))
 
     def isin(self, values):
         """
@@ -687,7 +693,7 @@ class IndexOpsMixin(object):
                 " to isin(), you passed a [{values_type}]".format(values_type=type(values).__name__)
             )
 
-        return self._with_new_scol(self._scol.isin(list(values))).rename(self.name)
+        return self._with_new_scol(self.spark_column.isin(list(values))).rename(self.name)
 
     def isnull(self):
         """
@@ -721,9 +727,11 @@ class IndexOpsMixin(object):
         if isinstance(self, MultiIndex):
             raise NotImplementedError("isna is not defined for MultiIndex")
         if isinstance(self.spark_type, (FloatType, DoubleType)):
-            return self._with_new_scol(self._scol.isNull() | F.isnan(self._scol)).rename(self.name)
+            return self._with_new_scol(
+                self.spark_column.isNull() | F.isnan(self.spark_column)
+            ).rename(self.name)
         else:
-            return self._with_new_scol(self._scol.isNull()).rename(self.name)
+            return self._with_new_scol(self.spark_column.isNull()).rename(self.name)
 
     isna = isnull
 
@@ -819,7 +827,7 @@ class IndexOpsMixin(object):
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
 
-        sdf = self._internal._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self.spark_column)
         col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
@@ -882,7 +890,7 @@ class IndexOpsMixin(object):
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
 
-        sdf = self._internal._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self.spark_column)
         col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
@@ -949,7 +957,7 @@ class IndexOpsMixin(object):
         if not isinstance(periods, int):
             raise ValueError("periods should be an int; however, got [%s]" % type(periods))
 
-        col = self._scol
+        col = self.spark_column
         window = (
             Window.partitionBy(*part_cols)
             .orderBy(NATURAL_ORDER_COLUMN_NAME)
@@ -1115,9 +1123,9 @@ class IndexOpsMixin(object):
             raise NotImplementedError("value_counts currently does not support bins")
 
         if dropna:
-            sdf_dropna = self._internal._sdf.select(self._scol).dropna()
+            sdf_dropna = self._internal._sdf.select(self.spark_column).dropna()
         else:
-            sdf_dropna = self._internal._sdf.select(self._scol)
+            sdf_dropna = self._internal._sdf.select(self.spark_column)
         index_name = SPARK_DEFAULT_INDEX_NAME
         column_name = self._internal.data_spark_column_names[0]
         sdf = sdf_dropna.groupby(scol_for(sdf_dropna, column_name).alias(index_name)).count()
@@ -1207,13 +1215,13 @@ class IndexOpsMixin(object):
         colname = self._internal.data_spark_column_names[0]
         count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
         if dropna:
-            return count_fn(self._scol).alias(colname)
+            return count_fn(self.spark_column).alias(colname)
         else:
             return (
-                count_fn(self._scol)
-                + F.when(F.count(F.when(self._scol.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(
-                    0
-                )
+                count_fn(self.spark_column)
+                + F.when(
+                    F.count(F.when(self.spark_column.isNull(), 1).otherwise(None)) >= 1, 1
+                ).otherwise(0)
             ).alias(colname)
 
     def take(self, indices):

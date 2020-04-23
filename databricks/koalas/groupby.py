@@ -1912,7 +1912,7 @@ class DataFrameGroupBy(GroupBy):
     ):
         self._kdf = kdf
         self._groupkeys = by
-        self._groupkeys_scols = [s._scol for s in self._groupkeys]
+        self._groupkeys_scols = [s.spark_column for s in self._groupkeys]
         self._as_index = as_index
         self._should_drop_index = should_drop_index
         self._have_agg_columns = True
@@ -1925,7 +1925,7 @@ class DataFrameGroupBy(GroupBy):
             ]
             self._have_agg_columns = False
         self._agg_columns = [kdf[label] for label in agg_columns]
-        self._agg_columns_scols = [s._scol for s in self._agg_columns]
+        self._agg_columns_scols = [s.spark_column for s in self._agg_columns]
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeDataFrameGroupBy, item):

@@ -533,7 +533,7 @@ class _LocIndexerLike(_IndexerLike, metaclass=ABCMeta):
             if isinstance(value, Series):
                 if remaining_index is not None and remaining_index == 0:
                     raise ValueError("No axis named {} for object type {}".format(key, type(value)))
-                value = value._scol
+                value = value.spark_column
             else:
                 value = F.lit(value)
             scol = (
@@ -599,7 +599,7 @@ class _LocIndexerLike(_IndexerLike, metaclass=ABCMeta):
                     raise ValueError("Incompatible indexer with Series")
                 if len(data_spark_columns) > 1:
                     raise ValueError("shape mismatch")
-                value = value._scol
+                value = value.spark_column
             else:
                 value = F.lit(value)
 
@@ -830,7 +830,7 @@ class LocIndexer(_LocIndexerLike):
         self, rows_sel: "Series"
     ) -> Tuple[Optional[spark.Column], Optional[int], Optional[int]]:
         assert isinstance(rows_sel.spark_type, BooleanType), rows_sel.spark_type
-        return rows_sel._scol, None, None
+        return rows_sel.spark_column, None, None
 
     def _select_rows_by_spark_column(
         self, rows_sel: spark.Column
@@ -857,10 +857,10 @@ class LocIndexer(_LocIndexerLike):
             # get natural order from '__natural_order__' from start to stop
             # to keep natural order.
             start_and_stop = (
-                sdf.select(index_column._scol, NATURAL_ORDER_COLUMN_NAME)
+                sdf.select(index_column.spark_column, NATURAL_ORDER_COLUMN_NAME)
                 .where(
-                    (index_column._scol == F.lit(start).cast(index_data_type))
-                    | (index_column._scol == F.lit(stop).cast(index_data_type))
+                    (index_column.spark_column == F.lit(start).cast(index_data_type))
+                    | (index_column.spark_column == F.lit(stop).cast(index_data_type))
                 )
                 .collect()
             )
@@ -890,17 +890,17 @@ class LocIndexer(_LocIndexerLike):
                 if start is None and rows_sel.start is not None:
                     start = rows_sel.start
                     if inc is not False:
-                        cond.append(index_column._scol >= F.lit(start).cast(index_data_type))
+                        cond.append(index_column.spark_column >= F.lit(start).cast(index_data_type))
                     elif dec is not False:
-                        cond.append(index_column._scol <= F.lit(start).cast(index_data_type))
+                        cond.append(index_column.spark_column <= F.lit(start).cast(index_data_type))
                     else:
                         raise KeyError(rows_sel.start)
                 if stop is None and rows_sel.stop is not None:
                     stop = rows_sel.stop
                     if inc is not False:
-                        cond.append(index_column._scol <= F.lit(stop).cast(index_data_type))
+                        cond.append(index_column.spark_column <= F.lit(stop).cast(index_data_type))
                     elif dec is not False:
-                        cond.append(index_column._scol >= F.lit(stop).cast(index_data_type))
+                        cond.append(index_column.spark_column >= F.lit(stop).cast(index_data_type))
                     else:
                         raise KeyError(rows_sel.stop)
 
@@ -972,13 +972,15 @@ class LocIndexer(_LocIndexerLike):
             index_data_type = index_column.spark_type
             if len(rows_sel) == 1:
                 return (
-                    index_column._scol == F.lit(rows_sel[0]).cast(index_data_type),
+                    index_column.spark_column == F.lit(rows_sel[0]).cast(index_data_type),
                     None,
                     None,
                 )
             else:
                 return (
-                    index_column._scol.isin([F.lit(r).cast(index_data_type) for r in rows_sel]),
+                    index_column.spark_column.isin(
+                        [F.lit(r).cast(index_data_type) for r in rows_sel]
+                    ),
                     None,
                     None,
                 )
@@ -1038,7 +1040,7 @@ class LocIndexer(_LocIndexerLike):
         self, cols_sel: "Series", missing_keys: Optional[List[Tuple[str, ...]]]
     ) -> Tuple[List[Tuple[str, ...]], Optional[List[spark.Column]], bool]:
         column_labels = [cols_sel._internal.column_labels[0]]
-        data_spark_columns = [cols_sel._scol]
+        data_spark_columns = [cols_sel.spark_column]
         return column_labels, data_spark_columns, True
 
     def _select_cols_by_spark_column(
@@ -1065,7 +1067,7 @@ class LocIndexer(_LocIndexerLike):
 
         if all(isinstance(key, Series) for key in cols_sel):
             column_labels = [key._internal.column_labels[0] for key in cols_sel]
-            data_spark_columns = [key._scol for key in cols_sel]
+            data_spark_columns = [key.spark_column for key in cols_sel]
         elif all(isinstance(key, spark.Column) for key in cols_sel):
             column_labels = [
                 (self._internal.spark_frame.select(col).columns[0],) for col in cols_sel
