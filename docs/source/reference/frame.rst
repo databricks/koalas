@@ -103,11 +103,13 @@ Function application, GroupBy & Window
 
    DataFrame.apply
    DataFrame.applymap
+   DataFrame.apply_batch
    DataFrame.pipe
    DataFrame.agg
    DataFrame.aggregate
    DataFrame.groupby
    DataFrame.transform
+   DataFrame.transform_batch
    DataFrame.map_in_pandas
 
 .. _api.dataframe.stats:

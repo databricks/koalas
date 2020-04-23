@@ -99,6 +99,7 @@ Function application, GroupBy & Window
    Series.agg
    Series.aggregate
    Series.transform
+   Series.transform_batch
    Series.map
    Series.groupby
    Series.pipe

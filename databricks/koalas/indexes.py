@@ -121,9 +121,10 @@ class Index(IndexOpsMixin):
         :param scol: the new Spark Column
         :return: the copied Index
         """
-        sdf = self._internal.spark_frame.select(scol)
+        sdf = self._internal.spark_frame.select(scol)  # type: ignore
         internal = _InternalFrame(
-            spark_frame=sdf, index_map=OrderedDict(zip(sdf.columns, self._internal.index_names))
+            spark_frame=sdf,
+            index_map=OrderedDict(zip(sdf.columns, self._internal.index_names)),  # type: ignore
         )
         return DataFrame(internal).index
 
@@ -355,7 +356,7 @@ class Index(IndexOpsMixin):
         >>> df['dogs'].index.to_pandas()
         Index(['a', 'b', 'c', 'd'], dtype='object')
         """
-        return self._internal.to_pandas_frame.index
+        return self._internal.to_pandas_frame.index  # type: ignore
 
     toPandas = to_pandas
 
@@ -459,7 +460,7 @@ class Index(IndexOpsMixin):
         """Return names of the Index."""
         return [
             name if name is None or len(name) > 1 else name[0]
-            for name in self._internal.index_names
+            for name in self._internal.index_names  # type: ignore
         ]
 
     @names.setter

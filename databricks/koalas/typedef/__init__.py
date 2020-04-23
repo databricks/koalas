@@ -14,177 +14,9 @@
 # limitations under the License.
 #
 
-"""
-Utilities to deal with types. This is mostly focused on python3.
-"""
-import typing
-import datetime
-from inspect import getfullargspec
-from functools import wraps
+from databricks.koalas.typedef.typehints import *
 
-import numpy as np
-import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
-import pyarrow as pa
-from pyspark.sql import Column
-from pyspark.sql.functions import pandas_udf
-import pyspark.sql.types as types
-
-from pyspark.sql.types import UserDefinedType
-
-try:
-    from pyspark.sql.types import to_arrow_type, from_arrow_type
-except ImportError:
-    from pyspark.sql.pandas.types import to_arrow_type, from_arrow_type
-
-from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-
-
-__all__ = ["pandas_wraps", "as_spark_type", "as_python_type", "infer_pd_series_spark_type"]
-
-
-# A column of data, with the data type.
-class _Series(object):
-    def __init__(self, tpe):
-        self.tpe = tpe  # type: types.DataType
-
-    def __repr__(self):
-        return "_SeriesType[{}]".format(self.tpe)
-
-
-class _DataFrame(object):
-    def __init__(self, tpe):
-        # Seems we cannot specify field names. I currently gave some default names
-        # `c0, c1, ... cn`.
-        self.tpe = types.StructType(
-            [types.StructField("c%s" % i, tpe[i]) for i in range(len(tpe))]
-        )  # type: types.StructType
-
-    def __repr__(self):
-        return "_DataFrameType[{}]".format(self.tpe)
-
-
-# The type is a scalar type that is furthermore understood by Spark.
-class _Scalar(object):
-    def __init__(self, tpe):
-        self.tpe = tpe  # type: types.DataType
-
-    def __repr__(self):
-        return "_ScalarType[{}]".format(self.tpe)
-
-
-# The type is left unspecified or we do not know about this type.
-class _Unknown(object):
-    def __init__(self, tpe):
-        self.tpe = tpe
-
-    def __repr__(self):
-        return "_UnknownType[{}]".format(self.tpe)
-
-
-X = typing.Union[_Series, _DataFrame, _Scalar, _Unknown]
-
-
-def _to_stype(tpe) -> X:
-    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.Series:
-        inner = as_spark_type(tpe.__args__[0])
-        return _Series(inner)
-    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.DataFrame:
-        tuple_type = tpe.__args__[0]
-        if hasattr(tuple_type, "__tuple_params__"):
-            # Python 3.5.0 to 3.5.2 has '__tuple_params__' instead.
-            # See https://github.com/python/cpython/blob/v3.5.2/Lib/typing.py
-            parameters = getattr(tuple_type, "__tuple_params__")
-        else:
-            parameters = getattr(tuple_type, "__args__")
-        return _DataFrame([as_spark_type(t) for t in parameters])
-    inner = as_spark_type(tpe)
-    if inner is None:
-        return _Unknown(tpe)
-    else:
-        return _Scalar(inner)
-
-
-# First element of the list is the python base type
-_base = {
-    types.StringType(): [str, "str", "string"],
-    types.BinaryType(): [bytes],
-    types.ByteType(): [np.int8, "int8", "byte"],
-    types.ShortType(): [np.int16, "int16", "short"],
-    types.IntegerType(): [int, "int", np.int, np.int32],
-    types.LongType(): [np.int64, "int64", "long", "bigint"],
-    types.FloatType(): [float, "float", np.float],
-    types.DoubleType(): [np.float64, "float64", "double"],
-    types.TimestampType(): [datetime.datetime, np.datetime64],
-    types.DateType(): [datetime.date],
-    types.BooleanType(): [bool, "boolean", "bool", np.bool],
-    types.ArrayType(types.StringType()): [],
-}
-
-
-def _build_type_dict():
-    return dict(
-        [(other_type, spark_type) for (spark_type, l) in _base.items() for other_type in l]
-        + [(spark_type, spark_type) for (spark_type, _) in _base.items()]
-    )
-
-
-def _build_py_type_dict():
-    return dict([(spark_type, l[0]) for (spark_type, l) in _base.items() if len(l) > 0])
-
-
-_known_types = _build_type_dict()
-
-_py_conversions = _build_py_type_dict()
-
-
-def as_spark_type(tpe) -> types.DataType:
-    """
-    Given a python type, returns the equivalent spark type.
-    Accepts:
-    - the built-in types in python
-    - the built-in types in numpy
-    - list of pairs of (field_name, type)
-    - dictionaries of field_name -> type
-    - python3's typing system
-    :param tpe:
-    :return:
-    """
-    return _known_types.get(tpe, None)
-
-
-def spark_type_to_pandas_dtype(spark_type):
-    """ Return the given Spark DataType to pandas dtype. """
-    if isinstance(spark_type, UserDefinedType):
-        return np.dtype("object")
-    elif isinstance(spark_type, types.TimestampType):
-        return np.dtype("datetime64[ns]")
-    else:
-        return np.dtype(to_arrow_type(spark_type).to_pandas_dtype())
-
-
-def as_python_type(spark_tpe):
-    return _py_conversions.get(spark_tpe, None)
-
-
-def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
-    """Infer Spark DataType from pandas Series dtype.
-
-    :param s: :class:`pandas.Series` to be inferred
-    :return: the inferred Spark data type
-    """
-    dt = s.dtype
-    if dt == np.dtype("object"):
-        if len(s) == 0 or s.isnull().all():
-            raise ValueError("can not infer schema from empty or null dataset")
-        elif hasattr(s[0], "__UDT__"):
-            return s[0].__UDT__
-        else:
-            return from_arrow_type(pa.Array.from_pandas(s).type)
-    elif is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
-        return types.TimestampType()
-    else:
-        return from_arrow_type(pa.from_numpy_dtype(dt))
+__all__ = ["pandas_wraps", "as_spark_type", "infer_pd_series_spark_type"]
 
 
 def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) -> "ks.Series":
@@ -209,6 +41,8 @@ def _make_fun(f: typing.Callable, return_type: types.DataType, *args, **kwargs) 
     The function is expected to have the following arguments:
     """
     from databricks.koalas.series import Series
+    from pyspark.sql import Column
+    from pyspark.sql.functions import pandas_udf
 
     # All the arguments.
     # None for columns or the value for non-columns
@@ -380,13 +214,19 @@ def pandas_wraps(function=None, return_col=None, return_scalar=None):
     >>> import sys
     >>> fun(df.col1, arg1=sys.stdout)  # doctest: +SKIP
     """
+    import warnings
+    from functools import wraps
+
+    warnings.warn(
+        "pandas_wraps is deprecated. Please use transform_batch instead.", DeprecationWarning,
+    )
 
     def function_wrapper(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
             # Extract the signature arguments from this function.
-            sig_return = _infer_return_type(f, return_col, return_scalar)
-            if not isinstance(sig_return, _Series):
+            sig_return = infer_return_type(f, return_col, return_scalar)
+            if not isinstance(sig_return, SeriesType):
                 raise ValueError(
                     "Expected the return type of this function to be of type column,"
                     " but found type {}".format(sig_return)
@@ -400,51 +240,3 @@ def pandas_wraps(function=None, return_col=None, return_scalar=None):
         return function_wrapper(function)
     else:
         return function_wrapper
-
-
-def _infer_return_type(f, return_col=None, return_scalar=None) -> X:
-    """
-    >>> def func() -> int:
-    ...    pass
-    >>> _infer_return_type(func).tpe
-    IntegerType
-
-    >>> def func() -> ks.Series[int]:
-    ...    pass
-    >>> _infer_return_type(func).tpe
-    IntegerType
-
-    >>> def func() -> ks.DataFrame[np.float, str]:
-    ...    pass
-    >>> _infer_return_type(func).tpe
-    StructType(List(StructField(c0,FloatType,true),StructField(c1,StringType,true)))
-
-    >>> def func() -> ks.DataFrame[np.float]:
-    ...    pass
-    >>> _infer_return_type(func).tpe
-    StructType(List(StructField(c0,FloatType,true)))
-    """
-    spec = getfullargspec(f)
-    return_sig = spec.annotations.get("return", None)
-
-    if not (return_col or return_sig or return_scalar):
-        raise ValueError(
-            "Missing type information. It should either be provided as an argument to "
-            "pandas_wraps, or as a python typing hint"
-        )
-    if return_col is not None:
-        if isinstance(return_col, ks.Series):
-            return _to_stype(return_col)
-        inner = as_spark_type(return_col)
-        return _Series(inner)
-    if return_scalar is not None:
-        if isinstance(return_scalar, ks.Series):
-            raise ValueError(
-                "Column return type {}, you should use 'return_col' to specify"
-                " it.".format(return_scalar)
-            )
-        inner = as_spark_type(return_scalar)
-        return _Scalar(inner)
-    if return_sig is not None:
-        return _to_stype(return_sig)
-    assert False
