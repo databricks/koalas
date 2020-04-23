@@ -33,7 +33,6 @@ try:
 except ImportError:
     from pyspark.sql.pandas.types import to_arrow_type, from_arrow_type
 
-from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef.string_typehints import resolve_string_type_hint
 
 
@@ -77,13 +76,15 @@ class UnknownType(object):
 
 
 def _to_stype(tpe) -> typing.Union[SeriesType, DataFrameType, ScalarType, UnknownType]:
+    from databricks.koalas import Series, DataFrame
+
     if isinstance(tpe, str):
         # This type hint can happen when given hints are string to avoid forward reference.
         tpe = resolve_string_type_hint(tpe)
-    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.Series:
+    if hasattr(tpe, "__origin__") and tpe.__origin__ == Series:
         inner = as_spark_type(tpe.__args__[0])
         return SeriesType(inner)
-    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.DataFrame:
+    if hasattr(tpe, "__origin__") and tpe.__origin__ == DataFrame:
         tuple_type = tpe.__args__[0]
         if hasattr(tuple_type, "__tuple_params__"):
             # Python 3.5.0 to 3.5.2 has '__tuple_params__' instead.
@@ -174,17 +175,17 @@ def infer_return_type(
     >>> infer_return_type(func).tpe
     IntegerType
 
-    >>> def func() -> ks.Series[int]:
+    >>> def func() -> 'ks.Series[int]':
     ...    pass
     >>> infer_return_type(func).tpe
     IntegerType
 
-    >>> def func() -> ks.DataFrame[np.float, str]:
+    >>> def func() -> 'ks.DataFrame[np.float, str]':
     ...    pass
     >>> infer_return_type(func).tpe
     StructType(List(StructField(c0,FloatType,true),StructField(c1,StringType,true)))
 
-    >>> def func() -> ks.DataFrame[np.float]:
+    >>> def func() -> 'ks.DataFrame[np.float]':
     ...    pass
     >>> infer_return_type(func).tpe
     StructType(List(StructField(c0,FloatType,true)))
@@ -209,6 +210,8 @@ def infer_return_type(
     >>> infer_return_type(func).tpe
     StructType(List(StructField(c0,FloatType,true)))
     """
+    from databricks.koalas import Series
+
     spec = getfullargspec(f)
     return_sig = spec.annotations.get("return", None)
 
@@ -218,12 +221,12 @@ def infer_return_type(
             "pandas_wraps, or as a python typing hint"
         )
     if return_col is not None:
-        if isinstance(return_col, ks.Series):
+        if isinstance(return_col, Series):
             return _to_stype(return_col)
         inner = as_spark_type(return_col)
         return SeriesType(inner)
     if return_scalar is not None:
-        if isinstance(return_scalar, ks.Series):
+        if isinstance(return_scalar, Series):
             raise ValueError(
                 "Column return type {}, you should use 'return_col' to specify"
                 " it.".format(return_scalar)
