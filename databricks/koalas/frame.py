@@ -2102,6 +2102,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
         should_infer_schema = return_sig is None
+        should_use_map_in_pandas = LooseVersion(pyspark.__version__) >= "3.0"
 
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
@@ -2118,11 +2119,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if len(pdf) <= limit:
                 return kdf
 
-            return_schema = kdf._internal._sdf.drop(*HIDDEN_COLUMNS).schema
-
-            sdf = GroupBy._spark_group_map_apply(
-                self, func, (F.spark_partition_id(),), return_schema, retain_index=True
-            )
+            return_schema = kdf._internal.to_internal_spark_frame.schema
+            if should_use_map_in_pandas:
+                output_func = GroupBy._make_pandas_df_builder_func(
+                    self, func, return_schema, retain_index=True
+                )
+                sdf = self._internal.to_internal_spark_frame.mapInPandas(
+                    lambda iterator: map(output_func, iterator), schema=return_schema
+                )
+            else:
+                sdf = GroupBy._spark_group_map_apply(
+                    self, func, (F.spark_partition_id(),), return_schema, retain_index=True
+                )
 
             # If schema is inferred, we can restore indexes too.
             internal = kdf._internal.with_new_sdf(sdf)
@@ -2135,9 +2143,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     "hints; however, the return type was %s." % return_sig
                 )
 
-            sdf = GroupBy._spark_group_map_apply(
-                self, func, (F.spark_partition_id(),), return_schema, retain_index=False
-            )
+            if should_use_map_in_pandas:
+                output_func = GroupBy._make_pandas_df_builder_func(
+                    self, func, return_schema, retain_index=False
+                )
+                sdf = self._internal.to_internal_spark_frame.mapInPandas(
+                    lambda iterator: map(output_func, iterator), schema=return_schema
+                )
+            else:
+                sdf = GroupBy._spark_group_map_apply(
+                    self, func, (F.spark_partition_id(),), return_schema, retain_index=False
+                )
 
             # Otherwise, it loses index.
             internal = _InternalFrame(spark_frame=sdf, index_map=None)
@@ -2605,7 +2621,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return_sig = spec.annotations.get("return", None)
         should_infer_schema = return_sig is None
 
-        names = self._internal.spark_frame.schema.names
+        names = self._internal.to_internal_spark_frame.schema.names
         should_by_pass = LooseVersion(pyspark.__version__) >= "3.0"
 
         def pandas_concat(series):
