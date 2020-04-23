@@ -24,6 +24,7 @@ to return the same length of the input and the latter does not require this. See
    >>> kdf = ks.DataFrame({'a': [1,2,3], 'b':[4,5,6]})
    >>> def pandas_plus(pser):
    ...     return pser + 1  # should always return the same length as input.
+   ...
    >>> kdf.transform(pandas_plus)
 
 .. code-block:: python
@@ -32,6 +33,7 @@ to return the same length of the input and the latter does not require this. See
    >>> kdf = ks.DataFrame({'a': [1,2,3], 'b':[5,6,7]})
    >>> def pandas_plus(pser):
    ...     return pser[pser % 2 == 1]  # should always return the same length as input.
+   ...
    >>> kdf.apply(pandas_plus)
 
 In this case, each function takes a pandas Series, and Koalas computes the functions in a distributed manner as below.
@@ -49,6 +51,7 @@ In case of 'column' axis, the function takes each row as a pandas Seires.
    >>> kdf = ks.DataFrame({'a': [1,2,3], 'b':[4,5,6]})
    >>> def pandas_plus(pser):
    ...     return sum(pser)  # allow arbitrary length
+   ...
    >>> kdf.apply(pandas_plus, axis='columns')
 
 The example above calculates the summation of each row as a pandas Series. See below:
@@ -72,6 +75,7 @@ then applies the given function with pandas DataFrame or Series as input and out
    >>> kdf = ks.DataFrame({'a': [1,2,3], 'b':[4,5,6]})
    >>> def pandas_plus(pdf):
    ...     return pdf + 1  # should always return the same length as input.
+   ...
    >>> kdf.transform_batch(pandas_plus)
 
 .. code-block:: python
@@ -80,6 +84,7 @@ then applies the given function with pandas DataFrame or Series as input and out
    >>> kdf = ks.DataFrame({'a': [1,2,3], 'b':[4,5,6]})
    >>> def pandas_plus(pdf):
    ...     return pdf[pdf.a > 1]  # allow arbitrary length
+   ...
    >>> kdf.apply_batch(pandas_plus)
 
 Note that :func:`DataFrame.transform_batch` has the length
@@ -104,6 +109,7 @@ a pandas Series as a chunk of Koalas Series.
    >>> kdf = ks.DataFrame({'a': [1,2,3], 'b':[4,5,6]})
    >>> def pandas_plus(pser):
    ...     return pser + 1  # should always return the same length as input.
+   ...
    >>> kdf.a.transform_batch(pandas_plus)
 
 It can be illustrated as below.
