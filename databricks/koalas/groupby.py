@@ -1103,7 +1103,7 @@ class GroupBy(object):
                 pdf = reset_index
 
             # Just positionally map the column names to given schema's.
-            pdf = pdf.rename(columns=OrderedDict(zip(pdf.columns, return_schema.fieldNames())))
+            pdf = pdf.rename(columns=dict(zip(pdf.columns, return_schema.fieldNames())))
 
             return pdf
 

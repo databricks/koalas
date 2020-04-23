@@ -2920,11 +2920,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_transform_batch_same_anchor(self):
         kdf = ks.range(10)
         kdf["d"] = kdf.transform_batch(lambda pdf: pdf.id + 1)
-        self.assert_eq(kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}))
+        self.assert_eq(
+            kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
+        )
 
         kdf = ks.range(10)
         kdf["d"] = kdf.id.transform_batch(lambda ser: ser + 1)
-        self.assert_eq(kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}))
+        self.assert_eq(
+            kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
+        )
 
         kdf = ks.range(10)
 
@@ -2932,7 +2936,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             return pdf.id + 1
 
         kdf["d"] = kdf.transform_batch(plus_one)
-        self.assert_eq(kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}))
+        self.assert_eq(
+            kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
+        )
 
         kdf = ks.range(10)
 
@@ -2940,7 +2946,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             return ser + 1
 
         kdf["d"] = kdf.id.transform_batch(plus_one)
-        self.assert_eq(kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}))
+        self.assert_eq(
+            kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
+        )
 
     def test_empty_timestamp(self):
         pdf = pd.DataFrame(
