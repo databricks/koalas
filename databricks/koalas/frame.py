@@ -6188,6 +6188,76 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ),
         )
 
+    def spark_schema(self, index_col: Optional[Union[str, List[str]]] = None):
+        """
+        Returns the underlying Spark schema.
+
+        Returns
+        -------
+        pyspark.sql.types.StructType
+            The underlying Spark schema.
+
+        Parameters
+        ----------
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': list('abc'),
+        ...                    'b': list(range(1, 4)),
+        ...                    'c': np.arange(3, 6).astype('i1'),
+        ...                    'd': np.arange(4.0, 7.0, dtype='float64'),
+        ...                    'e': [True, False, True],
+        ...                    'f': pd.date_range('20130101', periods=3)},
+        ...                   columns=['a', 'b', 'c', 'd', 'e', 'f'])
+        >>> df.spark_schema().simpleString()
+        'struct<a:string,b:bigint,c:tinyint,d:double,e:boolean,f:timestamp>'
+        >>> df.spark_schema(index_col='index').simpleString()
+        'struct<index:bigint,a:string,b:bigint,c:tinyint,d:double,e:boolean,f:timestamp>'
+        """
+        return self.to_spark(index_col).schema
+
+    def print_schema(self, index_col: Optional[Union[str, List[str]]] = None):
+        """
+        Prints out the underlying Spark schema in the tree format.
+
+        Parameters
+        ----------
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': list('abc'),
+        ...                    'b': list(range(1, 4)),
+        ...                    'c': np.arange(3, 6).astype('i1'),
+        ...                    'd': np.arange(4.0, 7.0, dtype='float64'),
+        ...                    'e': [True, False, True],
+        ...                    'f': pd.date_range('20130101', periods=3)},
+        ...                   columns=['a', 'b', 'c', 'd', 'e', 'f'])
+        >>> df.print_schema()  # doctest: +NORMALIZE_WHITESPACE
+        root
+         |-- a: string (nullable = false)
+         |-- b: long (nullable = false)
+         |-- c: byte (nullable = false)
+         |-- d: double (nullable = false)
+         |-- e: boolean (nullable = false)
+         |-- f: timestamp (nullable = false)
+        >>> df.print_schema(index_col='index')  # doctest: +NORMALIZE_WHITESPACE
+        root
+         |-- index: long (nullable = false)
+         |-- a: string (nullable = false)
+         |-- b: long (nullable = false)
+         |-- c: byte (nullable = false)
+         |-- d: double (nullable = false)
+         |-- e: boolean (nullable = false)
+         |-- f: timestamp (nullable = false)
+        """
+        self.to_spark(index_col).printSchema()
+
     def select_dtypes(self, include=None, exclude=None):
         """
         Return a subset of the DataFrame's columns based on the column dtypes.

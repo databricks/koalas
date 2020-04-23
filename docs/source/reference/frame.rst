@@ -33,6 +33,14 @@ Attributes and underlying data
    DataFrame.select_dtypes
    DataFrame.values
 
+Underlying Spark schema
+-----------------------
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.spark_schema
+   DataFrame.print_schema
+
 Conversion
 ----------
 .. autosummary::
