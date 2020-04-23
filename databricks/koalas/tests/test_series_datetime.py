@@ -48,21 +48,33 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         "It fails in certain OSs presumably due to different "
         "timezone behaviours inherited from C library."
     )
-    def test_subtraction(self):
+    def test_timestamp_subtraction(self):
         pdf = self.pdf1
         kdf = ks.from_pandas(pdf)
         kdf["diff_seconds"] = kdf["end_date"] - kdf["start_date"] - 1
 
         self.assertEqual(list(kdf["diff_seconds"].toPandas()), [35545499, 33644699, 31571099])
 
-        kdf = ks.from_pandas(
-            pd.DataFrame(
-                {"a": pd.date_range("2016-12-31", "2017-01-08", freq="D"), "b": pd.Series(range(9))}
-            )
+        kdf = ks.DataFrame(
+            {"a": pd.date_range("2016-12-31", "2017-01-08", freq="D"), "b": pd.Series(range(9))}
         )
         expected_error_message = "datetime subtraction can only be applied to datetime series."
         with self.assertRaisesRegex(TypeError, expected_error_message):
             kdf["a"] - kdf["b"]
+
+    def test_date_subtraction(self):
+        pdf = self.pdf1
+        kdf = ks.from_pandas(pdf)
+        kdf["diff_days"] = kdf["end_date"].dt.date - kdf["start_date"].dt.date
+
+        self.assert_eq(list(kdf["diff_days"].toPandas()), [411, 389, 365])
+
+        kdf = ks.DataFrame(
+            {"a": pd.date_range("2016-12-31", "2017-01-08", freq="D"), "b": pd.Series(range(9))}
+        )
+        expected_error_message = "date subtraction can only be applied to date series."
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kdf["a"].dt.date - kdf["b"]
 
     @unittest.skip(
         "It fails in certain OSs presumably due to different "

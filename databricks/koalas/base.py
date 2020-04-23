@@ -26,7 +26,7 @@ import pandas as pd
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
-from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType
+from pyspark.sql.types import DateType, DoubleType, FloatType, LongType, StringType, TimestampType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas import numpy_compat
@@ -186,6 +186,10 @@ class IndexOpsMixin(object):
             if not isinstance(other.spark_type, TimestampType):
                 raise TypeError("datetime subtraction can only be applied to datetime series.")
             return self.astype("bigint") - other.astype("bigint")
+        elif isinstance(other, IndexOpsMixin) and isinstance(self.spark_type, DateType):
+            if not isinstance(other.spark_type, DateType):
+                raise TypeError("date subtraction can only be applied to date series.")
+            return _column_op(F.datediff)(self, other)
         else:
             return _column_op(spark.Column.__sub__)(self, other)
 
