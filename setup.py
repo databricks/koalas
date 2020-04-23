@@ -40,7 +40,7 @@ setup(
     name='koalas',
     version=VERSION,
     packages=['databricks', 'databricks.koalas', 'databricks.koalas.missing',
-              'databricks.koalas.usage_logging'],
+              'databricks.koalas.usage_logging', 'databricks.koalas.typedef'],
     extras_require={
         'spark': ['pyspark>=2.4.0'],
         'mlflow': ['mlflow>=1.0'],
