@@ -1397,17 +1397,17 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([100, None, 300, None, 500], name="Koalas")
         kser = ks.from_pandas(pser)
 
-        others = [-100, 0, 100, None, np.nan]
-        for other in others:
-            self.assert_eq(repr(kser.divmod(other)), repr(pser.divmod(other)))
+        self.assert_eq(repr(kser.divmod(-100)), repr(pser.divmod(-100)))
+        self.assert_eq(repr(kser.divmod(0)), repr(pser.divmod(0)))
+        self.assert_eq(repr(kser.divmod(100)), repr(pser.divmod(100)))
 
     def test_rdivmod(self):
         pser = pd.Series([100, None, 300, None, 500], name="Koalas")
         kser = ks.from_pandas(pser)
 
-        others = [-100, 0, 100, None, np.nan]
-        for other in others:
-            self.assert_eq(repr(kser.rdivmod(other)), repr(pser.rdivmod(other)))
+        self.assert_eq(repr(kser.rdivmod(-100)), repr(pser.rdivmod(-100)))
+        self.assert_eq(repr(kser.rdivmod(0)), repr(pser.rdivmod(0)))
+        self.assert_eq(repr(kser.rdivmod(100)), repr(pser.rdivmod(100)))
 
     def test_mod(self):
         pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")

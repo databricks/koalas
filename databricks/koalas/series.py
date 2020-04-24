@@ -762,7 +762,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         --------
         Series.divmod
         """
-        return (self.rfloorrdiv(other), self.rmod(other))
+        return (self.rfloordiv(other), self.rmod(other))
 
     def between(self, left, right, inclusive=True):
         """
