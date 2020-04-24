@@ -34,6 +34,7 @@ Properties
    Index.empty
    Index.T
    Index.values
+   Index.spark_column
 
 Modifying and computations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -168,6 +169,7 @@ MultiIndex Properties
    MultiIndex.nlevels
    MultiIndex.levshape
    MultiIndex.values
+   MultiIndex.spark_column
 
 MultiIndex components
 ~~~~~~~~~~~~~~~~~~~~~

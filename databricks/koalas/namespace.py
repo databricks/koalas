@@ -54,7 +54,6 @@ from databricks.koalas.utils import (
 )
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import _InternalFrame
-from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.series import Series, _col
 
 
@@ -1315,7 +1314,7 @@ def to_datetime(
     >>> ks.to_datetime(df)
     0   2015-02-04
     1   2016-03-05
-    Name: _to_datetime2(arg_day=day, arg_month=month, arg_year=year), dtype: datetime64[ns]
+    Name: 0, dtype: datetime64[ns]
 
     If a date does not meet the `timestamp limitations
     <http://pandas.pydata.org/pandas-docs/stable/timeseries.html
@@ -1365,37 +1364,24 @@ def to_datetime(
     >>> ks.to_datetime([1, 2, 3], unit='D', origin=pd.Timestamp('1960-01-01'))
     DatetimeIndex(['1960-01-02', '1960-01-03', '1960-01-04'], dtype='datetime64[ns]', freq=None)
     """
+
+    def pandas_to_datetime(pser_or_pdf) -> Series[np.datetime64]:
+        if isinstance(pser_or_pdf, pd.DataFrame):
+            pser_or_pdf = pser_or_pdf[["year", "month", "day"]]
+        return pd.to_datetime(
+            pser_or_pdf,
+            errors=errors,
+            format=format,
+            unit=unit,
+            infer_datetime_format=infer_datetime_format,
+            origin=origin,
+        )
+
     if isinstance(arg, Series):
-        return _to_datetime1(
-            arg,
-            errors=errors,
-            format=format,
-            unit=unit,
-            infer_datetime_format=infer_datetime_format,
-            origin=origin,
-        )
+        return arg.transform_batch(pandas_to_datetime)
     if isinstance(arg, DataFrame):
-        return _to_datetime2(
-            arg_year=arg["year"],
-            arg_month=arg["month"],
-            arg_day=arg["day"],
-            errors=errors,
-            format=format,
-            unit=unit,
-            infer_datetime_format=infer_datetime_format,
-            origin=origin,
-        )
-    if isinstance(arg, dict):
-        return _to_datetime2(
-            arg_year=arg["year"],
-            arg_month=arg["month"],
-            arg_day=arg["day"],
-            errors=errors,
-            format=format,
-            unit=unit,
-            infer_datetime_format=infer_datetime_format,
-            origin=origin,
-        )
+        kdf = arg[["year", "month", "day"]]
+        return kdf.transform_batch(pandas_to_datetime)
     return pd.to_datetime(
         arg,
         errors=errors,
@@ -2345,40 +2331,6 @@ def broadcast(obj):
     if not isinstance(obj, DataFrame):
         raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj)))
     return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._sdf)))
-
-
-# @pandas_wraps(return_col=np.datetime64)
-@pandas_wraps
-def _to_datetime1(
-    arg, errors, format, unit, infer_datetime_format, origin
-) -> Series[np.datetime64]:
-    return pd.to_datetime(
-        arg,
-        errors=errors,
-        format=format,
-        unit=unit,
-        infer_datetime_format=infer_datetime_format,
-        origin=origin,
-    )
-
-
-# @pandas_wraps(return_col=np.datetime64)
-@pandas_wraps
-def _to_datetime2(
-    arg_year, arg_month, arg_day, errors, format, unit, infer_datetime_format, origin
-) -> Series[np.datetime64]:
-    arg = dict(year=arg_year, month=arg_month, day=arg_day)
-    for key in arg:
-        if arg[key] is None:
-            del arg[key]
-    return pd.to_datetime(
-        arg,
-        errors=errors,
-        format=format,
-        unit=unit,
-        infer_datetime_format=infer_datetime_format,
-        origin=origin,
-    )
 
 
 def _get_index_map(sdf: spark.DataFrame, index_col: Optional[Union[str, List[str]]] = None):

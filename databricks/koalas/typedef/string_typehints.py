@@ -13,5 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import numpy as np
+import pandas as pd
+from numpy import *
+from pandas import *
+from inspect import getfullargspec
 
-__version__ = "0.32.0"
+
+def resolve_string_type_hint(tpe):
+    import databricks.koalas as ks
+    from databricks.koalas import DataFrame, Series
+
+    locs = {"ks": ks, "DataFrame": DataFrame, "Series": Series}
+    # This is a hack to resolve the forward reference string.
+    exec("def func() -> %s: pass\narg_spec = getfullargspec(func)" % tpe, globals(), locs)
+    return locs["arg_spec"].annotations.get("return", None)

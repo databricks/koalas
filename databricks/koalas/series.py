@@ -29,9 +29,10 @@ from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_list_like
 
-from databricks.koalas.typedef import as_python_type
+from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
+from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import (
     BooleanType,
     DoubleType,
@@ -361,7 +362,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         :param scol: the new Spark Column
         :return: the copied Series
         """
-        return Series(self._internal.copy(spark_column=scol), anchor=self._kdf)
+        return Series(self._internal.copy(spark_column=scol), anchor=self._kdf)  # type: ignore
 
     @property
     def dtypes(self):
@@ -915,10 +916,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
             for to_replace, value in arg.items():
                 if is_start:
-                    current = F.when(self._scol == F.lit(to_replace), value)
+                    current = F.when(self.spark_column == F.lit(to_replace), value)
                     is_start = False
                 else:
-                    current = current.when(self._scol == F.lit(to_replace), value)
+                    current = current.when(self.spark_column == F.lit(to_replace), value)
 
             if hasattr(arg, "__missing__"):
                 tmp_val = arg[np._NoValue]
@@ -968,17 +969,19 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             raise ValueError("Type {} not understood".format(dtype))
         if isinstance(spark_type, BooleanType):
             if isinstance(self.spark_type, StringType):
-                scol = F.when(self._scol.isNull(), F.lit(False)).otherwise(F.length(self._scol) > 0)
-            elif isinstance(self.spark_type, (FloatType, DoubleType)):
-                scol = F.when(self._scol.isNull() | F.isnan(self._scol), F.lit(True)).otherwise(
-                    self._scol.cast(spark_type)
+                scol = F.when(self.spark_column.isNull(), F.lit(False)).otherwise(
+                    F.length(self.spark_column) > 0
                 )
+            elif isinstance(self.spark_type, (FloatType, DoubleType)):
+                scol = F.when(
+                    self.spark_column.isNull() | F.isnan(self.spark_column), F.lit(True)
+                ).otherwise(self.spark_column.cast(spark_type))
             else:
-                scol = F.when(self._scol.isNull(), F.lit(False)).otherwise(
-                    self._scol.cast(spark_type)
+                scol = F.when(self.spark_column.isNull(), F.lit(False)).otherwise(
+                    self.spark_column.cast(spark_type)
                 )
         else:
-            scol = self._scol.cast(spark_type)
+            scol = self.spark_column.cast(spark_type)
         return self._with_new_scol(scol)
 
     def getField(self, name):
@@ -990,7 +993,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 raise AttributeError(
                     "Field {} not found, possible values are {}".format(name, ", ".join(fnames))
                 )
-            return self._with_new_scol(self._scol.getField(name))
+            return self._with_new_scol(self.spark_column.getField(name))
 
     def alias(self, name):
         """An alias for :meth:`Series.rename`."""
@@ -1004,7 +1007,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
     @property
     def name(self) -> Union[str, Tuple[str, ...]]:
         """Return name of the Series."""
-        name = self._internal.column_labels[0]
+        name = self._internal.column_labels[0]  # type: ignore
         if name is not None and len(name) == 1:
             return name[0]
         else:
@@ -1051,10 +1054,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: my_name, dtype: int64
         """
         if index is None:
-            scol = self._scol
+            scol = self.spark_column
         else:
-            scol = self._scol.alias(name_like_string(index))
-        internal = self._internal.copy(
+            scol = self.spark_column.alias(name_like_string(index))
+        internal = self._internal.copy(  # type: ignore
             spark_column=scol,
             column_labels=[index if index is None or isinstance(index, tuple) else (index,)],
         )
@@ -1090,7 +1093,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> ks.Series([1, 2, 3, None]).is_unique
         True
         """
-        scol = self._scol
+        scol = self.spark_column
 
         # Here we check:
         #   1. the distinct count without nulls and count without nulls for non-null values
@@ -1612,7 +1615,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 return self
 
         column_name = self.name
-        scol = self._scol
+        scol = self.spark_column
 
         if value is not None:
             if not isinstance(value, (float, int, str, bool)):
@@ -1975,7 +1978,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         ...  3
         Name: (x, a), dtype: int64
         """
-        sdf = self._internal.spark_frame.select(self._scol).distinct()
+        sdf = self._internal.spark_frame.select(self.spark_column).distinct()
         internal = _InternalFrame(
             spark_frame=sdf,
             index_map=None,
@@ -2683,7 +2686,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             # Falls back to schema inference if it fails to get signature.
             should_infer_schema = True
 
-        apply_each = wraps(func)(lambda s, *a, **k: s.apply(func, args=a, **k))
+        apply_each = wraps(func)(lambda s: s.apply(func, args=args, **kwds))
 
         if should_infer_schema:
             # TODO: In this case, it avoids the shortcut for now (but only infers schema)
@@ -2694,11 +2697,16 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             pser = self.head(limit)._to_internal_pandas()
             transformed = pser.apply(func, *args, **kwds)
             kser = Series(transformed)
-
-            wrapped = ks.pandas_wraps(return_col=as_python_type(kser.spark_type))(apply_each)
+            return self._transform_batch(apply_each, kser.spark_type)
         else:
-            wrapped = ks.pandas_wraps(return_col=return_sig)(apply_each)
-        return wrapped(self, *args, **kwds).rename(self.name)
+            sig_return = infer_return_type(func)
+            if not isinstance(sig_return, ScalarType):
+                raise ValueError(
+                    "Expected the return type of this function to be of scalar type, "
+                    "but found type {}".format(sig_return)
+                )
+            return_schema = sig_return.tpe
+            return self._transform_batch(apply_each, return_schema)
 
     # TODO: not all arguments are implemented comparing to Pandas' for now.
     def aggregate(self, func: Union[str, List[str]]):
@@ -2855,6 +2863,121 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return self.apply(func, args=args, **kwargs)
 
+    def transform_batch(self, func) -> "ks.Series":
+        """
+        Transform the data with the function that takes pandas Series and outputs pandas Series.
+        The pandas Series given to the function is of a batch used internally.
+
+        .. note:: the `func` is unable to access to the whole input series. Koalas internally
+            splits the input series into multiple batches and calls `func` with each batch multiple
+            times. Therefore, operations such as global aggregations are impossible. See the example
+            below.
+
+            >>> # This case does not return the length of whole frame but of the batch internally
+            ... # used.
+            ... def length(pser) -> ks.Series[int]:
+            ...     return pd.Series([len(pser)] * len(pser))
+            ...
+            >>> df = ks.DataFrame({'A': range(1000)})
+            >>> df.A.transform_batch(length)  # doctest: +SKIP
+                c0
+            0   83
+            1   83
+            2   83
+            ...
+
+        .. note:: this API executes the function once to infer the type which is
+            potentially expensive, for instance, when the dataset is created after
+            aggregations or sorting.
+
+            To avoid this, specify return type in ``func``, for instance, as below:
+
+            >>> def plus_one(x) -> ks.Series[int]:
+            ...    return x + 1
+
+        Parameters
+        ----------
+        func : function
+            Function to apply to each pandas frame.
+
+        Returns
+        -------
+        DataFrame
+
+        See Also
+        --------
+        DataFrame.apply_batch : Similar but it takes pandas DataFrame as its internal batch.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(1, 2), (3, 4), (5, 6)], columns=['A', 'B'])
+        >>> df
+           A  B
+        0  1  2
+        1  3  4
+        2  5  6
+
+        >>> def plus_one_func(pser) -> ks.Series[np.int64]:
+        ...     return pser + 1
+        >>> df.A.transform_batch(plus_one_func)
+        0    2
+        1    4
+        2    6
+        Name: A, dtype: int64
+
+        You can also omit the type hints so Koalas infers the return schema as below:
+
+        >>> df.A.transform_batch(lambda pser: pser + 1)
+        0    2
+        1    4
+        2    6
+        Name: A, dtype: int64
+        """
+
+        assert callable(func), "the first argument should be a callable function."
+
+        return_sig = None
+        try:
+            spec = inspect.getfullargspec(func)
+            return_sig = spec.annotations.get("return", None)
+        except TypeError:
+            # Falls back to schema inference if it fails to get signature.
+            pass
+
+        return_schema = None
+        if return_sig is not None:
+            # Extract the signature arguments from this function.
+            sig_return = infer_return_type(func)
+            if not isinstance(sig_return, SeriesType):
+                raise ValueError(
+                    "Expected the return type of this function to be of type column,"
+                    " but found type {}".format(sig_return)
+                )
+            return_schema = sig_return.tpe
+
+        return self._transform_batch(func, return_schema)
+
+    def _transform_batch(self, func, return_schema):
+        if isinstance(func, np.ufunc):
+            f = func
+            func = lambda *args, **kwargs: f(*args, **kwargs)
+
+        if return_schema is None:
+            # TODO: In this case, it avoids the shortcut for now (but only infers schema)
+            #  because it returns a series from a different DataFrame and it has a different
+            #  anchor. We should fix this to allow the shortcut or only allow to infer
+            #  schema.
+            limit = get_option("compute.shortcut_limit")
+            pser = self.head(limit)._to_internal_pandas()
+            transformed = pser.transform(func)
+            kser = Series(transformed)
+            spark_return_type = kser.spark_type
+        else:
+            spark_return_type = return_schema
+
+        pudf = pandas_udf(func, returnType=spark_return_type, functionType=PandasUDFType.SCALAR)
+        return self._with_new_scol(scol=pudf(self.spark_column)).rename(self.name)
+
     def round(self, decimals=0):
         """
         Round each value in a Series to the given number of decimals.
@@ -2892,7 +3015,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if not isinstance(decimals, int):
             raise ValueError("decimals must be an integer")
         column_name = self.name
-        scol = F.round(self._scol, decimals)
+        scol = F.round(self.spark_column, decimals)
         return self._with_new_scol(scol).rename(column_name)
 
     # TODO: add 'interpolation' parameter.
@@ -3214,7 +3337,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             .orderBy(NATURAL_ORDER_COLUMN_NAME)
             .rowsBetween(-periods, -periods)
         )
-        scol = self._scol - F.lag(self._scol, periods).over(window)
+        scol = self.spark_column - F.lag(self.spark_column, periods).over(window)
         return self._with_new_scol(scol).rename(self.name)
 
     def idxmax(self, skipna=True):
@@ -3299,7 +3422,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         3
         """
         sdf = self._internal.spark_frame
-        scol = self._scol
+        scol = self.spark_column
         index_scols = self._internal.index_spark_columns
         # desc_nulls_(last|first) is used via Py4J directly because
         # it's not supported in Spark 2.3.
@@ -3407,7 +3530,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         10
         """
         sdf = self._internal._sdf
-        scol = self._scol
+        scol = self.spark_column
         index_scols = self._internal.index_spark_columns
         # asc_nulls_(last|first)is used via Py4J directly because
         # it's not supported in Spark 2.3.
@@ -3912,17 +4035,17 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if isinstance(to_replace, dict):
             is_start = True
             if len(to_replace) == 0:
-                current = self._scol
+                current = self.spark_column
             else:
                 for to_replace_, value in to_replace.items():
                     if is_start:
-                        current = F.when(self._scol == F.lit(to_replace_), value)
+                        current = F.when(self.spark_column == F.lit(to_replace_), value)
                         is_start = False
                     else:
-                        current = current.when(self._scol == F.lit(to_replace_), value)
-                current = current.otherwise(self._scol)
+                        current = current.when(self.spark_column == F.lit(to_replace_), value)
+                current = current.otherwise(self.spark_column)
         else:
-            current = F.when(self._scol.isin(to_replace), value).otherwise(self._scol)
+            current = F.when(self.spark_column.isin(to_replace), value).otherwise(self.spark_column)
 
         return self._with_new_scol(current)
 
@@ -4106,8 +4229,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             # |                4|  4|            true|              500|
             # +-----------------+---+----------------+-----------------+
             condition = (
-                F.when(kdf[tmp_cond_col]._scol, kdf[self._internal.column_labels[0]]._scol)
-                .otherwise(kdf[tmp_other_col]._scol)
+                F.when(
+                    kdf[tmp_cond_col].spark_column,
+                    kdf[self._internal.column_labels[0]].spark_column,
+                )
+                .otherwise(kdf[tmp_other_col].spark_column)
                 .alias(self._internal.data_spark_column_names[0])
             )
 
@@ -4117,9 +4243,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             return _col(DataFrame(internal))
         else:
             if isinstance(other, Series):
-                other = other._scol
+                other = other.spark_column
             condition = (
-                F.when(cond._scol, self._scol)
+                F.when(cond.spark_column, self.spark_column)
                 .otherwise(other)
                 .alias(self._internal.data_spark_column_names[0])
             )
@@ -4594,7 +4720,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             where = [where]
         sdf = self._internal._sdf
         index_scol = self._internal.index_spark_columns[0]
-        cond = [F.max(F.when(index_scol <= index, self._scol)) for index in where]
+        cond = [F.max(F.when(index_scol <= index, self.spark_column)) for index in where]
         sdf = sdf.select(cond)
         if not should_return_series:
             result = sdf.head()[0]
@@ -4649,9 +4775,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
             scol = F.when(
                 # Manually sets nulls given the column defined above.
-                self._scol.isNull(),
+                self.spark_column.isNull(),
                 F.lit(None),
-            ).otherwise(func(self._scol).over(window))
+            ).otherwise(func(self.spark_column).over(window))
         else:
             # Here, we use two Windows.
             # One for real data.
@@ -4684,10 +4810,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             # 4  5.0  9.0
             scol = F.when(
                 # By going through with max, it sets True after the first time it meets null.
-                F.max(self._scol.isNull()).over(window),
+                F.max(self.spark_column.isNull()).over(window),
                 # Manually sets nulls given the column defined above.
                 F.lit(None),
-            ).otherwise(func(self._scol).over(window))
+            ).otherwise(func(self.spark_column).over(window))
 
         return self._with_new_scol(scol).rename(self.name)
 
@@ -4705,7 +4831,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             return F.sum(F.log(negative_check(scol)))
 
         kser = self._cum(cumprod, skipna, part_cols)
-        return kser._with_new_scol(F.exp(kser._scol)).rename(self.name)
+        return kser._with_new_scol(F.exp(kser.spark_column)).rename(self.name)
 
     # ----------------------------------------------------------------------
     # Accessor Methods
@@ -4735,7 +4861,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         if axis == 1:
             raise ValueError("Series does not support columns axis.")
         num_args = len(signature(sfun).parameters)
-        col_sdf = self._scol
+        col_sdf = self.spark_column
         col_type = self.spark_type
         if isinstance(col_type, BooleanType) and sfun.__name__ not in ("min", "max"):
             # Stat functions cannot be used with boolean values by default
@@ -4821,7 +4947,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         return _MissingPandasLikeSeries.__iter__(self)
 
     def _equals(self, other: "Series") -> bool:
-        return self._scol._jc.equals(other._scol._jc)
+        return self.spark_column._jc.equals(other.spark_column._jc)
 
 
 def _unpack_scalar(sdf):

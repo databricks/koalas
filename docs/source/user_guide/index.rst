@@ -7,5 +7,6 @@ User Guide
 
     options
     pandas_pyspark
+    transform_apply
     faq
     best_practices
