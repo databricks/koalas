@@ -26,7 +26,6 @@ import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 import pyarrow as pa
 import pyspark.sql.types as types
-from pyspark.sql.types import UserDefinedType
 
 try:
     from pyspark.sql.types import to_arrow_type, from_arrow_type
@@ -137,7 +136,7 @@ def as_spark_type(tpe) -> types.DataType:
 
 def spark_type_to_pandas_dtype(spark_type):
     """ Return the given Spark DataType to pandas dtype. """
-    if isinstance(spark_type, UserDefinedType):
+    if isinstance(spark_type, (types.DateType, types.UserDefinedType)):
         return np.dtype("object")
     elif isinstance(spark_type, types.TimestampType):
         return np.dtype("datetime64[ns]")
