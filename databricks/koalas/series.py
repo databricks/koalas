@@ -2829,7 +2829,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         The pandas Series given to the function is of a batch used internally.
 
         See also `Transform and apply a function
-        <https://koalas.readthedocs.io/en/stable/user_guide/transform_apply.html>`_.
+        <https://koalas.readthedocs.io/en/latest/user_guide/transform_apply.html>`_.
 
         .. note:: the `func` is unable to access to the whole input series. Koalas internally
             splits the input series into multiple batches and calls `func` with each batch multiple

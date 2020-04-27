@@ -2018,7 +2018,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         DataFrame given to the function is of a batch used internally.
 
         See also `Transform and apply a function
-        <https://koalas.readthedocs.io/en/stable/user_guide/transform_apply.html>`_.
+        <https://koalas.readthedocs.io/en/latest/user_guide/transform_apply.html>`_.
 
         .. note:: the `func` is unable to access to the whole input frame. Koalas internally
             splits the input series into multiple batches and calls `func` with each batch multiple
@@ -2182,7 +2182,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         (``axis=1``).
 
         See also `Transform and apply a function
-        <https://koalas.readthedocs.io/en/stable/user_guide/transform_apply.html>`_.
+        <https://koalas.readthedocs.io/en/latest/user_guide/transform_apply.html>`_.
 
         .. note:: when `axis` is 0 or 'index', the `func` is unable to access
             to the whole input series. Koalas internally splits the input series into multiple
@@ -2410,7 +2410,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         and that has the same length as its input.
 
         See also `Transform and apply a function
-        <https://koalas.readthedocs.io/en/stable/user_guide/transform_apply.html>`_.
+        <https://koalas.readthedocs.io/en/latest/user_guide/transform_apply.html>`_.
 
         .. note:: this API executes the function once to infer the type which is
              potentially expensive, for instance, when the dataset is created after
@@ -2536,7 +2536,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         each input and output should be the same.
 
         See also `Transform and apply a function
-        <https://koalas.readthedocs.io/en/stable/user_guide/transform_apply.html>`_.
+        <https://koalas.readthedocs.io/en/latest/user_guide/transform_apply.html>`_.
 
         .. note:: the `func` is unable to access to the whole input frame. Koalas internally
             splits the input series into multiple batches and calls `func` with each batch multiple
