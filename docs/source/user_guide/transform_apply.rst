@@ -9,18 +9,17 @@ Transform and apply a function
 There are many APIs that allow users to apply a function against Koalas DataFrame such as
 :func:`DataFrame.transform`, :func:`DataFrame.apply`, :func:`DataFrame.transform_batch`,
 :func:`DataFrame.apply_batch`, :func:`Series.transform_batch`, etc. Each has a distinct
-purpose and works differently internally. This section describes several differences among
+purpose and works differently internally. This section describes the differences among
 them where users are confused often.
 
-`transform` and `apply`
------------------------
+``transform`` and ``apply``
+---------------------------
 
 The main difference between :func:`DataFrame.transform` and :func:`DataFrame.apply` is that the former requires
 to return the same length of the input and the latter does not require this. See the example below:
 
 .. code-block:: python
 
-   >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'a': [1,2,3], 'b':[4,5,6]})
    >>> def pandas_plus(pser):
    ...     return pser + 1  # should always return the same length as input.
@@ -29,10 +28,9 @@ to return the same length of the input and the latter does not require this. See
 
 .. code-block:: python
 
-   >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'a': [1,2,3], 'b':[5,6,7]})
    >>> def pandas_plus(pser):
-   ...     return pser[pser % 2 == 1]  # should always return the same length as input.
+   ...     return pser[pser % 2 == 1]  # allows an arbitrary length
    ...
    >>> kdf.apply(pandas_plus)
 
@@ -47,10 +45,9 @@ In case of 'column' axis, the function takes each row as a pandas Seires.
 
 .. code-block:: python
 
-   >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'a': [1,2,3], 'b':[4,5,6]})
    >>> def pandas_plus(pser):
-   ...     return sum(pser)  # allow arbitrary length
+   ...     return sum(pser)  # allows an arbitrary length
    ...
    >>> kdf.apply(pandas_plus, axis='columns')
 
@@ -61,17 +58,19 @@ The example above calculates the summation of each row as a pandas Series. See b
   :align: center
   :width: 600
 
+In the examples above, the type hints were not used for simplicity but it is encouraged to use to avoid performance panality.
+Please refer the API documentations.
 
-`transform_batch` and `apply_batch`
------------------------------------
 
-In :func:`DataFrame.transform_batch`, :func:`DataFrame.apply_batch`, :func:`Series.transform_batch`, etc., the `_batch`
+``transform_batch`` and ``apply_batch``
+---------------------------------------
+
+In :func:`DataFrame.transform_batch`, :func:`DataFrame.apply_batch`, :func:`Series.transform_batch`, etc., the ``batch``
 postfix means each chunk in Koalas DataFrame or Series. The APIs slice the Koalas DataFrame or Series, and
 then applies the given function with pandas DataFrame or Series as input and output. See the examples below:
 
 .. code-block:: python
 
-   >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'a': [1,2,3], 'b':[4,5,6]})
    >>> def pandas_plus(pdf):
    ...     return pdf + 1  # should always return the same length as input.
@@ -80,7 +79,6 @@ then applies the given function with pandas DataFrame or Series as input and out
 
 .. code-block:: python
 
-   >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'a': [1,2,3], 'b':[4,5,6]})
    >>> def pandas_plus(pdf):
    ...     return pdf[pdf.a > 1]  # allow arbitrary length
@@ -105,16 +103,17 @@ a pandas Series as a chunk of Koalas Series.
 
 .. code-block:: python
 
-   >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'a': [1,2,3], 'b':[4,5,6]})
    >>> def pandas_plus(pser):
    ...     return pser + 1  # should always return the same length as input.
    ...
    >>> kdf.a.transform_batch(pandas_plus)
 
-It can be illustrated as below.
+Under the hood, each batch of Koalas Series is split to multipl pandas Series, and each function computes on that as below:
 
 .. image:: https://user-images.githubusercontent.com/6477701/80076795-a3003380-8587-11ea-8b73-186e4047f8c0.png
   :alt: transform_batch in Series
   :width: 350
   :align: center
+
+There are more details such as the type inference and preventing its performence panality. Please refer the API documentations.
