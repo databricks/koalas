@@ -2017,6 +2017,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Apply a function that takes pandas DataFrame and outputs pandas DataFrame. The pandas
         DataFrame given to the function is of a batch used internally.
 
+        See also `Transform and apply a function
+        <https://koalas.readthedocs.io/en/latest/user_guide/transform_apply.html>`_.
+
         .. note:: the `func` is unable to access to the whole input frame. Koalas internally
             splits the input series into multiple batches and calls `func` with each batch multiple
             times. Therefore, operations such as global aggregations are impossible. See the example
@@ -2177,6 +2180,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Objects passed to the function are Series objects whose index is
         either the DataFrame's index (``axis=0``) or the DataFrame's columns
         (``axis=1``).
+
+        See also `Transform and apply a function
+        <https://koalas.readthedocs.io/en/latest/user_guide/transform_apply.html>`_.
 
         .. note:: when `axis` is 0 or 'index', the `func` is unable to access
             to the whole input series. Koalas internally splits the input series into multiple
@@ -2403,6 +2409,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Call ``func`` on self producing a Series with transformed values
         and that has the same length as its input.
 
+        See also `Transform and apply a function
+        <https://koalas.readthedocs.io/en/latest/user_guide/transform_apply.html>`_.
+
         .. note:: this API executes the function once to infer the type which is
              potentially expensive, for instance, when the dataset is created after
              aggregations or sorting.
@@ -2525,6 +2534,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Transform chunks with a function that takes pandas DataFrame and outputs pandas DataFrame.
         The pandas DataFrame given to the function is of a batch used internally. The length of
         each input and output should be the same.
+
+        See also `Transform and apply a function
+        <https://koalas.readthedocs.io/en/latest/user_guide/transform_apply.html>`_.
 
         .. note:: the `func` is unable to access to the whole input frame. Koalas internally
             splits the input series into multiple batches and calls `func` with each batch multiple

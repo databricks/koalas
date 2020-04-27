@@ -2868,6 +2868,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Transform the data with the function that takes pandas Series and outputs pandas Series.
         The pandas Series given to the function is of a batch used internally.
 
+        See also `Transform and apply a function
+        <https://koalas.readthedocs.io/en/latest/user_guide/transform_apply.html>`_.
+
         .. note:: the `func` is unable to access to the whole input series. Koalas internally
             splits the input series into multiple batches and calls `func` with each batch multiple
             times. Therefore, operations such as global aggregations are impossible. See the example
