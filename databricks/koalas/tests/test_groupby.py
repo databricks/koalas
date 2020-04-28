@@ -436,7 +436,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             self.assertRaises(NotImplementedError, lambda: kdf.groupby("a").describe().sort_index())
 
     def test_aggregate_relabel_multiindex(self):
-        kdf = ks.DataFrame({"group": ["a", "a", "b", "b"], "A": [0, 1, 2, 3], "B": [5, 6, 7, 8]})
+        kdf = ks.DataFrame({"A": [0, 1, 2, 3], "B": [5, 6, 7, 8], "group": ["a", "a", "b", "b"]})
         kdf.columns = pd.MultiIndex.from_tuples([("y", "A"), ("y", "B"), ("x", "group")])
         pdf = kdf.to_pandas()
 
