@@ -214,7 +214,6 @@ class GroupBy(object):
 
             # For MultiIndex, we need to flatten the tuple, e.g. (('y', 'A'), 'max') needs to be
             # flattened to ('y', 'A', 'max'), it won't do anything on normal Index.
-            order = [(*levs, method) for levs, method in order]
             kdf = kdf[order]
             kdf.columns = columns
         return kdf
@@ -2413,4 +2412,5 @@ def _normalize_keyword_aggregation(kwargs):
             aggspec[column] = [aggfunc]
 
         order.append((column, aggfunc))
+    order = [(*levs, method) for levs, method in order]
     return aggspec, columns, order
