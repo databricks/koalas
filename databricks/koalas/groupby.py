@@ -211,7 +211,6 @@ class GroupBy(object):
             kdf = kdf.reset_index(drop=self._should_drop_index)
 
         if relabeling:
-
             kdf = kdf[order]
             kdf.columns = columns
         return kdf
