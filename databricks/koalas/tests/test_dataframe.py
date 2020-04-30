@@ -170,6 +170,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(pdf_k, kdf_k)
             self.assert_eq(pdf_v, kdf_v)
 
+    def test_reset_index(self):
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}, index=np.random.rand(3))
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.reset_index(), pdf.reset_index())
+        self.assert_eq(kdf.reset_index(drop=True), pdf.reset_index(drop=True))
+
+        pdf.index.name = "a"
+        kdf.index.name = "a"
+
+        with self.assertRaisesRegex(ValueError, "cannot insert a, already exists"):
+            kdf.reset_index()
+
+        self.assert_eq(kdf.reset_index(drop=True), pdf.reset_index(drop=True))
+
     def test_reset_index_with_default_index_types(self):
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}, index=np.random.rand(3))
         kdf = ks.from_pandas(pdf)

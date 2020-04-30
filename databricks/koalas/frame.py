@@ -3598,6 +3598,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             index_map = OrderedDict(new_index_map_items)
 
+        if drop:
+            new_index_map = []
+
+        for _, name in new_index_map:
+            if name in self._internal.column_labels:
+                raise ValueError("cannot insert {}, already exists".format(name_like_string(name)))
+
         new_data_scols = [
             scol_for(self._sdf, column).alias(name_like_string(name))
             for column, name in new_index_map
@@ -3616,14 +3623,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 new_data_scols + self._internal.data_spark_columns + list(HIDDEN_COLUMNS)
             )
 
-            # Now, new internal Spark columns are named as same as index name.
-            new_index_map = [(column, name) for column, name in new_index_map]
-
             sdf = _InternalFrame.attach_default_index(sdf)
             index_map = OrderedDict({SPARK_DEFAULT_INDEX_NAME: None})
-
-        if drop:
-            new_index_map = []
 
         if self._internal.column_labels_level > 1:
             column_depth = len(self._internal.column_labels[0])
