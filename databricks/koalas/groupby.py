@@ -506,20 +506,36 @@ class GroupBy(object):
         4  3  3
         5  3  3
 
-        >>> df.groupby('A').size().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby('A').size().sort_index()
         A
-        1  1
-        2  2
-        3  3
+        1    1
+        2    2
+        3    3
         Name: count, dtype: int64
 
-        >>> df.groupby(['A', 'B']).size().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby(['A', 'B']).size().sort_index()
         A  B
         1  1    1
         2  1    1
            2    1
         3  3    3
         Name: count, dtype: int64
+
+        For Series,
+
+        >>> df.B.groupby(df.A).size().sort_index()
+        A
+        1    1
+        2    2
+        3    3
+        Name: B, dtype: int64
+
+        >>> df.groupby(df.A).B.size().sort_index()
+        A
+        1    1
+        2    2
+        3    3
+        Name: B, dtype: int64
         """
         groupkeys = self._groupkeys
         groupkey_cols = [
@@ -527,18 +543,13 @@ class GroupBy(object):
         ]
         sdf = self._kdf._sdf
         sdf = sdf.groupby(*groupkey_cols).count()
-        if (len(self._agg_columns) > 0) and (self._have_agg_columns):
-            name = self._agg_columns[0]._internal.data_spark_column_names[0]
-            sdf = sdf.withColumnRenamed("count", name)
-        else:
-            name = "count"
         internal = _InternalFrame(
             spark_frame=sdf,
             index_map=OrderedDict(
                 (SPARK_INDEX_NAME_FORMAT(i), s._internal.column_labels[0])
                 for i, s in enumerate(groupkeys)
             ),
-            data_spark_columns=[scol_for(sdf, name)],
+            data_spark_columns=[scol_for(sdf, "count")],
         )
         return _col(DataFrame(internal))
 
@@ -1924,7 +1935,6 @@ class DataFrameGroupBy(GroupBy):
         self._groupkeys_scols = [s.spark_column for s in self._groupkeys]
         self._as_index = as_index
         self._should_drop_index = should_drop_index
-        self._have_agg_columns = True
 
         if agg_columns is None:
             agg_columns = [
@@ -1932,7 +1942,6 @@ class DataFrameGroupBy(GroupBy):
                 for label in self._kdf._internal.column_labels
                 if all(not self._kdf[label]._equals(key) for key in self._groupkeys)
             ]
-            self._have_agg_columns = False
         self._agg_columns = [kdf[label] for label in agg_columns]
         self._agg_columns_scols = [s.spark_column for s in self._agg_columns]
 
@@ -2094,7 +2103,6 @@ class SeriesGroupBy(GroupBy):
         if not as_index:
             raise TypeError("as_index=False only valid with DataFrame")
         self._as_index = True
-        self._have_agg_columns = True
 
         # Not used currently. It's a placeholder to match with DataFrameGroupBy.
         self._should_drop_index = False
@@ -2154,6 +2162,13 @@ class SeriesGroupBy(GroupBy):
 
     def head(self, n=5):
         return _col(super(SeriesGroupBy, self).head(n))
+
+    head.__doc__ = GroupBy.head.__doc__
+
+    def size(self):
+        return super(SeriesGroupBy, self).size().rename(self._kser.name)
+
+    size.__doc__ = GroupBy.size.__doc__
 
     # TODO: add keep parameter
     def nsmallest(self, n=5):

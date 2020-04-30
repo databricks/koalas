@@ -597,6 +597,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby("A")["B"].size().sort_index(), pdf.groupby("A")["B"].size().sort_index()
         )
         self.assert_eq(
+            kdf.groupby("A")[["B"]].size().sort_index(), pdf.groupby("A")[["B"]].size().sort_index()
+        )
+        self.assert_eq(
             kdf.groupby(["A", "B"]).size().sort_index(), pdf.groupby(["A", "B"]).size().sort_index()
         )
 
