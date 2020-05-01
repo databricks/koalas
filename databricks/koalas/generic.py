@@ -36,11 +36,12 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
 from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.utils import (
-    validate_arguments_and_invoke_function,
-    scol_for,
-    validate_axis,
     align_diff_frames,
     name_like_string,
+    scol_for,
+    validate_arguments_and_invoke_function,
+    validate_axis,
+    verify_temp_column_name,
 )
 from databricks.koalas.window import Rolling, Expanding
 
@@ -1524,12 +1525,14 @@ class _Frame(object):
                         column_labels.append(col_or_s._internal.column_labels[0])
                     else:
                         need_assign.append(True)
-                        column_labels.append(
+                        temp_label = verify_temp_column_name(
+                            kdf,
                             tuple(
                                 ([""] * (column_labels_level - 1))
                                 + ["__tmp_groupkey_{}__".format(i)]
-                            )
+                            ),
                         )
+                        column_labels.append(temp_label)
                 elif isinstance(col_or_s, tuple):
                     kser = kdf[col_or_s]
                     if not isinstance(kser, ks.Series):
