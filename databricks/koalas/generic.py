@@ -1395,7 +1395,7 @@ class _Frame(object):
         """
         # TODO: The first example above should not have "Name: 0".
         return self._apply_series_op(
-            lambda kser: kser._with_new_scol(F.abs(kser._scol)).rename(kser.name)
+            lambda kser: kser._with_new_scol(F.abs(kser.spark_column)).rename(kser.name)
         )
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation

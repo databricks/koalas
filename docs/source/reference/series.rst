@@ -34,6 +34,7 @@ Attributes
    Series.T
    Series.hasnans
    Series.values
+   Series.spark_column
 
 Conversion
 ----------
@@ -98,6 +99,7 @@ Function application, GroupBy & Window
    Series.agg
    Series.aggregate
    Series.transform
+   Series.transform_batch
    Series.map
    Series.groupby
    Series.pipe

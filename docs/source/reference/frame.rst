@@ -33,6 +33,14 @@ Attributes and underlying data
    DataFrame.select_dtypes
    DataFrame.values
 
+Underlying Spark schema
+-----------------------
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.spark_schema
+   DataFrame.print_schema
+
 Conversion
 ----------
 .. autosummary::
@@ -103,11 +111,13 @@ Function application, GroupBy & Window
 
    DataFrame.apply
    DataFrame.applymap
+   DataFrame.apply_batch
    DataFrame.pipe
    DataFrame.agg
    DataFrame.aggregate
    DataFrame.groupby
    DataFrame.transform
+   DataFrame.transform_batch
    DataFrame.map_in_pandas
 
 .. _api.dataframe.stats:

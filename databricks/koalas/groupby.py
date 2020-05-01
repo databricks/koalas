@@ -42,7 +42,7 @@ from pyspark.sql.types import (
 from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.typedef import _infer_return_type
+from databricks.koalas.typedef import infer_return_type
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import (
     _InternalFrame,
@@ -506,20 +506,36 @@ class GroupBy(object):
         4  3  3
         5  3  3
 
-        >>> df.groupby('A').size().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby('A').size().sort_index()
         A
-        1  1
-        2  2
-        3  3
+        1    1
+        2    2
+        3    3
         Name: count, dtype: int64
 
-        >>> df.groupby(['A', 'B']).size().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby(['A', 'B']).size().sort_index()
         A  B
         1  1    1
         2  1    1
            2    1
         3  3    3
         Name: count, dtype: int64
+
+        For Series,
+
+        >>> df.B.groupby(df.A).size().sort_index()
+        A
+        1    1
+        2    2
+        3    3
+        Name: B, dtype: int64
+
+        >>> df.groupby(df.A).B.size().sort_index()
+        A
+        1    1
+        2    2
+        3    3
+        Name: B, dtype: int64
         """
         groupkeys = self._groupkeys
         groupkey_cols = [
@@ -527,18 +543,13 @@ class GroupBy(object):
         ]
         sdf = self._kdf._sdf
         sdf = sdf.groupby(*groupkey_cols).count()
-        if (len(self._agg_columns) > 0) and (self._have_agg_columns):
-            name = self._agg_columns[0]._internal.data_spark_column_names[0]
-            sdf = sdf.withColumnRenamed("count", name)
-        else:
-            name = "count"
         internal = _InternalFrame(
             spark_frame=sdf,
             index_map=OrderedDict(
                 (SPARK_INDEX_NAME_FORMAT(i), s._internal.column_labels[0])
                 for i, s in enumerate(groupkeys)
             ),
-            data_spark_columns=[scol_for(sdf, name)],
+            data_spark_columns=[scol_for(sdf, "count")],
         )
         return _col(DataFrame(internal))
 
@@ -944,7 +955,7 @@ class GroupBy(object):
                     "currently; however got [%s]. Use DataFrame type hint instead." % return_sig
                 )
 
-            return_schema = _infer_return_type(func).tpe
+            return_schema = infer_return_type(func).tpe
             if not isinstance(return_schema, StructType):
                 should_return_series = True
                 if is_series_groupby:
@@ -1034,6 +1045,21 @@ class GroupBy(object):
 
     @staticmethod
     def _spark_group_map_apply(kdf, func, groupkeys_scols, return_schema, retain_index):
+        output_func = GroupBy._make_pandas_df_builder_func(kdf, func, return_schema, retain_index)
+        grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(output_func)
+        sdf = kdf._sdf.drop(*HIDDEN_COLUMNS)
+        input_groupkeys = [s for s in groupkeys_scols]
+        sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
+
+        return sdf
+
+    @staticmethod
+    def _make_pandas_df_builder_func(kdf, func, return_schema, retain_index):
+        """
+        Creates a function that can be used inside the pandas UDF. This function can construct
+        the same pandas DataFrame as if the Koalas DataFrame is collected to driver side.
+        The index, column labels, etc. are re-constructed within the function.
+        """
         index_columns = kdf._internal.index_spark_column_names
         index_names = kdf._internal.index_names
         data_columns = kdf._internal.data_spark_column_names
@@ -1092,13 +1118,7 @@ class GroupBy(object):
 
             return pdf
 
-        grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(rename_output)
-
-        sdf = kdf._sdf.drop(*HIDDEN_COLUMNS)
-        input_groupkeys = [s for s in groupkeys_scols]
-        sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
-
-        return sdf
+        return rename_output
 
     def rank(self, method="average", ascending=True):
         """
@@ -1732,7 +1752,7 @@ class GroupBy(object):
             # If schema is inferred, we can restore indexes too.
             internal = kdf._internal.with_new_sdf(sdf)
         else:
-            return_type = _infer_return_type(func).tpe
+            return_type = infer_return_type(func).tpe
             data_columns = self._kdf._internal.data_spark_column_names
             return_schema = StructType(
                 [StructField(c, return_type) for c in data_columns if c not in input_groupnames]
@@ -1912,10 +1932,9 @@ class DataFrameGroupBy(GroupBy):
     ):
         self._kdf = kdf
         self._groupkeys = by
-        self._groupkeys_scols = [s._scol for s in self._groupkeys]
+        self._groupkeys_scols = [s.spark_column for s in self._groupkeys]
         self._as_index = as_index
         self._should_drop_index = should_drop_index
-        self._have_agg_columns = True
 
         if agg_columns is None:
             agg_columns = [
@@ -1923,9 +1942,8 @@ class DataFrameGroupBy(GroupBy):
                 for label in self._kdf._internal.column_labels
                 if all(not self._kdf[label]._equals(key) for key in self._groupkeys)
             ]
-            self._have_agg_columns = False
         self._agg_columns = [kdf[label] for label in agg_columns]
-        self._agg_columns_scols = [s._scol for s in self._agg_columns]
+        self._agg_columns_scols = [s.spark_column for s in self._agg_columns]
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeDataFrameGroupBy, item):
@@ -2085,7 +2103,6 @@ class SeriesGroupBy(GroupBy):
         if not as_index:
             raise TypeError("as_index=False only valid with DataFrame")
         self._as_index = True
-        self._have_agg_columns = True
 
         # Not used currently. It's a placeholder to match with DataFrameGroupBy.
         self._should_drop_index = False
@@ -2145,6 +2162,13 @@ class SeriesGroupBy(GroupBy):
 
     def head(self, n=5):
         return _col(super(SeriesGroupBy, self).head(n))
+
+    head.__doc__ = GroupBy.head.__doc__
+
+    def size(self):
+        return super(SeriesGroupBy, self).size().rename(self._kser.name)
+
+    size.__doc__ = GroupBy.size.__doc__
 
     # TODO: add keep parameter
     def nsmallest(self, n=5):
