@@ -1493,59 +1493,102 @@ class _Frame(object):
             raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         if isinstance(df_or_s, ks.DataFrame):
-            df = df_or_s  # type: ks.DataFrame
-
-            # This is to match the output with pandas'. Pandas seems returning different results
-            # when given series is from different dataframes. It only applies when as_index is
-            # False.
-            should_drop_index = any(
-                isinstance(col_or_s, ks.Series) and df is not col_or_s._kdf for col_or_s in by
-            )
-
-            kdf, col_by = self._resolve_grouping_series(by)
-            return DataFrameGroupBy(
-                kdf, col_by, as_index=as_index, should_drop_index=should_drop_index
-            )
+            kdf, col_by, agg_columns = self._resolve_grouping_series(by)
+            return DataFrameGroupBy(kdf, col_by, as_index=as_index, agg_columns=agg_columns)
         if isinstance(df_or_s, ks.Series):
             col = df_or_s  # type: ks.Series
-            _, col_by = self._resolve_grouping_series(by)
+            _, col_by, _ = self._resolve_grouping_series(by)
             return SeriesGroupBy(col, col_by, as_index=as_index)
         raise TypeError(
             "Constructor expects DataFrame or Series; however, " "got [%s]" % (df_or_s,)
         )
 
     def _resolve_grouping_series(self, by):
-        should_use_name = False
         if isinstance(self, ks.Series):
             kdf = self._kdf
         else:
             kdf = self
-        for col_or_s in by:
-            if isinstance(col_or_s, ks.Series) and kdf is not col_or_s._kdf:
 
-                def assign_columns(kdf, this_column_labels, that_column_labels):
-                    raise NotImplementedError(
-                        "Duplicated labels with groupby() and "
-                        "'compute.ops_on_diff_frames' option are not supported currently "
-                        "Please use unique labels in series and frames."
+        if any(isinstance(col_or_s, ks.Series) and kdf is not col_or_s._kdf for col_or_s in by):
+            column_labels_level = kdf._internal.column_labels_level
+
+            need_assign = []
+            column_labels = []
+            for i, col_or_s in enumerate(by):
+                if isinstance(col_or_s, ks.Series):
+                    if any(
+                        col_or_s.spark_column._jc.equals(scol._jc)
+                        for scol in kdf._internal.data_spark_columns
+                    ):
+                        need_assign.append(False)
+                        column_labels.append(col_or_s._internal.column_labels[0])
+                    else:
+                        need_assign.append(True)
+                        column_labels.append(
+                            tuple(
+                                ([""] * (column_labels_level - 1))
+                                + ["__tmp_groupkey_{}__".format(i)]
+                            )
+                        )
+                elif isinstance(col_or_s, tuple):
+                    kser = kdf[col_or_s]
+                    if not isinstance(kser, ks.Series):
+                        raise ValueError(name_like_string(col_or_s))
+                    need_assign.append(False)
+                    column_labels.append(col_or_s)
+                else:
+                    raise ValueError(col_or_s)
+
+            def assign_columns(kdf, this_column_labels, that_column_labels):
+                raise NotImplementedError(
+                    "Duplicated labels with groupby() and "
+                    "'compute.ops_on_diff_frames' option are not supported currently "
+                    "Please use unique labels in series and frames."
+                )
+
+            for col_or_s, assign, label in zip(by, need_assign, column_labels):
+
+                if assign:
+                    kdf = align_diff_frames(
+                        assign_columns, kdf, col_or_s.rename(label), fillna=False, how="inner",
                     )
 
-                kdf = align_diff_frames(assign_columns, kdf, col_or_s, fillna=False, how="inner")
-                # Should use name to search series because now the anchor is different
-                should_use_name = True
+            new_by_series = []
+            for col_or_s, assign, label in zip(by, need_assign, column_labels):
+                if assign:
+                    new_by_series.append(kdf._kser_for(label).rename(col_or_s.name))
+                else:
+                    new_by_series.append(kdf._kser_for(label))
 
-        new_by_series = []
-        for col_or_s in by:
-            if isinstance(col_or_s, ks.Series) and should_use_name:
-                new_by_series.append(kdf[col_or_s.name])
-            elif isinstance(col_or_s, ks.Series):
-                new_by_series.append(col_or_s)
-            elif isinstance(col_or_s, tuple):
-                new_by_series.append(kdf[col_or_s])
-            else:
-                raise ValueError(col_or_s)
+            agg_columns = [
+                label
+                for label in kdf._internal.column_labels
+                if all(not kdf._kser_for(label)._equals(key) for key in new_by_series)
+                and label not in column_labels
+            ]
 
-        return kdf, new_by_series
+            return kdf, new_by_series, agg_columns
+
+        else:
+            new_by_series = []
+            for col_or_s in by:
+                if isinstance(col_or_s, ks.Series):
+                    new_by_series.append(col_or_s)
+                elif isinstance(col_or_s, tuple):
+                    kser = kdf[col_or_s]
+                    if not isinstance(kser, ks.Series):
+                        raise ValueError(name_like_string(col_or_s))
+                    new_by_series.append(kser)
+                else:
+                    raise ValueError(col_or_s)
+
+            agg_columns = [
+                label
+                for label in kdf._internal.column_labels
+                if all(not kdf[label]._equals(key) for key in new_by_series)
+            ]
+
+            return kdf, new_by_series, agg_columns
 
     def bool(self):
         """

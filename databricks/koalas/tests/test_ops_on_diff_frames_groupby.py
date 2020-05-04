@@ -103,27 +103,32 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
         kdf2 = ks.from_pandas(pdf2)
 
         for as_index in [True, False]:
-            stats_kdf = kdf1.groupby(kdf2.A, as_index=as_index).agg({"B": "min", "C": "sum"})
-            stats_pdf = pdf1.groupby(pdf2.A, as_index=as_index).agg({"B": "min", "C": "sum"})
-            self.assert_eq(
-                stats_kdf.sort_values(by=["B", "C"]).reset_index(drop=True),
-                stats_pdf.sort_values(by=["B", "C"]).reset_index(drop=True),
-            )
+            if as_index:
+                sort = lambda df: df.sort_index()
+            else:
+                sort = lambda df: df.sort_values(list(df.columns)).reset_index(drop=True)
 
-            stats_kdf = kdf1.groupby(kdf2.A, as_index=as_index).agg(
-                {"B": ["min", "max"], "C": "sum"}
-            )
-            stats_pdf = pdf1.groupby(pdf2.A, as_index=as_index).agg(
-                {"B": ["min", "max"], "C": "sum"}
-            )
-            self.assert_eq(
-                stats_kdf.sort_values(by=[("B", "min"), ("B", "max"), ("C", "sum")]).reset_index(
-                    drop=True
-                ),
-                stats_pdf.sort_values(by=[("B", "min"), ("B", "max"), ("C", "sum")]).reset_index(
-                    drop=True
-                ),
-            )
+            with self.subTest(as_index=as_index):
+                self.assert_eq(
+                    sort(kdf1.groupby(kdf2.A, as_index=as_index).agg("sum")),
+                    sort(pdf1.groupby(pdf2.A, as_index=as_index).agg("sum")),
+                )
+                self.assert_eq(
+                    sort(kdf1.groupby(kdf2.A, as_index=as_index).agg({"B": "min", "C": "sum"})),
+                    sort(pdf1.groupby(pdf2.A, as_index=as_index).agg({"B": "min", "C": "sum"})),
+                )
+                self.assert_eq(
+                    sort(
+                        kdf1.groupby(kdf2.A, as_index=as_index).agg(
+                            {"B": ["min", "max"], "C": "sum"}
+                        )
+                    ),
+                    sort(
+                        pdf1.groupby(pdf2.A, as_index=as_index).agg(
+                            {"B": ["min", "max"], "C": "sum"}
+                        )
+                    ),
+                )
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([("Y", "C"), ("X", "B")])
@@ -162,8 +167,15 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_duplicated_labels(self):
-        kdf1 = ks.DataFrame({"A": [3, 2, 1]})
-        kdf2 = ks.DataFrame({"A": [1, 2, 3]})
-        self.assertRaisesRegex(
-            NotImplementedError, "Duplicated labels with group", lambda: kdf1.groupby(kdf2.A),
+        pdf1 = pd.DataFrame({"A": [3, 2, 1]})
+        pdf2 = pd.DataFrame({"A": [1, 2, 3]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(
+            kdf1.groupby(kdf2.A).sum().sort_index(), pdf1.groupby(pdf2.A).sum().sort_index()
+        )
+        self.assert_eq(
+            kdf1.groupby(kdf2.A, as_index=False).sum().sort_values("A").reset_index(drop=True),
+            pdf1.groupby(pdf2.A, as_index=False).sum().sort_values("A").reset_index(drop=True),
         )

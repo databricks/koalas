@@ -208,7 +208,17 @@ class GroupBy(object):
             GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys_scols, index_map)
         )
         if not self._as_index:
-            kdf = kdf.reset_index(drop=self._should_drop_index)
+            should_drop_index = set(
+                i
+                for i, gkey in enumerate(self._groupkeys_scols)
+                if all(
+                    not gkey._jc.equals(scol._jc) for scol in self._kdf._internal.data_spark_columns
+                )
+            )
+            if len(should_drop_index) > 0:
+                kdf = kdf.reset_index(level=should_drop_index, drop=True)
+            if len(should_drop_index) < len(self._groupkeys):
+                kdf = kdf.reset_index()
 
         if relabeling:
             kdf = kdf[order]
@@ -1917,7 +1927,17 @@ class GroupBy(object):
         )
         kdf = DataFrame(internal)
         if not self._as_index:
-            kdf = kdf.reset_index(drop=self._should_drop_index)
+            should_drop_index = set(
+                i
+                for i, gkey in enumerate(self._groupkeys_scols)
+                if all(
+                    not gkey._jc.equals(scol._jc) for scol in self._kdf._internal.data_spark_columns
+                )
+            )
+            if len(should_drop_index) > 0:
+                kdf = kdf.reset_index(level=should_drop_index, drop=True)
+            if len(should_drop_index) < len(self._groupkeys):
+                kdf = kdf.reset_index()
         return kdf
 
 
@@ -1926,22 +1946,14 @@ class DataFrameGroupBy(GroupBy):
         self,
         kdf: DataFrame,
         by: List[Series],
-        as_index: bool = True,
-        should_drop_index: bool = False,
-        agg_columns: List[Union[str, Tuple[str, ...]]] = None,
+        as_index: bool,
+        agg_columns: List[Union[str, Tuple[str, ...]]],
     ):
         self._kdf = kdf
         self._groupkeys = by
         self._groupkeys_scols = [s.spark_column for s in self._groupkeys]
         self._as_index = as_index
-        self._should_drop_index = should_drop_index
 
-        if agg_columns is None:
-            agg_columns = [
-                label
-                for label in self._kdf._internal.column_labels
-                if all(not self._kdf[label]._equals(key) for key in self._groupkeys)
-            ]
         self._agg_columns = [kdf[label] for label in agg_columns]
         self._agg_columns_scols = [s.spark_column for s in self._agg_columns]
 
@@ -1968,11 +1980,7 @@ class DataFrameGroupBy(GroupBy):
                     if name in groupkey_names:
                         raise ValueError("cannot insert {}, already exists".format(name))
             return DataFrameGroupBy(
-                self._kdf,
-                self._groupkeys,
-                as_index=self._as_index,
-                agg_columns=item,
-                should_drop_index=self._should_drop_index,
+                self._kdf, self._groupkeys, as_index=self._as_index, agg_columns=item,
             )
 
     def _apply_series_op(self, op):
@@ -2103,9 +2111,6 @@ class SeriesGroupBy(GroupBy):
         if not as_index:
             raise TypeError("as_index=False only valid with DataFrame")
         self._as_index = True
-
-        # Not used currently. It's a placeholder to match with DataFrameGroupBy.
-        self._should_drop_index = False
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeSeriesGroupBy, item):
