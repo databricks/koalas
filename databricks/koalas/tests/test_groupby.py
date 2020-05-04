@@ -264,23 +264,24 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             almost=almost,
                         )
 
-        for kkey, pkey in [(kdf.b, pdf.b), (kdf.b + 1, pdf.b + 1)]:
-            for almost, func in funcs:
-                self.assert_eq(
-                    getattr(kdf.a.groupby(kkey), func)().sort_index(),
-                    getattr(pdf.a.groupby(pkey), func)().sort_index(),
-                    almost=almost,
-                )
-                self.assert_eq(
-                    getattr((kdf.a + 1).groupby(kkey), func)().sort_index(),
-                    getattr((pdf.a + 1).groupby(pkey), func)().sort_index(),
-                    almost=almost,
-                )
-                self.assert_eq(
-                    getattr((kdf.b + 1).groupby(kkey), func)().sort_index(),
-                    getattr((pdf.b + 1).groupby(pkey), func)().sort_index(),
-                    almost=almost,
-                )
+        for almost, func in funcs:
+            for kkey, pkey in [(kdf.b, pdf.b), (kdf.b + 1, pdf.b + 1)]:
+                with self.subTest(func=func, key=pkey):
+                    self.assert_eq(
+                        getattr(kdf.a.groupby(kkey), func)().sort_index(),
+                        getattr(pdf.a.groupby(pkey), func)().sort_index(),
+                        almost=almost,
+                    )
+                    self.assert_eq(
+                        getattr((kdf.a + 1).groupby(kkey), func)().sort_index(),
+                        getattr((pdf.a + 1).groupby(pkey), func)().sort_index(),
+                        almost=almost,
+                    )
+                    self.assert_eq(
+                        getattr((kdf.b + 1).groupby(kkey), func)().sort_index(),
+                        getattr((pdf.b + 1).groupby(pkey), func)().sort_index(),
+                        almost=almost,
+                    )
 
     def test_aggregate(self):
         pdf = pd.DataFrame(
