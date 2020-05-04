@@ -1970,7 +1970,7 @@ class GroupBy(object):
                             ([""] * (column_labels_level - 1)) + ["__tmp_groupkey_{}__".format(i)]
                         ),
                     )
-                    column_labels.append(temp_label)
+                    column_labels.append(temp_label)  # type: ignore
             elif isinstance(col_or_s, tuple):
                 kser = kdf[col_or_s]
                 if not isinstance(kser, Series):
