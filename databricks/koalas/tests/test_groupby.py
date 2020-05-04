@@ -435,6 +435,56 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             describe_pdf = pdf.groupby("a").describe().sort_index()
             self.assertRaises(NotImplementedError, lambda: kdf.groupby("a").describe().sort_index())
 
+    def test_aggregate_relabel_multiindex(self):
+        kdf = ks.DataFrame({"A": [0, 1, 2, 3], "B": [5, 6, 7, 8], "group": ["a", "a", "b", "b"]})
+        kdf.columns = pd.MultiIndex.from_tuples([("y", "A"), ("y", "B"), ("x", "group")])
+        pdf = kdf.to_pandas()
+
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            agg_pdf = pd.DataFrame(
+                {"a_max": [1, 3]}, index=pd.Index(["a", "b"], name=("x", "group"))
+            )
+        elif LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            agg_pdf = pdf.groupby(("x", "group")).agg(a_max=(("y", "A"), "max")).sort_index()
+        agg_kdf = kdf.groupby(("x", "group")).agg(a_max=(("y", "A"), "max")).sort_index()
+        self.assert_eq(agg_pdf, agg_kdf)
+
+        # same column, different methods
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            agg_pdf = pd.DataFrame(
+                {"a_max": [1, 3], "a_min": [0, 2]}, index=pd.Index(["a", "b"], name=("x", "group"))
+            )
+        elif LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            agg_pdf = (
+                pdf.groupby(("x", "group"))
+                .agg(a_max=(("y", "A"), "max"), a_min=(("y", "A"), "min"))
+                .sort_index()
+            )
+        agg_kdf = (
+            kdf.groupby(("x", "group"))
+            .agg(a_max=(("y", "A"), "max"), a_min=(("y", "A"), "min"))
+            .sort_index()
+        )
+        self.assert_eq(agg_pdf, agg_kdf)
+
+        # different column, different methods
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            agg_pdf = pd.DataFrame(
+                {"a_max": [6, 8], "a_min": [0, 2]}, index=pd.Index(["a", "b"], name=("x", "group"))
+            )
+        elif LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            agg_pdf = (
+                pdf.groupby(("x", "group"))
+                .agg(a_max=(("y", "B"), "max"), a_min=(("y", "A"), "min"))
+                .sort_index()
+            )
+        agg_kdf = (
+            kdf.groupby(("x", "group"))
+            .agg(a_max=(("y", "B"), "max"), a_min=(("y", "A"), "min"))
+            .sort_index()
+        )
+        self.assert_eq(agg_pdf, agg_kdf)
+
     def test_all_any(self):
         pdf = pd.DataFrame(
             {

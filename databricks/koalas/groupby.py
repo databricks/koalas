@@ -2433,4 +2433,8 @@ def _normalize_keyword_aggregation(kwargs):
             aggspec[column] = [aggfunc]
 
         order.append((column, aggfunc))
+    # For MultiIndex, we need to flatten the tuple, e.g. (('y', 'A'), 'max') needs to be
+    # flattened to ('y', 'A', 'max'), it won't do anything on normal Index.
+    if isinstance(order[0][0], tuple):
+        order = [(*levs, method) for levs, method in order]
     return aggspec, columns, order
