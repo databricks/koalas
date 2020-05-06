@@ -983,26 +983,26 @@ class GroupBy(object):
 
                 f = SelectionMixin._builtin_table.get(func, func)
 
-                dummy_value = None
+                should_skip_first_call = True
 
-                def _func(df):
-                    nonlocal dummy_value
-                    if dummy_value is None:
+                def wrapped_func(df):
+                    nonlocal should_skip_first_call
+                    if should_skip_first_call:
+                        should_skip_first_call = False
                         if should_return_series:
-                            dummy_value = pd.Series()
+                            return pd.Series()
                         else:
-                            dummy_value = pd.DataFrame()
-                        return dummy_value
+                            return pd.DataFrame()
                     else:
                         return f(df)
 
             else:
-                _func = func
+                wrapped_func = func
 
             if is_series_groupby:
-                pdf_or_ser = pdf.groupby(input_groupnames)[name].apply(_func)
+                pdf_or_ser = pdf.groupby(input_groupnames)[name].apply(wrapped_func)
             else:
-                pdf_or_ser = pdf.groupby(input_groupnames).apply(_func)
+                pdf_or_ser = pdf.groupby(input_groupnames).apply(wrapped_func)
 
             if not isinstance(pdf_or_ser, pd.DataFrame):
                 return pd.DataFrame(pdf_or_ser)
