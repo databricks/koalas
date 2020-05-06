@@ -21,7 +21,7 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
-from typing import Any, Optional, Union, List, Tuple, TYPE_CHECKING
+from typing import Any, Optional, List, Tuple, TYPE_CHECKING
 
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
