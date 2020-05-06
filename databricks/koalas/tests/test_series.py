@@ -1468,7 +1468,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.squeeze(), pser.squeeze())
 
     def test_div_zero(self):
-        pser = pd.Series([100, None, -300, None, 500, -700, np.inf], name="Koalas")
+        pser = pd.Series([100, None, -300, None, 500, -700, np.inf, -np.inf], name="Koalas")
         kser = ks.from_pandas(pser)
 
         self.assert_eq(repr(pser.div(0)), repr(kser.div(0)))
