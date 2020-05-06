@@ -1480,7 +1480,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(repr(pser.floordiv(0)), repr(kser.floordiv(0)))
             self.assert_eq(repr(pser // 0), repr(kser // 0))
         else:
-            result = pd.Series([np.inf, np.nan, -np.inf, np.nan, np.inf, -np.inf], name="Koalas")
+            result = pd.Series(
+                [np.inf, np.nan, -np.inf, np.nan, np.inf, -np.inf, np.inf, -np.inf], name="Koalas"
+            )
             self.assert_eq(repr(kser.floordiv(0)), repr(result))
             self.assert_eq(repr(kser // 0), repr(result))
 
