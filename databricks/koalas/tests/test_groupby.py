@@ -203,47 +203,82 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             (True, ["var", "std"]),
         ]
         funcs = [(almost, f) for almost, fs in funcs for f in fs]
-        for ddkey, pdkey in [("b", "b"), (kdf.b, pdf.b), (kdf.b + 1, pdf.b + 1)]:
-            for almost, func in funcs:
-                self.assert_eq(
-                    getattr(kdf.groupby(ddkey).a, func)().sort_index(),
-                    getattr(pdf.groupby(pdkey).a, func)().sort_index(),
-                    almost=almost,
-                )
-                self.assert_eq(
-                    getattr(kdf.groupby(ddkey), func)().sort_index(),
-                    getattr(pdf.groupby(pdkey), func)().sort_index(),
-                    almost=almost,
-                )
 
-        for ddkey, pdkey in [(kdf.b, pdf.b), (kdf.b + 1, pdf.b + 1)]:
-            for almost, func in funcs:
-                self.assert_eq(
-                    getattr(kdf.a.groupby(ddkey), func)().sort_index(),
-                    getattr(pdf.a.groupby(pdkey), func)().sort_index(),
-                    almost=almost,
-                )
-                self.assert_eq(
-                    getattr((kdf.a + 1).groupby(ddkey), func)().sort_index(),
-                    getattr((pdf.a + 1).groupby(pdkey), func)().sort_index(),
-                    almost=almost,
-                )
-                self.assert_eq(
-                    getattr((kdf.b + 1).groupby(ddkey), func)().sort_index(),
-                    getattr((pdf.b + 1).groupby(pdkey), func)().sort_index(),
-                    almost=almost,
-                )
+        for as_index in [True, False]:
+            if as_index:
+                sort = lambda df: df.sort_index()
+            else:
+                sort = lambda df: df.sort_values(list(df.columns)).reset_index(drop=True)
 
-        for i in [0, 4, 7]:
+            for almost, func in funcs:
+                for kkey, pkey in [("b", "b"), (kdf.b, pdf.b)]:
+                    with self.subTest(as_index=as_index, func=func, key=pkey):
+                        if as_index is True or func != "std":
+                            self.assert_eq(
+                                sort(getattr(kdf.groupby(kkey, as_index=as_index).a, func)()),
+                                sort(getattr(pdf.groupby(pkey, as_index=as_index).a, func)()),
+                                almost=almost,
+                            )
+                            self.assert_eq(
+                                sort(getattr(kdf.groupby(kkey, as_index=as_index), func)()),
+                                sort(getattr(pdf.groupby(pkey, as_index=as_index), func)()),
+                                almost=almost,
+                            )
+                        else:
+                            # seems like a pandas' bug for as_index=False and func == "std"?
+                            self.assert_eq(
+                                sort(getattr(kdf.groupby(kkey, as_index=as_index).a, func)()),
+                                sort(pdf.groupby(pkey, as_index=True).a.std().reset_index()),
+                                almost=almost,
+                            )
+                            self.assert_eq(
+                                sort(getattr(kdf.groupby(kkey, as_index=as_index), func)()),
+                                sort(pdf.groupby(pkey, as_index=True).std().reset_index()),
+                                almost=almost,
+                            )
+
+                kkey, pkey = (kdf.b + 1, pdf.b + 1)
+                with self.subTest(as_index=as_index, func=func, key=pkey):
+                    self.assert_eq(
+                        sort(getattr(kdf.groupby(kkey, as_index=as_index).a, func)()),
+                        sort(getattr(pdf.groupby(pkey, as_index=as_index).a, func)()),
+                        almost=almost,
+                    )
+                    self.assert_eq(
+                        sort(getattr(kdf.groupby(kkey, as_index=as_index), func)()),
+                        sort(getattr(pdf.groupby(pkey, as_index=as_index), func)()),
+                        almost=almost,
+                    )
+
+            for almost, func in funcs:
+                for i in [0, 4, 7]:
+                    with self.subTest(as_index=as_index, func=func, i=i):
+                        self.assert_eq(
+                            sort(getattr(kdf.groupby(kdf.b > i, as_index=as_index).a, func)()),
+                            sort(getattr(pdf.groupby(pdf.b > i, as_index=as_index).a, func)()),
+                            almost=almost,
+                        )
+                        self.assert_eq(
+                            sort(getattr(kdf.groupby(kdf.b > i, as_index=as_index), func)()),
+                            sort(getattr(pdf.groupby(pdf.b > i, as_index=as_index), func)()),
+                            almost=almost,
+                        )
+
+        for kkey, pkey in [(kdf.b, pdf.b), (kdf.b + 1, pdf.b + 1)]:
             for almost, func in funcs:
                 self.assert_eq(
-                    getattr(kdf.groupby(kdf.b > i).a, func)().sort_index(),
-                    getattr(pdf.groupby(pdf.b > i).a, func)().sort_index(),
+                    getattr(kdf.a.groupby(kkey), func)().sort_index(),
+                    getattr(pdf.a.groupby(pkey), func)().sort_index(),
                     almost=almost,
                 )
                 self.assert_eq(
-                    getattr(kdf.groupby(kdf.b > i), func)().sort_index(),
-                    getattr(pdf.groupby(pdf.b > i), func)().sort_index(),
+                    getattr((kdf.a + 1).groupby(kkey), func)().sort_index(),
+                    getattr((pdf.a + 1).groupby(pkey), func)().sort_index(),
+                    almost=almost,
+                )
+                self.assert_eq(
+                    getattr((kdf.b + 1).groupby(kkey), func)().sort_index(),
+                    getattr((pdf.b + 1).groupby(pkey), func)().sort_index(),
                     almost=almost,
                 )
 
@@ -254,23 +289,68 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         for as_index in [True, False]:
-            stats_kdf = kdf.groupby("A", as_index=as_index).agg({"B": "min", "C": "sum"})
-            stats_pdf = pdf.groupby("A", as_index=as_index).agg({"B": "min", "C": "sum"})
-            self.assert_eq(
-                stats_kdf.sort_values(by=["B", "C"]).reset_index(drop=True),
-                stats_pdf.sort_values(by=["B", "C"]).reset_index(drop=True),
-            )
+            if as_index:
+                sort = lambda df: df.sort_index()
+            else:
+                sort = lambda df: df.sort_values(list(df.columns)).reset_index(drop=True)
 
-            stats_kdf = kdf.groupby("A", as_index=as_index).agg({"B": ["min", "max"], "C": "sum"})
-            stats_pdf = pdf.groupby("A", as_index=as_index).agg({"B": ["min", "max"], "C": "sum"})
-            self.assert_eq(
-                stats_kdf.sort_values(by=[("B", "min"), ("B", "max"), ("C", "sum")]).reset_index(
-                    drop=True
-                ),
-                stats_pdf.sort_values(by=[("B", "min"), ("B", "max"), ("C", "sum")]).reset_index(
-                    drop=True
-                ),
-            )
+            for kkey, pkey in [("A", "A"), (kdf.A, pdf.A)]:
+                with self.subTest(as_index=as_index, key=pkey):
+                    self.assert_eq(
+                        sort(kdf.groupby(kkey, as_index=as_index).agg("sum")),
+                        sort(pdf.groupby(pkey, as_index=as_index).agg("sum")),
+                    )
+                    self.assert_eq(
+                        sort(kdf.groupby(kkey, as_index=as_index).agg({"B": "min", "C": "sum"})),
+                        sort(pdf.groupby(pkey, as_index=as_index).agg({"B": "min", "C": "sum"})),
+                    )
+                    self.assert_eq(
+                        sort(
+                            kdf.groupby(kkey, as_index=as_index).agg(
+                                {"B": ["min", "max"], "C": "sum"}
+                            )
+                        ),
+                        sort(
+                            pdf.groupby(pkey, as_index=as_index).agg(
+                                {"B": ["min", "max"], "C": "sum"}
+                            )
+                        ),
+                    )
+
+                    if as_index:
+                        self.assert_eq(
+                            sort(kdf.groupby(kkey, as_index=as_index).agg(["sum"])),
+                            sort(pdf.groupby(pkey, as_index=as_index).agg(["sum"])),
+                        )
+                    else:
+                        # seems like a pandas' bug for as_index=False and func_or_funcs is list?
+                        self.assert_eq(
+                            sort(kdf.groupby(kkey, as_index=as_index).agg(["sum"])),
+                            sort(pdf.groupby(pkey, as_index=True).agg(["sum"]).reset_index()),
+                        )
+
+            kkey, pkey = (kdf.A + 1, pdf.A + 1)
+            with self.subTest(as_index=as_index, key=pkey):
+                self.assert_eq(
+                    sort(kdf.groupby(kkey, as_index=as_index).agg("sum")),
+                    sort(pdf.groupby(pkey, as_index=as_index).agg("sum")),
+                )
+                self.assert_eq(
+                    sort(kdf.groupby(kkey, as_index=as_index).agg({"B": "min", "C": "sum"})),
+                    sort(pdf.groupby(pkey, as_index=as_index).agg({"B": "min", "C": "sum"})),
+                )
+                self.assert_eq(
+                    sort(
+                        kdf.groupby(kkey, as_index=as_index).agg({"B": ["min", "max"], "C": "sum"})
+                    ),
+                    sort(
+                        pdf.groupby(pkey, as_index=as_index).agg({"B": ["min", "max"], "C": "sum"})
+                    ),
+                )
+                self.assert_eq(
+                    sort(kdf.groupby(kkey, as_index=as_index).agg(["sum"])),
+                    sort(pdf.groupby(pkey, as_index=as_index).agg(["sum"])),
+                )
 
         expected_error_message = (
             r"aggs must be a dict mapping from column name \(string or "
@@ -435,6 +515,56 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             describe_pdf = pdf.groupby("a").describe().sort_index()
             self.assertRaises(NotImplementedError, lambda: kdf.groupby("a").describe().sort_index())
 
+    def test_aggregate_relabel_multiindex(self):
+        kdf = ks.DataFrame({"A": [0, 1, 2, 3], "B": [5, 6, 7, 8], "group": ["a", "a", "b", "b"]})
+        kdf.columns = pd.MultiIndex.from_tuples([("y", "A"), ("y", "B"), ("x", "group")])
+        pdf = kdf.to_pandas()
+
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            agg_pdf = pd.DataFrame(
+                {"a_max": [1, 3]}, index=pd.Index(["a", "b"], name=("x", "group"))
+            )
+        elif LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            agg_pdf = pdf.groupby(("x", "group")).agg(a_max=(("y", "A"), "max")).sort_index()
+        agg_kdf = kdf.groupby(("x", "group")).agg(a_max=(("y", "A"), "max")).sort_index()
+        self.assert_eq(agg_pdf, agg_kdf)
+
+        # same column, different methods
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            agg_pdf = pd.DataFrame(
+                {"a_max": [1, 3], "a_min": [0, 2]}, index=pd.Index(["a", "b"], name=("x", "group"))
+            )
+        elif LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            agg_pdf = (
+                pdf.groupby(("x", "group"))
+                .agg(a_max=(("y", "A"), "max"), a_min=(("y", "A"), "min"))
+                .sort_index()
+            )
+        agg_kdf = (
+            kdf.groupby(("x", "group"))
+            .agg(a_max=(("y", "A"), "max"), a_min=(("y", "A"), "min"))
+            .sort_index()
+        )
+        self.assert_eq(agg_pdf, agg_kdf)
+
+        # different column, different methods
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            agg_pdf = pd.DataFrame(
+                {"a_max": [6, 8], "a_min": [0, 2]}, index=pd.Index(["a", "b"], name=("x", "group"))
+            )
+        elif LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            agg_pdf = (
+                pdf.groupby(("x", "group"))
+                .agg(a_max=(("y", "B"), "max"), a_min=(("y", "A"), "min"))
+                .sort_index()
+            )
+        agg_kdf = (
+            kdf.groupby(("x", "group"))
+            .agg(a_max=(("y", "B"), "max"), a_min=(("y", "A"), "min"))
+            .sort_index()
+        )
+        self.assert_eq(agg_pdf, agg_kdf)
+
     def test_all_any(self):
         pdf = pd.DataFrame(
             {
@@ -595,6 +725,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.groupby("A").size().sort_index(), pdf.groupby("A").size().sort_index())
         self.assert_eq(
             kdf.groupby("A")["B"].size().sort_index(), pdf.groupby("A")["B"].size().sort_index()
+        )
+        self.assert_eq(
+            kdf.groupby("A")[["B"]].size().sort_index(), pdf.groupby("A")[["B"]].size().sort_index()
         )
         self.assert_eq(
             kdf.groupby(["A", "B"]).size().sort_index(), pdf.groupby(["A", "B"]).size().sort_index()
